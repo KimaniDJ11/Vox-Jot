@@ -87,7 +87,7 @@
     },
     "permissions": {
       "title": "Permisos Requeridos",
-      "description": "Handy necesita algunos permisos para funcionar correctamente.",
+      "description": "Vox Jot necesita algunos permisos para funcionar correctamente.",
       "microphone": {
         "title": "Acceso al Micrófono",
         "description": "Necesario para escuchar tu voz para la transcripción."
@@ -161,7 +161,7 @@
     "general": {
       "title": "General",
       "shortcut": {
-        "title": "Atajos de Handy",
+        "title": "Atajos de Vox Jot",
         "description": "Configura atajos de teclado para activar la grabación de voz a texto",
         "loading": "Cargando atajos...",
         "none": "No hay atajos configurados",
@@ -242,11 +242,11 @@
       },
       "autostart": {
         "label": "Iniciar al Arranque",
-        "description": "Iniciar Handy automáticamente cuando inicies sesión en tu computadora."
+        "description": "Iniciar Vox Jot automáticamente cuando inicies sesión en tu computadora."
       },
       "showTrayIcon": {
         "label": "Mostrar Icono de Bandeja",
-        "description": "Mostrar el icono de Handy en la bandeja del sistema."
+        "description": "Mostrar el icono de Vox Jot en la bandeja del sistema."
       },
       "overlay": {
         "title": "Posición de Superposición",
@@ -338,8 +338,8 @@
         "appleIntelligence": {
           "title": "Apple Intelligence",
           "description": "Se ejecuta completamente en el dispositivo. No se requiere clave API ni acceso a la red.",
-          "requirements": "Requiere un Mac con Apple Silicon ejecutando macOS Tahoe (26.0) o posterior. Apple Intelligence debe estar habilitado en Ajustes del Sistema.",
-          "unavailable": "Apple Intelligence no está disponible en este dispositivo. Requiere un Mac con Apple Silicon ejecutando macOS Tahoe (26.0) o posterior con Apple Intelligence habilitado en Ajustes del Sistema."
+          "requirements": "Requiere un Mac con Apple Silicon ejecutando macOS 26 o posterior. Apple Intelligence debe estar habilitado en Ajustes del Sistema.",
+          "unavailable": "Apple Intelligence no está disponible en este dispositivo. Requiere un Mac con Apple Silicon ejecutando macOS 26 o posterior con Apple Intelligence habilitado en Ajustes del Sistema."
         },
         "baseUrl": {
           "title": "URL Base",
@@ -353,13 +353,126 @@
         },
         "model": {
           "title": "Modelo",
-          "descriptionApple": "Proporciona un límite de tokens numérico opcional o mantén el preajuste predeterminado en el dispositivo.",
+          "descriptionApple": "Apple Intelligence usa el modelo integrado en el dispositivo. No se requiere selección adicional de modelo.",
           "descriptionCustom": "Proporciona el identificador del modelo esperado por tu endpoint personalizado.",
           "descriptionDefault": "Elige un modelo expuesto por el proveedor seleccionado.",
           "placeholderApple": "Apple Intelligence",
           "placeholderWithOptions": "Buscar o seleccionar un modelo",
           "placeholderNoOptions": "Escribe un nombre de modelo",
           "refreshModels": "Actualizar modelos"
+        }
+      },
+      "apple": {
+        "title": "Limpieza con Apple",
+        "description": "Usa Apple Intelligence para pulir las transcripciones localmente después del reconocimiento de voz.",
+        "mode": {
+          "title": "Modo",
+          "description": "Literal conserva el texto lo máximo posible. Intent puede eliminar falsos comienzos y dar formato a listas o párrafos obvios.",
+          "literal": "Literal: conservar redacción",
+          "intent": "Intent: limpiar falsos comienzos y formato"
+        },
+        "rewriteStrength": {
+          "title": "Intensidad de reescritura",
+          "description": "Controla cuán agresivamente Apple Intelligence puede reescribir frases en el modo intent.",
+          "conservative": "Conservador",
+          "balanced": "Equilibrado",
+          "aggressive": "Agresivo"
+        },
+        "preview": {
+          "label": "Mostrar vista previa antes de pegar",
+          "description": "Abre una ventana de revisión para aprobar o editar el texto final antes de pegarlo."
+        },
+        "fallback": {
+          "label": "Usar texto normalizado si falla",
+          "description": "Si Apple Intelligence falla o no está disponible, usa la transcripción normalizada por diccionario en lugar del resultado bruto."
+        }
+      },
+      "appAware": {
+        "title": "Tono según la app",
+        "description": "Opcionalmente ajusta el tono de reescritura de Apple Intelligence según la app en la que estés dictando. El dictado en vivo usa la app en primer plano; el probador de vista previa usa la app elegida abajo.",
+        "toggle": {
+          "label": "Activar tono según la app",
+          "description": "Asigna apps como Slack o Mail a distintas instrucciones de tono para Apple Intelligence."
+        },
+        "tones": {
+          "title": "Definiciones de tono",
+          "description": "Define tonos reutilizables. Cada tono agrega una guía limitada al prompt de Apple Intelligence.",
+          "columns": {
+            "id": "ID del tono",
+            "label": "Nombre visible",
+            "instruction": "Instrucción"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Usa un tono casual y conversacional adecuado para mensajes de chat."
+          },
+          "add": "Agregar tono"
+        },
+        "mappings": {
+          "title": "Asignaciones de apps",
+          "description": "Asigna IDs de paquete de apps a tonos. Los IDs de paquete se usan porque son más estables que los nombres localizados.",
+          "columns": {
+            "appName": "Nombre de la app",
+            "bundleId": "ID del paquete",
+            "tone": "Tono"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Agregar asignación"
+        },
+        "remove": "Eliminar"
+      },
+      "dictionary": {
+        "title": "Diccionario personal",
+        "editor": {
+          "title": "Ortografías preferidas",
+          "description": "Define frases habladas y sus formas escritas preferidas. Vox Jot aplica estos reemplazos antes de ejecutar Apple Intelligence."
+        },
+        "duplicateWarning": "Se detectaron frases habladas duplicadas. Ganará la coincidencia más larga o de mayor prioridad.",
+        "empty": "Aún no hay entradas en el diccionario personal.",
+        "columns": {
+          "spoken": "Hablado",
+          "written": "Escrito",
+          "exactOnly": "Solo exacto"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Agregar entrada",
+        "remove": "Eliminar",
+        "duplicateBadge": "Frase hablada duplicada"
+      },
+      "preview": {
+        "title": "Probador de vista previa",
+        "testInput": {
+          "title": "Probar texto de muestra",
+          "description": "Ejecuta la configuración actual de Apple Intelligence sobre un texto de muestra sin iniciar una grabación.",
+          "placeholder": "Pega o escribe aquí un texto de transcripción de muestra"
+        },
+        "previewApp": {
+          "label": "Vista previa como app",
+          "none": "Sin sobrescritura de app"
+        },
+        "run": "Vista previa de salida",
+        "runLoading": "Generando vista previa...",
+        "outputLabel": "Resultado de la vista previa",
+        "dictionaryHits": "Coincidencias del diccionario: {{hits}}",
+        "appContext": "Contexto de la app: {{app}}. Tono aplicado: {{tone}}.",
+        "editSummary": "Viñetas agregadas: {{bullets}}. Párrafos agregados: {{paragraphs}}.",
+        "errors": {
+          "generic": "No se puede previsualizar el postprocesamiento en este momento."
+        },
+        "modal": {
+          "title": "Revisar texto pulido",
+          "description": "Apple Intelligence cambió esta transcripción antes de pegarla.",
+          "originalLabel": "Transcripción normalizada",
+          "editedLabel": "Texto para pegar",
+          "cancel": "Cancelar pegado",
+          "apply": "Pegar texto"
         }
       },
       "prompts": {
@@ -407,7 +520,7 @@
       },
       "updateChecks": {
         "label": "Buscar Actualizaciones",
-        "description": "Buscar automáticamente nuevas versiones de Handy"
+        "description": "Buscar automáticamente nuevas versiones de Vox Jot"
       },
       "soundTheme": {
         "label": "Tema de Sonido",
@@ -471,11 +584,11 @@
       "title": "Acerca de",
       "version": {
         "title": "Versión",
-        "description": "Versión actual de Handy"
+        "description": "Versión actual de Vox Jot"
       },
       "appDataDirectory": {
         "title": "Directorio de Datos de la Aplicación",
-        "description": "Ubicación donde Handy almacena sus datos"
+        "description": "Ubicación donde Vox Jot almacena sus datos"
       },
       "sourceCode": {
         "title": "Código Fuente",
@@ -484,7 +597,7 @@
       },
       "supportDevelopment": {
         "title": "Apoyar el Desarrollo",
-        "description": "Ayúdanos a continuar construyendo Handy",
+        "description": "Ayúdanos a continuar construyendo Vox Jot",
         "button": "Donar"
       },
       "acknowledgments": {
@@ -492,7 +605,7 @@
         "whisper": {
           "title": "Whisper.cpp",
           "description": "Inferencia de alto rendimiento del modelo de reconocimiento automático de voz Whisper de OpenAI",
-          "details": "Handy usa Whisper.cpp para procesamiento de voz a texto rápido y local. Gracias al increíble trabajo de Georgi Gerganov y colaboradores."
+          "details": "Vox Jot usa Whisper.cpp para procesamiento de voz a texto rápido y local. Gracias al increíble trabajo de Georgi Gerganov y colaboradores."
         }
       }
     }
@@ -535,7 +648,7 @@
   },
   "accessibility": {
     "permissionsRequired": "Se Requieren Permisos de Accesibilidad",
-    "permissionsDescription": "Handy necesita permisos de accesibilidad para escribir texto transcrito.",
+    "permissionsDescription": "Vox Jot necesita permisos de accesibilidad para escribir texto transcrito.",
     "openSettings": "Abrir Ajustes del Sistema",
     "dismiss": "Descartar"
   },
@@ -547,7 +660,7 @@
   },
   "appLanguage": {
     "title": "Idioma de la aplicación",
-    "description": "Cambia el idioma de la interfaz de Handy"
+    "description": "Cambia el idioma de la interfaz de Vox Jot"
   },
   "overlay": {
     "transcribing": "Transcribiendo...",

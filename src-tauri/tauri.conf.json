@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Handy",
+  "productName": "Vox Jot",
   "version": "0.7.10",
-  "identifier": "com.pais.handy",
+  "identifier": "com.iriedinamik.voxjot",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",

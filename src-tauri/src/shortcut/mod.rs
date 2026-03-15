@@ -19,6 +19,9 @@ use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
+use crate::post_processing::{
+    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition,
+};
 use crate::settings::{
     self, get_settings, AutoSubmitKey, ClipboardHandling, KeyboardImplementation, LLMPrompt,
     OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme, TypingTool,
@@ -797,6 +800,100 @@ pub fn change_post_process_enabled_setting(app: AppHandle, enabled: bool) -> Res
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_post_process_mode_setting(app: AppHandle, mode: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.post_process_mode = match mode.as_str() {
+        "literal" => PostProcessMode::Literal,
+        "intent" => PostProcessMode::Intent,
+        other => return Err(format!("Invalid post-process mode '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_personal_dictionary(
+    app: AppHandle,
+    entries: Vec<DictionaryEntry>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.personal_dictionary = entries;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_max_rewrite_strength_setting(app: AppHandle, strength: u8) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.max_rewrite_strength = strength.min(2);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_show_preview_before_paste_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.show_preview_before_paste = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_fallback_to_raw_on_failure_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.fallback_to_raw_on_failure = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_app_aware_tone_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.app_aware_tone_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_tone_definitions(
+    app: AppHandle,
+    definitions: Vec<ToneDefinition>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tone_definitions = definitions;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_app_tone_mappings(
+    app: AppHandle,
+    mappings: Vec<AppToneMapping>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.app_tone_mappings = mappings;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_experimental_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.experimental_enabled = enabled;
@@ -985,7 +1082,7 @@ pub async fn fetch_post_process_models(
 
         #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
         {
-            return Err("Apple Intelligence is only available on Apple silicon Macs running macOS 15 or later.".to_string());
+            return Err("Apple Intelligence is only available on Apple silicon Macs running macOS 26 or later.".to_string());
         }
     }
 

@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import type { AppSettings as Settings, AudioDevice } from "@/bindings";
+import type {
+  AppSettings as Settings,
+  AppToneMapping,
+  AudioDevice,
+  DictionaryEntry,
+  PostProcessResult,
+  ToneDefinition,
+} from "@/bindings";
 import { commands } from "@/bindings";
 
 interface SettingsStore {
@@ -46,6 +53,10 @@ interface SettingsStore {
   ) => Promise<void>;
   updatePostProcessModel: (providerId: string, model: string) => Promise<void>;
   fetchPostProcessModels: (providerId: string) => Promise<string[]>;
+  previewPostProcessText: (
+    text: string,
+    appBundleIdOverride?: string | null,
+  ) => Promise<PostProcessResult>;
   setPostProcessModelOptions: (providerId: string, models: string[]) => void;
 
   // Internal state setters
@@ -123,8 +134,24 @@ const settingUpdaters: {
   history_limit: (value) => commands.updateHistoryLimit(value as number),
   post_process_enabled: (value) =>
     commands.changePostProcessEnabledSetting(value as boolean),
+  post_process_mode: (value) =>
+    commands.changePostProcessModeSetting(value as string),
   post_process_selected_prompt_id: (value) =>
     commands.setPostProcessSelectedPrompt(value as string),
+  personal_dictionary: (value) =>
+    commands.updatePersonalDictionary(value as DictionaryEntry[]),
+  max_rewrite_strength: (value) =>
+    commands.changeMaxRewriteStrengthSetting(value as number),
+  show_preview_before_paste: (value) =>
+    commands.changeShowPreviewBeforePasteSetting(value as boolean),
+  fallback_to_raw_on_failure: (value) =>
+    commands.changeFallbackToRawOnFailureSetting(value as boolean),
+  app_aware_tone_enabled: (value) =>
+    commands.changeAppAwareToneEnabledSetting(value as boolean),
+  tone_definitions: (value) =>
+    commands.updateToneDefinitions(value as ToneDefinition[]),
+  app_tone_mappings: (value) =>
+    commands.updateAppToneMappings(value as AppToneMapping[]),
   mute_while_recording: (value) =>
     commands.changeMuteWhileRecordingSetting(value as boolean),
   append_trailing_space: (value) =>
@@ -537,6 +564,17 @@ export const useSettingsStore = create<SettingsStore>()(
           [providerId]: models,
         },
       })),
+
+    previewPostProcessText: async (text, appBundleIdOverride = null) => {
+      const result = await commands.previewPostProcessText(
+        text,
+        appBundleIdOverride,
+      );
+      if (result.status === "ok") {
+        return result.data;
+      }
+      throw new Error(result.error);
+    },
 
     // Load default settings from Rust
     loadDefaultSettings: async () => {

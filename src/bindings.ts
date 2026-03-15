@@ -168,6 +168,14 @@ async changePostProcessEnabledSetting(enabled: boolean) : Promise<Result<null, s
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeExperimentalEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_experimental_enabled_setting", { enabled }) };
@@ -251,6 +259,62 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updatePersonalDictionary(entries: DictionaryEntry[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_personal_dictionary", { entries }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeMaxRewriteStrengthSetting(strength: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_max_rewrite_strength_setting", { strength }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeShowPreviewBeforePasteSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_show_preview_before_paste_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeFallbackToRawOnFailureSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_fallback_to_raw_on_failure_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeAppAwareToneEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_app_aware_tone_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateToneDefinitions(definitions: ToneDefinition[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_tone_definitions", { definitions }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateAppToneMappings(mappings: AppToneMapping[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_app_tone_mappings", { mappings }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -450,6 +514,22 @@ async openAppDataDir() : Promise<Result<null, string>> {
  */
 async checkAppleIntelligenceAvailable() : Promise<boolean> {
     return await TAURI_INVOKE("check_apple_intelligence_available");
+},
+async previewPostProcessText(text: string, appBundleIdOverride?: string | null) : Promise<Result<PostProcessResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_post_process_text", { text, appBundleIdOverride }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async resolvePostProcessPreview(requestId: string, accepted: boolean, finalText: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("resolve_post_process_preview", { requestId, accepted, finalText }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 },
 /**
  * Try to initialize Enigo (keyboard/mouse simulation).
@@ -732,8 +812,10 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 }
 },
 /**
- * Stub implementation for non-macOS platforms
- * Always returns false since laptop detection is macOS-specific
+ * Checks if the Mac is a laptop by detecting battery presence
+ * 
+ * This uses pmset to check for battery information.
+ * Returns true if a battery is detected (laptop), false otherwise (desktop)
  */
 async isLaptop() : Promise<Result<boolean, string>> {
     try {
@@ -755,12 +837,15 @@ async isLaptop() : Promise<Result<boolean, string>> {
 
 /** user-defined types **/
 
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null }
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[] }
+export type ActiveAppContext = { bundle_id: string; localized_name: string }
+export type AppToneMapping = { bundle_id: string; app_name: string; tone_id: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
+export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM"
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null }
 /**
@@ -780,10 +865,14 @@ export type ModelUnloadTimeout = "never" | "immediately" | "min_2" | "min_5" | "
 export type OverlayPosition = "none" | "top" | "bottom"
 export type PasteMethod = "ctrl_v" | "direct" | "none" | "shift_insert" | "ctrl_shift_v" | "external_script"
 export type PermissionAccess = "allowed" | "denied" | "unknown"
+export type PostProcessEdits = { removed_false_starts: boolean; removed_fillers: boolean; added_bullets: boolean; added_paragraphs: boolean }
+export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
+export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; edits: PostProcessEdits; mode: PostProcessMode; active_app_context?: ActiveAppContext | null; applied_tone_id?: string | null }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type ToneDefinition = { id: string; label: string; instruction: string }
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
 

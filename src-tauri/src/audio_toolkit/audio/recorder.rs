@@ -301,7 +301,7 @@ fn is_microphone_access_denied(error_message: &str) -> bool {
 
 fn normalize_microphone_error(error_message: String) -> String {
     if is_microphone_access_denied(&error_message) {
-        return "Microphone access was denied by the operating system. On Windows, enable Settings → Privacy & security → Microphone (including desktop app access), then restart Handy.".to_string();
+        return "Microphone access was denied by the operating system. On Windows, enable Settings → Privacy & security → Microphone (including desktop app access), then restart Vox Jot.".to_string();
     }
 
     error_message

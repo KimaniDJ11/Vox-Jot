@@ -1,4 +1,5 @@
 import Dispatch
+import AppKit
 import Foundation
 import FoundationModels
 
@@ -12,6 +13,7 @@ private struct CleanedTranscript: Sendable {
 // This file is compiled via Cargo build script for Apple Silicon targets
 
 private typealias ResponsePointer = UnsafeMutablePointer<AppleLLMResponse>
+private typealias FrontmostAppPointer = UnsafeMutablePointer<FrontmostAppResponse>
 
 private func duplicateCString(_ text: String) -> UnsafeMutablePointer<CChar>? {
     return text.withCString { basePointer in
@@ -48,6 +50,39 @@ public func isAppleIntelligenceAvailable() -> Int32 {
     case .unavailable:
         return 0
     }
+}
+
+@_cdecl("get_frontmost_app_context_apple")
+public func getFrontmostAppContextApple() -> UnsafeMutablePointer<FrontmostAppResponse> {
+    let responsePtr = FrontmostAppPointer.allocate(capacity: 1)
+    responsePtr.initialize(
+        to: FrontmostAppResponse(
+            bundle_id: nil,
+            localized_name: nil,
+            success: 0,
+            error_message: nil
+        )
+    )
+
+    let app = NSWorkspace.shared.frontmostApplication
+    guard let app else {
+        responsePtr.pointee.error_message = duplicateCString(
+            "No frontmost application is currently available."
+        )
+        return responsePtr
+    }
+
+    guard let bundleIdentifier = app.bundleIdentifier, !bundleIdentifier.isEmpty else {
+        responsePtr.pointee.error_message = duplicateCString(
+            "Frontmost application is missing a bundle identifier."
+        )
+        return responsePtr
+    }
+
+    responsePtr.pointee.bundle_id = duplicateCString(bundleIdentifier)
+    responsePtr.pointee.localized_name = duplicateCString(app.localizedName ?? "")
+    responsePtr.pointee.success = 1
+    return responsePtr
 }
 
 @_cdecl("process_text_with_system_prompt_apple")
@@ -134,6 +169,25 @@ public func freeAppleLLMResponse(_ response: UnsafeMutablePointer<AppleLLMRespon
 
     if let responseStr = response.pointee.response {
         free(UnsafeMutablePointer(mutating: responseStr))
+    }
+
+    if let errorStr = response.pointee.error_message {
+        free(UnsafeMutablePointer(mutating: errorStr))
+    }
+
+    response.deallocate()
+}
+
+@_cdecl("free_frontmost_app_response")
+public func freeFrontmostAppResponse(_ response: UnsafeMutablePointer<FrontmostAppResponse>?) {
+    guard let response = response else { return }
+
+    if let bundleId = response.pointee.bundle_id {
+        free(UnsafeMutablePointer(mutating: bundleId))
+    }
+
+    if let localizedName = response.pointee.localized_name {
+        free(UnsafeMutablePointer(mutating: localizedName))
     }
 
     if let errorStr = response.pointee.error_message {

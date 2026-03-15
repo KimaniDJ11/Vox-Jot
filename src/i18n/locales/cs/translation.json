@@ -87,7 +87,7 @@
     },
     "permissions": {
       "title": "Vyžadována oprávnění",
-      "description": "Handy potřebuje několik oprávnění pro správné fungování.",
+      "description": "Vox Jot potřebuje několik oprávnění pro správné fungování.",
       "microphone": {
         "title": "Přístup k mikrofonu",
         "description": "Potřebný pro zachycení vašeho hlasu k přepisu."
@@ -161,7 +161,7 @@
     "general": {
       "title": "Obecné",
       "shortcut": {
-        "title": "Zkratky Handy",
+        "title": "Zkratky Vox Jot",
         "description": "Nastavte klávesové zkratky pro spuštění nahrávání řeči na text",
         "loading": "Načítám zkratky...",
         "none": "Žádné zkratky nejsou nastavené",
@@ -242,11 +242,11 @@
       },
       "autostart": {
         "label": "Spouštět při startu",
-        "description": "Automaticky spustit Handy po přihlášení do počítače."
+        "description": "Automaticky spustit Vox Jot po přihlášení do počítače."
       },
       "showTrayIcon": {
         "label": "Zobrazit ikonu v systémové liště",
-        "description": "Zobrazit ikonu Handy v systémové liště."
+        "description": "Zobrazit ikonu Vox Jot v systémové liště."
       },
       "overlay": {
         "title": "Pozice překryvu",
@@ -407,7 +407,7 @@
       },
       "updateChecks": {
         "label": "Kontrolovat aktualizace",
-        "description": "Automaticky kontrolovat nové verze Handy"
+        "description": "Automaticky kontrolovat nové verze Vox Jot"
       },
       "soundTheme": {
         "label": "Zvukový motiv",
@@ -471,11 +471,11 @@
       "title": "O aplikaci",
       "version": {
         "title": "Verze",
-        "description": "Aktuální verze Handy"
+        "description": "Aktuální verze Vox Jot"
       },
       "appDataDirectory": {
         "title": "Adresář dat aplikace",
-        "description": "Umístění, kde Handy ukládá data"
+        "description": "Umístění, kde Vox Jot ukládá data"
       },
       "sourceCode": {
         "title": "Zdrojový kód",
@@ -484,7 +484,7 @@
       },
       "supportDevelopment": {
         "title": "Podpořte vývoj",
-        "description": "Pomozte nám pokračovat ve vývoji Handy",
+        "description": "Pomozte nám pokračovat ve vývoji Vox Jot",
         "button": "Přispět"
       },
       "acknowledgments": {
@@ -492,7 +492,7 @@
         "whisper": {
           "title": "Whisper.cpp",
           "description": "Vysoce výkonné inferenční zpracování modelu automatického rozpoznávání řeči Whisper od OpenAI",
-          "details": "Handy používá Whisper.cpp pro rychlé lokální zpracování řeči na text. Díky skvělé práci Georgiho Gerganova a přispěvatelů."
+          "details": "Vox Jot používá Whisper.cpp pro rychlé lokální zpracování řeči na text. Díky skvělé práci Georgiho Gerganova a přispěvatelů."
         }
       }
     }
@@ -535,7 +535,7 @@
   },
   "accessibility": {
     "permissionsRequired": "Vyžadována oprávnění usnadnění přístupu",
-    "permissionsDescription": "Handy potřebuje oprávnění usnadnění přístupu, aby mohlo psát přepsaný text.",
+    "permissionsDescription": "Vox Jot potřebuje oprávnění usnadnění přístupu, aby mohlo psát přepsaný text.",
     "openSettings": "Otevřít Nastavení systému",
     "dismiss": "Zavřít"
   },
@@ -547,7 +547,7 @@
   },
   "appLanguage": {
     "title": "Jazyk aplikace",
-    "description": "Změňte jazyk rozhraní Handy"
+    "description": "Změňte jazyk rozhraní Vox Jot"
   },
   "overlay": {
     "transcribing": "Přepisuji...",

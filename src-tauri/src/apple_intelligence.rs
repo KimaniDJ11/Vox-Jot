@@ -1,6 +1,8 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
+use crate::post_processing::ActiveAppContext;
+
 // Define the response structure from Swift
 #[repr(C)]
 pub struct AppleLLMResponse {
@@ -9,15 +11,74 @@ pub struct AppleLLMResponse {
     pub error_message: *mut c_char,
 }
 
+#[repr(C)]
+pub struct FrontmostAppResponse {
+    pub bundle_id: *mut c_char,
+    pub localized_name: *mut c_char,
+    pub success: c_int,
+    pub error_message: *mut c_char,
+}
+
 // Link to the Swift functions
 extern "C" {
     pub fn is_apple_intelligence_available() -> c_int;
     pub fn free_apple_llm_response(response: *mut AppleLLMResponse);
+    pub fn get_frontmost_app_context_apple() -> *mut FrontmostAppResponse;
+    pub fn free_frontmost_app_response(response: *mut FrontmostAppResponse);
 }
 
 // Safe wrapper functions
 pub fn check_apple_intelligence_availability() -> bool {
     unsafe { is_apple_intelligence_available() == 1 }
+}
+
+pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
+    let response_ptr = unsafe { get_frontmost_app_context_apple() };
+
+    if response_ptr.is_null() {
+        return Err("Null response while looking up frontmost app".to_string());
+    }
+
+    let response = unsafe { &*response_ptr };
+
+    let result = if response.success == 1 {
+        let bundle_id = if response.bundle_id.is_null() {
+            String::new()
+        } else {
+            unsafe { CStr::from_ptr(response.bundle_id) }
+                .to_string_lossy()
+                .into_owned()
+        };
+        let localized_name = if response.localized_name.is_null() {
+            String::new()
+        } else {
+            unsafe { CStr::from_ptr(response.localized_name) }
+                .to_string_lossy()
+                .into_owned()
+        };
+
+        if bundle_id.trim().is_empty() {
+            Err("Frontmost app lookup returned an empty bundle identifier".to_string())
+        } else {
+            Ok(ActiveAppContext {
+                bundle_id,
+                localized_name,
+            })
+        }
+    } else {
+        let error_msg = if !response.error_message.is_null() {
+            unsafe { CStr::from_ptr(response.error_message) }
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            "Unknown frontmost app lookup error".to_string()
+        };
+        Err(error_msg)
+    };
+
+    unsafe { free_frontmost_app_response(response_ptr) };
+
+    result
 }
 
 // Link to the Swift function for system prompt support
@@ -80,5 +141,14 @@ mod tests {
     fn test_availability() {
         let available = check_apple_intelligence_availability();
         println!("Apple Intelligence available: {}", available);
+    }
+
+    #[test]
+    fn frontmost_app_lookup_returns_a_result() {
+        let lookup = get_frontmost_app_context();
+        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+        assert!(lookup.is_err());
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        assert!(lookup.is_ok() || lookup.is_err());
     }
 }

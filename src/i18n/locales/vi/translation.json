@@ -87,7 +87,7 @@
     },
     "permissions": {
       "title": "Cần cấp quyền",
-      "description": "Handy cần một số quyền để hoạt động bình thường.",
+      "description": "Vox Jot cần một số quyền để hoạt động bình thường.",
       "microphone": {
         "title": "Quyền truy cập Micrô",
         "description": "Cần thiết để nghe giọng nói của bạn để chuyển đổi."
@@ -161,7 +161,7 @@
     "general": {
       "title": "Chung",
       "shortcut": {
-        "title": "Phím tắt Handy",
+        "title": "Phím tắt Vox Jot",
         "description": "Cấu hình phím tắt để kích hoạt ghi âm chuyển đổi giọng nói thành văn bản",
         "loading": "Đang tải phím tắt...",
         "none": "Chưa cấu hình phím tắt",
@@ -242,11 +242,11 @@
       },
       "autostart": {
         "label": "Khởi động cùng hệ thống",
-        "description": "Tự động khởi động Handy khi bạn đăng nhập vào máy tính."
+        "description": "Tự động khởi động Vox Jot khi bạn đăng nhập vào máy tính."
       },
       "showTrayIcon": {
         "label": "Hiển thị biểu tượng khay",
-        "description": "Hiển thị biểu tượng Handy trong khay hệ thống."
+        "description": "Hiển thị biểu tượng Vox Jot trong khay hệ thống."
       },
       "overlay": {
         "title": "Vị trí lớp phủ",
@@ -338,8 +338,8 @@
         "appleIntelligence": {
           "title": "Apple Intelligence",
           "description": "Chạy hoàn toàn trên thiết bị. Không cần khóa API hoặc truy cập mạng.",
-          "requirements": "Yêu cầu Mac Apple Silicon chạy macOS Tahoe (26.0) trở lên. Apple Intelligence phải được bật trong Cài đặt Hệ thống.",
-          "unavailable": "Apple Intelligence không khả dụng trên thiết bị này. Yêu cầu Mac Apple Silicon chạy macOS Tahoe (26.0) trở lên với Apple Intelligence được bật trong Cài đặt Hệ thống."
+          "requirements": "Yêu cầu Mac Apple Silicon chạy macOS 26 trở lên. Apple Intelligence phải được bật trong Cài đặt Hệ thống.",
+          "unavailable": "Apple Intelligence không khả dụng trên thiết bị này. Yêu cầu Mac Apple Silicon chạy macOS 26 trở lên với Apple Intelligence được bật trong Cài đặt Hệ thống."
         },
         "baseUrl": {
           "title": "URL cơ sở",
@@ -353,13 +353,126 @@
         },
         "model": {
           "title": "Mô hình",
-          "descriptionApple": "Cung cấp giới hạn token tùy chọn hoặc giữ cài đặt mặc định trên thiết bị.",
+          "descriptionApple": "Apple Intelligence sử dụng mô hình tích hợp trên thiết bị. Không cần chọn thêm mô hình.",
           "descriptionCustom": "Cung cấp định danh mô hình được yêu cầu bởi điểm cuối tùy chỉnh của bạn.",
           "descriptionDefault": "Chọn một mô hình được cung cấp bởi nhà cung cấp đã chọn.",
           "placeholderApple": "Apple Intelligence",
           "placeholderWithOptions": "Tìm kiếm hoặc chọn một mô hình",
           "placeholderNoOptions": "Nhập tên mô hình",
           "refreshModels": "Làm mới mô hình"
+        }
+      },
+      "apple": {
+        "title": "Làm sạch bằng Apple",
+        "description": "Dùng Apple Intelligence để làm gọn bản ghi cục bộ sau khi nhận dạng giọng nói hoàn tất.",
+        "mode": {
+          "title": "Chế độ",
+          "description": "Literal giữ nguyên cách diễn đạt nhiều nhất có thể. Intent có thể xóa phần nói lắp và định dạng danh sách hoặc đoạn văn rõ ràng.",
+          "literal": "Literal: giữ nguyên lời nói",
+          "intent": "Intent: làm sạch phần nói lắp và định dạng"
+        },
+        "rewriteStrength": {
+          "title": "Mức độ viết lại",
+          "description": "Kiểm soát mức độ Apple Intelligence có thể viết lại câu trong chế độ intent.",
+          "conservative": "Bảo thủ",
+          "balanced": "Cân bằng",
+          "aggressive": "Mạnh"
+        },
+        "preview": {
+          "label": "Hiển thị xem trước trước khi dán",
+          "description": "Mở cửa sổ xem lại để bạn có thể chấp nhận hoặc chỉnh sửa văn bản cuối cùng trước khi dán."
+        },
+        "fallback": {
+          "label": "Quay về văn bản đã chuẩn hóa khi lỗi",
+          "description": "Nếu Apple Intelligence lỗi hoặc không khả dụng, dùng bản ghi đã chuẩn hóa theo từ điển thay vì kết quả thô."
+        }
+      },
+      "appAware": {
+        "title": "Giọng điệu theo ứng dụng",
+        "description": "Tùy chọn điều chỉnh giọng điệu viết lại của Apple Intelligence theo ứng dụng bạn đang đọc chính tả vào. Ghi âm trực tiếp dùng ứng dụng đang ở phía trước; trình xem trước dùng ứng dụng bạn chọn bên dưới.",
+        "toggle": {
+          "label": "Bật giọng điệu theo ứng dụng",
+          "description": "Gán các ứng dụng như Slack hoặc Mail vào các hướng dẫn giọng điệu khác nhau cho Apple Intelligence."
+        },
+        "tones": {
+          "title": "Định nghĩa giọng điệu",
+          "description": "Định nghĩa các giọng điệu có thể tái sử dụng. Mỗi giọng điệu thêm hướng dẫn có giới hạn vào prompt của Apple Intelligence.",
+          "columns": {
+            "id": "ID giọng điệu",
+            "label": "Tên hiển thị",
+            "instruction": "Hướng dẫn"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Thân mật",
+            "instruction": "Dùng giọng điệu thân mật, trò chuyện phù hợp với tin nhắn chat."
+          },
+          "add": "Thêm giọng điệu"
+        },
+        "mappings": {
+          "title": "Ánh xạ ứng dụng",
+          "description": "Ánh xạ bundle ID của ứng dụng sang các giọng điệu. Bundle ID được dùng vì ổn định hơn tên ứng dụng đã bản địa hóa.",
+          "columns": {
+            "appName": "Tên ứng dụng",
+            "bundleId": "Bundle ID",
+            "tone": "Giọng điệu"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Thêm ánh xạ"
+        },
+        "remove": "Xóa"
+      },
+      "dictionary": {
+        "title": "Từ điển cá nhân",
+        "editor": {
+          "title": "Cách viết ưu tiên",
+          "description": "Định nghĩa các cụm từ nói và dạng viết ưu tiên của chúng. Vox Jot áp dụng các thay thế này trước khi chạy Apple Intelligence."
+        },
+        "duplicateWarning": "Đã phát hiện cụm từ nói bị trùng. Mục khớp dài hơn hoặc có ưu tiên cao hơn sẽ được dùng.",
+        "empty": "Chưa có mục nào trong từ điển cá nhân.",
+        "columns": {
+          "spoken": "Cách nói",
+          "written": "Cách viết",
+          "exactOnly": "Chỉ khớp chính xác"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Thêm mục",
+        "remove": "Xóa",
+        "duplicateBadge": "Cụm từ nói bị trùng"
+      },
+      "preview": {
+        "title": "Trình thử xem trước",
+        "testInput": {
+          "title": "Thử văn bản mẫu",
+          "description": "Chạy cấu hình Apple Intelligence hiện tại với văn bản mẫu mà không cần bắt đầu ghi âm.",
+          "placeholder": "Dán hoặc nhập văn bản bản ghi mẫu tại đây"
+        },
+        "previewApp": {
+          "label": "Xem trước như ứng dụng",
+          "none": "Không ghi đè ứng dụng"
+        },
+        "run": "Xem trước đầu ra",
+        "runLoading": "Đang xem trước...",
+        "outputLabel": "Kết quả xem trước",
+        "dictionaryHits": "Mục từ điển đã áp dụng: {{hits}}",
+        "appContext": "Ngữ cảnh ứng dụng: {{app}}. Giọng điệu áp dụng: {{tone}}.",
+        "editSummary": "Đã thêm gạch đầu dòng: {{bullets}}. Đã thêm đoạn văn: {{paragraphs}}.",
+        "errors": {
+          "generic": "Không thể xem trước xử lý hậu kỳ lúc này."
+        },
+        "modal": {
+          "title": "Xem lại văn bản đã làm gọn",
+          "description": "Apple Intelligence đã thay đổi bản ghi này trước khi dán.",
+          "originalLabel": "Bản ghi đã chuẩn hóa",
+          "editedLabel": "Văn bản sẽ dán",
+          "cancel": "Hủy dán",
+          "apply": "Dán văn bản"
         }
       },
       "prompts": {
@@ -407,7 +520,7 @@
       },
       "updateChecks": {
         "label": "Kiểm tra cập nhật",
-        "description": "Tự động kiểm tra phiên bản mới của Handy"
+        "description": "Tự động kiểm tra phiên bản mới của Vox Jot"
       },
       "soundTheme": {
         "label": "Chủ đề âm thanh",
@@ -471,11 +584,11 @@
       "title": "Giới thiệu",
       "version": {
         "title": "Phiên bản",
-        "description": "Phiên bản hiện tại của Handy"
+        "description": "Phiên bản hiện tại của Vox Jot"
       },
       "appDataDirectory": {
         "title": "Thư mục dữ liệu ứng dụng",
-        "description": "Vị trí Handy lưu trữ dữ liệu"
+        "description": "Vị trí Vox Jot lưu trữ dữ liệu"
       },
       "sourceCode": {
         "title": "Mã nguồn",
@@ -484,7 +597,7 @@
       },
       "supportDevelopment": {
         "title": "Hỗ trợ phát triển",
-        "description": "Giúp chúng tôi tiếp tục xây dựng Handy",
+        "description": "Giúp chúng tôi tiếp tục xây dựng Vox Jot",
         "button": "Quyên góp"
       },
       "acknowledgments": {
@@ -492,7 +605,7 @@
         "whisper": {
           "title": "Whisper.cpp",
           "description": "Suy luận hiệu suất cao của mô hình nhận dạng giọng nói tự động Whisper của OpenAI",
-          "details": "Handy sử dụng Whisper.cpp để xử lý chuyển đổi giọng nói thành văn bản nhanh, cục bộ. Cảm ơn công việc tuyệt vời của Georgi Gerganov và các cộng tác viên."
+          "details": "Vox Jot sử dụng Whisper.cpp để xử lý chuyển đổi giọng nói thành văn bản nhanh, cục bộ. Cảm ơn công việc tuyệt vời của Georgi Gerganov và các cộng tác viên."
         }
       }
     }
@@ -535,7 +648,7 @@
   },
   "accessibility": {
     "permissionsRequired": "Cần quyền truy cập",
-    "permissionsDescription": "Handy cần quyền truy cập để gõ văn bản đã chuyển đổi.",
+    "permissionsDescription": "Vox Jot cần quyền truy cập để gõ văn bản đã chuyển đổi.",
     "openSettings": "Mở Cài đặt Hệ thống",
     "dismiss": "Bỏ qua"
   },
@@ -547,7 +660,7 @@
   },
   "appLanguage": {
     "title": "Ngôn ngữ ứng dụng",
-    "description": "Thay đổi ngôn ngữ giao diện của Handy"
+    "description": "Thay đổi ngôn ngữ giao diện của Vox Jot"
   },
   "overlay": {
     "transcribing": "Đang chuyển đổi...",

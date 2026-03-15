@@ -1,3 +1,6 @@
+use crate::post_processing::{
+    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition,
+};
 use log::{debug, warn};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -329,6 +332,8 @@ pub struct AppSettings {
     pub auto_submit_key: AutoSubmitKey,
     #[serde(default = "default_post_process_enabled")]
     pub post_process_enabled: bool,
+    #[serde(default = "default_post_process_mode")]
+    pub post_process_mode: PostProcessMode,
     #[serde(default = "default_post_process_provider_id")]
     pub post_process_provider_id: String,
     #[serde(default = "default_post_process_providers")]
@@ -360,6 +365,20 @@ pub struct AppSettings {
     pub external_script_path: Option<String>,
     #[serde(default)]
     pub custom_filler_words: Option<Vec<String>>,
+    #[serde(default)]
+    pub personal_dictionary: Vec<DictionaryEntry>,
+    #[serde(default = "default_max_rewrite_strength")]
+    pub max_rewrite_strength: u8,
+    #[serde(default = "default_show_preview_before_paste")]
+    pub show_preview_before_paste: bool,
+    #[serde(default = "default_fallback_to_raw_on_failure")]
+    pub fallback_to_raw_on_failure: bool,
+    #[serde(default = "default_app_aware_tone_enabled")]
+    pub app_aware_tone_enabled: bool,
+    #[serde(default = "default_tone_definitions")]
+    pub tone_definitions: Vec<ToneDefinition>,
+    #[serde(default = "default_app_tone_mappings")]
+    pub app_tone_mappings: Vec<AppToneMapping>,
 }
 
 fn default_model() -> String {
@@ -435,6 +454,86 @@ fn default_sound_theme() -> SoundTheme {
 
 fn default_post_process_enabled() -> bool {
     false
+}
+
+fn default_post_process_mode() -> PostProcessMode {
+    PostProcessMode::Literal
+}
+
+fn default_max_rewrite_strength() -> u8 {
+    0
+}
+
+fn default_show_preview_before_paste() -> bool {
+    false
+}
+
+fn default_fallback_to_raw_on_failure() -> bool {
+    true
+}
+
+fn default_app_aware_tone_enabled() -> bool {
+    false
+}
+
+fn default_tone_definitions() -> Vec<ToneDefinition> {
+    vec![
+        ToneDefinition {
+            id: "neutral".to_string(),
+            label: "Neutral".to_string(),
+            instruction: "Keep the tone neutral and close to the speaker's original wording."
+                .to_string(),
+        },
+        ToneDefinition {
+            id: "casual".to_string(),
+            label: "Casual".to_string(),
+            instruction:
+                "Use a casual, conversational tone suitable for quick chat messages while preserving meaning."
+                    .to_string(),
+        },
+        ToneDefinition {
+            id: "professional".to_string(),
+            label: "Professional".to_string(),
+            instruction:
+                "Use a polished, professional tone suitable for email or documents while preserving meaning."
+                    .to_string(),
+        },
+    ]
+}
+
+fn default_app_tone_mappings() -> Vec<AppToneMapping> {
+    vec![
+        AppToneMapping {
+            bundle_id: "com.tinyspeck.slackmacgap".to_string(),
+            app_name: "Slack".to_string(),
+            tone_id: "casual".to_string(),
+        },
+        AppToneMapping {
+            bundle_id: "com.hnc.Discord".to_string(),
+            app_name: "Discord".to_string(),
+            tone_id: "casual".to_string(),
+        },
+        AppToneMapping {
+            bundle_id: "com.apple.MobileSMS".to_string(),
+            app_name: "Messages".to_string(),
+            tone_id: "casual".to_string(),
+        },
+        AppToneMapping {
+            bundle_id: "com.apple.mail".to_string(),
+            app_name: "Mail".to_string(),
+            tone_id: "professional".to_string(),
+        },
+        AppToneMapping {
+            bundle_id: "com.microsoft.Word".to_string(),
+            app_name: "Microsoft Word".to_string(),
+            tone_id: "professional".to_string(),
+        },
+        AppToneMapping {
+            bundle_id: "com.apple.Notes".to_string(),
+            app_name: "Notes".to_string(),
+            tone_id: "neutral".to_string(),
+        },
+    ]
 }
 
 fn default_app_language() -> String {
@@ -623,6 +722,16 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
         }
     }
 
+    if settings.tone_definitions.is_empty() {
+        settings.tone_definitions = default_tone_definitions();
+        changed = true;
+    }
+
+    if settings.app_tone_mappings.is_empty() {
+        settings.app_tone_mappings = default_app_tone_mappings();
+        changed = true;
+    }
+
     changed
 }
 
@@ -709,6 +818,7 @@ pub fn get_default_settings() -> AppSettings {
         auto_submit: default_auto_submit(),
         auto_submit_key: AutoSubmitKey::default(),
         post_process_enabled: default_post_process_enabled(),
+        post_process_mode: default_post_process_mode(),
         post_process_provider_id: default_post_process_provider_id(),
         post_process_providers: default_post_process_providers(),
         post_process_api_keys: default_post_process_api_keys(),
@@ -725,6 +835,13 @@ pub fn get_default_settings() -> AppSettings {
         typing_tool: default_typing_tool(),
         external_script_path: None,
         custom_filler_words: None,
+        personal_dictionary: Vec::new(),
+        max_rewrite_strength: default_max_rewrite_strength(),
+        show_preview_before_paste: default_show_preview_before_paste(),
+        fallback_to_raw_on_failure: default_fallback_to_raw_on_failure(),
+        app_aware_tone_enabled: default_app_aware_tone_enabled(),
+        tone_definitions: default_tone_definitions(),
+        app_tone_mappings: default_app_tone_mappings(),
     }
 }
 
@@ -748,6 +865,18 @@ impl AppSettings {
         self.post_process_providers
             .iter_mut()
             .find(|provider| provider.id == provider_id)
+    }
+
+    pub fn tone_definition(&self, tone_id: &str) -> Option<&ToneDefinition> {
+        self.tone_definitions
+            .iter()
+            .find(|tone| tone.id == tone_id)
+    }
+
+    pub fn app_tone_mapping(&self, bundle_id: &str) -> Option<&AppToneMapping> {
+        self.app_tone_mappings.iter().find(|mapping| {
+            mapping.bundle_id.eq_ignore_ascii_case(bundle_id)
+        })
     }
 }
 
@@ -867,5 +996,33 @@ mod tests {
         let settings = get_default_settings();
         assert!(!settings.auto_submit);
         assert_eq!(settings.auto_submit_key, AutoSubmitKey::Enter);
+    }
+
+    #[test]
+    fn default_settings_include_app_aware_tone_presets() {
+        let settings = get_default_settings();
+
+        assert!(!settings.app_aware_tone_enabled);
+        assert!(settings
+            .tone_definitions
+            .iter()
+            .any(|tone| tone.id == "casual"));
+        assert!(settings
+            .app_tone_mappings
+            .iter()
+            .any(|mapping| mapping.bundle_id == "com.apple.mail"));
+    }
+
+    #[test]
+    fn ensure_post_process_defaults_restores_tone_presets() {
+        let mut settings = get_default_settings();
+        settings.tone_definitions.clear();
+        settings.app_tone_mappings.clear();
+
+        let changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(changed);
+        assert!(!settings.tone_definitions.is_empty());
+        assert!(!settings.app_tone_mappings.is_empty());
     }
 }

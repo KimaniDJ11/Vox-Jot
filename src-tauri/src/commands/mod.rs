@@ -3,6 +3,7 @@ pub mod history;
 pub mod models;
 pub mod transcription;
 
+use crate::post_processing::{PostProcessResult, PreviewManager};
 use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
 use crate::utils::cancel_current_operation;
 use tauri::{AppHandle, Manager};
@@ -119,6 +120,28 @@ pub fn check_apple_intelligence_available() -> bool {
     {
         false
     }
+}
+
+#[specta::specta]
+#[tauri::command]
+pub async fn preview_post_process_text(
+    app: AppHandle,
+    text: String,
+    app_bundle_id_override: Option<String>,
+) -> Result<PostProcessResult, String> {
+    crate::actions::preview_post_process(&app, &text, app_bundle_id_override.as_deref()).await
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn resolve_post_process_preview(
+    app: AppHandle,
+    request_id: String,
+    accepted: bool,
+    final_text: Option<String>,
+) -> Result<(), String> {
+    let preview_manager = app.state::<PreviewManager>();
+    preview_manager.resolve_request(&request_id, accepted, final_text)
 }
 
 /// Try to initialize Enigo (keyboard/mouse simulation).

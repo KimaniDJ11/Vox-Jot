@@ -228,6 +228,7 @@ fn build_apple_intelligence_bridge() {
     );
     println!("cargo:rustc-link-search=native={}", sdk_swift_lib.display());
     println!("cargo:rustc-link-lib=framework=Foundation");
+    println!("cargo:rustc-link-lib=framework=AppKit");
 
     if has_foundation_models {
         // Use weak linking so the app can launch on systems without FoundationModels

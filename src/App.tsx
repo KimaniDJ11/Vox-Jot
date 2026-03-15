@@ -13,12 +13,19 @@ import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
 import Onboarding, { AccessibilityOnboarding } from "./components/onboarding";
 import { Sidebar, SidebarSection, SECTIONS_CONFIG } from "./components/Sidebar";
+import { Button } from "./components/ui/Button";
+import { Textarea } from "./components/ui/Textarea";
 import { useSettings } from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 
 type OnboardingStep = "accessibility" | "model" | "done";
+type PostProcessPreviewRequest = {
+  request_id: string;
+  source_text: string;
+  preview_text: string;
+};
 
 const renderSettingsContent = (section: SidebarSection) => {
   const ActiveComponent =
@@ -36,6 +43,9 @@ function App() {
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [currentSection, setCurrentSection] =
     useState<SidebarSection>("general");
+  const [pendingPreview, setPendingPreview] =
+    useState<PostProcessPreviewRequest | null>(null);
+  const [previewDraft, setPreviewDraft] = useState("");
   const { settings, updateSetting } = useSettings();
   const direction = getLanguageDirection(i18n.language);
   const refreshAudioDevices = useSettingsStore(
@@ -124,6 +134,46 @@ function App() {
       unlisten.then((fn) => fn());
     };
   }, [t]);
+
+  useEffect(() => {
+    const unlisten = listen<PostProcessPreviewRequest>(
+      "post-process-preview-request",
+      (event) => {
+        setPendingPreview(event.payload);
+        setPreviewDraft(event.payload.preview_text);
+      },
+    );
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  const resolvePreview = async (accepted: boolean) => {
+    if (!pendingPreview) {
+      return;
+    }
+
+    try {
+      const result = await commands.resolvePostProcessPreview(
+        pendingPreview.request_id,
+        accepted,
+        accepted ? previewDraft : null,
+      );
+      if (result.status !== "ok") {
+        toast.error(result.error);
+        return;
+      }
+      setPendingPreview(null);
+      setPreviewDraft("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("settings.postProcessing.preview.errors.generic"),
+      );
+    }
+  };
 
   const revealMainWindowForPermissions = async () => {
     try {
@@ -248,6 +298,50 @@ function App() {
           </div>
         </div>
       </div>
+      {pendingPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-3xl rounded-xl border border-mid-gray/20 bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b border-mid-gray/20 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {t("settings.postProcessing.preview.modal.title")}
+                </h2>
+                <p className="text-sm text-mid-gray">
+                  {t("settings.postProcessing.preview.modal.description")}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-mid-gray">
+                  {t("settings.postProcessing.preview.modal.originalLabel")}
+                </div>
+                <Textarea value={pendingPreview.source_text} readOnly />
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-mid-gray">
+                  {t("settings.postProcessing.preview.modal.editedLabel")}
+                </div>
+                <Textarea
+                  value={previewDraft}
+                  onChange={(event) => setPreviewDraft(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-mid-gray/20 px-5 py-4">
+              <Button variant="secondary" onClick={() => void resolvePreview(false)}>
+                {t("settings.postProcessing.preview.modal.cancel")}
+              </Button>
+              <Button onClick={() => void resolvePreview(true)}>
+                {t("settings.postProcessing.preview.modal.apply")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Fixed footer at bottom */}
       <Footer />
     </div>

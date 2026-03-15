@@ -12,6 +12,7 @@ mod llm_client;
 mod managers;
 mod overlay;
 pub mod portable;
+mod post_processing;
 mod settings;
 mod shortcut;
 mod signal_handle;
@@ -21,6 +22,7 @@ mod tray_i18n;
 mod utils;
 
 pub use cli::CliArgs;
+#[cfg(debug_assertions)]
 use specta_typescript::{BigIntExportBehavior, Typescript};
 use tauri_specta::{collect_commands, Builder};
 
@@ -29,6 +31,7 @@ use managers::audio::AudioRecordingManager;
 use managers::history::HistoryManager;
 use managers::model::ModelManager;
 use managers::transcription::TranscriptionManager;
+use post_processing::PreviewManager;
 #[cfg(unix)]
 use signal_hook::consts::{SIGUSR1, SIGUSR2};
 #[cfg(unix)]
@@ -83,7 +86,7 @@ fn build_console_filter() -> env_filter::Filter {
     builder.build()
 }
 
-fn show_main_window(app: &AppHandle) {
+pub(crate) fn show_main_window(app: &AppHandle) {
     if let Some(main_window) = app.get_webview_window("main") {
         if let Err(e) = main_window.unminimize() {
             log::error!("Failed to unminimize webview window: {}", e);
@@ -131,6 +134,9 @@ fn should_force_show_permissions_window(app: &AppHandle) -> bool {
             return true;
         }
     }
+
+    #[cfg(not(target_os = "windows"))]
+    let _ = app;
 
     false
 }
@@ -319,6 +325,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_auto_submit_setting,
         shortcut::change_auto_submit_key_setting,
         shortcut::change_post_process_enabled_setting,
+        shortcut::change_post_process_mode_setting,
         shortcut::change_experimental_enabled_setting,
         shortcut::change_post_process_base_url_setting,
         shortcut::change_post_process_api_key_setting,
@@ -330,6 +337,13 @@ pub fn run(cli_args: CliArgs) {
         shortcut::delete_post_process_prompt,
         shortcut::set_post_process_selected_prompt,
         shortcut::update_custom_words,
+        shortcut::update_personal_dictionary,
+        shortcut::change_max_rewrite_strength_setting,
+        shortcut::change_show_preview_before_paste_setting,
+        shortcut::change_fallback_to_raw_on_failure_setting,
+        shortcut::change_app_aware_tone_enabled_setting,
+        shortcut::update_tone_definitions,
+        shortcut::update_app_tone_mappings,
         shortcut::suspend_binding,
         shortcut::resume_binding,
         shortcut::change_mute_while_recording_setting,
@@ -353,6 +367,8 @@ pub fn run(cli_args: CliArgs) {
         commands::open_log_dir,
         commands::open_app_data_dir,
         commands::check_apple_intelligence_available,
+        commands::preview_post_process_text,
+        commands::resolve_post_process_preview,
         commands::initialize_enigo,
         commands::initialize_shortcuts,
         commands::models::get_available_models,
@@ -420,11 +436,11 @@ pub fn run(cli_args: CliArgs) {
                     Target::new(if let Some(data_dir) = portable::data_dir() {
                         TargetKind::Folder {
                             path: data_dir.join("logs"),
-                            file_name: Some("handy".into()),
+                            file_name: Some("vox_jot".into()),
                         }
                     } else {
                         TargetKind::LogDir {
-                            file_name: Some("handy".into()),
+                            file_name: Some("vox_jot".into()),
                         }
                     })
                     .filter(|metadata| {
@@ -471,7 +487,7 @@ pub fn run(cli_args: CliArgs) {
             // for portable mode (redirects WebView2 cache to portable Data dir)
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
-                    .title("Handy")
+                    .title("Vox Jot")
                     .inner_size(680.0, 570.0)
                     .min_inner_size(680.0, 570.0)
                     .resizable(true)
@@ -498,6 +514,7 @@ pub fn run(cli_args: CliArgs) {
             FILE_LOG_LEVEL.store(file_log_level.to_level_filter() as u8, Ordering::Relaxed);
             let app_handle = app.handle().clone();
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
+            app.manage(PreviewManager::default());
 
             initialize_core_logic(&app_handle);
 

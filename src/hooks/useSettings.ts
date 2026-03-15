@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
-import type { AppSettings as Settings, AudioDevice } from "@/bindings";
+import type {
+  AppSettings as Settings,
+  AudioDevice,
+  PostProcessResult,
+} from "@/bindings";
 
 interface UseSettingsReturn {
   // State
@@ -41,6 +45,10 @@ interface UseSettingsReturn {
   ) => Promise<void>;
   updatePostProcessModel: (providerId: string, model: string) => Promise<void>;
   fetchPostProcessModels: (providerId: string) => Promise<string[]>;
+  previewPostProcessText: (
+    text: string,
+    appBundleIdOverride?: string | null,
+  ) => Promise<PostProcessResult>;
 }
 
 export const useSettings = (): UseSettingsReturn => {
@@ -74,5 +82,6 @@ export const useSettings = (): UseSettingsReturn => {
     updatePostProcessApiKey: store.updatePostProcessApiKey,
     updatePostProcessModel: store.updatePostProcessModel,
     fetchPostProcessModels: store.fetchPostProcessModels,
+    previewPostProcessText: store.previewPostProcessText,
   };
 };

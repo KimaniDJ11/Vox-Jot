@@ -45,8 +45,7 @@ const isLocalBaseUrl = (baseUrl: string): boolean => {
 
 const isLocalProvider = (provider: PostProcessProvider): boolean => {
   if (provider.id === APPLE_PROVIDER_ID) return true;
-  if (provider.id === "custom") return isLocalBaseUrl(provider.base_url);
-  return false;
+  return isLocalBaseUrl(provider.base_url);
 };
 
 export const usePostProcessProviderState = (): PostProcessProviderState => {
@@ -152,8 +151,10 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
         const apiKey = settings?.post_process_api_keys?.[providerId] ?? "";
         const hasBaseUrl = (provider?.base_url ?? "").trim() !== "";
         const hasApiKey = apiKey.trim() !== "";
+        const allowsEmptyApiKey =
+          provider?.id === "custom" || provider?.id === "lmstudio";
 
-        if (provider?.id === "custom" ? hasBaseUrl : hasApiKey) {
+        if (allowsEmptyApiKey ? hasBaseUrl : hasApiKey) {
           void fetchPostProcessModels(providerId);
         }
       }

@@ -38,6 +38,7 @@ export const HistorySettings: React.FC = () => {
   const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [activeTab, setActiveTab] = useState<HistoryTab>("recordings");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadHistoryEntries = useCallback(async () => {
@@ -140,6 +141,26 @@ export const HistorySettings: React.FC = () => {
     Boolean(entry.post_processed_text?.trim()),
   );
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filterEntries = useCallback(
+    (entries: HistoryEntry[], viewMode: HistoryTab) => {
+      if (!normalizedQuery) {
+        return entries;
+      }
+
+      return entries.filter((entry) => {
+        const raw = entry.transcription_text.toLowerCase();
+        const jot = entry.post_processed_text?.toLowerCase() ?? "";
+        const activeText = viewMode === "jots" ? jot : raw;
+        return activeText.includes(normalizedQuery);
+      });
+    },
+    [normalizedQuery],
+  );
+
+  const visibleRecordingsEntries = filterEntries(recordingsEntries, "recordings");
+  const visibleJotsEntries = filterEntries(jotsEntries, "jots");
+
   const renderEntries = (
     entries: HistoryEntry[],
     viewMode: HistoryTab,
@@ -178,7 +199,7 @@ export const HistorySettings: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl w-full mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <div className="space-y-2">
           <div className="px-4 flex items-center justify-between">
             <div>
@@ -216,11 +237,14 @@ export const HistorySettings: React.FC = () => {
           />
         </div>
         <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
-          <div className="border-b border-mid-gray/20 px-3 py-2 flex gap-4">
+          <div className="border-b border-mid-gray/20 px-3 py-2 flex items-center gap-4" role="tablist" aria-label={t("settings.history.title")}>
             <button
               type="button"
+              id="history-tab-recordings"
               role="tab"
+              data-testid="history-tab-recordings"
               aria-selected={activeTab === "recordings"}
+              aria-controls="history-panel-recordings"
               onClick={() => setActiveTab("recordings")}
               className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
                 activeTab === "recordings"
@@ -231,11 +255,15 @@ export const HistorySettings: React.FC = () => {
               {t("settings.history.tabs.recordings", {
                 defaultValue: "Recordings",
               })}
+              <span className="ml-2 text-xs text-text/70">({recordingsEntries.length})</span>
             </button>
             <button
               type="button"
+              id="history-tab-jots"
               role="tab"
+              data-testid="history-tab-jots"
               aria-selected={activeTab === "jots"}
+              aria-controls="history-panel-jots"
               onClick={() => setActiveTab("jots")}
               className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
                 activeTab === "jots"
@@ -244,22 +272,61 @@ export const HistorySettings: React.FC = () => {
               }`}
             >
               {t("settings.history.tabs.jots", { defaultValue: "Jots" })}
+              <span className="ml-2 text-xs text-text/70">({jotsEntries.length})</span>
             </button>
           </div>
-          {activeTab === "recordings"
-            ? renderEntries(
-                recordingsEntries,
+          <div className="px-4 py-3 border-b border-mid-gray/20 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-text/60">
+              {activeTab === "recordings"
+                ? t("settings.history.summary.recordings", {
+                    defaultValue: "Showing {{visible}} of {{total}} recordings",
+                    visible: visibleRecordingsEntries.length,
+                    total: recordingsEntries.length,
+                  })
+                : t("settings.history.summary.jots", {
+                    defaultValue: "Showing {{visible}} of {{total}} jots",
+                    visible: visibleJotsEntries.length,
+                    total: jotsEntries.length,
+                  })}
+            </p>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t("settings.history.searchPlaceholder", {
+                defaultValue: "Search transcript text",
+              })}
+              className="w-full sm:w-72 rounded-md border border-mid-gray/30 bg-background px-3 py-2 text-sm text-text focus:border-logo-primary focus:outline-none"
+            />
+          </div>
+          {activeTab === "recordings" ? (
+            <div
+              id="history-panel-recordings"
+              role="tabpanel"
+              aria-labelledby="history-tab-recordings"
+            >
+              {renderEntries(
+                visibleRecordingsEntries,
                 "recordings",
                 t("settings.history.empty"),
-              )
-            : renderEntries(
-                jotsEntries,
+              )}
+            </div>
+          ) : (
+            <div
+              id="history-panel-jots"
+              role="tabpanel"
+              aria-labelledby="history-tab-jots"
+            >
+              {renderEntries(
+                visibleJotsEntries,
                 "jots",
                 t("settings.history.emptyJots", {
                   defaultValue:
                     "No jots yet. Enable post-processing to see completed results.",
                 }),
               )}
+            </div>
+          )}
         </div>
       </div>
     </div>

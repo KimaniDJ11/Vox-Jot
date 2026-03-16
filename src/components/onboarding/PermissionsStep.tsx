@@ -52,6 +52,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const isWindows = permissionPlatform === "windows";
   const showMicrophonePermission = isMacOS || isWindows;
   const showAccessibilityPermission = isMacOS;
+  const showDevBypass =
+    import.meta.env.DEV &&
+    isMacOS &&
+    permissions.accessibility !== "granted";
 
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
@@ -327,11 +331,27 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             </div>
           )}
 
-          {allGranted && (
+          {(allGranted || showDevBypass) && (
             <div className="ob-bottom-actions">
-              <button className="ob-btn-primary" onClick={onComplete}>
-                {t("onboarding.permissions.continue")}
-              </button>
+              {allGranted && (
+                <button className="ob-btn-primary" onClick={onComplete}>
+                  {t("onboarding.permissions.continue")}
+                </button>
+              )}
+              {showDevBypass && (
+                <button
+                  className="ob-btn-secondary"
+                  onClick={onComplete}
+                  title={t("onboarding.permissions.devBypassHint", {
+                    defaultValue:
+                      "Development bypass for accessibility check issues on macOS",
+                  })}
+                >
+                  {t("onboarding.permissions.devBypass", {
+                    defaultValue: "Continue In Dev Mode",
+                  })}
+                </button>
+              )}
             </div>
           )}
         </>

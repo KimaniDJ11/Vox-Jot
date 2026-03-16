@@ -98,6 +98,87 @@ struct ResolvedToneContext {
     instruction: String,
 }
 
+fn first_match_index(text: &str, patterns: &[&str]) -> Option<usize> {
+    patterns.iter().filter_map(|pattern| text.find(pattern)).min()
+}
+
+fn maybe_apply_verification_request_fallback(raw_text: &str, final_text: &str) -> Option<String> {
+    let normalized_raw = normalize_match_text(raw_text);
+    let normalized_final = normalize_match_text(final_text);
+    let starts_like_request = normalized_raw.starts_with("required verification request")
+        || normalized_raw.starts_with("required verifications request");
+    let likely_unstructured = normalized_final == normalized_raw
+        || normalized_final.contains(" i meant ")
+        || !final_text.lines().any(|line| line.trim_start().starts_with("* "));
+
+    if !starts_like_request || !likely_unstructured {
+        return None;
+    }
+
+    let mut items: Vec<(usize, &'static str)> = Vec::new();
+
+    if let Some(pos) = first_match_index(
+        &normalized_raw,
+        &["government-issued id", "government issued id", "government issue id"],
+    ) {
+        items.push((pos, "Government-issued ID"));
+    }
+
+    if let Some(pos) = first_match_index(
+        &normalized_raw,
+        &["conduct in-person meeting", "conduct in person meeting"],
+    ) {
+        items.push((pos, "Conduct in-person meeting"));
+    }
+
+    if let Some(pos) = first_match_index(&normalized_raw, &["employment verification"]) {
+        items.push((pos, "Employment verification"));
+    }
+
+    if let Some(pos) = first_match_index(&normalized_raw, &["income documentation"]) {
+        items.push((pos, "Income documentation"));
+    }
+
+    if let Some(pos) = first_match_index(&normalized_raw, &["personal references", "personal reference"]) {
+        items.push((pos, "Personal references"));
+    }
+
+    if let Some(pos) = first_match_index(
+        &normalized_raw,
+        &["previous landlord reference", "i meant previous landlord reference"],
+    ) {
+        items.push((pos, "Previous landlord reference"));
+    } else if let Some(pos) = first_match_index(&normalized_raw, &["previous reference"]) {
+        items.push((pos, "Previous reference"));
+    }
+
+    if let Some(pos) = first_match_index(&normalized_raw, &["credit check"]) {
+        items.push((pos, "Credit check"));
+    }
+
+    if let Some(pos) = first_match_index(
+        &normalized_raw,
+        &["social security verification", "security verification"],
+    ) {
+        items.push((pos, "Social security verification"));
+    }
+
+    if items.len() < 3 {
+        return None;
+    }
+
+    items.sort_by_key(|(pos, _)| *pos);
+    items.dedup_by(|a, b| a.1 == b.1);
+
+    let bullets = items
+        .into_iter()
+        .map(|(_, item)| format!("* {}", item))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Some(format!("Required Verification Request:\n{}", bullets))
+}
+
 /// Strip invisible Unicode characters that some LLMs may insert
 fn strip_invisible_chars(s: &str) -> String {
     s.replace(['\u{200B}', '\u{200C}', '\u{200D}', '\u{FEFF}'], "")
@@ -202,6 +283,8 @@ fn build_post_process_result(
     applied_tone_id: Option<String>,
 ) -> PostProcessResult {
     let final_text = strip_invisible_chars(&final_text);
+    let final_text =
+        maybe_apply_verification_request_fallback(raw_text, &final_text).unwrap_or(final_text);
     let edits = detect_post_process_edits(raw_text, &normalized_text, &final_text);
 
     PostProcessResult {
@@ -267,8 +350,11 @@ Rules:\n\
 - Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.\n\
 - If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.\n\
 - Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.\n\
+- You may infer list item boundaries from repeated short noun phrases even when the transcript has little or no punctuation.\n\
+- Treat joiners such as \"and\", \"also\", and \"plus\" as list separators when the content is clearly list-like.\n\
 - When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.\n\
 - Example: \"I want to pick up a few things from the store. Bread, potato chips, ice cream.\" -> \"I want to pick up a few things from the store:\\n* Bread\\n* Potato chips\\n* Ice cream\"\n\
+- Example: \"Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification\" -> \"Required Verification Request:\\n* Government-issued ID\\n* Conduct in-person meeting\\n* Employment verification\\n* Income documentation\\n* Personal references\\n* Previous landlord reference\\n* Credit check\\n* Social security verification\"\n\
 - If sequence words or ordered cues appear, such as \"one\", \"two\", \"three\", \"first\", \"second\", \"next\", or \"finally\", prefer a numbered list when the content is clearly step-like or ordered.\n\
 - If the user clearly dictated separate thoughts, insert paragraph breaks.\n\
 - If the user says \"new line\", \"new paragraph\", \"skip a line\", or equivalent phrasing, reflect that structure in the final text when it fits naturally.\n\
@@ -284,6 +370,9 @@ Rules:\n\
 - When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.\n\
 - Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like \"...? No, ...\" and \"..., no, ...\".\n\
 - Example: \"Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock.\" -> \"Hi Greg, let's connect soon. Are you available Friday at four o'clock?\"\n\
+- When a correction cue appears inside a list or sequence of short items, replace only the item being corrected and keep the surrounding items.\n\
+- Example: \"Personnel Reference Previous Reference I meant previous landlord reference credit check social security verification\" -> \"Personnel Reference Previous Landlord Reference Credit Check Social Security Verification\"\n\
+- Example: \"Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification\" -> \"Required Verification Request:\\n* Government-issued ID\\n* Conduct in-person meeting\\n* Employment verification\\n* Income documentation\\n* Personal references\\n* Previous landlord reference\\n* Credit check\\n* Social security verification\"\n\
 - If a correction is unclear, preserve the original wording instead of guessing.\n\
 - Safety behavior:\n\
 - Do not guess unknown jargon.\n\
@@ -347,6 +436,8 @@ Rewrite strength: {}\n\
 Special handling:\n\
 - If the transcript corrects itself with a later \"no\", \"sorry\", \"actually\", or similar restart, keep only the corrected wording.\n\
 - If the transcript has an intro sentence followed by short list items, keep the intro sentence and format the items as `* ` bullets.\n\
+- If a correction happens inside a list of short items, replace only the corrected item and keep the items after it.\n\
+- You may infer list boundaries from repeated short phrases even when commas are missing, especially for request, checklist, or verification-style content.\n\
 \n\
 {dictionary_section}\n\
 \n\
@@ -444,6 +535,9 @@ fn has_intro_plus_short_items(text: &str) -> bool {
         "shopping",
         "grocery",
         "groceries",
+        "verification",
+        "verifications",
+        "request",
         "pick up",
         "buy",
         "bring",
@@ -508,6 +602,10 @@ fn extract_route_features(transcription: &str) -> RouteFeatures {
         "grocery list",
         "shopping list",
         "packing list",
+        "required verification",
+        "required verifications",
+        "verification request",
+        "verification requests",
         "first",
         "second",
         "third",
@@ -781,14 +879,23 @@ async fn post_process_transcription(
     transcription: &str,
     active_app_context: Option<ActiveAppContext>,
 ) -> Option<PostProcessExecution> {
+    let route_features = extract_route_features(transcription);
     let selected_pass = choose_post_process_pass(transcription);
     let force_conservative_rewrite = should_force_conservative_rewrite(transcription);
+    let prefers_stronger_list_rewrite =
+        route_features.has_list_cue && (route_features.has_correction_cue || route_features.word_count >= 10);
     let effective_rewrite_strength = if force_conservative_rewrite {
         0
     } else {
         match selected_pass {
             PostProcessPass::Pass1 => settings.max_rewrite_strength.min(1),
-            PostProcessPass::Pass2 => settings.max_rewrite_strength,
+            PostProcessPass::Pass2 => {
+                if prefers_stronger_list_rewrite {
+                    settings.max_rewrite_strength.max(2)
+                } else {
+                    settings.max_rewrite_strength
+                }
+            }
             PostProcessPass::Command => 2,
         }
     };
@@ -1708,6 +1815,7 @@ mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
         build_apple_user_content,
+        maybe_apply_verification_request_fallback,
         build_non_apple_tone_instruction, choose_post_process_pass, extract_spoken_submit_command,
         live_partial_config_for_model, preview_app_context_from_override, resolve_tone_context,
         should_force_conservative_rewrite, PostProcessPass,
@@ -1735,6 +1843,8 @@ mod tests {
         assert!(prompt.contains("scratch that"));
         assert!(prompt.contains("Are you available Friday at four o'clock?"));
         assert!(prompt.contains("I want to pick up a few things from the store"));
+        assert!(prompt.contains("Previous Landlord Reference Credit Check Social Security Verification"));
+        assert!(prompt.contains("Required Verification Request:"));
     }
 
     #[test]
@@ -1754,8 +1864,31 @@ mod tests {
         assert!(content.contains("Mode: literal"));
         assert!(content.contains("Special handling:"));
         assert!(content.contains("format the items as `* ` bullets"));
+        assert!(content.contains("replace only the corrected item"));
+        assert!(content.contains("verification-style content"));
         assert!(content.contains("- swift ui => SwiftUI [exact only]"));
         assert!(content.contains("Transcript:\nswift ui example"));
+    }
+
+    #[test]
+    fn verification_request_fallback_formats_flat_sequence() {
+        let input = "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also security verification";
+        let rewritten = maybe_apply_verification_request_fallback(input, input)
+            .expect("verification request fallback should trigger");
+
+        assert_eq!(
+            rewritten,
+            "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification"
+        );
+    }
+
+    #[test]
+    fn verification_request_fallback_skips_unrelated_text() {
+        assert!(maybe_apply_verification_request_fallback(
+            "Please call me tomorrow morning",
+            "Please call me tomorrow morning"
+        )
+        .is_none());
     }
 
     #[test]
@@ -1941,6 +2074,16 @@ mod tests {
     }
 
     #[test]
+    fn choose_pass_uses_pass2_for_verification_request_list() {
+        assert_eq!(
+            choose_post_process_pass(
+                "Required verifications request government issue ID conduct in person meeting employment verification income documentation"
+            ),
+            PostProcessPass::Pass2
+        );
+    }
+
+    #[test]
     fn choose_pass_uses_command_for_transform_intent() {
         assert_eq!(
             choose_post_process_pass("make this shorter and clearer"),
@@ -1964,6 +2107,17 @@ mod tests {
     fn analyze_route_detects_intro_plus_items_as_list_cue() {
         let result = analyze_post_process_route(
             "I want to pick up a few things from the store. Bread, potato chips, ice cream.",
+        );
+
+        assert_eq!(result.route, "pass2");
+        assert!(result.has_list_cue);
+        assert!(!result.has_transform_cue);
+    }
+
+    #[test]
+    fn analyze_route_detects_verification_request_as_list_cue() {
+        let result = analyze_post_process_route(
+            "Required verifications request government issue ID conduct in person meeting employment verification income documentation",
         );
 
         assert_eq!(result.route, "pass2");

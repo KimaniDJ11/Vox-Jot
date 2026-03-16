@@ -43,6 +43,19 @@ type SetupStatus = {
   message: React.ReactNode;
 };
 
+const isLocalBaseUrl = (baseUrl: string): boolean => {
+  const lower = baseUrl.trim().toLowerCase();
+  if (!lower) return false;
+  return (
+    lower.startsWith("http://localhost") ||
+    lower.startsWith("https://localhost") ||
+    lower.startsWith("http://127.0.0.1") ||
+    lower.startsWith("https://127.0.0.1") ||
+    lower.startsWith("http://[::1]") ||
+    lower.startsWith("https://[::1]")
+  );
+};
+
 const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
   disabled = false,
   providerState: state,
@@ -541,6 +554,11 @@ const PostProcessSetupStatus: React.FC<{
 
     if (!providerState.isAppleProvider) {
       const issues: string[] = [];
+      const selectedProvider = providerState.selectedProvider;
+      const providerAllowsNoApiKey =
+        selectedProvider?.id === "custom"
+          ? isLocalBaseUrl(providerState.baseUrl)
+          : isLocalBaseUrl(selectedProvider?.base_url ?? "");
 
       if (
         providerState.isCustomProvider &&
@@ -548,7 +566,7 @@ const PostProcessSetupStatus: React.FC<{
       ) {
         issues.push(t("settings.postProcessing.status.missingBaseUrl"));
       }
-      if (!apiKey?.trim()) {
+      if (!providerAllowsNoApiKey && !apiKey?.trim()) {
         issues.push(t("settings.postProcessing.status.missingApiKey"));
       }
       if (!selectedModel?.trim()) {
@@ -1313,7 +1331,7 @@ export const PostProcessingSettings: React.FC = () => {
   const controlsDisabled = !postProcessEnabled;
 
   return (
-    <div className="max-w-3xl w-full mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div className="space-y-2">
         <h1 className="text-xl font-semibold">{t("settings.postProcessing.title")}</h1>
         <p className="text-sm text-text/60">

@@ -13,7 +13,7 @@ pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
 pub const OLLAMA_DEFAULT_MODEL_ID: &str = "llama3.2:1b";
-const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 4;
+const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 5;
 const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
 
@@ -619,6 +619,14 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
             models_endpoint: Some("/models".to_string()),
             supports_structured_output: true,
         },
+        PostProcessProvider {
+            id: "lmstudio".to_string(),
+            label: "LM Studio".to_string(),
+            base_url: "http://localhost:1234/v1".to_string(),
+            allow_base_url_edit: false,
+            models_endpoint: Some("/models".to_string()),
+            supports_structured_output: false,
+        },
     ];
 
     // Note: We always include Apple Intelligence on macOS ARM64 without checking availability
@@ -718,8 +726,11 @@ Structure rules:
 - Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.
 - If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.
 - Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.
+- You may infer list item boundaries from repeated short noun phrases even when the transcript has little or no punctuation.
+- Treat joiners such as "and", "also", and "plus" as list separators when the content is clearly list-like.
 - When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.
 - Example: "I want to pick up a few things from the store. Bread, potato chips, ice cream." -> "I want to pick up a few things from the store:\n* Bread\n* Potato chips\n* Ice cream"
+- Example: "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification" -> "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification"
 - If sequence words or ordered cues appear, such as "one", "two", "three", "first", "second", "next", or "finally", prefer a numbered list when the content is clearly step-like or ordered.
 - If the user clearly dictated separate thoughts, insert paragraph breaks.
 - If the user says "new line", "new paragraph", "skip a line", or equivalent phrasing, reflect that structure in the final text when it fits naturally.
@@ -737,6 +748,9 @@ Correction behavior:
 - When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.
 - Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like "...? No, ..." and "..., no, ...".
 - Example: "Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock." -> "Hi Greg, let's connect soon. Are you available Friday at four o'clock?"
+- When a correction cue appears inside a list or sequence of short items, replace only the item being corrected and keep the surrounding items.
+- Example: "Personnel Reference Previous Reference I meant previous landlord reference credit check social security verification" -> "Personnel Reference Previous Landlord Reference Credit Check Social Security Verification"
+- Example: "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification" -> "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification"
 - If a correction is unclear, preserve the original wording instead of guessing.
 
 Safety behavior:
@@ -1144,11 +1158,7 @@ pub fn post_process_provider_is_local(provider: &PostProcessProvider) -> bool {
         return true;
     }
 
-    if provider.id == "custom" {
-        return is_local_base_url(&provider.base_url);
-    }
-
-    false
+    is_local_base_url(&provider.base_url)
 }
 
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
@@ -1352,6 +1362,39 @@ mod tests {
             settings.post_process_selected_prompt_id,
             Some("user_prompt".to_string())
         );
+    }
+
+    #[test]
+    fn ensure_post_process_defaults_replaces_legacy_prompt_set_with_current_default() {
+        let mut settings = get_default_settings();
+        settings.post_process_prompt_policy_version = 4;
+        settings.post_process_prompts = vec![LLMPrompt {
+            id: DEFAULT_POST_PROCESS_PROMPT_ID.to_string(),
+            name: "Improve Transcriptions".to_string(),
+            prompt: "Older built-in prompt".to_string(),
+        }, LLMPrompt {
+            id: "user_prompt".to_string(),
+            name: "User Prompt".to_string(),
+            prompt: "Custom prompt".to_string(),
+        }];
+        settings.post_process_selected_prompt_id = Some("user_prompt".to_string());
+
+        let changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(changed);
+        assert_eq!(
+            settings.post_process_prompt_policy_version,
+            POST_PROCESS_PROMPT_POLICY_VERSION
+        );
+        assert_eq!(settings.post_process_prompts.len(), 1);
+        assert_eq!(settings.post_process_prompts[0].id, DEFAULT_POST_PROCESS_PROMPT_ID);
+        assert_eq!(
+            settings.post_process_selected_prompt_id,
+            Some(DEFAULT_POST_PROCESS_PROMPT_ID.to_string())
+        );
+        assert!(settings.post_process_prompts[0]
+            .prompt
+            .contains("Previous Landlord Reference Credit Check Social Security Verification"));
     }
 
     #[test]

@@ -72,12 +72,12 @@ const AccessibilityPermissions: React.FC = () => {
     request: {
       text: t("accessibility.openSettings"),
       className:
-        "rounded-lg border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_56%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] px-3 py-2 text-sm font-semibold text-[var(--color-logo-primary)] transition hover:bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_18%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)]",
+        "rounded-lg border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]",
     },
     verify: {
       text: t("accessibility.openSettings"),
       className:
-        "rounded-lg border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)] bg-transparent px-3 py-2 text-sm font-medium text-[color-mix(in_srgb,var(--color-text),transparent_10%)] transition hover:bg-[color-mix(in_srgb,var(--glass-bg),white_8%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)]",
+        "rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--input)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]",
     },
     granted: null,
   };
@@ -85,7 +85,7 @@ const AccessibilityPermissions: React.FC = () => {
   const config = buttonConfig[permissionState] as ButtonConfig;
 
   return (
-    <div className="glass-panel w-full rounded-2xl p-4">
+    <div className="flat-card w-full rounded-2xl p-4">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-semibold">

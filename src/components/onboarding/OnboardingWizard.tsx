@@ -24,6 +24,13 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const goToPermissions = useCallback(() => setStep("permissions"), []);
   const goToModel = useCallback(() => setStep("model"), []);
   const goToTutorial = useCallback(() => setStep("tutorial"), []);
+  const handlePermissionsComplete = useCallback(() => {
+    if (skipToPermissions) {
+      onComplete();
+      return;
+    }
+    goToModel();
+  }, [goToModel, onComplete, skipToPermissions]);
   const goBack = useCallback(() => {
     setStep((prev) => {
       switch (prev) {
@@ -45,7 +52,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     case "permissions":
       return (
         <PermissionsStep
-          onComplete={goToModel}
+          onComplete={handlePermissionsComplete}
           onBack={skipToPermissions ? undefined : goBack}
         />
       );

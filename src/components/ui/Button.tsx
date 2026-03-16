@@ -19,21 +19,21 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    "cursor-pointer rounded-lg border font-medium transition-[background-color,border-color,color,transform] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)]";
+    "cursor-pointer rounded-lg border font-medium transition-[background-color,border-color,color,transform] duration-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]";
 
   const variantClasses = {
     primary:
-      "border-background-ui bg-background-ui text-white hover:border-background-ui/85 hover:bg-background-ui/85 active:translate-y-px",
+      "border-[var(--accent)] bg-[var(--accent)] text-white hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
-      "border-transparent bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_80%)] text-[var(--color-logo-primary)] hover:bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_72%)]",
+      "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_85%)]",
     secondary:
-      "border-[color-mix(in_srgb,var(--color-text),transparent_75%)] bg-[color-mix(in_srgb,var(--glass-bg),white_8%)] text-[color-mix(in_srgb,var(--color-text),transparent_10%)] hover:bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_12%)]",
+      "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] hover:bg-[var(--input)]",
     danger:
       "border-red-500 bg-red-600 text-white hover:border-red-600 hover:bg-red-700",
     "danger-ghost":
-      "border-transparent text-red-400 hover:bg-red-500/10 hover:text-red-300",
+      "border-transparent text-red-500 hover:bg-red-500/10 hover:text-red-600",
     ghost:
-      "border-transparent text-current hover:border-[color-mix(in_srgb,var(--color-logo-primary),transparent_70%)] hover:bg-[color-mix(in_srgb,var(--glass-bg),white_8%)]",
+      "border-transparent text-[var(--text)] hover:border-[var(--accent-soft)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
   };
 
   const sizeClasses = {

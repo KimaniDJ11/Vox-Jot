@@ -193,7 +193,7 @@ export const ModelsSettings: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl w-full mx-auto">
+    <div className="w-full space-y-4">
         <div className="flex items-center justify-center py-16">
           <div className="w-8 h-8 border-2 border-logo-primary border-t-transparent rounded-full animate-spin" />
         </div>
@@ -226,7 +226,7 @@ export const ModelsSettings: React.FC = () => {
                   onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                     languageFilter !== "all"
-                      ? "bg-logo-primary/20 text-logo-primary"
+                      ? "bg-logo-primary text-white"
                       : "bg-mid-gray/10 text-text/60 hover:bg-mid-gray/20"
                   }`}
                 >
@@ -278,7 +278,7 @@ export const ModelsSettings: React.FC = () => {
                         }}
                         className={`w-full px-3 py-1.5 text-sm text-left transition-colors ${
                           languageFilter === "all"
-                            ? "bg-logo-primary/20 text-logo-primary font-semibold"
+                            ? "bg-logo-primary text-white font-semibold"
                             : "hover:bg-mid-gray/10"
                         }`}
                       >
@@ -295,7 +295,7 @@ export const ModelsSettings: React.FC = () => {
                           }}
                           className={`w-full px-3 py-1.5 text-sm text-left transition-colors ${
                             languageFilter === lang.value
-                              ? "bg-logo-primary/20 text-logo-primary font-semibold"
+                              ? "bg-logo-primary text-white font-semibold"
                               : "hover:bg-mid-gray/10"
                           }`}
                         >

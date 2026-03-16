@@ -9,6 +9,7 @@ mod commands;
 mod helpers;
 mod input;
 mod llm_client;
+mod ollama;
 mod managers;
 mod overlay;
 pub mod portable;
@@ -407,12 +408,17 @@ pub fn run(cli_args: CliArgs) {
         commands::history::update_history_limit,
         commands::history::update_recording_retention_period,
         helpers::clamshell::is_laptop,
+                ollama::check_ollama_status,
+        ollama::install_ollama,
+        ollama::pull_ollama_model,
+        ollama::delete_ollama_model,
+        ollama::get_recommended_ollama_models,
+                ollama::start_ollama_serve,
     ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
     specta_builder
-        .export(
-            Typescript::default().bigint(BigIntExportBehavior::Number),
+        .export(         Typescript::default().bigint(BigIntExportBehavior::Number),
             "../src/bindings.ts",
         )
         .expect("Failed to export typescript bindings");

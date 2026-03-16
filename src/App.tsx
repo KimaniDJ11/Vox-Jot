@@ -65,6 +65,11 @@ function App() {
     initializeRTL(i18n.language);
   }, [i18n.language]);
 
+  // Keep UI in light mode by default to avoid high-contrast dark surfaces.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", "light");
+  }, []);
+
   // Initialize Enigo, shortcuts, and refresh audio devices when main app loads
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {
@@ -264,7 +269,7 @@ function App() {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_82%),transparent_55%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_84%),transparent_48%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_4%),var(--color-background))]" />
       <Toaster
-        theme="system"
+        theme="light"
         toastOptions={{
           unstyled: true,
           classNames: {

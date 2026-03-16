@@ -2,12 +2,12 @@
 :root {
   --ob-primary: #27408B;
   --ob-primary-hover: #1e3370;
-  --ob-primary-light: rgba(39, 64, 139, 0.16);
+  --ob-primary-light: rgba(39, 64, 139, 0.1);
   --ob-white: #ffffff;
-  --ob-bg-right: rgba(24, 34, 58, 0.42);
-  --ob-text: #edf3ff;
-  --ob-text-muted: #a9b8d4;
-  --ob-border: rgba(173, 193, 227, 0.24);
+  --ob-bg-right: rgba(244, 248, 255, 0.86);
+  --ob-text: #1f2937;
+  --ob-text-muted: #5f6f84;
+  --ob-border: rgba(39, 64, 139, 0.2);
   --ob-success: #16a34a;
   --ob-radius: 14px;
 }
@@ -19,9 +19,9 @@
   height: 100dvh;
   min-height: 100dvh;
   width: 100vw;
-  background: radial-gradient(circle at 12% 18%, rgba(52, 84, 160, 0.32), transparent 44%),
-    radial-gradient(circle at 88% 82%, rgba(216, 154, 92, 0.2), transparent 38%),
-    linear-gradient(140deg, #090f1d 0%, #101a2f 45%, #0b1222 100%);
+  background: radial-gradient(circle at 12% 18%, rgba(82, 112, 184, 0.22), transparent 44%),
+    radial-gradient(circle at 88% 82%, rgba(216, 154, 92, 0.14), transparent 38%),
+    linear-gradient(140deg, #f8fbff 0%, #eef3fb 46%, #f5efe6 100%);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -36,9 +36,9 @@
   gap: 8px;
   padding: 16px 32px;
   position: relative;
-  border-bottom: 1px solid rgba(173, 193, 227, 0.2);
+  border-bottom: 1px solid rgba(39, 64, 139, 0.16);
   flex-shrink: 0;
-  background: rgba(9, 14, 26, 0.44);
+  background: rgba(255, 255, 255, 0.74);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -91,9 +91,9 @@
   width: min(1140px, 94vw);
   margin: 20px auto;
   border-radius: 24px;
-  border: 1px solid rgba(173, 193, 227, 0.24);
-  background: rgba(9, 15, 29, 0.54);
-  box-shadow: 0 26px 70px rgba(4, 10, 24, 0.52);
+  border: 1px solid rgba(39, 64, 139, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 22px 58px rgba(31, 41, 55, 0.14);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   overflow: hidden;
@@ -104,7 +104,7 @@
   display: flex;
   flex-direction: column;
   padding: 32px 48px 48px;
-  background: rgba(9, 16, 30, 0.3);
+  background: rgba(255, 255, 255, 0.56);
   overflow-y: auto;
 }
 
@@ -218,7 +218,7 @@
 
 .ob-btn-secondary:hover {
   color: var(--ob-text);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(39, 64, 139, 0.08);
 }
 
 /* ── Permission card ─────────────────────────────────────── */
@@ -227,7 +227,7 @@
   padding: 20px 24px;
   border-radius: var(--ob-radius);
   border: 1px solid var(--ob-border);
-  background: rgba(14, 23, 42, 0.52);
+  background: rgba(255, 255, 255, 0.82);
   margin-bottom: 16px;
   transition: border-color 0.2s;
 }
@@ -266,9 +266,9 @@
 }
 
 .ob-perm-allow-btn:hover {
-  background: rgba(53, 92, 186, 0.22);
+  background: rgba(53, 92, 186, 0.12);
   border-color: var(--ob-primary);
-  color: #d8e5ff;
+  color: var(--ob-primary);
 }
 
 .ob-perm-granted-badge {
@@ -306,11 +306,11 @@
 
 /* ── Right-pane visual cards ─────────────────────────────── */
 .ob-visual-card {
-  background: rgba(14, 23, 42, 0.58);
+  background: rgba(255, 255, 255, 0.86);
   border-radius: 16px;
   padding: 32px;
   border: 1px solid var(--ob-border);
-  box-shadow: 0 12px 36px rgba(3, 8, 20, 0.35);
+  box-shadow: 0 14px 38px rgba(31, 41, 55, 0.12);
   max-width: 420px;
   width: 85%;
 }
@@ -322,11 +322,11 @@
 .ob-permission-path-card {
   margin-bottom: 16px;
   border-radius: 12px;
-  border: 1px solid rgba(173, 193, 227, 0.28);
+  border: 1px solid rgba(39, 64, 139, 0.22);
   background: linear-gradient(
     140deg,
-    rgba(53, 92, 186, 0.22),
-    rgba(17, 28, 52, 0.74)
+    rgba(70, 104, 185, 0.16),
+    rgba(255, 255, 255, 0.94)
   );
   padding: 24px;
 }
@@ -334,7 +334,7 @@
 .ob-permission-path-text {
   margin: 0;
   font-size: 13px;
-  color: #d7e3ff;
+  color: #2b457e;
   font-weight: 600;
 }
 
@@ -467,7 +467,7 @@
   margin-top: 24px;
   padding: 16px 18px;
   border-radius: 12px;
-  background: rgba(53, 92, 186, 0.18);
+  background: rgba(53, 92, 186, 0.12);
 }
 
 .ob-note-title {
@@ -490,7 +490,7 @@
   padding: 6px 10px;
   border: 1px solid var(--ob-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.74);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
   font-weight: 600;

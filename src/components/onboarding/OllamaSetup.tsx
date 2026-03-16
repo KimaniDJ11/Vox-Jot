@@ -99,8 +99,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           <button
             onClick={handleInstall}
             disabled={isInstalling}
-            className="w-full bg-primary text-white font-semibold py-3 px-6 rounded-xl
-                       hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed
+            className="w-full bg-logo-primary text-white font-semibold py-3 px-6 rounded-xl
+                       hover:bg-logo-primary/90 disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors"
           >
             {isInstalling ? (
@@ -143,8 +143,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         <button
           onClick={handleStartServe}
           disabled={isChecking}
-          className="w-full bg-primary text-white font-semibold py-3 px-6 rounded-xl
-                     hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          className="w-full bg-logo-primary text-white font-semibold py-3 px-6 rounded-xl
+                     hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
         >
           Start Ollama
         </button>
@@ -159,7 +159,6 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
     );
   }
 
-  // Render: running — show model picker
   return (
     <div className="flex flex-col gap-4 p-6 max-w-2xl mx-auto w-full">
       <div className="text-center">
@@ -197,15 +196,15 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
               className={`flex items-center justify-between p-4 rounded-xl border transition-all
                 ${
                   isSelected
-                    ? "border-primary bg-primary/10"
-                    : "border-border bg-surface hover:bg-surface/80"
+                    ? "border-logo-primary bg-logo-primary/10"
+                    : "border-mid-gray/20 bg-background hover:bg-mid-gray/10"
                 }`}
             >
               <div className="flex flex-col">
                 <span className="font-semibold text-text">{model.label}</span>
                 <span className="text-text/60 text-xs">{model.description}</span>
                 {model.id === "llama3.2:1b" && (
-                  <span className="text-xs text-primary mt-0.5 font-medium">
+                  <span className="text-xs text-logo-primary mt-0.5 font-medium">
                     Recommended
                   </span>
                 )}
@@ -214,9 +213,9 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 {isPulling ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-20 bg-border rounded-full h-1.5">
+                    <div className="w-20 bg-mid-gray/20 rounded-full h-1.5">
                       <div
-                        className="bg-primary h-1.5 rounded-full transition-all"
+                        className="bg-logo-primary h-1.5 rounded-full transition-all"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -228,8 +227,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                       ${
                         isSelected
-                          ? "bg-primary text-white"
-                          : "bg-primary/20 text-primary hover:bg-primary/30"
+                          ? "bg-logo-primary text-white"
+                          : "bg-logo-primary/20 text-logo-primary hover:bg-logo-primary/30"
                       }`}
                   >
                     {isSelected ? "Selected" : "Use This"}
@@ -237,8 +236,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                 ) : (
                   <button
                     onClick={() => handlePullModel(model.id)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface
-                               border border-border text-text/80 hover:bg-border/30
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-background
+                               border border-mid-gray/30 text-text/80 hover:bg-logo-primary/10
                                transition-colors"
                   >
                     Download
@@ -260,7 +259,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         {installedModels.length > 0 && (
           <button
             onClick={onComplete}
-            className="text-primary text-sm font-medium hover:text-primary/80 transition-colors"
+            className="text-logo-primary text-sm font-medium hover:text-logo-primary/80 transition-colors"
           >
             Continue →
           </button>

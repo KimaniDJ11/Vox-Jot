@@ -100,8 +100,11 @@ export const Tooltip: React.FC<TooltipProps> = ({
         width: TOOLTIP_WIDTH,
         zIndex: 9999,
         opacity: coords ? 1 : 0,
+        backgroundColor: "var(--card)",
+        color: "var(--text)",
+        borderColor: "var(--border)",
       }}
-      className="px-3 py-2 bg-background border border-mid-gray/80 rounded-lg shadow-lg whitespace-normal transition-opacity duration-150"
+      className="px-3 py-2 border rounded-lg shadow-lg whitespace-normal transition-opacity duration-150"
     >
       {children}
       <div

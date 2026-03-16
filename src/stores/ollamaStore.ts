@@ -106,7 +106,10 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
     const { pullingModels } = get();
     const newPulling = new Set(pullingModels);
     newPulling.add(modelName);
-    set({ pullingModels: newPulling });
+    set((state) => ({
+      pullingModels: newPulling,
+      pullProgress: { ...state.pullProgress, [modelName]: 1 },
+    }));
 
     // Listen for streaming progress
     const unlisten = await listen<OllamaPullProgress>("ollama-pull-progress", (event) => {
@@ -133,6 +136,14 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
 
     try {
       await invoke("pull_ollama_model", { modelName });
+      // Guard against event timing races: ensure state converges on success.
+      const doneSet = new Set(get().pullingModels);
+      doneSet.delete(modelName);
+      set((state) => ({
+        pullingModels: doneSet,
+        pullProgress: { ...state.pullProgress, [modelName]: 100 },
+      }));
+      await get().checkStatus();
       return true;
     } catch (e) {
       console.error(`Failed to pull Ollama model ${modelName}:`, e);

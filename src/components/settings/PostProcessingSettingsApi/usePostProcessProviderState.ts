@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "../../../hooks/useSettings";
 import { commands, type PostProcessProvider } from "@/bindings";
 import type { ModelOption } from "./types";
@@ -29,6 +29,7 @@ export type PostProcessProviderState = {
 };
 
 const APPLE_PROVIDER_ID = "apple_intelligence";
+const OLLAMA_PROVIDER_ID = "ollama";
 
 const isLocalBaseUrl = (baseUrl: string): boolean => {
   const lower = baseUrl.trim().toLowerCase();
@@ -87,6 +88,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   const isAppleProvider = selectedProvider?.id === APPLE_PROVIDER_ID;
   const [appleIntelligenceUnavailable, setAppleIntelligenceUnavailable] =
     useState(false);
+  const autoFetchedProvidersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +154,9 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
         const hasBaseUrl = (provider?.base_url ?? "").trim() !== "";
         const hasApiKey = apiKey.trim() !== "";
         const allowsEmptyApiKey =
-          provider?.id === "custom" || provider?.id === "lmstudio";
+          provider?.id === "custom" ||
+          provider?.id === "lmstudio" ||
+          provider?.id === OLLAMA_PROVIDER_ID;
 
         if (allowsEmptyApiKey ? hasBaseUrl : hasApiKey) {
           void fetchPostProcessModels(providerId);
@@ -221,6 +225,48 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   }, [fetchPostProcessModels, isAppleProvider, selectedProviderId]);
 
   const availableModelsRaw = postProcessModelOptions[selectedProviderId] || [];
+  const isFetchingModels = isUpdating(
+    `post_process_models_fetch:${selectedProviderId}`,
+  );
+
+  useEffect(() => {
+    if (selectedProviderId !== OLLAMA_PROVIDER_ID) return;
+    if (autoFetchedProvidersRef.current.has(selectedProviderId)) return;
+
+    autoFetchedProvidersRef.current.add(selectedProviderId);
+    void fetchPostProcessModels(selectedProviderId);
+  }, [fetchPostProcessModels, selectedProviderId]);
+
+  useEffect(() => {
+    if (selectedProviderId !== OLLAMA_PROVIDER_ID) return;
+
+    const hasFetchedModels = Object.prototype.hasOwnProperty.call(
+      postProcessModelOptions,
+      selectedProviderId,
+    );
+
+    if (!hasFetchedModels || isFetchingModels) return;
+
+    const trimmedModel = model.trim();
+    if (!trimmedModel) return;
+
+    const available = new Set(
+      availableModelsRaw
+        .map((candidate) => candidate.trim())
+        .filter((candidate) => candidate.length > 0),
+    );
+
+    if (!available.has(trimmedModel)) {
+      void updatePostProcessModel(selectedProviderId, "");
+    }
+  }, [
+    availableModelsRaw,
+    isFetchingModels,
+    model,
+    postProcessModelOptions,
+    selectedProviderId,
+    updatePostProcessModel,
+  ]);
 
   const modelOptions = useMemo<ModelOption[]>(() => {
     const seen = new Set<string>();
@@ -252,9 +298,6 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   );
   const isModelUpdating = isUpdating(
     `post_process_model:${selectedProviderId}`,
-  );
-  const isFetchingModels = isUpdating(
-    `post_process_models_fetch:${selectedProviderId}`,
   );
 
   const isCustomProvider = selectedProvider?.id === "custom";

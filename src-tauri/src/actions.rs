@@ -8,7 +8,10 @@ use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, ActiveAppContext, PostProcessMode,
     PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
-use crate::settings::{get_settings, AppSettings, APPLE_INTELLIGENCE_PROVIDER_ID};
+use crate::settings::{
+    get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
+    APPLE_INTELLIGENCE_PROVIDER_ID,
+};
 use crate::shortcut;
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::utils::{
@@ -44,6 +47,7 @@ pub trait ShortcutAction: Send + Sync {
 // Transcribe Action
 struct TranscribeAction {
     post_process: bool,
+    rewrite_selection: bool,
 }
 
 /// Field name for structured output JSON schema
@@ -70,6 +74,62 @@ fn strip_invisible_chars(s: &str) -> String {
 /// Removes `${output}` placeholder since the transcription is sent as the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
     prompt_template.replace("${output}", "").trim().to_string()
+}
+
+fn strip_spoken_suffix(input: &str, suffix: &str) -> Option<String> {
+    let candidate = input
+        .trim_end()
+        .trim_end_matches(|c: char| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
+
+    if candidate.len() < suffix.len() {
+        return None;
+    }
+
+    let start = candidate.len() - suffix.len();
+    let tail = candidate.get(start..)?;
+    if !tail.eq_ignore_ascii_case(suffix) {
+        return None;
+    }
+
+    let raw_prefix = candidate.get(..start)?;
+    if let Some(last) = raw_prefix.chars().last() {
+        if !last.is_whitespace() && !matches!(last, ',' | ':' | ';' | '-' | '(' | '[') {
+            return None;
+        }
+    }
+
+    let prefix = raw_prefix.trim_end();
+    Some(prefix.trim_end_matches([',', ':', ';']).trim().to_string())
+}
+
+fn extract_spoken_submit_command(text: &str) -> (String, Option<AutoSubmitKey>) {
+    let candidates = [
+        ("send with control enter", AutoSubmitKey::CtrlEnter),
+        ("send with ctrl enter", AutoSubmitKey::CtrlEnter),
+        ("press control enter", AutoSubmitKey::CtrlEnter),
+        ("press ctrl enter", AutoSubmitKey::CtrlEnter),
+        ("send with command enter", AutoSubmitKey::CmdEnter),
+        ("send with cmd enter", AutoSubmitKey::CmdEnter),
+        ("press command enter", AutoSubmitKey::CmdEnter),
+        ("press cmd enter", AutoSubmitKey::CmdEnter),
+        ("press enter", AutoSubmitKey::Enter),
+        ("hit enter", AutoSubmitKey::Enter),
+        ("send message", AutoSubmitKey::Enter),
+        ("and send", AutoSubmitKey::Enter),
+        ("and submit", AutoSubmitKey::Enter),
+        ("submit", AutoSubmitKey::Enter),
+        ("send", AutoSubmitKey::Enter),
+    ];
+
+    for (phrase, key) in candidates {
+        if let Some(stripped) = strip_spoken_suffix(text, phrase) {
+            if !stripped.is_empty() {
+                return (stripped, Some(key));
+            }
+        }
+    }
+
+    (text.to_string(), None)
 }
 
 fn app_display_name(context: &ActiveAppContext) -> &str {
@@ -156,6 +216,8 @@ Rules:\n\
 - Never invent facts, headings, or commentary.\n\
 - Apply personal dictionary spellings exactly when they appear in the transcript.\n\
 - Fix capitalization, punctuation, paragraph breaks, and obvious list formatting.\n\
+- Interpret spoken correction cues (for example: \"scratch that\", \"I mean\", \"correction\") and keep only the corrected intent.\n\
+- When dictation implies structure (steps, bullets, numbered items), format it cleanly while preserving order and meaning.\n\
 - In literal mode, preserve wording as much as possible.\n\
 - In intent mode, remove filler words and false starts when they do not change meaning.\n\
 - {tone_rule}\n\
@@ -199,6 +261,36 @@ Rewrite strength: {}\n\
 Transcript:\n{normalized_text}",
         settings.max_rewrite_strength
     )
+}
+
+fn build_non_apple_tone_instruction(tone_context: Option<&ResolvedToneContext>) -> Option<String> {
+    tone_context.map(|tone| {
+        format!(
+            "Apply this tone guidance for the active app {} (tone: {}): {}",
+            app_display_name(&tone.active_app_context),
+            tone.tone_id,
+            tone.instruction
+        )
+    })
+}
+
+fn live_partial_config_for_model(model_id: &str) -> (u64, usize, usize) {
+    let lower = model_id.to_ascii_lowercase();
+
+    if lower.contains("moonshine") && lower.contains("stream") {
+        return (450, 8_000, 2_400);
+    }
+    if lower.contains("moonshine") {
+        return (650, 12_000, 3_200);
+    }
+    if lower.contains("whisper") {
+        return (1_200, 20_000, 6_400);
+    }
+    if lower.contains("parakeet") {
+        return (900, 16_000, 4_800);
+    }
+
+    (900, 16_000, 4_800)
 }
 
 fn build_apple_result(
@@ -302,6 +394,14 @@ async fn post_process_transcription(
             return None;
         }
     };
+
+    if settings.local_privacy_mode && !post_process_provider_is_local(&provider) {
+        warn!(
+            "Local privacy mode blocked non-local provider '{}'; skipping post-processing",
+            provider.id
+        );
+        return None;
+    }
 
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         let dictionary_result = apply_personal_dictionary(transcription, &settings.personal_dictionary);
@@ -435,10 +535,19 @@ async fn post_process_transcription(
         .cloned()
         .unwrap_or_default();
 
+    let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
+    let tone_instruction = build_non_apple_tone_instruction(tone_context.as_ref());
+
     if provider.supports_structured_output {
         debug!("Using structured outputs for provider '{}'", provider.id);
 
-        let system_prompt = build_system_prompt(&prompt);
+        let mut system_prompt = build_system_prompt(&prompt);
+        if let Some(instruction) = &tone_instruction {
+            if !system_prompt.is_empty() {
+                system_prompt.push('\n');
+            }
+            system_prompt.push_str(instruction);
+        }
         let user_content = transcription.to_string();
 
         // Define JSON schema for transcription output
@@ -542,7 +651,12 @@ async fn post_process_transcription(
     }
 
     // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = prompt.replace("${output}", transcription);
+    let base_prompt = if let Some(instruction) = &tone_instruction {
+        format!("{}\n\n{}", instruction, prompt)
+    } else {
+        prompt.clone()
+    };
+    let processed_prompt = base_prompt.replace("${output}", transcription);
     debug!("Processed prompt length: {} chars", processed_prompt.len());
 
     match crate::llm_client::send_chat_completion(&provider, api_key, &model, processed_prompt)
@@ -581,6 +695,72 @@ async fn post_process_transcription(
             None
         }
     }
+}
+
+async fn rewrite_selected_text(
+    settings: &AppSettings,
+    selected_text: &str,
+    instruction: &str,
+) -> Option<String> {
+    let provider = settings.active_post_process_provider()?.clone();
+    if settings.local_privacy_mode && !post_process_provider_is_local(&provider) {
+        warn!(
+            "Local privacy mode blocked non-local provider '{}' for rewrite-selection",
+            provider.id
+        );
+        return None;
+    }
+
+    let user_prompt = format!(
+        "Rewrite the selected text based on the spoken instructions. Return only the rewritten text.\n\nSpoken instructions:\n{}\n\nSelected text:\n{}",
+        instruction.trim(),
+        selected_text
+    );
+
+    if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        let system_prompt = "You are a local writing assistant. Rewrite the provided text based on spoken instructions while preserving factual meaning. Return only the rewritten text with no explanations.";
+
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        {
+            return match apple_intelligence::process_text_with_system_prompt(
+                system_prompt,
+                &user_prompt,
+                0,
+            ) {
+                Ok(output) => Some(strip_invisible_chars(&output)),
+                Err(err) => {
+                    error!("Apple Intelligence rewrite-selection failed: {}", err);
+                    None
+                }
+            };
+        }
+
+        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+        {
+            return None;
+        }
+    }
+
+    let model = settings
+        .post_process_models
+        .get(&provider.id)
+        .cloned()
+        .unwrap_or_default();
+    if model.trim().is_empty() {
+        return None;
+    }
+
+    let api_key = settings
+        .post_process_api_keys
+        .get(&provider.id)
+        .cloned()
+        .unwrap_or_default();
+
+    crate::llm_client::send_chat_completion(&provider, api_key, &model, user_prompt)
+        .await
+        .ok()
+        .flatten()
+        .map(|text| strip_invisible_chars(&text))
 }
 
 async fn maybe_preview_post_process_result(
@@ -698,7 +878,7 @@ impl ShortcutAction for TranscribeAction {
         debug!("TranscribeAction::start called for binding: {}", binding_id);
 
         let settings = get_settings(app);
-        if self.post_process && !settings.post_process_enabled {
+        if (self.post_process || self.rewrite_selection) && !settings.post_process_enabled {
             debug!(
                 "Ignoring post-process binding '{}' because post-processing is disabled",
                 binding_id
@@ -765,6 +945,55 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
+            let ah_partial = app.clone();
+            let rm_partial = Arc::clone(&rm);
+            let tm_partial = Arc::clone(&tm);
+            let binding_id_partial = binding_id.clone();
+            let selected_model_id = settings.selected_model.clone();
+            std::thread::spawn(move || {
+                let mut last_snapshot_len = 0usize;
+                let mut last_partial = String::new();
+                let (base_interval_ms, min_samples, min_growth) =
+                    live_partial_config_for_model(&selected_model_id);
+                let mut interval_ms = base_interval_ms;
+
+                while rm_partial.is_recording() {
+                    std::thread::sleep(std::time::Duration::from_millis(interval_ms));
+
+                    let Some(snapshot) = rm_partial.snapshot_recording(&binding_id_partial) else {
+                        break;
+                    };
+
+                    if snapshot.len() < min_samples || snapshot.len() <= last_snapshot_len + min_growth {
+                        continue;
+                    }
+
+                    let snapshot_len = snapshot.len();
+                    match tm_partial.transcribe(snapshot) {
+                        Ok(text) => {
+                            let trimmed = text.trim();
+                            if trimmed.is_empty() {
+                                continue;
+                            }
+                            let cleaned = strip_invisible_chars(trimmed);
+                            if cleaned == last_partial {
+                                continue;
+                            }
+                            last_partial = cleaned.clone();
+                            last_snapshot_len = snapshot_len;
+                            interval_ms = base_interval_ms;
+                            crate::overlay::emit_partial_transcription(&ah_partial, &cleaned);
+                        }
+                        Err(_) => {
+                            // Ignore transient model/loading errors during live preview.
+                            interval_ms = (interval_ms + 200).min(1_800);
+                        }
+                    }
+                }
+
+                crate::overlay::emit_partial_transcription(&ah_partial, "");
+            });
+
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
         } else {
@@ -806,9 +1035,11 @@ impl ShortcutAction for TranscribeAction {
 
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
+        let rewrite_selection = self.rewrite_selection;
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone());
+            crate::overlay::emit_partial_transcription(&ah, "");
             let binding_id = binding_id.clone(); // Clone for the inner async task
             debug!(
                 "Starting async transcription task for binding: {}",
@@ -847,7 +1078,8 @@ impl ShortcutAction for TranscribeAction {
 
                             // Then apply LLM post-processing if this is the post-process hotkey
                             // Uses final_text which may already have Chinese conversion applied
-                            let should_post_process = post_process && settings.post_process_enabled;
+                            let should_post_process =
+                                post_process && settings.post_process_enabled && !rewrite_selection;
                             let active_app_context = if should_post_process {
                                 capture_active_app_context(&settings)
                             } else {
@@ -894,6 +1126,42 @@ impl ShortcutAction for TranscribeAction {
                                 post_processed_text = Some(final_text.clone());
                             }
 
+                            if rewrite_selection {
+                                match utils::capture_selected_text(&ah) {
+                                    Ok(Some(selected_text)) => {
+                                        if let Some(rewritten) = rewrite_selected_text(
+                                            &settings,
+                                            &selected_text,
+                                            &final_text,
+                                        )
+                                        .await
+                                        {
+                                            final_text = rewritten;
+                                            post_processed_text = Some(final_text.clone());
+                                        } else {
+                                            warn!(
+                                                "Rewrite-selection failed; keeping selected text unchanged"
+                                            );
+                                            text_to_paste = None;
+                                        }
+                                    }
+                                    Ok(None) => {
+                                        warn!("Rewrite-selection shortcut used without selected text");
+                                        text_to_paste = None;
+                                    }
+                                    Err(err) => {
+                                        error!("Failed to capture selected text: {}", err);
+                                        text_to_paste = None;
+                                    }
+                                }
+                            }
+
+                            let (cleaned_text, submit_override) =
+                                extract_spoken_submit_command(&final_text);
+                            if let Some(text) = text_to_paste.as_mut() {
+                                *text = cleaned_text;
+                            }
+
                             // Save to history after preview resolution so stored text matches
                             // the final pasted output when preview editing is enabled.
                             let hm_clone = Arc::clone(&hm);
@@ -918,8 +1186,19 @@ impl ShortcutAction for TranscribeAction {
                                 // Paste the final text (either processed or original)
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
+                                let submit_override = submit_override;
                                 ah.run_on_main_thread(move || {
-                                    match utils::paste(text_to_paste, ah_clone.clone()) {
+                                    let paste_result = if let Some(submit_key) = submit_override {
+                                        utils::paste_with_submit_override(
+                                            text_to_paste,
+                                            ah_clone.clone(),
+                                            Some(submit_key),
+                                        )
+                                    } else {
+                                        utils::paste(text_to_paste, ah_clone.clone())
+                                    };
+
+                                    match paste_result {
                                         Ok(()) => debug!(
                                             "Text pasted successfully in {:?}",
                                             paste_time.elapsed()
@@ -1005,10 +1284,11 @@ impl ShortcutAction for TestAction {
 mod tests {
     use super::{
         apple_fallback_result, build_apple_system_prompt, build_apple_user_content,
-        preview_app_context_from_override, resolve_tone_context,
+        build_non_apple_tone_instruction, extract_spoken_submit_command,
+        live_partial_config_for_model, preview_app_context_from_override, resolve_tone_context,
     };
     use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
-    use crate::settings::get_default_settings;
+    use crate::settings::{get_default_settings, AutoSubmitKey};
 
     #[test]
     fn apple_prompt_uses_selected_mode_and_strength() {
@@ -1021,6 +1301,7 @@ mod tests {
         assert!(prompt.contains("Active mode: intent"));
         assert!(prompt.contains("Rewrite strength: 2"));
         assert!(prompt.contains("Return only the final text."));
+        assert!(prompt.contains("scratch that"));
     }
 
     #[test]
@@ -1110,6 +1391,47 @@ mod tests {
         assert_eq!(context.bundle_id, "com.apple.mail");
         assert_eq!(context.localized_name, "Mail");
     }
+
+    #[test]
+    fn spoken_submit_command_is_extracted_from_suffix() {
+        let (text, submit) = extract_spoken_submit_command("Thanks for your help and send.");
+        assert_eq!(text, "Thanks for your help");
+        assert_eq!(submit, Some(AutoSubmitKey::Enter));
+    }
+
+    #[test]
+    fn spoken_submit_command_respects_ctrl_enter_suffix() {
+        let (text, submit) =
+            extract_spoken_submit_command("Please revise this sentence press ctrl enter");
+        assert_eq!(text, "Please revise this sentence");
+        assert_eq!(submit, Some(AutoSubmitKey::CtrlEnter));
+    }
+
+    #[test]
+    fn non_apple_tone_instruction_contains_app_and_tone() {
+        let mut settings = get_default_settings();
+        settings.app_aware_tone_enabled = true;
+        let context = ActiveAppContext {
+            bundle_id: "com.tinyspeck.slackmacgap".to_string(),
+            localized_name: "Slack".to_string(),
+        };
+
+        let tone_context = resolve_tone_context(&settings, Some(&context)).unwrap();
+        let instruction = build_non_apple_tone_instruction(Some(&tone_context)).unwrap();
+
+        assert!(instruction.contains("Slack"));
+        assert!(instruction.contains("tone: casual"));
+    }
+
+    #[test]
+    fn live_partial_config_picks_fast_streaming_profile() {
+        let (interval_ms, min_samples, min_growth) =
+            live_partial_config_for_model("moonshine-streaming");
+
+        assert_eq!(interval_ms, 450);
+        assert_eq!(min_samples, 8_000);
+        assert_eq!(min_growth, 2_400);
+    }
 }
 
 // Static Action Map
@@ -1119,11 +1441,22 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
         "transcribe".to_string(),
         Arc::new(TranscribeAction {
             post_process: false,
+            rewrite_selection: false,
         }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "transcribe_with_post_process".to_string(),
-        Arc::new(TranscribeAction { post_process: true }) as Arc<dyn ShortcutAction>,
+        Arc::new(TranscribeAction {
+            post_process: true,
+            rewrite_selection: false,
+        }) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "rewrite_selection".to_string(),
+        Arc::new(TranscribeAction {
+            post_process: true,
+            rewrite_selection: true,
+        }) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "cancel".to_string(),

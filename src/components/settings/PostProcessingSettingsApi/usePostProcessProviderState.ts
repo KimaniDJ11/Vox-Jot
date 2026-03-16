@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSettings } from "../../../hooks/useSettings";
 import { commands, type PostProcessProvider } from "@/bindings";
 import type { ModelOption } from "./types";
 import type { DropdownOption } from "../../ui/Dropdown";
 
-type PostProcessProviderState = {
+export type PostProcessProviderState = {
   providerOptions: DropdownOption[];
   selectedProviderId: string;
   selectedProvider: PostProcessProvider | undefined;
@@ -30,6 +30,25 @@ type PostProcessProviderState = {
 
 const APPLE_PROVIDER_ID = "apple_intelligence";
 
+const isLocalBaseUrl = (baseUrl: string): boolean => {
+  const lower = baseUrl.trim().toLowerCase();
+  if (!lower) return false;
+  return (
+    lower.startsWith("http://localhost") ||
+    lower.startsWith("https://localhost") ||
+    lower.startsWith("http://127.0.0.1") ||
+    lower.startsWith("https://127.0.0.1") ||
+    lower.startsWith("http://[::1]") ||
+    lower.startsWith("https://[::1]")
+  );
+};
+
+const isLocalProvider = (provider: PostProcessProvider): boolean => {
+  if (provider.id === APPLE_PROVIDER_ID) return true;
+  if (provider.id === "custom") return isLocalBaseUrl(provider.base_url);
+  return false;
+};
+
 export const usePostProcessProviderState = (): PostProcessProviderState => {
   const {
     settings,
@@ -44,21 +63,53 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
 
   // Settings are guaranteed to have providers after migration
   const providers = settings?.post_process_providers || [];
+  const localPrivacyMode = settings?.local_privacy_mode ?? false;
+  const visibleProviders = useMemo(
+    () =>
+      localPrivacyMode ? providers.filter((provider) => isLocalProvider(provider)) : providers,
+    [localPrivacyMode, providers],
+  );
 
   const selectedProviderId = useMemo(() => {
-    return settings?.post_process_provider_id || providers[0]?.id || "openai";
-  }, [providers, settings?.post_process_provider_id]);
+    const preferredId = settings?.post_process_provider_id;
+    if (preferredId && visibleProviders.some((provider) => provider.id === preferredId)) {
+      return preferredId;
+    }
+    return visibleProviders[0]?.id || "openai";
+  }, [settings?.post_process_provider_id, visibleProviders]);
 
   const selectedProvider = useMemo(() => {
     return (
-      providers.find((provider) => provider.id === selectedProviderId) ||
-      providers[0]
+      visibleProviders.find((provider) => provider.id === selectedProviderId) ||
+      visibleProviders[0]
     );
-  }, [providers, selectedProviderId]);
+  }, [visibleProviders, selectedProviderId]);
 
   const isAppleProvider = selectedProvider?.id === APPLE_PROVIDER_ID;
   const [appleIntelligenceUnavailable, setAppleIntelligenceUnavailable] =
     useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncAppleAvailability = async () => {
+      if (!isAppleProvider) {
+        setAppleIntelligenceUnavailable(false);
+        return;
+      }
+
+      const available = await commands.checkAppleIntelligenceAvailable();
+      if (!cancelled) {
+        setAppleIntelligenceUnavailable(!available);
+      }
+    };
+
+    void syncAppleAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAppleProvider]);
 
   // Use settings directly as single source of truth
   const baseUrl = selectedProvider?.base_url ?? "";
@@ -66,11 +117,11 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   const model = settings?.post_process_models?.[selectedProviderId] ?? "";
 
   const providerOptions = useMemo<DropdownOption[]>(() => {
-    return providers.map((provider) => ({
+    return visibleProviders.map((provider) => ({
       value: provider.id,
       label: provider.label,
     }));
-  }, [providers]);
+  }, [visibleProviders]);
 
   const handleProviderSelect = useCallback(
     async (providerId: string) => {
@@ -97,7 +148,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
       // Skip when the provider isn't configured yet (no API key / empty base URL)
       // to avoid unnecessary backend errors.
       if (providerId !== APPLE_PROVIDER_ID) {
-        const provider = providers.find((p) => p.id === providerId);
+        const provider = visibleProviders.find((p) => p.id === providerId);
         const apiKey = settings?.post_process_api_keys?.[providerId] ?? "";
         const hasBaseUrl = (provider?.base_url ?? "").trim() !== "";
         const hasApiKey = apiKey.trim() !== "";
@@ -111,7 +162,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
       selectedProviderId,
       setPostProcessProvider,
       fetchPostProcessModels,
-      providers,
+      visibleProviders,
       settings,
     ],
   );

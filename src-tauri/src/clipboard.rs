@@ -588,7 +588,40 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
+pub fn capture_selected_text(app_handle: &AppHandle) -> Result<Option<String>, String> {
+    let clipboard = app_handle.clipboard();
+    let previous_content = clipboard.read_text().unwrap_or_default();
+
+    let enigo_state = app_handle
+        .try_state::<EnigoState>()
+        .ok_or("Enigo state not initialized")?;
+    let mut enigo = enigo_state
+        .0
+        .lock()
+        .map_err(|e| format!("Failed to lock Enigo: {}", e))?;
+
+    input::send_copy_ctrl_c(&mut enigo)?;
+    std::thread::sleep(Duration::from_millis(120));
+
+    let selected_text = clipboard.read_text().unwrap_or_default();
+    let _ = clipboard.write_text(&previous_content);
+
+    if selected_text.trim().is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(selected_text))
+    }
+}
+
 pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
+    paste_with_submit_override(text, app_handle, None)
+}
+
+pub fn paste_with_submit_override(
+    text: String,
+    app_handle: AppHandle,
+    submit_override: Option<AutoSubmitKey>,
+) -> Result<(), String> {
     let settings = get_settings(&app_handle);
     let paste_method = settings.paste_method;
     let paste_delay_ms = settings.paste_delay_ms;
@@ -646,7 +679,12 @@ pub fn paste(text: String, app_handle: AppHandle) -> Result<(), String> {
         }
     }
 
-    if should_send_auto_submit(settings.auto_submit, paste_method) {
+    if let Some(submit_key) = submit_override {
+        if paste_method != PasteMethod::None {
+            std::thread::sleep(Duration::from_millis(50));
+            send_return_key(&mut enigo, submit_key)?;
+        }
+    } else if should_send_auto_submit(settings.auto_submit, paste_method) {
         std::thread::sleep(Duration::from_millis(50));
         send_return_key(&mut enigo, settings.auto_submit_key)?;
     }

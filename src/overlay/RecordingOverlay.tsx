@@ -18,6 +18,7 @@ const RecordingOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
   const [levels, setLevels] = useState<number[]>(Array(16).fill(0));
+  const [partialText, setPartialText] = useState("");
   const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
   const direction = getLanguageDirection(i18n.language);
 
@@ -35,6 +36,7 @@ const RecordingOverlay: React.FC = () => {
       // Listen for hide-overlay event from Rust
       const unlistenHide = await listen("hide-overlay", () => {
         setIsVisible(false);
+        setPartialText("");
       });
 
       // Listen for mic-level updates
@@ -51,11 +53,20 @@ const RecordingOverlay: React.FC = () => {
         setLevels(smoothed.slice(0, 9));
       });
 
+      const unlistenPartial = await listen<string>(
+        "partial-transcription",
+        (event) => {
+          const text = (event.payload as string) || "";
+          setPartialText(text);
+        },
+      );
+
       // Cleanup function
       return () => {
         unlistenShow();
         unlistenHide();
         unlistenLevel();
+        unlistenPartial();
       };
     };
 
@@ -79,18 +90,25 @@ const RecordingOverlay: React.FC = () => {
 
       <div className="overlay-middle">
         {state === "recording" && (
-          <div className="bars-container">
-            {levels.map((v, i) => (
-              <div
-                key={i}
-                className="bar"
-                style={{
-                  height: `${Math.min(20, 4 + Math.pow(v, 0.7) * 16)}px`, // Cap at 20px max height
-                  transition: "height 60ms ease-out, opacity 120ms ease-out",
-                  opacity: Math.max(0.2, v * 1.7), // Minimum opacity for visibility
-                }}
-              />
-            ))}
+          <div className="recording-content">
+            <div className="bars-container">
+              {levels.map((v, i) => (
+                <div
+                  key={i}
+                  className="bar"
+                  style={{
+                    height: `${Math.min(20, 4 + Math.pow(v, 0.7) * 16)}px`,
+                    transition: "height 60ms ease-out, opacity 120ms ease-out",
+                    opacity: Math.max(0.2, v * 1.7),
+                  }}
+                />
+              ))}
+            </div>
+            {partialText.trim().length > 0 && (
+              <div className="partial-text" title={partialText}>
+                {partialText}
+              </div>
+            )}
           </div>
         )}
         {state === "transcribing" && (

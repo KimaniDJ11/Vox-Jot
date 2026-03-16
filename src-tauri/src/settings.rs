@@ -334,6 +334,8 @@ pub struct AppSettings {
     pub auto_submit_key: AutoSubmitKey,
     #[serde(default = "default_post_process_enabled")]
     pub post_process_enabled: bool,
+    #[serde(default = "default_local_privacy_mode")]
+    pub local_privacy_mode: bool,
     #[serde(default = "default_post_process_mode")]
     pub post_process_mode: PostProcessMode,
     #[serde(default = "default_post_process_provider_id")]
@@ -455,6 +457,13 @@ fn default_sound_theme() -> SoundTheme {
 }
 
 fn default_post_process_enabled() -> bool {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    return true;
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    return false;
+}
+
+fn default_local_privacy_mode() -> bool {
     false
 }
 
@@ -463,7 +472,7 @@ fn default_post_process_mode() -> PostProcessMode {
 }
 
 fn default_max_rewrite_strength() -> u8 {
-    0
+    1
 }
 
 fn default_show_preview_before_paste() -> bool {
@@ -549,7 +558,10 @@ fn default_show_tray_icon() -> bool {
 }
 
 fn default_post_process_provider_id() -> String {
-    "openai".to_string()
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    return APPLE_INTELLIGENCE_PROVIDER_ID.to_string();
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    return "openai".to_string();
 }
 
 fn default_post_process_providers() -> Vec<PostProcessProvider> {
@@ -676,7 +688,7 @@ fn default_post_process_prompts() -> Vec<LLMPrompt> {
     vec![LLMPrompt {
         id: "default_improve_transcriptions".to_string(),
         name: "Improve Transcriptions".to_string(),
-        prompt: "Clean this transcript:\n1. Fix spelling, capitalization, and punctuation errors\n2. Convert number words to digits (twenty-five → 25, ten percent → 10%, five dollars → $5)\n3. Replace spoken punctuation with symbols (period → ., comma → ,, question mark → ?)\n4. Remove filler words (um, uh, like as filler)\n5. Keep the language in the original version (if it was french, keep it in french for example)\n\nPreserve exact meaning and word order. Do not paraphrase or reorder content.\n\nReturn only the cleaned transcript.\n\nTranscript:\n${output}".to_string(),
+        prompt: "Clean this transcript:\n1. Fix spelling, capitalization, punctuation, and sentence boundaries\n2. Convert number words to digits when appropriate (twenty-five → 25, ten percent → 10%, five dollars → $5)\n3. Replace spoken punctuation with symbols (period → ., comma → ,, question mark → ?)\n4. Remove filler words (um, uh, like as filler) without changing meaning\n5. Handle spoken corrections and backtracks (for example: \"scratch that\", \"I mean\", \"correction\") by keeping only the corrected intent\n6. Preserve natural list structure (bullets or numbering) when the speaker dictates steps or items\n7. Keep the language in the original transcript\n\nPreserve meaning. Do not invent details, headings, or commentary.\n\nReturn only the cleaned transcript.\n\nTranscript:\n${output}".to_string(),
     }]
 }
 
@@ -747,6 +759,30 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
         changed = true;
     }
 
+    // Migration: on Apple Silicon, switch users who still have the old "openai"
+    // default (with no API key configured) over to Apple Intelligence and enable
+    // post-processing so it works out of the box.
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        if settings.post_process_provider_id == "openai" {
+            let openai_key = settings
+                .post_process_api_keys
+                .get("openai")
+                .cloned()
+                .unwrap_or_default();
+            if openai_key.trim().is_empty() {
+                debug!("Migrating unconfigured OpenAI provider to Apple Intelligence");
+                settings.post_process_provider_id = APPLE_INTELLIGENCE_PROVIDER_ID.to_string();
+                settings.post_process_enabled = true;
+                changed = true;
+            }
+        }
+    }
+
+    if settings.enforce_local_privacy_mode() {
+        changed = true;
+    }
+
     changed
 }
 
@@ -793,6 +829,26 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: default_post_process_shortcut.to_string(),
         },
     );
+    #[cfg(target_os = "windows")]
+    let default_rewrite_shortcut = "ctrl+alt+r";
+    #[cfg(target_os = "macos")]
+    let default_rewrite_shortcut = "option+command+r";
+    #[cfg(target_os = "linux")]
+    let default_rewrite_shortcut = "ctrl+alt+r";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_rewrite_shortcut = "alt+shift+r";
+
+    bindings.insert(
+        "rewrite_selection".to_string(),
+        ShortcutBinding {
+            id: "rewrite_selection".to_string(),
+            name: "Rewrite Selection".to_string(),
+            description:
+                "Rewrites currently selected text based on your spoken instructions.".to_string(),
+            default_binding: default_rewrite_shortcut.to_string(),
+            current_binding: default_rewrite_shortcut.to_string(),
+        },
+    );
     bindings.insert(
         "cancel".to_string(),
         ShortcutBinding {
@@ -833,6 +889,7 @@ pub fn get_default_settings() -> AppSettings {
         auto_submit: default_auto_submit(),
         auto_submit_key: AutoSubmitKey::default(),
         post_process_enabled: default_post_process_enabled(),
+        local_privacy_mode: default_local_privacy_mode(),
         post_process_mode: default_post_process_mode(),
         post_process_provider_id: default_post_process_provider_id(),
         post_process_providers: default_post_process_providers(),
@@ -893,6 +950,86 @@ impl AppSettings {
             mapping.bundle_id.eq_ignore_ascii_case(bundle_id)
         })
     }
+
+    pub fn is_post_process_provider_local(&self, provider_id: &str) -> bool {
+        self.post_process_provider(provider_id)
+            .map(post_process_provider_is_local)
+            .unwrap_or(false)
+    }
+
+    pub fn active_post_process_provider_is_local(&self) -> bool {
+        self.active_post_process_provider()
+            .map(post_process_provider_is_local)
+            .unwrap_or(false)
+    }
+
+    pub fn preferred_local_post_process_provider_id(&self) -> Option<String> {
+        if self.active_post_process_provider_is_local() {
+            return Some(self.post_process_provider_id.clone());
+        }
+
+        if self.is_post_process_provider_local(APPLE_INTELLIGENCE_PROVIDER_ID) {
+            return Some(APPLE_INTELLIGENCE_PROVIDER_ID.to_string());
+        }
+
+        if self.is_post_process_provider_local("custom") {
+            return Some("custom".to_string());
+        }
+
+        self.post_process_providers
+            .iter()
+            .find(|provider| post_process_provider_is_local(provider))
+            .map(|provider| provider.id.clone())
+    }
+
+    pub fn enforce_local_privacy_mode(&mut self) -> bool {
+        if !self.local_privacy_mode {
+            return false;
+        }
+
+        let mut changed = false;
+
+        if !self.active_post_process_provider_is_local() {
+            if let Some(provider_id) = self.preferred_local_post_process_provider_id() {
+                if self.post_process_provider_id != provider_id {
+                    self.post_process_provider_id = provider_id;
+                    changed = true;
+                }
+            } else if self.post_process_enabled {
+                // If no local provider exists, force-disable post-processing.
+                self.post_process_enabled = false;
+                changed = true;
+            }
+        }
+
+        changed
+    }
+}
+
+pub fn is_local_base_url(base_url: &str) -> bool {
+    let lower = base_url.trim().to_ascii_lowercase();
+    if lower.is_empty() {
+        return false;
+    }
+
+    lower.starts_with("http://localhost")
+        || lower.starts_with("https://localhost")
+        || lower.starts_with("http://127.0.0.1")
+        || lower.starts_with("https://127.0.0.1")
+        || lower.starts_with("http://[::1]")
+        || lower.starts_with("https://[::1]")
+}
+
+pub fn post_process_provider_is_local(provider: &PostProcessProvider) -> bool {
+    if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        return true;
+    }
+
+    if provider.id == "custom" {
+        return is_local_base_url(&provider.base_url);
+    }
+
+    false
 }
 
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
@@ -1039,5 +1176,64 @@ mod tests {
         assert!(changed);
         assert!(!settings.tone_definitions.is_empty());
         assert!(!settings.app_tone_mappings.is_empty());
+    }
+
+    #[test]
+    fn enforce_local_privacy_mode_switches_to_local_provider() {
+        let mut settings = get_default_settings();
+        settings.local_privacy_mode = true;
+        settings.post_process_provider_id = "openai".to_string();
+
+        let changed = settings.enforce_local_privacy_mode();
+
+        assert!(changed);
+        assert_ne!(settings.post_process_provider_id, "openai");
+        assert!(settings.active_post_process_provider_is_local());
+    }
+
+    #[test]
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    fn default_settings_enable_apple_intelligence_on_arm64() {
+        let settings = get_default_settings();
+        assert!(settings.post_process_enabled);
+        assert_eq!(settings.post_process_provider_id, APPLE_INTELLIGENCE_PROVIDER_ID);
+        assert_eq!(settings.max_rewrite_strength, 1);
+    }
+
+    #[test]
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    fn ensure_post_process_defaults_migrates_unconfigured_openai_to_apple() {
+        let mut settings = get_default_settings();
+        // Simulate an existing user whose provider was defaulting to openai with no key
+        settings.post_process_provider_id = "openai".to_string();
+        settings.post_process_enabled = false;
+        settings
+            .post_process_api_keys
+            .insert("openai".to_string(), String::new());
+
+        let changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(changed);
+        assert_eq!(settings.post_process_provider_id, APPLE_INTELLIGENCE_PROVIDER_ID);
+        assert!(settings.post_process_enabled);
+    }
+
+    #[test]
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    fn ensure_post_process_defaults_preserves_configured_openai() {
+        let mut settings = get_default_settings();
+        // Simulate a user who intentionally configured OpenAI with an API key
+        settings.post_process_provider_id = "openai".to_string();
+        settings.post_process_enabled = true;
+        settings
+            .post_process_api_keys
+            .insert("openai".to_string(), "sk-test-key".to_string());
+
+        let _changed = ensure_post_process_defaults(&mut settings);
+
+        // Should NOT migrate — user intentionally configured OpenAI
+        assert_eq!(settings.post_process_provider_id, "openai");
+        assert!(settings.post_process_enabled);
+        // changed may be true for other reasons (other defaults), but provider must stay
     }
 }

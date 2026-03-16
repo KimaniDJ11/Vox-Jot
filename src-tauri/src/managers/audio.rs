@@ -414,6 +414,25 @@ impl AudioRecordingManager {
             _ => None,
         }
     }
+
+    pub fn snapshot_recording(&self, binding_id: &str) -> Option<Vec<f32>> {
+        let state = self.state.lock().unwrap();
+
+        match *state {
+            RecordingState::Recording {
+                binding_id: ref active,
+            } if active == binding_id => {
+                drop(state);
+                if let Some(rec) = self.recorder.lock().unwrap().as_ref() {
+                    rec.snapshot().ok()
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn is_recording(&self) -> bool {
         matches!(
             *self.state.lock().unwrap(),

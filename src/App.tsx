@@ -11,7 +11,7 @@ import { ModelStateEvent } from "./lib/types/events";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
-import Onboarding, { AccessibilityOnboarding } from "./components/onboarding";
+import { OnboardingWizard } from "./components/onboarding";
 import { Sidebar, SidebarSection, SECTIONS_CONFIG } from "./components/Sidebar";
 import { Button } from "./components/ui/Button";
 import { Textarea } from "./components/ui/Textarea";
@@ -20,7 +20,7 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 
-type OnboardingStep = "accessibility" | "model" | "done";
+type OnboardingStep = "onboarding" | "done";
 type PostProcessPreviewRequest = {
   request_id: string;
   source_text: string;
@@ -202,12 +202,11 @@ function App() {
             ]);
             if (!hasAccessibility || !hasMicrophone) {
               await revealMainWindowForPermissions();
-              setOnboardingStep("accessibility");
+              setOnboardingStep("onboarding");
               return;
             }
           } catch (e) {
             console.warn("Failed to check macOS permissions:", e);
-            // If we can't check, proceed to main app and let them fix it there
           }
         }
 
@@ -220,35 +219,27 @@ function App() {
               microphoneStatus.overall_access === "denied"
             ) {
               await revealMainWindowForPermissions();
-              setOnboardingStep("accessibility");
+              setOnboardingStep("onboarding");
               return;
             }
           } catch (e) {
             console.warn("Failed to check Windows microphone permissions:", e);
-            // If we can't check, proceed to main app and let them fix it there
           }
         }
 
         setOnboardingStep("done");
       } else {
-        // New user - start full onboarding
+        // New user - start full onboarding wizard
         setIsReturningUser(false);
-        setOnboardingStep("accessibility");
+        setOnboardingStep("onboarding");
       }
     } catch (error) {
       console.error("Failed to check onboarding status:", error);
-      setOnboardingStep("accessibility");
+      setOnboardingStep("onboarding");
     }
   };
 
-  const handleAccessibilityComplete = () => {
-    // Returning users already have models, skip to main app
-    // New users need to select a model
-    setOnboardingStep(isReturningUser ? "done" : "model");
-  };
-
-  const handleModelSelected = () => {
-    // Transition to main app - user has started a download
+  const handleOnboardingComplete = () => {
     setOnboardingStep("done");
   };
 
@@ -257,12 +248,13 @@ function App() {
     return null;
   }
 
-  if (onboardingStep === "accessibility") {
-    return <AccessibilityOnboarding onComplete={handleAccessibilityComplete} />;
-  }
-
-  if (onboardingStep === "model") {
-    return <Onboarding onModelSelected={handleModelSelected} />;
+  if (onboardingStep === "onboarding") {
+    return (
+      <OnboardingWizard
+        onComplete={handleOnboardingComplete}
+        skipToPermissions={isReturningUser}
+      />
+    );
   }
 
   return (

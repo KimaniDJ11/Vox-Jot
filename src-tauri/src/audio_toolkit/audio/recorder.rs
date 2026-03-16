@@ -19,6 +19,7 @@ use crate::audio_toolkit::{
 enum Cmd {
     Start,
     Stop(mpsc::Sender<Vec<f32>>),
+    Snapshot(mpsc::Sender<Vec<f32>>),
     Shutdown,
 }
 
@@ -194,6 +195,15 @@ impl AudioRecorder {
             tx.send(Cmd::Stop(resp_tx))?;
         }
         Ok(resp_rx.recv()?) // wait for the samples
+    }
+
+    pub fn snapshot(&self) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+        let (resp_tx, resp_rx) = mpsc::channel();
+        if let Some(tx) = &self.cmd_tx {
+            tx.send(Cmd::Snapshot(resp_tx))?;
+            return Ok(resp_rx.recv()?);
+        }
+        Ok(Vec::new())
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -399,6 +409,14 @@ fn run_consumer(
                     });
 
                     let _ = reply_tx.send(std::mem::take(&mut processed_samples));
+                }
+                Cmd::Snapshot(reply_tx) => {
+                    let snapshot = if recording {
+                        processed_samples.clone()
+                    } else {
+                        Vec::new()
+                    };
+                    let _ = reply_tx.send(snapshot);
                 }
                 Cmd::Shutdown => return,
             }

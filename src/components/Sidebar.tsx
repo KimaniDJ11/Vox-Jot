@@ -1,8 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cp, Botu } from "lucide-react";
-import HandyTextLogo from "./icons/HandyTextLogo";
-import HandyHand from "./icons/HandyHand";
+import { Cog, FlaskConical, History, Info, Sparkles, Cpu, Bot } from "lucide-react";
+import VoxJotTextLogo from "./icons/VoxJotTextLogo";
+import VoxJotMark from "./icons/VoxJotMark";
 import { useSettings } from "../hooks/useSettings";
 import {
   GeneralSettings,
@@ -12,8 +12,12 @@ import {
   AboutSettings,
   PostProcessingSettings,
   ModelsSettings,
-    OllamaSettings,
+  OllamaSettings,
 } from "./settings";
+
+const SidebarBrandIcon: React.FC<IconProps> = (props) => (
+  <VoxJotMark {...props} monochrome />
+);
 
 export type SidebarSection = keyof typeof SECTIONS_CONFIG;
 
@@ -35,7 +39,7 @@ interface SectionConfig {
 export const SECTIONS_CONFIG = {
   general: {
     labelKey: "sidebar.general",
-    icon: HandyHand,
+    icon: SidebarBrandIcon,
     component: GeneralSettings,
     enabled: () => true,
   },
@@ -45,7 +49,7 @@ export const SECTIONS_CONFIG = {
     component: ModelsSettings,
     enabled: () => true,
   },
-    ollama: {
+  ollama: {
     labelKey: "sidebar.ollama",
     icon: Bot,
     component: OllamaSettings,
@@ -61,7 +65,7 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.postProcessing",
     icon: Sparkles,
     component: PostProcessingSettings,
-    enabled: (settings) => settings?.post_process_enabled ?? false,
+    enabled: () => true,
   },
   history: {
     labelKey: "sidebar.history",
@@ -101,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="flex flex-col w-40 h-full border-e border-mid-gray/20 items-center px-2">
-      <HandyTextLogo width={120} className="m-4" />
+      <VoxJotTextLogo width={120} className="m-4" />
       <div className="flex flex-col w-full items-center gap-1 pt-2 border-t border-mid-gray/20">
         {availableSections.map((section) => {
           const Icon = section.icon;

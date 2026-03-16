@@ -1,6 +1,6 @@
 .recording-overlay {
-  height: 36px;
-  width: 172px;
+  min-height: 36px;
+  width: 240px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -23,6 +23,15 @@
   justify-content: center;
 }
 
+.recording-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+}
+
 .overlay-right {
   display: flex;
   align-items: center;
@@ -37,6 +46,19 @@
   padding-bottom: 0px;
   height: 24px;
   overflow: hidden;
+}
+
+.partial-text {
+  width: 100%;
+  max-width: 170px;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  opacity: 0.9;
 }
 
 .bar {

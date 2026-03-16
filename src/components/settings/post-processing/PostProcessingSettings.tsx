@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCcw } from "lucide-react";
 import {
@@ -25,13 +25,29 @@ import { ProviderSelect } from "../PostProcessingSettingsApi/ProviderSelect";
 import { BaseUrlField } from "../PostProcessingSettingsApi/BaseUrlField";
 import { ApiKeyField } from "../PostProcessingSettingsApi/ApiKeyField";
 import { ModelSelect } from "../PostProcessingSettingsApi/ModelSelect";
-import { usePostProcessProviderState } from "../PostProcessingSettingsApi/usePostProcessProviderState";
+import {
+  usePostProcessProviderState,
+  type PostProcessProviderState,
+} from "../PostProcessingSettingsApi/usePostProcessProviderState";
 import { ShortcutInput } from "../ShortcutInput";
+import { PostProcessingToggle } from "../PostProcessingToggle";
 import { useSettings } from "../../../hooks/useSettings";
 
-const PostProcessingSettingsApiComponent: React.FC = () => {
+interface ProviderSectionProps {
+  disabled?: boolean;
+  providerState: PostProcessProviderState;
+}
+
+type SetupStatus = {
+  variant: "info" | "warning" | "error" | "success";
+  message: React.ReactNode;
+};
+
+const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState: state,
+}) => {
   const { t } = useTranslation();
-  const state = usePostProcessProviderState();
 
   return (
     <>
@@ -41,22 +57,28 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
         descriptionMode="tooltip"
         layout="horizontal"
         grouped={true}
+        disabled={disabled}
       >
         <div className="flex items-center gap-2">
           <ProviderSelect
             options={state.providerOptions}
             value={state.selectedProviderId}
             onChange={state.handleProviderSelect}
+            disabled={disabled}
           />
         </div>
       </SettingContainer>
 
       {state.isAppleProvider ? (
         state.appleIntelligenceUnavailable ? (
-          <Alert variant="error" contained>
-            {t("settings.postProcessing.api.appleIntelligence.unavailable")}
+          <Alert variant="warning" contained>
+            {t("settings.postProcessing.status.appleUnavailable")}
           </Alert>
-        ) : null
+        ) : (
+          <Alert variant="info" contained>
+            {t("settings.postProcessing.api.appleIntelligence.description")}
+          </Alert>
+        )
       ) : (
         <>
           {state.selectedProvider?.id === "custom" && (
@@ -66,6 +88,7 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
               descriptionMode="tooltip"
               layout="horizontal"
               grouped={true}
+              disabled={disabled}
             >
               <div className="flex items-center gap-2">
                 <BaseUrlField
@@ -74,7 +97,7 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
                   placeholder={t(
                     "settings.postProcessing.api.baseUrl.placeholder",
                   )}
-                  disabled={state.isBaseUrlUpdating}
+                  disabled={disabled || state.isBaseUrlUpdating}
                   className="min-w-[380px]"
                 />
               </div>
@@ -87,6 +110,7 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
             descriptionMode="tooltip"
             layout="horizontal"
             grouped={true}
+            disabled={disabled}
           >
             <div className="flex items-center gap-2">
               <ApiKeyField
@@ -95,62 +119,66 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
                 placeholder={t(
                   "settings.postProcessing.api.apiKey.placeholder",
                 )}
-                disabled={state.isApiKeyUpdating}
+                disabled={disabled || state.isApiKeyUpdating}
                 className="min-w-[320px]"
               />
             </div>
           </SettingContainer>
-        </>
-      )}
 
-      {!state.isAppleProvider && (
-        <SettingContainer
-          title={t("settings.postProcessing.api.model.title")}
-          description={
-            state.isCustomProvider
-              ? t("settings.postProcessing.api.model.descriptionCustom")
-              : t("settings.postProcessing.api.model.descriptionDefault")
-          }
-          descriptionMode="tooltip"
-          layout="stacked"
-          grouped={true}
-        >
-          <div className="flex items-center gap-2">
-            <ModelSelect
-              value={state.model}
-              options={state.modelOptions}
-              disabled={state.isModelUpdating}
-              isLoading={state.isFetchingModels}
-              placeholder={
-                state.modelOptions.length > 0
-                  ? t(
-                      "settings.postProcessing.api.model.placeholderWithOptions",
-                    )
-                  : t("settings.postProcessing.api.model.placeholderNoOptions")
-              }
-              onSelect={state.handleModelSelect}
-              onCreate={state.handleModelCreate}
-              onBlur={() => {}}
-              className="flex-1 min-w-[380px]"
-            />
-            <ResetButton
-              onClick={state.handleRefreshModels}
-              disabled={state.isFetchingModels}
-              ariaLabel={t("settings.postProcessing.api.model.refreshModels")}
-              className="flex h-10 w-10 items-center justify-center"
-            >
-              <RefreshCcw
-                className={`h-4 w-4 ${state.isFetchingModels ? "animate-spin" : ""}`}
+          <SettingContainer
+            title={t("settings.postProcessing.api.model.title")}
+            description={
+              state.isCustomProvider
+                ? t("settings.postProcessing.api.model.descriptionCustom")
+                : t("settings.postProcessing.api.model.descriptionDefault")
+            }
+            descriptionMode="tooltip"
+            layout="stacked"
+            grouped={true}
+            disabled={disabled}
+          >
+            <div className="flex items-center gap-2">
+              <ModelSelect
+                value={state.model}
+                options={state.modelOptions}
+                disabled={disabled || state.isModelUpdating}
+                isLoading={state.isFetchingModels}
+                placeholder={
+                  state.modelOptions.length > 0
+                    ? t(
+                        "settings.postProcessing.api.model.placeholderWithOptions",
+                      )
+                    : t(
+                        "settings.postProcessing.api.model.placeholderNoOptions",
+                      )
+                }
+                onSelect={state.handleModelSelect}
+                onCreate={state.handleModelCreate}
+                onBlur={() => {}}
+                className="flex-1 min-w-[380px]"
               />
-            </ResetButton>
-          </div>
-        </SettingContainer>
+              <ResetButton
+                onClick={state.handleRefreshModels}
+                disabled={disabled || state.isFetchingModels}
+                ariaLabel={t("settings.postProcessing.api.model.refreshModels")}
+                className="flex h-10 w-10 items-center justify-center"
+              >
+                <RefreshCcw
+                  className={`h-4 w-4 ${state.isFetchingModels ? "animate-spin" : ""}`}
+                />
+              </ResetButton>
+            </div>
+          </SettingContainer>
+        </>
       )}
     </>
   );
 };
 
-const PostProcessingSettingsPromptsComponent: React.FC = () => {
+const PostProcessingSettingsPromptsComponent: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState: _providerState,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating, refreshSettings } =
     useSettings();
@@ -181,13 +209,13 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
   ]);
 
   const handlePromptSelect = (promptId: string | null) => {
-    if (!promptId) return;
-    updateSetting("post_process_selected_prompt_id", promptId);
+    if (!promptId || disabled) return;
+    void updateSetting("post_process_selected_prompt_id", promptId);
     setIsCreating(false);
   };
 
   const handleCreatePrompt = async () => {
-    if (!draftName.trim() || !draftText.trim()) return;
+    if (disabled || !draftName.trim() || !draftText.trim()) return;
 
     try {
       const result = await commands.addPostProcessPrompt(
@@ -196,7 +224,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
       );
       if (result.status === "ok") {
         await refreshSettings();
-        updateSetting("post_process_selected_prompt_id", result.data.id);
+        await updateSetting("post_process_selected_prompt_id", result.data.id);
         setIsCreating(false);
       }
     } catch (error) {
@@ -205,27 +233,38 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
   };
 
   const handleUpdatePrompt = async () => {
-    if (!selectedPromptId || !draftName.trim() || !draftText.trim()) return;
+    if (
+      disabled ||
+      !selectedPromptId ||
+      !draftName.trim() ||
+      !draftText.trim()
+    ) {
+      return;
+    }
 
     try {
-      await commands.updatePostProcessPrompt(
+      const result = await commands.updatePostProcessPrompt(
         selectedPromptId,
         draftName.trim(),
         draftText.trim(),
       );
-      await refreshSettings();
+      if (result.status === "ok") {
+        await refreshSettings();
+      }
     } catch (error) {
       console.error("Failed to update prompt:", error);
     }
   };
 
   const handleDeletePrompt = async (promptId: string) => {
-    if (!promptId) return;
+    if (!promptId || disabled) return;
 
     try {
-      await commands.deletePostProcessPrompt(promptId);
-      await refreshSettings();
-      setIsCreating(false);
+      const result = await commands.deletePostProcessPrompt(promptId);
+      if (result.status === "ok") {
+        await refreshSettings();
+        setIsCreating(false);
+      }
     } catch (error) {
       console.error("Failed to delete prompt:", error);
     }
@@ -243,6 +282,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
   };
 
   const handleStartCreate = () => {
+    if (disabled) return;
     setIsCreating(true);
     setDraftName("");
     setDraftText("");
@@ -263,6 +303,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
       descriptionMode="tooltip"
       layout="stacked"
       grouped={true}
+      disabled={disabled}
     >
       <div className="space-y-3">
         <div className="flex gap-2">
@@ -279,7 +320,9 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 : t("settings.postProcessing.prompts.selectPrompt")
             }
             disabled={
-              isUpdating("post_process_selected_prompt_id") || isCreating
+              disabled ||
+              isUpdating("post_process_selected_prompt_id") ||
+              isCreating
             }
             className="flex-1"
           />
@@ -287,7 +330,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
             onClick={handleStartCreate}
             variant="primary"
             size="md"
-            disabled={isCreating}
+            disabled={disabled || isCreating}
           >
             {t("settings.postProcessing.prompts.createNew")}
           </Button>
@@ -307,6 +350,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                   "settings.postProcessing.prompts.promptLabelPlaceholder",
                 )}
                 variant="compact"
+                disabled={disabled}
               />
             </div>
 
@@ -320,6 +364,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 placeholder={t(
                   "settings.postProcessing.prompts.promptInstructionsPlaceholder",
                 )}
+                disabled={disabled}
               />
               <p
                 className="text-xs text-mid-gray/70"
@@ -334,7 +379,9 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 onClick={handleUpdatePrompt}
                 variant="primary"
                 size="md"
-                disabled={!draftName.trim() || !draftText.trim() || !isDirty}
+                disabled={
+                  disabled || !draftName.trim() || !draftText.trim() || !isDirty
+                }
               >
                 {t("settings.postProcessing.prompts.updatePrompt")}
               </Button>
@@ -342,7 +389,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 onClick={() => handleDeletePrompt(selectedPromptId)}
                 variant="secondary"
                 size="md"
-                disabled={!selectedPromptId || prompts.length <= 1}
+                disabled={disabled || !selectedPromptId || prompts.length <= 1}
               >
                 {t("settings.postProcessing.prompts.deletePrompt")}
               </Button>
@@ -374,6 +421,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                   "settings.postProcessing.prompts.promptLabelPlaceholder",
                 )}
                 variant="compact"
+                disabled={disabled}
               />
             </div>
 
@@ -387,6 +435,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 placeholder={t(
                   "settings.postProcessing.prompts.promptInstructionsPlaceholder",
                 )}
+                disabled={disabled}
               />
               <p
                 className="text-xs text-mid-gray/70"
@@ -401,7 +450,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 onClick={handleCreatePrompt}
                 variant="primary"
                 size="md"
-                disabled={!draftName.trim() || !draftText.trim()}
+                disabled={disabled || !draftName.trim() || !draftText.trim()}
               >
                 {t("settings.postProcessing.prompts.createPrompt")}
               </Button>
@@ -409,6 +458,7 @@ const PostProcessingSettingsPromptsComponent: React.FC = () => {
                 onClick={handleCancelCreate}
                 variant="secondary"
                 size="md"
+                disabled={disabled}
               >
                 {t("settings.postProcessing.prompts.cancel")}
               </Button>
@@ -450,23 +500,153 @@ const emptyAppToneMapping = (): AppToneMapping => ({
   tone_id: "",
 });
 
-const ApplePostProcessingSettings: React.FC = () => {
+const PostProcessSetupStatus: React.FC<{
+  providerState: PostProcessProviderState;
+}> = ({ providerState }) => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+
+  const postProcessEnabled = getSetting("post_process_enabled") ?? false;
+  const prompts = getSetting("post_process_prompts") || [];
+  const selectedPromptId = getSetting("post_process_selected_prompt_id") || "";
+  const selectedPromptExists = prompts.some((prompt) => prompt.id === selectedPromptId);
+  const apiKey = getSetting("post_process_api_keys")?.[
+    providerState.selectedProviderId
+  ];
+  const selectedModel = getSetting("post_process_models")?.[
+    providerState.selectedProviderId
+  ];
+
+  const setupStatus = useMemo<SetupStatus>(() => {
+    if (!postProcessEnabled) {
+      return {
+        variant: "info",
+        message: t("settings.postProcessing.status.disabled"),
+      };
+    }
+
+    if (!providerState.selectedProvider) {
+      return {
+        variant: "error",
+        message: t("settings.postProcessing.status.noProvider"),
+      };
+    }
+
+    if (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) {
+      return {
+        variant: "warning",
+        message: t("settings.postProcessing.status.appleUnavailable"),
+      };
+    }
+
+    if (!providerState.isAppleProvider) {
+      const issues: string[] = [];
+
+      if (
+        providerState.isCustomProvider &&
+        providerState.baseUrl.trim().length === 0
+      ) {
+        issues.push(t("settings.postProcessing.status.missingBaseUrl"));
+      }
+      if (!apiKey?.trim()) {
+        issues.push(t("settings.postProcessing.status.missingApiKey"));
+      }
+      if (!selectedModel?.trim()) {
+        issues.push(t("settings.postProcessing.status.missingModel"));
+      }
+      if (!selectedPromptExists) {
+        issues.push(t("settings.postProcessing.status.missingPrompt"));
+      }
+
+      if (issues.length > 0) {
+        return {
+          variant: "warning",
+          message: (
+            <>
+              <span>{t("settings.postProcessing.status.finishSetup")}</span>
+              <br />
+              {issues.map((issue, index) => (
+                <React.Fragment key={issue}>
+                  <span>{`\u2022 ${issue}`}</span>
+                  {index < issues.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </>
+          ),
+        };
+      }
+    }
+
+    return {
+      variant: "success",
+      message: t("settings.postProcessing.status.ready"),
+    };
+  }, [
+    apiKey,
+    postProcessEnabled,
+    providerState.appleIntelligenceUnavailable,
+    providerState.baseUrl,
+    providerState.isAppleProvider,
+    providerState.isCustomProvider,
+    providerState.selectedProvider,
+    selectedModel,
+    selectedPromptExists,
+    t,
+  ]);
+
+  return <Alert variant={setupStatus.variant}>{setupStatus.message}</Alert>;
+};
+
+const PostProcessReviewSettings: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState: _providerState,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
-  const { isAppleProvider } = usePostProcessProviderState();
+  const enabled = getSetting("show_preview_before_paste") || false;
 
-  if (!isAppleProvider) {
+  return (
+    <>
+      <ToggleSwitch
+        checked={enabled}
+        onChange={(value) =>
+          void updateSetting("show_preview_before_paste", value)
+        }
+        isUpdating={isUpdating("show_preview_before_paste")}
+        label={t("settings.postProcessing.review.toggle.label")}
+        description={t("settings.postProcessing.review.toggle.description")}
+        grouped={true}
+        disabled={disabled}
+      />
+      <Alert variant={enabled ? "info" : "warning"} contained>
+        {disabled
+          ? t("settings.postProcessing.review.status.disabled")
+          : enabled
+            ? t("settings.postProcessing.review.status.enabled")
+            : t("settings.postProcessing.review.status.off")}
+      </Alert>
+    </>
+  );
+};
+
+const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState,
+}) => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+
+  if (!providerState.isAppleProvider) {
     return null;
   }
 
   const selectedMode = getSetting("post_process_mode") || "literal";
   const rewriteStrength = getSetting("max_rewrite_strength") || 0;
-  const showPreview = getSetting("show_preview_before_paste") || false;
   const fallbackToRaw = getSetting("fallback_to_raw_on_failure") ?? true;
 
   return (
-    <SettingsGroup title={t("settings.postProcessing.apple.title")}>
-      <Alert variant="info">
+    <>
+      <Alert variant="info" contained>
         {t("settings.postProcessing.apple.description")}
       </Alert>
 
@@ -475,6 +655,7 @@ const ApplePostProcessingSettings: React.FC = () => {
         description={t("settings.postProcessing.apple.mode.description")}
         descriptionMode="tooltip"
         grouped={true}
+        disabled={disabled}
       >
         <Dropdown
           selectedValue={selectedMode}
@@ -491,7 +672,7 @@ const ApplePostProcessingSettings: React.FC = () => {
               label: t("settings.postProcessing.apple.mode.intent"),
             },
           ]}
-          disabled={isUpdating("post_process_mode")}
+          disabled={disabled || isUpdating("post_process_mode")}
         />
       </SettingContainer>
 
@@ -502,6 +683,7 @@ const ApplePostProcessingSettings: React.FC = () => {
         )}
         descriptionMode="tooltip"
         grouped={true}
+        disabled={disabled}
       >
         <Dropdown
           selectedValue={String(rewriteStrength)}
@@ -526,20 +708,9 @@ const ApplePostProcessingSettings: React.FC = () => {
               ),
             },
           ]}
-          disabled={isUpdating("max_rewrite_strength")}
+          disabled={disabled || isUpdating("max_rewrite_strength")}
         />
       </SettingContainer>
-
-      <ToggleSwitch
-        checked={showPreview}
-        onChange={(enabled) =>
-          void updateSetting("show_preview_before_paste", enabled)
-        }
-        isUpdating={isUpdating("show_preview_before_paste")}
-        label={t("settings.postProcessing.apple.preview.label")}
-        description={t("settings.postProcessing.apple.preview.description")}
-        grouped={true}
-      />
 
       <ToggleSwitch
         checked={fallbackToRaw}
@@ -550,17 +721,20 @@ const ApplePostProcessingSettings: React.FC = () => {
         label={t("settings.postProcessing.apple.fallback.label")}
         description={t("settings.postProcessing.apple.fallback.description")}
         grouped={true}
+        disabled={disabled}
       />
-    </SettingsGroup>
+    </>
   );
 };
 
-const AppAwareToneSettings: React.FC = () => {
+const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
-  const { isAppleProvider } = usePostProcessProviderState();
 
-  if (!isAppleProvider) {
+  if (!providerState.isAppleProvider) {
     return null;
   }
 
@@ -602,8 +776,10 @@ const AppAwareToneSettings: React.FC = () => {
     persistMappings(nextMappings);
   };
 
+  const mappingControlsDisabled = disabled || !enabled;
+
   return (
-    <SettingsGroup title={t("settings.postProcessing.appAware.title")}>
+    <>
       <ToggleSwitch
         checked={enabled}
         onChange={(value) => void updateSetting("app_aware_tone_enabled", value)}
@@ -611,10 +787,13 @@ const AppAwareToneSettings: React.FC = () => {
         label={t("settings.postProcessing.appAware.toggle.label")}
         description={t("settings.postProcessing.appAware.toggle.description")}
         grouped={true}
+        disabled={disabled}
       />
 
-      <Alert variant="info">
-        {t("settings.postProcessing.appAware.description")}
+      <Alert variant="info" contained>
+        {enabled
+          ? t("settings.postProcessing.appAware.description")
+          : t("settings.postProcessing.appAware.disabledMessage")}
       </Alert>
 
       <SettingContainer
@@ -623,6 +802,7 @@ const AppAwareToneSettings: React.FC = () => {
         descriptionMode="tooltip"
         layout="stacked"
         grouped={true}
+        disabled={mappingControlsDisabled}
       >
         <div className="space-y-3">
           {toneDefinitions.map((definition, index) => (
@@ -643,7 +823,9 @@ const AppAwareToneSettings: React.FC = () => {
                     placeholder={t(
                       "settings.postProcessing.appAware.tones.placeholders.id",
                     )}
-                    disabled={isUpdating("tone_definitions")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("tone_definitions")
+                    }
                   />
                 </div>
                 <div className="space-y-1">
@@ -658,7 +840,9 @@ const AppAwareToneSettings: React.FC = () => {
                     placeholder={t(
                       "settings.postProcessing.appAware.tones.placeholders.label",
                     )}
-                    disabled={isUpdating("tone_definitions")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("tone_definitions")
+                    }
                   />
                 </div>
                 <div className="flex items-end justify-end">
@@ -670,7 +854,9 @@ const AppAwareToneSettings: React.FC = () => {
                         toneDefinitions.filter((_, i) => i !== index),
                       )
                     }
-                    disabled={isUpdating("tone_definitions")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("tone_definitions")
+                    }
                   >
                     {t("settings.postProcessing.appAware.remove")}
                   </Button>
@@ -690,7 +876,9 @@ const AppAwareToneSettings: React.FC = () => {
                   placeholder={t(
                     "settings.postProcessing.appAware.tones.placeholders.instruction",
                   )}
-                  disabled={isUpdating("tone_definitions")}
+                  disabled={
+                    mappingControlsDisabled || isUpdating("tone_definitions")
+                  }
                 />
               </div>
             </div>
@@ -702,7 +890,7 @@ const AppAwareToneSettings: React.FC = () => {
             }
             variant="primary-soft"
             size="md"
-            disabled={isUpdating("tone_definitions")}
+            disabled={mappingControlsDisabled || isUpdating("tone_definitions")}
           >
             {t("settings.postProcessing.appAware.tones.add")}
           </Button>
@@ -715,6 +903,7 @@ const AppAwareToneSettings: React.FC = () => {
         descriptionMode="tooltip"
         layout="stacked"
         grouped={true}
+        disabled={mappingControlsDisabled}
       >
         <div className="space-y-3">
           {appToneMappings.map((mapping, index) => (
@@ -737,7 +926,9 @@ const AppAwareToneSettings: React.FC = () => {
                     placeholder={t(
                       "settings.postProcessing.appAware.mappings.placeholders.appName",
                     )}
-                    disabled={isUpdating("app_tone_mappings")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("app_tone_mappings")
+                    }
                   />
                 </div>
                 <div className="space-y-1">
@@ -754,7 +945,9 @@ const AppAwareToneSettings: React.FC = () => {
                     placeholder={t(
                       "settings.postProcessing.appAware.mappings.placeholders.bundleId",
                     )}
-                    disabled={isUpdating("app_tone_mappings")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("app_tone_mappings")
+                    }
                   />
                 </div>
                 <div className="flex items-end justify-end">
@@ -764,7 +957,9 @@ const AppAwareToneSettings: React.FC = () => {
                     onClick={() =>
                       persistMappings(appToneMappings.filter((_, i) => i !== index))
                     }
-                    disabled={isUpdating("app_tone_mappings")}
+                    disabled={
+                      mappingControlsDisabled || isUpdating("app_tone_mappings")
+                    }
                   >
                     {t("settings.postProcessing.appAware.remove")}
                   </Button>
@@ -780,7 +975,9 @@ const AppAwareToneSettings: React.FC = () => {
                   onSelect={(value) => updateMapping(index, "tone_id", value)}
                   options={toneOptions}
                   disabled={
-                    isUpdating("app_tone_mappings") || toneOptions.length === 0
+                    mappingControlsDisabled ||
+                    isUpdating("app_tone_mappings") ||
+                    toneOptions.length === 0
                   }
                 />
               </div>
@@ -793,22 +990,24 @@ const AppAwareToneSettings: React.FC = () => {
             }
             variant="primary-soft"
             size="md"
-            disabled={isUpdating("app_tone_mappings")}
+            disabled={mappingControlsDisabled || isUpdating("app_tone_mappings")}
           >
             {t("settings.postProcessing.appAware.mappings.add")}
           </Button>
         </div>
       </SettingContainer>
-    </SettingsGroup>
+    </>
   );
 };
 
-const PersonalDictionarySettings: React.FC = () => {
+const PersonalDictionarySettings: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
-  const { isAppleProvider } = usePostProcessProviderState();
 
-  if (!isAppleProvider) {
+  if (!providerState.isAppleProvider) {
     return null;
   }
 
@@ -840,144 +1039,136 @@ const PersonalDictionarySettings: React.FC = () => {
     persistEntries(nextEntries);
   };
 
-  const addEntry = () => {
-    persistEntries([...entries, emptyDictionaryEntry()]);
-  };
-
-  const removeEntry = (index: number) => {
-    persistEntries(entries.filter((_, currentIndex) => currentIndex !== index));
-  };
-
   return (
-    <SettingsGroup title={t("settings.postProcessing.dictionary.title")}>
-      <SettingContainer
-        title={t("settings.postProcessing.dictionary.editor.title")}
-        description={t("settings.postProcessing.dictionary.editor.description")}
-        descriptionMode="tooltip"
-        layout="stacked"
-        grouped={true}
-      >
-        <div className="space-y-3">
-          {duplicateSpokenForms.size > 0 && (
-            <Alert variant="warning" contained>
-              {t("settings.postProcessing.dictionary.duplicateWarning")}
-            </Alert>
-          )}
+    <SettingContainer
+      title={t("settings.postProcessing.dictionary.editor.title")}
+      description={t("settings.postProcessing.dictionary.editor.description")}
+      descriptionMode="tooltip"
+      layout="stacked"
+      grouped={true}
+      disabled={disabled}
+    >
+      <div className="space-y-3">
+        {duplicateSpokenForms.size > 0 && (
+          <Alert variant="warning" contained>
+            {t("settings.postProcessing.dictionary.duplicateWarning")}
+          </Alert>
+        )}
 
-          {entries.length === 0 && (
-            <div className="rounded-md border border-mid-gray/20 bg-mid-gray/5 p-3 text-sm text-mid-gray">
-              {t("settings.postProcessing.dictionary.empty")}
-            </div>
-          )}
+        {entries.length === 0 && (
+          <div className="rounded-md border border-mid-gray/20 bg-mid-gray/5 p-3 text-sm text-mid-gray">
+            {t("settings.postProcessing.dictionary.empty")}
+          </div>
+        )}
 
-          {entries.map((entry, index) => {
-            const spokenKey = entry.spoken.trim().toLowerCase();
-            const isDuplicate =
-              spokenKey.length > 0 && duplicateSpokenForms.has(spokenKey);
+        {entries.map((entry, index) => {
+          const spokenKey = entry.spoken.trim().toLowerCase();
+          const isDuplicate =
+            spokenKey.length > 0 && duplicateSpokenForms.has(spokenKey);
 
-            return (
-              <div
-                key={`${entry.spoken}-${entry.written}-${index}`}
-                className="rounded-md border border-mid-gray/20 p-3 space-y-3"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-mid-gray">
-                      {t("settings.postProcessing.dictionary.columns.spoken")}
-                    </label>
-                    <Input
-                      value={entry.spoken}
-                      onChange={(event) =>
-                        updateEntry(index, "spoken", event.target.value)
-                      }
-                      placeholder={t(
-                        "settings.postProcessing.dictionary.placeholders.spoken",
-                      )}
-                      disabled={isUpdating("personal_dictionary")}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-mid-gray">
-                      {t("settings.postProcessing.dictionary.columns.written")}
-                    </label>
-                    <Input
-                      value={entry.written}
-                      onChange={(event) =>
-                        updateEntry(index, "written", event.target.value)
-                      }
-                      placeholder={t(
-                        "settings.postProcessing.dictionary.placeholders.written",
-                      )}
-                      disabled={isUpdating("personal_dictionary")}
-                    />
-                  </div>
-
-                  <div className="flex items-end justify-end">
-                    <Button
-                      variant="danger-ghost"
-                      size="sm"
-                      onClick={() => removeEntry(index)}
-                      disabled={isUpdating("personal_dictionary")}
-                    >
-                      {t("settings.postProcessing.dictionary.remove")}
-                    </Button>
-                  </div>
+          return (
+            <div
+              key={`${entry.spoken}-${entry.written}-${index}`}
+              className="rounded-md border border-mid-gray/20 p-3 space-y-3"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-mid-gray">
+                    {t("settings.postProcessing.dictionary.columns.spoken")}
+                  </label>
+                  <Input
+                    value={entry.spoken}
+                    onChange={(event) =>
+                      updateEntry(index, "spoken", event.target.value)
+                    }
+                    placeholder={t(
+                      "settings.postProcessing.dictionary.placeholders.spoken",
+                    )}
+                    disabled={disabled || isUpdating("personal_dictionary")}
+                  />
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={entry.exact_only}
-                      onChange={(event) =>
-                        updateEntry(index, "exact_only", event.target.checked)
-                      }
-                      disabled={isUpdating("personal_dictionary")}
-                    />
-                    <span>
-                      {t("settings.postProcessing.dictionary.columns.exactOnly")}
-                    </span>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-mid-gray">
+                    {t("settings.postProcessing.dictionary.columns.written")}
                   </label>
+                  <Input
+                    value={entry.written}
+                    onChange={(event) =>
+                      updateEntry(index, "written", event.target.value)
+                    }
+                    placeholder={t(
+                      "settings.postProcessing.dictionary.placeholders.written",
+                    )}
+                    disabled={disabled || isUpdating("personal_dictionary")}
+                  />
+                </div>
 
-                  {isDuplicate && (
-                    <span className="text-xs text-yellow-400">
-                      {t("settings.postProcessing.dictionary.duplicateBadge")}
-                    </span>
-                  )}
+                <div className="flex items-end justify-end">
+                  <Button
+                    variant="danger-ghost"
+                    size="sm"
+                    onClick={() =>
+                      persistEntries(entries.filter((_, currentIndex) => currentIndex !== index))
+                    }
+                    disabled={disabled || isUpdating("personal_dictionary")}
+                  >
+                    {t("settings.postProcessing.dictionary.remove")}
+                  </Button>
                 </div>
               </div>
-            );
-          })}
 
-          <Button
-            onClick={addEntry}
-            variant="primary-soft"
-            size="md"
-            disabled={isUpdating("personal_dictionary")}
-          >
-            {t("settings.postProcessing.dictionary.add")}
-          </Button>
-        </div>
-      </SettingContainer>
-    </SettingsGroup>
+              <div className="flex items-center justify-between gap-3">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={entry.exact_only}
+                    onChange={(event) =>
+                      updateEntry(index, "exact_only", event.target.checked)
+                    }
+                    disabled={disabled || isUpdating("personal_dictionary")}
+                  />
+                  <span>
+                    {t("settings.postProcessing.dictionary.columns.exactOnly")}
+                  </span>
+                </label>
+
+                {isDuplicate && (
+                  <span className="text-xs text-yellow-400">
+                    {t("settings.postProcessing.dictionary.duplicateBadge")}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        <Button
+          onClick={() =>
+            persistEntries([...entries, emptyDictionaryEntry()])
+          }
+          variant="primary-soft"
+          size="md"
+          disabled={disabled || isUpdating("personal_dictionary")}
+        >
+          {t("settings.postProcessing.dictionary.add")}
+        </Button>
+      </div>
+    </SettingContainer>
   );
 };
 
-const PostProcessPreviewTester: React.FC = () => {
+const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
+  disabled = false,
+  providerState,
+}) => {
   const { t } = useTranslation();
   const { getSetting, previewPostProcessText } = useSettings();
-  const { isAppleProvider, appleIntelligenceUnavailable } =
-    usePostProcessProviderState();
   const [input, setInput] = useState("");
   const [result, setResult] = useState<PostProcessResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [previewAppBundleId, setPreviewAppBundleId] = useState("none");
-
-  if (!isAppleProvider) {
-    return null;
-  }
 
   const appToneMappings = getSetting("app_tone_mappings") || [];
   const previewAppOptions = [
@@ -990,6 +1181,11 @@ const PostProcessPreviewTester: React.FC = () => {
       label: mapping.app_name || mapping.bundle_id,
     })),
   ];
+
+  const controlsDisabled =
+    disabled ||
+    (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) ||
+    isLoading;
 
   const runPreview = async () => {
     setIsLoading(true);
@@ -1014,127 +1210,214 @@ const PostProcessPreviewTester: React.FC = () => {
   };
 
   return (
-    <SettingsGroup title={t("settings.postProcessing.preview.title")}>
-      <SettingContainer
-        title={t("settings.postProcessing.preview.testInput.title")}
-        description={t("settings.postProcessing.preview.testInput.description")}
-        descriptionMode="tooltip"
-        layout="stacked"
-        grouped={true}
-      >
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-mid-gray">
-              {t("settings.postProcessing.preview.previewApp.label")}
-            </label>
-            <Dropdown
-              selectedValue={previewAppBundleId}
-              onSelect={setPreviewAppBundleId}
-              options={previewAppOptions}
-              disabled={appleIntelligenceUnavailable || isLoading}
-            />
-          </div>
+    <SettingContainer
+      title={t("settings.postProcessing.preview.testInput.title")}
+      description={t("settings.postProcessing.preview.testInput.description")}
+      descriptionMode="tooltip"
+      layout="stacked"
+      grouped={true}
+      disabled={disabled}
+    >
+      <div className="space-y-3">
+        {disabled && (
+          <Alert variant="warning" contained>
+            {t("settings.postProcessing.preview.disabledMessage")}
+          </Alert>
+        )}
 
-          <Textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={t(
-              "settings.postProcessing.preview.testInput.placeholder",
-            )}
-            disabled={appleIntelligenceUnavailable || isLoading}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-mid-gray">
+            {t("settings.postProcessing.preview.previewApp.label")}
+          </label>
+          <Dropdown
+            selectedValue={previewAppBundleId}
+            onSelect={setPreviewAppBundleId}
+            options={previewAppOptions}
+            disabled={controlsDisabled}
           />
+        </div>
 
-          <div className="flex gap-2">
-            <Button
-              onClick={runPreview}
-              disabled={
-                appleIntelligenceUnavailable || isLoading || !input.trim()
-              }
-            >
-              {isLoading
-                ? t("settings.postProcessing.preview.runLoading")
-                : t("settings.postProcessing.preview.run")}
-            </Button>
-          </div>
+        <Textarea
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder={t("settings.postProcessing.preview.testInput.placeholder")}
+          disabled={controlsDisabled}
+        />
 
-          {error && <Alert variant="error">{error}</Alert>}
+        <div className="flex gap-2">
+          <Button
+            onClick={runPreview}
+            disabled={controlsDisabled || !input.trim()}
+          >
+            {isLoading
+              ? t("settings.postProcessing.preview.runLoading")
+              : t("settings.postProcessing.preview.run")}
+          </Button>
+        </div>
 
-          {result && (
-            <div className="space-y-3 rounded-md border border-mid-gray/20 p-3">
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-mid-gray">
-                  {t("settings.postProcessing.preview.outputLabel")}
-                </div>
-                <Textarea value={result.final_text} readOnly />
+        {error && <Alert variant="error">{error}</Alert>}
+
+        {result && (
+          <div className="space-y-3 rounded-md border border-mid-gray/20 p-3">
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-mid-gray">
+                {t("settings.postProcessing.preview.outputLabel")}
               </div>
+              <Textarea value={result.final_text} readOnly />
+            </div>
 
-              {result.dictionary_hits.length > 0 && (
-                <div className="text-xs text-mid-gray">
-                  {t("settings.postProcessing.preview.dictionaryHits", {
-                    hits: result.dictionary_hits.join(", "),
-                  })}
-                </div>
-              )}
-
-              {result.active_app_context && (
-                <div className="text-xs text-mid-gray">
-                  {t("settings.postProcessing.preview.appContext", {
-                    app:
-                      result.active_app_context.localized_name ||
-                      result.active_app_context.bundle_id,
-                    tone:
-                      result.applied_tone_id ||
-                      t("settings.postProcessing.preview.previewApp.none"),
-                  })}
-                </div>
-              )}
-
+            {result.dictionary_hits.length > 0 && (
               <div className="text-xs text-mid-gray">
-                {t("settings.postProcessing.preview.editSummary", {
-                  bullets: result.edits.added_bullets
-                    ? t("common.yes")
-                    : t("common.no"),
-                  paragraphs: result.edits.added_paragraphs
-                    ? t("common.yes")
-                    : t("common.no"),
+                {t("settings.postProcessing.preview.dictionaryHits", {
+                  hits: result.dictionary_hits.join(", "),
                 })}
               </div>
+            )}
+
+            {result.active_app_context && (
+              <div className="text-xs text-mid-gray">
+                {t("settings.postProcessing.preview.appContext", {
+                  app:
+                    result.active_app_context.localized_name ||
+                    result.active_app_context.bundle_id,
+                  tone:
+                    result.applied_tone_id ||
+                    t("settings.postProcessing.preview.previewApp.none"),
+                })}
+              </div>
+            )}
+
+            <div className="text-xs text-mid-gray">
+              {t("settings.postProcessing.preview.editSummary", {
+                bullets: result.edits.added_bullets
+                  ? t("common.yes")
+                  : t("common.no"),
+                paragraphs: result.edits.added_paragraphs
+                  ? t("common.yes")
+                  : t("common.no"),
+              })}
             </div>
-          )}
-        </div>
-      </SettingContainer>
-    </SettingsGroup>
+          </div>
+        )}
+      </div>
+    </SettingContainer>
   );
 };
 
 export const PostProcessingSettings: React.FC = () => {
   const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
   const providerState = usePostProcessProviderState();
+  const postProcessEnabled = getSetting("post_process_enabled") ?? false;
+  const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
+  const controlsDisabled = !postProcessEnabled;
 
   return (
     <div className="max-w-3xl w-full mx-auto space-y-6">
-      <SettingsGroup title={t("settings.postProcessing.hotkey.title")}>
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold">{t("settings.postProcessing.title")}</h1>
+        <p className="text-sm text-text/60">
+          {t("settings.postProcessing.description")}
+        </p>
+      </div>
+
+      <SettingsGroup
+        title={t("settings.postProcessing.sections.setup.title")}
+        description={t("settings.postProcessing.sections.setup.description")}
+      >
+        <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
+        <ToggleSwitch
+          checked={localPrivacyMode}
+          onChange={(enabled) => void updateSetting("local_privacy_mode", enabled)}
+          isUpdating={isUpdating("local_privacy_mode")}
+          label="Local Privacy Mode"
+          description="Enforce local-only post-processing providers and block cloud providers."
+          descriptionMode="tooltip"
+          grouped={true}
+        />
+        {localPrivacyMode && (
+          <Alert variant="info" contained>
+            Cloud post-processing providers are disabled while Local Privacy Mode is enabled.
+          </Alert>
+        )}
         <ShortcutInput
           shortcutId="transcribe_with_post_process"
           descriptionMode="tooltip"
           grouped={true}
         />
+        <PostProcessingSettingsApi
+          disabled={controlsDisabled}
+          providerState={providerState}
+        />
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.postProcessing.api.title")}>
-        <PostProcessingSettingsApi />
+      <PostProcessSetupStatus providerState={providerState} />
+
+      <SettingsGroup
+        title={t("settings.postProcessing.sections.review.title")}
+        description={t("settings.postProcessing.sections.review.description")}
+      >
+        <PostProcessReviewSettings
+          disabled={controlsDisabled}
+          providerState={providerState}
+        />
       </SettingsGroup>
 
-      <ApplePostProcessingSettings />
-      <AppAwareToneSettings />
-      <PersonalDictionarySettings />
-      <PostProcessPreviewTester />
+      {providerState.isAppleProvider && (
+        <>
+          <SettingsGroup
+            title={t("settings.postProcessing.sections.appleCleanup.title")}
+            description={t(
+              "settings.postProcessing.sections.appleCleanup.description",
+            )}
+          >
+            <ApplePostProcessingSettings
+              disabled={controlsDisabled}
+              providerState={providerState}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup
+            title={t("settings.postProcessing.sections.applePersonalization.title")}
+            description={t(
+              "settings.postProcessing.sections.applePersonalization.description",
+            )}
+          >
+            <AppAwareToneSettings
+              disabled={controlsDisabled}
+              providerState={providerState}
+            />
+            <PersonalDictionarySettings
+              disabled={controlsDisabled}
+              providerState={providerState}
+            />
+          </SettingsGroup>
+        </>
+      )}
 
       {!providerState.isAppleProvider && (
-        <SettingsGroup title={t("settings.postProcessing.prompts.title")}>
-          <PostProcessingSettingsPrompts />
+        <SettingsGroup
+          title={t("settings.postProcessing.sections.prompting.title")}
+          description={t(
+            "settings.postProcessing.sections.prompting.description",
+          )}
+        >
+          <PostProcessingSettingsPrompts
+            disabled={controlsDisabled}
+            providerState={providerState}
+          />
         </SettingsGroup>
       )}
+
+      <SettingsGroup
+        title={t("settings.postProcessing.sections.preview.title")}
+        description={t("settings.postProcessing.sections.preview.description")}
+      >
+        <PostProcessPreviewTester
+          disabled={controlsDisabled}
+          providerState={providerState}
+        />
+      </SettingsGroup>
     </div>
   );
 };

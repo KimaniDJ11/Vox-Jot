@@ -90,11 +90,15 @@
       "description": ".يحتاج Vox Jot إلى بعض الأذونات ليعمل بشكل صحيح",
       "microphone": {
         "title": "الوصول إلى الميكروفون",
-        "description": ".مطلوب لسماع صوتك من أجل التفريغ الصوتي"
+        "description": ".مطلوب لسماع صوتك من أجل التفريغ الصوتي",
+        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
       },
       "accessibility": {
         "title": "إمكانية الوصول",
-        "description": ".مطلوب لكتابة النص المفرغ في تطبيقاتك"
+        "description": ".مطلوب لكتابة النص المفرغ في تطبيقاتك",
+        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
       },
       "grant": "منح الإذن",
       "granted": "تم المنح",
@@ -103,7 +107,95 @@
       "errors": {
         "checkFailed": "فشل التحقق من الأذونات. يرجير المحاولة مرة أخرى.",
         "requestFailed": "فشل طلب الإذن. يرجى المحاولة مرة أخرى."
+      },
+      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
+      "continue": "Continue",
+      "moreInfo": "More info",
+      "visualPath": "System Settings -> Privacy & Security",
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+    },
+    "steps": {
+      "welcome": "Overview",
+      "permissions": "Permissions",
+      "setup": "Model",
+      "learn": "First Dictation"
+    },
+    "welcome": {
+      "title": "Set up private voice dictation that actually fits your workflow",
+      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "cta": "Set Up Vox Jot",
+      "cardTitle": "Built for everyday dictation",
+      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "features": [
+        "Download a local speech model that matches your speed and accuracy needs.",
+        "Grant the permissions Vox Jot needs to listen and type into other apps.",
+        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+      ],
+      "highlights": {
+        "local": {
+          "title": "Local transcription",
+          "description": "Your speech model runs on your own machine."
+        },
+        "anywhere": {
+          "title": "Works across apps",
+          "description": "Dictate into messages, docs, notes, and forms."
+        },
+        "polish": {
+          "title": "Optional cleanup",
+          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+        }
       }
+    },
+    "setup": {
+      "title": "Choose the transcription model you want to start with",
+      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
+      "cardTitle": "Everything stays on your device",
+      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "downloading": {
+        "title": "Downloading your speech model",
+        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+      },
+      "advanced": {
+        "show": "Show more model options",
+        "hide": "Hide extra model options"
+      }
+    },
+    "firstDictation": {
+      "title": "You are ready for your first dictation",
+      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "cta": "Open Vox Jot",
+      "steps": [
+        "Place your cursor in any text field where you want the transcript to go.",
+        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
+        "Adjust output, paste behavior, or polished dictation later from Settings."
+      ],
+      "shortcuts": {
+        "dictation": {
+          "label": "Regular dictation",
+          "description": "Use this for fast speech-to-text in any app."
+        },
+        "postProcess": {
+          "label": "Polished dictation",
+          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
+          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+        }
+      },
+      "postProcessReady": {
+        "title": "Post Process is already available",
+        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+      },
+      "postProcessLater": {
+        "title": "Post Process is easy to add later",
+        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+      },
+      "tip": {
+        "title": "Start simple, tune later",
+        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+      }
+    },
+    "common": {
+      "back": "Back"
     }
   },
   "modelSelector": {
@@ -360,6 +452,170 @@
         "cancel": "إلغاء",
         "selectToEdit": ".اختر مطالبة أعلاه لعرض وتعديل تفاصيلها",
         "createFirst": ".انقر على 'إنشاء مطالبة جديدة' أعلاه لإنشاء أول مطالبة معالجة لاحقة لك"
+      },
+      "apple": {
+        "title": "Apple Cleanup",
+        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "mode": {
+          "title": "Mode",
+          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
+          "literal": "Literal: preserve wording",
+          "intent": "Intent: clean false starts and formatting"
+        },
+        "rewriteStrength": {
+          "title": "Rewrite Strength",
+          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
+          "conservative": "Conservative",
+          "balanced": "Balanced",
+          "aggressive": "Aggressive"
+        },
+        "preview": {
+          "label": "Show preview before paste",
+          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+        },
+        "fallback": {
+          "label": "Fallback to normalized text on failure",
+          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+        }
+      },
+      "appAware": {
+        "title": "App-Aware Tone",
+        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "toggle": {
+          "label": "Enable app-aware tone",
+          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+        },
+        "tones": {
+          "title": "Tone definitions",
+          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "columns": {
+            "id": "Tone ID",
+            "label": "Display name",
+            "instruction": "Instruction"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Use a casual, conversational tone suitable for chat messages."
+          },
+          "add": "Add tone"
+        },
+        "mappings": {
+          "title": "App mappings",
+          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "columns": {
+            "appName": "App name",
+            "bundleId": "Bundle ID",
+            "tone": "Tone"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Add app mapping"
+        },
+        "remove": "Remove",
+        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+      },
+      "dictionary": {
+        "title": "Personal Dictionary",
+        "editor": {
+          "title": "Preferred spellings",
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+        },
+        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
+        "empty": "No personal dictionary entries yet.",
+        "columns": {
+          "spoken": "Spoken",
+          "written": "Written",
+          "exactOnly": "Exact only"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Add entry",
+        "remove": "Remove",
+        "duplicateBadge": "Duplicate spoken phrase"
+      },
+      "preview": {
+        "title": "Preview Tester",
+        "testInput": {
+          "title": "Try sample text",
+          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
+          "placeholder": "Paste or type sample transcript text here"
+        },
+        "previewApp": {
+          "label": "Preview as app",
+          "none": "No app override"
+        },
+        "run": "Preview output",
+        "runLoading": "Previewing...",
+        "outputLabel": "Preview result",
+        "dictionaryHits": "Dictionary hits: {{hits}}",
+        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
+        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "errors": {
+          "generic": "Unable to preview post-processing right now."
+        },
+        "modal": {
+          "title": "Review polished text",
+          "description": "Apple Intelligence changed this transcription before pasting.",
+          "originalLabel": "Normalized transcript",
+          "editedLabel": "Text to paste",
+          "cancel": "Cancel paste",
+          "apply": "Paste text"
+        },
+        "disabledMessage": "Turn on Post Process to try previewing polished output."
+      },
+      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "sections": {
+        "setup": {
+          "title": "Setup",
+          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+        },
+        "review": {
+          "title": "Paste Review",
+          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+        },
+        "appleCleanup": {
+          "title": "Apple Cleanup",
+          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+        },
+        "applePersonalization": {
+          "title": "Apple Personalization",
+          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+        },
+        "prompting": {
+          "title": "Prompting",
+          "description": "Choose or edit the prompt template used by network providers."
+        },
+        "preview": {
+          "title": "Try It",
+          "description": "Preview the current configuration against sample text without recording live audio."
+        }
+      },
+      "review": {
+        "toggle": {
+          "label": "Review polished text before paste",
+          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+        },
+        "status": {
+          "disabled": "Turn on Post Process first to enable review-before-paste.",
+          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
+          "off": "Polished text will be pasted immediately after processing finishes."
+        }
+      },
+      "status": {
+        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
+        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
+        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "missingBaseUrl": "Set a base URL for your custom provider.",
+        "missingApiKey": "Add an API key for the selected provider.",
+        "missingModel": "Choose or enter a model for the selected provider.",
+        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
+        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
+        "ready": "Post Process is configured and ready to use."
       }
     },
     "history": {

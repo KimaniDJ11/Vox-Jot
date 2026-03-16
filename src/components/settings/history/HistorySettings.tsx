@@ -10,6 +10,8 @@ import { commands, type HistoryEntry } from "@/bindings";
 import { formatDateTime } from "@/utils/dateFormat";
 import { useOsType } from "@/hooks/useOsType";
 
+type HistoryTab = "recordings" | "jots";
+
 interface OpenRecordingsButtonProps {
   onClick: () => void;
   label: string;
@@ -35,6 +37,7 @@ export const HistorySettings: React.FC = () => {
   const { t } = useTranslation();
   const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<HistoryTab>("recordings");
   const [loading, setLoading] = useState(true);
 
   const loadHistoryEntries = useCallback(async () => {
@@ -132,6 +135,47 @@ export const HistorySettings: React.FC = () => {
     }
   };
 
+  const recordingsEntries = historyEntries;
+  const jotsEntries = historyEntries.filter((entry) =>
+    Boolean(entry.post_processed_text?.trim()),
+  );
+
+  const renderEntries = (
+    entries: HistoryEntry[],
+    viewMode: HistoryTab,
+    emptyMessage: string,
+  ) => {
+    if (entries.length === 0) {
+      return (
+        <div className="px-4 py-3 text-center text-text/60">{emptyMessage}</div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-mid-gray/20">
+        {entries.map((entry) => {
+          const fallbackText = entry.transcription_text;
+          const jotText = entry.post_processed_text?.trim();
+          const displayText =
+            viewMode === "jots" && jotText ? jotText : fallbackText;
+
+          return (
+            <HistoryEntryComponent
+              key={entry.id}
+              entry={entry}
+              displayMode={viewMode}
+              displayText={displayText}
+              onToggleSaved={() => toggleSaved(entry.id)}
+              onCopyText={() => copyToClipboard(displayText)}
+              getAudioUrl={getAudioUrl}
+              deleteAudio={deleteAudioEntry}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl w-full mx-auto space-y-6">
@@ -157,31 +201,6 @@ export const HistorySettings: React.FC = () => {
     );
   }
 
-  if (historyEntries.length === 0) {
-    return (
-      <div className="max-w-3xl w-full mx-auto space-y-6">
-        <div className="space-y-2">
-          <div className="px-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-medium text-mid-gray uppercase tracking-wide">
-                {t("settings.history.title")}
-              </h2>
-            </div>
-            <OpenRecordingsButton
-              onClick={openRecordingsFolder}
-              label={t("settings.history.openFolder")}
-            />
-          </div>
-          <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
-            <div className="px-4 py-3 text-center text-text/60">
-              {t("settings.history.empty")}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl w-full mx-auto space-y-6">
       <div className="space-y-2">
@@ -197,18 +216,50 @@ export const HistorySettings: React.FC = () => {
           />
         </div>
         <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
-          <div className="divide-y divide-mid-gray/20">
-            {historyEntries.map((entry) => (
-              <HistoryEntryComponent
-                key={entry.id}
-                entry={entry}
-                onToggleSaved={() => toggleSaved(entry.id)}
-                onCopyText={() => copyToClipboard(entry.transcription_text)}
-                getAudioUrl={getAudioUrl}
-                deleteAudio={deleteAudioEntry}
-              />
-            ))}
+          <div className="border-b border-mid-gray/20 px-3 py-2 flex gap-4">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "recordings"}
+              onClick={() => setActiveTab("recordings")}
+              className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
+                activeTab === "recordings"
+                  ? "border-logo-primary text-logo-primary"
+                  : "border-transparent text-text/70 hover:text-text hover:border-text/30"
+              }`}
+            >
+              {t("settings.history.tabs.recordings", {
+                defaultValue: "Recordings",
+              })}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "jots"}
+              onClick={() => setActiveTab("jots")}
+              className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
+                activeTab === "jots"
+                  ? "border-logo-primary text-logo-primary"
+                  : "border-transparent text-text/70 hover:text-text hover:border-text/30"
+              }`}
+            >
+              {t("settings.history.tabs.jots", { defaultValue: "Jots" })}
+            </button>
           </div>
+          {activeTab === "recordings"
+            ? renderEntries(
+                recordingsEntries,
+                "recordings",
+                t("settings.history.empty"),
+              )
+            : renderEntries(
+                jotsEntries,
+                "jots",
+                t("settings.history.emptyJots", {
+                  defaultValue:
+                    "No jots yet. Enable post-processing to see completed results.",
+                }),
+              )}
         </div>
       </div>
     </div>
@@ -217,6 +268,8 @@ export const HistorySettings: React.FC = () => {
 
 interface HistoryEntryProps {
   entry: HistoryEntry;
+  displayMode: HistoryTab;
+  displayText: string;
   onToggleSaved: () => void;
   onCopyText: () => void;
   getAudioUrl: (fileName: string) => Promise<string | null>;
@@ -225,6 +278,8 @@ interface HistoryEntryProps {
 
 const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   entry,
+  displayMode,
+  displayText,
   onToggleSaved,
   onCopyText,
   getAudioUrl,
@@ -299,9 +354,25 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           </button>
         </div>
       </div>
-      <p className="italic text-text/90 text-sm pb-2 select-text cursor-text">
-        {entry.transcription_text}
+      <p
+        className={`text-sm pb-2 select-text cursor-text ${
+          displayMode === "jots"
+            ? "text-text/95 rounded-md border border-logo-primary/20 bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_95%)] px-3 py-2 not-italic"
+            : "italic text-text/90"
+        }`}
+      >
+        {displayText}
       </p>
+      {displayMode === "jots" && entry.post_process_prompt && (
+        <div className="rounded-md border border-logo-primary/25 bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_95%)] px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-logo-primary/90 pb-1">
+            {t("settings.history.promptUsed", { defaultValue: "Prompt used" })}
+          </p>
+          <p className="text-xs text-text/80 select-text cursor-text">
+            {entry.post_process_prompt}
+          </p>
+        </div>
+      )}
       <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
     </div>
   );

@@ -267,7 +267,7 @@ function App() {
       dir={direction}
       className="relative flex h-screen flex-col select-none cursor-default overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_82%),transparent_55%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_84%),transparent_48%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_4%),var(--color-background))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_88%),transparent_58%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_90%),transparent_50%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_6%),var(--color-background))]" />
       <Toaster
         theme="light"
         toastOptions={{

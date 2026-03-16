@@ -11,6 +11,8 @@ use tauri_plugin_store::StoreExt;
 
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
+pub const OLLAMA_PROVIDER_ID: &str = "ollama";
+pub const OLLAMA_DEFAULT_MODEL_ID: &str = "llama3.2:1b";
 
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
@@ -618,11 +620,21 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
         });
     }
 
+
+        // Ollama - local LLM inference (always present, no API key needed)
+    providers.push(PostProcessProvider {
+        id: OLLAMA_PROVIDER_ID.to_string(),
+        label: "Ollama (Local LLMs)".to_string(),
+        base_url: "http://127.0.0.1:11434/v1".to_string(),
+        allow_base_url_edit: false,
+        models_endpoint: Some("/models".to_string()),
+        supports_structured_output: false,
+    });
     // Custom provider always comes last
     providers.push(PostProcessProvider {
         id: "custom".to_string(),
         label: "Custom".to_string(),
-        base_url: "http://localhost:11434/v1".to_string(),
+           base_url: "http://localhost:11434/v1".to_string(), 
         allow_base_url_edit: true,
         models_endpoint: Some("/models".to_string()),
         supports_structured_output: false,
@@ -642,6 +654,9 @@ fn default_post_process_api_keys() -> HashMap<String, String> {
 fn default_model_for_provider(provider_id: &str) -> String {
     if provider_id == APPLE_INTELLIGENCE_PROVIDER_ID {
         return APPLE_INTELLIGENCE_DEFAULT_MODEL_ID.to_string();
+    }
+        if provider_id == OLLAMA_PROVIDER_ID {
+        return OLLAMA_DEFAULT_MODEL_ID.to_string();
     }
     String::new()
 }

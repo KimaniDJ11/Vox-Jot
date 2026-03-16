@@ -6,6 +6,9 @@ import type { ModelCardStatus } from "./ModelCard";
 import ModelCard from "./ModelCard";
 import HandyTextLogo from "../icons/HandyTextLogo";
 import { useModelStore } from "../../stores/modelStore";
+import OllamaSetup from "./OllamaSetup";
+
+type OnboardingStep = "stt" | "llm";
 
 interface OnboardingProps {
   onModelSelected: () => void;
@@ -23,6 +26,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
     downloadStats,
   } = useModelStore();
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [step, setStep] = useState<OnboardingStep>("stt");
 
   const isDownloading = selectedModelId !== null;
 
@@ -35,10 +39,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
     const stillExtracting = selectedModelId in extractingModels;
 
     if (model?.is_downloaded && !stillDownloading && !stillExtracting) {
-      // Model is ready — select it and transition
+      // STT model ready — move to LLM setup step
       selectModel(selectedModelId).then((success) => {
         if (success) {
-          onModelSelected();
+          setStep("llm");
         } else {
           toast.error(t("onboarding.errors.selectModel"));
           setSelectedModelId(null);
@@ -51,12 +55,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
     downloadingModels,
     extractingModels,
     selectModel,
-    onModelSelected,
   ]);
 
   const handleDownloadModel = async (modelId: string) => {
     setSelectedModelId(modelId);
-
     const success = await downloadModel(modelId);
     if (!success) {
       toast.error(t("onboarding.downloadFailed"));
@@ -78,6 +80,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
     return downloadStats[modelId]?.speed;
   };
 
+  if (step === "llm") {
+    return (
+      <OllamaSetup
+        onSkip={onModelSelected}
+        onComplete={onModelSelected}
+      />
+    );
+  }
+
   return (
     <div className="h-screen w-screen flex flex-col p-6 gap-4 inset-0">
       <div className="flex flex-col items-center gap-2 shrink-0">
@@ -86,7 +97,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
           {t("onboarding.subtitle")}
         </p>
       </div>
-
       <div className="max-w-[600px] w-full mx-auto text-center flex-1 flex flex-col min-h-0">
         <div className="flex flex-col gap-4 pb-6">
           {models
@@ -105,7 +115,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
                 downloadSpeed={getModelDownloadSpeed(model.id)}
               />
             ))}
-
           {models
             .filter((m: ModelInfo) => !m.is_downloaded)
             .filter((model: ModelInfo) => !model.is_recommended)

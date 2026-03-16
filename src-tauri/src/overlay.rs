@@ -386,3 +386,11 @@ pub fn emit_levels(app_handle: &AppHandle, levels: &Vec<f32>) {
         let _ = overlay_window.emit("mic-level", levels);
     }
 }
+
+pub fn emit_partial_transcription(app_handle: &AppHandle, text: &str) {
+    let _ = app_handle.emit("partial-transcription", text);
+
+    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        let _ = overlay_window.emit("partial-transcription", text);
+    }
+}

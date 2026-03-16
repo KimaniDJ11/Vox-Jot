@@ -23,8 +23,9 @@ use crate::post_processing::{
     AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition,
 };
 use crate::settings::{
-    self, get_settings, AutoSubmitKey, ClipboardHandling, KeyboardImplementation, LLMPrompt,
-    OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme, TypingTool,
+    self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
+    KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme,
+    TypingTool,
     APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::tray;
@@ -396,7 +397,9 @@ fn register_all_shortcuts_for_implementation(
         }
 
         // Skip post-processing shortcut when the feature is disabled
-        if id == "transcribe_with_post_process" && !current_settings.post_process_enabled {
+        if (id == "transcribe_with_post_process" || id == "rewrite_selection")
+            && !current_settings.post_process_enabled
+        {
             continue;
         }
 
@@ -780,21 +783,30 @@ pub fn change_auto_submit_key_setting(app: AppHandle, key: String) -> Result<(),
 pub fn change_post_process_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.post_process_enabled = enabled;
+    settings.enforce_local_privacy_mode();
     settings::write_settings(&app, settings.clone());
 
-    // Register or unregister the post-processing shortcut
-    if let Some(binding) = settings
-        .bindings
-        .get("transcribe_with_post_process")
-        .cloned()
-    {
-        if enabled {
-            let _ = register_shortcut(&app, binding);
-        } else {
-            let _ = unregister_shortcut(&app, binding);
+    // Register or unregister the post-processing shortcuts
+    for binding_id in ["transcribe_with_post_process", "rewrite_selection"] {
+        if let Some(binding) = settings.bindings.get(binding_id).cloned() {
+            if enabled {
+                let _ = register_shortcut(&app, binding);
+            } else {
+                let _ = unregister_shortcut(&app, binding);
+            }
         }
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_local_privacy_mode_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.local_privacy_mode = enabled;
+    settings.enforce_local_privacy_mode();
+    settings::write_settings(&app, settings);
     Ok(())
 }
 
@@ -909,6 +921,7 @@ pub fn change_post_process_base_url_setting(
     base_url: String,
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
+    let local_privacy_mode = settings.local_privacy_mode;
     let label = settings
         .post_process_provider(&provider_id)
         .map(|provider| provider.label.clone())
@@ -925,7 +938,15 @@ pub fn change_post_process_base_url_setting(
         ));
     }
 
+    if local_privacy_mode && !is_local_base_url(&base_url) {
+        return Err(
+            "Local privacy mode is enabled. Custom provider URL must point to localhost or loopback."
+                .to_string(),
+        );
+    }
+
     provider.base_url = base_url;
+    settings.enforce_local_privacy_mode();
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -978,7 +999,16 @@ pub fn change_post_process_model_setting(
 pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
+
+    if settings.local_privacy_mode && !settings.is_post_process_provider_local(&provider_id) {
+        return Err(
+            "Local privacy mode is enabled. Select a local post-processing provider."
+                .to_string(),
+        );
+    }
+
     settings.post_process_provider_id = provider_id;
+    settings.enforce_local_privacy_mode();
     settings::write_settings(&app, settings);
     Ok(())
 }

@@ -1,0 +1,545 @@
+/* ── Onboarding Design Tokens ────────────────────────────── */
+:root {
+  --ob-primary: #27408B;
+  --ob-primary-hover: #1e3370;
+  --ob-primary-light: rgba(39, 64, 139, 0.08);
+  --ob-white: #ffffff;
+  --ob-bg-right: #f0ece4;
+  --ob-text: #1a1a1a;
+  --ob-text-muted: #6b6b6b;
+  --ob-border: #e0ddd5;
+  --ob-success: #16a34a;
+  --ob-radius: 12px;
+}
+
+/* ── Root container ──────────────────────────────────────── */
+.ob-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--ob-white);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ── Progress bar ────────────────────────────────────────── */
+.ob-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 32px;
+  position: relative;
+  border-bottom: 1px solid var(--ob-border);
+  flex-shrink: 0;
+}
+
+.ob-progress-step {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  transition: color 0.3s ease;
+}
+
+.ob-step-done {
+  color: var(--ob-primary);
+}
+
+.ob-step-active {
+  color: var(--ob-text);
+}
+
+.ob-step-upcoming {
+  color: #b0aca4;
+}
+
+.ob-progress-chevron {
+  color: #b0aca4;
+  flex-shrink: 0;
+}
+
+.ob-progress-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ob-border);
+}
+
+.ob-progress-fill {
+  height: 100%;
+  background: var(--ob-primary);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Split pane ──────────────────────────────────────────── */
+.ob-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.ob-left {
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 48px 48px;
+  background: var(--ob-white);
+  overflow-y: auto;
+}
+
+.ob-left-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ob-right {
+  width: 55%;
+  background: var(--ob-bg-right);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.ob-right-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Back button ─────────────────────────────────────────── */
+.ob-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--ob-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 24px;
+  align-self: flex-start;
+  transition: opacity 0.2s;
+}
+
+.ob-back-btn:hover {
+  opacity: 0.6;
+}
+
+/* ── Shared typography ───────────────────────────────────── */
+.ob-heading {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ob-text);
+  margin: 0 0 12px;
+}
+
+.ob-subtext {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ob-text-muted);
+  margin: 0 0 32px;
+}
+
+/* ── Primary button ──────────────────────────────────────── */
+.ob-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--ob-primary);
+  color: var(--ob-white);
+  border: none;
+  border-radius: var(--ob-radius);
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  width: 100%;
+  max-width: 320px;
+}
+
+.ob-btn-primary:hover {
+  background: var(--ob-primary-hover);
+}
+
+.ob-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.ob-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Secondary / ghost button ────────────────────────────── */
+.ob-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: none;
+  color: var(--ob-text-muted);
+  border: none;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.ob-btn-secondary:hover {
+  color: var(--ob-text);
+}
+
+/* ── Permission card ─────────────────────────────────────── */
+.ob-perm-card {
+  width: 100%;
+  padding: 20px 24px;
+  border-radius: var(--ob-radius);
+  border: 1px solid var(--ob-border);
+  background: var(--ob-white);
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+
+.ob-perm-card-granted {
+  border-color: var(--ob-success);
+}
+
+.ob-perm-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ob-text);
+  margin: 0 0 6px;
+}
+
+.ob-perm-desc {
+  font-size: 13px;
+  color: var(--ob-text-muted);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.ob-perm-allow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 2px solid var(--ob-text);
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ob-text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ob-perm-allow-btn:hover {
+  background: var(--ob-primary-light);
+  border-color: var(--ob-primary);
+  color: var(--ob-primary);
+}
+
+.ob-perm-granted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ob-success);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ob-perm-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ob-text-muted);
+  font-size: 14px;
+}
+
+/* ── Info tooltip button ─────────────────────────────────── */
+.ob-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--ob-border);
+  background: none;
+  color: var(--ob-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+/* ── Right-pane visual cards ─────────────────────────────── */
+.ob-visual-card {
+  background: var(--ob-white);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  max-width: 420px;
+  width: 85%;
+}
+
+.ob-visual-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ob-hero-badge,
+.ob-hero-badge-sm,
+.ob-card-icon {
+  border-radius: 999px;
+  background: var(--ob-primary-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-hero-badge {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+
+.ob-hero-badge-sm {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+}
+
+.ob-card-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.ob-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ob-text);
+  margin: 0;
+}
+
+.ob-card-copy {
+  font-size: 14px;
+  color: var(--ob-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ob-feature-list,
+.ob-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ob-feature-item,
+.ob-step-item,
+.ob-card-row,
+.ob-stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ob-feature-item,
+.ob-step-item {
+  color: var(--ob-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ob-feature-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ob-primary);
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.ob-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--ob-primary-light);
+  color: var(--ob-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ob-stat-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.ob-stat-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--ob-border);
+}
+
+.ob-stat-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ob-text);
+  margin-bottom: 4px;
+}
+
+.ob-stat-copy {
+  font-size: 13px;
+  color: var(--ob-text-muted);
+  line-height: 1.5;
+}
+
+.ob-note-card {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--ob-primary-light);
+}
+
+.ob-note-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ob-text);
+  margin-bottom: 6px;
+}
+
+.ob-note-copy {
+  font-size: 14px;
+  color: var(--ob-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ob-kbd {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--ob-border);
+  border-radius: 8px;
+  background: #f5f2ec;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ob-text);
+}
+
+.ob-footnote {
+  margin: 20px 0 0;
+  font-size: 13px;
+  color: var(--ob-text-muted);
+  line-height: 1.6;
+}
+
+/* ── Loading spinner ─────────────────────────────────────── */
+@keyframes ob-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ob-spinner {
+  animation: ob-spin 1s linear infinite;
+}
+
+/* ── Celebration animation ───────────────────────────────── */
+@keyframes ob-celebrate {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ob-celebrate {
+  animation: ob-celebrate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Button row ──────────────────────────────────────────── */
+.ob-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* ── Bottom actions (for steps with continue/skip) ──────── */
+.ob-bottom-actions {
+  margin-top: auto;
+  padding-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── Help button (bottom-left) ───────────────────────────── */
+.ob-help-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ob-white);
+  border: 1px solid var(--ob-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--ob-text-muted);
+  cursor: pointer;
+  z-index: 10;
+}
+
+@media (max-width: 900px) {
+  .ob-split {
+    flex-direction: column;
+  }
+
+  .ob-left,
+  .ob-right {
+    width: 100%;
+  }
+
+  .ob-left {
+    padding: 24px;
+  }
+
+  .ob-right {
+    padding: 24px;
+    min-height: 240px;
+  }
+
+  .ob-visual-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ob-bottom-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ob-btn-secondary {
+    justify-content: center;
+  }
+}

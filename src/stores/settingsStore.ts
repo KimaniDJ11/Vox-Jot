@@ -134,6 +134,8 @@ const settingUpdaters: {
   history_limit: (value) => commands.updateHistoryLimit(value as number),
   post_process_enabled: (value) =>
     commands.changePostProcessEnabledSetting(value as boolean),
+  local_privacy_mode: (value) =>
+    commands.changeLocalPrivacyModeSetting(value as boolean),
   post_process_mode: (value) =>
     commands.changePostProcessModeSetting(value as string),
   post_process_selected_prompt_id: (value) =>

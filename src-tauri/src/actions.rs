@@ -21,6 +21,8 @@ use crate::TranscriptionCoordinator;
 use ferrous_opencc::{config::BuiltinConfig, OpenCC};
 use log::{debug, error, warn};
 use once_cell::sync::Lazy;
+use serde::Serialize;
+use specta::Type;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -56,6 +58,37 @@ const TRANSCRIPTION_FIELD: &str = "transcription";
 struct PostProcessExecution {
     result: PostProcessResult,
     prompt_used: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PostProcessPass {
+    Pass1,
+    Pass2,
+    Command,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct PostProcessRouteDebug {
+    pub route: String,
+    pub word_count: usize,
+    pub has_correction_cue: bool,
+    pub has_list_cue: bool,
+    pub has_paragraph_cue: bool,
+    pub has_transform_cue: bool,
+    pub has_technical_tokens: bool,
+    pub looks_incomplete: bool,
+    pub score: i32,
+}
+
+#[derive(Debug, Clone)]
+struct RouteFeatures {
+    word_count: usize,
+    has_correction_cue: bool,
+    has_list_cue: bool,
+    has_paragraph_cue: bool,
+    has_transform_cue: bool,
+    has_technical_tokens: bool,
+    looks_incomplete: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -186,6 +219,9 @@ fn build_post_process_result(
 fn build_apple_system_prompt(
     settings: &AppSettings,
     tone_context: Option<&ResolvedToneContext>,
+    _route: PostProcessPass,
+    rewrite_strength: u8,
+    _conservative_gate_active: bool,
 ) -> String {
     let mode_label = match settings.post_process_mode {
         PostProcessMode::Literal => "literal",
@@ -193,40 +229,85 @@ fn build_apple_system_prompt(
     };
     let tone_rule = if let Some(tone_context) = tone_context {
         format!(
-            "- Apply this tone guidance for the active app {} (tone: {}): {}",
+            "- {} (tone: {}): {}",
             app_display_name(&tone_context.active_app_context),
             tone_context.tone_id,
             tone_context.instruction
         )
     } else {
-        "- Do not infer or apply app-specific tone unless explicit tone guidance is provided."
+        "- Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording."
             .to_string()
     };
 
     format!(
         "You are a local dictation post-processor.\n\
-Your job is to clean speech-to-text output while preserving meaning.\n\
+\n\
+Task:\n\
+Clean speech-to-text output while preserving the speaker's meaning exactly.\n\
 \n\
 Active mode: {mode_label}\n\
 Rewrite strength: {} (0=conservative, 2=aggressive)\n\
 \n\
+Return only the final text.\n\
+\n\
 Rules:\n\
-- Return only the final text.\n\
 - Preserve meaning and the speaker's intended correction.\n\
-- Never invent facts, headings, or commentary.\n\
+- Never invent facts, headings, commentary, explanations, or extra detail.\n\
 - Apply personal dictionary spellings exactly when they appear in the transcript.\n\
-- Fix capitalization, punctuation, paragraph breaks, and obvious list formatting.\n\
-- Interpret spoken correction cues (for example: \"scratch that\", \"I mean\", \"correction\") and keep only the corrected intent.\n\
-- When dictation implies structure (steps, bullets, numbered items), format it cleanly while preserving order and meaning.\n\
+- Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.\n\
+- Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.\n\
+- Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.\n\
+- Interpret spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"correction\", \"wait no\", \"rather\", and natural restarts, and keep only the corrected intent.\n\
+- Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.\n\
+- If the transcript is already clear, make the smallest possible changes.\n\
+- Use stronger rewrites only when clear structure, correction, or formatting cues are present.\n\
+- If multiple interpretations are possible, choose the most conservative one.\n\
+- If the utterance seems incomplete, ambiguous, cut off, or mid-thought, avoid heavy rewriting and stay close to the transcript.\n\
+- Structure rules:\n\
+- Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.\n\
+- If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.\n\
+- Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.\n\
+- When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.\n\
+- Example: \"I want to pick up a few things from the store. Bread, potato chips, ice cream.\" -> \"I want to pick up a few things from the store:\\n* Bread\\n* Potato chips\\n* Ice cream\"\n\
+- If sequence words or ordered cues appear, such as \"one\", \"two\", \"three\", \"first\", \"second\", \"next\", or \"finally\", prefer a numbered list when the content is clearly step-like or ordered.\n\
+- If the user clearly dictated separate thoughts, insert paragraph breaks.\n\
+- If the user says \"new line\", \"new paragraph\", \"skip a line\", or equivalent phrasing, reflect that structure in the final text when it fits naturally.\n\
+- If punctuation words are spoken explicitly, such as \"period\", \"comma\", \"question mark\", \"exclamation point\", or \"colon\", respect them when they appear intentional.\n\
+- If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.\n\
+- Mode behavior:\n\
 - In literal mode, preserve wording as much as possible.\n\
-- In intent mode, remove filler words and false starts when they do not change meaning.\n\
+- In intent mode, lightly clean for readability while preserving tone, specificity, and meaning.\n\
+- In intent mode, convert obvious rambling speech into clean written text only when the meaning is unmistakable.\n\
+- Do not summarize, shorten, or formalize unless the transcript itself clearly signals that intent.\n\
+- Correction behavior:\n\
+- When the speaker revises a phrase mid-sentence, keep the final intended wording and remove the abandoned wording.\n\
+- When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.\n\
+- Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like \"...? No, ...\" and \"..., no, ...\".\n\
+- Example: \"Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock.\" -> \"Hi Greg, let's connect soon. Are you available Friday at four o'clock?\"\n\
+- If a correction is unclear, preserve the original wording instead of guessing.\n\
+- Safety behavior:\n\
+- Do not guess unknown jargon.\n\
+- Do not replace uncommon words with more common words unless the speaker clearly intended that.\n\
+- Do not convert uncertain technical text into plain English.\n\
+- Do not add markdown headings, explanations, labels, or surrounding quotation marks.\n\
+\n\
+Active app guidance:\n\
 - {tone_rule}\n\
-- Do not use markdown headings or explanations.",
-        settings.max_rewrite_strength
+\n\
+- Output:\n\
+- Return only the final processed text.\n\
+- Do not explain changes.\n\
+- Do not mention rules.",
+        rewrite_strength,
     )
 }
 
-fn build_apple_user_content(settings: &AppSettings, normalized_text: &str) -> String {
+fn build_apple_user_content(
+    settings: &AppSettings,
+    normalized_text: &str,
+    rewrite_strength: u8,
+    conservative_gate_active: bool,
+) -> String {
     let mode_label = match settings.post_process_mode {
         PostProcessMode::Literal => "literal",
         PostProcessMode::Intent => "intent",
@@ -252,14 +333,25 @@ fn build_apple_user_content(settings: &AppSettings, normalized_text: &str) -> St
         format!("Personal dictionary:\n{}", entries)
     };
 
+    let conservative_gate_note = if conservative_gate_active {
+        "Utterance boundary confidence: low. Keep edits minimal and conservative."
+    } else {
+        "Utterance boundary confidence: sufficient for normal formatting rules."
+    };
+
     format!(
         "Mode: {mode_label}\n\
 Rewrite strength: {}\n\
+{conservative_gate_note}\n\
+\n\
+Special handling:\n\
+- If the transcript corrects itself with a later \"no\", \"sorry\", \"actually\", or similar restart, keep only the corrected wording.\n\
+- If the transcript has an intro sentence followed by short list items, keep the intro sentence and format the items as `* ` bullets.\n\
 \n\
 {dictionary_section}\n\
 \n\
 Transcript:\n{normalized_text}",
-        settings.max_rewrite_strength
+        rewrite_strength
     )
 }
 
@@ -272,6 +364,302 @@ fn build_non_apple_tone_instruction(tone_context: Option<&ResolvedToneContext>) 
             tone.instruction
         )
     })
+}
+
+fn contains_any_ci(text: &str, cues: &[&str]) -> bool {
+    let lower = text.to_ascii_lowercase();
+    cues.iter().any(|cue| lower.contains(cue))
+}
+
+fn normalize_match_text(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
+}
+
+fn has_spoken_correction_restart(text: &str) -> bool {
+    let normalized = normalize_match_text(text);
+    let direct_cues = [
+        "scratch that",
+        "i mean",
+        "correction",
+        "actually",
+        "wait no",
+        "rather",
+    ];
+    if direct_cues.iter().any(|cue| normalized.contains(cue)) {
+        return true;
+    }
+
+    let restart_markers = [
+        ", no, ",
+        ". no, ",
+        "? no, ",
+        "! no, ",
+        "; no, ",
+        ": no, ",
+        ", sorry, ",
+        ". sorry, ",
+        "? sorry, ",
+        "! sorry, ",
+        "; sorry, ",
+        ": sorry, ",
+    ];
+
+    restart_markers
+        .iter()
+        .any(|marker| normalized.contains(marker))
+}
+
+fn looks_like_short_item_series(text: &str) -> bool {
+    let items: Vec<String> = text
+        .split(',')
+        .map(|item| {
+            item.trim()
+                .trim_matches(|c: char| matches!(c, '.' | ',' | ';' | ':' | '!' | '?'))
+                .to_string()
+        })
+        .filter(|item| !item.is_empty())
+        .collect();
+
+    if items.len() < 3 {
+        return false;
+    }
+
+    items.iter().all(|item| {
+        let word_count = item.split_whitespace().count();
+        word_count > 0
+            && word_count <= 4
+            && !contains_any_ci(item, &[" and ", " or ", " because ", " but ", " if "])
+    })
+}
+
+fn has_intro_plus_short_items(text: &str) -> bool {
+    let intro_cues = [
+        "list",
+        "things",
+        "items",
+        "store",
+        "shopping",
+        "grocery",
+        "groceries",
+        "pick up",
+        "buy",
+        "bring",
+        "pack",
+        "ingredients",
+        "tasks",
+        "to do",
+        "todo",
+        "goals",
+    ];
+
+    [".", ":", "\n"].iter().any(|separator| {
+        let Some((intro, tail)) = text.split_once(separator) else {
+            return false;
+        };
+
+        let intro = intro.trim();
+        let tail = tail.trim();
+        if intro.split_whitespace().count() < 4 || tail.is_empty() {
+            return false;
+        }
+
+        contains_any_ci(intro, &intro_cues) && looks_like_short_item_series(tail)
+    })
+}
+
+fn has_technical_tokens(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let strong_tokens = ["http://", "https://", "www.", "@", "src/", ".tsx", ".ts", ".rs"];
+    if strong_tokens.iter().any(|token| lower.contains(token)) {
+        return true;
+    }
+
+    text.chars().any(|c| matches!(c, '/' | '\\' | '_' | '{' | '}' | '[' | ']' | '<' | '>' | '`'))
+}
+
+fn looks_incomplete_utterance(transcription: &str) -> bool {
+    let trimmed = transcription.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let has_terminal_boundary = trimmed
+        .chars()
+        .last()
+        .map(|c| matches!(c, '.' | '!' | '?'))
+        .unwrap_or(false);
+    if has_terminal_boundary {
+        return false;
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    let trailing_fragment_cues = [" and", " or", " to", " for", " with", " because", " but"];
+    trailing_fragment_cues.iter().any(|cue| lower.ends_with(cue))
+}
+
+fn extract_route_features(transcription: &str) -> RouteFeatures {
+    let trimmed = transcription.trim();
+    let word_count = trimmed.split_whitespace().count();
+
+    let list_cues = [
+        "grocery list",
+        "shopping list",
+        "packing list",
+        "first",
+        "second",
+        "third",
+        "next",
+        "then",
+        "one",
+        "two",
+        "three",
+    ];
+    let paragraph_cues = ["new line", "new paragraph", "skip a line"];
+    let transform_cues = [
+        "make this shorter",
+        "translate this",
+        "turn this into",
+        "rewrite this",
+        "summarize this",
+    ];
+
+    RouteFeatures {
+        word_count,
+        has_correction_cue: has_spoken_correction_restart(trimmed),
+        has_list_cue: contains_any_ci(trimmed, &list_cues) || has_intro_plus_short_items(trimmed),
+        has_paragraph_cue: contains_any_ci(trimmed, &paragraph_cues),
+        has_transform_cue: contains_any_ci(trimmed, &transform_cues),
+        has_technical_tokens: has_technical_tokens(trimmed),
+        looks_incomplete: looks_incomplete_utterance(trimmed),
+    }
+}
+
+fn route_score(features: &RouteFeatures) -> i32 {
+    let mut score = 0;
+    if features.has_correction_cue {
+        score += 3;
+    }
+    if features.has_list_cue {
+        score += 3;
+    }
+    if features.has_paragraph_cue {
+        score += 2;
+    }
+    if features.word_count >= 12 {
+        score += 1;
+    }
+    if features.has_technical_tokens {
+        score -= 2;
+    }
+    score
+}
+
+fn choose_post_process_pass(transcription: &str) -> PostProcessPass {
+    let trimmed = transcription.trim();
+    if trimmed.is_empty() {
+        return PostProcessPass::Pass1;
+    }
+
+    let features = extract_route_features(trimmed);
+
+    if features.has_transform_cue {
+        return PostProcessPass::Command;
+    }
+    if features.looks_incomplete {
+        return PostProcessPass::Pass1;
+    }
+    if features.word_count <= 6
+        && !features.has_correction_cue
+        && !features.has_list_cue
+        && !features.has_paragraph_cue
+    {
+        return PostProcessPass::Pass1;
+    }
+
+    let score = route_score(&features);
+
+    if score >= 3 {
+        PostProcessPass::Pass2
+    } else {
+        PostProcessPass::Pass1
+    }
+}
+
+pub fn analyze_post_process_route(transcription: &str) -> PostProcessRouteDebug {
+    let features = extract_route_features(transcription);
+    let route = choose_post_process_pass(transcription);
+    let score = route_score(&features);
+
+    let route_label = match route {
+        PostProcessPass::Pass1 => "pass1",
+        PostProcessPass::Pass2 => "pass2",
+        PostProcessPass::Command => "command",
+    }
+    .to_string();
+
+    PostProcessRouteDebug {
+        route: route_label,
+        word_count: features.word_count,
+        has_correction_cue: features.has_correction_cue,
+        has_list_cue: features.has_list_cue,
+        has_paragraph_cue: features.has_paragraph_cue,
+        has_transform_cue: features.has_transform_cue,
+        has_technical_tokens: features.has_technical_tokens,
+        looks_incomplete: features.looks_incomplete,
+        score,
+    }
+}
+
+fn has_any_case_insensitive(text: &str, cues: &[&str]) -> bool {
+    let lower = text.to_ascii_lowercase();
+    cues.iter().any(|cue| lower.contains(cue))
+}
+
+fn should_force_conservative_rewrite(transcription: &str) -> bool {
+    let trimmed = transcription.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let structure_cues = [
+        "first",
+        "second",
+        "third",
+        "next",
+        "then",
+        "step",
+        "steps",
+        "bullet",
+        "numbered",
+        "list",
+    ];
+    if has_spoken_correction_restart(trimmed)
+        || has_any_case_insensitive(trimmed, &structure_cues)
+        || has_intro_plus_short_items(trimmed)
+    {
+        return false;
+    }
+
+    let word_count = trimmed.split_whitespace().count();
+    let has_terminal_boundary = trimmed
+        .chars()
+        .last()
+        .map(|c| matches!(c, '.' | '!' | '?'))
+        .unwrap_or(false);
+    let has_newline = trimmed.contains('\n');
+    let trailing_fragment_cues = [" and", " or", " to", " for", " with", " because"];
+    let has_trailing_fragment = trailing_fragment_cues
+        .iter()
+        .any(|cue| trimmed.to_ascii_lowercase().ends_with(cue));
+
+    if has_terminal_boundary || has_newline {
+        return false;
+    }
+
+    word_count <= 8 || has_trailing_fragment
 }
 
 fn live_partial_config_for_model(model_id: &str) -> (u64, usize, usize) {
@@ -331,7 +719,13 @@ fn apple_fallback_result(
             normalized_text.clone(),
             normalized_text,
             dictionary_hits,
-            build_apple_system_prompt(settings, None),
+            build_apple_system_prompt(
+                settings,
+                None,
+                PostProcessPass::Pass1,
+                settings.max_rewrite_strength,
+                false,
+            ),
             active_app_context,
             None,
         ))
@@ -387,6 +781,24 @@ async fn post_process_transcription(
     transcription: &str,
     active_app_context: Option<ActiveAppContext>,
 ) -> Option<PostProcessExecution> {
+    let selected_pass = choose_post_process_pass(transcription);
+    let force_conservative_rewrite = should_force_conservative_rewrite(transcription);
+    let effective_rewrite_strength = if force_conservative_rewrite {
+        0
+    } else {
+        match selected_pass {
+            PostProcessPass::Pass1 => settings.max_rewrite_strength.min(1),
+            PostProcessPass::Pass2 => settings.max_rewrite_strength,
+            PostProcessPass::Command => 2,
+        }
+    };
+
+    if force_conservative_rewrite {
+        debug!(
+            "Applying conservative post-process safeguard for low-boundary-confidence utterance"
+        );
+    }
+
     let provider = match settings.active_post_process_provider().cloned() {
         Some(provider) => provider,
         None => {
@@ -406,8 +818,19 @@ async fn post_process_transcription(
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         let dictionary_result = apply_personal_dictionary(transcription, &settings.personal_dictionary);
         let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
-        let system_prompt = build_apple_system_prompt(settings, tone_context.as_ref());
-        let user_content = build_apple_user_content(settings, &dictionary_result.text);
+        let system_prompt = build_apple_system_prompt(
+            settings,
+            tone_context.as_ref(),
+            selected_pass,
+            effective_rewrite_strength,
+            force_conservative_rewrite,
+        );
+        let user_content = build_apple_user_content(
+            settings,
+            &dictionary_result.text,
+            effective_rewrite_strength,
+            force_conservative_rewrite,
+        );
         let applied_tone_id = tone_context.as_ref().map(|tone| tone.tone_id.clone());
 
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -536,18 +959,23 @@ async fn post_process_transcription(
         .unwrap_or_default();
 
     let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
-    let tone_instruction = build_non_apple_tone_instruction(tone_context.as_ref());
+    let mut base_system_prompt = build_apple_system_prompt(
+        settings,
+        tone_context.as_ref(),
+        selected_pass,
+        effective_rewrite_strength,
+        force_conservative_rewrite,
+    );
+    let custom_prompt = build_system_prompt(&prompt);
+    if !custom_prompt.is_empty() {
+        base_system_prompt.push_str("\n\nAdditional custom instructions:\n");
+        base_system_prompt.push_str(&custom_prompt);
+    }
 
     if provider.supports_structured_output {
         debug!("Using structured outputs for provider '{}'", provider.id);
 
-        let mut system_prompt = build_system_prompt(&prompt);
-        if let Some(instruction) = &tone_instruction {
-            if !system_prompt.is_empty() {
-                system_prompt.push('\n');
-            }
-            system_prompt.push_str(instruction);
-        }
+        let system_prompt = base_system_prompt.clone();
         let user_content = transcription.to_string();
 
         // Define JSON schema for transcription output
@@ -651,12 +1079,7 @@ async fn post_process_transcription(
     }
 
     // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let base_prompt = if let Some(instruction) = &tone_instruction {
-        format!("{}\n\n{}", instruction, prompt)
-    } else {
-        prompt.clone()
-    };
-    let processed_prompt = base_prompt.replace("${output}", transcription);
+    let processed_prompt = format!("{}\n\nTranscript:\n{}", base_system_prompt, transcription);
     debug!("Processed prompt length: {} chars", processed_prompt.len());
 
     match crate::llm_client::send_chat_completion(&provider, api_key, &model, processed_prompt)
@@ -1283,9 +1706,11 @@ impl ShortcutAction for TestAction {
 #[cfg(test)]
 mod tests {
     use super::{
-        apple_fallback_result, build_apple_system_prompt, build_apple_user_content,
-        build_non_apple_tone_instruction, extract_spoken_submit_command,
+        analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
+        build_apple_user_content,
+        build_non_apple_tone_instruction, choose_post_process_pass, extract_spoken_submit_command,
         live_partial_config_for_model, preview_app_context_from_override, resolve_tone_context,
+        should_force_conservative_rewrite, PostProcessPass,
     };
     use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
     use crate::settings::{get_default_settings, AutoSubmitKey};
@@ -1296,12 +1721,20 @@ mod tests {
         settings.post_process_mode = PostProcessMode::Intent;
         settings.max_rewrite_strength = 2;
 
-        let prompt = build_apple_system_prompt(&settings, None);
+        let prompt = build_apple_system_prompt(
+            &settings,
+            None,
+            PostProcessPass::Pass2,
+            settings.max_rewrite_strength,
+            false,
+        );
 
         assert!(prompt.contains("Active mode: intent"));
         assert!(prompt.contains("Rewrite strength: 2"));
         assert!(prompt.contains("Return only the final text."));
         assert!(prompt.contains("scratch that"));
+        assert!(prompt.contains("Are you available Friday at four o'clock?"));
+        assert!(prompt.contains("I want to pick up a few things from the store"));
     }
 
     #[test]
@@ -1315,9 +1748,12 @@ mod tests {
             exact_only: true,
         }];
 
-        let content = build_apple_user_content(&settings, "swift ui example");
+        let content =
+            build_apple_user_content(&settings, "swift ui example", settings.max_rewrite_strength, false);
 
         assert!(content.contains("Mode: literal"));
+        assert!(content.contains("Special handling:"));
+        assert!(content.contains("format the items as `* ` bullets"));
         assert!(content.contains("- swift ui => SwiftUI [exact only]"));
         assert!(content.contains("Transcript:\nswift ui example"));
     }
@@ -1358,7 +1794,13 @@ mod tests {
 
         let tone_context = resolve_tone_context(&settings, Some(&context))
             .expect("Slack should resolve to a default tone");
-        let prompt = build_apple_system_prompt(&settings, Some(&tone_context));
+        let prompt = build_apple_system_prompt(
+            &settings,
+            Some(&tone_context),
+            PostProcessPass::Pass2,
+            settings.max_rewrite_strength,
+            false,
+        );
 
         assert_eq!(tone_context.tone_id, "casual");
         assert!(prompt.contains("tone: casual"));
@@ -1376,10 +1818,18 @@ mod tests {
         };
 
         let tone_context = resolve_tone_context(&settings, Some(&context));
-        let prompt = build_apple_system_prompt(&settings, tone_context.as_ref());
+        let prompt = build_apple_system_prompt(
+            &settings,
+            tone_context.as_ref(),
+            PostProcessPass::Pass2,
+            settings.max_rewrite_strength,
+            false,
+        );
 
         assert!(tone_context.is_none());
-        assert!(prompt.contains("Do not infer or apply app-specific tone"));
+        assert!(prompt.contains(
+            "Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording."
+        ));
     }
 
     #[test]
@@ -1431,6 +1881,94 @@ mod tests {
         assert_eq!(interval_ms, 450);
         assert_eq!(min_samples, 8_000);
         assert_eq!(min_growth, 2_400);
+    }
+
+    #[test]
+    fn conservative_rewrite_gate_detects_short_fragment_without_boundary() {
+        assert!(should_force_conservative_rewrite("draft email to marketing"));
+    }
+
+    #[test]
+    fn conservative_rewrite_gate_allows_correction_cue() {
+        assert!(!should_force_conservative_rewrite(
+            "Actually wait no send this update to product"
+        ));
+    }
+
+    #[test]
+    fn conservative_rewrite_gate_allows_complete_sentence() {
+        assert!(!should_force_conservative_rewrite(
+            "Please send this to the team after lunch."
+        ));
+    }
+
+    #[test]
+    fn choose_pass_prefers_pass1_for_short_plain_phrase() {
+        assert_eq!(
+            choose_post_process_pass("sounds good"),
+            PostProcessPass::Pass1
+        );
+    }
+
+    #[test]
+    fn choose_pass_uses_pass2_for_sequence_cues() {
+        assert_eq!(
+            choose_post_process_pass(
+                "my top goals this week are first finish the report second send the presentation"
+            ),
+            PostProcessPass::Pass2
+        );
+    }
+
+    #[test]
+    fn choose_pass_uses_pass2_for_sentence_level_correction_restart() {
+        assert_eq!(
+            choose_post_process_pass(
+                "Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock."
+            ),
+            PostProcessPass::Pass2
+        );
+    }
+
+    #[test]
+    fn choose_pass_uses_pass2_for_intro_plus_items() {
+        assert_eq!(
+            choose_post_process_pass(
+                "I want to pick up a few things from the store. Bread, potato chips, ice cream."
+            ),
+            PostProcessPass::Pass2
+        );
+    }
+
+    #[test]
+    fn choose_pass_uses_command_for_transform_intent() {
+        assert_eq!(
+            choose_post_process_pass("make this shorter and clearer"),
+            PostProcessPass::Command
+        );
+    }
+
+    #[test]
+    fn analyze_route_reports_expected_flags() {
+        let result = analyze_post_process_route(
+            "my top goals this week are first finish the report second send the presentation",
+        );
+
+        assert_eq!(result.route, "pass2");
+        assert!(result.has_list_cue);
+        assert!(!result.has_transform_cue);
+        assert!(!result.looks_incomplete);
+    }
+
+    #[test]
+    fn analyze_route_detects_intro_plus_items_as_list_cue() {
+        let result = analyze_post_process_route(
+            "I want to pick up a few things from the store. Bread, potato chips, ice cream.",
+        );
+
+        assert_eq!(result.route, "pass2");
+        assert!(result.has_list_cue);
+        assert!(!result.has_transform_cue);
     }
 }
 

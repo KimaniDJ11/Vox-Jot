@@ -49,6 +49,7 @@ enum LoadedEngine {
 #[derive(Clone)]
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
+    transcribe_lock: Arc<Mutex<()>>,
     model_manager: Arc<ModelManager>,
     app_handle: AppHandle,
     current_model_id: Arc<Mutex<Option<String>>>,
@@ -63,6 +64,7 @@ impl TranscriptionManager {
     pub fn new(app_handle: &AppHandle, model_manager: Arc<ModelManager>) -> Result<Self> {
         let manager = Self {
             engine: Arc::new(Mutex::new(None)),
+            transcribe_lock: Arc::new(Mutex::new(())),
             model_manager,
             app_handle: app_handle.clone(),
             current_model_id: Arc::new(Mutex::new(None)),
@@ -424,6 +426,14 @@ impl TranscriptionManager {
     }
 
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
+        // Live partials and the final stop-triggered transcription share one engine.
+        // Serialize transcribe calls so a long-running partial cannot steal the engine
+        // and cause the final full transcription to fail or return nothing.
+        let _transcribe_guard = self
+            .transcribe_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
         // Update last activity timestamp
         self.last_activity.store(
             SystemTime::now()

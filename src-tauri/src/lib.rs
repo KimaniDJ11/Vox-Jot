@@ -371,6 +371,7 @@ pub fn run(cli_args: CliArgs) {
         commands::check_apple_intelligence_available,
         commands::preview_post_process_text,
         commands::resolve_post_process_preview,
+        commands::debug_analyze_post_process_route,
         commands::initialize_enigo,
         commands::initialize_shortcuts,
         commands::models::get_available_models,

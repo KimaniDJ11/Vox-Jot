@@ -33,7 +33,7 @@ interface SectionConfig {
   labelKey: string;
   icon: React.ComponentType<IconProps>;
   component: React.ComponentType;
-  enabled: (settings: any) => boolean;
+  enabled: (settings?: any) => boolean;
 }
 
 export const SECTIONS_CONFIG = {
@@ -77,7 +77,7 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.debug",
     icon: FlaskConical,
     component: DebugSettings,
-    enabled: (settings) => settings?.debug_mode ?? false,
+    enabled: () => true,
   },
   about: {
     labelKey: "sidebar.about",
@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { settings } = useSettings();
 
   const availableSections = Object.entries(SECTIONS_CONFIG)
-    .filter(([_, config]) => config.enabled(settings))
+    .filter(([_, config]) => config.enabled())
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (

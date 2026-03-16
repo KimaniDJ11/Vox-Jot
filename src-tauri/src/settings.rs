@@ -13,6 +13,9 @@ pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
 pub const OLLAMA_DEFAULT_MODEL_ID: &str = "llama3.2:1b";
+const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 4;
+const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
+const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
 
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
@@ -350,6 +353,8 @@ pub struct AppSettings {
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
     pub post_process_selected_prompt_id: Option<String>,
+    #[serde(default = "default_post_process_prompt_policy_version")]
+    pub post_process_prompt_policy_version: u32,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -684,12 +689,85 @@ fn default_post_process_models() -> HashMap<String, String> {
     map
 }
 
+fn default_post_process_prompt_template() -> &'static str {
+    r#"You are a local dictation post-processor.
+
+Task:
+Clean speech-to-text output while preserving the speaker's meaning exactly.
+
+Active mode: intent
+Rewrite strength: 1 (0=conservative, 2=aggressive)
+
+Return only the final text.
+
+Rules:
+- Preserve meaning and the speaker's intended correction.
+- Never invent facts, headings, commentary, explanations, or extra detail.
+- Apply personal dictionary spellings exactly when they appear in the transcript.
+- Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.
+- Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.
+- Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.
+- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "rather", and natural restarts, and keep only the corrected intent.
+- Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.
+- If the transcript is already clear, make the smallest possible changes.
+- Use stronger rewrites only when clear structure, correction, or formatting cues are present.
+- If multiple interpretations are possible, choose the most conservative one.
+- If the utterance seems incomplete, ambiguous, cut off, or mid-thought, avoid heavy rewriting and stay close to the transcript.
+
+Structure rules:
+- Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.
+- If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.
+- Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.
+- When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.
+- Example: "I want to pick up a few things from the store. Bread, potato chips, ice cream." -> "I want to pick up a few things from the store:\n* Bread\n* Potato chips\n* Ice cream"
+- If sequence words or ordered cues appear, such as "one", "two", "three", "first", "second", "next", or "finally", prefer a numbered list when the content is clearly step-like or ordered.
+- If the user clearly dictated separate thoughts, insert paragraph breaks.
+- If the user says "new line", "new paragraph", "skip a line", or equivalent phrasing, reflect that structure in the final text when it fits naturally.
+- If punctuation words are spoken explicitly, such as "period", "comma", "question mark", "exclamation point", or "colon", respect them when they appear intentional.
+- If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.
+
+Mode behavior:
+- In literal mode, preserve wording as much as possible and avoid stylistic rewriting.
+- In intent mode, lightly clean for readability while preserving tone, specificity, and meaning.
+- In intent mode, convert obvious rambling speech into clean written text only when the meaning is unmistakable.
+- Do not summarize, shorten, or formalize unless the transcript itself clearly signals that intent.
+
+Correction behavior:
+- When the speaker revises a phrase mid-sentence, keep the final intended wording and remove the abandoned wording.
+- When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.
+- Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like "...? No, ..." and "..., no, ...".
+- Example: "Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock." -> "Hi Greg, let's connect soon. Are you available Friday at four o'clock?"
+- If a correction is unclear, preserve the original wording instead of guessing.
+
+Safety behavior:
+- Do not guess unknown jargon.
+- Do not replace uncommon words with more common words unless the speaker clearly intended that.
+- Do not convert uncertain technical text into plain English.
+- Do not add markdown headings, explanations, labels, or surrounding quotation marks.
+
+Active app guidance:
+- Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording.
+- Prefer readable notes over polished prose, but do not over-format short fragments.
+
+Output:
+- Return only the final processed text.
+- Do not explain changes.
+- Do not mention rules.
+
+Transcript:
+${output}"#
+}
+
 fn default_post_process_prompts() -> Vec<LLMPrompt> {
     vec![LLMPrompt {
-        id: "default_improve_transcriptions".to_string(),
-        name: "Improve Transcriptions".to_string(),
-        prompt: "Clean this transcript:\n1. Fix spelling, capitalization, punctuation, and sentence boundaries\n2. Convert number words to digits when appropriate (twenty-five → 25, ten percent → 10%, five dollars → $5)\n3. Replace spoken punctuation with symbols (period → ., comma → ,, question mark → ?)\n4. Remove filler words (um, uh, like as filler) without changing meaning\n5. Handle spoken corrections and backtracks (for example: \"scratch that\", \"I mean\", \"correction\") by keeping only the corrected intent\n6. Preserve natural list structure (bullets or numbering) when the speaker dictates steps or items\n7. Keep the language in the original transcript\n\nPreserve meaning. Do not invent details, headings, or commentary.\n\nReturn only the cleaned transcript.\n\nTranscript:\n${output}".to_string(),
+        id: DEFAULT_POST_PROCESS_PROMPT_ID.to_string(),
+        name: DEFAULT_POST_PROCESS_PROMPT_NAME.to_string(),
+        prompt: default_post_process_prompt_template().to_string(),
     }]
+}
+
+fn default_post_process_prompt_policy_version() -> u32 {
+    POST_PROCESS_PROMPT_POLICY_VERSION
 }
 
 fn default_typing_tool() -> TypingTool {
@@ -698,6 +776,44 @@ fn default_typing_tool() -> TypingTool {
 
 fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
     let mut changed = false;
+
+    if settings.post_process_prompt_policy_version < POST_PROCESS_PROMPT_POLICY_VERSION {
+        let default_prompts = default_post_process_prompts();
+        let default_prompt_id = default_prompts.first().map(|prompt| prompt.id.clone());
+
+        settings.post_process_prompts = default_prompts;
+        settings.post_process_selected_prompt_id = default_prompt_id;
+        settings.post_process_prompt_policy_version = POST_PROCESS_PROMPT_POLICY_VERSION;
+        changed = true;
+
+        debug!(
+            "Migrated post-process prompts to policy version {}",
+            POST_PROCESS_PROMPT_POLICY_VERSION
+        );
+    }
+
+    if settings.post_process_prompts.is_empty() {
+        settings.post_process_prompts = default_post_process_prompts();
+        changed = true;
+    }
+
+    let selected_prompt_valid = settings
+        .post_process_selected_prompt_id
+        .as_ref()
+        .map(|selected_id| {
+            settings
+                .post_process_prompts
+                .iter()
+                .any(|prompt| &prompt.id == selected_id)
+        })
+        .unwrap_or(false);
+
+    if !selected_prompt_valid {
+        settings.post_process_selected_prompt_id =
+            settings.post_process_prompts.first().map(|prompt| prompt.id.clone());
+        changed = true;
+    }
+
     for provider in default_post_process_providers() {
         // Use match to do a single lookup - either sync existing or add new
         match settings
@@ -896,7 +1012,10 @@ pub fn get_default_settings() -> AppSettings {
         post_process_api_keys: default_post_process_api_keys(),
         post_process_models: default_post_process_models(),
         post_process_prompts: default_post_process_prompts(),
-        post_process_selected_prompt_id: None,
+        post_process_selected_prompt_id: default_post_process_prompts()
+            .first()
+            .map(|prompt| prompt.id.clone()),
+        post_process_prompt_policy_version: default_post_process_prompt_policy_version(),
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
@@ -1176,6 +1295,63 @@ mod tests {
         assert!(changed);
         assert!(!settings.tone_definitions.is_empty());
         assert!(!settings.app_tone_mappings.is_empty());
+    }
+
+    #[test]
+    fn default_settings_pin_current_prompt_policy_version() {
+        let settings = get_default_settings();
+        assert_eq!(
+            settings.post_process_prompt_policy_version,
+            POST_PROCESS_PROMPT_POLICY_VERSION
+        );
+    }
+
+    #[test]
+    fn ensure_post_process_defaults_migrates_legacy_prompt_policy() {
+        let mut settings = get_default_settings();
+        settings.post_process_prompt_policy_version = 0;
+        settings.post_process_prompts = vec![LLMPrompt {
+            id: "custom_old".to_string(),
+            name: "Custom Old".to_string(),
+            prompt: "Old prompt".to_string(),
+        }];
+        settings.post_process_selected_prompt_id = Some("custom_old".to_string());
+
+        let changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(changed);
+        assert_eq!(
+            settings.post_process_prompt_policy_version,
+            POST_PROCESS_PROMPT_POLICY_VERSION
+        );
+        assert_eq!(settings.post_process_prompts.len(), 1);
+        assert_eq!(settings.post_process_prompts[0].id, DEFAULT_POST_PROCESS_PROMPT_ID);
+        assert_eq!(
+            settings.post_process_selected_prompt_id,
+            Some(DEFAULT_POST_PROCESS_PROMPT_ID.to_string())
+        );
+    }
+
+    #[test]
+    fn ensure_post_process_defaults_keeps_user_prompt_after_policy_migration() {
+        let mut settings = get_default_settings();
+        settings.post_process_prompt_policy_version = POST_PROCESS_PROMPT_POLICY_VERSION;
+        settings.post_process_prompts = vec![LLMPrompt {
+            id: "user_prompt".to_string(),
+            name: "User Prompt".to_string(),
+            prompt: "Do user things with ${output}".to_string(),
+        }];
+        settings.post_process_selected_prompt_id = Some("user_prompt".to_string());
+
+        let changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(!changed);
+        assert_eq!(settings.post_process_prompts.len(), 1);
+        assert_eq!(settings.post_process_prompts[0].id, "user_prompt");
+        assert_eq!(
+            settings.post_process_selected_prompt_id,
+            Some("user_prompt".to_string())
+        );
     }
 
     #[test]

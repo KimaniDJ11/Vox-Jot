@@ -586,7 +586,7 @@
         "title": "Prompt",
         "selectedPrompt": {
           "title": "Selected Prompt",
-          "description": "Select a template for refining transcriptions or create a new one. Use ${output} inside the prompt text to reference the captured transcript."
+          "description": "Select a template for refining transcriptions or create a new one. Use ${output} inside the prompt text to reference the captured transcript. Prefer conservative edits unless there are clear correction or structure cues."
         },
         "noPrompts": "No prompts available",
         "selectPrompt": "Select a prompt",
@@ -594,8 +594,8 @@
         "promptLabel": "Prompt Label",
         "promptLabelPlaceholder": "Enter prompt name",
         "promptInstructions": "Prompt Instructions",
-        "promptInstructionsPlaceholder": "Write the instructions to run after transcription. Example: Improve grammar and clarity for the following text: ${output}",
-        "promptTip": "Tip: Use <code>${output}</code> to insert the transcribed text in your prompt.",
+        "promptInstructionsPlaceholder": "Write the instructions to run after transcription. Example: Keep meaning exact, preserve technical tokens, and only apply heavier formatting when clear correction or list cues exist. Transcript: ${output}",
+        "promptTip": "Tip: Use <code>${output}</code> to insert the transcribed text in your prompt. Add explicit rules for incomplete utterances so short fragments stay close to the transcript.",
         "updatePrompt": "Update Prompt",
         "deletePrompt": "Delete Prompt",
         "createPrompt": "Create Prompt",
@@ -658,6 +658,12 @@
       "openFolder": "Open Recordings Folder",
       "loading": "Loading history...",
       "empty": "No transcriptions yet. Start recording to build your history!",
+      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
+      "tabs": {
+        "recordings": "Recordings",
+        "jots": "Jots"
+      },
+      "promptUsed": "Prompt used",
       "copyToClipboard": "Copy transcription to clipboard",
       "save": "Save transcription",
       "unsave": "Remove from saved",

@@ -3,6 +3,7 @@ pub mod history;
 pub mod models;
 pub mod transcription;
 
+use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{PostProcessResult, PreviewManager};
 use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
 use crate::utils::cancel_current_operation;
@@ -142,6 +143,12 @@ pub fn resolve_post_process_preview(
 ) -> Result<(), String> {
     let preview_manager = app.state::<PreviewManager>();
     preview_manager.resolve_request(&request_id, accepted, final_text)
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn debug_analyze_post_process_route(text: String) -> Result<PostProcessRouteDebug, String> {
+    Ok(crate::actions::analyze_post_process_route(&text))
 }
 
 /// Try to initialize Enigo (keyboard/mouse simulation).

@@ -314,6 +314,36 @@
   width: 85%;
 }
 
+.ob-visual-center {
+  text-align: center;
+}
+
+.ob-permission-path-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(173, 193, 227, 0.28);
+  background: linear-gradient(
+    140deg,
+    rgba(53, 92, 186, 0.22),
+    rgba(17, 28, 52, 0.74)
+  );
+  padding: 24px;
+}
+
+.ob-permission-path-text {
+  margin: 0;
+  font-size: 13px;
+  color: #d7e3ff;
+  font-weight: 600;
+}
+
+.ob-permission-path-description {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ob-text-muted);
+  line-height: 1.6;
+}
+
 .ob-visual-stack {
   display: flex;
   flex-direction: column;

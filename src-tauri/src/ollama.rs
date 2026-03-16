@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;

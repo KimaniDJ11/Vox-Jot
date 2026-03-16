@@ -104,34 +104,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <div className="flex flex-col w-40 h-full border-e border-mid-gray/20 items-center px-2">
-      <VoxJotTextLogo width={120} className="m-4" />
-      <div className="flex flex-col w-full items-center gap-1 pt-2 border-t border-mid-gray/20">
+    <aside className="h-full w-60 shrink-0 p-4">
+      <div className="glass-panel-elevated flex h-full flex-col rounded-[28px] p-4">
+        <VoxJotTextLogo width={126} className="mx-auto mt-1" />
+        <div className="my-4 h-px bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_80%)]" />
+        <div className="flex flex-1 flex-col gap-1 overflow-y-auto pr-1">
         {availableSections.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection === section.id;
 
           return (
-            <div
+            <button
               key={section.id}
-              className={`flex gap-2 items-center p-2 w-full rounded-lg cursor-pointer transition-colors ${
+              className={`glass-interactive relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
                 isActive
-                  ? "bg-logo-primary/80"
-                  : "hover:bg-mid-gray/20 hover:opacity-100 opacity-85"
+                  ? "border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_48%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] text-[var(--color-logo-primary)] shadow-[0_16px_36px_-24px_rgba(39,64,139,0.75)] dark:text-blue-200"
+                  : "border border-transparent text-[color-mix(in_srgb,var(--color-text),transparent_20%)] hover:bg-[color-mix(in_srgb,var(--glass-bg),white_10%)]"
               }`}
+              type="button"
               onClick={() => onSectionChange(section.id)}
             >
-              <Icon width={24} height={24} className="shrink-0" />
+              {isActive && (
+                <span
+                  className="pointer-events-none absolute inset-y-2 left-1 w-1 rounded-full bg-gradient-to-b from-[var(--color-logo-primary)] via-[color-mix(in_srgb,var(--color-logo-primary),white_22%)] to-[var(--color-accent-gold)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-logo-primary),white_30%),0_0_24px_color-mix(in_srgb,var(--color-logo-primary),transparent_24%)]"
+                  aria-hidden="true"
+                />
+              )}
+              <Icon width={20} height={20} className="shrink-0" />
               <p
-                className="text-sm font-medium truncate"
+                className="truncate text-sm font-medium"
                 title={t(section.labelKey)}
               >
                 {t(section.labelKey)}
               </p>
-            </div>
+            </button>
           );
         })}
+        </div>
       </div>
-    </div>
+    </aside>
   );
 };

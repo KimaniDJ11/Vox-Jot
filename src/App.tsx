@@ -260,30 +260,31 @@ function App() {
   return (
     <div
       dir={direction}
-      className="h-screen flex flex-col select-none cursor-default"
+      className="relative h-screen select-none cursor-default overflow-hidden"
     >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_82%),transparent_55%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_84%),transparent_48%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_4%),var(--color-background))]" />
       <Toaster
         theme="system"
         toastOptions={{
           unstyled: true,
           classNames: {
             toast:
-              "bg-background border border-mid-gray/20 rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 text-sm",
-            title: "font-medium",
-            description: "text-mid-gray",
+              "glass-panel-elevated rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
+            title: "font-semibold",
+            description: "text-[color-mix(in_srgb,var(--color-text),transparent_35%)]",
           },
         }}
       />
       {/* Main content area that takes remaining space */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="relative z-10 flex h-full overflow-hidden p-4">
         <Sidebar
           activeSection={currentSection}
           onSectionChange={setCurrentSection}
         />
         {/* Scrollable content area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="glass-panel flex flex-1 flex-col overflow-hidden rounded-[28px]">
           <div className="flex-1 overflow-y-auto">
-            <div className="flex flex-col items-center p-4 gap-4">
+            <div className="flex flex-col items-center gap-4 p-4 sm:p-5">
               <AccessibilityPermissions />
               {renderSettingsContent(currentSection)}
             </div>
@@ -291,14 +292,14 @@ function App() {
         </div>
       </div>
       {pendingPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-3xl rounded-xl border border-mid-gray/20 bg-background shadow-xl">
-            <div className="flex items-center justify-between border-b border-mid-gray/20 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,10,20,0.58)] p-4 backdrop-blur-sm">
+          <div className="glass-panel-elevated w-full max-w-3xl rounded-2xl">
+            <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold">
                   {t("settings.postProcessing.preview.modal.title")}
                 </h2>
-                <p className="text-sm text-mid-gray">
+                <p className="text-sm text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.description")}
                 </p>
               </div>
@@ -306,14 +307,14 @@ function App() {
 
             <div className="space-y-4 p-5">
               <div className="space-y-1">
-                <div className="text-xs font-medium text-mid-gray">
+                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.originalLabel")}
                 </div>
                 <Textarea value={pendingPreview.source_text} readOnly />
               </div>
 
               <div className="space-y-1">
-                <div className="text-xs font-medium text-mid-gray">
+                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.editedLabel")}
                 </div>
                 <Textarea
@@ -323,7 +324,7 @@ function App() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-mid-gray/20 px-5 py-4">
+            <div className="flex justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
               <Button variant="secondary" onClick={() => void resolvePreview(false)}>
                 {t("settings.postProcessing.preview.modal.cancel")}
               </Button>

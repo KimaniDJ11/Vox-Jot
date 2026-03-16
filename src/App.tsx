@@ -264,43 +264,49 @@ function App() {
 
   return (
     <div
-      dir={direction}
-      className="relative flex h-screen flex-col select-none cursor-default overflow-hidden"
+      dir="ltr"
+      className="shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_88%),transparent_58%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_90%),transparent_50%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_6%),var(--color-background))]" />
       <Toaster
         theme="light"
         toastOptions={{
           unstyled: true,
           classNames: {
             toast:
-              "glass-panel-elevated rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
+              "flat-card rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
             title: "font-semibold",
             description: "text-[color-mix(in_srgb,var(--color-text),transparent_35%)]",
           },
         }}
       />
-      {/* Main content area that takes remaining space */}
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 md:flex-row md:gap-0 md:p-4">
-        <Sidebar
-          activeSection={currentSection}
-          onSectionChange={setCurrentSection}
-        />
-        {/* Scrollable content area */}
-        <div className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] md:rounded-[28px]">
-          <div className="flex-1 overflow-y-auto">
-            <div className="flex flex-col items-center gap-4 p-4 sm:p-5">
-              <AccessibilityPermissions />
-              {renderSettingsContent(currentSection)}
-            </div>
+      {/* Invisible draggable titlebar for macOS traffic lights overlay */}
+      <div data-tauri-drag-region className="app-titlebar" />
+
+      {/* Main content grid area */}
+      <Sidebar
+        activeSection={currentSection}
+        onSectionChange={setCurrentSection}
+      />
+      {/* Scrollable content area */}
+      <main className="main-content relative flex flex-col min-w-0 overflow-hidden bg-[var(--bg)]">
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-4xl p-6 md:p-8">
+            <AccessibilityPermissions />
+            {renderSettingsContent(currentSection)}
           </div>
         </div>
-      </div>
+
+        {/* Fixed footer sticks to bottom of main-content */}
+        <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)] px-2 py-3 md:px-6">
+          <Footer />
+        </div>
+      </main>
+
       {pendingPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,10,20,0.58)] p-4 backdrop-blur-sm">
-          <div className="glass-panel-elevated w-full max-w-3xl rounded-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4">
+          <div className="flat-card w-full max-w-3xl rounded-2xl">
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
-              <div>
+               <div>
                 <h2 className="text-lg font-semibold">
                   {t("settings.postProcessing.preview.modal.title")}
                 </h2>
@@ -340,8 +346,6 @@ function App() {
           </div>
         </div>
       )}
-      {/* Fixed footer at bottom */}
-      <Footer />
     </div>
   );
 }

@@ -63,7 +63,7 @@ export const DebugSettings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl w-full mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <SettingsGroup title={t("settings.debug.title")}>
         <LogLevelSelector grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
@@ -92,6 +92,7 @@ export const DebugSettings: React.FC = () => {
             pass2, or command.
           </p>
           <textarea
+            data-testid="route-debugger-input"
             value={routeInput}
             onChange={(event) => setRouteInput(event.target.value)}
             rows={4}
@@ -104,26 +105,51 @@ export const DebugSettings: React.FC = () => {
               size="sm"
               onClick={analyzeRoute}
               disabled={routeLoading}
+              data-testid="route-debugger-analyze"
             >
               {routeLoading ? "Analyzing..." : "Analyze Route"}
             </Button>
             {routeResult && (
-              <span className="text-sm text-text/70">
-                Route: <strong className="text-logo-primary">{routeResult.route}</strong>
+              <span className="text-sm text-text/70" data-testid="route-debugger-result">
+                Route:{" "}
+                <strong className="text-logo-primary">{routeResult.route}</strong>
               </span>
             )}
           </div>
           {routeError && <p className="text-sm text-red-500">{routeError}</p>}
           {routeResult && (
-            <div className="rounded-md border border-mid-gray/25 bg-background px-3 py-2 text-xs text-text/80 space-y-1">
-              <p>word_count: {routeResult.word_count}</p>
-              <p>score: {routeResult.score}</p>
-              <p>has_correction_cue: {String(routeResult.has_correction_cue)}</p>
-              <p>has_list_cue: {String(routeResult.has_list_cue)}</p>
-              <p>has_paragraph_cue: {String(routeResult.has_paragraph_cue)}</p>
-              <p>has_transform_cue: {String(routeResult.has_transform_cue)}</p>
-              <p>has_technical_tokens: {String(routeResult.has_technical_tokens)}</p>
-              <p>looks_incomplete: {String(routeResult.looks_incomplete)}</p>
+            <div
+              className="rounded-md border border-mid-gray/25 bg-background px-3 py-3 text-xs text-text/80"
+              data-testid="route-debugger-metrics"
+            >
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-[10px] uppercase text-text/60">Words</p>
+                  <p className="text-sm font-semibold text-text">{routeResult.word_count}</p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-[10px] uppercase text-text/60">Score</p>
+                  <p className="text-sm font-semibold text-text">{routeResult.score}</p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-[10px] uppercase text-text/60">Route</p>
+                  <p className="text-sm font-semibold text-logo-primary">{routeResult.route}</p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-[10px] uppercase text-text/60">Incomplete</p>
+                  <p className="text-sm font-semibold text-text">
+                    {routeResult.looks_incomplete ? "yes" : "no"}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                <p>has_correction_cue: {String(routeResult.has_correction_cue)}</p>
+                <p>has_list_cue: {String(routeResult.has_list_cue)}</p>
+                <p>has_paragraph_cue: {String(routeResult.has_paragraph_cue)}</p>
+                <p>has_transform_cue: {String(routeResult.has_transform_cue)}</p>
+                <p>has_technical_tokens: {String(routeResult.has_technical_tokens)}</p>
+                <p>looks_incomplete: {String(routeResult.looks_incomplete)}</p>
+              </div>
             </div>
           )}
         </div>

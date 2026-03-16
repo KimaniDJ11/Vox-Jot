@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 type Scenario = {
   appleAvailable: boolean;
   hasAnyModels: boolean;
+  historyEntries: Array<Record<string, unknown>>;
   permissions: {
     accessibility: boolean;
     microphone: boolean;
@@ -164,6 +165,7 @@ const baseSettings = {
 const baseScenario: Scenario = {
   appleAvailable: true,
   hasAnyModels: true,
+  historyEntries: [],
   models: [downloadedModel],
   permissions: {
     accessibility: true,
@@ -315,6 +317,38 @@ const bootApp = async (
               normalized_text: args.text,
               raw_text: args.text,
             };
+          case "debug_analyze_post_process_route":
+            return {
+              route: "command",
+              word_count: String(args.text || "").trim().split(/\s+/).length,
+              has_correction_cue: false,
+              has_list_cue: true,
+              has_paragraph_cue: false,
+              has_transform_cue: true,
+              has_technical_tokens: false,
+              looks_incomplete: false,
+              score: 3,
+            };
+          case "get_history_entries":
+            return activeScenario.historyEntries;
+          case "toggle_history_entry_saved": {
+            const entry = activeScenario.historyEntries.find(
+              (item) => item.id === args.id,
+            );
+            if (entry) {
+              entry.saved = !entry.saved;
+            }
+            return null;
+          }
+          case "delete_history_entry":
+            activeScenario.historyEntries = activeScenario.historyEntries.filter(
+              (item) => item.id !== args.id,
+            );
+            return null;
+          case "get_audio_file_path":
+            return `/tmp/${String(args.fileName || "audio.wav")}`;
+          case "open_recordings_folder":
+            return null;
           case "resolve_post_process_preview":
           case "fetch_post_process_models":
             return [];
@@ -472,6 +506,61 @@ test.describe("Vox Jot app", () => {
 
     await expect(page.getByText("Prompting")).toBeVisible();
     await expect(page.getByText("Apple Cleanup")).toHaveCount(0);
+  });
+
+  test("shows recording and jot tabs with search filtering", async ({ page }) => {
+    await bootApp(page, {
+      historyEntries: [
+        {
+          id: 1,
+          timestamp: "2026-03-16T11:00:00Z",
+          transcription_text: "buy bread and apples",
+          post_processed_text: null,
+          post_process_prompt: null,
+          file_name: "entry-1.wav",
+          saved: false,
+        },
+        {
+          id: 2,
+          timestamp: "2026-03-16T11:05:00Z",
+          transcription_text: "draft status update",
+          post_processed_text: "Draft a clear status update for the team",
+          post_process_prompt: "Improve structure",
+          file_name: "entry-2.wav",
+          saved: true,
+        },
+      ],
+    });
+
+    await page.getByText("History").click();
+
+    await expect(page.getByTestId("history-tab-recordings")).toBeVisible();
+    await expect(page.getByTestId("history-tab-jots")).toBeVisible();
+    await expect(page.getByText("buy bread and apples")).toBeVisible();
+
+    await page.getByRole("searchbox").fill("status");
+    await expect(page.getByText("buy bread and apples")).toHaveCount(0);
+
+    await page.getByTestId("history-tab-jots").click();
+    await expect(
+      page.getByText("Draft a clear status update for the team"),
+    ).toBeVisible();
+  });
+
+  test("keeps debug section visible and route debugger interactive", async ({ page }) => {
+    await bootApp(page);
+
+    await expect(page.getByText("Debug")).toBeVisible();
+    await page.getByText("Debug").click();
+
+    await page
+      .getByTestId("route-debugger-input")
+      .fill("rewrite this as bullet points one ship two test");
+    await page.getByTestId("route-debugger-analyze").click();
+    await expect(page.getByTestId("route-debugger-result")).toContainText(
+      /Route:/,
+    );
+    await expect(page.getByTestId("route-debugger-metrics")).toBeVisible();
   });
 
   test("shows the Apple unavailable state when the selected provider cannot run", async ({

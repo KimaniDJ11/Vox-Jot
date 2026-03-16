@@ -14,19 +14,19 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   return (
     <section className="space-y-2">
       {title && (
-        <div className="px-5">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--color-text),transparent_45%)]">
+        <div className="px-5 mb-3">
+          <h2 className="text-[13px] font-semibold uppercase tracking-widest text-[var(--text)]">
             {title}
           </h2>
           {description && (
-            <p className="mt-1 text-xs text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+            <p className="mt-1.5 text-[13px] text-mid-gray leading-relaxed">
               {description}
             </p>
           )}
         </div>
       )}
-      <div className="glass-panel rounded-2xl overflow-visible">
-        <div className="divide-y divide-[color-mix(in_srgb,var(--color-text),transparent_86%)]">
+      <div className="flat-card overflow-visible">
+        <div className="divide-y divide-[var(--border)]">
           {children}
         </div>
       </div>

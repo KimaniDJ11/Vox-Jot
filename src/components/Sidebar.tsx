@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Cog, FlaskConical, History, Info, Sparkles, Cpu, Bot } from "lucide-react";
 import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
-import { useSettings } from "../hooks/useSettings";
 import {
   GeneralSettings,
   AdvancedSettings,
@@ -97,18 +96,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSectionChange,
 }) => {
   const { t } = useTranslation();
-  const { settings } = useSettings();
 
   const availableSections = Object.entries(SECTIONS_CONFIG)
     .filter(([_, config]) => config.enabled())
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <aside className="h-auto w-full shrink-0 px-0 pb-1 md:h-full md:w-60 md:p-4">
-      <div className="glass-panel-elevated flex h-auto flex-col rounded-[20px] p-3 md:h-full md:rounded-[28px] md:p-4">
-        <VoxJotTextLogo width={126} className="mx-auto mt-1 hidden md:block" />
-        <div className="my-2 hidden h-px bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_80%)] md:my-4 md:block" />
-        <div className="flex flex-1 flex-row gap-1 overflow-x-auto pb-1 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pr-1 md:pb-0">
+    <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
+      <div className="flex flex-col flex-1 px-5 py-4 overflow-y-auto">
+        <VoxJotTextLogo width={128} className="mb-8 mt-2 shrink-0 hidden md:block" />
+        <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+          Settings
+        </div>
+        <div className="flex flex-col gap-2 w-full">
           {availableSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -116,27 +116,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={section.id}
-                className={`glass-interactive relative flex min-w-fit items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors md:w-full ${
+                className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 min-w-0 ${
                   isActive
-                    ? "border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_48%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] text-[var(--color-logo-primary)] shadow-[0_16px_36px_-24px_rgba(39,64,139,0.75)] dark:text-blue-200"
-                    : "border border-transparent text-[color-mix(in_srgb,var(--color-text),transparent_20%)] hover:bg-[color-mix(in_srgb,var(--glass-bg),white_10%)]"
+                    ? "bg-[var(--accent)] text-white font-semibold shadow-sm"
+                    : "bg-transparent text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                 }`}
                 type="button"
                 onClick={() => onSectionChange(section.id)}
               >
-                {isActive && (
-                  <span
-                    className="pointer-events-none absolute inset-y-2 left-1 hidden w-1 rounded-full bg-gradient-to-b from-[var(--color-logo-primary)] via-[color-mix(in_srgb,var(--color-logo-primary),white_22%)] to-[var(--color-accent-gold)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-logo-primary),white_30%),0_0_24px_color-mix(in_srgb,var(--color-logo-primary),transparent_24%)] md:block"
-                    aria-hidden="true"
-                  />
-                )}
-                <Icon width={20} height={20} className="shrink-0" />
-                <p
-                  className="truncate text-sm font-medium"
+                {/* We can optionally handle a side indicator or remove it since the background is solid. Removing it for cleaner look. */}
+                <Icon
+                  width={18}
+                  height={18}
+                  className={`shrink-0 transition-colors duration-200 ${
+                    isActive ? "text-white" : "text-[var(--muted)] group-hover:text-[var(--text)]"
+                  }`}
+                />
+                <span
+                  className="truncate text-[15px] leading-6 tracking-wide flex-1"
                   title={t(section.labelKey)}
                 >
                   {t(section.labelKey)}
-                </p>
+                </span>
               </button>
             );
           })}

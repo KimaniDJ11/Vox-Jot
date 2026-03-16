@@ -556,7 +556,7 @@ const PostProcessSetupStatus: React.FC<{
       const issues: string[] = [];
       const selectedProvider = providerState.selectedProvider;
       const providerAllowsNoApiKey =
-        selectedProvider?.id === "custom"
+        selectedProvider?.id === "custom" || selectedProvider?.id === "ollama"
           ? isLocalBaseUrl(providerState.baseUrl)
           : isLocalBaseUrl(selectedProvider?.base_url ?? "");
 

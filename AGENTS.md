@@ -39,7 +39,7 @@ bun run preview    # Preview built frontend
 mkdir -p src-tauri/resources/models
 
 # Download required VAD model
-curl -o src-tauri/resources/models/silero_vad_v4.onnx https://blob.handy.computer/silero_vad_v4.onnx
+curl -L -o src-tauri/resources/models/silero_vad_v4.onnx https://github.com/cjpais/Vox-Jot/releases/latest/download/silero_vad_v4.onnx
 ```
 
 ## Architecture Overview

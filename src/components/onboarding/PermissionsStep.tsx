@@ -287,9 +287,18 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         <button className="ob-perm-allow-btn" onClick={onGrant}>
           {isWin ? t("accessibility.openSettings") : t("onboarding.permissions.grant")}
         </button>
-        <button className="ob-info-btn" title={t("onboarding.permissions.moreInfo")}>
-          <Info size={12} />
-        </button>
+        <span className="ob-info-wrap">
+          <button
+            className="ob-info-btn"
+            type="button"
+            aria-label={t("onboarding.permissions.moreInfo")}
+          >
+            <Info size={12} />
+          </button>
+          <span className="ob-info-tooltip" role="tooltip">
+            {t("onboarding.permissions.moreInfo")}
+          </span>
+        </span>
       </div>
     );
   };

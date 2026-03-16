@@ -292,15 +292,18 @@ Download the models you want from below
 
 **Whisper Models (single .bin files):**
 
-- Small (487 MB): `https://blob.handy.computer/ggml-small.bin`
-- Medium (492 MB): `https://blob.handy.computer/whisper-medium-q4_1.bin`
-- Turbo (1600 MB): `https://blob.handy.computer/ggml-large-v3-turbo.bin`
-- Large (1100 MB): `https://blob.handy.computer/ggml-large-v3-q5_0.bin`
+- Small (487 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-small.bin`
+- Medium (492 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/whisper-medium-q4_1.bin`
+- Turbo (1600 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-large-v3-turbo.bin`
+- Large (1100 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-large-v3-q5_0.bin`
 
 **Parakeet Models (compressed archives):**
 
-- V2 (473 MB): `https://blob.handy.computer/parakeet-v2-int8.tar.gz`
-- V3 (478 MB): `https://blob.handy.computer/parakeet-v3-int8.tar.gz`
+- V2 (473 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/parakeet-v2-int8.tar.gz`
+- V3 (478 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/parakeet-v3-int8.tar.gz`
+
+> Model download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
+> Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.
 
 #### Step 4: Install Models
 

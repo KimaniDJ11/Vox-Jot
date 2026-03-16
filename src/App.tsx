@@ -260,7 +260,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className="relative h-screen select-none cursor-default overflow-hidden"
+      className="relative flex h-screen flex-col select-none cursor-default overflow-hidden"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_8%,color-mix(in_srgb,var(--color-logo-primary),transparent_82%),transparent_55%),radial-gradient(circle_at_88%_92%,color-mix(in_srgb,var(--color-accent-gold),transparent_84%),transparent_48%),linear-gradient(150deg,color-mix(in_srgb,var(--color-background),white_4%),var(--color-background))]" />
       <Toaster
@@ -276,13 +276,13 @@ function App() {
         }}
       />
       {/* Main content area that takes remaining space */}
-      <div className="relative z-10 flex h-full overflow-hidden p-4">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 md:flex-row md:gap-0 md:p-4">
         <Sidebar
           activeSection={currentSection}
           onSectionChange={setCurrentSection}
         />
         {/* Scrollable content area */}
-        <div className="glass-panel flex flex-1 flex-col overflow-hidden rounded-[28px]">
+        <div className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] md:rounded-[28px]">
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col items-center gap-4 p-4 sm:p-5">
               <AccessibilityPermissions />
@@ -324,7 +324,7 @@ function App() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
+            <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4 sm:flex-row">
               <Button variant="secondary" onClick={() => void resolvePreview(false)}>
                 {t("settings.postProcessing.preview.modal.cancel")}
               </Button>

@@ -392,6 +392,35 @@ test.describe("Vox Jot app", () => {
     ).toHaveCount(0);
   });
 
+  test("keeps permissions onboarding within viewport without page overflow", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      permissions: {
+        accessibility: false,
+        microphone: false,
+      },
+    });
+
+    const viewportOk = await page.evaluate(() => {
+      const root = document.querySelector(".ob-root") as HTMLElement | null;
+      if (!root) return false;
+
+      const html = document.documentElement;
+      const body = document.body;
+
+      const rootBottomWithinViewport =
+        root.getBoundingClientRect().bottom <= window.innerHeight + 1;
+      const pageDoesNotOverflow =
+        html.scrollHeight <= html.clientHeight + 1 &&
+        body.scrollHeight <= body.clientHeight + 1;
+
+      return rootBottomWithinViewport && pageDoesNotOverflow;
+    });
+
+    expect(viewportOk).toBeTruthy();
+  });
+
   test("keeps Post Process visible in the sidebar even when it is off", async ({
     page,
   }) => {

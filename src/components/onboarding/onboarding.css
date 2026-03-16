@@ -16,7 +16,8 @@
 .ob-root {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   width: 100vw;
   background: radial-gradient(circle at 12% 18%, rgba(52, 84, 160, 0.32), transparent 44%),
     radial-gradient(circle at 88% 82%, rgba(216, 154, 92, 0.2), transparent 38%),
@@ -111,7 +112,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .ob-right {

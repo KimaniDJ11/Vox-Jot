@@ -126,25 +126,24 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
     !isUpdateDisabled && (Boolean(updateInfo?.available) || !showUpToDate);
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       {isUpdateClickable ? (
         <button
           onClick={getUpdateStatusAction()}
           disabled={isUpdateDisabled}
-          className={`transition-colors disabled:opacity-50 tabular-nums ${
+          className={`rounded-md px-2 py-1 text-xs transition-colors tabular-nums disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_64%)] ${
             updateInfo?.available
-              ? "text-logo-primary hover:text-logo-primary/80 font-medium"
-              : "text-text/60 hover:text-text/80"
+              ? "font-semibold text-logo-primary hover:text-logo-primary/80"
+              : "text-[color-mix(in_srgb,var(--color-text),transparent_35%)] hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)]"
           }`}
         >
           {getUpdateStatusText()}
         </button>
       ) : (
-        <span className="text-text/60 tabular-nums">
+        <span className="px-2 py-1 text-xs text-[color-mix(in_srgb,var(--color-text),transparent_35%)] tabular-nums">
           {getUpdateStatusText()}
         </span>
       )}
-
     </div>
   );
 };

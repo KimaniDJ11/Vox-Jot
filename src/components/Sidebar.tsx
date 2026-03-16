@@ -104,42 +104,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <aside className="h-full w-60 shrink-0 p-4">
-      <div className="glass-panel-elevated flex h-full flex-col rounded-[28px] p-4">
-        <VoxJotTextLogo width={126} className="mx-auto mt-1" />
-        <div className="my-4 h-px bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_80%)]" />
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto pr-1">
-        {availableSections.map((section) => {
-          const Icon = section.icon;
-          const isActive = activeSection === section.id;
+    <aside className="h-auto w-full shrink-0 px-0 pb-1 md:h-full md:w-60 md:p-4">
+      <div className="glass-panel-elevated flex h-auto flex-col rounded-[20px] p-3 md:h-full md:rounded-[28px] md:p-4">
+        <VoxJotTextLogo width={126} className="mx-auto mt-1 hidden md:block" />
+        <div className="my-2 hidden h-px bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_80%)] md:my-4 md:block" />
+        <div className="flex flex-1 flex-row gap-1 overflow-x-auto pb-1 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pr-1 md:pb-0">
+          {availableSections.map((section) => {
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
 
-          return (
-            <button
-              key={section.id}
-              className={`glass-interactive relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
-                isActive
-                  ? "border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_48%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] text-[var(--color-logo-primary)] shadow-[0_16px_36px_-24px_rgba(39,64,139,0.75)] dark:text-blue-200"
-                  : "border border-transparent text-[color-mix(in_srgb,var(--color-text),transparent_20%)] hover:bg-[color-mix(in_srgb,var(--glass-bg),white_10%)]"
-              }`}
-              type="button"
-              onClick={() => onSectionChange(section.id)}
-            >
-              {isActive && (
-                <span
-                  className="pointer-events-none absolute inset-y-2 left-1 w-1 rounded-full bg-gradient-to-b from-[var(--color-logo-primary)] via-[color-mix(in_srgb,var(--color-logo-primary),white_22%)] to-[var(--color-accent-gold)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-logo-primary),white_30%),0_0_24px_color-mix(in_srgb,var(--color-logo-primary),transparent_24%)]"
-                  aria-hidden="true"
-                />
-              )}
-              <Icon width={20} height={20} className="shrink-0" />
-              <p
-                className="truncate text-sm font-medium"
-                title={t(section.labelKey)}
+            return (
+              <button
+                key={section.id}
+                className={`glass-interactive relative flex min-w-fit items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors md:w-full ${
+                  isActive
+                    ? "border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_48%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] text-[var(--color-logo-primary)] shadow-[0_16px_36px_-24px_rgba(39,64,139,0.75)] dark:text-blue-200"
+                    : "border border-transparent text-[color-mix(in_srgb,var(--color-text),transparent_20%)] hover:bg-[color-mix(in_srgb,var(--glass-bg),white_10%)]"
+                }`}
+                type="button"
+                onClick={() => onSectionChange(section.id)}
               >
-                {t(section.labelKey)}
-              </p>
-            </button>
-          );
-        })}
+                {isActive && (
+                  <span
+                    className="pointer-events-none absolute inset-y-2 left-1 hidden w-1 rounded-full bg-gradient-to-b from-[var(--color-logo-primary)] via-[color-mix(in_srgb,var(--color-logo-primary),white_22%)] to-[var(--color-accent-gold)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-logo-primary),white_30%),0_0_24px_color-mix(in_srgb,var(--color-logo-primary),transparent_24%)] md:block"
+                    aria-hidden="true"
+                  />
+                )}
+                <Icon width={20} height={20} className="shrink-0" />
+                <p
+                  className="truncate text-sm font-medium"
+                  title={t(section.labelKey)}
+                >
+                  {t(section.labelKey)}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
     </aside>

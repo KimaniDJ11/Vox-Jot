@@ -22,8 +22,8 @@ const Footer: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full border-t border-mid-gray/20 pt-3">
-      <div className="flex justify-between items-center text-xs px-4 pb-3 text-text/60">
+    <div className="relative z-10 w-full px-2 pb-2 md:px-4 md:pb-4">
+      <div className="glass-panel flex flex-col items-start justify-between gap-2 rounded-2xl px-3 py-2 text-xs text-[color-mix(in_srgb,var(--color-text),transparent_35%)] sm:flex-row sm:items-center">
         <div className="flex items-center gap-4">
           <ModelSelector />
         </div>

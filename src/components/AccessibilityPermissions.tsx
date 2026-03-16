@@ -72,12 +72,12 @@ const AccessibilityPermissions: React.FC = () => {
     request: {
       text: t("accessibility.openSettings"),
       className:
-        "px-2 py-1 text-sm font-semibold bg-mid-gray/10 border  border-mid-gray/80 hover:bg-logo-primary/10 rounded cursor-pointer hover:border-logo-primary",
+        "rounded-lg border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_56%)] bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_8%)] px-3 py-2 text-sm font-semibold text-[var(--color-logo-primary)] transition hover:bg-[color-mix(in_srgb,var(--glass-bg-elevated),white_18%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)]",
     },
     verify: {
       text: t("accessibility.openSettings"),
       className:
-        "bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-1 px-3 rounded-md text-sm flex items-center justify-center cursor-pointer",
+        "rounded-lg border border-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)] bg-transparent px-3 py-2 text-sm font-medium text-[color-mix(in_srgb,var(--color-text),transparent_10%)] transition hover:bg-[color-mix(in_srgb,var(--glass-bg),white_8%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_62%)]",
     },
     granted: null,
   };
@@ -85,16 +85,16 @@ const AccessibilityPermissions: React.FC = () => {
   const config = buttonConfig[permissionState] as ButtonConfig;
 
   return (
-    <div className="p-4 w-full rounded-lg border border-mid-gray">
-      <div className="flex justify-between items-center gap-2">
-        <div className="">
-          <p className="text-sm font-medium">
+    <div className="glass-panel w-full rounded-2xl p-4">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <p className="text-sm font-semibold">
             {t("accessibility.permissionsDescription")}
           </p>
         </div>
         <button
           onClick={handleButtonClick}
-          className={`min-h-10 ${config.className}`}
+          className={`min-h-10 whitespace-nowrap ${config.className}`}
         >
           {config.text}
         </button>

@@ -337,33 +337,13 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         </>
       }
       rightContent={
-        <div className="ob-visual-card" style={{ textAlign: "center" }}>
-          <div
-            style={{
-              background: "#f5f2ec",
-              borderRadius: 12,
-              padding: 24,
-              marginBottom: 16,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--ob-text-muted)",
-                margin: 0,
-              }}
-            >
+        <div className="ob-visual-card ob-visual-center">
+          <div className="ob-permission-path-card">
+            <p className="ob-permission-path-text">
               {t("onboarding.permissions.visualPath")}
             </p>
           </div>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--ob-text-muted)",
-              lineHeight: 1.6,
-              margin: 0,
-            }}
-          >
+          <p className="ob-permission-path-description">
             {t("onboarding.permissions.visualDescription")}
           </p>
         </div>

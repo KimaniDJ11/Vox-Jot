@@ -11,27 +11,91 @@ pub const OLLAMA_DEFAULT_MODEL: &str = "llama3.2:1b";
 /// The recommended tiny LLM models to surface in the UI
 pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
     ("qwen2.5:0.5b", "Qwen 2.5 0.5B", "~0.4 GB — ultra-tiny"),
-    ("smollm2:135m", "SmolLM2 135M", "~0.2 GB — tiniest footprint"),
+    (
+        "smollm2:135m",
+        "SmolLM2 135M",
+        "~0.2 GB — tiniest footprint",
+    ),
     ("smollm2:360m", "SmolLM2 360M", "~0.4 GB — tiny and fast"),
-    ("tinyllama:1.1b", "TinyLlama 1.1B", "~0.7 GB — tiny general model"),
+    (
+        "tinyllama:1.1b",
+        "TinyLlama 1.1B",
+        "~0.7 GB — tiny general model",
+    ),
     ("gemma3:1b", "Gemma 3 1B", "~1.0 GB — very lightweight"),
-    ("llama3.2:1b", "Llama 3.2 1B", "~1.3 GB — fastest, lowest RAM"),
-    ("qwen2.5:1.5b", "Qwen 2.5 1.5B", "~1.0 GB — stronger tiny model"),
-    ("smollm2:1.7b", "SmolLM2 1.7B", "~1.1 GB — more capable tiny model"),
+    (
+        "llama3.2:1b",
+        "Llama 3.2 1B",
+        "~1.3 GB — fastest, lowest RAM",
+    ),
+    (
+        "qwen2.5:1.5b",
+        "Qwen 2.5 1.5B",
+        "~1.0 GB — stronger tiny model",
+    ),
+    (
+        "smollm2:1.7b",
+        "SmolLM2 1.7B",
+        "~1.1 GB — more capable tiny model",
+    ),
     ("llama3.2:3b", "Llama 3.2 3B", "~2.0 GB — better quality"),
-    ("phi4-mini", "Phi-4 Mini", "~2.5 GB — great instruction following"),
-    ("falcon3:1b", "Falcon 3 1B", "~0.7 GB — compact instruction model"),
-    ("granite3.1-dense:2b", "Granite 3.1 Dense 2B", "~1.6 GB — tiny enterprise model"),
-    ("granite3.1-moe:1b", "Granite 3.1 MoE 1B", "~0.9 GB — low-latency MoE"),
+    (
+        "phi4-mini",
+        "Phi-4 Mini",
+        "~2.5 GB — great instruction following",
+    ),
+    (
+        "falcon3:1b",
+        "Falcon 3 1B",
+        "~0.7 GB — compact instruction model",
+    ),
+    (
+        "granite3.1-dense:2b",
+        "Granite 3.1 Dense 2B",
+        "~1.6 GB — tiny enterprise model",
+    ),
+    (
+        "granite3.1-moe:1b",
+        "Granite 3.1 MoE 1B",
+        "~0.9 GB — low-latency MoE",
+    ),
     ("gemma2:2b", "Gemma 2 2B", "~1.6 GB — balanced tiny model"),
-    ("qwen2.5-coder:1.5b", "Qwen 2.5 Coder 1.5B", "~1.0 GB — tiny coding model"),
-    ("codegemma:2b", "CodeGemma 2B", "~1.6 GB — lightweight coding"),
-    ("stable-code:3b", "Stable Code 3B", "~2.1 GB — code-focused 3B"),
-    ("orca-mini:3b", "Orca Mini 3B", "~2.0 GB — compact instruct model"),
+    (
+        "qwen2.5-coder:1.5b",
+        "Qwen 2.5 Coder 1.5B",
+        "~1.0 GB — tiny coding model",
+    ),
+    (
+        "codegemma:2b",
+        "CodeGemma 2B",
+        "~1.6 GB — lightweight coding",
+    ),
+    (
+        "stable-code:3b",
+        "Stable Code 3B",
+        "~2.1 GB — code-focused 3B",
+    ),
+    (
+        "orca-mini:3b",
+        "Orca Mini 3B",
+        "~2.0 GB — compact instruct model",
+    ),
     ("phi3:mini", "Phi-3 Mini", "~2.2 GB — lightweight reasoning"),
-    ("dolphin3:1b", "Dolphin 3 1B", "~0.8 GB — tiny general model"),
-    ("mistral-small:3b", "Mistral Small 3B", "~2.2 GB — efficient small model"),
-    ("deepseek-coder:1.3b", "DeepSeek Coder 1.3B", "~1.0 GB — tiny coding model"),
+    (
+        "dolphin3:1b",
+        "Dolphin 3 1B",
+        "~0.8 GB — tiny general model",
+    ),
+    (
+        "mistral-small:3b",
+        "Mistral Small 3B",
+        "~2.2 GB — efficient small model",
+    ),
+    (
+        "deepseek-coder:1.3b",
+        "DeepSeek Coder 1.3B",
+        "~1.0 GB — tiny coding model",
+    ),
 ];
 
 const TINY_MODELS_TARGET_COUNT: usize = 22;
@@ -138,7 +202,9 @@ fn looks_like_tiny_model(name: &str, size_bytes: u64) -> bool {
         }
     }
 
-    let tiny_keywords = ["tiny", "mini", "small", "smol", "nano", "compact", "1b", "2b", "3b"];
+    let tiny_keywords = [
+        "tiny", "mini", "small", "smol", "nano", "compact", "1b", "2b", "3b",
+    ];
     tiny_keywords.iter().any(|k| lower.contains(k))
 }
 
@@ -165,7 +231,9 @@ fn exceeds_hard_param_limit(name: &str, size_bytes: u64) -> bool {
 
 fn matches_aa_tiny_family(name: &str) -> bool {
     let lower = name.to_lowercase();
-    AA_TINY_FAMILY_HINTS.iter().any(|family| lower.contains(family))
+    AA_TINY_FAMILY_HINTS
+        .iter()
+        .any(|family| lower.contains(family))
 }
 
 async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
@@ -206,7 +274,10 @@ async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
         .map(|m| OllamaModelInfo {
             id: m.name.clone(),
             label: m.name.clone(),
-            description: format!("{} — tiny model (AA-style family + Ollama registry)", format_bytes_gb(m.size)),
+            description: format!(
+                "{} — tiny model (AA-style family + Ollama registry)",
+                format_bytes_gb(m.size)
+            ),
             is_pulled: false,
         })
         .collect()
@@ -298,13 +369,22 @@ pub async fn install_ollama_impl(app: &AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let status = tokio::process::Command::new("winget")
-            .args(["install", "Ollama.Ollama", "--silent", "--accept-source-agreements", "--accept-package-agreements"])
+            .args([
+                "install",
+                "Ollama.Ollama",
+                "--silent",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ])
             .status()
             .await
             .map_err(|e| format!("Failed to run winget: {}", e))?;
 
         if !status.success() {
-            return Err("winget install failed. Please install Ollama manually from https://ollama.com".to_string());
+            return Err(
+                "winget install failed. Please install Ollama manually from https://ollama.com"
+                    .to_string(),
+            );
         }
     }
 
@@ -346,8 +426,11 @@ pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Resu
     use tauri::Emitter;
 
     info!("Pulling Ollama model: {}", model_name);
-    app.emit("ollama-pull-progress", serde_json::json!({ "model": model_name, "status": "starting", "percent": 0 }))
-        .ok();
+    app.emit(
+        "ollama-pull-progress",
+        serde_json::json!({ "model": model_name, "status": "starting", "percent": 0 }),
+    )
+    .ok();
 
     let client = reqwest::Client::new();
     let url = format!("{}/api/pull", OLLAMA_BASE_URL);
@@ -382,7 +465,10 @@ pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Resu
                 } else {
                     0
                 };
-                debug!("Ollama pull {}: {} ({}/{})", model_name, status, completed, total);
+                debug!(
+                    "Ollama pull {}: {} ({}/{})",
+                    model_name, status, completed, total
+                );
                 app.emit(
                     "ollama-pull-progress",
                     serde_json::json!({

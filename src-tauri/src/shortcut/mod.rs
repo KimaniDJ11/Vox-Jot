@@ -19,14 +19,12 @@ use specta::Type;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
-use crate::post_processing::{
-    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition,
-};
+use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
     KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme,
-    TypingTool,
-    APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID,
+    TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
+    OLLAMA_PROVIDER_ID,
 };
 use crate::tray;
 
@@ -870,10 +868,7 @@ pub fn change_fallback_to_raw_on_failure_setting(
 
 #[tauri::command]
 #[specta::specta]
-pub fn change_app_aware_tone_enabled_setting(
-    app: AppHandle,
-    enabled: bool,
-) -> Result<(), String> {
+pub fn change_app_aware_tone_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.app_aware_tone_enabled = enabled;
     settings::write_settings(&app, settings);
@@ -1002,8 +997,7 @@ pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<
 
     if settings.local_privacy_mode && !settings.is_post_process_provider_local(&provider_id) {
         return Err(
-            "Local privacy mode is enabled. Select a local post-processing provider."
-                .to_string(),
+            "Local privacy mode is enabled. Select a local post-processing provider.".to_string(),
         );
     }
 
@@ -1194,5 +1188,71 @@ pub fn change_show_tray_icon_setting(app: AppHandle, enabled: bool) -> Result<()
     // Apply change immediately
     tray::set_tray_visibility(&app, enabled);
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_correction_tracking_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.correction_tracking_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_correction_monitoring_delay_setting(
+    app: AppHandle,
+    delay_secs: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.correction_monitoring_delay_secs = delay_secs;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_auto_apply_corrections_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.auto_apply_corrections = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_correction_prompt_bias_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.correction_prompt_bias_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_correction_min_frequency_setting(
+    app: AppHandle,
+    min_frequency: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.correction_min_frequency = min_frequency;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_correction_min_confidence_setting(
+    app: AppHandle,
+    min_confidence: f64,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.correction_min_confidence = min_confidence;
+    settings::write_settings(&app, settings);
     Ok(())
 }

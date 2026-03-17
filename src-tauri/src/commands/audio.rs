@@ -5,9 +5,9 @@ use crate::settings::{get_settings, write_settings};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::sync::Arc;
 #[cfg(target_os = "windows")]
 use std::process::Command;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
 #[cfg(target_os = "windows")]

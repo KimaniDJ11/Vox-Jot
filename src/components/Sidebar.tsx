@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cpu, Bot } from "lucide-react";
+import { Cog, FlaskConical, History, Info, Sparkles, Cpu, Bot, SpellCheck } from "lucide-react";
 import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
 import {
@@ -12,6 +12,7 @@ import {
   PostProcessingSettings,
   ModelsSettings,
   OllamaSettings,
+  CorrectionSettings,
 } from "./settings";
 
 const SidebarBrandIcon: React.FC<IconProps> = (props) => (
@@ -64,6 +65,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.postProcessing",
     icon: Sparkles,
     component: PostProcessingSettings,
+    enabled: () => true,
+  },
+  corrections: {
+    labelKey: "sidebar.corrections",
+    icon: SpellCheck,
+    component: CorrectionSettings,
     enabled: () => true,
   },
   history: {

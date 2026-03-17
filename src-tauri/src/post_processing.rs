@@ -143,7 +143,11 @@ pub fn apply_personal_dictionary(
     }
 
     let prepared = prepare_entries(entries);
-    let max_words = prepared.iter().map(|entry| entry.spoken_words).max().unwrap_or(1);
+    let max_words = prepared
+        .iter()
+        .map(|entry| entry.spoken_words)
+        .max()
+        .unwrap_or(1);
     let words: Vec<&str> = text.split_whitespace().collect();
     let mut i = 0;
     let mut output = Vec::new();
@@ -165,7 +169,9 @@ pub fn apply_personal_dictionary(
             let mut candidates: Vec<&PreparedDictionaryEntry<'_>> = prepared
                 .iter()
                 .filter(|candidate| candidate.spoken_words == len)
-                .filter(|candidate| candidate_matches(candidate, &phrase, &exact_phrase, &compact_phrase))
+                .filter(|candidate| {
+                    candidate_matches(candidate, &phrase, &exact_phrase, &compact_phrase)
+                })
                 .collect();
 
             if candidates.is_empty() {
@@ -310,7 +316,11 @@ fn extract_outer_punctuation(word: &str) -> (&str, &str) {
         .take_while(|c| !c.is_alphanumeric())
         .count();
 
-    let prefix = if prefix_end > 0 { &word[..prefix_end] } else { "" };
+    let prefix = if prefix_end > 0 {
+        &word[..prefix_end]
+    } else {
+        ""
+    };
     let suffix = if suffix_len > 0 {
         &word[word.len() - suffix_len..]
     } else {
@@ -322,6 +332,50 @@ fn extract_outer_punctuation(word: &str) -> (&str, &str) {
 
 fn word_count(value: &str) -> usize {
     value.split_whitespace().count()
+}
+
+/// Merge manual personal dictionary entries with auto-learned corrections.
+///
+/// Manual entries take precedence over auto-learned corrections for the same
+/// spoken form (manual entries have higher priority by convention).
+pub fn get_merged_dictionary(
+    manual_entries: &[DictionaryEntry],
+    auto_entries: &[DictionaryEntry],
+) -> Vec<DictionaryEntry> {
+    let mut merged = manual_entries.to_vec();
+
+    for auto_entry in auto_entries {
+        // Skip if a manual entry already covers this spoken form
+        let already_covered = manual_entries
+            .iter()
+            .any(|manual| manual.spoken.to_lowercase() == auto_entry.spoken.to_lowercase());
+
+        if !already_covered {
+            merged.push(auto_entry.clone());
+        }
+    }
+
+    merged
+}
+
+/// Build a correction bias prompt section for LLM providers.
+///
+/// This generates a concise list of known corrections that can be appended
+/// to the system prompt to bias the LLM toward correct spellings.
+pub fn build_correction_bias_prompt(corrections: &[DictionaryEntry]) -> Option<String> {
+    if corrections.is_empty() {
+        return None;
+    }
+
+    let mut lines = Vec::new();
+    lines.push("Known corrections (apply these when you see similar words):".to_string());
+
+    // Limit to top 50 corrections to avoid bloating the prompt
+    for entry in corrections.iter().take(50) {
+        lines.push(format!("- \"{}\" → \"{}\"", entry.spoken, entry.written));
+    }
+
+    Some(lines.join("\n"))
 }
 
 #[cfg(test)]
@@ -381,7 +435,8 @@ mod tests {
 
     #[test]
     fn keeps_punctuation_around_replaced_phrase() {
-        let result = apply_personal_dictionary("\"swift ui,\" works", &[entry("swift ui", "SwiftUI")]);
+        let result =
+            apply_personal_dictionary("\"swift ui,\" works", &[entry("swift ui", "SwiftUI")]);
         assert_eq!(result.text, "\"SwiftUI,\" works");
     }
 

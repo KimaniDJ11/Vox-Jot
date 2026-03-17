@@ -64,17 +64,19 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    fn whisper_models_base_url() -> String {
-        std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
-        })
-    }
+fn whisper_models_base_url() -> String {
+    std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
+        "https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models"
+            .to_string()
+    })
+}
 
-    fn model_source_base_url() -> String {
-        std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
-        })
-    }
+fn model_source_base_url() -> String {
+    std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
+        "https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models"
+            .to_string()
+    })
+}
 
     fn model_url_for(model_id: &str, filename: &str, use_hf_base: bool) -> String {
         let override_key = format!(

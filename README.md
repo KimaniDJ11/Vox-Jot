@@ -299,19 +299,19 @@ You can publish or refresh the pinned model mirror release yourself with:
 
 **Pinned model release (GitHub):**
 
-- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-small.bin`
-- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-medium.bin`
-- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
-- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
-- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
-- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
-- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
-- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-base.tar.gz`
-- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
-- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
-- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
-- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
-- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
+- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-small.bin`
+- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-medium.bin`
+- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
+- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
+- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
+- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
+- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
+- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-base.tar.gz`
+- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
+- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
+- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
+- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
+- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
 
 > By default, Vox Jot downloads every built-in model from this pinned GitHub release.
 > Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.

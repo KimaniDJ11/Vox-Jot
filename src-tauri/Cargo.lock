@@ -7235,6 +7235,7 @@ name = "vox_jot"
 version = "0.7.10"
 dependencies = [
  "accessibility",
+ "accessibility-sys",
  "anyhow",
  "chrono",
  "clap",

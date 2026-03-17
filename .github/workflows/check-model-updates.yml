@@ -1,0 +1,145 @@
+name: Check Model Updates
+
+on:
+  schedule:
+    # Run weekly on Mondays at 9am ET (1pm UTC)
+    - cron: '0 13 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-updates:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Check HuggingFace repos for updates
+        id: check-hf
+        run: |
+          # Create a report file
+          echo "# Model Update Report - $(date +'%Y-%m-%d')" > report.md
+          echo "" >> report.md
+          echo "Checking upstream model providers for new releases..." >> report.md
+          echo "" >> report.md
+          
+          # Function to check HF repo for commits in last 7 days
+          check_hf_repo() {
+            local repo="$1"
+            local name="$2"
+            echo "Checking $name..." >&2
+            
+            # Get commits from last 7 days
+            response=$(curl -s "https://huggingface.co/api/models/$repo/commits?limit=5")
+            
+            if echo "$response" | jq -e '.[0]' > /dev/null 2>&1; then
+              latest_date=$(echo "$response" | jq -r '.[0].date' 2>/dev/null || echo "")
+              if [ -n "$latest_date" ]; then
+                # Check if within last 7 days
+                seven_days_ago=$(date -u -d '7 days ago' +%s 2>/dev/null || date -u -v-7d +%s 2>/dev/null)
+                commit_date=$(date -u -d "$latest_date" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${latest_date%.*}" +%s 2>/dev/null)
+                
+                if [ "$commit_date" -gt "$seven_days_ago" ]; then
+                  echo "## ⚠️ $name" >> report.md
+                  echo "**New activity detected!**" >> report.md
+                  echo "- Latest commit: $latest_date" >> report.md
+                  echo "- Repository: https://huggingface.co/$repo" >> report.md
+                  echo "" >> report.md
+                  return 0
+                fi
+              fi
+            fi
+            return 1
+          }
+          
+          updates_found=0
+          
+          # Check all model providers
+          check_hf_repo "ggerganov/whisper.cpp" "Whisper GGML" && updates_found=1
+          check_hf_repo "nvidia/parakeet-tdt-0.6b-v3" "Parakeet V3" && updates_found=1
+          check_hf_repo "UsefulSensors/moonshine-base" "Moonshine Base" && updates_found=1
+          check_hf_repo "UsefulSensors/moonshine-tiny" "Moonshine Tiny" && updates_found=1
+          check_hf_repo "UsefulSensors/moonshine-small" "Moonshine Small" && updates_found=1
+          check_hf_repo "FunAudioLLM/SenseVoiceSmall" "SenseVoice" && updates_found=1
+          check_hf_repo "MediaTek-Research/Breeze-ASR-25" "Breeze ASR" && updates_found=1
+          check_hf_repo "ai-sage/GigaAM-v3" "GigaAM V3" && updates_found=1
+          
+          # Expansion candidates
+          check_hf_repo "mistralai/Voxtral-Mini-4B-Realtime-2602" "Voxtral (Expansion)" && updates_found=1
+          
+          if [ $updates_found -eq 0 ]; then
+            echo "## ✅ No Updates" >> report.md
+            echo "All model providers checked. No new activity in the last 7 days." >> report.md
+          fi
+          
+          echo "" >> report.md
+          echo "---" >> report.md
+          echo "" >> report.md
+          echo "### Next Steps" >> report.md
+          echo "" >> report.md
+          echo "If updates were found:" >> report.md
+          echo "1. Visit the upstream repository links above" >> report.md
+          echo "2. Review changelogs and release notes" >> report.md
+          echo "3. Test updated models locally with sample audio" >> report.md
+          echo "4. If validated, mirror to a new pinned release (e.g., \`v0.1.1-models\`)" >> report.md
+          echo "5. Update \`src-tauri/src/managers/model.rs\` if needed" >> report.md
+          echo "6. Update \`MODELS_UPSTREAMS.md\` with new version info" >> report.md
+          echo "" >> report.md
+          echo "_Automated check powered by GitHub Actions. See \`.github/workflows/check-model-updates.yml\`_" >> report.md
+          
+          echo "updates_found=$updates_found" >> $GITHUB_OUTPUT
+
+      - name: Create issue if updates found
+        if: steps.check-hf.outputs.updates_found == '1'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('report.md', 'utf8');
+            
+            // Check if there's already an open issue for this week
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'model-update',
+              per_page: 10
+            });
+            
+            const thisWeek = new Date().toISOString().split('T')[0];
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes(thisWeek.slice(0, 7)) // Match year-month
+            );
+            
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## Update: ${thisWeek}\n\n${report}`
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🔄 Model Updates Detected - ${thisWeek}`,
+                body: report,
+                labels: ['model-update', 'automated']
+              });
+              console.log('Created new model update issue');
+            }
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.check-hf.outputs.updates_found }}" == "1" ]; then
+            echo "✅ Updates found! GitHub issue created." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No updates found. All models are current." >> $GITHUB_STEP_SUMMARY
+          fi
+          cat report.md >> $GITHUB_STEP_SUMMARY

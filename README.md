@@ -290,22 +290,19 @@ New-Item -ItemType Directory -Force -Path "$env:APPDATA\com.iriedinamik.voxjot\m
 
 Download the models you want from below.
 
-You can publish or refresh the non-Whisper mirror release yourself with:
+You can publish or refresh the pinned model mirror release yourself with:
 
 ```bash
 ./scripts/mirror-models.sh --dry-run
 ./scripts/mirror-models.sh
 ```
 
-**Whisper Models (single .bin files):**
+**Pinned model release (GitHub):**
 
-- Small (487 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin`
-- Medium (1500 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin`
-- Turbo (1600 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin`
-- Large (1100 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin`
-
-**Mirrored STT assets (pinned GitHub release):**
-
+- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-small.bin`
+- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-medium.bin`
+- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
+- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
 - Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
 - Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
 - Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
@@ -316,6 +313,7 @@ You can publish or refresh the non-Whisper mirror release yourself with:
 - SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
 - GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
 
+> By default, Vox Jot downloads every built-in model from this pinned GitHub release.
 > Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.
 > Non-Whisper download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
 > Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.

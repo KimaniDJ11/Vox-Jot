@@ -110,9 +110,14 @@ export const DebugSettings: React.FC = () => {
               {routeLoading ? "Analyzing..." : "Analyze Route"}
             </Button>
             {routeResult && (
-              <span className="text-sm text-text/70" data-testid="route-debugger-result">
+              <span
+                className="text-sm text-text/70"
+                data-testid="route-debugger-result"
+              >
                 Route:{" "}
-                <strong className="text-logo-primary">{routeResult.route}</strong>
+                <strong className="text-logo-primary">
+                  {routeResult.route}
+                </strong>
               </span>
             )}
           </div>
@@ -125,29 +130,46 @@ export const DebugSettings: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
                   <p className="text-[10px] uppercase text-text/60">Words</p>
-                  <p className="text-sm font-semibold text-text">{routeResult.word_count}</p>
+                  <p className="text-sm font-semibold text-text">
+                    {routeResult.word_count}
+                  </p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
                   <p className="text-[10px] uppercase text-text/60">Score</p>
-                  <p className="text-sm font-semibold text-text">{routeResult.score}</p>
+                  <p className="text-sm font-semibold text-text">
+                    {routeResult.score}
+                  </p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
                   <p className="text-[10px] uppercase text-text/60">Route</p>
-                  <p className="text-sm font-semibold text-logo-primary">{routeResult.route}</p>
+                  <p className="text-sm font-semibold text-logo-primary">
+                    {routeResult.route}
+                  </p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">Incomplete</p>
+                  <p className="text-[10px] uppercase text-text/60">
+                    Incomplete
+                  </p>
                   <p className="text-sm font-semibold text-text">
                     {routeResult.looks_incomplete ? "yes" : "no"}
                   </p>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                <p>has_correction_cue: {String(routeResult.has_correction_cue)}</p>
+                <p>
+                  has_correction_cue: {String(routeResult.has_correction_cue)}
+                </p>
                 <p>has_list_cue: {String(routeResult.has_list_cue)}</p>
-                <p>has_paragraph_cue: {String(routeResult.has_paragraph_cue)}</p>
-                <p>has_transform_cue: {String(routeResult.has_transform_cue)}</p>
-                <p>has_technical_tokens: {String(routeResult.has_technical_tokens)}</p>
+                <p>
+                  has_paragraph_cue: {String(routeResult.has_paragraph_cue)}
+                </p>
+                <p>
+                  has_transform_cue: {String(routeResult.has_transform_cue)}
+                </p>
+                <p>
+                  has_technical_tokens:{" "}
+                  {String(routeResult.has_technical_tokens)}
+                </p>
                 <p>looks_incomplete: {String(routeResult.looks_incomplete)}</p>
               </div>
             </div>

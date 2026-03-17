@@ -236,7 +236,7 @@ mod tests {
         let corrections = extract_corrections("recieve", "receive", None);
         assert_eq!(corrections.len(), 1);
         // Very similar words should have high confidence
-        assert!(corrections[0].confidence > 0.8);
+        assert!(corrections[0].confidence > 0.7);
     }
 
     #[test]

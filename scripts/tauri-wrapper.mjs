@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
-const isBuildLikeCommand = args.some((arg) => arg === "build" || arg === "bundle");
+const isBuildLikeCommand = args.some(
+  (arg) => arg === "build" || arg === "bundle",
+);
 const hasSigningKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY?.trim());
 const hasExplicitConfig = args.includes("--config") || args.includes("-c");
 

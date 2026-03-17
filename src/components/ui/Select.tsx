@@ -39,14 +39,10 @@ type NonCreatableProps = {
 
 export type SelectProps = BaseProps & (CreatableProps | NonCreatableProps);
 
-const baseBackground =
-  "var(--panel-bg)";
-const hoverBackground =
-  "color-mix(in srgb, var(--accent), transparent 90%)";
-const focusBackground =
-  "color-mix(in srgb, var(--accent), transparent 84%)";
-const neutralBorder =
-  "var(--border)";
+const baseBackground = "var(--panel-bg)";
+const hoverBackground = "color-mix(in srgb, var(--accent), transparent 90%)";
+const focusBackground = "color-mix(in srgb, var(--accent), transparent 84%)";
+const neutralBorder = "var(--border)";
 
 const selectStyles: StylesConfig<SelectOption, false> = {
   control: (base, state) => ({

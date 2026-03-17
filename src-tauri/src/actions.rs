@@ -1674,7 +1674,7 @@ impl ShortcutAction for TranscribeAction {
                                 post_process_transcription(
                                     &effective_settings,
                                     &final_text,
-                                    active_app_context,
+                                    active_app_context.clone(),
                                 )
                                 .await
                             } else {

@@ -82,10 +82,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onModelSelected }) => {
 
   if (step === "llm") {
     return (
-      <OllamaSetup
-        onSkip={onModelSelected}
-        onComplete={onModelSelected}
-      />
+      <OllamaSetup onSkip={onModelSelected} onComplete={onModelSelected} />
     );
   }
 

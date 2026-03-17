@@ -53,9 +53,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const showMicrophonePermission = isMacOS || isWindows;
   const showAccessibilityPermission = isMacOS;
   const showDevBypass =
-    import.meta.env.DEV &&
-    isMacOS &&
-    permissions.accessibility !== "granted";
+    import.meta.env.DEV && isMacOS && permissions.accessibility !== "granted";
 
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
@@ -259,14 +257,22 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         onBack={onBack}
         leftContent={
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <Loader2 className="ob-spinner" size={32} color="var(--ob-text-muted)" />
+            <Loader2
+              className="ob-spinner"
+              size={32}
+              color="var(--ob-text-muted)"
+            />
           </div>
         }
       />
     );
   }
 
-  const renderPermissionStatus = (status: PermissionStatus, onGrant: () => void, isWin?: boolean) => {
+  const renderPermissionStatus = (
+    status: PermissionStatus,
+    onGrant: () => void,
+    isWin?: boolean,
+  ) => {
     if (status === "granted") {
       return (
         <span className="ob-perm-granted-badge">
@@ -285,7 +291,9 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     return (
       <div style={{ display: "flex", alignItems: "center" }}>
         <button className="ob-perm-allow-btn" onClick={onGrant}>
-          {isWin ? t("accessibility.openSettings") : t("onboarding.permissions.grant")}
+          {isWin
+            ? t("accessibility.openSettings")
+            : t("onboarding.permissions.grant")}
         </button>
         <span className="ob-info-wrap">
           <button
@@ -316,8 +324,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             <div
               className={`ob-perm-card ${permissions.accessibility === "granted" ? "ob-perm-card-granted" : ""}`}
             >
-              <p className="ob-perm-title">{t("onboarding.permissions.accessibility.cardTitle")}</p>
-              <p className="ob-perm-desc">{t("onboarding.permissions.accessibility.cardDescription")}</p>
+              <p className="ob-perm-title">
+                {t("onboarding.permissions.accessibility.cardTitle")}
+              </p>
+              <p className="ob-perm-desc">
+                {t("onboarding.permissions.accessibility.cardDescription")}
+              </p>
               {renderPermissionStatus(
                 permissions.accessibility,
                 handleGrantAccessibility,
@@ -330,8 +342,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             <div
               className={`ob-perm-card ${permissions.microphone === "granted" ? "ob-perm-card-granted" : ""}`}
             >
-              <p className="ob-perm-title">{t("onboarding.permissions.microphone.cardTitle")}</p>
-              <p className="ob-perm-desc">{t("onboarding.permissions.microphone.cardDescription")}</p>
+              <p className="ob-perm-title">
+                {t("onboarding.permissions.microphone.cardTitle")}
+              </p>
+              <p className="ob-perm-desc">
+                {t("onboarding.permissions.microphone.cardDescription")}
+              </p>
               {renderPermissionStatus(
                 permissions.microphone,
                 handleGrantMicrophone,

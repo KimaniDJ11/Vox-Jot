@@ -25,8 +25,12 @@ const normalizeVersion = (version: string): string => {
 };
 
 const compareSemver = (left: string, right: string): number => {
-  const lhs = normalizeVersion(left).split(".").map((part) => Number(part));
-  const rhs = normalizeVersion(right).split(".").map((part) => Number(part));
+  const lhs = normalizeVersion(left)
+    .split(".")
+    .map((part) => Number(part));
+  const rhs = normalizeVersion(right)
+    .split(".")
+    .map((part) => Number(part));
   const max = Math.max(lhs.length, rhs.length);
 
   for (let i = 0; i < max; i += 1) {

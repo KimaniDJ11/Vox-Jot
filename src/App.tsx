@@ -275,7 +275,8 @@ function App() {
             toast:
               "flat-card rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
             title: "font-semibold",
-            description: "text-[color-mix(in_srgb,var(--color-text),transparent_35%)]",
+            description:
+              "text-[color-mix(in_srgb,var(--color-text),transparent_35%)]",
           },
         }}
       />
@@ -306,7 +307,7 @@ function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4">
           <div className="flat-card w-full max-w-3xl rounded-2xl">
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
-               <div>
+              <div>
                 <h2 className="text-lg font-semibold">
                   {t("settings.postProcessing.preview.modal.title")}
                 </h2>
@@ -336,7 +337,10 @@ function App() {
             </div>
 
             <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4 sm:flex-row">
-              <Button variant="secondary" onClick={() => void resolvePreview(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => void resolvePreview(false)}
+              >
                 {t("settings.postProcessing.preview.modal.cancel")}
               </Button>
               <Button onClick={() => void resolvePreview(true)}>

@@ -66,13 +66,18 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   const localPrivacyMode = settings?.local_privacy_mode ?? false;
   const visibleProviders = useMemo(
     () =>
-      localPrivacyMode ? providers.filter((provider) => isLocalProvider(provider)) : providers,
+      localPrivacyMode
+        ? providers.filter((provider) => isLocalProvider(provider))
+        : providers,
     [localPrivacyMode, providers],
   );
 
   const selectedProviderId = useMemo(() => {
     const preferredId = settings?.post_process_provider_id;
-    if (preferredId && visibleProviders.some((provider) => provider.id === preferredId)) {
+    if (
+      preferredId &&
+      visibleProviders.some((provider) => provider.id === preferredId)
+    ) {
       return preferredId;
     }
     return visibleProviders[0]?.id || "openai";

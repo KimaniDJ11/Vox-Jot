@@ -44,7 +44,9 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ onContinue }) => {
             <Mic size={36} color="var(--ob-primary)" />
           </div>
           <h3 className="ob-card-title">{t("onboarding.welcome.cardTitle")}</h3>
-          <p className="ob-card-copy">{t("onboarding.welcome.cardDescription")}</p>
+          <p className="ob-card-copy">
+            {t("onboarding.welcome.cardDescription")}
+          </p>
 
           <div className="ob-stat-grid">
             <div className="ob-stat-card">

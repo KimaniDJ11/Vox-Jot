@@ -3,11 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./onboarding.css";
 
-export type OnboardingStepName =
-  | "welcome"
-  | "permissions"
-  | "setup"
-  | "learn";
+export type OnboardingStepName = "welcome" | "permissions" | "setup" | "learn";
 
 interface OnboardingLayoutProps {
   currentStep: OnboardingStepName;

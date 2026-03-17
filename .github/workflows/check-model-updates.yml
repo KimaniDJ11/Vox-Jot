@@ -3,7 +3,7 @@ name: Check Model Updates
 on:
   schedule:
     # Run weekly on Mondays at 9am ET (1pm UTC)
-    - cron: '0 13 * * 1'
+    - cron: "0 13 * * 1"
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
     permissions:
       issues: write
       contents: read
-    
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           echo "" >> report.md
           echo "Checking upstream model providers for new releases..." >> report.md
           echo "" >> report.md
-          
+
           # Function to check HF repo for commits in last 7 days
           check_hf_repo() {
             local repo="$1"
@@ -54,9 +54,9 @@ jobs:
             fi
             return 1
           }
-          
+
           updates_found=0
-          
+
           # Check all model providers
           check_hf_repo "ggerganov/whisper.cpp" "Whisper GGML" && updates_found=1
           check_hf_repo "nvidia/parakeet-tdt-0.6b-v3" "Parakeet V3" && updates_found=1
@@ -66,24 +66,24 @@ jobs:
           check_hf_repo "FunAudioLLM/SenseVoiceSmall" "SenseVoice" && updates_found=1
           check_hf_repo "MediaTek-Research/Breeze-ASR-25" "Breeze ASR" && updates_found=1
           check_hf_repo "ai-sage/GigaAM-v3" "GigaAM V3" && updates_found=1
-          
+
           # Expansion candidates
           check_hf_repo "mistralai/Voxtral-Mini-4B-Realtime-2602" "Voxtral (Expansion)" && updates_found=1
           check_hf_repo "k2-fsa/sherpa-onnx" "sherpa-onnx (Expansion)" && updates_found=1
           check_hf_repo "SYSTRAN/faster-whisper-large-v3" "faster-whisper (Expansion)" && updates_found=1
-          
+
           # Additional NVIDIA Parakeet variants
           check_hf_repo "nvidia/parakeet-tdt_ctc-110m" "Parakeet 110M (Expansion)" && updates_found=1
           check_hf_repo "nvidia/parakeet-tdt-1.1b" "Parakeet 1.1B (Expansion)" && updates_found=1
-          
+
           # Useful Sensors streaming variants
           check_hf_repo "UsefulSensors/moonshine-streaming-medium" "Moonshine Streaming Medium (Expansion)" && updates_found=1
-          
+
           if [ $updates_found -eq 0 ]; then
             echo "## ✅ No Updates" >> report.md
             echo "All model providers checked. No new activity in the last 7 days." >> report.md
           fi
-          
+
           echo "" >> report.md
           echo "---" >> report.md
           echo "" >> report.md
@@ -98,7 +98,7 @@ jobs:
           echo "6. Update \`MODELS_UPSTREAMS.md\` with new version info" >> report.md
           echo "" >> report.md
           echo "_Automated check powered by GitHub Actions. See \`.github/workflows/check-model-updates.yml\`_" >> report.md
-          
+
           echo "updates_found=$updates_found" >> $GITHUB_OUTPUT
 
       - name: Create issue if updates found
@@ -108,7 +108,7 @@ jobs:
           script: |
             const fs = require('fs');
             const report = fs.readFileSync('report.md', 'utf8');
-            
+
             // Check if there's already an open issue for this week
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -117,12 +117,12 @@ jobs:
               labels: 'model-update',
               per_page: 10
             });
-            
+
             const thisWeek = new Date().toISOString().split('T')[0];
             const existingIssue = issues.data.find(issue => 
               issue.title.includes(thisWeek.slice(0, 7)) // Match year-month
             );
-            
+
             if (existingIssue) {
               // Update existing issue
               await github.rest.issues.createComment({

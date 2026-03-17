@@ -31,10 +31,16 @@ export const FileTranscriptionCard: React.FC = () => {
       if (result.status === "ok") {
         setTranscription(result.data);
       } else {
-        setError(result.error || t("settings.general.fileTranscription.errors.failed"));
+        setError(
+          result.error || t("settings.general.fileTranscription.errors.failed"),
+        );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("settings.general.fileTranscription.errors.failed"));
+      setError(
+        e instanceof Error
+          ? e.message
+          : t("settings.general.fileTranscription.errors.failed"),
+      );
     } finally {
       setIsRunning(false);
     }

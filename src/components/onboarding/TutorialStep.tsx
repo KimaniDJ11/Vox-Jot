@@ -48,7 +48,8 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
 
   const dictationShortcut = formatShortcut(
-    bindings?.transcribe?.current_binding || bindings?.transcribe?.default_binding,
+    bindings?.transcribe?.current_binding ||
+      bindings?.transcribe?.default_binding,
   );
   const postProcessShortcut = formatShortcut(
     bindings?.transcribe_with_post_process?.current_binding ||

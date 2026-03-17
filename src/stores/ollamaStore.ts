@@ -69,7 +69,11 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
       return status;
     } catch (e) {
       console.error("Failed to check Ollama status:", e);
-      const fallback: OllamaStatus = { installed: false, running: false, models: [] };
+      const fallback: OllamaStatus = {
+        installed: false,
+        running: false,
+        models: [],
+      };
       set({ status: fallback, isChecking: false });
       return fallback;
     }
@@ -79,14 +83,20 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
     set({ isInstalling: true, installProgress: "Starting installation..." });
 
     // Listen for progress events
-    const unlisten = await listen<string>("ollama-install-progress", (event) => {
-      set({ installProgress: event.payload });
-    });
+    const unlisten = await listen<string>(
+      "ollama-install-progress",
+      (event) => {
+        set({ installProgress: event.payload });
+      },
+    );
 
-    const unlistenComplete = await listen<boolean>("ollama-install-complete", () => {
-      set({ isInstalling: false, installProgress: "" });
-      get().checkStatus();
-    });
+    const unlistenComplete = await listen<boolean>(
+      "ollama-install-complete",
+      () => {
+        set({ isInstalling: false, installProgress: "" });
+        get().checkStatus();
+      },
+    );
 
     try {
       await invoke("install_ollama");
@@ -112,27 +122,33 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
     }));
 
     // Listen for streaming progress
-    const unlisten = await listen<OllamaPullProgress>("ollama-pull-progress", (event) => {
-      const p = event.payload;
-      if (p.model === modelName) {
-        set((state) => ({
-          pullProgress: { ...state.pullProgress, [modelName]: p.percent },
-        }));
-      }
-    });
+    const unlisten = await listen<OllamaPullProgress>(
+      "ollama-pull-progress",
+      (event) => {
+        const p = event.payload;
+        if (p.model === modelName) {
+          set((state) => ({
+            pullProgress: { ...state.pullProgress, [modelName]: p.percent },
+          }));
+        }
+      },
+    );
 
-    const unlistenComplete = await listen<string>("ollama-pull-complete", (event) => {
-      if (event.payload === modelName) {
-        const newPullingSet = new Set(get().pullingModels);
-        newPullingSet.delete(modelName);
-        set((state) => ({
-          pullingModels: newPullingSet,
-          pullProgress: { ...state.pullProgress, [modelName]: 100 },
-        }));
-        // Refresh status to pick up the newly pulled model
-        get().checkStatus();
-      }
-    });
+    const unlistenComplete = await listen<string>(
+      "ollama-pull-complete",
+      (event) => {
+        if (event.payload === modelName) {
+          const newPullingSet = new Set(get().pullingModels);
+          newPullingSet.delete(modelName);
+          set((state) => ({
+            pullingModels: newPullingSet,
+            pullProgress: { ...state.pullProgress, [modelName]: 100 },
+          }));
+          // Refresh status to pick up the newly pulled model
+          get().checkStatus();
+        }
+      },
+    );
 
     try {
       await invoke("pull_ollama_model", { modelName });
@@ -170,14 +186,17 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
 
   loadRecommendedModels: async () => {
     try {
-      const models = await invoke<OllamaModelInfo[]>("get_recommended_ollama_models");
+      const models = await invoke<OllamaModelInfo[]>(
+        "get_recommended_ollama_models",
+      );
       const status = get().status;
       // Annotate is_pulled based on installed models
       const enriched = models.map((m) => ({
         ...m,
-        is_pulled: status?.models.some((installed) =>
-          installed.startsWith(m.id.split(":")[0])
-        ) ?? false,
+        is_pulled:
+          status?.models.some((installed) =>
+            installed.startsWith(m.id.split(":")[0]),
+          ) ?? false,
       }));
       set({ recommendedModels: enriched });
     } catch (e) {

@@ -3,7 +3,9 @@ import { Check, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
 import { useSettings } from "@/hooks/useSettings";
 
-const splitDescription = (description: string): { summary: string; size: string } => {
+const splitDescription = (
+  description: string,
+): { summary: string; size: string } => {
   const parts = description.split("—").map((part) => part.trim());
   if (parts.length < 2) {
     return { summary: description, size: "" };
@@ -75,7 +77,8 @@ const OllamaSettings: React.FC = () => {
   const isInstalled = status?.installed ?? false;
   const isRunning = status?.running ?? false;
   const selectedProviderId = getSetting("post_process_provider_id") || "";
-  const selectedOllamaModel = getSetting("post_process_models")?.["ollama"] || "";
+  const selectedOllamaModel =
+    getSetting("post_process_models")?.["ollama"] || "";
 
   const downloadedModels = recommendedModels.filter((model) =>
     installedModels.some((installed) =>
@@ -94,7 +97,9 @@ const OllamaSettings: React.FC = () => {
     setActionError(null);
     const ok = await pullModel(modelId);
     if (!ok) {
-      setActionError("Could not start model download. Ensure Ollama is running and try again.");
+      setActionError(
+        "Could not start model download. Ensure Ollama is running and try again.",
+      );
     }
   };
 
@@ -127,8 +132,8 @@ const OllamaSettings: React.FC = () => {
           Ollama — Local LLM Engine
         </h3>
         <p className="text-xs text-text/60">
-          Ollama runs tiny AI models locally on your device for post-processing transcripts.
-          No internet required after setup.
+          Ollama runs tiny AI models locally on your device for post-processing
+          transcripts. No internet required after setup.
         </p>
 
         {!isInstalled ? (
@@ -174,7 +179,9 @@ const OllamaSettings: React.FC = () => {
             </div>
           )}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-text/60">Downloaded LLM Models</h4>
+            <h4 className="text-sm font-medium text-text/60">
+              Downloaded LLM Models
+            </h4>
             {downloadedModels.length === 0 ? (
               <div className="rounded-xl border-2 border-mid-gray/20 px-4 py-3 text-sm text-text/60">
                 No local LLM models downloaded yet.
@@ -199,7 +206,9 @@ const OllamaSettings: React.FC = () => {
                     <div className="flex justify-between items-center w-full">
                       <div className="flex flex-col items-start flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-base font-semibold text-text transition-colors group-hover:text-logo-primary">{model.label}</h3>
+                          <h3 className="text-base font-semibold text-text transition-colors group-hover:text-logo-primary">
+                            {model.label}
+                          </h3>
                           <span
                             className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium ${
                               isActive
@@ -211,20 +220,32 @@ const OllamaSettings: React.FC = () => {
                             {isActive ? "Active" : "Downloaded"}
                           </span>
                         </div>
-                        <p className="text-text/60 text-sm leading-relaxed">{details.summary}</p>
+                        <p className="text-text/60 text-sm leading-relaxed">
+                          {details.summary}
+                        </p>
                       </div>
                       <div className="hidden sm:flex items-center ml-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-text/60 w-16 text-right">quality est</p>
+                            <p className="text-xs text-text/60 w-16 text-right">
+                              quality est
+                            </p>
                             <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                              <div className="h-full bg-logo-primary rounded-full" style={{ width: `${score.quality * 100}%` }} />
+                              <div
+                                className="h-full bg-logo-primary rounded-full"
+                                style={{ width: `${score.quality * 100}%` }}
+                              />
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-text/60 w-16 text-right">speed est</p>
+                            <p className="text-xs text-text/60 w-16 text-right">
+                              speed est
+                            </p>
                             <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                              <div className="h-full bg-logo-primary rounded-full" style={{ width: `${score.speed * 100}%` }} />
+                              <div
+                                className="h-full bg-logo-primary rounded-full"
+                                style={{ width: `${score.speed * 100}%` }}
+                              />
                             </div>
                           </div>
                         </div>
@@ -234,7 +255,9 @@ const OllamaSettings: React.FC = () => {
                     <hr className="w-full border-mid-gray/20" />
 
                     <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                      <span className="text-xs text-text/50">Local Ollama model</span>
+                      <span className="text-xs text-text/50">
+                        Local Ollama model
+                      </span>
                       {!isActive && (
                         <button
                           onClick={() => handleActivateModel(model.id)}
@@ -255,9 +278,14 @@ const OllamaSettings: React.FC = () => {
                     {isPulling && (
                       <div className="w-full mt-2">
                         <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                          <div className="h-full bg-logo-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                          <div
+                            className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          />
                         </div>
-                        <p className="text-xs text-text/50 mt-1">Pulling {Math.round(progress)}%</p>
+                        <p className="text-xs text-text/50 mt-1">
+                          Pulling {Math.round(progress)}%
+                        </p>
                       </div>
                     )}
                   </div>
@@ -267,7 +295,9 @@ const OllamaSettings: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-text/60">Available to Download</h4>
+            <h4 className="text-sm font-medium text-text/60">
+              Available to Download
+            </h4>
             {availableModels.map((model) => {
               const isPulling = pullingModels.has(model.id);
               const progress = pullProgress[model.id] ?? 0;
@@ -281,21 +311,35 @@ const OllamaSettings: React.FC = () => {
                 >
                   <div className="flex justify-between items-center w-full">
                     <div className="flex flex-col items-start flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-text transition-colors group-hover:text-logo-primary">{model.label}</h3>
-                      <p className="text-text/60 text-sm leading-relaxed">{details.summary}</p>
+                      <h3 className="text-base font-semibold text-text transition-colors group-hover:text-logo-primary">
+                        {model.label}
+                      </h3>
+                      <p className="text-text/60 text-sm leading-relaxed">
+                        {details.summary}
+                      </p>
                     </div>
                     <div className="hidden sm:flex items-center ml-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-text/60 w-16 text-right">quality est</p>
+                          <p className="text-xs text-text/60 w-16 text-right">
+                            quality est
+                          </p>
                           <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                            <div className="h-full bg-logo-primary rounded-full" style={{ width: `${score.quality * 100}%` }} />
+                            <div
+                              className="h-full bg-logo-primary rounded-full"
+                              style={{ width: `${score.quality * 100}%` }}
+                            />
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-text/60 w-16 text-right">speed est</p>
+                          <p className="text-xs text-text/60 w-16 text-right">
+                            speed est
+                          </p>
                           <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                            <div className="h-full bg-logo-primary rounded-full" style={{ width: `${score.speed * 100}%` }} />
+                            <div
+                              className="h-full bg-logo-primary rounded-full"
+                              style={{ width: `${score.speed * 100}%` }}
+                            />
                           </div>
                         </div>
                       </div>
@@ -305,9 +349,13 @@ const OllamaSettings: React.FC = () => {
                   <hr className="w-full border-mid-gray/20" />
 
                   <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                    <span className="text-xs text-text/50">{details.size || "Model"}</span>
+                    <span className="text-xs text-text/50">
+                      {details.size || "Model"}
+                    </span>
                     {isPulling ? (
-                      <span className="ml-auto text-xs text-text/50">Pulling {Math.round(progress)}%</span>
+                      <span className="ml-auto text-xs text-text/50">
+                        Pulling {Math.round(progress)}%
+                      </span>
                     ) : (
                       <button
                         onClick={() => handlePullModel(model.id)}
@@ -323,7 +371,10 @@ const OllamaSettings: React.FC = () => {
                   {isPulling && (
                     <div className="w-full mt-2">
                       <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-logo-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                        <div
+                          className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
                     </div>
                   )}

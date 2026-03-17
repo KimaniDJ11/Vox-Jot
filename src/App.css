@@ -12,10 +12,10 @@
   --color-logo-primary: #27408b;
   --color-logo-stroke: #193165;
   --color-accent-gold: #d89a5c;
-  
-  --font-display: 'Outfit', 'SF Pro Display', sans-serif;
-  --font-body: 'DM Sans', 'SF Pro Text', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+
+  --font-display: "Outfit", "SF Pro Display", sans-serif;
+  --font-body: "DM Sans", "SF Pro Text", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
 }
 
 /* ── Light Theme Tokens (Warm Ivory) ──────────────────────────── */
@@ -28,24 +28,24 @@
   --border: #e0d6ca;
   --text: #2c2418;
   --muted: #8c7e6f;
-  
+
   --accent: #27408b;
   --accent-hover: #1f3370;
   --accent-soft: rgba(39, 64, 139, 0.08);
   --accent-glow: rgba(39, 64, 139, 0.15);
-  
+
   --danger: #c44040;
   --danger-soft: rgba(196, 64, 64, 0.07);
-  
+
   --shadow-sm: 0 1px 3px rgba(44, 36, 24, 0.06);
   --shadow-md: 0 4px 16px rgba(44, 36, 24, 0.08);
   --shadow-lg: 0 12px 40px rgba(44, 36, 24, 0.12);
-  
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-  
+
   --transition-fast: 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-smooth: 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -70,12 +70,12 @@
   --border: #374151;
   --text: #f3f4f6;
   --muted: #9ca3af;
-  
+
   --accent: #5b7dc9;
   --accent-hover: #7b9ce8;
   --accent-soft: rgba(91, 125, 201, 0.12);
   --accent-glow: rgba(91, 125, 201, 0.25);
-  
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -91,12 +91,12 @@
     --border: #374151;
     --text: #f3f4f6;
     --muted: #9ca3af;
-    
+
     --accent: #5b7dc9;
     --accent-hover: #7b9ce8;
     --accent-soft: rgba(91, 125, 201, 0.12);
     --accent-glow: rgba(91, 125, 201, 0.25);
-    
+
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -117,12 +117,14 @@ body,
   color: var(--text);
   background: var(--bg);
   /* Apply transition to background for smooth theme switching */
-  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+  transition:
+    background-color var(--transition-smooth),
+    color var(--transition-smooth);
 }
 
 /* Subtle grain texture on the root background to replace glassmorphism depth */
 #root::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -163,16 +165,32 @@ body,
 
 /* ── Animations ─────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.94); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ── Utilities ──────────────────────────────────────────────── */
@@ -246,7 +264,9 @@ body,
     background: var(--panel-bg);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
-    transition: background var(--transition-smooth), border-color var(--transition-smooth);
+    transition:
+      background var(--transition-smooth),
+      border-color var(--transition-smooth);
   }
 
   .flat-card {
@@ -254,7 +274,10 @@ body,
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+    transition:
+      transform var(--transition-fast),
+      box-shadow var(--transition-fast),
+      border-color var(--transition-fast);
   }
 
   .interactive-card:hover {
@@ -270,7 +293,9 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

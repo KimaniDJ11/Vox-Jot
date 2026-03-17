@@ -158,7 +158,10 @@ export const HistorySettings: React.FC = () => {
     [normalizedQuery],
   );
 
-  const visibleRecordingsEntries = filterEntries(recordingsEntries, "recordings");
+  const visibleRecordingsEntries = filterEntries(
+    recordingsEntries,
+    "recordings",
+  );
   const visibleJotsEntries = filterEntries(jotsEntries, "jots");
 
   const renderEntries = (
@@ -237,7 +240,11 @@ export const HistorySettings: React.FC = () => {
           />
         </div>
         <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
-          <div className="border-b border-mid-gray/20 px-3 py-2 flex items-center gap-4" role="tablist" aria-label={t("settings.history.title")}>
+          <div
+            className="border-b border-mid-gray/20 px-3 py-2 flex items-center gap-4"
+            role="tablist"
+            aria-label={t("settings.history.title")}
+          >
             <button
               type="button"
               id="history-tab-recordings"
@@ -255,7 +262,9 @@ export const HistorySettings: React.FC = () => {
               {t("settings.history.tabs.recordings", {
                 defaultValue: "Recordings",
               })}
-              <span className="ml-2 text-xs text-text/70">({recordingsEntries.length})</span>
+              <span className="ml-2 text-xs text-text/70">
+                ({recordingsEntries.length})
+              </span>
             </button>
             <button
               type="button"
@@ -272,7 +281,9 @@ export const HistorySettings: React.FC = () => {
               }`}
             >
               {t("settings.history.tabs.jots", { defaultValue: "Jots" })}
-              <span className="ml-2 text-xs text-text/70">({jotsEntries.length})</span>
+              <span className="ml-2 text-xs text-text/70">
+                ({jotsEntries.length})
+              </span>
             </button>
           </div>
           <div className="px-4 py-3 border-b border-mid-gray/20 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

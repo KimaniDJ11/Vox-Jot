@@ -15,8 +15,8 @@
     "history": "History",
     "debug": "Debug",
     "about": "About",
-      "ollama": "LLM Models",
-      "corrections": "Corrections"
+    "ollama": "LLM Models",
+    "corrections": "Corrections"
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",

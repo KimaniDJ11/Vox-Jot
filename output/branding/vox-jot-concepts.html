@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vox Jot Brand Concepts</title>
+    <style>
+      :root {
+        --ink: #1a1630;
+        --muted: #6d6780;
+        --paper: #f7f2ea;
+        --panel: #fffdf9;
+        --line: #ddd4c9;
+        --blue: #27408b;
+        --blue-soft: #e7ecfb;
+        --purple: #4b2e83;
+        --purple-soft: #ebe4fb;
+        --sage: #7aa07c;
+        --peach: #d97757;
+        --night: #1b1730;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, #fff6e8 0, transparent 24%),
+          radial-gradient(circle at top right, #ece6ff 0, transparent 28%),
+          linear-gradient(180deg, #f9f6f0 0%, #f3eee6 100%);
+      }
+
+      .page {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 40px 36px 56px;
+      }
+
+      .header {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .hero,
+      .summary {
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.85);
+        box-shadow: 0 16px 40px rgba(31, 24, 53, 0.08);
+        border-radius: 28px;
+        padding: 28px 30px;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 44px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p,
+      .summary p {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.55;
+        color: #3c3850;
+      }
+
+      .summary ul {
+        margin: 14px 0 0;
+        padding-left: 18px;
+        color: #3c3850;
+        line-height: 1.55;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 22px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        padding: 26px;
+        box-shadow: 0 18px 36px rgba(32, 24, 54, 0.08);
+        min-height: 760px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::after {
+        content: "";
+        position: absolute;
+        inset: auto -60px -80px auto;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        opacity: 0.08;
+        background: var(--accent-glow, var(--blue));
+      }
+
+      .card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      h2 {
+        margin: 10px 0 6px;
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .deck {
+        color: #4a465d;
+        font-size: 15px;
+        line-height: 1.55;
+        margin: 0;
+        max-width: 36ch;
+      }
+
+      .showcase {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: 18px;
+        margin: 22px 0 18px;
+      }
+
+      .icon-stage,
+      .logo-stage {
+        border-radius: 28px;
+        padding: 20px;
+        min-height: 300px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      .icon-stage {
+        display: grid;
+        place-items: center;
+        background: var(--stage-bg);
+      }
+
+      .logo-stage {
+        background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(246,241,233,0.9));
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 18px;
+      }
+
+      .icon-app {
+        width: 260px;
+        height: 260px;
+        border-radius: 58px;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25), 0 14px 40px rgba(12, 9, 22, 0.18);
+      }
+
+      .logo-lockup {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .mini-icon {
+        width: 74px;
+        height: 74px;
+        border-radius: 18px;
+        overflow: hidden;
+        flex: none;
+      }
+
+      .wordmark {
+        font-size: 56px;
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+        font-weight: 800;
+      }
+
+      .wordmark small {
+        display: block;
+        margin-top: 10px;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .variants {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .variant {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        padding: 14px;
+        min-height: 142px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .variant-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .variant .icon-app {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        box-shadow: none;
+      }
+
+      .notes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .note {
+        border-radius: 20px;
+        padding: 14px;
+        background: #faf6ef;
+        border: 1px solid var(--line);
+      }
+
+      .note strong {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .note span {
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .quiet-wave {
+        --accent: var(--blue);
+        --accent-soft: var(--blue-soft);
+        --accent-glow: var(--blue);
+        --stage-bg: linear-gradient(180deg, #fbfaf6 0%, #f0ece4 100%);
+      }
+
+      .scribe-loop {
+        --accent: var(--purple);
+        --accent-soft: var(--purple-soft);
+        --accent-glow: var(--purple);
+        --stage-bg: linear-gradient(180deg, #f8f4ff 0%, #eee8fb 100%);
+      }
+
+      .signal-seal {
+        --accent: var(--sage);
+        --accent-soft: #ebf3eb;
+        --accent-glow: var(--sage);
+        --stage-bg: linear-gradient(180deg, #f7faf6 0%, #edf3ea 100%);
+      }
+
+      .midnight-orbit {
+        --accent: #a88bff;
+        --accent-soft: #efe9ff;
+        --accent-glow: #7a5cdb;
+        --stage-bg: linear-gradient(180deg, #2a2245 0%, #171226 100%);
+      }
+
+      .footer {
+        margin-top: 24px;
+        text-align: center;
+        color: #625d73;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="header">
+        <section class="hero">
+          <div class="eyebrow">Vox Jot Brand Study</div>
+          <h1>Four directions for a calmer, more trustworthy voice brand</h1>
+          <p>
+            These concepts lean into the current product story: private voice
+            dictation, local processing, and lightweight everyday use. They also
+            bridge the gap between the new premium onboarding UI and the old
+            inherited glove icon.
+          </p>
+        </section>
+        <section class="summary">
+          <div class="eyebrow">What the concepts keep</div>
+          <p>
+            Every option aims to feel legible at app-icon size, flexible enough
+            for macOS, Windows, web, and tray uses, and distinct from generic
+            microphone-only marks.
+          </p>
+          <ul>
+            <li>Voice + text implied together</li>
+            <li>Friendly but not cartoonish</li>
+            <li>Good fit for local/private positioning</li>
+            <li>Compatible with both Vox Jot blue and Dinamik purple families</li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="grid">
+        <section class="card quiet-wave">
+          <div class="card-header">
+            <div>
+              <span class="tag">Direction A</span>
+              <h2>Quiet Wave</h2>
+              <p class="deck">
+                Soft utility-first mark. A voice waveform resolves into a
+                notebook stroke, so the icon feels both spoken and written.
+              </p>
+            </div>
+          </div>
+
+          <div class="showcase">
+            <div class="icon-stage">
+              <svg class="icon-app" viewBox="0 0 256 256" aria-label="Quiet Wave icon">
+                <defs>
+                  <linearGradient id="qw-bg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#27408b"/>
+                    <stop offset="100%" stop-color="#3e68d0"/>
+                  </linearGradient>
+                </defs>
+                <rect width="256" height="256" rx="58" fill="url(#qw-bg)"/>
+                <circle cx="128" cy="126" r="76" fill="#f7f2ea" opacity="0.96"/>
+                <path d="M69 133c10 0 10-24 20-24s10 48 20 48 10-72 20-72 10 104 20 104 10-56 20-56 10 16 20 16" fill="none" stroke="#27408b" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M84 186c18 9 38 14 59 14 17 0 33-3 47-8" fill="none" stroke="#d97757" stroke-width="10" stroke-linecap="round"/>
+                <circle cx="188" cy="76" r="10" fill="#d97757"/>
+              </svg>
+            </div>
+            <div class="logo-stage">
+              <div class="logo-lockup">
+                <svg class="mini-icon" viewBox="0 0 256 256" aria-hidden="true">
+                  <rect width="256" height="256" rx="58" fill="#27408b"/>
+                  <circle cx="128" cy="126" r="76" fill="#f7f2ea"/>
+                  <path d="M69 133c10 0 10-24 20-24s10 48 20 48 10-72 20-72 10 104 20 104 10-56 20-56 10 16 20 16" fill="none" stroke="#27408b" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M84 186c18 9 38 14 59 14 17 0 33-3 47-8" fill="none" stroke="#d97757" stroke-width="10" stroke-linecap="round"/>
+                </svg>
+                <div class="wordmark" style="color:#27408b;">
+                  Vox Jot
+                  <small>private voice dictation, drawn as signal + script</small>
+                </div>
+              </div>
+              <svg viewBox="0 0 560 120" width="100%" height="108" aria-label="Quiet Wave wordmark">
+                <text x="0" y="78" font-size="76" font-weight="800" fill="#27408b" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Vox</text>
+                <text x="215" y="78" font-size="76" font-weight="700" fill="#27408b" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Jot</text>
+                <path d="M218 95c22 10 49 16 74 16 17 0 31-2 44-7" fill="none" stroke="#d97757" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="variants">
+            <div class="variant">
+              <div class="variant-label">macOS icon</div>
+              <svg class="icon-app" viewBox="0 0 256 256" aria-hidden="true">
+                <rect width="256" height="256" rx="58" fill="#f7f2ea"/>
+                <circle cx="128" cy="126" r="76" fill="#27408b"/>
+                <path d="M69 133c10 0 10-24 20-24s10 48 20 48 10-72 20-72 10 104 20 104 10-56 20-56 10 16 20 16" fill="none" stroke="#f7f2ea" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">tray simplification</div>
+              <svg viewBox="0 0 120 120" width="76" height="76" aria-hidden="true">
+                <circle cx="60" cy="60" r="44" fill="none" stroke="#27408b" stroke-width="8"/>
+                <path d="M30 63c6 0 6-14 12-14s6 28 12 28 6-42 12-42 6 62 12 62 6-33 12-33 6 8 12 8" fill="none" stroke="#27408b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">wordmark accent</div>
+              <svg viewBox="0 0 240 70" width="100%" height="76" aria-hidden="true">
+                <text x="4" y="48" font-size="46" font-weight="800" fill="#27408b" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-3">Vox Jot</text>
+                <circle cx="196" cy="14" r="5" fill="#d97757"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="notes">
+            <div class="note"><strong>Best for</strong><span>Launching soon with the current blue onboarding palette.</span></div>
+            <div class="note"><strong>Strength</strong><span>Feels useful, warm, and clear even at small sizes.</span></div>
+            <div class="note"><strong>Risk</strong><span>More restrained than flashy; may feel conservative if you want bold startup energy.</span></div>
+          </div>
+        </section>
+
+        <section class="card scribe-loop">
+          <div class="card-header">
+            <div>
+              <span class="tag">Direction B</span>
+              <h2>Scribe Loop</h2>
+              <p class="deck">
+                A single looping stroke forms a microphone stem, a page fold,
+                and a loose handwritten “J”. More expressive, still clean.
+              </p>
+            </div>
+          </div>
+
+          <div class="showcase">
+            <div class="icon-stage">
+              <svg class="icon-app" viewBox="0 0 256 256" aria-label="Scribe Loop icon">
+                <defs>
+                  <linearGradient id="sl-bg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#4b2e83"/>
+                    <stop offset="100%" stop-color="#7a5cdb"/>
+                  </linearGradient>
+                </defs>
+                <rect width="256" height="256" rx="58" fill="url(#sl-bg)"/>
+                <rect x="50" y="42" width="156" height="172" rx="36" fill="#f7f2ea"/>
+                <path d="M88 162c0-10 6-18 16-23V90c0-16 10-26 24-26s24 10 24 26v42c15 4 26 18 26 35 0 20-16 37-39 39-17 2-33-5-42-18" fill="none" stroke="#4b2e83" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M154 90c0 16-11 29-26 29s-26-13-26-29" fill="none" stroke="#d97757" stroke-width="11" stroke-linecap="round"/>
+                <path d="M159 50l27 0 0 28" fill="none" stroke="#d9d2e6" stroke-width="10" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="logo-stage">
+              <div class="logo-lockup">
+                <svg class="mini-icon" viewBox="0 0 256 256" aria-hidden="true">
+                  <rect width="256" height="256" rx="58" fill="#4b2e83"/>
+                  <rect x="50" y="42" width="156" height="172" rx="36" fill="#f7f2ea"/>
+                  <path d="M88 162c0-10 6-18 16-23V90c0-16 10-26 24-26s24 10 24 26v42c15 4 26 18 26 35 0 20-16 37-39 39-17 2-33-5-42-18" fill="none" stroke="#4b2e83" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="wordmark" style="color:#4b2e83;">
+                  Vox Jot
+                  <small>voice capture rendered as a continuous note-taking loop</small>
+                </div>
+              </div>
+              <svg viewBox="0 0 560 120" width="100%" height="108" aria-label="Scribe Loop wordmark">
+                <text x="0" y="78" font-size="76" font-weight="800" fill="#4b2e83" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Vox</text>
+                <text x="212" y="78" font-size="76" font-weight="700" fill="#4b2e83" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Jot</text>
+                <path d="M208 93c14 11 31 18 52 18 20 0 37-6 53-16" fill="none" stroke="#d97757" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="variants">
+            <div class="variant">
+              <div class="variant-label">light app icon</div>
+              <svg class="icon-app" viewBox="0 0 256 256" aria-hidden="true">
+                <rect width="256" height="256" rx="58" fill="#f7f2ea"/>
+                <rect x="50" y="42" width="156" height="172" rx="36" fill="#4b2e83"/>
+                <path d="M88 162c0-10 6-18 16-23V90c0-16 10-26 24-26s24 10 24 26v42c15 4 26 18 26 35 0 20-16 37-39 39-17 2-33-5-42-18" fill="none" stroke="#f7f2ea" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">recording badge</div>
+              <svg viewBox="0 0 120 120" width="76" height="76" aria-hidden="true">
+                <rect x="18" y="12" width="84" height="96" rx="24" fill="#4b2e83"/>
+                <path d="M37 73c0-6 4-12 9-14V37c0-11 6-18 14-18s14 7 14 18v19c10 3 17 11 17 22 0 13-10 24-25 26-11 1-22-4-29-12" fill="none" stroke="#f7f2ea" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="95" cy="22" r="8" fill="#d97757"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">favicon</div>
+              <svg viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+                <rect width="64" height="64" rx="16" fill="#4b2e83"/>
+                <path d="M22 42c0-4 2-7 5-9V21c0-6 4-10 9-10s9 4 9 10v10c5 2 8 6 8 12 0 8-6 14-15 15-7 1-13-2-16-7" fill="none" stroke="#f7f2ea" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="notes">
+            <div class="note"><strong>Best for</strong><span>Product branding that wants a bit more personality and motion.</span></div>
+            <div class="note"><strong>Strength</strong><span>Feels modern, human, and memorable without going mascot.</span></div>
+            <div class="note"><strong>Risk</strong><span>The continuous stroke needs careful simplification for tiny tray states.</span></div>
+          </div>
+        </section>
+
+        <section class="card signal-seal">
+          <div class="card-header">
+            <div>
+              <span class="tag">Direction C</span>
+              <h2>Signal Seal</h2>
+              <p class="deck">
+                Badge-like mark for trust and privacy. A protected voice signal
+                sits inside a seal shape, hinting that your words stay local.
+              </p>
+            </div>
+          </div>
+
+          <div class="showcase">
+            <div class="icon-stage">
+              <svg class="icon-app" viewBox="0 0 256 256" aria-label="Signal Seal icon">
+                <defs>
+                  <linearGradient id="ss-bg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#7aa07c"/>
+                    <stop offset="100%" stop-color="#9ec0a0"/>
+                  </linearGradient>
+                </defs>
+                <rect width="256" height="256" rx="58" fill="url(#ss-bg)"/>
+                <path d="M128 42c28 18 58 24 76 26v58c0 41-28 68-76 88-48-20-76-47-76-88V68c18-2 48-8 76-26Z" fill="#f7f2ea"/>
+                <circle cx="128" cy="112" r="34" fill="none" stroke="#365d40" stroke-width="12"/>
+                <path d="M88 150c12 0 12-20 20-20s8 40 16 40 8-60 16-60 8 60 16 60 8-30 16-30" fill="none" stroke="#365d40" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="128" cy="112" r="6" fill="#d97757"/>
+              </svg>
+            </div>
+            <div class="logo-stage">
+              <div class="logo-lockup">
+                <svg class="mini-icon" viewBox="0 0 256 256" aria-hidden="true">
+                  <rect width="256" height="256" rx="58" fill="#7aa07c"/>
+                  <path d="M128 42c28 18 58 24 76 26v58c0 41-28 68-76 88-48-20-76-47-76-88V68c18-2 48-8 76-26Z" fill="#f7f2ea"/>
+                  <circle cx="128" cy="112" r="34" fill="none" stroke="#365d40" stroke-width="12"/>
+                  <path d="M88 150c12 0 12-20 20-20s8 40 16 40 8-60 16-60 8 60 16 60 8-30 16-30" fill="none" stroke="#365d40" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="wordmark" style="color:#365d40;">
+                  Vox Jot
+                  <small>privacy-forward signal mark for local-first trust</small>
+                </div>
+              </div>
+              <svg viewBox="0 0 560 120" width="100%" height="108" aria-label="Signal Seal wordmark">
+                <text x="0" y="78" font-size="76" font-weight="800" fill="#365d40" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Vox</text>
+                <text x="212" y="78" font-size="76" font-weight="700" fill="#365d40" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Jot</text>
+                <circle cx="320" cy="19" r="7" fill="#d97757"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="variants">
+            <div class="variant">
+              <div class="variant-label">desktop icon</div>
+              <svg class="icon-app" viewBox="0 0 256 256" aria-hidden="true">
+                <rect width="256" height="256" rx="58" fill="#f7f2ea"/>
+                <path d="M128 42c28 18 58 24 76 26v58c0 41-28 68-76 88-48-20-76-47-76-88V68c18-2 48-8 76-26Z" fill="#365d40"/>
+                <path d="M88 150c12 0 12-20 20-20s8 40 16 40 8-60 16-60 8 60 16 60 8-30 16-30" fill="none" stroke="#f7f2ea" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">security page badge</div>
+              <svg viewBox="0 0 120 120" width="76" height="76" aria-hidden="true">
+                <path d="M60 10c17 11 35 15 46 16v35c0 25-17 41-46 53C31 102 14 86 14 61V26c11-1 29-5 46-16Z" fill="#365d40"/>
+                <path d="M34 73c7 0 7-11 11-11s4 22 9 22 4-34 9-34 4 34 9 34 4-17 9-17" fill="none" stroke="#f7f2ea" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant">
+              <div class="variant-label">support site mark</div>
+              <svg viewBox="0 0 220 70" width="100%" height="76" aria-hidden="true">
+                <path d="M40 8c12 8 24 11 32 12v24c0 18-11 29-32 40C19 73 8 62 8 44V20c8-1 20-4 32-12Z" fill="#365d40"/>
+                <text x="92" y="48" font-size="42" font-weight="800" fill="#365d40" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-2">Vox Jot</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="notes">
+            <div class="note"><strong>Best for</strong><span>Privacy-first marketing and enterprise-ish trust language.</span></div>
+            <div class="note"><strong>Strength</strong><span>Ownable positioning around local, safe, on-device transcription.</span></div>
+            <div class="note"><strong>Risk</strong><span>More serious and badge-like, so it may underplay the app’s friendliness.</span></div>
+          </div>
+        </section>
+
+        <section class="card midnight-orbit">
+          <div class="card-header">
+            <div>
+              <span class="tag">Direction D</span>
+              <h2>Midnight Orbit</h2>
+              <p class="deck">
+                A sharper product-family direction that borrows from the Irie
+                Dinamik visual world. Signal arcs wrap a compact VJ monogram.
+              </p>
+            </div>
+          </div>
+
+          <div class="showcase">
+            <div class="icon-stage">
+              <svg class="icon-app" viewBox="0 0 256 256" aria-label="Midnight Orbit icon">
+                <defs>
+                  <linearGradient id="mo-bg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#1b1730"/>
+                    <stop offset="100%" stop-color="#2c2550"/>
+                  </linearGradient>
+                </defs>
+                <rect width="256" height="256" rx="58" fill="url(#mo-bg)"/>
+                <path d="M34 154c20-44 62-78 122-82 22-2 42 1 64 10" fill="none" stroke="#7a5cdb" stroke-width="18" stroke-linecap="round"/>
+                <path d="M48 186c34 18 87 18 132-14" fill="none" stroke="#a88bff" stroke-width="10" stroke-linecap="round"/>
+                <path d="M82 70h22l27 86 26-55h20" fill="none" stroke="#f7f2ea" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M156 80h29c20 0 33 12 33 30 0 17-11 28-28 31" fill="none" stroke="#f7f2ea" stroke-width="14" stroke-linecap="round"/>
+                <circle cx="186" cy="64" r="8" fill="#d97757"/>
+              </svg>
+            </div>
+            <div class="logo-stage" style="background:linear-gradient(180deg, rgba(36,31,56,0.96), rgba(20,16,34,0.97)); color:#f7f2ea;">
+              <div class="logo-lockup">
+                <svg class="mini-icon" viewBox="0 0 256 256" aria-hidden="true">
+                  <rect width="256" height="256" rx="58" fill="#1b1730"/>
+                  <path d="M34 154c20-44 62-78 122-82 22-2 42 1 64 10" fill="none" stroke="#7a5cdb" stroke-width="18" stroke-linecap="round"/>
+                  <path d="M82 70h22l27 86 26-55h20" fill="none" stroke="#f7f2ea" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="wordmark" style="color:#f7f2ea;">
+                  Vox Jot
+                  <small style="color:#cfc6e9;">product-forward and aligned with the broader Dinamik system</small>
+                </div>
+              </div>
+              <svg viewBox="0 0 560 120" width="100%" height="108" aria-label="Midnight Orbit wordmark">
+                <text x="0" y="78" font-size="76" font-weight="800" fill="#f7f2ea" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Vox</text>
+                <text x="212" y="78" font-size="76" font-weight="700" fill="#f7f2ea" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-4">Jot</text>
+                <path d="M206 96c18 9 37 13 57 13 18 0 33-3 48-9" fill="none" stroke="#a88bff" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="variants">
+            <div class="variant" style="background:#231d3a; border-color:#3d3559;">
+              <div class="variant-label" style="color:#cfc6e9;">dark store icon</div>
+              <svg class="icon-app" viewBox="0 0 256 256" aria-hidden="true">
+                <rect width="256" height="256" rx="58" fill="#1b1730"/>
+                <path d="M34 154c20-44 62-78 122-82 22-2 42 1 64 10" fill="none" stroke="#7a5cdb" stroke-width="18" stroke-linecap="round"/>
+                <path d="M82 70h22l27 86 26-55h20" fill="none" stroke="#f7f2ea" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant" style="background:#231d3a; border-color:#3d3559;">
+              <div class="variant-label" style="color:#cfc6e9;">splash badge</div>
+              <svg viewBox="0 0 120 120" width="76" height="76" aria-hidden="true">
+                <path d="M16 74c10-22 31-39 61-41 11-1 22 0 32 5" fill="none" stroke="#7a5cdb" stroke-width="9" stroke-linecap="round"/>
+                <path d="M36 34h10l12 39 12-25h9" fill="none" stroke="#f7f2ea" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="variant" style="background:#231d3a; border-color:#3d3559;">
+              <div class="variant-label" style="color:#cfc6e9;">site header</div>
+              <svg viewBox="0 0 240 70" width="100%" height="76" aria-hidden="true">
+                <path d="M10 48c10-20 26-34 52-36 9-1 17 0 26 3" fill="none" stroke="#7a5cdb" stroke-width="7" stroke-linecap="round"/>
+                <text x="82" y="48" font-size="42" font-weight="800" fill="#f7f2ea" font-family="Avenir Next, Avenir, sans-serif" letter-spacing="-2">Vox Jot</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="notes">
+            <div class="note" style="background:#231d3a; border-color:#3d3559; color:#f7f2ea;"><strong style="color:#cfc6e9;">Best for</strong><span>Product pages and app-store presence tied to the Dinamik family.</span></div>
+            <div class="note" style="background:#231d3a; border-color:#3d3559; color:#f7f2ea;"><strong style="color:#cfc6e9;">Strength</strong><span>Most distinctive and brand-system-aware of the four.</span></div>
+            <div class="note" style="background:#231d3a; border-color:#3d3559; color:#f7f2ea;"><strong style="color:#cfc6e9;">Risk</strong><span>Feels more technical and less immediately approachable.</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer">
+        Recommended short list: Quiet Wave if you want the safest upgrade, or
+        Scribe Loop if you want the most memorable new identity.
+      </div>
+    </div>
+  </body>
+</html>

@@ -18,10 +18,44 @@ impl MacosFieldTextReader {
     pub fn new(target_pid: Option<i32>) -> Self {
         Self { target_pid }
     }
+
+    /// Ensure the process is trusted for Accessibility, requesting permission if needed.
+    fn ensure_accessibility_trusted() -> bool {
+        use accessibility_sys::kAXTrustedCheckOptionPrompt;
+        use core_foundation::base::TCFType;
+        use core_foundation::boolean::CFBoolean;
+        use core_foundation::dictionary::CFDictionary;
+        use core_foundation::string::CFString;
+
+        // SAFETY: We are calling a well-known macOS API. The CFDictionary we
+        // build lives for the duration of the call.
+        unsafe {
+            #[allow(improper_ctypes)]
+            extern "C" {
+                fn AXIsProcessTrustedWithOptions(options: *const std::ffi::c_void) -> bool;
+            }
+
+            // Wrap the kAXTrustedCheckOptionPrompt constant and build { prompt: true }
+            let key = CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt);
+            let value = CFBoolean::true_value();
+            let options =
+                CFDictionary::from_CFType_pairs(&[(key.as_CFType(), value.as_CFType())]);
+
+            AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef() as *const _)
+        }
+    }
 }
 
 impl FieldTextReader for MacosFieldTextReader {
     fn read_focused_field_text(&self) -> Result<Option<String>> {
+        // Trigger the Accessibility permission prompt on first use if needed.
+        if !Self::ensure_accessibility_trusted() {
+            warn!(
+                "Accessibility permissions not yet granted; unable to read focused field text"
+            );
+            return Ok(None);
+        }
+
         use accessibility_sys::{
             kAXFocusedUIElementAttribute, kAXSelectedTextAttribute, kAXTitleAttribute,
             kAXValueAttribute, AXUIElementCopyAttributeValue, AXUIElementCreateSystemWide,

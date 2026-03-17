@@ -1,0 +1,812 @@
+{
+  "tray": {
+    "settings": "Настройки...",
+    "checkUpdates": "Проверить обновления...",
+    "copyLastTranscript": "Скопировать последнюю транскрипцию",
+    "unloadModel": "Выгрузить модель",
+    "quit": "Выход",
+    "cancel": "Отмена"
+  },
+  "sidebar": {
+    "general": "Общие",
+    "models": "Модели",
+    "advanced": "Продвинутые",
+    "postProcessing": "Постобработка",
+    "history": "История",
+    "debug": "Отладка",
+    "about": "О программе"
+  },
+  "onboarding": {
+    "subtitle": "Для начала выберите модель транскрипции",
+    "recommended": "Рекомендуется",
+    "download": "Скачать",
+    "downloading": "Загрузка...",
+    "customModelDescription": "Официально не поддерживается",
+    "downloadFailed": "Загрузка не удалась. Пожалуйста, попробуйте снова.",
+    "modelCard": {
+      "accuracy": "точность",
+      "speed": "скорость"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Быстрая и достаточно точная."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "Хорошая точность, средняя скорость."
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Сбалансированная точность и скорость."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "Хорошая точность, но медленная."
+      },
+      "parakeet-tdt-0.6b-v2": {
+        "name": "Parakeet V2",
+        "description": "Только английский. Лучшая модель для англоговорящих."
+      },
+      "parakeet-tdt-0.6b-v3": {
+        "name": "Parakeet V3",
+        "description": "Быстрая и точная"
+      },
+      "moonshine-base": {
+        "name": "Moonshine Base",
+        "description": "Очень быстрая, только английский. Хорошо справляется с акцентами."
+      },
+      "moonshine-tiny-streaming-en": {
+        "name": "Moonshine V2 Tiny",
+        "description": "Сверхбыстрая, только английский"
+      },
+      "moonshine-small-streaming-en": {
+        "name": "Moonshine V2 Small",
+        "description": "Быстрая, только английский. Хороший баланс скорости и точности."
+      },
+      "moonshine-medium-streaming-en": {
+        "name": "Moonshine V2 Medium",
+        "description": "Только английский. Высокое качество."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Оптимизирована для тайваньского мандаринского. Поддержка переключения языков."
+      },
+      "sense-voice-int8": {
+        "name": "SenseVoice",
+        "description": "Очень быстрая. Китайский, английский, японский, корейский, кантонский."
+      },
+      "gigaam-v3-e2e-ctc": {
+        "name": "GigaAM v3",
+        "description": "Распознавание русской речи. Быстро и точно."
+      }
+    },
+    "errors": {
+      "loadModels": "Не удалось загрузить доступные модели.",
+      "downloadModel": "Не удалось загрузить модель: {{error}}."
+    },
+    "permissions": {
+      "title": "Требуются разрешения",
+      "description": "Vox Jot требуются некоторые разрешения для корректной работы.",
+      "microphone": {
+        "title": "Доступ к микрофону",
+        "description": "Необходим для прослушивания вашего голоса для транскрипции.",
+        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
+      },
+      "accessibility": {
+        "title": "Доступ к универсальному доступу",
+        "description": "Необходим для ввода расшифрованного текста в ваши приложения.",
+        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
+      },
+      "grant": "Предоставить разрешение",
+      "granted": "Предоставлено",
+      "waiting": "Ожидание...",
+      "allGranted": "Всё готово!",
+      "errors": {
+        "checkFailed": "Не удалось проверить разрешения. Пожалуйста, попробуйте снова.",
+        "requestFailed": "Не удалось запросить разрешение. Пожалуйста, попробуйте снова."
+      },
+      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
+      "continue": "Continue",
+      "moreInfo": "More info",
+      "visualPath": "System Settings -> Privacy & Security",
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+    },
+    "steps": {
+      "welcome": "Overview",
+      "permissions": "Permissions",
+      "setup": "Model",
+      "learn": "First Dictation"
+    },
+    "welcome": {
+      "title": "Set up private voice dictation that actually fits your workflow",
+      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "cta": "Set Up Vox Jot",
+      "cardTitle": "Built for everyday dictation",
+      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "features": [
+        "Download a local speech model that matches your speed and accuracy needs.",
+        "Grant the permissions Vox Jot needs to listen and type into other apps.",
+        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+      ],
+      "highlights": {
+        "local": {
+          "title": "Local transcription",
+          "description": "Your speech model runs on your own machine."
+        },
+        "anywhere": {
+          "title": "Works across apps",
+          "description": "Dictate into messages, docs, notes, and forms."
+        },
+        "polish": {
+          "title": "Optional cleanup",
+          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+        }
+      }
+    },
+    "setup": {
+      "title": "Choose the transcription model you want to start with",
+      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
+      "cardTitle": "Everything stays on your device",
+      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "downloading": {
+        "title": "Downloading your speech model",
+        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+      },
+      "advanced": {
+        "show": "Show more model options",
+        "hide": "Hide extra model options"
+      }
+    },
+    "firstDictation": {
+      "title": "You are ready for your first dictation",
+      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "cta": "Open Vox Jot",
+      "steps": [
+        "Place your cursor in any text field where you want the transcript to go.",
+        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
+        "Adjust output, paste behavior, or polished dictation later from Settings."
+      ],
+      "shortcuts": {
+        "dictation": {
+          "label": "Regular dictation",
+          "description": "Use this for fast speech-to-text in any app."
+        },
+        "postProcess": {
+          "label": "Polished dictation",
+          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
+          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+        }
+      },
+      "postProcessReady": {
+        "title": "Post Process is already available",
+        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+      },
+      "postProcessLater": {
+        "title": "Post Process is easy to add later",
+        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+      },
+      "tip": {
+        "title": "Start simple, tune later",
+        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+      }
+    },
+    "common": {
+      "back": "Back"
+    }
+  },
+  "modelSelector": {
+    "custom": "Пользовательская",
+    "active": "Активный",
+    "switching": "Переключение...",
+    "noModelsAvailable": "Нет доступных моделей",
+    "extracting": "Извлечение {{modelName}}...",
+    "extractingMultiple": "Извлечение моделей {{count}}...",
+    "extractingGeneric": "Извлечение...",
+    "downloading": "Загрузка {{percentage}} %",
+    "downloadingMultiple": "Загрузка моделей {{count}}...",
+    "modelReady": "Модель готова",
+    "loading": "Загрузка {{modelName}}...",
+    "loadingGeneric": "Загрузка...",
+    "modelError": "Ошибка модели",
+    "modelUnloaded": "Модель выгружена",
+    "noModelDownloadRequired": "Нет модели – требуется загрузка",
+    "deleteModel": "Удалить {{modelName}}",
+    "downloadSpeed": "{{speed}} МБ/с",
+    "capabilities": {
+      "languageSelection": "Поддерживает несколько языков ввода",
+      "multiLanguage": "Многоязычная",
+      "translation": "Может переводить на английский",
+      "translate": "Перевод на английский",
+      "singleLanguage": "Поддерживает только этот язык",
+      "languageOnly": "Только {{language}}"
+    },
+    "cancel": "Отмена",
+    "cancelDownload": "Отменить загрузку"
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "Настройки {{model}}",
+      "noSettingsNeeded": "Эта модель работает автоматически без необходимости настройки."
+    },
+    "models": {
+      "title": "Модели транскрипции",
+      "description": "Выберите модель транскрипции или загрузите дополнительные модели. Разные модели предлагают разные уровни точности и скорости.",
+      "downloaded": "Загружено",
+      "available": "Доступные для загрузки",
+      "deleteConfirm": "Вы уверены, что хотите удалить {{modelName}}? Вам нужно будет загрузить её снова, чтобы использовать.",
+      "deleteActiveConfirm": "{{modelName}} — ваша активная модель. Удаление остановит транскрипцию, пока вы не выберете новую модель. Вы уверены?",
+      "deleteTitle": "Удалить модель",
+      "filters": {
+        "all": "Все",
+        "multiLanguage": "Многоязычные",
+        "translation": "Перевод",
+        "allLanguages": "Все языки"
+      },
+      "noModelsMatch": "Нет моделей, соответствующих этому фильтру.",
+      "yourModels": "Загруженные модели",
+      "availableModels": "Доступны для загрузки"
+    },
+    "general": {
+      "title": "Общие",
+      "shortcut": {
+        "title": "Ярлыки Vox Jot",
+        "description": "Настройте сочетания клавиш для запуска записи речи в текст",
+        "loading": "Загрузка ярлыков...",
+        "none": "Ярлыки не настроены",
+        "notFound": "Ярлык не найден",
+        "pressKeys": "Нажимайте клавиши...",
+        "bindings": {
+          "transcribe": {
+            "name": "Горячая клавиша транскрипции",
+            "description": "Сочетание клавиш для записи и транскрибирования вашего голоса."
+          },
+          "cancel": {
+            "name": "Горячая клавиша отмены",
+            "description": "Сочетание клавиш для отмены текущей записи."
+          },
+          "transcribe_with_post_process": {
+            "name": "Горячая клавиша постобработки",
+            "description": "Специальное сочетание клавиш для ИИ-постобработки вашей транскрипции."
+          }
+        },
+        "errors": {
+          "restore": "Не удалось восстановить исходный ярлык",
+          "set": "Не удалось установить ярлык: {{error}}",
+          "reset": "Не удалось сбросить ярлык до исходного значения"
+        }
+      },
+      "language": {
+        "title": "Язык",
+        "description": "Выберите язык для распознавания речи. «Авто» автоматически определит язык, а выбор конкретного языка может повысить точность определения этого языка.",
+        "descriptionUnsupported": "Модель Parakeet автоматически определяет язык. Ручной выбор не требуется.",
+        "searchPlaceholder": "Поиск языков...",
+        "noResults": "Языки не найдены",
+        "auto": "Авто"
+      },
+      "pushToTalk": {
+        "label": "Нажми и говори",
+        "description": "Удерживайте, чтобы записать, отпустите, чтобы остановить"
+      }
+    },
+    "sound": {
+      "title": "Звук",
+      "microphone": {
+        "title": "Микрофон",
+        "description": "Выберите предпочитаемое устройство ввода звука",
+        "placeholder": "Выбрать микрофон...",
+        "loading": "Загрузка..."
+      },
+      "audioFeedback": {
+        "label": "Обратная звуковая связь",
+        "description": "Воспроизведение звука при запуске и остановке записи"
+      },
+      "outputDevice": {
+        "title": "Устройство вывода",
+        "description": "Выберите предпочитаемое устройство вывода звука для звуков обратной связи",
+        "placeholder": "Выберите устройство вывода...",
+        "loading": "Загрузка..."
+      },
+      "volume": {
+        "title": "Громкость",
+        "description": "Отрегулируйте громкость звуков обратной связи"
+      }
+    },
+    "advanced": {
+      "title": "Продвинутые",
+      "groups": {
+        "app": "Приложение",
+        "output": "Вывод",
+        "transcription": "Транскрипция",
+        "history": "История",
+        "experimental": "Экспериментальное"
+      },
+      "experimentalToggle": {
+        "label": "Экспериментальные функции",
+        "description": "Включить экспериментальные функции, которые находятся в разработке."
+      },
+      "startHidden": {
+        "label": "Скрыть при запуске",
+        "description": "Запускать в системный трей, не открывая окно."
+      },
+      "autostart": {
+        "label": "Запускать при старте",
+        "description": "Автоматически запускать Vox Jot при входе в систему."
+      },
+      "showTrayIcon": {
+        "label": "Показать значок в трее",
+        "description": "Отображать значок Vox Jot в системном трее."
+      },
+      "overlay": {
+        "title": "Позиция индикатора",
+        "description": "Отображение индикатора визуальной обратной связи во время записи и транскрипции. В Linux рекомендуется выбрать «Нет».",
+        "options": {
+          "none": "Нет",
+          "bottom": "Снизу",
+          "top": "Сверху"
+        }
+      },
+      "pasteMethod": {
+        "title": "Метод вставки",
+        "description": "Выбрать способ вставки текста. Прямой: имитирует набор текста через системный ввод. Нет: пропуск вставки, обновление только истории/буфера обмена.",
+        "options": {
+          "clipboard": "Буфер обмена ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Буфер обмена (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Буфер обмена (Shift+Insert)",
+          "direct": "Прямой",
+          "none": "Нет",
+          "externalScript": "Внешний скрипт"
+        },
+        "externalScriptPlaceholder": "/path/to/your/script.sh"
+      },
+      "typingTool": {
+        "title": "Инструмент ввода",
+        "description": "Выберите, какой инструмент ввода в Linux использовать для метода прямой вставки. Auto автоматически определит и использует лучший доступный инструмент для вашей системы.",
+        "options": {
+          "auto": "Auto (Рекомендуется)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Обработка буфера обмена",
+        "description": "Функция «Не изменять буфер обмена» сохраняет текущее содержимое буфера обмена после транскрипции. Копировать в буфер обмена оставляет результат транскрипции в буфере обмена после вставки.",
+        "options": {
+          "dontModify": "Не изменять буфер обмена",
+          "copyToClipboard": "Копировать в буфер обмена"
+        }
+      },
+      "autoSubmit": {
+        "title": "Автоматическая отправка",
+        "description": "Автоматически отправляет выбранную комбинацию клавиш после вставки текста. Cmd+Enter применяется на macOS, а Windows/Linux используют Super+Enter.",
+        "options": {
+          "off": "Выкл.",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "Перевести на английский",
+        "description": "Автоматически переводить речь с других языков на английский во время транскрипции.",
+        "descriptionUnsupported": "Перевод не поддерживается моделью {{model}}."
+      },
+      "modelUnload": {
+        "title": "Выгрузить модель",
+        "description": "Автоматически освобождать память, если модель не использовалась в течение указанного времени.",
+        "options": {
+          "never": "Никогда",
+          "immediately": "Немедленно",
+          "min2": "Через 2 минуты",
+          "min5": "Через 5 минут",
+          "min10": "Через 10 минут",
+          "min15": "Через 15 минут",
+          "hour1": "Через 1 час",
+          "sec5": "Через 5 секунд (отладка)"
+        }
+      },
+      "customWords": {
+        "title": "Пользовательский словарь",
+        "description": "Добавить слова, которые часто неправильно слышатся или пишутся с ошибками во время транскрипции. Система автоматически исправит похожие по звучанию слова, чтобы они соответствовали вашему списку.",
+        "placeholder": "Добавить слово",
+        "add": "Добавить",
+        "remove": "Удалить {{word}}",
+        "duplicate": "\"{{word}}\" уже существует"
+      }
+    },
+    "postProcessing": {
+      "title": "Постобработка",
+      "hotkey": {
+        "title": "Горячая клавиша"
+      },
+      "api": {
+        "title": "API (совместимый с OpenAI)",
+        "provider": {
+          "title": "Поставщик",
+          "description": "Выберите поставщика, совместимого с OpenAI."
+        },
+        "appleIntelligence": {
+          "title": "Apple Интеллект",
+          "description": "Полностью работает на устройстве. Никакой ключ API или доступ к сети не требуется.",
+          "requirements": "Требуется Apple Silicon Mac под управлением macOS Tahoe (26.0) или более поздней версии. Apple Intelligence должен быть включен в настройках системы.",
+          "unavailable": "Apple Intelligence недоступен на этом устройстве. Требуется Apple Silicon Mac под управлением macOS Tahoe (26.0) или более поздней версии с включенным Apple Intelligence в настройках системы."
+        },
+        "baseUrl": {
+          "title": "Базовый URL",
+          "description": "Базовый URL-адрес API для выбранного провайдера. Редактировать можно только настраиваемого поставщика.",
+          "placeholder": "https://api.openai.com/v1"
+        },
+        "apiKey": {
+          "title": "API-ключ",
+          "description": "API-ключ для выбранного провайдера.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Модель",
+          "descriptionApple": "Укажите дополнительный числовой лимит токенов или сохраните настройки по умолчанию, установленные на устройстве.",
+          "descriptionCustom": "Укажите идентификатор модели, ожидаемый вашей пользовательской конечной точкой.",
+          "descriptionDefault": "Выберите модель, предоставляемую выбранным поставщиком.",
+          "placeholderApple": "Apple Интеллект",
+          "placeholderWithOptions": "Найдите или выберите модель",
+          "placeholderNoOptions": "Введите название модели",
+          "refreshModels": "Обновить модели"
+        }
+      },
+      "prompts": {
+        "title": "Запрос к модели",
+        "selectedPrompt": {
+          "title": "Выберите запрос",
+          "description": "Выберите запрос для постобработки транскрипции или создайте новый. Используйте ${output} внутри текста запроса для ссылки на записанную транскрипцию."
+        },
+        "noPrompts": "Нет доступных запросов",
+        "selectPrompt": "Выберите запрос",
+        "createNew": "Создать новый запрос",
+        "promptLabel": "Название запроса",
+        "promptLabelPlaceholder": "Введите название запроса",
+        "promptInstructions": "Инструкции",
+        "promptInstructionsPlaceholder": "Напишите инструкции для постобработки транскрипции. Например: Улучшить грамматику и ясность следующего текста: ${output}",
+        "promptTip": "Совет: используйте <code>${output}</code>, чтобы вставить транскрипцию.",
+        "updatePrompt": "Обновить запрос",
+        "deletePrompt": "Удалить запрос",
+        "createPrompt": "Создать запрос",
+        "cancel": "Отмена",
+        "selectToEdit": "Выберите запрос выше, чтобы просмотреть и изменить его сведения.",
+        "createFirst": "Нажмите «Создать новый запрос» выше, чтобы создать первый запрос для постобработки."
+      },
+      "apple": {
+        "title": "Apple Cleanup",
+        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "mode": {
+          "title": "Mode",
+          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
+          "literal": "Literal: preserve wording",
+          "intent": "Intent: clean false starts and formatting"
+        },
+        "rewriteStrength": {
+          "title": "Rewrite Strength",
+          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
+          "conservative": "Conservative",
+          "balanced": "Balanced",
+          "aggressive": "Aggressive"
+        },
+        "preview": {
+          "label": "Show preview before paste",
+          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+        },
+        "fallback": {
+          "label": "Fallback to normalized text on failure",
+          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+        }
+      },
+      "appAware": {
+        "title": "App-Aware Tone",
+        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "toggle": {
+          "label": "Enable app-aware tone",
+          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+        },
+        "tones": {
+          "title": "Tone definitions",
+          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "columns": {
+            "id": "Tone ID",
+            "label": "Display name",
+            "instruction": "Instruction"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Use a casual, conversational tone suitable for chat messages."
+          },
+          "add": "Add tone"
+        },
+        "mappings": {
+          "title": "App mappings",
+          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "columns": {
+            "appName": "App name",
+            "bundleId": "Bundle ID",
+            "tone": "Tone"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Add app mapping"
+        },
+        "remove": "Remove",
+        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+      },
+      "dictionary": {
+        "title": "Personal Dictionary",
+        "editor": {
+          "title": "Preferred spellings",
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+        },
+        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
+        "empty": "No personal dictionary entries yet.",
+        "columns": {
+          "spoken": "Spoken",
+          "written": "Written",
+          "exactOnly": "Exact only"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Add entry",
+        "remove": "Remove",
+        "duplicateBadge": "Duplicate spoken phrase"
+      },
+      "preview": {
+        "title": "Preview Tester",
+        "testInput": {
+          "title": "Try sample text",
+          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
+          "placeholder": "Paste or type sample transcript text here"
+        },
+        "previewApp": {
+          "label": "Preview as app",
+          "none": "No app override"
+        },
+        "run": "Preview output",
+        "runLoading": "Previewing...",
+        "outputLabel": "Preview result",
+        "dictionaryHits": "Dictionary hits: {{hits}}",
+        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
+        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "errors": {
+          "generic": "Unable to preview post-processing right now."
+        },
+        "modal": {
+          "title": "Review polished text",
+          "description": "Apple Intelligence changed this transcription before pasting.",
+          "originalLabel": "Normalized transcript",
+          "editedLabel": "Text to paste",
+          "cancel": "Cancel paste",
+          "apply": "Paste text"
+        },
+        "disabledMessage": "Turn on Post Process to try previewing polished output."
+      },
+      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "sections": {
+        "setup": {
+          "title": "Setup",
+          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+        },
+        "review": {
+          "title": "Paste Review",
+          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+        },
+        "appleCleanup": {
+          "title": "Apple Cleanup",
+          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+        },
+        "applePersonalization": {
+          "title": "Apple Personalization",
+          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+        },
+        "prompting": {
+          "title": "Prompting",
+          "description": "Choose or edit the prompt template used by network providers."
+        },
+        "preview": {
+          "title": "Try It",
+          "description": "Preview the current configuration against sample text without recording live audio."
+        }
+      },
+      "review": {
+        "toggle": {
+          "label": "Review polished text before paste",
+          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+        },
+        "status": {
+          "disabled": "Turn on Post Process first to enable review-before-paste.",
+          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
+          "off": "Polished text will be pasted immediately after processing finishes."
+        }
+      },
+      "status": {
+        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
+        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
+        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "missingBaseUrl": "Set a base URL for your custom provider.",
+        "missingApiKey": "Add an API key for the selected provider.",
+        "missingModel": "Choose or enter a model for the selected provider.",
+        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
+        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
+        "ready": "Post Process is configured and ready to use."
+      }
+    },
+    "history": {
+      "title": "История",
+      "openFolder": "Открыть папку с записями",
+      "loading": "Загрузка истории...",
+      "empty": "Транскрипций пока нет. Начните запись, чтобы создать свою историю!",
+      "copyToClipboard": "Скопировать транскрипцию в буфер обмена",
+      "save": "Сохранить транскрипцию",
+      "unsave": "Удалить из сохраненных",
+      "delete": "Удалить запись",
+      "deleteError": "Не удалось удалить запись. Пожалуйста, попробуйте еще раз."
+    },
+    "debug": {
+      "title": "Отлаживать",
+      "logDirectory": {
+        "title": "Каталог журналов",
+        "description": "Место хранения файлов журналов"
+      },
+      "logLevel": {
+        "title": "Уровень журнала",
+        "description": "Установите уровень детализации журнала"
+      },
+      "updateChecks": {
+        "label": "Проверять наличие обновлений",
+        "description": "Автоматически проверять наличие новых версий Vox Jot"
+      },
+      "soundTheme": {
+        "label": "Звуковая тема",
+        "description": "Выберите звуковую тему для начала и остановки записи обратной связи."
+      },
+      "wordCorrectionThreshold": {
+        "title": "Порог исправления слов",
+        "description": "Чувствительность к пользовательским исправлениям слов"
+      },
+      "historyLimit": {
+        "title": "Размер истории",
+        "description": "Максимальное количество записей истории, которые можно сохранить",
+        "entries": "записи"
+      },
+      "recordingRetention": {
+        "title": "Автоматическое удаление записей",
+        "description": "Автоматически удалять старые записи для экономии места",
+        "never": "Никогда",
+        "preserveLimit": "Хранить последние {{count}}",
+        "days3": "Через 3 дня",
+        "weeks2": "Через 2 недели",
+        "months3": "Через 3 месяца",
+        "placeholder": "Выберите срок хранения..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Всегда включенный микрофон",
+        "description": "Держите микрофон активным для более быстрого ответа"
+      },
+      "clamshellMicrophone": {
+        "title": "Раскладной микрофон",
+        "description": "Микрофон для использования при закрытой крышке ноутбука"
+      },
+      "postProcessingToggle": {
+        "label": "Постобработка",
+        "description": "Включить уточнение текста с помощью искусственного интеллекта после транскрипции"
+      },
+      "muteWhileRecording": {
+        "label": "Отключить звук во время записи",
+        "description": "Отключение звука системы во время записи"
+      },
+      "appendTrailingSpace": {
+        "label": "Добавить пробел",
+        "description": "Добавить пробел после вставленной транскрипции"
+      },
+      "keyboardImplementation": {
+        "title": "Реализация клавиатуры",
+        "description": "Выберите бэкенд для клавиатурных сочетаний.",
+        "bindingsReset": "Клавиатурные сочетания были несовместимы и сброшены к значениям по умолчанию"
+      },
+      "paths": {
+        "appData": "Данные приложения:",
+        "models": "Модели:",
+        "settings": "Настройки:"
+      },
+      "pasteDelay": {
+        "title": "Задержка вставки",
+        "description": "Задержка перед отправкой нажатия клавиши вставки (в миллисекундах). Увеличьте, если вставляется неправильный текст."
+      }
+    },
+    "about": {
+      "title": "О программе",
+      "version": {
+        "title": "Версия",
+        "description": "Текущая версия Vox Jot"
+      },
+      "appDataDirectory": {
+        "title": "Каталог данных приложения",
+        "description": "Место, где Vox Jot хранит свои данные"
+      },
+      "sourceCode": {
+        "title": "Исходный код",
+        "description": "Просмотреть исходный код и внести свой вклад",
+        "button": "Посмотреть на GitHub"
+      },
+      "supportDevelopment": {
+        "title": "Поддержка развития",
+        "description": "Помогите нам продолжать развитие Vox Jot",
+        "button": "Поддержать"
+      },
+      "acknowledgments": {
+        "title": "Благодарности",
+        "whisper": {
+          "title": "Whisper.cpp",
+          "description": "Высокопроизводительная модель автоматического распознавания речи OpenAI Whisper",
+          "details": "Vox Jot использует Whisper.cpp для быстрого локального преобразования речи в текст. Спасибо великолепной работе Георгия Герганова и участников."
+        }
+      }
+    }
+  },
+  "footer": {
+    "downloadingModel": "Загрузка {{model}}...",
+    "checkingUpdates": "Проверяем наличие обновлений...",
+    "updateAvailable": "Доступно обновление: {{version}}",
+    "updateAvailableShort": "Доступно обновление",
+    "upToDate": "Не требует обновлений",
+    "downloadUpdate": "Скачать обновление",
+    "restart": "Перезапуск",
+    "updateCheckingDisabled": "Проверка обновлений отключена",
+    "downloading": "Загрузка... {{progress}} %",
+    "installing": "Установка...",
+    "preparing": "Подготовка...",
+    "checkForUpdates": "Проверить наличие обновлений"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "save": "Сохранять",
+    "cancel": "Отмена",
+    "reset": "Перезагрузить",
+    "add": "Добавлять",
+    "remove": "Удалять",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создавать",
+    "update": "Обновлять",
+    "close": "Закрывать",
+    "open": "Открыть",
+    "default": "По умолчанию",
+    "enabled": "Включено",
+    "disabled": "Неполноценный",
+    "on": "На",
+    "off": "Выключенный",
+    "yes": "Да",
+    "no": "Нет",
+    "noOptionsFound": "Вариантов не найдено"
+  },
+  "accessibility": {
+    "permissionsRequired": "Требуются разрешения на доступ",
+    "permissionsDescription": "Vox Jot необходимы разрешения на доступ для ввода расшифрованного текста.",
+    "openSettings": "Открыть настройки системы",
+    "dismiss": "Увольнять"
+  },
+  "errors": {
+    "loadDirectory": "Ошибка загрузки каталога: {{error}}.",
+    "recordingFailed": "Не удалось начать запись: {{error}}",
+    "modelLoadFailed": "Не удалось загрузить модель: {{model}}",
+    "modelLoadFailedUnknown": "неизвестная модель"
+  },
+  "appLanguage": {
+    "title": "Язык приложения",
+    "description": "Изменить язык интерфейса Vox Jot"
+  },
+  "overlay": {
+    "transcribing": "Расшифровка...",
+    "processing": "Обработка..."
+  }
+}

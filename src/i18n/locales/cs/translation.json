@@ -1,0 +1,812 @@
+{
+  "tray": {
+    "settings": "Nastavení...",
+    "checkUpdates": "Zkontrolovat aktualizace...",
+    "copyLastTranscript": "Zkopírovat poslední přepis",
+    "unloadModel": "Uvolnit model",
+    "quit": "Ukončit",
+    "cancel": "Zrušit"
+  },
+  "sidebar": {
+    "general": "Obecné",
+    "models": "Modely",
+    "advanced": "Pokročilé",
+    "postProcessing": "Následné zpracování",
+    "history": "Historie",
+    "debug": "Ladění",
+    "about": "O aplikaci"
+  },
+  "onboarding": {
+    "subtitle": "Pro začátek vyberte model pro přepis",
+    "recommended": "Doporučeno",
+    "download": "Stáhnout",
+    "downloading": "Stahování...",
+    "customModelDescription": "Oficiálně nepodporováno",
+    "downloadFailed": "Stahování se nezdařilo. Zkuste to prosím znovu.",
+    "modelCard": {
+      "accuracy": "přesnost",
+      "speed": "rychlost"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Rychlý a poměrně přesný."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "Dobrá přesnost, střední rychlost"
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Vyvážená přesnost a rychlost."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "Dobrá přesnost, ale pomalý."
+      },
+      "parakeet-tdt-0.6b-v2": {
+        "name": "Parakeet V2",
+        "description": "Pouze angličtina. Nejlepší model pro anglicky mluvící."
+      },
+      "parakeet-tdt-0.6b-v3": {
+        "name": "Parakeet V3",
+        "description": "Rychlý a přesný"
+      },
+      "moonshine-base": {
+        "name": "Moonshine Base",
+        "description": "Velmi rychlý, pouze angličtina. Dobře zvládá přízvuky."
+      },
+      "moonshine-tiny-streaming-en": {
+        "name": "Moonshine V2 Tiny",
+        "description": "Ultrarychlý, pouze angličtina"
+      },
+      "moonshine-small-streaming-en": {
+        "name": "Moonshine V2 Small",
+        "description": "Rychlý, pouze angličtina. Dobrý poměr rychlosti a přesnosti."
+      },
+      "moonshine-medium-streaming-en": {
+        "name": "Moonshine V2 Medium",
+        "description": "Pouze angličtina. Vysoká kvalita."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Optimalizováno pro tchajwanskou mandarínštinu. Podpora přepínání jazyků."
+      },
+      "sense-voice-int8": {
+        "name": "SenseVoice",
+        "description": "Velmi rychlý. Čínština, angličtina, japonština, korejština, kantonština."
+      },
+      "gigaam-v3-e2e-ctc": {
+        "name": "GigaAM v3",
+        "description": "Rozpoznávání ruské řeči. Rychlé a přesné."
+      }
+    },
+    "errors": {
+      "loadModels": "Nepodařilo se načíst dostupné modely",
+      "downloadModel": "Nepodařilo se stáhnout model: {{error}}"
+    },
+    "permissions": {
+      "title": "Vyžadována oprávnění",
+      "description": "Vox Jot potřebuje několik oprávnění pro správné fungování.",
+      "microphone": {
+        "title": "Přístup k mikrofonu",
+        "description": "Potřebný pro zachycení vašeho hlasu k přepisu.",
+        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
+      },
+      "accessibility": {
+        "title": "Přístup k usnadnění",
+        "description": "Potřebný pro psaní přepsaného textu do vašich aplikací.",
+        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
+      },
+      "grant": "Udělit oprávnění",
+      "granted": "Uděleno",
+      "waiting": "Čekání...",
+      "allGranted": "Vše připraveno!",
+      "errors": {
+        "checkFailed": "Nepodařilo se zkontrolovat oprávnění. Zkuste to prosím znovu.",
+        "requestFailed": "Nepodařilo se požádat o oprávnění. Zkuste to prosím znovu."
+      },
+      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
+      "continue": "Continue",
+      "moreInfo": "More info",
+      "visualPath": "System Settings -> Privacy & Security",
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+    },
+    "steps": {
+      "welcome": "Overview",
+      "permissions": "Permissions",
+      "setup": "Model",
+      "learn": "First Dictation"
+    },
+    "welcome": {
+      "title": "Set up private voice dictation that actually fits your workflow",
+      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "cta": "Set Up Vox Jot",
+      "cardTitle": "Built for everyday dictation",
+      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "features": [
+        "Download a local speech model that matches your speed and accuracy needs.",
+        "Grant the permissions Vox Jot needs to listen and type into other apps.",
+        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+      ],
+      "highlights": {
+        "local": {
+          "title": "Local transcription",
+          "description": "Your speech model runs on your own machine."
+        },
+        "anywhere": {
+          "title": "Works across apps",
+          "description": "Dictate into messages, docs, notes, and forms."
+        },
+        "polish": {
+          "title": "Optional cleanup",
+          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+        }
+      }
+    },
+    "setup": {
+      "title": "Choose the transcription model you want to start with",
+      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
+      "cardTitle": "Everything stays on your device",
+      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "downloading": {
+        "title": "Downloading your speech model",
+        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+      },
+      "advanced": {
+        "show": "Show more model options",
+        "hide": "Hide extra model options"
+      }
+    },
+    "firstDictation": {
+      "title": "You are ready for your first dictation",
+      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "cta": "Open Vox Jot",
+      "steps": [
+        "Place your cursor in any text field where you want the transcript to go.",
+        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
+        "Adjust output, paste behavior, or polished dictation later from Settings."
+      ],
+      "shortcuts": {
+        "dictation": {
+          "label": "Regular dictation",
+          "description": "Use this for fast speech-to-text in any app."
+        },
+        "postProcess": {
+          "label": "Polished dictation",
+          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
+          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+        }
+      },
+      "postProcessReady": {
+        "title": "Post Process is already available",
+        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+      },
+      "postProcessLater": {
+        "title": "Post Process is easy to add later",
+        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+      },
+      "tip": {
+        "title": "Start simple, tune later",
+        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+      }
+    },
+    "common": {
+      "back": "Back"
+    }
+  },
+  "modelSelector": {
+    "custom": "Vlastní",
+    "active": "Aktivní",
+    "noModelsAvailable": "Nejsou dostupné žádné modely",
+    "extracting": "Rozbaluji {{modelName}}...",
+    "extractingMultiple": "Rozbaluji {{count}} modelů...",
+    "extractingGeneric": "Rozbalování...",
+    "downloading": "Stahování {{percentage}}%",
+    "downloadingMultiple": "Stahování {{count}} modelů...",
+    "modelReady": "Model připraven",
+    "loading": "Načítám {{modelName}}...",
+    "loadingGeneric": "Načítání...",
+    "modelError": "Chyba modelu",
+    "modelUnloaded": "Model uvolněn",
+    "noModelDownloadRequired": "Žádný model - je nutné stáhnout",
+    "deleteModel": "Smazat {{modelName}}",
+    "switching": "Přepínání...",
+    "downloadSpeed": "{{speed}} MB/s",
+    "capabilities": {
+      "languageSelection": "Podporuje více vstupních jazyků",
+      "multiLanguage": "Vícejazyčný",
+      "translation": "Umí překládat do angličtiny",
+      "translate": "Přeložit do angličtiny",
+      "singleLanguage": "Podporuje pouze tento jazyk",
+      "languageOnly": "Pouze {{language}}"
+    },
+    "cancel": "Zrušit",
+    "cancelDownload": "Zrušit stahování"
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "Nastavení {{model}}",
+      "noSettingsNeeded": "Tento model funguje automaticky bez nutnosti konfigurace."
+    },
+    "models": {
+      "title": "Modely přepisu",
+      "description": "Vyberte model přepisu nebo stáhněte další modely. Různé modely nabízejí různé úrovně přesnosti a rychlosti.",
+      "downloaded": "Staženo",
+      "available": "K dispozici ke stažení",
+      "deleteConfirm": "Opravdu chcete smazat {{modelName}}? Pro opětovné použití jej budete muset znovu stáhnout.",
+      "deleteActiveConfirm": "{{modelName}} je váš aktivní model. Jeho smazáním se zastaví přepisy, dokud nevyberete nový model. Opravdu chcete pokračovat?",
+      "deleteTitle": "Smazat model",
+      "filters": {
+        "all": "Vše",
+        "multiLanguage": "Vícejazyčný",
+        "translation": "Překlad",
+        "allLanguages": "Všechny jazyky"
+      },
+      "noModelsMatch": "Tomuto filtru neodpovídají žádné modely.",
+      "yourModels": "Stažené modely",
+      "availableModels": "Dostupné ke stažení"
+    },
+    "general": {
+      "title": "Obecné",
+      "shortcut": {
+        "title": "Zkratky Vox Jot",
+        "description": "Nastavte klávesové zkratky pro spuštění nahrávání řeči na text",
+        "loading": "Načítám zkratky...",
+        "none": "Žádné zkratky nejsou nastavené",
+        "notFound": "Zkratka nenalezena",
+        "pressKeys": "Stiskněte klávesy...",
+        "bindings": {
+          "transcribe": {
+            "name": "Zkratka přepisu",
+            "description": "Klávesová zkratka pro nahrávání a přepis vašeho hlasu."
+          },
+          "cancel": {
+            "name": "Zkratka zrušení",
+            "description": "Klávesová zkratka pro zrušení aktuálního nahrávání."
+          },
+          "transcribe_with_post_process": {
+            "name": "Klávesa pro následné zpracování",
+            "description": "Volitelné: Vyhrazená klávesová zkratka, která vždy použije AI následné zpracování na váš přepis."
+          }
+        },
+        "errors": {
+          "restore": "Nepodařilo se obnovit původní zkratku",
+          "set": "Nepodařilo se nastavit zkratku: {{error}}",
+          "reset": "Nepodařilo se vrátit zkratku na původní hodnotu"
+        }
+      },
+      "language": {
+        "title": "Jazyk",
+        "description": "Vyberte jazyk rozpoznávání řeči. Auto jazyk určí automaticky, zatímco výběr konkrétního jazyka může zlepšit přesnost.",
+        "descriptionUnsupported": "Model Parakeet rozpozná jazyk automaticky. Ruční výběr není potřeba.",
+        "searchPlaceholder": "Hledat jazyky...",
+        "noResults": "Žádné jazyky nenalezeny",
+        "auto": "Auto"
+      },
+      "pushToTalk": {
+        "label": "Stisk a mluv",
+        "description": "Podržte pro nahrávání, uvolněte pro zastavení"
+      }
+    },
+    "sound": {
+      "title": "Zvuk",
+      "microphone": {
+        "title": "Mikrofon",
+        "description": "Vyberte preferované zařízení mikrofonu",
+        "placeholder": "Vyberte mikrofon...",
+        "loading": "Načítání..."
+      },
+      "audioFeedback": {
+        "label": "Zvuková odezva",
+        "description": "Přehrát zvuk při zahájení a ukončení nahrávání"
+      },
+      "outputDevice": {
+        "title": "Výstupní zařízení",
+        "description": "Vyberte preferované výstupní zařízení pro zvuky odezvy",
+        "placeholder": "Vyberte výstupní zařízení...",
+        "loading": "Načítání..."
+      },
+      "volume": {
+        "title": "Hlasitost",
+        "description": "Upravte hlasitost zvukové odezvy"
+      }
+    },
+    "advanced": {
+      "title": "Pokročilé",
+      "groups": {
+        "app": "Aplikace",
+        "output": "Výstup",
+        "transcription": "Přepis",
+        "history": "Historie",
+        "experimental": "Experimentální"
+      },
+      "experimentalToggle": {
+        "label": "Experimentální funkce",
+        "description": "Povolit experimentální funkce, které jsou stále ve vývoji."
+      },
+      "startHidden": {
+        "label": "Spouštět skrytě",
+        "description": "Spustit do systémové lišty bez otevření okna."
+      },
+      "autostart": {
+        "label": "Spouštět při startu",
+        "description": "Automaticky spustit Vox Jot po přihlášení do počítače."
+      },
+      "showTrayIcon": {
+        "label": "Zobrazit ikonu v systémové liště",
+        "description": "Zobrazit ikonu Vox Jot v systémové liště."
+      },
+      "overlay": {
+        "title": "Pozice překryvu",
+        "description": "Zobrazovat vizuální překryv během nahrávání a přepisu. Na Linuxu je doporučeno 'Žádné'.",
+        "options": {
+          "none": "Žádné",
+          "bottom": "Dole",
+          "top": "Nahoře"
+        }
+      },
+      "pasteMethod": {
+        "title": "Způsob vložení",
+        "description": "Vyberte, jak se text vkládá. Přímé: simuluje psaní přes systémový vstup. Žádné: přeskočí vložení a aktualizuje pouze historii/schránku.",
+        "options": {
+          "clipboard": "Schránka ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Schránka (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Schránka (Shift+Insert)",
+          "direct": "Přímé",
+          "none": "Žádné",
+          "externalScript": "Externí skript"
+        },
+        "externalScriptPlaceholder": "/cesta/k/vasemu/skriptu.sh"
+      },
+      "typingTool": {
+        "title": "Nástroj pro psaní",
+        "description": "Vyberte, který linuxový nástroj pro psaní použít pro metodu přímého vložení. Auto automaticky zjistí a použije nejlepší dostupný nástroj pro váš systém.",
+        "options": {
+          "auto": "Auto (Doporučeno)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Práce se schránkou",
+        "description": "'Neměnit schránku' zachová po přepisu aktuální obsah schránky. 'Kopírovat do schránky' ponechá po vložení výsledek přepisu ve schránce.",
+        "options": {
+          "dontModify": "Neměnit schránku",
+          "copyToClipboard": "Kopírovat do schránky"
+        }
+      },
+      "autoSubmit": {
+        "title": "Automatické odeslání",
+        "description": "Automaticky odešle vybranou kombinaci kláves po vložení textu. Cmd+Enter platí pro macOS, zatímco Windows/Linux používají Super+Enter.",
+        "options": {
+          "off": "Vypnuto",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "Překládat do angličtiny",
+        "description": "Během přepisu automaticky překládat řeč z jiných jazyků do angličtiny.",
+        "descriptionUnsupported": "Překlad není podporován modelem {{model}}."
+      },
+      "modelUnload": {
+        "title": "Uvolnění modelu",
+        "description": "Automaticky uvolnit paměť GPU/CPU, když model nebyl použit po zadanou dobu",
+        "options": {
+          "never": "Nikdy",
+          "immediately": "Okamžitě",
+          "min2": "Po 2 minutách",
+          "min5": "Po 5 minutách",
+          "min10": "Po 10 minutách",
+          "min15": "Po 15 minutách",
+          "hour1": "Po 1 hodině",
+          "sec5": "Po 5 sekundách (Debug)"
+        }
+      },
+      "customWords": {
+        "title": "Vlastní slova",
+        "description": "Přidejte slova, která jsou při přepisu často špatně rozpoznána nebo napsána. Systém automaticky opraví podobně znějící slova podle vašeho seznamu.",
+        "placeholder": "Přidat slovo",
+        "add": "Přidat",
+        "remove": "Odebrat {{word}}",
+        "duplicate": "\"{{word}}\" již existuje"
+      }
+    },
+    "postProcessing": {
+      "title": "Následné zpracování",
+      "hotkey": {
+        "title": "Klávesová zkratka"
+      },
+      "api": {
+        "title": "API (kompatibilní s OpenAI)",
+        "provider": {
+          "title": "Poskytovatel",
+          "description": "Vyberte poskytovatele kompatibilního s OpenAI."
+        },
+        "appleIntelligence": {
+          "title": "Apple Intelligence",
+          "description": "Běží plně na zařízení. Není potřeba API klíč ani síťové připojení.",
+          "requirements": "Vyžaduje Mac s Apple Silicon a macOS Tahoe (26.0) nebo novější. Apple Intelligence musí být povoleno v Nastavení systému.",
+          "unavailable": "Apple Intelligence není na tomto zařízení k dispozici. Vyžaduje Mac s Apple Silicon a macOS Tahoe (26.0) nebo novější a povolené Apple Intelligence v Nastavení systému."
+        },
+        "baseUrl": {
+          "title": "Základní URL",
+          "description": "Základní URL API pro vybraného poskytovatele. Upravitelné je pouze u vlastního poskytovatele.",
+          "placeholder": "https://api.openai.com/v1"
+        },
+        "apiKey": {
+          "title": "API klíč",
+          "description": "API klíč pro vybraného poskytovatele.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Model",
+          "descriptionApple": "Zadejte volitelný číselný limit tokenů nebo ponechte výchozí předvolbu na zařízení.",
+          "descriptionCustom": "Zadejte identifikátor modelu očekávaný vaším vlastním endpointem.",
+          "descriptionDefault": "Vyberte model dostupný u vybraného poskytovatele.",
+          "placeholderApple": "Apple Intelligence",
+          "placeholderWithOptions": "Vyhledejte nebo vyberte model",
+          "placeholderNoOptions": "Zadejte název modelu",
+          "refreshModels": "Obnovit modely"
+        }
+      },
+      "prompts": {
+        "title": "Prompt",
+        "selectedPrompt": {
+          "title": "Vybraný prompt",
+          "description": "Vyberte šablonu pro zpřesnění přepisu nebo vytvořte novou. V textu promptu použijte ${output} pro vložení zachyceného přepisu."
+        },
+        "noPrompts": "Nejsou k dispozici žádné prompty",
+        "selectPrompt": "Vyberte prompt",
+        "createNew": "Vytvořit nový prompt",
+        "promptLabel": "Název promptu",
+        "promptLabelPlaceholder": "Zadejte název promptu",
+        "promptInstructions": "Instrukce promptu",
+        "promptInstructionsPlaceholder": "Napište instrukce, které se mají spustit po přepisu. Příklad: Zlepšete gramatiku a srozumitelnost následujícího textu: ${output}",
+        "promptTip": "Tip: Použijte <code>${output}</code> pro vložení přepsaného textu do promptu.",
+        "updatePrompt": "Aktualizovat prompt",
+        "deletePrompt": "Smazat prompt",
+        "createPrompt": "Vytvořit prompt",
+        "cancel": "Zrušit",
+        "selectToEdit": "Vyberte výše prompt, abyste zobrazili a upravili jeho podrobnosti.",
+        "createFirst": "Klikněte nahoře na 'Vytvořit nový prompt' a vytvořte svůj první prompt pro následné zpracování."
+      },
+      "apple": {
+        "title": "Apple Cleanup",
+        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "mode": {
+          "title": "Mode",
+          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
+          "literal": "Literal: preserve wording",
+          "intent": "Intent: clean false starts and formatting"
+        },
+        "rewriteStrength": {
+          "title": "Rewrite Strength",
+          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
+          "conservative": "Conservative",
+          "balanced": "Balanced",
+          "aggressive": "Aggressive"
+        },
+        "preview": {
+          "label": "Show preview before paste",
+          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+        },
+        "fallback": {
+          "label": "Fallback to normalized text on failure",
+          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+        }
+      },
+      "appAware": {
+        "title": "App-Aware Tone",
+        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "toggle": {
+          "label": "Enable app-aware tone",
+          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+        },
+        "tones": {
+          "title": "Tone definitions",
+          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "columns": {
+            "id": "Tone ID",
+            "label": "Display name",
+            "instruction": "Instruction"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Use a casual, conversational tone suitable for chat messages."
+          },
+          "add": "Add tone"
+        },
+        "mappings": {
+          "title": "App mappings",
+          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "columns": {
+            "appName": "App name",
+            "bundleId": "Bundle ID",
+            "tone": "Tone"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Add app mapping"
+        },
+        "remove": "Remove",
+        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+      },
+      "dictionary": {
+        "title": "Personal Dictionary",
+        "editor": {
+          "title": "Preferred spellings",
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+        },
+        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
+        "empty": "No personal dictionary entries yet.",
+        "columns": {
+          "spoken": "Spoken",
+          "written": "Written",
+          "exactOnly": "Exact only"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Add entry",
+        "remove": "Remove",
+        "duplicateBadge": "Duplicate spoken phrase"
+      },
+      "preview": {
+        "title": "Preview Tester",
+        "testInput": {
+          "title": "Try sample text",
+          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
+          "placeholder": "Paste or type sample transcript text here"
+        },
+        "previewApp": {
+          "label": "Preview as app",
+          "none": "No app override"
+        },
+        "run": "Preview output",
+        "runLoading": "Previewing...",
+        "outputLabel": "Preview result",
+        "dictionaryHits": "Dictionary hits: {{hits}}",
+        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
+        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "errors": {
+          "generic": "Unable to preview post-processing right now."
+        },
+        "modal": {
+          "title": "Review polished text",
+          "description": "Apple Intelligence changed this transcription before pasting.",
+          "originalLabel": "Normalized transcript",
+          "editedLabel": "Text to paste",
+          "cancel": "Cancel paste",
+          "apply": "Paste text"
+        },
+        "disabledMessage": "Turn on Post Process to try previewing polished output."
+      },
+      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "sections": {
+        "setup": {
+          "title": "Setup",
+          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+        },
+        "review": {
+          "title": "Paste Review",
+          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+        },
+        "appleCleanup": {
+          "title": "Apple Cleanup",
+          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+        },
+        "applePersonalization": {
+          "title": "Apple Personalization",
+          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+        },
+        "prompting": {
+          "title": "Prompting",
+          "description": "Choose or edit the prompt template used by network providers."
+        },
+        "preview": {
+          "title": "Try It",
+          "description": "Preview the current configuration against sample text without recording live audio."
+        }
+      },
+      "review": {
+        "toggle": {
+          "label": "Review polished text before paste",
+          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+        },
+        "status": {
+          "disabled": "Turn on Post Process first to enable review-before-paste.",
+          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
+          "off": "Polished text will be pasted immediately after processing finishes."
+        }
+      },
+      "status": {
+        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
+        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
+        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "missingBaseUrl": "Set a base URL for your custom provider.",
+        "missingApiKey": "Add an API key for the selected provider.",
+        "missingModel": "Choose or enter a model for the selected provider.",
+        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
+        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
+        "ready": "Post Process is configured and ready to use."
+      }
+    },
+    "history": {
+      "title": "Historie",
+      "openFolder": "Otevřít složku nahrávek",
+      "loading": "Načítám historii...",
+      "empty": "Zatím žádné přepisy. Začněte nahrávat a vytvořte si historii!",
+      "copyToClipboard": "Kopírovat přepis do schránky",
+      "save": "Uložit přepis",
+      "unsave": "Odebrat z uložených",
+      "delete": "Smazat záznam",
+      "deleteError": "Nepodařilo se smazat záznam. Zkuste to prosím znovu."
+    },
+    "debug": {
+      "title": "Ladění",
+      "logDirectory": {
+        "title": "Složka protokolů",
+        "description": "Umístění, kde jsou uloženy soubory protokolu"
+      },
+      "logLevel": {
+        "title": "Úroveň logování",
+        "description": "Nastavte úroveň podrobnosti logování"
+      },
+      "updateChecks": {
+        "label": "Kontrolovat aktualizace",
+        "description": "Automaticky kontrolovat nové verze Vox Jot"
+      },
+      "soundTheme": {
+        "label": "Zvukový motiv",
+        "description": "Vyberte zvukový motiv pro odezvu při startu a ukončení nahrávání"
+      },
+      "wordCorrectionThreshold": {
+        "title": "Práh korekce slov",
+        "description": "Citlivost pro opravy vlastních slov"
+      },
+      "historyLimit": {
+        "title": "Limit historie",
+        "description": "Maximální počet záznamů historie k uchování",
+        "entries": "záznamů"
+      },
+      "recordingRetention": {
+        "title": "Automatické mazání nahrávek",
+        "description": "Automaticky mazat staré nahrávky pro úsporu místa",
+        "never": "Nikdy",
+        "preserveLimit": "Ponechat posledních {{count}}",
+        "days3": "Po 3 dnech",
+        "weeks2": "Po 2 týdnech",
+        "months3": "Po 3 měsících",
+        "placeholder": "Vyberte dobu uchování..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Vždy zapnutý mikrofon",
+        "description": "Udržovat mikrofon aktivní pro rychlejší odezvu"
+      },
+      "clamshellMicrophone": {
+        "title": "Mikrofon při zavřeném víku",
+        "description": "Mikrofon, který se použije při zavřeném víku notebooku"
+      },
+      "postProcessingToggle": {
+        "label": "Následné zpracování",
+        "description": "Povolit AI vylepšení textu po přepisu"
+      },
+      "muteWhileRecording": {
+        "label": "Ztlumit při nahrávání",
+        "description": "Ztlumit systémový zvuk během nahrávání"
+      },
+      "appendTrailingSpace": {
+        "label": "Přidat koncovou mezeru",
+        "description": "Přidat mezeru po vloženém přepisu"
+      },
+      "keyboardImplementation": {
+        "title": "Implementace klávesnice",
+        "description": "Zvolte backend pro klávesové zkratky.",
+        "bindingsReset": "Klávesové zkratky byly nekompatibilní a byly obnoveny na výchozí hodnoty"
+      },
+      "paths": {
+        "appData": "Data aplikace:",
+        "models": "Modely:",
+        "settings": "Nastavení:"
+      },
+      "pasteDelay": {
+        "title": "Zpoždění vložení",
+        "description": "Zpoždění před odesláním klávesy pro vložení (v milisekundách). Zvyšte, pokud se vkládá špatný text."
+      }
+    },
+    "about": {
+      "title": "O aplikaci",
+      "version": {
+        "title": "Verze",
+        "description": "Aktuální verze Vox Jot"
+      },
+      "appDataDirectory": {
+        "title": "Adresář dat aplikace",
+        "description": "Umístění, kde Vox Jot ukládá data"
+      },
+      "sourceCode": {
+        "title": "Zdrojový kód",
+        "description": "Zobrazit zdrojový kód a přispět",
+        "button": "Zobrazit na GitHubu"
+      },
+      "supportDevelopment": {
+        "title": "Podpořte vývoj",
+        "description": "Pomozte nám pokračovat ve vývoji Vox Jot",
+        "button": "Přispět"
+      },
+      "acknowledgments": {
+        "title": "Poděkování",
+        "whisper": {
+          "title": "Whisper.cpp",
+          "description": "Vysoce výkonné inferenční zpracování modelu automatického rozpoznávání řeči Whisper od OpenAI",
+          "details": "Vox Jot používá Whisper.cpp pro rychlé lokální zpracování řeči na text. Díky skvělé práci Georgiho Gerganova a přispěvatelů."
+        }
+      }
+    }
+  },
+  "footer": {
+    "downloadingModel": "Stahuji {{model}}...",
+    "checkingUpdates": "Kontroluji aktualizace...",
+    "updateAvailable": "Dostupná aktualizace: {{version}}",
+    "updateAvailableShort": "Dostupná aktualizace",
+    "upToDate": "Vše aktuální",
+    "downloadUpdate": "Stáhnout aktualizaci",
+    "restart": "Restartovat",
+    "updateCheckingDisabled": "Kontrola aktualizací vypnuta",
+    "downloading": "Stahování... {{progress}}%",
+    "installing": "Instalace...",
+    "preparing": "Příprava...",
+    "checkForUpdates": "Zkontrolovat aktualizace"
+  },
+  "common": {
+    "loading": "Načítání...",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "reset": "Obnovit",
+    "add": "Přidat",
+    "remove": "Odebrat",
+    "delete": "Smazat",
+    "edit": "Upravit",
+    "create": "Vytvořit",
+    "update": "Aktualizovat",
+    "close": "Zavřít",
+    "open": "Otevřít",
+    "default": "Výchozí",
+    "enabled": "Zapnuto",
+    "disabled": "Vypnuto",
+    "on": "Zapnuto",
+    "off": "Vypnuto",
+    "yes": "Ano",
+    "no": "Ne",
+    "noOptionsFound": "Nenalezeny žádné možnosti"
+  },
+  "accessibility": {
+    "permissionsRequired": "Vyžadována oprávnění usnadnění přístupu",
+    "permissionsDescription": "Vox Jot potřebuje oprávnění usnadnění přístupu, aby mohlo psát přepsaný text.",
+    "openSettings": "Otevřít Nastavení systému",
+    "dismiss": "Zavřít"
+  },
+  "errors": {
+    "loadDirectory": "Chyba při načítání adresáře: {{error}}",
+    "recordingFailed": "Nepodařilo se spustit nahrávání: {{error}}",
+    "modelLoadFailed": "Nepodařilo se načíst model: {{model}}",
+    "modelLoadFailedUnknown": "neznámý model"
+  },
+  "appLanguage": {
+    "title": "Jazyk aplikace",
+    "description": "Změňte jazyk rozhraní Vox Jot"
+  },
+  "overlay": {
+    "transcribing": "Přepisuji...",
+    "processing": "Zpracovávám..."
+  }
+}

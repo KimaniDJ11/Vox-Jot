@@ -64,13 +64,19 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    fn model_source_base_url() -> String {
-        std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/cjpais/Vox-Jot/releases/latest/download".to_string()
+    fn whisper_hf_base_url() -> String {
+        std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main".to_string()
         })
     }
 
-    fn model_url_for(model_id: &str, filename: &str) -> String {
+    fn model_source_base_url() -> String {
+        std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
+        })
+    }
+
+    fn model_url_for(model_id: &str, filename: &str, use_hf_base: bool) -> String {
         let override_key = format!(
             "VOX_JOT_STT_MODEL_URL_{}",
             model_id.replace('-', "_").to_uppercase()
@@ -83,11 +89,32 @@ impl ModelManager {
             }
         }
 
-        format!(
-            "{}/{}",
-            Self::model_source_base_url().trim_end_matches('/'),
-            filename
-        )
+        let base_url = if use_hf_base {
+            Self::whisper_hf_base_url()
+        } else {
+            Self::model_source_base_url()
+        };
+
+        format!("{}/{}", base_url.trim_end_matches('/'), filename)
+    }
+
+    fn is_tar_gz_url(url: &str) -> bool {
+        let path = url.split('?').next().unwrap_or(url);
+        path.ends_with(".tar.gz")
+    }
+
+    fn collect_files_recursive(root: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        for entry in fs::read_dir(root)? {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                Self::collect_files_recursive(&path, files)?;
+            } else {
+                files.push(path);
+            }
+        }
+
+        Ok(())
     }
 
     pub fn new(app_handle: &AppHandle) -> Result<Self> {
@@ -126,7 +153,7 @@ impl ModelManager {
                 name: "Whisper Small".to_string(),
                 description: "Fast and fairly accurate.".to_string(),
                 filename: "ggml-small.bin".to_string(),
-                url: Some(Self::model_url_for("small", "ggml-small.bin")),
+                url: Some(Self::model_url_for("small", "ggml-small.bin", true)),
                 size_mb: 487,
                 is_downloaded: false,
                 is_downloading: false,
@@ -150,7 +177,11 @@ impl ModelManager {
                 name: "Whisper Medium".to_string(),
                 description: "Good accuracy, medium speed".to_string(),
                 filename: "whisper-medium-q4_1.bin".to_string(),
-                url: Some(Self::model_url_for("medium", "whisper-medium-q4_1.bin")),
+                url: Some(Self::model_url_for(
+                    "medium",
+                    "whisper-medium-q4_1.bin",
+                    true,
+                )),
                 size_mb: 492, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -173,7 +204,11 @@ impl ModelManager {
                 name: "Whisper Turbo".to_string(),
                 description: "Balanced accuracy and speed.".to_string(),
                 filename: "ggml-large-v3-turbo.bin".to_string(),
-                url: Some(Self::model_url_for("turbo", "ggml-large-v3-turbo.bin")),
+                url: Some(Self::model_url_for(
+                    "turbo",
+                    "ggml-large-v3-turbo.bin",
+                    true,
+                )),
                 size_mb: 1600, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -196,7 +231,7 @@ impl ModelManager {
                 name: "Whisper Large".to_string(),
                 description: "Good accuracy, but slow.".to_string(),
                 filename: "ggml-large-v3-q5_0.bin".to_string(),
-                url: Some(Self::model_url_for("large", "ggml-large-v3-q5_0.bin")),
+                url: Some(Self::model_url_for("large", "ggml-large-v3-q5_0.bin", true)),
                 size_mb: 1100, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -220,7 +255,11 @@ impl ModelManager {
                 description: "Optimized for Taiwanese Mandarin. Code-switching support."
                     .to_string(),
                 filename: "breeze-asr-q5_k.bin".to_string(),
-                url: Some(Self::model_url_for("breeze-asr", "breeze-asr-q5_k.bin")),
+                url: Some(Self::model_url_for(
+                    "breeze-asr",
+                    "breeze-asr-q5_k.bin",
+                    false,
+                )),
                 size_mb: 1080,
                 is_downloaded: false,
                 is_downloading: false,
@@ -247,6 +286,7 @@ impl ModelManager {
                 url: Some(Self::model_url_for(
                     "parakeet-tdt-0.6b-v2",
                     "parakeet-v2-int8.tar.gz",
+                    false,
                 )),
                 size_mb: 473, // Approximate size for int8 quantized model
                 is_downloaded: false,
@@ -283,6 +323,7 @@ impl ModelManager {
                 url: Some(Self::model_url_for(
                     "parakeet-tdt-0.6b-v3",
                     "parakeet-v3-int8.tar.gz",
+                    false,
                 )),
                 size_mb: 478, // Approximate size for int8 quantized model
                 is_downloaded: false,
@@ -306,7 +347,11 @@ impl ModelManager {
                 name: "Moonshine Base".to_string(),
                 description: "Very fast, English only. Handles accents well.".to_string(),
                 filename: "moonshine-base".to_string(),
-                url: Some(Self::model_url_for("moonshine-base", "moonshine-base.tar.gz")),
+                url: Some(Self::model_url_for(
+                    "moonshine-base",
+                    "moonshine-base.tar.gz",
+                    false,
+                )),
                 size_mb: 58,
                 is_downloaded: false,
                 is_downloading: false,
@@ -332,6 +377,7 @@ impl ModelManager {
                 url: Some(Self::model_url_for(
                     "moonshine-tiny-streaming-en",
                     "moonshine-tiny-streaming-en.tar.gz",
+                    false,
                 )),
                 size_mb: 31,
                 is_downloaded: false,
@@ -358,6 +404,7 @@ impl ModelManager {
                 url: Some(Self::model_url_for(
                     "moonshine-small-streaming-en",
                     "moonshine-small-streaming-en.tar.gz",
+                    false,
                 )),
                 size_mb: 100,
                 is_downloaded: false,
@@ -384,6 +431,7 @@ impl ModelManager {
                 url: Some(Self::model_url_for(
                     "moonshine-medium-streaming-en",
                     "moonshine-medium-streaming-en.tar.gz",
+                    false,
                 )),
                 size_mb: 192,
                 is_downloaded: false,
@@ -415,7 +463,11 @@ impl ModelManager {
                 description: "Very fast. Chinese, English, Japanese, Korean, Cantonese."
                     .to_string(),
                 filename: "sense-voice-int8".to_string(),
-                url: Some(Self::model_url_for("sense-voice-int8", "sense-voice-int8.tar.gz")),
+                url: Some(Self::model_url_for(
+                    "sense-voice-int8",
+                    "sense-voice-int8.tar.gz",
+                    false,
+                )),
                 size_mb: 160,
                 is_downloaded: false,
                 is_downloading: false,
@@ -440,8 +492,12 @@ impl ModelManager {
                 id: "gigaam-v3-e2e-ctc".to_string(),
                 name: "GigaAM v3".to_string(),
                 description: "Russian speech recognition. Fast and accurate.".to_string(),
-                filename: "giga-am-v3.int8.onnx".to_string(),
-                url: Some(Self::model_url_for("gigaam-v3-e2e-ctc", "giga-am-v3.int8.onnx")),
+                filename: "v3_e2e_ctc.int8.onnx".to_string(),
+                url: Some(Self::model_url_for(
+                    "gigaam-v3-e2e-ctc",
+                    "giga-am-v3.tar.gz",
+                    false,
+                )),
                 size_mb: 225,
                 is_downloaded: false,
                 is_downloading: false,
@@ -965,8 +1021,10 @@ impl ModelManager {
             }
         }
 
-        // Handle directory-based models (extract tar.gz) vs file-based models
-        if model_info.is_directory {
+        let is_archive_download = Self::is_tar_gz_url(&url);
+
+        // Handle extracted archives before falling back to plain file moves.
+        if model_info.is_directory || is_archive_download {
             // Track that this model is being extracted
             {
                 let mut extracting = self.extracting_models.lock().unwrap();
@@ -975,13 +1033,13 @@ impl ModelManager {
 
             // Emit extraction started event
             let _ = self.app_handle.emit("model-extraction-started", model_id);
-            info!("Extracting archive for directory-based model: {}", model_id);
+            info!("Extracting archive for model: {}", model_id);
 
             // Use a temporary extraction directory to ensure atomic operations
             let temp_extract_dir = self
                 .models_dir
                 .join(format!("{}.extracting", &model_info.filename));
-            let final_model_dir = self.models_dir.join(&model_info.filename);
+            let final_model_path = self.models_dir.join(&model_info.filename);
 
             // Clean up any previous incomplete extraction
             if temp_extract_dir.exists() {
@@ -1016,27 +1074,83 @@ impl ModelManager {
                 anyhow::anyhow!(error_msg)
             })?;
 
-            // Find the actual extracted directory (archive might have a nested structure)
-            let extracted_dirs: Vec<_> = fs::read_dir(&temp_extract_dir)?
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
-                .collect();
+            let extraction_result: Result<()> = if model_info.is_directory {
+                // Find the actual extracted directory (archive might have a nested structure)
+                let extracted_dirs: Vec<_> = fs::read_dir(&temp_extract_dir)?
+                    .filter_map(|entry| entry.ok())
+                    .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+                    .collect();
 
-            if extracted_dirs.len() == 1 {
-                // Single directory extracted, move it to the final location
-                let source_dir = extracted_dirs[0].path();
-                if final_model_dir.exists() {
-                    fs::remove_dir_all(&final_model_dir)?;
+                if extracted_dirs.len() == 1 {
+                    // Single directory extracted, move it to the final location
+                    let source_dir = extracted_dirs[0].path();
+                    if final_model_path.exists() {
+                        fs::remove_dir_all(&final_model_path)?;
+                    }
+                    fs::rename(&source_dir, &final_model_path)?;
+                    // Clean up temp directory
+                    let _ = fs::remove_dir_all(&temp_extract_dir);
+                } else {
+                    // Multiple items or no directories, rename the temp directory itself
+                    if final_model_path.exists() {
+                        fs::remove_dir_all(&final_model_path)?;
+                    }
+                    fs::rename(&temp_extract_dir, &final_model_path)?;
                 }
-                fs::rename(&source_dir, &final_model_dir)?;
-                // Clean up temp directory
-                let _ = fs::remove_dir_all(&temp_extract_dir);
+
+                Ok(())
             } else {
-                // Multiple items or no directories, rename the temp directory itself
-                if final_model_dir.exists() {
-                    fs::remove_dir_all(&final_model_dir)?;
+                let mut extracted_files = Vec::new();
+                Self::collect_files_recursive(&temp_extract_dir, &mut extracted_files)?;
+
+                let source_file = extracted_files
+                    .iter()
+                    .find(|path| {
+                        path.file_name()
+                            .and_then(|name| name.to_str())
+                            .map(|name| name == model_info.filename)
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+                    .or_else(|| {
+                        if extracted_files.len() == 1 {
+                            extracted_files.into_iter().next()
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Archive for {} did not contain expected file {}",
+                            model_id,
+                            model_info.filename
+                        )
+                    })?;
+
+                if final_model_path.exists() {
+                    fs::remove_file(&final_model_path)?;
                 }
-                fs::rename(&temp_extract_dir, &final_model_dir)?;
+                fs::rename(&source_file, &final_model_path)?;
+                let _ = fs::remove_dir_all(&temp_extract_dir);
+
+                Ok(())
+            };
+
+            if let Err(e) = extraction_result {
+                let error_msg = format!("Failed to finalize extracted model: {}", e);
+                let _ = fs::remove_dir_all(&temp_extract_dir);
+                {
+                    let mut extracting = self.extracting_models.lock().unwrap();
+                    extracting.remove(model_id);
+                }
+                let _ = self.app_handle.emit(
+                    "model-extraction-failed",
+                    &serde_json::json!({
+                        "model_id": model_id,
+                        "error": error_msg
+                    }),
+                );
+                return Err(e);
             }
 
             info!("Successfully extracted archive for model: {}", model_id);

@@ -1,0 +1,812 @@
+{
+  "tray": {
+    "settings": "Impostazioni...",
+    "checkUpdates": "Verifica aggiornamenti...",
+    "copyLastTranscript": "Copia l'ultima trascrizione",
+    "unloadModel": "Scarica modello",
+    "quit": "Esci",
+    "cancel": "Annulla"
+  },
+  "sidebar": {
+    "general": "Generale",
+    "models": "Modelli",
+    "advanced": "Avanzate",
+    "postProcessing": "Post-Elaborazione",
+    "history": "Cronologia",
+    "debug": "Debug",
+    "about": "Informazioni"
+  },
+  "onboarding": {
+    "subtitle": "Per cominciare, scegli un modello di riconoscimento vocale",
+    "recommended": "Raccomandato",
+    "download": "Scarica",
+    "downloading": "Download in corso...",
+    "customModelDescription": "Non ufficialmente supportato",
+    "downloadFailed": "Download fallito. Riprova.",
+    "modelCard": {
+      "accuracy": "accuratezza",
+      "speed": "velocità"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Veloce e abbastanza accurato."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "Buona accuratezza, velocità nella media"
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Bilanciato fra accuratezza e velocità."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "Buona accuratezza, ma lento."
+      },
+      "parakeet-tdt-0.6b-v2": {
+        "name": "Parakeet V2",
+        "description": "Solo inglese. Il miglior modello per chi parla inglese."
+      },
+      "parakeet-tdt-0.6b-v3": {
+        "name": "Parakeet V3",
+        "description": "Veloce e accurato"
+      },
+      "moonshine-base": {
+        "name": "Moonshine Base",
+        "description": "Molto veloce, solo inglese. Gestisce bene gli accenti."
+      },
+      "moonshine-tiny-streaming-en": {
+        "name": "Moonshine V2 Tiny",
+        "description": "Ultra-veloce, solo inglese"
+      },
+      "moonshine-small-streaming-en": {
+        "name": "Moonshine V2 Small",
+        "description": "Veloce, solo inglese. Buon equilibrio tra velocità e precisione."
+      },
+      "moonshine-medium-streaming-en": {
+        "name": "Moonshine V2 Medium",
+        "description": "Solo inglese. Alta qualità."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Ottimizzato per il mandarino taiwanese. Supporto per il code-switching."
+      },
+      "sense-voice-int8": {
+        "name": "SenseVoice",
+        "description": "Molto veloce. Cinese, inglese, giapponese, coreano, cantonese."
+      },
+      "gigaam-v3-e2e-ctc": {
+        "name": "GigaAM v3",
+        "description": "Riconoscimento vocale in russo. Veloce e preciso."
+      }
+    },
+    "errors": {
+      "loadModels": "Errore di caricamento dei modelli disponibili",
+      "downloadModel": "Errore nel download del modello: {{error}}"
+    },
+    "permissions": {
+      "title": "Permessi Richiesti",
+      "description": "Vox Jot ha bisogno di alcuni permessi per funzionare correttamente.",
+      "microphone": {
+        "title": "Accesso al Microfono",
+        "description": "Necessario per sentire la tua voce per la trascrizione.",
+        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
+      },
+      "accessibility": {
+        "title": "Accesso all'Accessibilità",
+        "description": "Necessario per digitare il testo trascritto nelle tue applicazioni.",
+        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
+      },
+      "grant": "Concedi Permesso",
+      "granted": "Concesso",
+      "waiting": "In attesa...",
+      "allGranted": "Tutto pronto!",
+      "errors": {
+        "checkFailed": "Impossibile verificare i permessi. Riprova.",
+        "requestFailed": "Impossibile richiedere il permesso. Riprova."
+      },
+      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
+      "continue": "Continue",
+      "moreInfo": "More info",
+      "visualPath": "System Settings -> Privacy & Security",
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+    },
+    "steps": {
+      "welcome": "Overview",
+      "permissions": "Permissions",
+      "setup": "Model",
+      "learn": "First Dictation"
+    },
+    "welcome": {
+      "title": "Set up private voice dictation that actually fits your workflow",
+      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "cta": "Set Up Vox Jot",
+      "cardTitle": "Built for everyday dictation",
+      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "features": [
+        "Download a local speech model that matches your speed and accuracy needs.",
+        "Grant the permissions Vox Jot needs to listen and type into other apps.",
+        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+      ],
+      "highlights": {
+        "local": {
+          "title": "Local transcription",
+          "description": "Your speech model runs on your own machine."
+        },
+        "anywhere": {
+          "title": "Works across apps",
+          "description": "Dictate into messages, docs, notes, and forms."
+        },
+        "polish": {
+          "title": "Optional cleanup",
+          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+        }
+      }
+    },
+    "setup": {
+      "title": "Choose the transcription model you want to start with",
+      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
+      "cardTitle": "Everything stays on your device",
+      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "downloading": {
+        "title": "Downloading your speech model",
+        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+      },
+      "advanced": {
+        "show": "Show more model options",
+        "hide": "Hide extra model options"
+      }
+    },
+    "firstDictation": {
+      "title": "You are ready for your first dictation",
+      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "cta": "Open Vox Jot",
+      "steps": [
+        "Place your cursor in any text field where you want the transcript to go.",
+        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
+        "Adjust output, paste behavior, or polished dictation later from Settings."
+      ],
+      "shortcuts": {
+        "dictation": {
+          "label": "Regular dictation",
+          "description": "Use this for fast speech-to-text in any app."
+        },
+        "postProcess": {
+          "label": "Polished dictation",
+          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
+          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+        }
+      },
+      "postProcessReady": {
+        "title": "Post Process is already available",
+        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+      },
+      "postProcessLater": {
+        "title": "Post Process is easy to add later",
+        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+      },
+      "tip": {
+        "title": "Start simple, tune later",
+        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+      }
+    },
+    "common": {
+      "back": "Back"
+    }
+  },
+  "modelSelector": {
+    "custom": "Personalizzato",
+    "active": "Attivo",
+    "switching": "Cambio...",
+    "noModelsAvailable": "Nessun modello disponibile",
+    "extracting": "Estrazione di {{modelName}}...",
+    "extractingMultiple": "Estrazione di {{count}} modelli...",
+    "extractingGeneric": "Estrazione...",
+    "downloading": "Download {{percentage}}%",
+    "downloadingMultiple": "Download di {{count}} modelli...",
+    "modelReady": "Modello Pronto",
+    "loading": "Caricamento di {{modelName}}...",
+    "loadingGeneric": "Caricamento...",
+    "modelError": "Errore del Modello",
+    "modelUnloaded": "Modello Disattivato",
+    "noModelDownloadRequired": "Nessun Modello - Download Richiesto",
+    "deleteModel": "Elimina {{modelName}}",
+    "downloadSpeed": "{{speed}} MB/s",
+    "capabilities": {
+      "languageSelection": "Supporta più lingue di input",
+      "multiLanguage": "Multilingua",
+      "translation": "Può tradurre in inglese",
+      "translate": "Traduci in inglese",
+      "singleLanguage": "Supporta solo questa lingua",
+      "languageOnly": "Solo {{language}}"
+    },
+    "cancel": "Annulla",
+    "cancelDownload": "Annulla download"
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "Impostazioni di {{model}}",
+      "noSettingsNeeded": "Questo modello funziona automaticamente senza bisogno di configurazione."
+    },
+    "models": {
+      "title": "Modelli di Trascrizione",
+      "description": "Seleziona un modello di trascrizione o scarica modelli aggiuntivi. Diversi modelli offrono diversi livelli di accuratezza e velocità.",
+      "downloaded": "Scaricati",
+      "available": "Disponibili per il Download",
+      "deleteConfirm": "Sei sicuro di voler eliminare {{modelName}}? Dovrai scaricarlo di nuovo per usarlo.",
+      "deleteActiveConfirm": "{{modelName}} è il tuo modello attivo. Eliminarlo interromperà le trascrizioni fino a quando non selezionerai un nuovo modello. Sei sicuro?",
+      "deleteTitle": "Elimina modello",
+      "filters": {
+        "all": "Tutti",
+        "multiLanguage": "Multilingua",
+        "translation": "Traduzione",
+        "allLanguages": "Tutte le lingue"
+      },
+      "noModelsMatch": "Nessun modello corrisponde a questo filtro.",
+      "yourModels": "Modelli scaricati",
+      "availableModels": "Disponibili per il Download"
+    },
+    "general": {
+      "title": "Generale",
+      "shortcut": {
+        "title": "Scorciatoie di Vox Jot",
+        "description": "Configura le scorciatoie per attivare la trascrizione vocale",
+        "loading": "Caricamento delle scorciatoie...",
+        "none": "Nessuna scorciatoia configurata",
+        "notFound": "Scorciatoia non trovata",
+        "pressKeys": "Premi i tasti...",
+        "bindings": {
+          "transcribe": {
+            "name": "Scorciatoia Trascrizione",
+            "description": "La scorciatoia da tastiera per registrare e trascrivere la tua voce."
+          },
+          "cancel": {
+            "name": "Scorciatoia Annulla",
+            "description": "La scorciatoia da tastiera per annullare la registrazione in corso."
+          },
+          "transcribe_with_post_process": {
+            "name": "Tasto di post-elaborazione",
+            "description": "Facoltativo: Un tasto di scelta rapida dedicato che applica sempre la post-elaborazione IA alla trascrizione."
+          }
+        },
+        "errors": {
+          "restore": "Errore nel ripristino della scorciatoia originale",
+          "set": "Errore nella configurazione della scorciatoia: {{error}}",
+          "reset": "Errore nella reinizializzazione della scorciatoia al valore originale"
+        }
+      },
+      "language": {
+        "title": "Lingua",
+        "description": "Scegli la lingua per il riconoscimento vocale. Auto la determinerà automaticamente, mentre scegliere una lingua specifica può migliorare l'accuratezza per quella lingua.",
+        "descriptionUnsupported": "Il modello Parakeet sceglie automaticamente la lingua. Non serve scegliere manualmente.",
+        "searchPlaceholder": "Cerca lingue...",
+        "noResults": "Nessuna lingua trovata",
+        "auto": "Auto"
+      },
+      "pushToTalk": {
+        "label": "Premi per Parlare",
+        "description": "Tieni premuto per parlare, rilascia per interrompere"
+      }
+    },
+    "sound": {
+      "title": "Suono",
+      "microphone": {
+        "title": "Microfono",
+        "description": "Scegli il microfono preferito",
+        "placeholder": "Scegli microfono...",
+        "loading": "Caricamento..."
+      },
+      "audioFeedback": {
+        "label": "Feedback Audio",
+        "description": "Riproduci un suono quando la registrazione inizia e finisce"
+      },
+      "outputDevice": {
+        "title": "Dispositivo di Output",
+        "description": "Scegli il dispositivo di output per il feedback audio",
+        "placeholder": "Scegli dispositivo di output...",
+        "loading": "Caricamento..."
+      },
+      "volume": {
+        "title": "Volume",
+        "description": "Regola il volume del feedback audio"
+      }
+    },
+    "advanced": {
+      "title": "Avanzate",
+      "groups": {
+        "app": "App",
+        "output": "Output",
+        "transcription": "Trascrizione",
+        "history": "Cronologia",
+        "experimental": "Sperimentale"
+      },
+      "experimentalToggle": {
+        "label": "Funzionalità Sperimentali",
+        "description": "Abilita le funzionalità sperimentali ancora in fase di sviluppo."
+      },
+      "startHidden": {
+        "label": "Avvia in Background",
+        "description": "Avvia l'applicazione in background senza aprire la finestra."
+      },
+      "autostart": {
+        "label": "Avvia all'Accensione",
+        "description": "Avvia Vox Jot automaticamente quando accedi al computer."
+      },
+      "showTrayIcon": {
+        "label": "Mostra icona nella barra di sistema",
+        "description": "Mostra l'icona di Vox Jot nella barra di sistema."
+      },
+      "overlay": {
+        "title": "Posizione della Sovrimpressione",
+        "description": "Mostra un feedback visivo in sovrimpressione durante la registrazione e la trascrizione. Su Linux si raccomanda 'Nessuna'.",
+        "options": {
+          "none": "Nessuna",
+          "bottom": "In basso",
+          "top": "In alto"
+        }
+      },
+      "pasteMethod": {
+        "title": "Metodo di Incolla",
+        "description": "Scegli come viene inserito il testo. Diretto: simula l'input da tastiera. Nessuno: non incolla, aggiorna solo la cronologia/appunti.",
+        "options": {
+          "clipboard": "Appunti ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Appunti (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Appunti (Shift+Insert)",
+          "direct": "Diretto",
+          "none": "Nessuno",
+          "externalScript": "Script esterno"
+        },
+        "externalScriptPlaceholder": "/percorso/del/tuo/script.sh"
+      },
+      "typingTool": {
+        "title": "Strumento di digitazione",
+        "description": "Scegli quale strumento di digitazione Linux usare per il metodo di incolla diretto. Auto rileverà e userà automaticamente lo strumento migliore disponibile per il tuo sistema.",
+        "options": {
+          "auto": "Auto (Consigliato)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Gestione Appunti",
+        "description": "Non Modificare gli Appunti mantiene il contenuto dei tuoi appunti dopo la trascrizione. Copia negli Appunti lascia il risultato della trascrizione negli appunti dopo aver incollato.",
+        "options": {
+          "dontModify": "Non Modificare gli Appunti",
+          "copyToClipboard": "Copia negli Appunti"
+        }
+      },
+      "autoSubmit": {
+        "title": "Invio automatico",
+        "description": "Invia automaticamente la combinazione di tasti selezionata dopo l'inserimento del testo. Cmd+Enter si applica su macOS, mentre Windows/Linux usano Super+Enter.",
+        "options": {
+          "off": "Disattivato",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "Traduci in inglese",
+        "description": "Traduci automaticamente in inglese la voce in altre lingue durante la trascrizione.",
+        "descriptionUnsupported": "La traduzione non è supportata dal modello {{model}}."
+      },
+      "modelUnload": {
+        "title": "Disattiva Model",
+        "description": "Libera automaticamente la memoria della GPU/CPU quando il modello non viene utilizzato per un certo periodo",
+        "options": {
+          "never": "Mai",
+          "immediately": "Immediatamente",
+          "min2": "Dopo 2 minuti",
+          "min5": "Dopo 5 minuti",
+          "min10": "Dopo 10 minuti",
+          "min15": "Dopo 15 minuti",
+          "hour1": "Dopo 1 ora",
+          "sec5": "Dopo 5 secondi (Debug)"
+        }
+      },
+      "customWords": {
+        "title": "Parole personalizzate",
+        "description": "Aggiungi parole che vengono spesso fraintese o scritte in modo errato durante la trascrizione. Il sistema correggerà automaticamente le parole dal suono simile in modo che corrispondano al tuo elenco.",
+        "placeholder": "Aggiungi una parola",
+        "add": "Aggiungi",
+        "remove": "Rimuovi {{word}}",
+        "duplicate": "\"{{word}}\" esiste già"
+      }
+    },
+    "postProcessing": {
+      "title": "Post-Elaborazione",
+      "hotkey": {
+        "title": "Tasto di scelta rapida"
+      },
+      "api": {
+        "title": "API (Compatibile con OpenAI)",
+        "provider": {
+          "title": "Provider",
+          "description": "Seleziona un provider compatibile con OpenAI."
+        },
+        "appleIntelligence": {
+          "title": "Apple Intelligence",
+          "description": "Si esegue completamente in locale. Non è necessaria una chiave API né l'accesso alla rete.",
+          "requirements": "Necessita di un Mac con Apple Silicon e macOS Tahoe (26.0) o successivi. Apple Intelligence deve essere abilitata nelle Impostazioni di Sistema.",
+          "unavailable": "Apple Intelligence non è disponibile su questo dispositivo. Necessita di un Mac con Apple Silicon e macOS Tahoe (26.0) o successivi con Apple Intelligence abilitata nelle Impostazioni di Sistema."
+        },
+        "baseUrl": {
+          "title": "URL Base",
+          "description": "URL di base per l'API del provider selezionato. Solo per i provider personalizzati.",
+          "placeholder": "https://api.openai.com/v1"
+        },
+        "apiKey": {
+          "title": "Chiave API",
+          "description": "Chiave API per il provider selezionato.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Modello",
+          "descriptionApple": "Fornisci un limite numerico facoltativo per i token o mantieni l'impostazione predefinita sul dispositivo.",
+          "descriptionCustom": "Fornisci l'identificatore del modello previsto dal tuo endpoint personalizzato.",
+          "descriptionDefault": "Scegli un modello reso disponibile dal provider selezionato.",
+          "placeholderApple": "Apple Intelligence",
+          "placeholderWithOptions": "Cerca o scegli un modello",
+          "placeholderNoOptions": "Digita il nome di un modello",
+          "refreshModels": "Aggiorna modelli"
+        }
+      },
+      "prompts": {
+        "title": "Prompt",
+        "selectedPrompt": {
+          "title": "Prompt Selezionato",
+          "description": "Seleziona un template per migliorare le trascrizioni o creane uno nuovo. Usa ${output} nel prompt per fare riferimento alla trascrizione."
+        },
+        "noPrompts": "Nessun prompt disponibile",
+        "selectPrompt": "Scegli un prompt",
+        "createNew": "Crea un nuovo prompt",
+        "promptLabel": "Etichetta del Prompt",
+        "promptLabelPlaceholder": "Inserisci il nome del prompt",
+        "promptInstructions": "Istruzioni del Prompt",
+        "promptInstructionsPlaceholder": "Scrivi le istruzioni da eseguire dopo la trascrizione. Esempio: Migliora la grammatica e la chiarezza per il seguente testo: ${output}",
+        "promptTip": "Suggerimento: Usa <code>${output}</code> per inserire il testo trascritto nel tuo prompt.",
+        "updatePrompt": "Aggiorna Prompt",
+        "deletePrompt": "Elimina Prompt",
+        "createPrompt": "Crea Prompt",
+        "cancel": "Annulla",
+        "selectToEdit": "Scegli un prompt qui sopra per visualizzare o modificare i dettagli.",
+        "createFirst": "Clicca 'Crea un nuovo prompt' qui sopra per creare il tuo primo prompt di post-elaborazione."
+      },
+      "apple": {
+        "title": "Apple Cleanup",
+        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "mode": {
+          "title": "Mode",
+          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
+          "literal": "Literal: preserve wording",
+          "intent": "Intent: clean false starts and formatting"
+        },
+        "rewriteStrength": {
+          "title": "Rewrite Strength",
+          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
+          "conservative": "Conservative",
+          "balanced": "Balanced",
+          "aggressive": "Aggressive"
+        },
+        "preview": {
+          "label": "Show preview before paste",
+          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+        },
+        "fallback": {
+          "label": "Fallback to normalized text on failure",
+          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+        }
+      },
+      "appAware": {
+        "title": "App-Aware Tone",
+        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "toggle": {
+          "label": "Enable app-aware tone",
+          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+        },
+        "tones": {
+          "title": "Tone definitions",
+          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "columns": {
+            "id": "Tone ID",
+            "label": "Display name",
+            "instruction": "Instruction"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Use a casual, conversational tone suitable for chat messages."
+          },
+          "add": "Add tone"
+        },
+        "mappings": {
+          "title": "App mappings",
+          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "columns": {
+            "appName": "App name",
+            "bundleId": "Bundle ID",
+            "tone": "Tone"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Add app mapping"
+        },
+        "remove": "Remove",
+        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+      },
+      "dictionary": {
+        "title": "Personal Dictionary",
+        "editor": {
+          "title": "Preferred spellings",
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+        },
+        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
+        "empty": "No personal dictionary entries yet.",
+        "columns": {
+          "spoken": "Spoken",
+          "written": "Written",
+          "exactOnly": "Exact only"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Add entry",
+        "remove": "Remove",
+        "duplicateBadge": "Duplicate spoken phrase"
+      },
+      "preview": {
+        "title": "Preview Tester",
+        "testInput": {
+          "title": "Try sample text",
+          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
+          "placeholder": "Paste or type sample transcript text here"
+        },
+        "previewApp": {
+          "label": "Preview as app",
+          "none": "No app override"
+        },
+        "run": "Preview output",
+        "runLoading": "Previewing...",
+        "outputLabel": "Preview result",
+        "dictionaryHits": "Dictionary hits: {{hits}}",
+        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
+        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "errors": {
+          "generic": "Unable to preview post-processing right now."
+        },
+        "modal": {
+          "title": "Review polished text",
+          "description": "Apple Intelligence changed this transcription before pasting.",
+          "originalLabel": "Normalized transcript",
+          "editedLabel": "Text to paste",
+          "cancel": "Cancel paste",
+          "apply": "Paste text"
+        },
+        "disabledMessage": "Turn on Post Process to try previewing polished output."
+      },
+      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "sections": {
+        "setup": {
+          "title": "Setup",
+          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+        },
+        "review": {
+          "title": "Paste Review",
+          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+        },
+        "appleCleanup": {
+          "title": "Apple Cleanup",
+          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+        },
+        "applePersonalization": {
+          "title": "Apple Personalization",
+          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+        },
+        "prompting": {
+          "title": "Prompting",
+          "description": "Choose or edit the prompt template used by network providers."
+        },
+        "preview": {
+          "title": "Try It",
+          "description": "Preview the current configuration against sample text without recording live audio."
+        }
+      },
+      "review": {
+        "toggle": {
+          "label": "Review polished text before paste",
+          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+        },
+        "status": {
+          "disabled": "Turn on Post Process first to enable review-before-paste.",
+          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
+          "off": "Polished text will be pasted immediately after processing finishes."
+        }
+      },
+      "status": {
+        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
+        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
+        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "missingBaseUrl": "Set a base URL for your custom provider.",
+        "missingApiKey": "Add an API key for the selected provider.",
+        "missingModel": "Choose or enter a model for the selected provider.",
+        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
+        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
+        "ready": "Post Process is configured and ready to use."
+      }
+    },
+    "history": {
+      "title": "Cronologia",
+      "openFolder": "Apri la cartella delle registrazioni",
+      "loading": "Caricamento cronologia...",
+      "empty": "Non ci sono ancora trascrizioni. Comincia a registrare per costruire la tua cronologia!",
+      "copyToClipboard": "Copia la trascrizione negli appunti",
+      "save": "Salva la trascrizione",
+      "unsave": "Rimuovi dai salvataggi",
+      "delete": "Elimina elemento",
+      "deleteError": "Errore nell'eliminazione dell'elemento. Riprova."
+    },
+    "debug": {
+      "title": "Debug",
+      "logDirectory": {
+        "title": "Cartella dei Log",
+        "description": "Cartella dove vengono salvati i file di log"
+      },
+      "logLevel": {
+        "title": "Livello di Log",
+        "description": "Scegli il livello di dettaglio dei log"
+      },
+      "updateChecks": {
+        "label": "Controlla aggiornamenti",
+        "description": "Controlla automaticamente la disponibilità di nuove versioni di Vox Jot"
+      },
+      "soundTheme": {
+        "label": "Tema Sonoro",
+        "description": "Scegli un tema sonoro per il feedback di inizio e fine registrazione"
+      },
+      "wordCorrectionThreshold": {
+        "title": "Soglia di Correzione Parole",
+        "description": "Sensibilità per la correzione delle parole personalizzate"
+      },
+      "historyLimit": {
+        "title": "Limite della Cronologia",
+        "description": "Massimo numero di elementi da conservare nella cronologia",
+        "entries": "elementi"
+      },
+      "recordingRetention": {
+        "title": "Eliminazione Automatica Registrazioni",
+        "description": "Elimina automaticamente le registrazioni vecchie per liberare spazio",
+        "never": "Mai",
+        "preserveLimit": "Conserva le ultime {{count}}",
+        "days3": "Dopo 3 giorni",
+        "weeks2": "Dopo 2 settimane",
+        "months3": "Dopo 3 mesi",
+        "placeholder": "Seleziona periodo di conservazione..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Microfono Sempre Attivo",
+        "description": "Tieni il microfono attivo per una risposta più rapida"
+      },
+      "clamshellMicrophone": {
+        "title": "Microfono a portatile chiuso",
+        "description": "Microfono da usare quando il portatile è chiuso"
+      },
+      "postProcessingToggle": {
+        "label": "Post-Elaborazione",
+        "description": "Abilita il miglioramento della trascrizione con IA"
+      },
+      "muteWhileRecording": {
+        "label": "Silenzia durante la registrazione",
+        "description": "Silenzia l'audio di sistema durante la registrazione"
+      },
+      "appendTrailingSpace": {
+        "label": "Aggiungi Spazio Finale",
+        "description": "Aggiungi uno spazio dopo la trascrizione incollata"
+      },
+      "keyboardImplementation": {
+        "title": "Implementazione tastiera",
+        "description": "Scegli il backend per le scorciatoie da tastiera.",
+        "bindingsReset": "Le scorciatoie da tastiera erano incompatibili e sono state ripristinate ai valori predefiniti"
+      },
+      "paths": {
+        "appData": "Dati App:",
+        "models": "Modelli:",
+        "settings": "Impostazioni:"
+      },
+      "pasteDelay": {
+        "title": "Ritardo incolla",
+        "description": "Ritardo prima dell'invio del tasto incolla (in millisecondi). Aumentare se viene incollato il testo sbagliato."
+      }
+    },
+    "about": {
+      "title": "Informazioni",
+      "version": {
+        "title": "Versione",
+        "description": "Versione attuale di Vox Jot"
+      },
+      "appDataDirectory": {
+        "title": "Cartella Dati App",
+        "description": "Cartella in cui Vox Jot salva i dati"
+      },
+      "sourceCode": {
+        "title": "Codice Sorgente",
+        "description": "Vedi e contribuisci al codice sorgente",
+        "button": "Vedi su GitHub"
+      },
+      "supportDevelopment": {
+        "title": "Supporta lo Sviluppo",
+        "description": "Aiutaci a sviluppare Vox Jot",
+        "button": "Dona"
+      },
+      "acknowledgments": {
+        "title": "Ringraziamenti",
+        "whisper": {
+          "title": "Whisper.cpp",
+          "description": "Inferenza ad alte prestazioni del modello di riconoscimento vocale automatico Whisper di OpenAI",
+          "details": "Vox Jot usa Whisper.cpp per il riconoscimento vocale veloce in locale. Grazie a Georgi Gerganov e collaboratori per il fantastico lavoro."
+        }
+      }
+    }
+  },
+  "footer": {
+    "downloadingModel": "Download di {{model}}...",
+    "checkingUpdates": "Controllo aggiornamenti...",
+    "updateAvailable": "Aggiornamento disponibile: {{version}}",
+    "updateAvailableShort": "Aggiornamento disponibile",
+    "upToDate": "Aggiornato",
+    "downloadUpdate": "Scarica Aggiornamento",
+    "restart": "Riavvia",
+    "updateCheckingDisabled": "Controllo Aggiornamenti Disabilitato",
+    "downloading": "Download... {{progress}}%",
+    "installing": "Installazione...",
+    "preparing": "Preparazione...",
+    "checkForUpdates": "Controlla aggiornamenti"
+  },
+  "common": {
+    "loading": "Caricamento...",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "reset": "Reimposta",
+    "add": "Aggiungi",
+    "remove": "Rimuovi",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "update": "Aggiorna",
+    "close": "Chiudi",
+    "open": "Apri",
+    "default": "Predefinito",
+    "enabled": "Abilitato",
+    "disabled": "Disabilitato",
+    "on": "On",
+    "off": "Off",
+    "yes": "Sì",
+    "no": "No",
+    "noOptionsFound": "Nessuna opzione trovata"
+  },
+  "accessibility": {
+    "permissionsRequired": "Richiesti Permessi di Accessibilità",
+    "permissionsDescription": "Vox Jot ha bisogno dei permessi di accessibilità per digitare il testo trascritto.",
+    "openSettings": "Apri Impostazioni di Sistema",
+    "dismiss": "Ignora"
+  },
+  "errors": {
+    "loadDirectory": "Errore di caricamento cartella: {{error}}",
+    "recordingFailed": "Impossibile avviare la registrazione: {{error}}",
+    "modelLoadFailed": "Impossibile caricare il modello: {{model}}",
+    "modelLoadFailedUnknown": "modello sconosciuto"
+  },
+  "appLanguage": {
+    "title": "Lingua Applicazione",
+    "description": "Cambia la lingua dell'interfaccia di Vox Jot"
+  },
+  "overlay": {
+    "transcribing": "Trascrizione...",
+    "processing": "Elaborazione..."
+  }
+}

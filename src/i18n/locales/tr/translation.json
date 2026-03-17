@@ -1,0 +1,812 @@
+{
+  "tray": {
+    "settings": "Ayarlar...",
+    "checkUpdates": "Güncellemeleri Kontrol Et...",
+    "copyLastTranscript": "Son transkripti kopyala",
+    "unloadModel": "Modeli boşalt",
+    "quit": "Çıkış",
+    "cancel": "İptal"
+  },
+  "sidebar": {
+    "general": "Genel",
+    "models": "Modeller",
+    "advanced": "Gelişmiş",
+    "postProcessing": "Son İşlem",
+    "history": "Geçmiş",
+    "debug": "Hata Ayıklama",
+    "about": "Hakkında"
+  },
+  "onboarding": {
+    "subtitle": "Başlamak için bir transkripsiyon modeli seçin",
+    "recommended": "Önerilen",
+    "download": "İndir",
+    "downloading": "İndiriliyor...",
+    "customModelDescription": "Resmi olarak desteklenmiyor",
+    "downloadFailed": "İndirme başarısız oldu. Lütfen tekrar deneyin.",
+    "modelCard": {
+      "accuracy": "doğruluk",
+      "speed": "hız"
+    },
+    "models": {
+      "small": {
+        "name": "Whisper Small",
+        "description": "Hızlı ve oldukça doğru."
+      },
+      "medium": {
+        "name": "Whisper Medium",
+        "description": "İyi doğruluk, orta hız."
+      },
+      "turbo": {
+        "name": "Whisper Turbo",
+        "description": "Dengeli doğruluk ve hız."
+      },
+      "large": {
+        "name": "Whisper Large",
+        "description": "İyi doğruluk, ancak yavaş."
+      },
+      "parakeet-tdt-0.6b-v2": {
+        "name": "Parakeet V2",
+        "description": "Yalnızca İngilizce. İngilizce konuşanlar için en iyi model."
+      },
+      "parakeet-tdt-0.6b-v3": {
+        "name": "Parakeet V3",
+        "description": "Hızlı ve doğru."
+      },
+      "moonshine-base": {
+        "name": "Moonshine Base",
+        "description": "Çok hızlı, yalnızca İngilizce. Aksanları iyi işler."
+      },
+      "moonshine-tiny-streaming-en": {
+        "name": "Moonshine V2 Tiny",
+        "description": "Ultra hızlı, yalnızca İngilizce"
+      },
+      "moonshine-small-streaming-en": {
+        "name": "Moonshine V2 Small",
+        "description": "Hızlı, yalnızca İngilizce. Hız ve doğruluk arasında iyi denge."
+      },
+      "moonshine-medium-streaming-en": {
+        "name": "Moonshine V2 Medium",
+        "description": "Yalnızca İngilizce. Yüksek kalite."
+      },
+      "breeze-asr": {
+        "name": "Breeze ASR",
+        "description": "Tayvan Mandarin Çincesi için optimize edilmiş. Dil değiştirme desteği."
+      },
+      "sense-voice-int8": {
+        "name": "SenseVoice",
+        "description": "Çok hızlı. Çince, İngilizce, Japonca, Korece, Kantonca."
+      },
+      "gigaam-v3-e2e-ctc": {
+        "name": "GigaAM v3",
+        "description": "Rusça konuşma tanıma. Hızlı ve doğru."
+      }
+    },
+    "errors": {
+      "loadModels": "Mevcut modeller yüklenemedi",
+      "downloadModel": "Model indirilemedi: {{error}}"
+    },
+    "permissions": {
+      "title": "İzinler Gerekli",
+      "description": "Vox Jot'nin düzgün çalışabilmesi için birkaç izne ihtiyacı var.",
+      "microphone": {
+        "title": "Mikrofon Erişimi",
+        "description": "Sesinizi transkripsiyon için alabilmek için gereklidir.",
+        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
+      },
+      "accessibility": {
+        "title": "Erişilebilirlik Erişimi",
+        "description": "Transkribe edilen metni uygulamalarınıza yazabilmek için gereklidir.",
+        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
+      },
+      "grant": "İzin Ver",
+      "granted": "Verildi",
+      "waiting": "Bekleniyor...",
+      "allGranted": "Her şey hazır!",
+      "errors": {
+        "checkFailed": "İzinler kontrol edilemedi. Lütfen tekrar deneyin.",
+        "requestFailed": "İzin isteği başarısız oldu. Lütfen tekrar deneyin."
+      },
+      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
+      "continue": "Continue",
+      "moreInfo": "More info",
+      "visualPath": "System Settings -> Privacy & Security",
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+    },
+    "steps": {
+      "welcome": "Overview",
+      "permissions": "Permissions",
+      "setup": "Model",
+      "learn": "First Dictation"
+    },
+    "welcome": {
+      "title": "Set up private voice dictation that actually fits your workflow",
+      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "cta": "Set Up Vox Jot",
+      "cardTitle": "Built for everyday dictation",
+      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "features": [
+        "Download a local speech model that matches your speed and accuracy needs.",
+        "Grant the permissions Vox Jot needs to listen and type into other apps.",
+        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+      ],
+      "highlights": {
+        "local": {
+          "title": "Local transcription",
+          "description": "Your speech model runs on your own machine."
+        },
+        "anywhere": {
+          "title": "Works across apps",
+          "description": "Dictate into messages, docs, notes, and forms."
+        },
+        "polish": {
+          "title": "Optional cleanup",
+          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+        }
+      }
+    },
+    "setup": {
+      "title": "Choose the transcription model you want to start with",
+      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
+      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
+      "cardTitle": "Everything stays on your device",
+      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "downloading": {
+        "title": "Downloading your speech model",
+        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+      },
+      "advanced": {
+        "show": "Show more model options",
+        "hide": "Hide extra model options"
+      }
+    },
+    "firstDictation": {
+      "title": "You are ready for your first dictation",
+      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "cta": "Open Vox Jot",
+      "steps": [
+        "Place your cursor in any text field where you want the transcript to go.",
+        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
+        "Adjust output, paste behavior, or polished dictation later from Settings."
+      ],
+      "shortcuts": {
+        "dictation": {
+          "label": "Regular dictation",
+          "description": "Use this for fast speech-to-text in any app."
+        },
+        "postProcess": {
+          "label": "Polished dictation",
+          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
+          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+        }
+      },
+      "postProcessReady": {
+        "title": "Post Process is already available",
+        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+      },
+      "postProcessLater": {
+        "title": "Post Process is easy to add later",
+        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+      },
+      "tip": {
+        "title": "Start simple, tune later",
+        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+      }
+    },
+    "common": {
+      "back": "Back"
+    }
+  },
+  "modelSelector": {
+    "custom": "Özel",
+    "active": "Aktif",
+    "noModelsAvailable": "Kullanılabilir model yok",
+    "extracting": "{{modelName}} çıkarılıyor...",
+    "extractingMultiple": "{{count}} model çıkarılıyor...",
+    "extractingGeneric": "Çıkarılıyor...",
+    "downloading": "%{{percentage}} indiriliyor",
+    "downloadingMultiple": "{{count}} model indiriliyor...",
+    "modelReady": "Model Hazır",
+    "loading": "{{modelName}} yükleniyor...",
+    "loadingGeneric": "Yükleniyor...",
+    "modelError": "Model Hatası",
+    "modelUnloaded": "Model Boşaltıldı",
+    "noModelDownloadRequired": "Model Yok – İndirme Gerekli",
+    "deleteModel": "{{modelName}} Sil",
+    "switching": "Değiştiriliyor...",
+    "downloadSpeed": "{{speed}} MB/s",
+    "capabilities": {
+      "languageSelection": "Birden fazla giriş dilini destekler",
+      "multiLanguage": "Çok dilli",
+      "translation": "İngilizce'ye çevirebilir",
+      "translate": "İngilizce'ye çevir",
+      "singleLanguage": "Yalnızca bu dili destekler",
+      "languageOnly": "Yalnızca {{language}}"
+    },
+    "cancel": "İptal",
+    "cancelDownload": "İndirmeyi iptal et"
+  },
+  "settings": {
+    "modelSettings": {
+      "title": "{{model}} Ayarları",
+      "noSettingsNeeded": "Bu model yapılandırma gerektirmeden otomatik olarak çalışır."
+    },
+    "models": {
+      "title": "Transkripsiyon Modelleri",
+      "description": "Bir transkripsiyon modeli seçin veya ek modeller indirin. Farklı modeller değişen doğruluk ve hız seviyeleri sunar.",
+      "downloaded": "İndirildi",
+      "available": "İndirilebilir",
+      "deleteConfirm": "{{modelName}} modelini silmek istediğinizden emin misiniz? Kullanmak için tekrar indirmeniz gerekecek.",
+      "deleteActiveConfirm": "{{modelName}} aktif modelinizdir. Silmek, yeni bir model seçene kadar transkripsiyonları durduracaktır. Emin misiniz?",
+      "deleteTitle": "Modeli Sil",
+      "filters": {
+        "all": "Tümü",
+        "multiLanguage": "Çok dilli",
+        "translation": "Çeviri",
+        "allLanguages": "Tüm Diller"
+      },
+      "noModelsMatch": "Bu filtreyle eşleşen model yok.",
+      "yourModels": "İndirilen modeller",
+      "availableModels": "İndirilebilir"
+    },
+    "general": {
+      "title": "Genel",
+      "shortcut": {
+        "title": "Vox Jot Kısayolları",
+        "description": "Sesle yazma kaydını başlatmak için klavye kısayollarını yapılandırın",
+        "loading": "Kısayollar yükleniyor...",
+        "none": "Kısayol yapılandırılmadı",
+        "notFound": "Kısayol bulunamadı",
+        "pressKeys": "Tuşlara basın...",
+        "bindings": {
+          "transcribe": {
+            "name": "Transkripsiyon Kısayolu",
+            "description": "Sesinizi kaydetmek ve metne dönüştürmek için klavye kısayolu."
+          },
+          "cancel": {
+            "name": "İptal Kısayolu",
+            "description": "Mevcut kaydı iptal etmek için klavye kısayolu."
+          },
+          "transcribe_with_post_process": {
+            "name": "Son İşlem Kısayolu",
+            "description": "İsteğe bağlı: Transkripsiyonunuza her zaman AI son işleme uygulayan özel bir kısayol tuşu."
+          }
+        },
+        "errors": {
+          "restore": "Orijinal kısayol geri yüklenemedi",
+          "set": "Kısayol ayarlanamadı: {{error}}",
+          "reset": "Kısayol orijinal değerine sıfırlanamadı"
+        }
+      },
+      "language": {
+        "title": "Dil",
+        "description": "Konuşma tanıma dilini seçin. 'Otomatik' seçeneği dili kendisi belirler, ancak belirli bir dil seçmek o dildeki doğruluğu artırabilir.",
+        "descriptionUnsupported": "Parakeet modeli dili otomatik algılar. Manuel seçim gerekmez.",
+        "searchPlaceholder": "Dil ara...",
+        "noResults": "Dil bulunamadı",
+        "auto": "Otomatik"
+      },
+      "pushToTalk": {
+        "label": "Bas Konuş",
+        "description": "Kaydetmek için basılı tutun, durdurmak için bırakın"
+      }
+    },
+    "sound": {
+      "title": "Ses",
+      "microphone": {
+        "title": "Mikrofon",
+        "description": "Tercih ettiğiniz mikrofon cihazını seçin",
+        "placeholder": "Mikrofon seçin...",
+        "loading": "Yükleniyor..."
+      },
+      "audioFeedback": {
+        "label": "Sesli Geri Bildirim",
+        "description": "Kayıt başladığında ve bittiğinde ses çalar"
+      },
+      "outputDevice": {
+        "title": "Çıkış Cihazı",
+        "description": "Geri bildirim sesleri için ses çıkış cihazını seçin",
+        "placeholder": "Çıkış cihazı seçin...",
+        "loading": "Yükleniyor..."
+      },
+      "volume": {
+        "title": "Ses Seviyesi",
+        "description": "Sesli geri bildirimlerin ses seviyesini ayarlayın"
+      }
+    },
+    "advanced": {
+      "title": "Gelişmiş",
+      "groups": {
+        "app": "Uygulama",
+        "output": "Çıktı",
+        "transcription": "Transkripsiyon",
+        "history": "Geçmiş",
+        "experimental": "Deneysel"
+      },
+      "experimentalToggle": {
+        "label": "Deneysel Özellikler",
+        "description": "Hala geliştirme aşamasında olan deneysel özellikleri etkinleştir."
+      },
+      "startHidden": {
+        "label": "Gizli Başlat",
+        "description": "Pencereyi açmadan sistem tepsisinde başlatır."
+      },
+      "autostart": {
+        "label": "Başlangıçta Çalıştır",
+        "description": "Bilgisayara giriş yaptığınızda Vox Jot otomatik olarak başlatılır."
+      },
+      "showTrayIcon": {
+        "label": "Tepsi simgesini göster",
+        "description": "Vox Jot simgesini sistem tepsisinde göster."
+      },
+      "overlay": {
+        "title": "Overlay Konumu",
+        "description": "Kayıt ve transkripsiyon sırasında görsel geri bildirim kaplamasını gösterir. Linux'ta 'Yok' önerilir.",
+        "options": {
+          "none": "Yok",
+          "bottom": "Alt",
+          "top": "Üst"
+        }
+      },
+      "pasteMethod": {
+        "title": "Yapıştırma Yöntemi",
+        "description": "Metnin nasıl ekleneceğini seçin. Doğrudan: sistem girişiyle yazmayı simüle eder. Yok: yapıştırmayı atlar, sadece geçmişi/panoyu günceller.",
+        "options": {
+          "clipboard": "Pano ({{modifier}}+V)",
+          "clipboardCtrlShiftV": "Pano (Ctrl+Shift+V)",
+          "clipboardShiftInsert": "Pano (Shift+Insert)",
+          "direct": "Doğrudan",
+          "none": "Yok",
+          "externalScript": "Harici Betik"
+        },
+        "externalScriptPlaceholder": "/dosya/yolu/betik.sh"
+      },
+      "typingTool": {
+        "title": "Yazma Aracı",
+        "description": "Doğrudan yapıştırma yöntemi için hangi Linux yazma aracının kullanılacağını seçin. Auto, sisteminiz için mevcut en iyi aracı otomatik olarak algılar ve kullanır.",
+        "options": {
+          "auto": "Auto (Önerilen)"
+        }
+      },
+      "clipboardHandling": {
+        "title": "Pano Yönetimi",
+        "description": "Panoyu Değiştirme, transkripsiyon sonrası mevcut pano içeriğini korur. Panoya Kopyala ise yapıştırma işleminden sonra transkripsiyon sonucunu panoda bırakır.",
+        "options": {
+          "dontModify": "Panoyu Değiştirme",
+          "copyToClipboard": "Panoya Kopyala"
+        }
+      },
+      "autoSubmit": {
+        "title": "Otomatik Gönder",
+        "description": "Metin eklendikten sonra seçilen tuş kombinasyonunu otomatik olarak gönderir. macOS'ta Cmd+Enter, Windows/Linux'ta Super+Enter geçerlidir.",
+        "options": {
+          "off": "Kapalı",
+          "enter": "Enter",
+          "cmdEnter": "Cmd+Enter",
+          "superEnter": "Super+Enter",
+          "ctrlEnter": "Ctrl+Enter"
+        }
+      },
+      "translateToEnglish": {
+        "label": "İngilizceye Çevir",
+        "description": "Transkripsiyon sırasında diğer dillerden İngilizceye otomatik olarak çevirir.",
+        "descriptionUnsupported": "Çeviri {{model}} modeli tarafından desteklenmiyor."
+      },
+      "modelUnload": {
+        "title": "Modeli Boşalt",
+        "description": "Belirtilen süre boyunca kullanılmadığında modelin GPU/CPU belleğini otomatik olarak serbest bırakır.",
+        "options": {
+          "never": "Asla",
+          "immediately": "Hemen",
+          "min2": "2 dakika sonra",
+          "min5": "5 dakika sonra",
+          "min10": "10 dakika sonra",
+          "min15": "15 dakika sonra",
+          "hour1": "1 saat sonra",
+          "sec5": "5 saniye sonra (Debug)"
+        }
+      },
+      "customWords": {
+        "title": "Özel Kelimeler",
+        "description": "Transkripsiyon sırasında sıkça yanlış duyulan veya yanlış yazılan kelimeleri ekleyin. Sistem, benzer sesli kelimeleri listenize göre otomatik olarak düzeltir.",
+        "placeholder": "Kelime ekle",
+        "add": "Ekle",
+        "remove": "{{word}} Kaldır",
+        "duplicate": "\"{{word}}\" zaten mevcut"
+      }
+    },
+    "postProcessing": {
+      "title": "Son İşlem",
+      "hotkey": {
+        "title": "Kısayol Tuşu"
+      },
+      "api": {
+        "title": "API (OpenAI Uyumlu)",
+        "provider": {
+          "title": "Sağlayıcı",
+          "description": "OpenAI uyumlu bir sağlayıcı seçin."
+        },
+        "appleIntelligence": {
+          "title": "Apple Intelligence",
+          "description": "Tamamen cihaz üzerinde çalışır. API anahtarı veya ağ erişimi gerekmez.",
+          "requirements": "macOS Tahoe (26.0) veya üzeri çalıştıran bir Apple Silicon Mac gerektirir. Sistem Ayarları'nda Apple Intelligence etkin olmalıdır.",
+          "unavailable": "Apple Intelligence bu cihazda kullanılamıyor. macOS Tahoe (26.0) veya üzeri ve Sistem Ayarları'nda Apple Intelligence etkin olan bir Apple Silicon Mac gerektirir."
+        },
+        "baseUrl": {
+          "title": "Temel URL",
+          "description": "Seçili sağlayıcı için API temel URL'si. Yalnızca özel sağlayıcı düzenlenebilir.",
+          "placeholder": "https://api.openai.com/v1"
+        },
+        "apiKey": {
+          "title": "API Anahtarı",
+          "description": "Seçili sağlayıcı için API anahtarı.",
+          "placeholder": "sk-..."
+        },
+        "model": {
+          "title": "Model",
+          "descriptionApple": "İsteğe bağlı bir sayısal token sınırı belirleyin veya varsayılan cihaz içi ön ayarı kullanın.",
+          "descriptionCustom": "Özel uç noktanızın beklediği model tanımlayıcısını girin.",
+          "descriptionDefault": "Seçili sağlayıcının sunduğu bir modeli seçin.",
+          "placeholderApple": "Apple Intelligence",
+          "placeholderWithOptions": "Model ara veya seç",
+          "placeholderNoOptions": "Model adı yazın",
+          "refreshModels": "Modelleri Yenile"
+        }
+      },
+      "prompts": {
+        "title": "Prompt",
+        "selectedPrompt": {
+          "title": "Seçili Prompt",
+          "description": "Transkripsiyonları iyileştirmek için bir şablon seçin veya yeni bir tane oluşturun. Yakalanan transkripte referans vermek için prompt metni içinde ${output} kullanın."
+        },
+        "noPrompts": "Kullanılabilir prompt yok",
+        "selectPrompt": "Prompt Seç",
+        "createNew": "Yeni Prompt Oluştur",
+        "promptLabel": "Prompt Etiketi",
+        "promptLabelPlaceholder": "Prompt adı girin",
+        "promptInstructions": "Prompt Talimatları",
+        "promptInstructionsPlaceholder": "Transkripsiyondan sonra çalıştırılacak talimatları yazın. Örnek: Aşağıdaki metnin dilbilgisini ve açıklığını iyileştir: ${output}",
+        "promptTip": "İpucu: Transkribe edilen metni promptunuza eklemek için <code>${output}</code> kullanın.",
+        "updatePrompt": "Promptu Güncelle",
+        "deletePrompt": "Promptu Sil",
+        "createPrompt": "Prompt Oluştur",
+        "cancel": "İptal",
+        "selectToEdit": "Ayrıntılarını görüntülemek ve düzenlemek için yukarıdan bir prompt seçin.",
+        "createFirst": "İlk son işlem prompt'unuzu oluşturmak için yukarıdaki “Yeni Prompt Oluştur” seçeneğine tıklayın."
+      },
+      "apple": {
+        "title": "Apple Cleanup",
+        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "mode": {
+          "title": "Mode",
+          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
+          "literal": "Literal: preserve wording",
+          "intent": "Intent: clean false starts and formatting"
+        },
+        "rewriteStrength": {
+          "title": "Rewrite Strength",
+          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
+          "conservative": "Conservative",
+          "balanced": "Balanced",
+          "aggressive": "Aggressive"
+        },
+        "preview": {
+          "label": "Show preview before paste",
+          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+        },
+        "fallback": {
+          "label": "Fallback to normalized text on failure",
+          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+        }
+      },
+      "appAware": {
+        "title": "App-Aware Tone",
+        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "toggle": {
+          "label": "Enable app-aware tone",
+          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+        },
+        "tones": {
+          "title": "Tone definitions",
+          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "columns": {
+            "id": "Tone ID",
+            "label": "Display name",
+            "instruction": "Instruction"
+          },
+          "placeholders": {
+            "id": "casual",
+            "label": "Casual",
+            "instruction": "Use a casual, conversational tone suitable for chat messages."
+          },
+          "add": "Add tone"
+        },
+        "mappings": {
+          "title": "App mappings",
+          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "columns": {
+            "appName": "App name",
+            "bundleId": "Bundle ID",
+            "tone": "Tone"
+          },
+          "placeholders": {
+            "appName": "Slack",
+            "bundleId": "com.tinyspeck.slackmacgap"
+          },
+          "add": "Add app mapping"
+        },
+        "remove": "Remove",
+        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+      },
+      "dictionary": {
+        "title": "Personal Dictionary",
+        "editor": {
+          "title": "Preferred spellings",
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+        },
+        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
+        "empty": "No personal dictionary entries yet.",
+        "columns": {
+          "spoken": "Spoken",
+          "written": "Written",
+          "exactOnly": "Exact only"
+        },
+        "placeholders": {
+          "spoken": "swift ui",
+          "written": "SwiftUI"
+        },
+        "add": "Add entry",
+        "remove": "Remove",
+        "duplicateBadge": "Duplicate spoken phrase"
+      },
+      "preview": {
+        "title": "Preview Tester",
+        "testInput": {
+          "title": "Try sample text",
+          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
+          "placeholder": "Paste or type sample transcript text here"
+        },
+        "previewApp": {
+          "label": "Preview as app",
+          "none": "No app override"
+        },
+        "run": "Preview output",
+        "runLoading": "Previewing...",
+        "outputLabel": "Preview result",
+        "dictionaryHits": "Dictionary hits: {{hits}}",
+        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
+        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "errors": {
+          "generic": "Unable to preview post-processing right now."
+        },
+        "modal": {
+          "title": "Review polished text",
+          "description": "Apple Intelligence changed this transcription before pasting.",
+          "originalLabel": "Normalized transcript",
+          "editedLabel": "Text to paste",
+          "cancel": "Cancel paste",
+          "apply": "Paste text"
+        },
+        "disabledMessage": "Turn on Post Process to try previewing polished output."
+      },
+      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "sections": {
+        "setup": {
+          "title": "Setup",
+          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+        },
+        "review": {
+          "title": "Paste Review",
+          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+        },
+        "appleCleanup": {
+          "title": "Apple Cleanup",
+          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+        },
+        "applePersonalization": {
+          "title": "Apple Personalization",
+          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+        },
+        "prompting": {
+          "title": "Prompting",
+          "description": "Choose or edit the prompt template used by network providers."
+        },
+        "preview": {
+          "title": "Try It",
+          "description": "Preview the current configuration against sample text without recording live audio."
+        }
+      },
+      "review": {
+        "toggle": {
+          "label": "Review polished text before paste",
+          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+        },
+        "status": {
+          "disabled": "Turn on Post Process first to enable review-before-paste.",
+          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
+          "off": "Polished text will be pasted immediately after processing finishes."
+        }
+      },
+      "status": {
+        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
+        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
+        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
+        "missingBaseUrl": "Set a base URL for your custom provider.",
+        "missingApiKey": "Add an API key for the selected provider.",
+        "missingModel": "Choose or enter a model for the selected provider.",
+        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
+        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
+        "ready": "Post Process is configured and ready to use."
+      }
+    },
+    "history": {
+      "title": "Geçmiş",
+      "openFolder": "Kayıtlar Klasörünü Aç",
+      "loading": "Geçmiş yükleniyor...",
+      "empty": "Henüz transkripsiyon yok. Geçmişinizi oluşturmak için kayda başlayın!",
+      "copyToClipboard": "Transkripsiyonu panoya kopyala",
+      "save": "Transkripsiyonu kaydet",
+      "unsave": "Kaydedilenlerden kaldır",
+      "delete": "Kaydı sil",
+      "deleteError": "Kayıt silinemedi. Lütfen tekrar deneyin."
+    },
+    "debug": {
+      "title": "Hata Ayıklama",
+      "logDirectory": {
+        "title": "Log Dizini",
+        "description": "Log dosyalarının saklandığı konum"
+      },
+      "logLevel": {
+        "title": "Log Seviyesi",
+        "description": "Loglamanın ayrıntı düzeyini ayarla"
+      },
+      "updateChecks": {
+        "label": "Güncellemeleri Kontrol Et",
+        "description": "Vox Jot için yeni sürümleri otomatik olarak kontrol eder"
+      },
+      "soundTheme": {
+        "label": "Ses Teması",
+        "description": "Kayıt başlangıç ve bitişi için sesli geri bildirim temasını seçin"
+      },
+      "wordCorrectionThreshold": {
+        "title": "Kelime Düzeltme Eşiği",
+        "description": "Özel kelime düzeltmeleri için hassasiyet"
+      },
+      "historyLimit": {
+        "title": "Geçmiş Limiti",
+        "description": "Saklanacak maksimum geçmiş kaydı sayısı",
+        "entries": "kayıt"
+      },
+      "recordingRetention": {
+        "title": "Kayıtları Otomatik Sil",
+        "description": "Alan tasarrufu için eski kayıtları otomatik olarak siler",
+        "never": "Asla",
+        "preserveLimit": "Son {{count}} kaydı tut",
+        "days3": "3 gün sonra",
+        "weeks2": "2 hafta sonra",
+        "months3": "3 ay sonra",
+        "placeholder": "Saklama süresi seçin..."
+      },
+      "alwaysOnMicrophone": {
+        "label": "Mikrofon Her Zaman Açık",
+        "description": "Daha hızlı yanıt için mikrofonu aktif tutar"
+      },
+      "clamshellMicrophone": {
+        "title": "Kapalı Kapak Mikrofonu",
+        "description": "Dizüstü bilgisayar kapağı kapalıyken kullanılacak mikrofon"
+      },
+      "postProcessingToggle": {
+        "label": "Son İşlem",
+        "description": "Transkripsiyon sonrası yapay zekâ destekli metin iyileştirmeyi etkinleştirir"
+      },
+      "muteWhileRecording": {
+        "label": "Kayıt Sırasında Sessize Al",
+        "description": "Kayıt sırasında sistem sesini kapatır"
+      },
+      "appendTrailingSpace": {
+        "label": "Sonuna Boşluk Ekle",
+        "description": "Yapıştırılan transkripsiyondan sonra boşluk ekler"
+      },
+      "keyboardImplementation": {
+        "title": "Klavye Uygulaması",
+        "description": "Klavye kısayolları için kullanılacak altyapıyı seçin.",
+        "bindingsReset": "Klavye kısayolları uyumsuzdu ve varsayılan ayarlara sıfırlandı"
+      },
+      "paths": {
+        "appData": "Uygulama Verileri:",
+        "models": "Modeller:",
+        "settings": "Ayarlar:"
+      },
+      "pasteDelay": {
+        "title": "Yapıştırma gecikmesi",
+        "description": "Yapıştırma tuşu göndermeden önce gecikme (milisaniye cinsinden). Yanlış metin yapıştırılıyorsa artırın."
+      }
+    },
+    "about": {
+      "title": "Hakkında",
+      "version": {
+        "title": "Sürüm",
+        "description": "Vox Jot'nin mevcut sürümü"
+      },
+      "appDataDirectory": {
+        "title": "Uygulama Veri Dizini",
+        "description": "Vox Jot'nin verilerini sakladığı konum"
+      },
+      "sourceCode": {
+        "title": "Kaynak Kodu",
+        "description": "Kaynak kodunu görüntüle ve katkıda bulun",
+        "button": "GitHub'da Görüntüle"
+      },
+      "supportDevelopment": {
+        "title": "Geliştirmeyi Destekle",
+        "description": "Vox Jot'yi geliştirmeye devam etmemize yardımcı olun",
+        "button": "Bağış Yap"
+      },
+      "acknowledgments": {
+        "title": "Teşekkürler",
+        "whisper": {
+          "title": "Whisper.cpp",
+          "description": "OpenAI'nin Whisper otomatik konuşma tanıma modelinin yüksek performanslı çıkarımı",
+          "details": "Vox Jot, hızlı ve yerel konuşmadan metne dönüştürme için Whisper.cpp kullanır. Georgi Gerganov ve katkıda bulunanların harika çalışmaları için teşekkür ederiz."
+        }
+      }
+    }
+  },
+  "footer": {
+    "downloadingModel": "{{model}} indiriliyor...",
+    "checkingUpdates": "Güncellemeler kontrol ediliyor...",
+    "updateAvailable": "Güncelleme mevcut: {{version}}",
+    "updateAvailableShort": "Güncelleme mevcut",
+    "upToDate": "Güncel",
+    "downloadUpdate": "Güncellemeyi İndir",
+    "restart": "Yeniden Başlat",
+    "updateCheckingDisabled": "Güncelleme Kontrolü Devre Dışı",
+    "downloading": "İndiriliyor... %{{progress}}",
+    "installing": "Yükleniyor...",
+    "preparing": "Hazırlanıyor...",
+    "checkForUpdates": "Güncellemeleri kontrol et"
+  },
+  "common": {
+    "loading": "Yükleniyor...",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "reset": "Sıfırla",
+    "add": "Ekle",
+    "remove": "Kaldır",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur",
+    "update": "Güncelle",
+    "close": "Kapat",
+    "open": "Aç",
+    "default": "Varsayılan",
+    "enabled": "Etkin",
+    "disabled": "Devre Dışı",
+    "on": "Açık",
+    "off": "Kapalı",
+    "yes": "Evet",
+    "no": "Hayır",
+    "noOptionsFound": "Seçenek bulunamadı"
+  },
+  "accessibility": {
+    "permissionsRequired": "Erişilebilirlik İzinleri Gerekli",
+    "permissionsDescription": "Vox Jot, transkribe edilen metni yazabilmek için erişilebilirlik izinlerine ihtiyaç duyar.",
+    "openSettings": "Sistem Ayarlarını Aç",
+    "dismiss": "Yoksay"
+  },
+  "errors": {
+    "loadDirectory": "Dizin yüklenirken hata oluştu: {{error}}",
+    "recordingFailed": "Kayıt başlatılamadı: {{error}}",
+    "modelLoadFailed": "Model yüklenemedi: {{model}}",
+    "modelLoadFailedUnknown": "bilinmeyen model"
+  },
+  "appLanguage": {
+    "title": "Uygulama Dili",
+    "description": "Vox Jot arayüzünün dilini değiştirin"
+  },
+  "overlay": {
+    "transcribing": "Transkribe ediliyor...",
+    "processing": "İşleniyor..."
+  }
+}

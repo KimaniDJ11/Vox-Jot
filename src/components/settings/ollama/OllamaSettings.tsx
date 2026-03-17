@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Check, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
+import { useSettings } from "@/hooks/useSettings";
 
 const splitDescription = (description: string): { summary: string; size: string } => {
   const parts = description.split("—").map((part) => part.trim());
@@ -49,6 +50,8 @@ const estimateScores = (modelId: string, label: string) => {
 
 const OllamaSettings: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
+  const { getSetting, setPostProcessProvider, updatePostProcessModel } =
+    useSettings();
   const {
     status,
     isChecking,
@@ -71,6 +74,8 @@ const OllamaSettings: React.FC = () => {
 
   const isInstalled = status?.installed ?? false;
   const isRunning = status?.running ?? false;
+  const selectedProviderId = getSetting("post_process_provider_id") || "";
+  const selectedOllamaModel = getSetting("post_process_models")?.["ollama"] || "";
 
   const downloadedModels = recommendedModels.filter((model) =>
     installedModels.some((installed) =>
@@ -90,6 +95,27 @@ const OllamaSettings: React.FC = () => {
     const ok = await pullModel(modelId);
     if (!ok) {
       setActionError("Could not start model download. Ensure Ollama is running and try again.");
+    }
+  };
+
+  const isModelActive = (modelId: string) => {
+    if (selectedProviderId !== "ollama") {
+      return false;
+    }
+
+    const selectedBase = baseModelId(selectedOllamaModel);
+    const candidateBase = baseModelId(modelId);
+    return selectedOllamaModel === modelId || selectedBase === candidateBase;
+  };
+
+  const handleActivateModel = async (modelId: string) => {
+    setActionError(null);
+    try {
+      await setPostProcessProvider("ollama");
+      await updatePostProcessModel("ollama", modelId);
+    } catch (error) {
+      console.error("Failed to activate Ollama model:", error);
+      setActionError("Could not activate this model. Please try again.");
     }
   };
 
@@ -159,19 +185,30 @@ const OllamaSettings: React.FC = () => {
                 const isPulling = pullingModels.has(model.id);
                 const details = splitDescription(model.description);
                 const score = estimateScores(model.id, model.label);
+                const isActive = isModelActive(model.id);
 
                 return (
                   <div
                     key={model.id}
-                    className="group flex flex-col rounded-xl border-2 border-mid-gray/25 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                    className={`group flex flex-col rounded-xl border-2 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] ${
+                      isActive
+                        ? "border-logo-primary/70 bg-logo-primary/5"
+                        : "border-mid-gray/25"
+                    }`}
                   >
                     <div className="flex justify-between items-center w-full">
                       <div className="flex flex-col items-start flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
                           <h3 className="text-base font-semibold text-text transition-colors group-hover:text-logo-primary">{model.label}</h3>
-                          <span className="inline-flex items-center rounded-full bg-logo-primary px-3 py-0.5 text-xs font-medium text-white">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium ${
+                              isActive
+                                ? "bg-logo-primary text-white"
+                                : "bg-mid-gray/15 text-text/75"
+                            }`}
+                          >
                             <Check className="w-3 h-3 mr-1" />
-                            Installed
+                            {isActive ? "Active" : "Downloaded"}
                           </span>
                         </div>
                         <p className="text-text/60 text-sm leading-relaxed">{details.summary}</p>
@@ -198,6 +235,14 @@ const OllamaSettings: React.FC = () => {
 
                     <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
                       <span className="text-xs text-text/50">Local Ollama model</span>
+                      {!isActive && (
+                        <button
+                          onClick={() => handleActivateModel(model.id)}
+                          className="flex items-center gap-1.5 text-text/80 hover:text-logo-primary hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"
+                        >
+                          <span>Set Active</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteModel(model.id)}
                         className="flex items-center gap-1.5 ml-auto text-logo-primary/85 hover:text-logo-primary hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"

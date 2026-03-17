@@ -1255,35 +1255,45 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
           />
         </div>
 
-        <Textarea
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder={t("settings.postProcessing.preview.testInput.placeholder")}
-          disabled={controlsDisabled}
-        />
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-mid-gray">
+              {t("settings.postProcessing.preview.testInput.title")}
+            </div>
+            <Textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder={t("settings.postProcessing.preview.testInput.placeholder")}
+              disabled={controlsDisabled}
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={runPreview}
+                disabled={controlsDisabled || !input.trim()}
+              >
+                {isLoading
+                  ? t("settings.postProcessing.preview.runLoading")
+                  : t("settings.postProcessing.preview.run")}
+              </Button>
+            </div>
+          </div>
 
-        <div className="flex gap-2">
-          <Button
-            onClick={runPreview}
-            disabled={controlsDisabled || !input.trim()}
-          >
-            {isLoading
-              ? t("settings.postProcessing.preview.runLoading")
-              : t("settings.postProcessing.preview.run")}
-          </Button>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-mid-gray">
+              {t("settings.postProcessing.preview.outputLabel")}
+            </div>
+            <Textarea
+              value={result?.final_text || ""}
+              placeholder={t("settings.postProcessing.preview.outputLabel")}
+              readOnly
+            />
+          </div>
         </div>
 
         {error && <Alert variant="error">{error}</Alert>}
 
         {result && (
           <div className="space-y-3 rounded-md border border-mid-gray/20 p-3">
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-mid-gray">
-                {t("settings.postProcessing.preview.outputLabel")}
-              </div>
-              <Textarea value={result.final_text} readOnly />
-            </div>
-
             {result.dictionary_hits.length > 0 && (
               <div className="text-xs text-mid-gray">
                 {t("settings.postProcessing.preview.dictionaryHits", {

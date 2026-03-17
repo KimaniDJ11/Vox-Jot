@@ -1,6 +1,4 @@
-use crate::post_processing::{
-    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition,
-};
+use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
 use log::{debug, warn};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -387,6 +385,18 @@ pub struct AppSettings {
     pub tone_definitions: Vec<ToneDefinition>,
     #[serde(default = "default_app_tone_mappings")]
     pub app_tone_mappings: Vec<AppToneMapping>,
+    #[serde(default = "default_correction_tracking_enabled")]
+    pub correction_tracking_enabled: bool,
+    #[serde(default = "default_correction_monitoring_delay_secs")]
+    pub correction_monitoring_delay_secs: u32,
+    #[serde(default = "default_auto_apply_corrections")]
+    pub auto_apply_corrections: bool,
+    #[serde(default = "default_correction_prompt_bias_enabled")]
+    pub correction_prompt_bias_enabled: bool,
+    #[serde(default = "default_correction_min_frequency")]
+    pub correction_min_frequency: u32,
+    #[serde(default = "default_correction_min_confidence")]
+    pub correction_min_confidence: f64,
 }
 
 fn default_model() -> String {
@@ -644,7 +654,6 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
         });
     }
 
-
     // Ollama - local LLM inference (always present, no API key needed)
     providers.push(PostProcessProvider {
         id: OLLAMA_PROVIDER_ID.to_string(),
@@ -658,7 +667,7 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
     providers.push(PostProcessProvider {
         id: "custom".to_string(),
         label: "Custom".to_string(),
-           base_url: "http://localhost:11434/v1".to_string(), 
+        base_url: "http://localhost:11434/v1".to_string(),
         allow_base_url_edit: true,
         models_endpoint: Some("/models".to_string()),
         supports_structured_output: false,
@@ -785,6 +794,30 @@ fn default_typing_tool() -> TypingTool {
     TypingTool::Auto
 }
 
+fn default_correction_tracking_enabled() -> bool {
+    false
+}
+
+fn default_correction_monitoring_delay_secs() -> u32 {
+    30
+}
+
+fn default_auto_apply_corrections() -> bool {
+    true
+}
+
+fn default_correction_prompt_bias_enabled() -> bool {
+    false
+}
+
+fn default_correction_min_frequency() -> u32 {
+    2
+}
+
+fn default_correction_min_confidence() -> f64 {
+    0.5
+}
+
 fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
     let mut changed = false;
 
@@ -820,8 +853,10 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
         .unwrap_or(false);
 
     if !selected_prompt_valid {
-        settings.post_process_selected_prompt_id =
-            settings.post_process_prompts.first().map(|prompt| prompt.id.clone());
+        settings.post_process_selected_prompt_id = settings
+            .post_process_prompts
+            .first()
+            .map(|prompt| prompt.id.clone());
         changed = true;
     }
 
@@ -970,8 +1005,8 @@ pub fn get_default_settings() -> AppSettings {
         ShortcutBinding {
             id: "rewrite_selection".to_string(),
             name: "Rewrite Selection".to_string(),
-            description:
-                "Rewrites currently selected text based on your spoken instructions.".to_string(),
+            description: "Rewrites currently selected text based on your spoken instructions."
+                .to_string(),
             default_binding: default_rewrite_shortcut.to_string(),
             current_binding: default_rewrite_shortcut.to_string(),
         },
@@ -1044,6 +1079,12 @@ pub fn get_default_settings() -> AppSettings {
         app_aware_tone_enabled: default_app_aware_tone_enabled(),
         tone_definitions: default_tone_definitions(),
         app_tone_mappings: default_app_tone_mappings(),
+        correction_tracking_enabled: default_correction_tracking_enabled(),
+        correction_monitoring_delay_secs: default_correction_monitoring_delay_secs(),
+        auto_apply_corrections: default_auto_apply_corrections(),
+        correction_prompt_bias_enabled: default_correction_prompt_bias_enabled(),
+        correction_min_frequency: default_correction_min_frequency(),
+        correction_min_confidence: default_correction_min_confidence(),
     }
 }
 
@@ -1070,15 +1111,13 @@ impl AppSettings {
     }
 
     pub fn tone_definition(&self, tone_id: &str) -> Option<&ToneDefinition> {
-        self.tone_definitions
-            .iter()
-            .find(|tone| tone.id == tone_id)
+        self.tone_definitions.iter().find(|tone| tone.id == tone_id)
     }
 
     pub fn app_tone_mapping(&self, bundle_id: &str) -> Option<&AppToneMapping> {
-        self.app_tone_mappings.iter().find(|mapping| {
-            mapping.bundle_id.eq_ignore_ascii_case(bundle_id)
-        })
+        self.app_tone_mappings
+            .iter()
+            .find(|mapping| mapping.bundle_id.eq_ignore_ascii_case(bundle_id))
     }
 
     pub fn is_post_process_provider_local(&self, provider_id: &str) -> bool {
@@ -1332,7 +1371,10 @@ mod tests {
             POST_PROCESS_PROMPT_POLICY_VERSION
         );
         assert_eq!(settings.post_process_prompts.len(), 1);
-        assert_eq!(settings.post_process_prompts[0].id, DEFAULT_POST_PROCESS_PROMPT_ID);
+        assert_eq!(
+            settings.post_process_prompts[0].id,
+            DEFAULT_POST_PROCESS_PROMPT_ID
+        );
         assert_eq!(
             settings.post_process_selected_prompt_id,
             Some(DEFAULT_POST_PROCESS_PROMPT_ID.to_string())
@@ -1365,15 +1407,18 @@ mod tests {
     fn ensure_post_process_defaults_replaces_legacy_prompt_set_with_current_default() {
         let mut settings = get_default_settings();
         settings.post_process_prompt_policy_version = 4;
-        settings.post_process_prompts = vec![LLMPrompt {
-            id: DEFAULT_POST_PROCESS_PROMPT_ID.to_string(),
-            name: "Improve Transcriptions".to_string(),
-            prompt: "Older built-in prompt".to_string(),
-        }, LLMPrompt {
-            id: "user_prompt".to_string(),
-            name: "User Prompt".to_string(),
-            prompt: "Custom prompt".to_string(),
-        }];
+        settings.post_process_prompts = vec![
+            LLMPrompt {
+                id: DEFAULT_POST_PROCESS_PROMPT_ID.to_string(),
+                name: "Improve Transcriptions".to_string(),
+                prompt: "Older built-in prompt".to_string(),
+            },
+            LLMPrompt {
+                id: "user_prompt".to_string(),
+                name: "User Prompt".to_string(),
+                prompt: "Custom prompt".to_string(),
+            },
+        ];
         settings.post_process_selected_prompt_id = Some("user_prompt".to_string());
 
         let changed = ensure_post_process_defaults(&mut settings);
@@ -1384,7 +1429,10 @@ mod tests {
             POST_PROCESS_PROMPT_POLICY_VERSION
         );
         assert_eq!(settings.post_process_prompts.len(), 1);
-        assert_eq!(settings.post_process_prompts[0].id, DEFAULT_POST_PROCESS_PROMPT_ID);
+        assert_eq!(
+            settings.post_process_prompts[0].id,
+            DEFAULT_POST_PROCESS_PROMPT_ID
+        );
         assert_eq!(
             settings.post_process_selected_prompt_id,
             Some(DEFAULT_POST_PROCESS_PROMPT_ID.to_string())
@@ -1412,7 +1460,10 @@ mod tests {
     fn default_settings_enable_apple_intelligence_on_arm64() {
         let settings = get_default_settings();
         assert!(settings.post_process_enabled);
-        assert_eq!(settings.post_process_provider_id, APPLE_INTELLIGENCE_PROVIDER_ID);
+        assert_eq!(
+            settings.post_process_provider_id,
+            APPLE_INTELLIGENCE_PROVIDER_ID
+        );
         assert_eq!(settings.max_rewrite_strength, 1);
     }
 
@@ -1430,7 +1481,10 @@ mod tests {
         let changed = ensure_post_process_defaults(&mut settings);
 
         assert!(changed);
-        assert_eq!(settings.post_process_provider_id, APPLE_INTELLIGENCE_PROVIDER_ID);
+        assert_eq!(
+            settings.post_process_provider_id,
+            APPLE_INTELLIGENCE_PROVIDER_ID
+        );
         assert!(settings.post_process_enabled);
     }
 

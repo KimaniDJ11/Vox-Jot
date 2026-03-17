@@ -1,12 +1,16 @@
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use crate::apple_intelligence;
 use crate::audio_feedback::{play_feedback_sound, play_feedback_sound_blocking, SoundType};
+use crate::correction_tracker::span::InsertionMethod;
+use crate::correction_tracker::store::CorrectionStore;
+use crate::correction_tracker::InsertedSpanTracker;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::HistoryManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
-    apply_personal_dictionary, detect_post_process_edits, ActiveAppContext, PostProcessMode,
-    PostProcessPreviewPayload, PostProcessResult, PreviewManager,
+    apply_personal_dictionary, build_correction_bias_prompt, detect_post_process_edits,
+    get_merged_dictionary, ActiveAppContext, PostProcessMode, PostProcessPreviewPayload,
+    PostProcessResult, PreviewManager,
 };
 use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
@@ -99,7 +103,10 @@ struct ResolvedToneContext {
 }
 
 fn first_match_index(text: &str, patterns: &[&str]) -> Option<usize> {
-    patterns.iter().filter_map(|pattern| text.find(pattern)).min()
+    patterns
+        .iter()
+        .filter_map(|pattern| text.find(pattern))
+        .min()
 }
 
 fn maybe_apply_verification_request_fallback(raw_text: &str, final_text: &str) -> Option<String> {
@@ -109,7 +116,9 @@ fn maybe_apply_verification_request_fallback(raw_text: &str, final_text: &str) -
         || normalized_raw.starts_with("required verifications request");
     let likely_unstructured = normalized_final == normalized_raw
         || normalized_final.contains(" i meant ")
-        || !final_text.lines().any(|line| line.trim_start().starts_with("* "));
+        || !final_text
+            .lines()
+            .any(|line| line.trim_start().starts_with("* "));
 
     if !starts_like_request || !likely_unstructured {
         return None;
@@ -119,7 +128,11 @@ fn maybe_apply_verification_request_fallback(raw_text: &str, final_text: &str) -
 
     if let Some(pos) = first_match_index(
         &normalized_raw,
-        &["government-issued id", "government issued id", "government issue id"],
+        &[
+            "government-issued id",
+            "government issued id",
+            "government issue id",
+        ],
     ) {
         items.push((pos, "Government-issued ID"));
     }
@@ -139,13 +152,19 @@ fn maybe_apply_verification_request_fallback(raw_text: &str, final_text: &str) -
         items.push((pos, "Income documentation"));
     }
 
-    if let Some(pos) = first_match_index(&normalized_raw, &["personal references", "personal reference"]) {
+    if let Some(pos) = first_match_index(
+        &normalized_raw,
+        &["personal references", "personal reference"],
+    ) {
         items.push((pos, "Personal references"));
     }
 
     if let Some(pos) = first_match_index(
         &normalized_raw,
-        &["previous landlord reference", "i meant previous landlord reference"],
+        &[
+            "previous landlord reference",
+            "i meant previous landlord reference",
+        ],
     ) {
         items.push((pos, "Previous landlord reference"));
     } else if let Some(pos) = first_match_index(&normalized_raw, &["previous reference"]) {
@@ -566,12 +585,19 @@ fn has_intro_plus_short_items(text: &str) -> bool {
 
 fn has_technical_tokens(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
-    let strong_tokens = ["http://", "https://", "www.", "@", "src/", ".tsx", ".ts", ".rs"];
+    let strong_tokens = [
+        "http://", "https://", "www.", "@", "src/", ".tsx", ".ts", ".rs",
+    ];
     if strong_tokens.iter().any(|token| lower.contains(token)) {
         return true;
     }
 
-    text.chars().any(|c| matches!(c, '/' | '\\' | '_' | '{' | '}' | '[' | ']' | '<' | '>' | '`'))
+    text.chars().any(|c| {
+        matches!(
+            c,
+            '/' | '\\' | '_' | '{' | '}' | '[' | ']' | '<' | '>' | '`'
+        )
+    })
 }
 
 fn looks_incomplete_utterance(transcription: &str) -> bool {
@@ -591,7 +617,9 @@ fn looks_incomplete_utterance(transcription: &str) -> bool {
 
     let lower = trimmed.to_ascii_lowercase();
     let trailing_fragment_cues = [" and", " or", " to", " for", " with", " because", " but"];
-    trailing_fragment_cues.iter().any(|cue| lower.ends_with(cue))
+    trailing_fragment_cues
+        .iter()
+        .any(|cue| lower.ends_with(cue))
 }
 
 fn extract_route_features(transcription: &str) -> RouteFeatures {
@@ -723,16 +751,7 @@ fn should_force_conservative_rewrite(transcription: &str) -> bool {
     }
 
     let structure_cues = [
-        "first",
-        "second",
-        "third",
-        "next",
-        "then",
-        "step",
-        "steps",
-        "bullet",
-        "numbered",
-        "list",
+        "first", "second", "third", "next", "then", "step", "steps", "bullet", "numbered", "list",
     ];
     if has_spoken_correction_restart(trimmed)
         || has_any_case_insensitive(trimmed, &structure_cues)
@@ -882,8 +901,8 @@ async fn post_process_transcription(
     let route_features = extract_route_features(transcription);
     let selected_pass = choose_post_process_pass(transcription);
     let force_conservative_rewrite = should_force_conservative_rewrite(transcription);
-    let prefers_stronger_list_rewrite =
-        route_features.has_list_cue && (route_features.has_correction_cue || route_features.word_count >= 10);
+    let prefers_stronger_list_rewrite = route_features.has_list_cue
+        && (route_features.has_correction_cue || route_features.word_count >= 10);
     let effective_rewrite_strength = if force_conservative_rewrite {
         0
     } else {
@@ -923,7 +942,8 @@ async fn post_process_transcription(
     }
 
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
-        let dictionary_result = apply_personal_dictionary(transcription, &settings.personal_dictionary);
+        let dictionary_result =
+            apply_personal_dictionary(transcription, &settings.personal_dictionary);
         let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
         let system_prompt = build_apple_system_prompt(
             settings,
@@ -1494,7 +1514,9 @@ impl ShortcutAction for TranscribeAction {
                         break;
                     };
 
-                    if snapshot.len() < min_samples || snapshot.len() <= last_snapshot_len + min_growth {
+                    if snapshot.len() < min_samples
+                        || snapshot.len() <= last_snapshot_len + min_growth
+                    {
                         continue;
                     }
 
@@ -1618,9 +1640,39 @@ impl ShortcutAction for TranscribeAction {
                             if should_post_process {
                                 show_processing_overlay(&ah);
                             }
+
+                            // Merge auto-learned corrections into the personal dictionary
+                            let mut effective_settings = settings.clone();
+                            if settings.auto_apply_corrections {
+                                if let Some(correction_store) =
+                                    ah.try_state::<Arc<CorrectionStore>>()
+                                {
+                                    match correction_store.get_active_corrections(
+                                        settings.correction_min_frequency,
+                                        settings.correction_min_confidence,
+                                    ) {
+                                        Ok(auto_entries) if !auto_entries.is_empty() => {
+                                            debug!(
+                                                "Merging {} auto-corrections into personal dictionary",
+                                                auto_entries.len()
+                                            );
+                                            effective_settings.personal_dictionary =
+                                                get_merged_dictionary(
+                                                    &settings.personal_dictionary,
+                                                    &auto_entries,
+                                                );
+                                        }
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            warn!("Failed to load auto-corrections: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+
                             let processed = if should_post_process {
                                 post_process_transcription(
-                                    &settings,
+                                    &effective_settings,
                                     &final_text,
                                     active_app_context,
                                 )
@@ -1676,7 +1728,9 @@ impl ShortcutAction for TranscribeAction {
                                         }
                                     }
                                     Ok(None) => {
-                                        warn!("Rewrite-selection shortcut used without selected text");
+                                        warn!(
+                                            "Rewrite-selection shortcut used without selected text"
+                                        );
                                         text_to_paste = None;
                                     }
                                     Err(err) => {
@@ -1712,20 +1766,62 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             });
 
-                            if let Some(text_to_paste) = text_to_paste {
+                            if let Some(ref text_to_paste) = text_to_paste {
+                                // Start correction monitoring if enabled
+                                let correction_settings = get_settings(&ah);
+                                if correction_settings.correction_tracking_enabled {
+                                    if let Some(span_tracker) =
+                                        ah.try_state::<InsertedSpanTracker>()
+                                    {
+                                        if let Some(correction_store) =
+                                            ah.try_state::<Arc<CorrectionStore>>()
+                                        {
+                                            let insertion_method = match correction_settings
+                                                .paste_method
+                                            {
+                                                crate::settings::PasteMethod::Direct => {
+                                                    InsertionMethod::DirectType
+                                                }
+                                                crate::settings::PasteMethod::ExternalScript => {
+                                                    InsertionMethod::ExternalScript
+                                                }
+                                                _ => InsertionMethod::Clipboard,
+                                            };
+
+                                            let app_id = active_app_context
+                                                .as_ref()
+                                                .map(|c| c.bundle_id.clone());
+                                            let app_name_val = active_app_context
+                                                .as_ref()
+                                                .map(|c| c.localized_name.clone());
+
+                                            span_tracker.record_and_start_monitoring(
+                                                text_to_paste.clone(),
+                                                app_id,
+                                                app_name_val,
+                                                insertion_method,
+                                                (*correction_store).clone(),
+                                                correction_settings
+                                                    .correction_monitoring_delay_secs,
+                                            );
+                                        }
+                                    }
+                                }
+
                                 // Paste the final text (either processed or original)
+                                let text_for_paste = text_to_paste.clone();
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
                                 ah.run_on_main_thread(move || {
                                     let paste_result = if let Some(submit_key) = submit_override {
                                         utils::paste_with_submit_override(
-                                            text_to_paste,
+                                            text_for_paste,
                                             ah_clone.clone(),
                                             Some(submit_key),
                                         )
                                     } else {
-                                        utils::paste(text_to_paste, ah_clone.clone())
+                                        utils::paste(text_for_paste, ah_clone.clone())
                                     };
 
                                     match paste_result {
@@ -1814,11 +1910,10 @@ impl ShortcutAction for TestAction {
 mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
-        build_apple_user_content,
-        maybe_apply_verification_request_fallback,
-        build_non_apple_tone_instruction, choose_post_process_pass, extract_spoken_submit_command,
-        live_partial_config_for_model, preview_app_context_from_override, resolve_tone_context,
-        should_force_conservative_rewrite, PostProcessPass,
+        build_apple_user_content, build_non_apple_tone_instruction, choose_post_process_pass,
+        extract_spoken_submit_command, live_partial_config_for_model,
+        maybe_apply_verification_request_fallback, preview_app_context_from_override,
+        resolve_tone_context, should_force_conservative_rewrite, PostProcessPass,
     };
     use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
     use crate::settings::{get_default_settings, AutoSubmitKey};
@@ -1843,7 +1938,8 @@ mod tests {
         assert!(prompt.contains("scratch that"));
         assert!(prompt.contains("Are you available Friday at four o'clock?"));
         assert!(prompt.contains("I want to pick up a few things from the store"));
-        assert!(prompt.contains("Previous Landlord Reference Credit Check Social Security Verification"));
+        assert!(prompt
+            .contains("Previous Landlord Reference Credit Check Social Security Verification"));
         assert!(prompt.contains("Required Verification Request:"));
     }
 
@@ -1858,8 +1954,12 @@ mod tests {
             exact_only: true,
         }];
 
-        let content =
-            build_apple_user_content(&settings, "swift ui example", settings.max_rewrite_strength, false);
+        let content = build_apple_user_content(
+            &settings,
+            "swift ui example",
+            settings.max_rewrite_strength,
+            false,
+        );
 
         assert!(content.contains("Mode: literal"));
         assert!(content.contains("Special handling:"));
@@ -1968,8 +2068,7 @@ mod tests {
     #[test]
     fn preview_override_uses_mapping_without_live_lookup() {
         let settings = get_default_settings();
-        let context =
-            preview_app_context_from_override(&settings, Some("com.apple.mail")).unwrap();
+        let context = preview_app_context_from_override(&settings, Some("com.apple.mail")).unwrap();
 
         assert_eq!(context.bundle_id, "com.apple.mail");
         assert_eq!(context.localized_name, "Mail");
@@ -2018,7 +2117,9 @@ mod tests {
 
     #[test]
     fn conservative_rewrite_gate_detects_short_fragment_without_boundary() {
-        assert!(should_force_conservative_rewrite("draft email to marketing"));
+        assert!(should_force_conservative_rewrite(
+            "draft email to marketing"
+        ));
     }
 
     #[test]

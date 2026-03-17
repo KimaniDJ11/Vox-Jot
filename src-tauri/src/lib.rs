@@ -6,11 +6,12 @@ pub mod audio_toolkit;
 pub mod cli;
 mod clipboard;
 mod commands;
+mod correction_tracker;
 mod helpers;
 mod input;
 mod llm_client;
-mod ollama;
 mod managers;
+mod ollama;
 mod overlay;
 pub mod portable;
 mod post_processing;
@@ -27,6 +28,8 @@ pub use cli::CliArgs;
 use specta_typescript::{BigIntExportBehavior, Typescript};
 use tauri_specta::{collect_commands, Builder};
 
+use correction_tracker::store::CorrectionStore;
+use correction_tracker::InsertedSpanTracker;
 use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
 use managers::history::HistoryManager;
@@ -355,6 +358,12 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_keyboard_implementation_setting,
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
+        shortcut::change_correction_tracking_enabled_setting,
+        shortcut::change_correction_monitoring_delay_setting,
+        shortcut::change_auto_apply_corrections_setting,
+        shortcut::change_correction_prompt_bias_setting,
+        shortcut::change_correction_min_frequency_setting,
+        shortcut::change_correction_min_confidence_setting,
         shortcut::handy_keys::start_handy_keys_recording,
         shortcut::handy_keys::stop_handy_keys_recording,
         trigger_update_check,
@@ -411,17 +420,24 @@ pub fn run(cli_args: CliArgs) {
         commands::history::update_history_limit,
         commands::history::update_recording_retention_period,
         helpers::clamshell::is_laptop,
-                ollama::check_ollama_status,
+        ollama::check_ollama_status,
         ollama::install_ollama,
         ollama::pull_ollama_model,
         ollama::delete_ollama_model,
         ollama::get_recommended_ollama_models,
-                ollama::start_ollama_serve,
+        ollama::start_ollama_serve,
+        commands::corrections::get_corrections,
+        commands::corrections::delete_correction,
+        commands::corrections::toggle_correction,
+        commands::corrections::clear_all_corrections,
+        commands::corrections::export_corrections,
+        commands::corrections::import_corrections,
     ]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
     specta_builder
-        .export(         Typescript::default().bigint(BigIntExportBehavior::Number),
+        .export(
+            Typescript::default().bigint(BigIntExportBehavior::Number),
             "../src/bindings.ts",
         )
         .expect("Failed to export typescript bindings");
@@ -523,6 +539,15 @@ pub fn run(cli_args: CliArgs) {
             let app_handle = app.handle().clone();
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
             app.manage(PreviewManager::default());
+
+            // Initialize correction tracking system
+            let app_data_dir = crate::portable::app_data_dir(&app_handle)
+                .expect("Failed to get app data directory for corrections");
+            let correction_store = Arc::new(
+                CorrectionStore::new(&app_data_dir).expect("Failed to initialize correction store"),
+            );
+            app.manage(correction_store);
+            app.manage(InsertedSpanTracker::new());
 
             initialize_core_logic(&app_handle);
 

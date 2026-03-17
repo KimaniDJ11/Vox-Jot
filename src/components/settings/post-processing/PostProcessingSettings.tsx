@@ -188,10 +188,9 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
   );
 };
 
-const PostProcessingSettingsPromptsComponent: React.FC<ProviderSectionProps> = ({
-  disabled = false,
-  providerState: _providerState,
-}) => {
+const PostProcessingSettingsPromptsComponent: React.FC<
+  ProviderSectionProps
+> = ({ disabled = false, providerState: _providerState }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating, refreshSettings } =
     useSettings();
@@ -522,7 +521,9 @@ const PostProcessSetupStatus: React.FC<{
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
   const prompts = getSetting("post_process_prompts") || [];
   const selectedPromptId = getSetting("post_process_selected_prompt_id") || "";
-  const selectedPromptExists = prompts.some((prompt) => prompt.id === selectedPromptId);
+  const selectedPromptExists = prompts.some(
+    (prompt) => prompt.id === selectedPromptId,
+  );
   const apiKey = getSetting("post_process_api_keys")?.[
     providerState.selectedProviderId
   ];
@@ -545,7 +546,10 @@ const PostProcessSetupStatus: React.FC<{
       };
     }
 
-    if (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) {
+    if (
+      providerState.isAppleProvider &&
+      providerState.appleIntelligenceUnavailable
+    ) {
       return {
         variant: "warning",
         message: t("settings.postProcessing.status.appleUnavailable"),
@@ -678,7 +682,10 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
         <Dropdown
           selectedValue={selectedMode}
           onSelect={(value) =>
-            void updateSetting("post_process_mode", value as "literal" | "intent")
+            void updateSetting(
+              "post_process_mode",
+              value as "literal" | "intent",
+            )
           }
           options={[
             {
@@ -717,7 +724,9 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
             },
             {
               value: "1",
-              label: t("settings.postProcessing.apple.rewriteStrength.balanced"),
+              label: t(
+                "settings.postProcessing.apple.rewriteStrength.balanced",
+              ),
             },
             {
               value: "2",
@@ -800,7 +809,9 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
     <>
       <ToggleSwitch
         checked={enabled}
-        onChange={(value) => void updateSetting("app_aware_tone_enabled", value)}
+        onChange={(value) =>
+          void updateSetting("app_aware_tone_enabled", value)
+        }
         isUpdating={isUpdating("app_aware_tone_enabled")}
         label={t("settings.postProcessing.appAware.toggle.label")}
         description={t("settings.postProcessing.appAware.toggle.description")}
@@ -889,7 +900,11 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                 <Textarea
                   value={definition.instruction}
                   onChange={(event) =>
-                    updateToneDefinition(index, "instruction", event.target.value)
+                    updateToneDefinition(
+                      index,
+                      "instruction",
+                      event.target.value,
+                    )
                   }
                   placeholder={t(
                     "settings.postProcessing.appAware.tones.placeholders.instruction",
@@ -904,7 +919,10 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
 
           <Button
             onClick={() =>
-              persistToneDefinitions([...toneDefinitions, emptyToneDefinition()])
+              persistToneDefinitions([
+                ...toneDefinitions,
+                emptyToneDefinition(),
+              ])
             }
             variant="primary-soft"
             size="md"
@@ -973,7 +991,9 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                     variant="danger-ghost"
                     size="sm"
                     onClick={() =>
-                      persistMappings(appToneMappings.filter((_, i) => i !== index))
+                      persistMappings(
+                        appToneMappings.filter((_, i) => i !== index),
+                      )
                     }
                     disabled={
                       mappingControlsDisabled || isUpdating("app_tone_mappings")
@@ -1008,7 +1028,9 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
             }
             variant="primary-soft"
             size="md"
-            disabled={mappingControlsDisabled || isUpdating("app_tone_mappings")}
+            disabled={
+              mappingControlsDisabled || isUpdating("app_tone_mappings")
+            }
           >
             {t("settings.postProcessing.appAware.mappings.add")}
           </Button>
@@ -1127,7 +1149,11 @@ const PersonalDictionarySettings: React.FC<ProviderSectionProps> = ({
                     variant="danger-ghost"
                     size="sm"
                     onClick={() =>
-                      persistEntries(entries.filter((_, currentIndex) => currentIndex !== index))
+                      persistEntries(
+                        entries.filter(
+                          (_, currentIndex) => currentIndex !== index,
+                        ),
+                      )
                     }
                     disabled={disabled || isUpdating("personal_dictionary")}
                   >
@@ -1162,9 +1188,7 @@ const PersonalDictionarySettings: React.FC<ProviderSectionProps> = ({
         })}
 
         <Button
-          onClick={() =>
-            persistEntries([...entries, emptyDictionaryEntry()])
-          }
+          onClick={() => persistEntries([...entries, emptyDictionaryEntry()])}
           variant="primary-soft"
           size="md"
           disabled={disabled || isUpdating("personal_dictionary")}
@@ -1202,7 +1226,8 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
 
   const controlsDisabled =
     disabled ||
-    (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) ||
+    (providerState.isAppleProvider &&
+      providerState.appleIntelligenceUnavailable) ||
     isLoading;
 
   const runPreview = async () => {
@@ -1263,7 +1288,9 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
             <Textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={t("settings.postProcessing.preview.testInput.placeholder")}
+              placeholder={t(
+                "settings.postProcessing.preview.testInput.placeholder",
+              )}
               disabled={controlsDisabled}
             />
             <div className="flex gap-2">
@@ -1343,7 +1370,9 @@ export const PostProcessingSettings: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">{t("settings.postProcessing.title")}</h1>
+        <h1 className="text-xl font-semibold">
+          {t("settings.postProcessing.title")}
+        </h1>
         <p className="text-sm text-text/60">
           {t("settings.postProcessing.description")}
         </p>
@@ -1356,7 +1385,9 @@ export const PostProcessingSettings: React.FC = () => {
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
         <ToggleSwitch
           checked={localPrivacyMode}
-          onChange={(enabled) => void updateSetting("local_privacy_mode", enabled)}
+          onChange={(enabled) =>
+            void updateSetting("local_privacy_mode", enabled)
+          }
           isUpdating={isUpdating("local_privacy_mode")}
           label="Local Privacy Mode"
           description="Enforce local-only post-processing providers and block cloud providers."
@@ -1365,7 +1396,8 @@ export const PostProcessingSettings: React.FC = () => {
         />
         {localPrivacyMode && (
           <Alert variant="info" contained>
-            Cloud post-processing providers are disabled while Local Privacy Mode is enabled.
+            Cloud post-processing providers are disabled while Local Privacy
+            Mode is enabled.
           </Alert>
         )}
         <ShortcutInput
@@ -1406,7 +1438,9 @@ export const PostProcessingSettings: React.FC = () => {
           </SettingsGroup>
 
           <SettingsGroup
-            title={t("settings.postProcessing.sections.applePersonalization.title")}
+            title={t(
+              "settings.postProcessing.sections.applePersonalization.title",
+            )}
             description={t(
               "settings.postProcessing.sections.applePersonalization.description",
             )}

@@ -35,7 +35,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
     const ok = await installOllama();
     if (!ok) {
       setError(
-        "Installation failed. Please visit https://ollama.com to install manually."
+        "Installation failed. Please visit https://ollama.com to install manually.",
       );
     } else {
       await loadRecommendedModels();
@@ -178,7 +178,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
       <div className="flex flex-col gap-3">
         {recommendedModels.map((model) => {
           const isPulled = installedModels.some((m) =>
-            m.startsWith(model.id.split(":")[0])
+            m.startsWith(model.id.split(":")[0]),
           );
           const isPulling = pullingModels.has(model.id);
           const progress = pullProgress[model.id] ?? 0;
@@ -187,7 +187,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             installedModels.some(
               (m) =>
                 m === model.id &&
-                settings?.post_process_provider_id === "ollama"
+                settings?.post_process_provider_id === "ollama",
             );
 
           return (
@@ -202,7 +202,9 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             >
               <div className="flex flex-col">
                 <span className="font-semibold text-text">{model.label}</span>
-                <span className="text-text/60 text-xs">{model.description}</span>
+                <span className="text-text/60 text-xs">
+                  {model.description}
+                </span>
                 {model.id === "llama3.2:1b" && (
                   <span className="text-xs text-logo-primary mt-0.5 font-medium">
                     Recommended

@@ -28,11 +28,14 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
 
   const isDownloading = selectedModelId !== null;
 
-  const recommendedModels = models
-    .filter((m: ModelInfo) => !m.is_downloaded && m.is_recommended);
+  const recommendedModels = models.filter(
+    (m: ModelInfo) => !m.is_downloaded && m.is_recommended,
+  );
   const otherModels = models
     .filter((m: ModelInfo) => !m.is_downloaded && !m.is_recommended)
-    .sort((a: ModelInfo, b: ModelInfo) => Number(a.size_mb) - Number(b.size_mb));
+    .sort(
+      (a: ModelInfo, b: ModelInfo) => Number(a.size_mb) - Number(b.size_mb),
+    );
 
   // Watch for the selected model to finish downloading + extracting
   useEffect(() => {
@@ -87,20 +90,28 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
 
   // Build right-side visual
   const rightVisual = isDownloading ? (
-    <div className="ob-visual-card ob-visual-stack" style={{ textAlign: "center" }}>
+    <div
+      className="ob-visual-card ob-visual-stack"
+      style={{ textAlign: "center" }}
+    >
       <Loader2
         size={48}
         className="ob-spinner"
         color="var(--ob-primary)"
         style={{ margin: "0 auto 16px" }}
       />
-      <h3 className="ob-card-title">{t("onboarding.setup.downloading.title")}</h3>
+      <h3 className="ob-card-title">
+        {t("onboarding.setup.downloading.title")}
+      </h3>
       <p className="ob-card-copy">
         {t("onboarding.setup.downloading.description")}
       </p>
     </div>
   ) : (
-    <div className="ob-visual-card ob-visual-stack" style={{ textAlign: "center" }}>
+    <div
+      className="ob-visual-card ob-visual-stack"
+      style={{ textAlign: "center" }}
+    >
       <div className="ob-hero-badge ob-hero-badge-sm">
         <Download size={28} color="var(--ob-primary)" />
       </div>
@@ -152,14 +163,25 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
                   padding: 0,
                 }}
               >
-                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {showAdvanced ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
                 {showAdvanced
                   ? t("onboarding.setup.advanced.hide")
                   : t("onboarding.setup.advanced.show")}
               </button>
 
               {showAdvanced && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    marginTop: 12,
+                  }}
+                >
                   {otherModels.map((model: ModelInfo) => (
                     <ModelCard
                       key={model.id}

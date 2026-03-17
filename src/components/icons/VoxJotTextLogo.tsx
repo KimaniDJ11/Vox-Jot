@@ -29,9 +29,24 @@ const VoxJotTextLogo = ({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <path d="M91 114H214" stroke="#0F55A8" strokeWidth="18" strokeLinecap="round" />
-        <path d="M80 145H214" stroke="#0F55A8" strokeWidth="18" strokeLinecap="round" />
-        <path d="M101 177H183" stroke="#0F55A8" strokeWidth="18" strokeLinecap="round" />
+        <path
+          d="M91 114H214"
+          stroke="#0F55A8"
+          strokeWidth="18"
+          strokeLinecap="round"
+        />
+        <path
+          d="M80 145H214"
+          stroke="#0F55A8"
+          strokeWidth="18"
+          strokeLinecap="round"
+        />
+        <path
+          d="M101 177H183"
+          stroke="#0F55A8"
+          strokeWidth="18"
+          strokeLinecap="round"
+        />
         <circle cx="214" cy="177" r="12" fill="#D89A5C" />
       </g>
       <text

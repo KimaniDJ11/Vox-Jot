@@ -26,9 +26,7 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
         </div>
       )}
       <div className="flat-card overflow-visible">
-        <div className="divide-y divide-[var(--border)]">
-          {children}
-        </div>
+        <div className="divide-y divide-[var(--border)]">{children}</div>
       </div>
     </section>
   );

@@ -175,7 +175,7 @@ const baseScenario: Scenario = {
   settings: baseSettings,
 };
 
-const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const mergeDeep = <T extends Record<string, unknown>>(
   target: T,
@@ -202,11 +202,11 @@ const mergeDeep = <T extends Record<string, unknown>>(
   return target;
 };
 
-const bootApp = async (
-  page: Page,
-  overrides: Partial<Scenario> = {},
-) => {
-  const scenario = mergeDeep(clone(baseScenario), overrides as Record<string, unknown>);
+const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
+  const scenario = mergeDeep(
+    clone(baseScenario),
+    overrides as Record<string, unknown>,
+  );
 
   await page.addInitScript((activeScenario: Scenario) => {
     const callbacks: Record<number, (...args: unknown[]) => void> = {};
@@ -221,17 +221,21 @@ const bootApp = async (
     const getModelById = (modelId: string) =>
       state.models.find((model) => model.id === modelId);
 
-    (window as Window & {
-      __TAURI_EVENT_PLUGIN_INTERNALS__?: { unregisterListener: () => void };
-      __TAURI_INTERNALS__?: Record<string, unknown>;
-      __TAURI_OS_PLUGIN_INTERNALS__?: Record<string, unknown>;
-    }).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    (
+      window as Window & {
+        __TAURI_EVENT_PLUGIN_INTERNALS__?: { unregisterListener: () => void };
+        __TAURI_INTERNALS__?: Record<string, unknown>;
+        __TAURI_OS_PLUGIN_INTERNALS__?: Record<string, unknown>;
+      }
+    ).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
       unregisterListener: () => {},
     };
 
-    (window as Window & {
-      __TAURI_OS_PLUGIN_INTERNALS__?: Record<string, unknown>;
-    }).__TAURI_OS_PLUGIN_INTERNALS__ = {
+    (
+      window as Window & {
+        __TAURI_OS_PLUGIN_INTERNALS__?: Record<string, unknown>;
+      }
+    ).__TAURI_OS_PLUGIN_INTERNALS__ = {
       arch: activeScenario.platform === "macos" ? "aarch64" : "x86_64",
       eol: "\\n",
       exe_extension: activeScenario.platform === "windows" ? "exe" : "",
@@ -241,9 +245,11 @@ const bootApp = async (
       version: "15.0",
     };
 
-    (window as Window & {
-      __TAURI_INTERNALS__?: Record<string, unknown>;
-    }).__TAURI_INTERNALS__ = {
+    (
+      window as Window & {
+        __TAURI_INTERNALS__?: Record<string, unknown>;
+      }
+    ).__TAURI_INTERNALS__ = {
       callbacks,
       convertFileSrc: (filePath: string) => filePath,
       invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
@@ -320,7 +326,9 @@ const bootApp = async (
           case "debug_analyze_post_process_route":
             return {
               route: "command",
-              word_count: String(args.text || "").trim().split(/\s+/).length,
+              word_count: String(args.text || "")
+                .trim()
+                .split(/\s+/).length,
               has_correction_cue: false,
               has_list_cue: true,
               has_paragraph_cue: false,
@@ -341,9 +349,10 @@ const bootApp = async (
             return null;
           }
           case "delete_history_entry":
-            activeScenario.historyEntries = activeScenario.historyEntries.filter(
-              (item) => item.id !== args.id,
-            );
+            activeScenario.historyEntries =
+              activeScenario.historyEntries.filter(
+                (item) => item.id !== args.id,
+              );
             return null;
           case "get_audio_file_path":
             return `/tmp/${String(args.fileName || "audio.wav")}`;
@@ -388,9 +397,15 @@ test.describe("Vox Jot app", () => {
         name: /Set up private voice dictation that actually fits your workflow/i,
       }),
     ).toBeVisible();
-    await expect(page.locator(".ob-progress-step", { hasText: "Overview" })).toBeVisible();
-    await expect(page.locator(".ob-progress-step", { hasText: "Permissions" })).toBeVisible();
-    await expect(page.locator(".ob-progress-step", { hasText: "Model" })).toBeVisible();
+    await expect(
+      page.locator(".ob-progress-step", { hasText: "Overview" }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".ob-progress-step", { hasText: "Permissions" }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".ob-progress-step", { hasText: "Model" }),
+    ).toBeVisible();
     await expect(
       page.locator(".ob-progress-step", { hasText: "First Dictation" }),
     ).toBeVisible();
@@ -508,7 +523,9 @@ test.describe("Vox Jot app", () => {
     await expect(page.getByText("Apple Cleanup")).toHaveCount(0);
   });
 
-  test("shows recording and jot tabs with search filtering", async ({ page }) => {
+  test("shows recording and jot tabs with search filtering", async ({
+    page,
+  }) => {
     await bootApp(page, {
       historyEntries: [
         {
@@ -547,7 +564,9 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
   });
 
-  test("keeps debug section visible and route debugger interactive", async ({ page }) => {
+  test("keeps debug section visible and route debugger interactive", async ({
+    page,
+  }) => {
     await bootApp(page);
 
     await expect(page.getByText("Debug")).toBeVisible();
@@ -577,9 +596,11 @@ test.describe("Vox Jot app", () => {
     await page.getByText("Post Process").click();
 
     await expect(
-      page.getByText(
-        /Apple Intelligence is selected, but it is not available on this device right now/i,
-      ).first(),
+      page
+        .getByText(
+          /Apple Intelligence is selected, but it is not available on this device right now/i,
+        )
+        .first(),
     ).toBeVisible();
   });
 });

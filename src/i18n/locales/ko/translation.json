@@ -14,7 +14,9 @@
     "postProcessing": "후처리",
     "history": "히스토리",
     "debug": "디버그",
-    "about": "정보"
+    "about": "정보",
+    "ollama": "LLM Models",
+    "corrections": "Corrections"
   },
   "onboarding": {
     "subtitle": "시작하려면 음성 인식 모델을 선택하세요",
@@ -272,6 +274,18 @@
       "pushToTalk": {
         "label": "녹음 중 단축키 홀딩",
         "description": "누르고 있으면 녹음, 놓으면 정지"
+      },
+      "fileTranscription": {
+        "title": "Audio File Transcription",
+        "description": "Transcribe a local WAV file using your current local model.",
+        "pickFile": "Choose WAV File",
+        "transcribing": "Transcribing...",
+        "copy": "Copy Result",
+        "placeholder": "Transcription output will appear here.",
+        "errors": {
+          "failed": "Failed to transcribe file.",
+          "copyFailed": "Failed to copy transcription."
+        }
       }
     },
     "sound": {
@@ -649,7 +663,13 @@
       "save": "변환된 텍스트 저장",
       "unsave": "저장에서 제거",
       "delete": "항목 삭제",
-      "deleteError": "항목 삭제에 실패했습니다. 다시 시도해주세요."
+      "deleteError": "항목 삭제에 실패했습니다. 다시 시도해주세요.",
+      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
+      "tabs": {
+        "recordings": "Recordings",
+        "jots": "Jots"
+      },
+      "promptUsed": "Prompt used"
     },
     "debug": {
       "title": "디버그",
@@ -749,6 +769,53 @@
           "title": "Whisper.cpp",
           "description": "OpenAI의 Whisper 자동 음성 인식 모델의 고성능 추론",
           "details": "Vox Jot는 빠르고 로컬 음성-텍스트 처리를 위해 Whisper.cpp를 사용합니다. Georgi Gerganov와 기여자들의 놀라운 작업에 감사드립니다."
+        }
+      }
+    },
+    "corrections": {
+      "title": "Auto-Corrections",
+      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
+      "tracking": {
+        "label": "Correction Tracking",
+        "description": "Monitor text fields after paste to learn from your corrections."
+      },
+      "autoApply": {
+        "label": "Auto-Apply Corrections",
+        "description": "Automatically apply learned corrections to future transcriptions."
+      },
+      "promptBias": {
+        "label": "Prompt Bias",
+        "description": "Include learned corrections as hints in the post-processing prompt."
+      },
+      "thresholds": {
+        "title": "Thresholds"
+      },
+      "monitoringDelay": {
+        "label": "Monitoring Delay",
+        "description": "How long to watch the text field for corrections after paste (seconds)."
+      },
+      "minFrequency": {
+        "label": "Min Frequency",
+        "description": "Minimum number of times a correction must occur before it is applied."
+      },
+      "minConfidence": {
+        "label": "Min Confidence",
+        "description": "Minimum confidence score required for a correction to be applied."
+      },
+      "dictionary": {
+        "title": "Learned Corrections",
+        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
+        "count": "{{count}} learned correction(s)",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "columns": {
+          "original": "Original",
+          "corrected": "Corrected",
+          "frequency": "Freq",
+          "confidence": "Conf",
+          "source": "Source App",
+          "active": "Active"
         }
       }
     }

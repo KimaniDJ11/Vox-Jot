@@ -107,10 +107,14 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     return (
       <div className={containerClasses}>
         <div className="mb-2">
-          <h3 className={`text-[15px] font-medium tracking-tight ${disabled ? "opacity-50" : ""}`}>
+          <h3
+            className={`text-[15px] font-medium tracking-tight ${disabled ? "opacity-50" : ""}`}
+          >
             {title}
           </h3>
-          <p className={`text-[13px] text-mid-gray leading-relaxed ${disabled ? "opacity-50" : ""}`}>
+          <p
+            className={`text-[13px] text-mid-gray leading-relaxed ${disabled ? "opacity-50" : ""}`}
+          >
             {description}
           </p>
         </div>
@@ -181,14 +185,20 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   return (
     <div className={horizontalContainerClasses}>
       <div className="flex-1 pr-6 min-w-0">
-        <h3 className={`text-[15px] font-medium tracking-tight truncate ${disabled ? "opacity-50" : ""}`}>
+        <h3
+          className={`text-[15px] font-medium tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
+        >
           {title}
         </h3>
-        <p className={`text-[13px] text-mid-gray leading-relaxed mt-1 line-clamp-2 ${disabled ? "opacity-50" : ""}`}>
+        <p
+          className={`text-[13px] text-mid-gray leading-relaxed mt-1 line-clamp-2 ${disabled ? "opacity-50" : ""}`}
+        >
           {description}
         </p>
       </div>
-      <div className="relative shrink-0 self-center whitespace-nowrap">{children}</div>
+      <div className="relative shrink-0 self-center whitespace-nowrap">
+        {children}
+      </div>
     </div>
   );
 };

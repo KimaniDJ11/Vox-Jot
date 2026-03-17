@@ -14,7 +14,9 @@
     "postProcessing": "Xử lý sau",
     "history": "Lịch sử",
     "debug": "Gỡ lỗi",
-    "about": "Giới thiệu"
+    "about": "Giới thiệu",
+    "ollama": "LLM Models",
+    "corrections": "Corrections"
   },
   "onboarding": {
     "subtitle": "Để bắt đầu, hãy chọn một mô hình chuyển đổi giọng nói",
@@ -290,6 +292,18 @@
       "pushToTalk": {
         "label": "Nhấn để nói",
         "description": "Giữ để ghi âm, thả để dừng"
+      },
+      "fileTranscription": {
+        "title": "Audio File Transcription",
+        "description": "Transcribe a local WAV file using your current local model.",
+        "pickFile": "Choose WAV File",
+        "transcribing": "Transcribing...",
+        "copy": "Copy Result",
+        "placeholder": "Transcription output will appear here.",
+        "errors": {
+          "failed": "Failed to transcribe file.",
+          "copyFailed": "Failed to copy transcription."
+        }
       }
     },
     "sound": {
@@ -649,7 +663,13 @@
       "save": "Lưu bản ghi",
       "unsave": "Xóa khỏi đã lưu",
       "delete": "Xóa mục",
-      "deleteError": "Không thể xóa mục. Vui lòng thử lại."
+      "deleteError": "Không thể xóa mục. Vui lòng thử lại.",
+      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
+      "tabs": {
+        "recordings": "Recordings",
+        "jots": "Jots"
+      },
+      "promptUsed": "Prompt used"
     },
     "debug": {
       "title": "Gỡ lỗi",
@@ -749,6 +769,53 @@
           "title": "Whisper.cpp",
           "description": "Suy luận hiệu suất cao của mô hình nhận dạng giọng nói tự động Whisper của OpenAI",
           "details": "Vox Jot sử dụng Whisper.cpp để xử lý chuyển đổi giọng nói thành văn bản nhanh, cục bộ. Cảm ơn công việc tuyệt vời của Georgi Gerganov và các cộng tác viên."
+        }
+      }
+    },
+    "corrections": {
+      "title": "Auto-Corrections",
+      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
+      "tracking": {
+        "label": "Correction Tracking",
+        "description": "Monitor text fields after paste to learn from your corrections."
+      },
+      "autoApply": {
+        "label": "Auto-Apply Corrections",
+        "description": "Automatically apply learned corrections to future transcriptions."
+      },
+      "promptBias": {
+        "label": "Prompt Bias",
+        "description": "Include learned corrections as hints in the post-processing prompt."
+      },
+      "thresholds": {
+        "title": "Thresholds"
+      },
+      "monitoringDelay": {
+        "label": "Monitoring Delay",
+        "description": "How long to watch the text field for corrections after paste (seconds)."
+      },
+      "minFrequency": {
+        "label": "Min Frequency",
+        "description": "Minimum number of times a correction must occur before it is applied."
+      },
+      "minConfidence": {
+        "label": "Min Confidence",
+        "description": "Minimum confidence score required for a correction to be applied."
+      },
+      "dictionary": {
+        "title": "Learned Corrections",
+        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
+        "count": "{{count}} learned correction(s)",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "columns": {
+          "original": "Original",
+          "corrected": "Corrected",
+          "frequency": "Freq",
+          "confidence": "Conf",
+          "source": "Source App",
+          "active": "Active"
         }
       }
     }

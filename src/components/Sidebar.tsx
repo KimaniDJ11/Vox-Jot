@@ -1,6 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Cog, FlaskConical, History, Info, Sparkles, Cpu, Bot, SpellCheck } from "lucide-react";
+import {
+  Cog,
+  FlaskConical,
+  History,
+  Info,
+  Sparkles,
+  Cpu,
+  Bot,
+  SpellCheck,
+} from "lucide-react";
 import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
 import {
@@ -111,7 +120,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
       <div className="flex flex-col flex-1 px-5 py-4 overflow-y-auto">
-        <VoxJotTextLogo width={128} className="mb-8 mt-2 shrink-0 hidden md:block" />
+        <VoxJotTextLogo
+          width={128}
+          className="mb-8 mt-2 shrink-0 hidden md:block"
+        />
         <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
           Settings
         </div>
@@ -136,7 +148,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   width={18}
                   height={18}
                   className={`shrink-0 transition-colors duration-200 ${
-                    isActive ? "text-white" : "text-[var(--muted)] group-hover:text-[var(--text)]"
+                    isActive
+                      ? "text-white"
+                      : "text-[var(--muted)] group-hover:text-[var(--text)]"
                   }`}
                 />
                 <span

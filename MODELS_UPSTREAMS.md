@@ -12,26 +12,26 @@ This document tracks all upstream Speech-to-Text (STT) model providers for Vox J
 
 These are the model families Vox Jot already supports, mirrored in your `v0.1.0-models` release.
 
-| Model Family | Provider | Watch URL | Packaging Feed | Format | License | Why Users Pick This |
-|---|---|---|---|---|---|---|
-| **Whisper / Wispr** | OpenAI + ggerganov | [OpenAI Whisper](https://github.com/openai/whisper) | [ggerganov/whisper.cpp on HF](https://huggingface.co/ggerganov/whisper.cpp) | GGML `.bin` | MIT | General baseline — multilingual, robust, widely tested |
-| **Parakeet V2 & V3** | NVIDIA | [NVIDIA Parakeet on HF](https://huggingface.co/collections/nvidia/parakeet-65f9f0f6c3bde3e0b3a8e10f) | [nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) | ONNX `.tar.gz` | CC-BY-4.0 | Fast English — optimized for dictation, low latency |
-| **Moonshine** | Useful Sensors | [UsefulSensors/moonshine-base](https://huggingface.co/UsefulSensors/moonshine-base) | [UsefulSensors org](https://huggingface.co/UsefulSensors) | ONNX `.tar.gz` | Apache 2.0 | Lightweight on-device — runs fast on edge hardware |
-| **SenseVoice** | FunAudioLLM | [FunAudioLLM/SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) | [FunAudioLLM org](https://huggingface.co/FunAudioLLM) | ONNX `.tar.gz` | MIT | Multilingual + emotion — ASR plus sound event detection |
-| **Breeze ASR** | MediaTek Research | [MediaTek-Research/Breeze-ASR-25](https://huggingface.co/MediaTek-Research/Breeze-ASR-25) | [MediaTek org](https://huggingface.co/MediaTek-Research) | GGML `.bin` | CC-BY-NC-4.0 | Mandarin + code-switching — strong for Taiwanese Mandarin |
-| **GigaAM V3** | ai-sage | [ai-sage/GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3) | [ai-sage org](https://huggingface.co/ai-sage) | ONNX `.tar.gz` | Apache 2.0 | Russian specialist — trained on 700k hours of Russian |
+| Model Family         | Provider           | Watch URL                                                                                            | Packaging Feed                                                                    | Format         | License      | Why Users Pick This                                       |
+| -------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------- | ------------ | --------------------------------------------------------- |
+| **Whisper / Wispr**  | OpenAI + ggerganov | [OpenAI Whisper](https://github.com/openai/whisper)                                                  | [ggerganov/whisper.cpp on HF](https://huggingface.co/ggerganov/whisper.cpp)       | GGML `.bin`    | MIT          | General baseline — multilingual, robust, widely tested    |
+| **Parakeet V2 & V3** | NVIDIA             | [NVIDIA Parakeet on HF](https://huggingface.co/collections/nvidia/parakeet-65f9f0f6c3bde3e0b3a8e10f) | [nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) | ONNX `.tar.gz` | CC-BY-4.0    | Fast English — optimized for dictation, low latency       |
+| **Moonshine**        | Useful Sensors     | [UsefulSensors/moonshine-base](https://huggingface.co/UsefulSensors/moonshine-base)                  | [UsefulSensors org](https://huggingface.co/UsefulSensors)                         | ONNX `.tar.gz` | Apache 2.0   | Lightweight on-device — runs fast on edge hardware        |
+| **SenseVoice**       | FunAudioLLM        | [FunAudioLLM/SenseVoiceSmall](https://huggingface.co/FunAudioLLM/SenseVoiceSmall)                    | [FunAudioLLM org](https://huggingface.co/FunAudioLLM)                             | ONNX `.tar.gz` | MIT          | Multilingual + emotion — ASR plus sound event detection   |
+| **Breeze ASR**       | MediaTek Research  | [MediaTek-Research/Breeze-ASR-25](https://huggingface.co/MediaTek-Research/Breeze-ASR-25)            | [MediaTek org](https://huggingface.co/MediaTek-Research)                          | GGML `.bin`    | CC-BY-NC-4.0 | Mandarin + code-switching — strong for Taiwanese Mandarin |
+| **GigaAM V3**        | ai-sage            | [ai-sage/GigaAM-v3](https://huggingface.co/ai-sage/GigaAM-v3)                                        | [ai-sage org](https://huggingface.co/ai-sage)                                     | ONNX `.tar.gz` | Apache 2.0   | Russian specialist — trained on 700k hours of Russian     |
 
 ## Expansion Candidates
 
 These providers are worth monitoring for future model additions because they bring new capabilities or user value.
 
-| Provider | Models to Watch | Watch URL | Why Add This | Priority |
-|---|---|---|---|---|
-| **Mistral AI** | Voxtral (multilingual realtime) | [mistralai/Voxtral-Mini-4B-Realtime-2602](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602) | Next-gen realtime multilingual speech model | 🟢 High |
-| **k2-fsa / sherpa-onnx** | Ecosystem of streaming ASR models | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Full local speech stack: VAD, diarization, punctuation | 🟡 Medium |
-| **SYSTRAN / faster-whisper** | Optimized Whisper runtime + conversions | [SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper) | Alternate Whisper backend for speed/memory gains | 🟡 Medium |
-| **NVIDIA (more Parakeet)** | Parakeet TDT 110M, 1.1B variants | [NVIDIA Parakeet collection](https://huggingface.co/collections/nvidia/parakeet-65f9f0f6c3bde3e0b3a8e10f) | More size/speed options in family you already support | 🟢 High |
-| **Useful Sensors (streaming)** | Moonshine Streaming variants | [UsefulSensors org](https://huggingface.co/UsefulSensors) | Real-time streaming Moonshine for live transcription | 🟢 High |
+| Provider                       | Models to Watch                         | Watch URL                                                                                                 | Why Add This                                           | Priority  |
+| ------------------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | --------- |
+| **Mistral AI**                 | Voxtral (multilingual realtime)         | [mistralai/Voxtral-Mini-4B-Realtime-2602](https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602) | Next-gen realtime multilingual speech model            | 🟢 High   |
+| **k2-fsa / sherpa-onnx**       | Ecosystem of streaming ASR models       | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)                                               | Full local speech stack: VAD, diarization, punctuation | 🟡 Medium |
+| **SYSTRAN / faster-whisper**   | Optimized Whisper runtime + conversions | [SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper)                                       | Alternate Whisper backend for speed/memory gains       | 🟡 Medium |
+| **NVIDIA (more Parakeet)**     | Parakeet TDT 110M, 1.1B variants        | [NVIDIA Parakeet collection](https://huggingface.co/collections/nvidia/parakeet-65f9f0f6c3bde3e0b3a8e10f) | More size/speed options in family you already support  | 🟢 High   |
+| **Useful Sensors (streaming)** | Moonshine Streaming variants            | [UsefulSensors org](https://huggingface.co/UsefulSensors)                                                 | Real-time streaming Moonshine for live transcription   | 🟢 High   |
 
 ## Update Policy
 

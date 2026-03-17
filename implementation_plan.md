@@ -38,8 +38,8 @@ Brand anchors:
 ### Phase 0: Baseline and Risk Guardrails
 
 1. Run baseline builds and capture current behavior:
-	- bun run build
-	- bun run tauri build
+   - bun run build
+   - bun run tauri build
 2. Record current onboarding flow, sidebar active state, and update-check experience for regression comparison.
 3. Confirm no refactors to transcription/audio/business logic are included in this scope.
 
@@ -54,9 +54,9 @@ Tasks:
 
 1. Replace current root color variables with semantic token sets for both themes.
 2. Introduce shared glass utility classes:
-	- glass-panel
-	- glass-panel-elevated
-	- glass-interactive
+   - glass-panel
+   - glass-panel-elevated
+   - glass-interactive
 3. Add dual-theme selectors that do not rely only on prefers-color-scheme.
 4. Refine scrollbar styling to minimal fade behavior while keeping contrast visible on hover/focus.
 5. Add reduced-motion and high-contrast accommodations globally.
@@ -85,9 +85,9 @@ Tasks:
 2. Replace solid active blocks with glowing vertical active indicator plus non-color cues.
 3. Convert settings layout into bento-style rounded cards for grouped controls.
 4. Standardize component states:
-	- focus ring contrast
-	- hover/active depth changes
-	- disabled clarity
+   - focus ring contrast
+   - hover/active depth changes
+   - disabled clarity
 5. Ensure all interaction affordances pass contrast checks in both themes.
 
 Acceptance criteria:

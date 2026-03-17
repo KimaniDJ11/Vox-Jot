@@ -26,7 +26,8 @@ const Footer: React.FC = () => {
   const selectedLlmModel =
     getSetting("post_process_models")?.[selectedProviderId] || "";
 
-  const modelOptionsFromCache = postProcessModelOptions[selectedProviderId] || [];
+  const modelOptionsFromCache =
+    postProcessModelOptions[selectedProviderId] || [];
   const llmOptions = selectedLlmModel
     ? Array.from(new Set([...modelOptionsFromCache, selectedLlmModel]))
     : modelOptionsFromCache;
@@ -103,10 +104,15 @@ const Footer: React.FC = () => {
                             : ""
                         }`}
                         onClick={() => {
-                          void updatePostProcessModel(selectedProvider.id, model);
+                          void updatePostProcessModel(
+                            selectedProvider.id,
+                            model,
+                          );
                           setShowLlmDropdown(false);
                         }}
-                        disabled={isUpdating(`post_process_model:${selectedProvider.id}`)}
+                        disabled={isUpdating(
+                          `post_process_model:${selectedProvider.id}`,
+                        )}
                       >
                         <div className="flex items-center justify-between">
                           <span className="truncate pe-4">{model}</span>
@@ -117,7 +123,9 @@ const Footer: React.FC = () => {
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-sm text-text/60">No models available</div>
+                    <div className="px-3 py-2 text-sm text-text/60">
+                      No models available
+                    </div>
                   )}
                 </div>
               )}

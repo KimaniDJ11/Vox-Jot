@@ -1,6 +1,6 @@
 /* ── Onboarding Design Tokens ────────────────────────────── */
 :root {
-  --ob-primary: #27408B;
+  --ob-primary: #27408b;
   --ob-primary-hover: #1e3370;
   --ob-primary-light: rgba(39, 64, 139, 0.1);
   --ob-white: #ffffff;
@@ -177,7 +177,9 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
+  transition:
+    background 0.2s,
+    transform 0.15s;
   width: 100%;
   max-width: 320px;
 }
@@ -258,7 +260,9 @@
   font-weight: 600;
   color: var(--ob-text);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .ob-perm-allow-btn:hover {
@@ -324,7 +328,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.14s ease, visibility 0.14s ease;
+  transition:
+    opacity 0.14s ease,
+    visibility 0.14s ease;
   z-index: 20;
 }
 
@@ -532,7 +538,9 @@
 
 /* ── Loading spinner ─────────────────────────────────────── */
 @keyframes ob-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ob-spinner {
@@ -541,9 +549,18 @@
 
 /* ── Celebration animation ───────────────────────────────── */
 @keyframes ob-celebrate {
-  0%   { transform: scale(0); opacity: 0; }
-  50%  { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .ob-celebrate {

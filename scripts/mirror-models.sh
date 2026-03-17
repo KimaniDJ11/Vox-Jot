@@ -6,20 +6,15 @@
 # GitHub release owned by this repository.
 #
 # Default behavior:
-# - Verifies Whisper model URLs on Hugging Face
-# - Packages all non-Whisper model assets into the exact layout Vox Jot expects
-# - Uploads those packaged assets to a pinned GitHub release
-#
-# Optional behavior:
-# - --mirror-whisper downloads Whisper binaries too and uploads them to the
-#   same pinned release. The app still defaults to Hugging Face unless you
-#   point VOX_JOT_WHISPER_MODELS_BASE_URL at your mirrored location.
+# - Verifies canonical Whisper model URLs on Hugging Face
+# - Packages all built-in model assets into the exact layout Vox Jot expects
+# - Mirrors every built-in model asset into a pinned GitHub release
 #
 # Usage:
 #   chmod +x scripts/mirror-models.sh
 #   ./scripts/mirror-models.sh --dry-run
 #   ./scripts/mirror-models.sh
-#   ./scripts/mirror-models.sh --mirror-whisper
+#   ./scripts/mirror-models.sh --skip-whisper
 
 set -euo pipefail
 
@@ -29,7 +24,7 @@ Usage: scripts/mirror-models.sh [options]
 
 Options:
   --dry-run          Download/package models but skip GitHub release upload
-  --mirror-whisper   Mirror Whisper binaries into the release as well
+  --skip-whisper     Skip mirroring Whisper binaries into the release
   --outdir PATH      Write finished assets to PATH instead of a temp dir
   --tag TAG          Release tag to create/update (default: v0.1.0-models)
   --repo OWNER/REPO  GitHub repo for the release (default: KimaniDJ11/Vox-Jot)
@@ -38,11 +33,15 @@ EOF
 }
 
 DRY_RUN=false
-MIRROR_WHISPER=false
+MIRROR_WHISPER=true
 RELEASE_TAG="${VOX_JOT_MODELS_RELEASE_TAG:-v0.1.0-models}"
 REPO="${VOX_JOT_MODELS_RELEASE_REPO:-KimaniDJ11/Vox-Jot}"
 RELEASE_TITLE="STT Model Assets (${RELEASE_TAG})"
 OUTDIR=""
+LOCAL_MODEL_DIRS=(
+  "${VOX_JOT_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.iriedinamik.voxjot/models}"
+  "${HANDY_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.pais.handy/models}"
+)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -50,8 +49,8 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
-    --mirror-whisper)
-      MIRROR_WHISPER=true
+    --skip-whisper)
+      MIRROR_WHISPER=false
       shift
       ;;
     --outdir)
@@ -107,6 +106,14 @@ if ! $DRY_RUN; then
   require_cmd gh
 fi
 
+gh_cmd() {
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    env -u GITHUB_TOKEN gh "$@"
+  else
+    gh "$@"
+  fi
+}
+
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/vox-jot-model-work.XXXXXX")"
 if [[ -z "$OUTDIR" ]]; then
   OUTDIR="$(mktemp -d "${TMPDIR:-/tmp}/vox-jot-model-release.XXXXXX")"
@@ -126,12 +133,15 @@ echo
 download_file() {
   local url="$1"
   local dest="$2"
+  local temp_dest="${dest}.part"
 
   mkdir -p "$(dirname "$dest")"
   echo "  -> $(basename "$dest")"
+  rm -f "$temp_dest"
   curl --fail --location --retry 3 --retry-delay 2 --silent --show-error \
-    --output "$dest" \
+    --output "$temp_dest" \
     "$url"
+  mv "$temp_dest" "$dest"
 }
 
 verify_url() {
@@ -158,6 +168,66 @@ create_tarball() {
 
   mkdir -p "$(dirname "$archive_path")"
   tar -C "$(dirname "$source_dir")" -czf "$archive_path" "$(basename "$source_dir")"
+}
+
+staged_asset_exists() {
+  local asset_name="$1"
+  local asset_path="$OUTDIR/$asset_name"
+
+  if [[ ! -f "$asset_path" ]]; then
+    return 1
+  fi
+
+  if [[ "$asset_name" == *.tar.gz ]]; then
+    tar -tzf "$asset_path" 2>/dev/null | sed -n '2p' | grep -q .
+    return $?
+  fi
+
+  [[ -s "$asset_path" ]]
+}
+
+find_local_file() {
+  local candidate
+  for candidate in "$@"; do
+    for dir in "${LOCAL_MODEL_DIRS[@]}"; do
+      if [[ -f "$dir/$candidate" ]]; then
+        printf '%s\n' "$dir/$candidate"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+find_local_dir() {
+  local candidate
+  for candidate in "$@"; do
+    for dir in "${LOCAL_MODEL_DIRS[@]}"; do
+      if [[ -d "$dir/$candidate" ]] && find "$dir/$candidate" -type f ! -name '._*' -print -quit | grep -q .; then
+        printf '%s\n' "$dir/$candidate"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+copy_local_file() {
+  local source_path="$1"
+  local dest_path="$2"
+
+  mkdir -p "$(dirname "$dest_path")"
+  cp "$source_path" "$dest_path"
+}
+
+copy_local_dir() {
+  local source_dir="$1"
+  local dest_dir="$2"
+
+  rm -rf "$dest_dir"
+  mkdir -p "$dest_dir"
+  cp -R "$source_dir"/. "$dest_dir"/
+  find "$dest_dir" -name '._*' -delete
 }
 
 write_tokenizer_bin() {
@@ -204,18 +274,28 @@ stage_parakeet() {
   local archive_name="$3"
   local root_dir="$WORKDIR/$model_id"
 
-  echo "Packaging $model_id from $source_repo"
-  rm -rf "$root_dir"
-  mkdir -p "$root_dir"
+  if staged_asset_exists "$archive_name"; then
+    echo "Using existing staged asset: $archive_name"
+    return 0
+  fi
 
-  download_file "$(hf_resolve_url "$source_repo" "encoder-model.int8.onnx")" \
-    "$root_dir/encoder-model.int8.onnx"
-  download_file "$(hf_resolve_url "$source_repo" "decoder_joint-model.int8.onnx")" \
-    "$root_dir/decoder_joint-model.int8.onnx"
-  download_file "$(hf_resolve_url "$source_repo" "nemo128.onnx")" \
-    "$root_dir/nemo128.onnx"
-  download_file "$(hf_resolve_url "$source_repo" "vocab.txt")" \
-    "$root_dir/vocab.txt"
+  echo "Packaging $model_id from $source_repo"
+  if local_dir="$(find_local_dir "$model_id")"; then
+    echo "  using local cache: $local_dir"
+    copy_local_dir "$local_dir" "$root_dir"
+  else
+    rm -rf "$root_dir"
+    mkdir -p "$root_dir"
+
+    download_file "$(hf_resolve_url "$source_repo" "encoder-model.int8.onnx")" \
+      "$root_dir/encoder-model.int8.onnx"
+    download_file "$(hf_resolve_url "$source_repo" "decoder_joint-model.int8.onnx")" \
+      "$root_dir/decoder_joint-model.int8.onnx"
+    download_file "$(hf_resolve_url "$source_repo" "nemo128.onnx")" \
+      "$root_dir/nemo128.onnx"
+    download_file "$(hf_resolve_url "$source_repo" "vocab.txt")" \
+      "$root_dir/vocab.txt"
+  fi
 
   create_tarball "$root_dir" "$OUTDIR/$archive_name"
 }
@@ -223,6 +303,11 @@ stage_parakeet() {
 stage_moonshine_base() {
   local root_dir="$WORKDIR/moonshine-base"
   local repo="UsefulSensors/moonshine"
+
+  if staged_asset_exists "moonshine-base.tar.gz"; then
+    echo "Using existing staged asset: moonshine-base.tar.gz"
+    return 0
+  fi
 
   echo "Packaging moonshine-base from $repo"
   rm -rf "$root_dir"
@@ -244,6 +329,12 @@ stage_moonshine_streaming() {
   local root_dir="$WORKDIR/$root_name"
   local repo="UsefulSensors/moonshine-streaming"
   local prefix="onnx/${size}"
+  local archive_name="${root_name}.tar.gz"
+
+  if staged_asset_exists "$archive_name"; then
+    echo "Using existing staged asset: $archive_name"
+    return 0
+  fi
 
   echo "Packaging $root_name from $repo/$prefix"
   rm -rf "$root_dir"
@@ -267,21 +358,31 @@ stage_moonshine_streaming() {
   write_tokenizer_bin "$root_dir/tokenizer.json" "$root_dir/tokenizer.bin"
   rm -f "$root_dir/tokenizer.json"
 
-  create_tarball "$root_dir" "$OUTDIR/${root_name}.tar.gz"
+  create_tarball "$root_dir" "$OUTDIR/$archive_name"
 }
 
 stage_sense_voice() {
   local root_dir="$WORKDIR/sense-voice-int8"
   local repo="twmht/sherpa-onnx-sense-voice-small"
 
+  if staged_asset_exists "sense-voice-int8.tar.gz"; then
+    echo "Using existing staged asset: sense-voice-int8.tar.gz"
+    return 0
+  fi
+
   echo "Packaging sense-voice-int8 from $repo"
   rm -rf "$root_dir"
   mkdir -p "$root_dir"
 
-  download_file "$(hf_resolve_url "$repo" "model.int8.onnx")" \
-    "$root_dir/model.int8.onnx"
-  download_file "$(hf_resolve_url "$repo" "tokens.txt")" \
-    "$root_dir/tokens.txt"
+  if local_dir="$(find_local_dir "sense-voice-int8")"; then
+    echo "  using local cache: $local_dir"
+    copy_local_dir "$local_dir" "$root_dir"
+  else
+    download_file "$(hf_resolve_url "$repo" "model.int8.onnx")" \
+      "$root_dir/model.int8.onnx"
+    download_file "$(hf_resolve_url "$repo" "tokens.txt")" \
+      "$root_dir/tokens.txt"
+  fi
 
   create_tarball "$root_dir" "$OUTDIR/sense-voice-int8.tar.gz"
 }
@@ -290,12 +391,22 @@ stage_gigaam() {
   local root_dir="$WORKDIR/giga-am-v3"
   local repo="istupakov/gigaam-v3-onnx"
 
+  if staged_asset_exists "giga-am-v3.tar.gz"; then
+    echo "Using existing staged asset: giga-am-v3.tar.gz"
+    return 0
+  fi
+
   echo "Packaging giga-am-v3 from $repo"
   rm -rf "$root_dir"
   mkdir -p "$root_dir"
 
-  download_file "$(hf_resolve_url "$repo" "v3_e2e_ctc.int8.onnx")" \
-    "$root_dir/v3_e2e_ctc.int8.onnx"
+  if local_file="$(find_local_file "v3_e2e_ctc.int8.onnx" "giga-am-v3.int8.onnx")"; then
+    echo "  using local cache: $local_file"
+    copy_local_file "$local_file" "$root_dir/v3_e2e_ctc.int8.onnx"
+  else
+    download_file "$(hf_resolve_url "$repo" "v3_e2e_ctc.int8.onnx")" \
+      "$root_dir/v3_e2e_ctc.int8.onnx"
+  fi
 
   create_tarball "$root_dir" "$OUTDIR/giga-am-v3.tar.gz"
 }
@@ -303,17 +414,37 @@ stage_gigaam() {
 stage_breeze() {
   local repo="alan314159/Breeze-ASR-25-whispercpp"
 
+  if staged_asset_exists "breeze-asr-q5_k.bin"; then
+    echo "Using existing staged asset: breeze-asr-q5_k.bin"
+    return 0
+  fi
+
   echo "Downloading breeze-asr-q5_k.bin from $repo"
-  download_file "$(hf_resolve_url "$repo" "ggml-model-q5_k.bin")" \
-    "$OUTDIR/breeze-asr-q5_k.bin"
+  if local_file="$(find_local_file "breeze-asr-q5_k.bin" "ggml-model-q5_k.bin")"; then
+    echo "  using local cache: $local_file"
+    copy_local_file "$local_file" "$OUTDIR/breeze-asr-q5_k.bin"
+  else
+    download_file "$(hf_resolve_url "$repo" "ggml-model-q5_k.bin")" \
+      "$OUTDIR/breeze-asr-q5_k.bin"
+  fi
 }
 
 stage_whisper() {
   local repo="ggerganov/whisper.cpp"
   local filename="$1"
 
+  if staged_asset_exists "$filename"; then
+    echo "Using existing staged asset: $filename"
+    return 0
+  fi
+
   echo "Downloading $filename from $repo"
-  download_file "$(hf_resolve_url "$repo" "$filename")" "$OUTDIR/$filename"
+  if local_file="$(find_local_file "$filename")"; then
+    echo "  using local cache: $local_file"
+    copy_local_file "$local_file" "$OUTDIR/$filename"
+  else
+    download_file "$(hf_resolve_url "$repo" "$filename")" "$OUTDIR/$filename"
+  fi
 }
 
 build_release_notes() {
@@ -340,7 +471,7 @@ build_release_notes() {
       echo "Point \`VOX_JOT_WHISPER_MODELS_BASE_URL\` at this release if you want Vox Jot to use them by default."
     else
       echo "Whisper binaries are verified against [ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) and are not mirrored by default."
-      echo "Use \`--mirror-whisper\` if you want to publish them into this pinned release too."
+      echo "Omit \`--skip-whisper\` if you want to publish them into this pinned release too."
     fi
   } >"$notes_file"
 
@@ -400,26 +531,26 @@ if $DRY_RUN; then
   exit 0
 fi
 
-if ! gh auth status >/dev/null 2>&1; then
+if ! gh_cmd auth status >/dev/null 2>&1; then
   echo "GitHub CLI is not authenticated. Run: gh auth login" >&2
   exit 1
 fi
 
 NOTES_FILE="$(build_release_notes "$MIRROR_WHISPER")"
 
-if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
+if gh_cmd release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
   echo "Updating existing release $RELEASE_TAG on $REPO"
-  gh release edit "$RELEASE_TAG" \
+  gh_cmd release edit "$RELEASE_TAG" \
     --repo "$REPO" \
     --title "$RELEASE_TITLE" \
     --notes-file "$NOTES_FILE"
-  gh release upload "$RELEASE_TAG" \
+  gh_cmd release upload "$RELEASE_TAG" \
     --repo "$REPO" \
     --clobber \
     "${STAGED[@]}"
 else
   echo "Creating release $RELEASE_TAG on $REPO"
-  gh release create "$RELEASE_TAG" \
+  gh_cmd release create "$RELEASE_TAG" \
     --repo "$REPO" \
     --title "$RELEASE_TITLE" \
     --notes-file "$NOTES_FILE" \

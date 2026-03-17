@@ -64,9 +64,9 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    fn whisper_hf_base_url() -> String {
+    fn whisper_models_base_url() -> String {
         std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main".to_string()
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
         })
     }
 
@@ -90,7 +90,7 @@ impl ModelManager {
         }
 
         let base_url = if use_hf_base {
-            Self::whisper_hf_base_url()
+            Self::whisper_models_base_url()
         } else {
             Self::model_source_base_url()
         };

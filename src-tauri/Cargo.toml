@@ -102,6 +102,8 @@ uiautomation = "0.10"
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 accessibility = "0.1"
+core-foundation = { version = "0.10", features = ["mac_os_10_8_features"] }
+core-graphics = "0.24"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }

@@ -176,13 +176,9 @@ impl ModelManager {
                 id: "medium".to_string(),
                 name: "Whisper Medium".to_string(),
                 description: "Good accuracy, medium speed".to_string(),
-                filename: "whisper-medium-q4_1.bin".to_string(),
-                url: Some(Self::model_url_for(
-                    "medium",
-                    "whisper-medium-q4_1.bin",
-                    true,
-                )),
-                size_mb: 492, // Approximate size
+                filename: "ggml-medium.bin".to_string(),
+                url: Some(Self::model_url_for("medium", "ggml-medium.bin", true)),
+                size_mb: 1500, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,

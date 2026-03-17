@@ -27,7 +27,7 @@ Options:
   --skip-whisper     Skip mirroring Whisper binaries into the release
   --outdir PATH      Write finished assets to PATH instead of a temp dir
   --tag TAG          Release tag to create/update (default: v0.1.0-models)
-  --repo OWNER/REPO  GitHub repo for the release (default: KimaniDJ11/Vox-Jot)
+  --repo OWNER/REPO  GitHub repo for the release (default: KimaniDJ11/Vox-Jot-models)
   --help             Show this help text
 EOF
 }
@@ -35,7 +35,7 @@ EOF
 DRY_RUN=false
 MIRROR_WHISPER=true
 RELEASE_TAG="${VOX_JOT_MODELS_RELEASE_TAG:-v0.1.0-models}"
-REPO="${VOX_JOT_MODELS_RELEASE_REPO:-KimaniDJ11/Vox-Jot}"
+REPO="${VOX_JOT_MODELS_RELEASE_REPO:-KimaniDJ11/Vox-Jot-models}"
 RELEASE_TITLE="STT Model Assets (${RELEASE_TAG})"
 OUTDIR=""
 LOCAL_MODEL_DIRS=(

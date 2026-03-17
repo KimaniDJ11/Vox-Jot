@@ -36,7 +36,7 @@ The process is entirely local:
 
 ### Installation
 
-1. Download the latest release from the [releases page](https://github.com/cjpais/Vox Jot/releases) or the [website](https://handy.computer)
+1. Download the latest release from the [releases page](https://github.com/KimaniDJ11/Vox-Jot/releases)
    - **macOS**: Also available via [Homebrew cask](https://formulae.brew.sh/cask/handy): `brew install --cask handy` \
      **Note:** The Homebrew cask is not maintained by the Vox Jot developers.
 2. Install the application
@@ -56,7 +56,7 @@ Vox Jot is built as a Tauri application combining:
 - **Backend**: Rust for system integration, audio processing, and ML inference
 - **Core Libraries**:
   - `whisper-rs`: Local speech recognition with Whisper models
-  - `transcription-rs`: CPU-optimized speech recognition with Parakeet models
+  - `transcribe-rs`: CPU-optimized speech recognition with Parakeet and ONNX-based models
   - `cpal`: Cross-platform audio I/O
   - `vad-rs`: Voice Activity Detection
   - `rdev`: Global keyboard shortcuts and system events
@@ -104,7 +104,7 @@ handy --start-hidden --no-tray
 
 ## Known Issues & Current Limitations
 
-This project is actively being developed and has some [known issues](https://github.com/cjpais/Vox Jot/issues). We believe in transparency about the current state:
+This project is actively being developed and has some [known issues](https://github.com/KimaniDJ11/Vox-Jot/issues). We believe in transparency about the current state:
 
 ### Major Issues (Help Wanted)
 
@@ -270,9 +270,9 @@ If you're behind a proxy, firewall, or in a restricted network environment where
 
 The typical paths are:
 
-- **macOS**: `~/Library/Application Support/com.pais.handy/`
-- **Windows**: `C:\Users\{username}\AppData\Roaming\com.pais.handy\`
-- **Linux**: `~/.config/com.pais.handy/`
+- **macOS**: `~/Library/Application Support/com.iriedinamik.voxjot/`
+- **Windows**: `C:\Users\{username}\AppData\Roaming\com.iriedinamik.voxjot\`
+- **Linux**: `~/.config/com.iriedinamik.voxjot/`
 
 #### Step 2: Create Models Directory
 
@@ -280,63 +280,79 @@ Inside your app data directory, create a `models` folder if it doesn't already e
 
 ```bash
 # macOS/Linux
-mkdir -p ~/Library/Application\ Support/com.pais.handy/models
+mkdir -p ~/Library/Application\ Support/com.iriedinamik.voxjot/models
 
 # Windows (PowerShell)
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\com.pais.handy\models"
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\com.iriedinamik.voxjot\models"
 ```
 
 #### Step 3: Download Model Files
 
-Download the models you want from below
+Download the models you want from below.
+
+You can publish or refresh the non-Whisper mirror release yourself with:
+
+```bash
+./scripts/mirror-models.sh --dry-run
+./scripts/mirror-models.sh
+```
 
 **Whisper Models (single .bin files):**
 
-- Small (487 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-small.bin`
-- Medium (492 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/whisper-medium-q4_1.bin`
-- Turbo (1600 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-large-v3-turbo.bin`
-- Large (1100 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/ggml-large-v3-q5_0.bin`
+- Small (487 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin`
+- Medium (1500 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin`
+- Turbo (1600 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin`
+- Large (1100 MB): `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin`
 
-**Parakeet Models (compressed archives):**
+**Mirrored STT assets (pinned GitHub release):**
 
-- V2 (473 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/parakeet-v2-int8.tar.gz`
-- V3 (478 MB): `https://github.com/cjpais/Vox-Jot/releases/latest/download/parakeet-v3-int8.tar.gz`
+- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
+- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
+- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
+- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-base.tar.gz`
+- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
+- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
+- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
+- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
+- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
 
-> Model download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
+> Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.
+> Non-Whisper download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
 > Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.
 
 #### Step 4: Install Models
 
-**For Whisper Models (.bin files):**
+**For single-file models (.bin / .onnx):**
 
-Simply place the `.bin` file directly into the `models` directory:
+Place the file directly into the `models` directory:
 
 ```
 {app_data_dir}/models/
 ├── ggml-small.bin
-├── whisper-medium-q4_1.bin
+├── ggml-medium.bin
 ├── ggml-large-v3-turbo.bin
-└── ggml-large-v3-q5_0.bin
+├── ggml-large-v3-q5_0.bin
+├── breeze-asr-q5_k.bin
+└── v3_e2e_ctc.int8.onnx
 ```
 
-**For Parakeet Models (.tar.gz archives):**
+**For archive-based models (.tar.gz):**
 
 1. Extract the `.tar.gz` file
 2. Place the **extracted directory** into the `models` folder
-3. The directory must be named exactly as follows:
-   - **Parakeet V2**: `parakeet-tdt-0.6b-v2-int8`
-   - **Parakeet V3**: `parakeet-tdt-0.6b-v3-int8`
+3. Keep the directory name exactly as packaged
 
 Final structure should look like:
 
 ```
 {app_data_dir}/models/
-├── parakeet-tdt-0.6b-v2-int8/     (directory with model files inside)
-│   ├── (model files)
-│   └── (config files)
-└── parakeet-tdt-0.6b-v3-int8/     (directory with model files inside)
-    ├── (model files)
-    └── (config files)
+├── parakeet-tdt-0.6b-v2-int8/
+├── parakeet-tdt-0.6b-v3-int8/
+├── moonshine-base/
+├── moonshine-tiny-streaming-en/
+├── moonshine-small-streaming-en/
+├── moonshine-medium-streaming-en/
+└── sense-voice-int8/
 ```
 
 **Important Notes:**
@@ -371,7 +387,7 @@ Vox Jot can auto-discover custom Whisper GGML models placed in the `models` dire
 
 ### How to Contribute
 
-1. **Check existing issues** at [github.com/cjpais/Vox Jot/issues](https://github.com/cjpais/Vox Jot/issues)
+1. **Check existing issues** at [github.com/KimaniDJ11/Vox-Jot/issues](https://github.com/KimaniDJ11/Vox-Jot/issues)
 2. **Fork the repository** and create a feature branch
 3. **Test thoroughly** on your target platform
 4. **Submit a pull request** with clear description of changes

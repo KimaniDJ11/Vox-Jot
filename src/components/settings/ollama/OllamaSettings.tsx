@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
 import { useSettings } from "@/hooks/useSettings";
@@ -51,6 +52,7 @@ const estimateScores = (modelId: string, label: string) => {
 };
 
 const OllamaSettings: React.FC = () => {
+  const { t } = useTranslation();
   const [actionError, setActionError] = useState<string | null>(null);
   const { getSetting, setPostProcessProvider, updatePostProcessModel } =
     useSettings();
@@ -97,9 +99,7 @@ const OllamaSettings: React.FC = () => {
     setActionError(null);
     const ok = await pullModel(modelId);
     if (!ok) {
-      setActionError(
-        "Could not start model download. Ensure Ollama is running and try again.",
-      );
+      setActionError(t("ollama.pullError"));
     }
   };
 
@@ -120,7 +120,7 @@ const OllamaSettings: React.FC = () => {
       await updatePostProcessModel("ollama", modelId);
     } catch (error) {
       console.error("Failed to activate Ollama model:", error);
-      setActionError("Could not activate this model. Please try again.");
+      setActionError(t("ollama.activateError"));
     }
   };
 
@@ -128,51 +128,42 @@ const OllamaSettings: React.FC = () => {
     <div className="flex flex-col gap-6">
       {/* Ollama Status */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-text">
-          Ollama — Local LLM Engine
-        </h3>
-        <p className="text-xs text-text/60">
-          Ollama runs tiny AI models locally on your device for post-processing
-          transcripts. No internet required after setup.
-        </p>
+        <h3 className="text-sm font-semibold text-text">{t("ollama.title")}</h3>
+        <p className="text-xs text-text/60">{t("ollama.description")}</p>
 
         {!isInstalled ? (
           <div className="flex flex-col gap-3 p-4 rounded-lg border border-mid-gray/20 bg-background">
-            <p className="text-sm text-text/80">
-              Ollama is not installed. Click below to install it automatically.
-            </p>
+            <p className="text-sm text-text/80">{t("ollama.notInstalled")}</p>
             <button
               onClick={installOllama}
               disabled={isInstalling}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
-              {isInstalling ? "Installing..." : "Install Ollama"}
+              {isInstalling ? t("ollama.installing") : t("ollama.install")}
             </button>
           </div>
         ) : !isRunning ? (
           <div className="flex flex-col gap-3 p-4 rounded-lg border border-mid-gray/20 bg-background">
-            <p className="text-sm text-text/80">
-              Ollama is installed but not running.
-            </p>
+            <p className="text-sm text-text/80">{t("ollama.notRunning")}</p>
             <button
               onClick={startServe}
               disabled={isChecking}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
-              {isChecking ? "Checking..." : "Start Ollama"}
+              {isChecking ? t("ollama.checking") : t("ollama.start")}
             </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-green-500">
             <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            Ollama is installed and ready
+            {t("ollama.ready")}
           </div>
         )}
       </div>
 
       {/* Model Management */}
       {isInstalled && isRunning && (
-        <div className="max-w-3xl w-full mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {actionError && (
             <div className="rounded-lg border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-red-700">
               {actionError}
@@ -180,11 +171,11 @@ const OllamaSettings: React.FC = () => {
           )}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-text/60">
-              Downloaded LLM Models
+              {t("ollama.downloadedModels")}
             </h4>
             {downloadedModels.length === 0 ? (
               <div className="rounded-xl border-2 border-mid-gray/20 px-4 py-3 text-sm text-text/60">
-                No local LLM models downloaded yet.
+                {t("ollama.noDownloaded")}
               </div>
             ) : (
               downloadedModels.map((model) => {
@@ -217,7 +208,9 @@ const OllamaSettings: React.FC = () => {
                             }`}
                           >
                             <Check className="w-3 h-3 mr-1" />
-                            {isActive ? "Active" : "Downloaded"}
+                            {isActive
+                              ? t("common.active")
+                              : t("common.downloaded")}
                           </span>
                         </div>
                         <p className="text-text/60 text-sm leading-relaxed">
@@ -228,7 +221,7 @@ const OllamaSettings: React.FC = () => {
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <p className="text-xs text-text/60 w-16 text-right">
-                              quality est
+                              {t("ollama.qualityEst")}
                             </p>
                             <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                               <div
@@ -239,7 +232,7 @@ const OllamaSettings: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <p className="text-xs text-text/60 w-16 text-right">
-                              speed est
+                              {t("ollama.speedEst")}
                             </p>
                             <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                               <div
@@ -256,14 +249,14 @@ const OllamaSettings: React.FC = () => {
 
                     <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
                       <span className="text-xs text-text/50">
-                        Local Ollama model
+                        {t("ollama.localModel")}
                       </span>
                       {!isActive && (
                         <button
                           onClick={() => handleActivateModel(model.id)}
                           className="flex items-center gap-1.5 text-text/80 hover:text-logo-primary hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"
                         >
-                          <span>Set Active</span>
+                          <span>{t("ollama.setActive")}</span>
                         </button>
                       )}
                       <button
@@ -271,7 +264,7 @@ const OllamaSettings: React.FC = () => {
                         className="flex items-center gap-1.5 ml-auto text-logo-primary/85 hover:text-logo-primary hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
+                        <span>{t("common.delete")}</span>
                       </button>
                     </div>
 
@@ -284,7 +277,9 @@ const OllamaSettings: React.FC = () => {
                           />
                         </div>
                         <p className="text-xs text-text/50 mt-1">
-                          Pulling {Math.round(progress)}%
+                          {t("ollama.pulling", {
+                            progress: Math.round(progress),
+                          })}
                         </p>
                       </div>
                     )}
@@ -296,7 +291,7 @@ const OllamaSettings: React.FC = () => {
 
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-text/60">
-              Available to Download
+              {t("ollama.availableModels")}
             </h4>
             {availableModels.map((model) => {
               const isPulling = pullingModels.has(model.id);
@@ -322,7 +317,7 @@ const OllamaSettings: React.FC = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <p className="text-xs text-text/60 w-16 text-right">
-                            quality est
+                            {t("ollama.qualityEst")}
                           </p>
                           <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                             <div
@@ -333,7 +328,7 @@ const OllamaSettings: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <p className="text-xs text-text/60 w-16 text-right">
-                            speed est
+                            {t("ollama.speedEst")}
                           </p>
                           <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                             <div
@@ -349,12 +344,12 @@ const OllamaSettings: React.FC = () => {
                   <hr className="w-full border-mid-gray/20" />
 
                   <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                    <span className="text-xs text-text/50">
-                      {details.size || "Model"}
-                    </span>
+                    <span className="text-xs text-text/50">{details.size}</span>
                     {isPulling ? (
                       <span className="ml-auto text-xs text-text/50">
-                        Pulling {Math.round(progress)}%
+                        {t("ollama.pulling", {
+                          progress: Math.round(progress),
+                        })}
                       </span>
                     ) : (
                       <button
@@ -363,7 +358,7 @@ const OllamaSettings: React.FC = () => {
                         className="flex items-center gap-1.5 ml-auto text-text/80 hover:text-logo-primary hover:bg-logo-primary/10 rounded-md px-2 py-0.5 disabled:opacity-50 transition-colors"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>Download</span>
+                        <span>{t("ollama.download")}</span>
                       </button>
                     )}
                   </div>

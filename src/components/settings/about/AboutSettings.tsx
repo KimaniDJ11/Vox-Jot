@@ -26,10 +26,6 @@ export const AboutSettings: React.FC = () => {
     fetchVersion();
   }, []);
 
-  const handleDonateClick = () => {
-    // Placeholder for upcoming custom donation backend flow.
-  };
-
   return (
     <div className="w-full space-y-6">
       <SettingsGroup title={t("settings.about.title")}>
@@ -41,16 +37,6 @@ export const AboutSettings: React.FC = () => {
         >
           {/* eslint-disable-next-line i18next/no-literal-string */}
           <span className="text-sm font-mono">v{version}</span>
-        </SettingContainer>
-
-        <SettingContainer
-          title={t("settings.about.supportDevelopment.title")}
-          description={t("settings.about.supportDevelopment.description")}
-          grouped={true}
-        >
-          <Button variant="primary" size="md" onClick={handleDonateClick}>
-            {t("settings.about.supportDevelopment.button")}
-          </Button>
         </SettingContainer>
 
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />

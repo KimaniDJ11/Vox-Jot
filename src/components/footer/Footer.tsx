@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { useSettings } from "@/hooks/useSettings";
 import ModelStatusButton from "../model-selector/ModelStatusButton";
@@ -7,6 +8,7 @@ import ModelSelector from "../model-selector";
 import UpdateChecker from "../update-checker";
 
 const Footer: React.FC = () => {
+  const { t } = useTranslation();
   const [version, setVersion] = useState("");
   const [showLlmDropdown, setShowLlmDropdown] = useState(false);
   const {
@@ -35,8 +37,8 @@ const Footer: React.FC = () => {
   const llmDisplayText = selectedProvider
     ? selectedProvider.id === "apple_intelligence"
       ? "Apple Intelligence"
-      : selectedLlmModel || "Model not set"
-    : "LLM not set";
+      : selectedLlmModel || t("footer.modelNotSet")
+    : t("footer.llmNotSet");
 
   const llmStatus = selectedProvider
     ? selectedProvider.id === "apple_intelligence" || !!selectedLlmModel
@@ -56,6 +58,12 @@ const Footer: React.FC = () => {
     };
 
     fetchVersion();
+  }, []);
+
+  const handleLlmKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setShowLlmDropdown(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -81,7 +89,7 @@ const Footer: React.FC = () => {
             <div className="relative" ref={llmDropdownRef}>
               <ModelStatusButton
                 status={llmStatus}
-                displayText={`LLM: ${llmDisplayText}`}
+                displayText={t("footer.llmPrefix", { name: llmDisplayText })}
                 isDropdownOpen={showLlmDropdown}
                 onClick={() => {
                   if (!showLlmDropdown) {
@@ -92,12 +100,18 @@ const Footer: React.FC = () => {
               />
 
               {showLlmDropdown && (
-                <div className="absolute bottom-full start-0 mb-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-mid-gray/20 rounded-lg shadow-lg py-2 z-50">
+                <div
+                  className="absolute bottom-full start-0 mb-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-mid-gray/20 rounded-lg shadow-lg py-2 z-50"
+                  role="listbox"
+                  onKeyDown={handleLlmKeyDown}
+                >
                   {llmOptions.length > 0 ? (
                     llmOptions.map((model) => (
                       <button
                         key={model}
                         type="button"
+                        role="option"
+                        aria-selected={selectedLlmModel === model}
                         className={`w-full px-3 py-2 text-start hover:bg-[var(--input)] transition-colors ${
                           selectedLlmModel === model
                             ? "bg-logo-primary text-white"
@@ -117,14 +131,16 @@ const Footer: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <span className="truncate pe-4">{model}</span>
                           {selectedLlmModel === model && (
-                            <span className="text-xs text-white">Active</span>
+                            <span className="text-xs text-white">
+                              {t("common.active")}
+                            </span>
                           )}
                         </div>
                       </button>
                     ))
                   ) : (
                     <div className="px-3 py-2 text-sm text-text/60">
-                      No models available
+                      {t("footer.noModelsAvailable")}
                     </div>
                   )}
                 </div>
@@ -134,7 +150,7 @@ const Footer: React.FC = () => {
             <div className="relative" ref={llmDropdownRef}>
               <ModelStatusButton
                 status={llmStatus}
-                displayText={`LLM: ${llmDisplayText}`}
+                displayText={t("footer.llmPrefix", { name: llmDisplayText })}
                 isDropdownOpen={false}
                 onClick={() => {}}
               />

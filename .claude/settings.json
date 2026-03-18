@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Bash(bun run *)",
+      "Bash(bun install *)",
+      "Bash(cargo *)",
+      "Bash(git *)",
+      "Bash(npx *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(diff *)",
+      "Bash(cp *)",
+      "Bash(mkdir *)",
+      "Bash(cd *)",
+      "Bash(CMAKE_POLICY_VERSION_MINIMUM=*)",
+      "Bash(curl *)"
+    ],
+    "deny": ["Bash(rm -rf /)", "Bash(sudo *)"]
+  }
+}

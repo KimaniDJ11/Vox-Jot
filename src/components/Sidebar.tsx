@@ -8,7 +8,6 @@ import {
   Sparkles,
   Cpu,
   Bot,
-  SpellCheck,
 } from "lucide-react";
 import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
@@ -21,8 +20,8 @@ import {
   PostProcessingSettings,
   ModelsSettings,
   OllamaSettings,
-  CorrectionSettings,
 } from "./settings";
+import { useSettingsStore } from "../stores/settingsStore";
 
 const SidebarBrandIcon: React.FC<IconProps> = (props) => (
   <VoxJotMark {...props} monochrome />
@@ -76,12 +75,6 @@ export const SECTIONS_CONFIG = {
     component: PostProcessingSettings,
     enabled: () => true,
   },
-  corrections: {
-    labelKey: "sidebar.corrections",
-    icon: SpellCheck,
-    component: CorrectionSettings,
-    enabled: () => true,
-  },
   history: {
     labelKey: "sidebar.history",
     icon: History,
@@ -92,7 +85,8 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.debug",
     icon: FlaskConical,
     component: DebugSettings,
-    enabled: () => true,
+    enabled: (settings?: { debug_mode?: boolean }) =>
+      settings?.debug_mode === true,
   },
   about: {
     labelKey: "sidebar.about",
@@ -112,9 +106,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSectionChange,
 }) => {
   const { t } = useTranslation();
+  const settings = useSettingsStore((s) => s.settings);
 
   const availableSections = Object.entries(SECTIONS_CONFIG)
-    .filter(([_, config]) => config.enabled())
+    .filter(([_, config]) => config.enabled(settings ?? undefined))
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
@@ -124,45 +119,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
           width={128}
           className="mb-8 mt-2 shrink-0 hidden md:block"
         />
-        <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-          Settings
-        </div>
-        <div className="flex flex-col gap-2 w-full">
-          {availableSections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+        <nav aria-label={t("sidebar.settingsLabel")}>
+          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            {t("sidebar.settingsLabel")}
+          </div>
+          <div className="flex flex-col gap-2 w-full">
+            {availableSections.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
 
-            return (
-              <button
-                key={section.id}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 min-w-0 ${
-                  isActive
-                    ? "bg-[var(--accent)] text-white font-semibold shadow-sm"
-                    : "bg-transparent text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-                }`}
-                type="button"
-                onClick={() => onSectionChange(section.id)}
-              >
-                {/* We can optionally handle a side indicator or remove it since the background is solid. Removing it for cleaner look. */}
-                <Icon
-                  width={18}
-                  height={18}
-                  className={`shrink-0 transition-colors duration-200 ${
+              return (
+                <button
+                  key={section.id}
+                  className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 min-w-0 ${
                     isActive
-                      ? "text-white"
-                      : "text-[var(--muted)] group-hover:text-[var(--text)]"
+                      ? "bg-[var(--accent)] text-white font-semibold shadow-sm"
+                      : "bg-transparent text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                   }`}
-                />
-                <span
-                  className="truncate text-[15px] leading-6 tracking-wide flex-1"
-                  title={t(section.labelKey)}
+                  type="button"
+                  onClick={() => onSectionChange(section.id)}
                 >
-                  {t(section.labelKey)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  {/* We can optionally handle a side indicator or remove it since the background is solid. Removing it for cleaner look. */}
+                  <Icon
+                    width={18}
+                    height={18}
+                    className={`shrink-0 transition-colors duration-200 ${
+                      isActive
+                        ? "text-white"
+                        : "text-[var(--muted)] group-hover:text-[var(--text)]"
+                    }`}
+                  />
+                  <span
+                    className="truncate text-[15px] leading-6 tracking-wide flex-1"
+                    title={t(section.labelKey)}
+                  >
+                    {t(section.labelKey)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </aside>
   );

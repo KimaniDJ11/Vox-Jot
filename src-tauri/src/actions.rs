@@ -235,6 +235,24 @@ fn strip_spoken_suffix(input: &str, suffix: &str) -> Option<String> {
     Some(prefix.trim_end_matches([',', ':', ';']).trim().to_string())
 }
 
+/// Heuristic to detect meta/refusal-style LLM responses that should not be pasted
+fn looks_like_meta_refusal(text: &str) -> bool {
+    let lower = text.trim_start().to_ascii_lowercase();
+    let refusal_patterns = [
+        "i'm unable to",
+        "i am unable to",
+        "i cannot complete",
+        "i can't complete",
+        "please provide",
+        "i need more context",
+        "i don't have enough",
+        "i do not have enough",
+        "i'm sorry, but",
+        "i am sorry, but",
+    ];
+    refusal_patterns.iter().any(|p| lower.starts_with(p))
+}
+
 fn extract_spoken_submit_command(text: &str) -> (String, Option<AutoSubmitKey>) {
     let candidates = [
         ("send with control enter", AutoSubmitKey::CtrlEnter),
@@ -405,7 +423,14 @@ Active app guidance:\n\
 - Output:\n\
 - Return only the final processed text.\n\
 - Do not explain changes.\n\
-- Do not mention rules.",
+- Do not mention rules.\n\
+\n\
+CRITICAL OUTPUT CONSTRAINT:\n\
+- You must output the corrected transcript text only.\n\
+- Never ask for more context.\n\
+- Never apologize.\n\
+- Never explain what you are doing.\n\
+- If the transcript is a single word or fragment, return just that word or fragment.",
         rewrite_strength,
     )
 }
@@ -1218,15 +1243,32 @@ async fn post_process_transcription(
         }
     }
 
-    // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = format!("{}\n\nTranscript:\n{}", base_system_prompt, dict_text);
-    debug!("Processed prompt length: {} chars", processed_prompt.len());
+    // Legacy mode: send system/user split so tiny models respect instructions
+    let system_prompt = base_system_prompt.clone();
+    let user_content = dict_text.to_string();
 
-    match crate::llm_client::send_chat_completion(&provider, api_key, &model, processed_prompt)
-        .await
+    match crate::llm_client::send_chat_completion_with_schema(
+        &provider,
+        api_key,
+        &model,
+        user_content,
+        Some(system_prompt.clone()),
+        None,
+    )
+    .await
     {
         Ok(Some(content)) => {
             let content = strip_invisible_chars(&content);
+
+            // If the model returns a meta/refusal-style response, treat it as failure
+            if looks_like_meta_refusal(&content) {
+                warn!(
+                    "LLM post-processing for provider '{}' returned a meta-style response; falling back to non-LLM result",
+                    provider.id
+                );
+                return None;
+            }
+
             debug!(
                 "LLM post-processing succeeded for provider '{}'. Output length: {} chars",
                 provider.id,
@@ -1242,7 +1284,7 @@ async fn post_process_transcription(
                     None,
                     None,
                 ),
-                prompt_used: Some(prompt),
+                prompt_used: Some(system_prompt),
             })
         }
         Ok(None) => {

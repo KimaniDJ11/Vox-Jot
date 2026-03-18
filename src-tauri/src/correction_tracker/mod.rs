@@ -93,6 +93,30 @@ impl InsertedSpanTracker {
     }
 }
 
+/// Wait `delay_secs` then do a single read of the focused text field.
+/// Returns the text if readable, or `None` if the field is gone / unreadable.
+/// Intended for the history field-snapshot feature.
+pub async fn capture_field_snapshot_after(
+    app_identifier: Option<String>,
+    delay_secs: u64,
+) -> Option<String> {
+    tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+
+    let reader = create_platform_reader(app_identifier);
+
+    match tokio::task::spawn_blocking(move || reader.read_focused_field_text()).await {
+        Ok(Ok(maybe_text)) => maybe_text,
+        Ok(Err(e)) => {
+            log::warn!("field snapshot read error: {}", e);
+            None
+        }
+        Err(e) => {
+            log::error!("field snapshot task join error: {}", e);
+            None
+        }
+    }
+}
+
 /// Create a platform-specific field text reader.
 fn create_platform_reader(
     _app_identifier: Option<String>,

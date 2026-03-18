@@ -234,6 +234,8 @@ mod tests {
             post_processed_text: post_processed.map(|text| text.to_string()),
             post_process_prompt: None,
             dictionary_hits: Vec::new(),
+            field_snapshot_text: None,
+            field_snapshot_at: None,
         }
     }
 

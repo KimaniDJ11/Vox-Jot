@@ -100,17 +100,17 @@ pub async fn update_recording_retention_period(
     Ok(())
 }
 
+/// Called by the frontend (or internally) to store what was observed in the
+/// text field ~30 seconds after Vox Jot pasted text into it.
 #[tauri::command]
 #[specta::specta]
 pub async fn update_field_snapshot(
     _app: AppHandle,
     history_manager: State<'_, Arc<HistoryManager>>,
     id: i64,
-    field_snapshot_text: String,
-    field_snapshot_at: i64,
+    snapshot_text: String,
 ) -> Result<(), String> {
     history_manager
-        .update_field_snapshot(id, field_snapshot_text, field_snapshot_at)
-        .await
+        .update_field_snapshot(id, snapshot_text)
         .map_err(|e| e.to_string())
 }

@@ -419,6 +419,7 @@ pub fn run(cli_args: CliArgs) {
         commands::history::delete_history_entry,
         commands::history::update_history_limit,
         commands::history::update_recording_retention_period,
+        commands::history::update_field_snapshot,
         helpers::clamshell::is_laptop,
         ollama::check_ollama_status,
         ollama::install_ollama,

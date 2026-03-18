@@ -1831,20 +1831,19 @@ impl ShortcutAction for TranscribeAction {
                             let post_processed_for_history = post_processed_text.clone();
                             let post_process_prompt_for_history = post_process_prompt.clone();
                             let dict_hits_for_history = dictionary_hits_for_history.clone();
-                            tauri::async_runtime::spawn(async move {
-                                if let Err(e) = hm_clone
-                                    .save_transcription(
-                                        samples_clone,
-                                        transcription_for_history,
-                                        post_processed_for_history,
-                                        post_process_prompt_for_history,
-                                        dict_hits_for_history,
-                                    )
-                                    .await
-                                {
+                            let history_entry_id = hm_clone
+                                .save_transcription(
+                                    samples_clone,
+                                    transcription_for_history,
+                                    post_processed_for_history,
+                                    post_process_prompt_for_history,
+                                    dict_hits_for_history,
+                                )
+                                .await
+                                .unwrap_or_else(|e| {
                                     error!("Failed to save transcription to history: {}", e);
-                                }
-                            });
+                                    -1
+                                });
 
                             if let Some(ref text_to_paste) = text_to_paste {
                                 // Start correction monitoring if enabled
@@ -1886,6 +1885,39 @@ impl ShortcutAction for TranscribeAction {
                                             );
                                         }
                                     }
+                                }
+
+                                // Spawn 30-second field snapshot for history
+                                if history_entry_id > 0 {
+                                    let settings_snap = settings.clone();
+                                    let app_snap = ah.clone();
+                                    let active_app_id = active_app_context
+                                        .as_ref()
+                                        .map(|ctx| ctx.bundle_id.clone());
+
+                                    tokio::spawn(async move {
+                                        let delay =
+                                            settings_snap.correction_monitoring_delay_secs as u64;
+
+                                        if let Some(snapshot) =
+                                            crate::correction_tracker::capture_field_snapshot_after(
+                                                active_app_id, delay,
+                                            )
+                                            .await
+                                        {
+                                            let hm = app_snap.state::<std::sync::Arc<
+                                                crate::managers::history::HistoryManager,
+                                            >>();
+                                            if let Err(e) =
+                                                hm.update_field_snapshot(history_entry_id, snapshot)
+                                            {
+                                                log::warn!(
+                                                    "Failed to save field snapshot: {}",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                    });
                                 }
 
                                 // Paste the final text (either processed or original)

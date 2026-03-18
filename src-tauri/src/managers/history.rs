@@ -32,6 +32,9 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN post_processed_text TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN post_process_prompt TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN dictionary_hits TEXT;"),
+    // Field snapshot captured ~30s after paste
+    M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_text TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_at INTEGER;"),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -45,6 +48,8 @@ pub struct HistoryEntry {
     pub post_processed_text: Option<String>,
     pub post_process_prompt: Option<String>,
     pub dictionary_hits: Vec<String>,
+    pub field_snapshot_text: Option<String>,
+    pub field_snapshot_at: Option<i64>,
 }
 
 /// Parse a database row into a HistoryEntry, deserializing the dictionary_hits JSON column.
@@ -64,6 +69,8 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         post_processed_text: row.get("post_processed_text").unwrap_or(None),
         post_process_prompt: row.get("post_process_prompt").unwrap_or(None),
         dictionary_hits,
+        field_snapshot_text: row.get("field_snapshot_text").unwrap_or(None),
+        field_snapshot_at: row.get("field_snapshot_at").unwrap_or(None),
     }
 }
 
@@ -198,7 +205,8 @@ impl HistoryManager {
         Ok(Connection::open(&self.db_path)?)
     }
 
-    /// Save a transcription to history (both database and WAV file)
+    /// Save a transcription to history (both database and WAV file).
+    /// Returns the database row ID of the new entry.
     pub async fn save_transcription(
         &self,
         audio_samples: Vec<f32>,
@@ -206,7 +214,7 @@ impl HistoryManager {
         post_processed_text: Option<String>,
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
-    ) -> Result<()> {
+    ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("handy-{}.wav", timestamp);
         let title = self.format_timestamp_title(timestamp);
@@ -216,7 +224,7 @@ impl HistoryManager {
         save_wav_file(file_path, &audio_samples).await?;
 
         // Save to database
-        self.save_to_database(
+        let id = self.save_to_database(
             file_name,
             timestamp,
             title,
@@ -234,7 +242,7 @@ impl HistoryManager {
             error!("Failed to emit history-updated event: {}", e);
         }
 
-        Ok(())
+        Ok(id)
     }
 
     fn save_to_database(
@@ -246,7 +254,7 @@ impl HistoryManager {
         post_processed_text: Option<String>,
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
-    ) -> Result<()> {
+    ) -> Result<i64> {
         let conn = self.get_connection()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
             None
@@ -258,7 +266,26 @@ impl HistoryManager {
             params![file_name, timestamp, false, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits_json],
         )?;
 
-        debug!("Saved transcription to database");
+        let id = conn.last_insert_rowid();
+        debug!("Saved transcription to database with id {}", id);
+        Ok(id)
+    }
+
+    /// Write the field snapshot back to a history entry by ID.
+    /// Called ~30s after paste once the field monitor has read the text.
+    pub fn update_field_snapshot(&self, id: i64, snapshot_text: String) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = Utc::now().timestamp();
+        conn.execute(
+            "UPDATE transcription_history SET field_snapshot_text = ?1, field_snapshot_at = ?2 WHERE id = ?3",
+            params![snapshot_text, now, id],
+        )?;
+        debug!("Updated field snapshot for history entry {}", id);
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!("Failed to emit history-updated after snapshot update: {}", e);
+        }
+
         Ok(())
     }
 
@@ -385,7 +412,7 @@ impl HistoryManager {
     pub async fn get_history_entries(&self) -> Result<Vec<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits FROM transcription_history ORDER BY timestamp DESC"
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at FROM transcription_history ORDER BY timestamp DESC"
         )?;
 
         let rows = stmt.query_map([], |row| {
@@ -407,7 +434,7 @@ impl HistoryManager {
 
     fn get_latest_entry_with_conn(conn: &Connection) -> Result<Option<HistoryEntry>> {
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at
              FROM transcription_history
              ORDER BY timestamp DESC
              LIMIT 1",
@@ -454,7 +481,7 @@ impl HistoryManager {
     pub async fn get_entry_by_id(&self, id: i64) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at
              FROM transcription_history WHERE id = ?1",
         )?;
 
@@ -524,7 +551,9 @@ mod tests {
                 transcription_text TEXT NOT NULL,
                 post_processed_text TEXT,
                 post_process_prompt TEXT,
-                dictionary_hits TEXT
+                dictionary_hits TEXT,
+                field_snapshot_text TEXT,
+                field_snapshot_at INTEGER
             );",
         )
         .expect("create transcription_history table");
@@ -569,5 +598,6 @@ mod tests {
         assert_eq!(entry.timestamp, 200);
         assert_eq!(entry.transcription_text, "second");
         assert_eq!(entry.post_processed_text.as_deref(), Some("processed"));
+        assert!(entry.field_snapshot_text.is_none());
     }
 }

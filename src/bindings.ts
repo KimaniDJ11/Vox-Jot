@@ -884,6 +884,18 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 }
 },
 /**
+ * Called by the frontend (or internally) to store what was observed in the
+ * text field ~30 seconds after Vox Jot pasted text into it.
+ */
+async updateFieldSnapshot(id: number, snapshotText: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_field_snapshot", { id, snapshotText }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Checks if the Mac is a laptop by detecting battery presence
  * 
  * This uses pmset to check for battery information.
@@ -1026,7 +1038,7 @@ export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM"
-export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[] }
+export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; field_snapshot_text: string | null; field_snapshot_at: number | null }
 /**
  * Result of changing keyboard implementation
  */

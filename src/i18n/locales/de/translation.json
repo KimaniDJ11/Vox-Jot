@@ -16,6 +16,7 @@
     "debug": "Debug",
     "about": "Info",
     "ollama": "LLM Models",
+    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {

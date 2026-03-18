@@ -8,6 +8,7 @@ import {
   Sparkles,
   Cpu,
   Bot,
+  SpellCheck,
 } from "lucide-react";
 import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
@@ -20,6 +21,7 @@ import {
   PostProcessingSettings,
   ModelsSettings,
   OllamaSettings,
+  CorrectionSettings,
 } from "./settings";
 import { useSettingsStore } from "../stores/settingsStore";
 
@@ -73,6 +75,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.postProcessing",
     icon: Sparkles,
     component: PostProcessingSettings,
+    enabled: () => true,
+  },
+  corrections: {
+    labelKey: "sidebar.corrections",
+    icon: SpellCheck,
+    component: CorrectionSettings,
     enabled: () => true,
   },
   history: {

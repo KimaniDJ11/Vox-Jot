@@ -242,3 +242,125 @@ impl field_monitor::FieldTextReader for NoopFieldTextReader {
         Ok(false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tracker_get_active_span_initially_none() {
+        let tracker = InsertedSpanTracker::new();
+        assert!(
+            tracker.get_active_span().is_none(),
+            "Expected no active span on a freshly created tracker"
+        );
+    }
+
+    #[test]
+    fn test_tracker_set_and_get_active_span() {
+        let tracker = InsertedSpanTracker::new();
+
+        // Manually set an active span via the mutex
+        let span = InsertedSpan::new(
+            "hello world".to_string(),
+            Some("com.test.app".to_string()),
+            Some("TestApp".to_string()),
+            InsertionMethod::Clipboard,
+        );
+
+        {
+            let mut active = tracker.active_span.lock().unwrap();
+            *active = Some(span.clone());
+        }
+
+        let retrieved = tracker.get_active_span();
+        assert!(retrieved.is_some(), "Expected active span to be set");
+        let retrieved = retrieved.unwrap();
+        assert_eq!(retrieved.inserted_text, "hello world");
+        assert_eq!(
+            retrieved.app_identifier.as_deref(),
+            Some("com.test.app")
+        );
+    }
+
+    #[test]
+    fn test_tracker_clear_removes_span() {
+        let tracker = InsertedSpanTracker::new();
+
+        // Set a span
+        let span = InsertedSpan::new(
+            "some text".to_string(),
+            None,
+            None,
+            InsertionMethod::DirectType,
+        );
+        {
+            let mut active = tracker.active_span.lock().unwrap();
+            *active = Some(span);
+        }
+
+        assert!(
+            tracker.get_active_span().is_some(),
+            "Span should be set before clearing"
+        );
+
+        tracker.clear_active_span();
+
+        assert!(
+            tracker.get_active_span().is_none(),
+            "Expected active span to be None after clear_active_span()"
+        );
+    }
+
+    #[test]
+    fn test_tracker_clear_on_empty_is_noop() {
+        let tracker = InsertedSpanTracker::new();
+
+        // Clearing when already empty should not panic
+        tracker.clear_active_span();
+
+        assert!(
+            tracker.get_active_span().is_none(),
+            "Expected no span after clearing an already-empty tracker"
+        );
+    }
+
+    #[test]
+    fn test_tracker_overwrite_span() {
+        let tracker = InsertedSpanTracker::new();
+
+        // Set first span
+        let span1 = InsertedSpan::new(
+            "first text".to_string(),
+            Some("com.app.one".to_string()),
+            None,
+            InsertionMethod::Clipboard,
+        );
+        {
+            let mut active = tracker.active_span.lock().unwrap();
+            *active = Some(span1);
+        }
+
+        // Overwrite with second span
+        let span2 = InsertedSpan::new(
+            "second text".to_string(),
+            Some("com.app.two".to_string()),
+            None,
+            InsertionMethod::DirectType,
+        );
+        {
+            let mut active = tracker.active_span.lock().unwrap();
+            *active = Some(span2);
+        }
+
+        let retrieved = tracker.get_active_span().unwrap();
+        assert_eq!(
+            retrieved.inserted_text, "second text",
+            "Expected the second span to overwrite the first"
+        );
+        assert_eq!(
+            retrieved.app_identifier.as_deref(),
+            Some("com.app.two")
+        );
+    }
+}

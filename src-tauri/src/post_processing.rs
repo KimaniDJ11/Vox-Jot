@@ -454,4 +454,83 @@ mod tests {
         assert!(edits.added_bullets);
         assert!(edits.added_paragraphs);
     }
+
+    // ── Full pipeline tests ─────────────────────────────────────────────
+
+    #[test]
+    fn test_dictionary_then_diff_full_pipeline() {
+        use crate::correction_tracker::diff::extract_corrections;
+
+        // Raw STT output
+        let raw_stt = "i use swift ui";
+        // Dictionary replaces "swift ui" → "SwiftUI"
+        let dict = vec![entry("swift ui", "SwiftUI")];
+        let result = apply_personal_dictionary(raw_stt, &dict);
+        assert_eq!(result.text, "i use SwiftUI");
+
+        // Simulate field observation returning same text (user didn't change it)
+        let pasted = &result.text;
+        let observed = &result.text;
+        let corrections = extract_corrections(pasted, observed, None);
+        assert!(
+            corrections.is_empty(),
+            "No corrections expected when field matches pasted text"
+        );
+    }
+
+    #[test]
+    fn test_dictionary_then_user_correction_pipeline() {
+        use crate::correction_tracker::diff::extract_corrections;
+
+        // Raw STT
+        let raw_stt = "cheyene went to the store";
+        // Dictionary: "cheyene" → "Cheyenne"
+        let dict = vec![entry("cheyene", "Cheyenne")];
+        let result = apply_personal_dictionary(raw_stt, &dict);
+        assert_eq!(result.text, "Cheyenne went to the store");
+
+        // User changes "teh" to "the" (a real correction).
+        // Dictionary word "Cheyenne" stays unchanged → no correction for it.
+        let pasted = "Cheyenne went to teh store";
+        let observed = "Cheyenne went to the store";
+        let corrections = extract_corrections(pasted, observed, None);
+        assert_eq!(corrections.len(), 1);
+        assert_eq!(corrections[0].original, "teh");
+        assert_eq!(corrections[0].corrected, "the");
+        // Crucially, "Cheyenne" does NOT appear as a correction
+        for c in &corrections {
+            assert_ne!(c.original, "Cheyenne");
+        }
+    }
+
+    #[test]
+    fn test_merged_dictionary_applies_auto_corrections() {
+        let manual = vec![entry("api", "API")];
+        let auto = vec![entry("teh", "the"), entry("recieve", "receive")];
+
+        let merged = get_merged_dictionary(&manual, &auto);
+        assert_eq!(merged.len(), 3);
+
+        let result = apply_personal_dictionary("teh api will recieve data", &merged);
+        assert_eq!(result.text, "the API will receive data");
+        assert!(result.hits.contains(&"API".to_string()));
+        assert!(result.hits.contains(&"the".to_string()));
+        assert!(result.hits.contains(&"receive".to_string()));
+    }
+
+    #[test]
+    fn test_auto_correction_doesnt_override_manual() {
+        // Manual says "api" → "API"
+        let manual = vec![entry("api", "API")];
+        // Auto-correction says "api" → "Api" (wrong)
+        let auto = vec![entry("api", "Api")];
+
+        let merged = get_merged_dictionary(&manual, &auto);
+        // Manual should win — auto entry for "api" should be skipped
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].written, "API");
+
+        let result = apply_personal_dictionary("the api is ready", &merged);
+        assert_eq!(result.text, "the API is ready");
+    }
 }

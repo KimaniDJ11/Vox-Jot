@@ -121,3 +121,213 @@ pub async fn monitor_for_corrections(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    use super::super::span::{InsertedSpan, InsertionMethod};
+    use super::super::store::CorrectionStore;
+
+    /// Mock field reader for testing.
+    struct MockFieldReader {
+        text: Mutex<Option<String>>,
+        focused: AtomicBool,
+    }
+
+    impl MockFieldReader {
+        fn new(text: &str, focused: bool) -> Self {
+            Self {
+                text: Mutex::new(Some(text.to_string())),
+                focused: AtomicBool::new(focused),
+            }
+        }
+
+        fn new_with_none(focused: bool) -> Self {
+            Self {
+                text: Mutex::new(None),
+                focused: AtomicBool::new(focused),
+            }
+        }
+    }
+
+    impl FieldTextReader for MockFieldReader {
+        fn read_focused_field_text(&self) -> Result<Option<String>> {
+            Ok(self.text.lock().unwrap().clone())
+        }
+
+        fn is_same_field_focused(&self) -> Result<bool> {
+            Ok(self.focused.load(Ordering::Relaxed))
+        }
+    }
+
+    /// Mock reader that returns an error on read.
+    struct ErrorFieldReader;
+
+    impl FieldTextReader for ErrorFieldReader {
+        fn read_focused_field_text(&self) -> Result<Option<String>> {
+            Err(anyhow::anyhow!("Simulated accessibility read error"))
+        }
+
+        fn is_same_field_focused(&self) -> Result<bool> {
+            Ok(true)
+        }
+    }
+
+    fn setup_store() -> (Arc<CorrectionStore>, TempDir) {
+        let dir = TempDir::new().unwrap();
+        let store = Arc::new(CorrectionStore::new(dir.path()).unwrap());
+        (store, dir)
+    }
+
+    fn make_span(text: &str) -> InsertedSpan {
+        InsertedSpan::new(
+            text.to_string(),
+            Some("com.test.app".to_string()),
+            Some("TestApp".to_string()),
+            InsertionMethod::Clipboard,
+        )
+    }
+
+    #[tokio::test]
+    async fn test_monitor_detects_correction_with_mock_reader() {
+        let (store, _dir) = setup_store();
+
+        // Inserted text has typos; the mock reader returns corrected text
+        let span = make_span("teh quick brwn fox");
+        let reader: Arc<dyn FieldTextReader> =
+            Arc::new(MockFieldReader::new("the quick brown fox", true));
+
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        let all = store.list_all().unwrap();
+        assert!(
+            !all.is_empty(),
+            "Expected corrections to be stored after user edits"
+        );
+
+        // Verify the specific corrections were found
+        let originals: Vec<&str> = all.iter().map(|c| c.original.as_str()).collect();
+        let correcteds: Vec<&str> = all.iter().map(|c| c.corrected.as_str()).collect();
+        assert!(
+            originals.contains(&"teh"),
+            "Expected 'teh' in originals, got: {:?}",
+            originals
+        );
+        assert!(
+            correcteds.contains(&"the"),
+            "Expected 'the' in correcteds, got: {:?}",
+            correcteds
+        );
+        assert!(
+            originals.contains(&"brwn"),
+            "Expected 'brwn' in originals, got: {:?}",
+            originals
+        );
+        assert!(
+            correcteds.contains(&"brown"),
+            "Expected 'brown' in correcteds, got: {:?}",
+            correcteds
+        );
+    }
+
+    #[tokio::test]
+    async fn test_monitor_no_corrections_when_text_unchanged() {
+        let (store, _dir) = setup_store();
+
+        let text = "the quick brown fox";
+        let span = make_span(text);
+        let reader: Arc<dyn FieldTextReader> = Arc::new(MockFieldReader::new(text, true));
+
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        let all = store.list_all().unwrap();
+        assert!(
+            all.is_empty(),
+            "Expected no corrections when text is unchanged, got: {:?}",
+            all.iter()
+                .map(|c| format!("{} -> {}", c.original, c.corrected))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_monitor_stops_when_focus_lost() {
+        let (store, _dir) = setup_store();
+
+        // Reader returns corrected text but focus is lost immediately
+        let span = make_span("teh world");
+        let reader: Arc<dyn FieldTextReader> =
+            Arc::new(MockFieldReader::new("the world", false));
+
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        // Even though focus was lost, the final read should still happen
+        // and any corrections should still be extracted and stored
+        let all = store.list_all().unwrap();
+        assert!(
+            !all.is_empty(),
+            "Expected corrections to be stored even when focus is lost"
+        );
+        assert_eq!(all[0].original, "teh");
+        assert_eq!(all[0].corrected, "the");
+    }
+
+    #[tokio::test]
+    async fn test_monitor_handles_reader_error_gracefully() {
+        let (store, _dir) = setup_store();
+
+        let span = make_span("some text");
+        let reader: Arc<dyn FieldTextReader> = Arc::new(ErrorFieldReader);
+
+        // Should not panic
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        // No corrections should be stored since the read failed
+        let all = store.list_all().unwrap();
+        assert!(
+            all.is_empty(),
+            "Expected no corrections when reader returns error"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_monitor_with_dictionary_applied_text() {
+        let (store, _dir) = setup_store();
+
+        // Text already has dictionary corrections applied (e.g., "SwiftUI" not "swift ui").
+        // The mock reader returns the exact same text -- no user edits.
+        let text = "SwiftUI is a framework for building user interfaces";
+        let span = make_span(text);
+        let reader: Arc<dyn FieldTextReader> = Arc::new(MockFieldReader::new(text, true));
+
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        let all = store.list_all().unwrap();
+        assert!(
+            all.is_empty(),
+            "Expected no corrections when dictionary-applied text is unchanged"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_monitor_handles_none_text_gracefully() {
+        let (store, _dir) = setup_store();
+
+        let span = make_span("some text");
+        let reader: Arc<dyn FieldTextReader> =
+            Arc::new(MockFieldReader::new_with_none(true));
+
+        // Should not panic; reader returns None for text
+        monitor_for_corrections(reader, span, store.clone(), 1).await;
+
+        let all = store.list_all().unwrap();
+        assert!(
+            all.is_empty(),
+            "Expected no corrections when reader returns None"
+        );
+    }
+}

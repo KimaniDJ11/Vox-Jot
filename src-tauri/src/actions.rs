@@ -58,8 +58,8 @@ struct TranscribeAction {
 
 /// Field name for structured output JSON schema
 const TRANSCRIPTION_FIELD: &str = "transcription";
-const HISTORY_FIELD_OBSERVATION_WINDOW_SECS: u64 = 15;
-const HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS: u64 = 1000;
+const HISTORY_FIELD_OBSERVATION_WINDOW_SECS: u64 = 30;
+const HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS: u64 = 500;
 
 pub(crate) struct PostProcessExecution {
     pub(crate) result: PostProcessResult,

@@ -8,7 +8,7 @@ use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::HistoryManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
-    apply_personal_dictionary, build_correction_bias_prompt, detect_post_process_edits,
+    apply_personal_dictionary, detect_post_process_edits,
     get_merged_dictionary, ActiveAppContext, PostProcessMode, PostProcessPreviewPayload,
     PostProcessResult, PreviewManager,
 };
@@ -465,6 +465,7 @@ Transcript:\n{normalized_text}",
     )
 }
 
+#[cfg(test)]
 fn build_non_apple_tone_instruction(tone_context: Option<&ResolvedToneContext>) -> Option<String> {
     tone_context.map(|tone| {
         format!(
@@ -1085,6 +1086,18 @@ async fn post_process_transcription(
         .cloned()
         .unwrap_or_default();
 
+    // Apply personal dictionary before sending to LLM (for all providers)
+    let dictionary_result =
+        apply_personal_dictionary(transcription, &settings.personal_dictionary);
+    let dict_text = &dictionary_result.text;
+    let dict_hits = dictionary_result.hits;
+    if !dict_hits.is_empty() {
+        debug!(
+            "Applied {} personal dictionary correction(s) before LLM post-processing",
+            dict_hits.len()
+        );
+    }
+
     let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
     let mut base_system_prompt = build_apple_system_prompt(
         settings,
@@ -1103,7 +1116,7 @@ async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = base_system_prompt.clone();
-        let user_content = transcription.to_string();
+        let user_content = dict_text.to_string();
 
         // Define JSON schema for transcription output
         let json_schema = serde_json::json!({
@@ -1145,9 +1158,9 @@ async fn post_process_transcription(
                                 result: build_post_process_result(
                                     settings,
                                     transcription,
-                                    transcription.to_string(),
+                                    dict_text.clone(),
                                     result.clone(),
-                                    Vec::new(),
+                                    dict_hits.clone(),
                                     None,
                                     None,
                                 ),
@@ -1160,9 +1173,9 @@ async fn post_process_transcription(
                                 result: build_post_process_result(
                                     settings,
                                     transcription,
-                                    transcription.to_string(),
+                                    dict_text.clone(),
                                     fallback.clone(),
-                                    Vec::new(),
+                                    dict_hits.clone(),
                                     None,
                                     None,
                                 ),
@@ -1180,9 +1193,9 @@ async fn post_process_transcription(
                             result: build_post_process_result(
                                 settings,
                                 transcription,
-                                transcription.to_string(),
+                                dict_text.clone(),
                                 fallback.clone(),
-                                Vec::new(),
+                                dict_hits.clone(),
                                 None,
                                 None,
                             ),
@@ -1206,7 +1219,7 @@ async fn post_process_transcription(
     }
 
     // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = format!("{}\n\nTranscript:\n{}", base_system_prompt, transcription);
+    let processed_prompt = format!("{}\n\nTranscript:\n{}", base_system_prompt, dict_text);
     debug!("Processed prompt length: {} chars", processed_prompt.len());
 
     match crate::llm_client::send_chat_completion(&provider, api_key, &model, processed_prompt)
@@ -1223,9 +1236,9 @@ async fn post_process_transcription(
                 result: build_post_process_result(
                     settings,
                     transcription,
-                    transcription.to_string(),
+                    dict_text.clone(),
                     content.clone(),
-                    Vec::new(),
+                    dict_hits,
                     None,
                     None,
                 ),
@@ -1620,6 +1633,7 @@ impl ShortcutAction for TranscribeAction {
                             let mut final_text = transcription.clone();
                             let mut post_processed_text: Option<String> = None;
                             let mut post_process_prompt: Option<String> = None;
+                            let mut dictionary_hits_for_history: Vec<String> = Vec::new();
 
                             // First, check if Chinese variant conversion is needed
                             if let Some(converted_text) =
@@ -1670,6 +1684,24 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
+                            // Always apply personal dictionary (including learned corrections)
+                            // before post-processing so corrections are applied even if
+                            // post-processing fails or returns None.
+                            if !effective_settings.personal_dictionary.is_empty() {
+                                let dict_result = apply_personal_dictionary(
+                                    &final_text,
+                                    &effective_settings.personal_dictionary,
+                                );
+                                if dict_result.text != final_text {
+                                    debug!(
+                                        "Applied personal dictionary: {} hit(s)",
+                                        dict_result.hits.len()
+                                    );
+                                    dictionary_hits_for_history = dict_result.hits;
+                                    final_text = dict_result.text;
+                                }
+                            }
+
                             let processed = if should_post_process {
                                 post_process_transcription(
                                     &effective_settings,
@@ -1703,6 +1735,10 @@ impl ShortcutAction for TranscribeAction {
 
                                 post_processed_text = Some(final_text.clone());
                                 post_process_prompt = processed.prompt_used;
+                                if !processed.result.dictionary_hits.is_empty() {
+                                    dictionary_hits_for_history =
+                                        processed.result.dictionary_hits;
+                                }
                             } else if final_text != transcription {
                                 // Chinese conversion was applied but no LLM post-processing
                                 post_processed_text = Some(final_text.clone());
@@ -1752,6 +1788,7 @@ impl ShortcutAction for TranscribeAction {
                             let transcription_for_history = transcription.clone();
                             let post_processed_for_history = post_processed_text.clone();
                             let post_process_prompt_for_history = post_process_prompt.clone();
+                            let dict_hits_for_history = dictionary_hits_for_history.clone();
                             tauri::async_runtime::spawn(async move {
                                 if let Err(e) = hm_clone
                                     .save_transcription(
@@ -1759,6 +1796,7 @@ impl ShortcutAction for TranscribeAction {
                                         transcription_for_history,
                                         post_processed_for_history,
                                         post_process_prompt_for_history,
+                                        dict_hits_for_history,
                                     )
                                     .await
                                 {

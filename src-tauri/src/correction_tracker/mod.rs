@@ -16,7 +16,7 @@ pub mod field_monitor_windows;
 pub mod span;
 pub mod store;
 
-use log::{debug, info, warn};
+use log::{debug, info};
 use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
 use store::CorrectionStore;
@@ -77,11 +77,13 @@ impl InsertedSpanTracker {
     }
 
     /// Get a clone of the currently active span, if any.
+    #[allow(dead_code)]
     pub fn get_active_span(&self) -> Option<InsertedSpan> {
         self.active_span.lock().unwrap().clone()
     }
 
     /// Clear the active span.
+    #[allow(dead_code)]
     pub fn clear_active_span(&self) {
         let mut active = self.active_span.lock().unwrap();
         if active.is_some() {

@@ -86,7 +86,7 @@ export const CorrectionSettings: React.FC = () => {
               className="w-24 accent-[var(--accent)]"
             />
             <span className="text-sm text-[var(--muted)] w-10 text-right">
-              {monitoringDelay}s
+              {`${monitoringDelay}s`}
             </span>
           </div>
         </div>

@@ -1,0 +1,263 @@
+{
+  "metadata": {
+    "corpus_id": "voxjot-dictation-v1",
+    "description": "Realistic dictation test cases for post-processing evaluation. Each case simulates raw STT output that benefits from LLM cleanup.",
+    "generated_at": "2026-03-18",
+    "categories": {
+      "correction-cue": "Speaker corrects themselves mid-utterance using cues like 'actually', 'scratch that', 'I mean', 'no wait'",
+      "filler-removal": "Speech contains filler words (um, uh, like, you know) that should be cleaned",
+      "formatting": "Speaker uses verbal formatting cues (new paragraph, period, comma) or needs punctuation/capitalization fixes",
+      "list-structure": "Dictated content that should be formatted as a structured list",
+      "passthrough": "Clean, short utterances that should pass through with minimal or no changes"
+    },
+    "case_count": 35,
+    "notes": "Some test cases intentionally probe routing edge cases. For example, cc-10 has a correction cue ('no sorry') that the heuristic router may miss because it lacks comma separators -- the LLM should still handle it correctly."
+  },
+  "cases": [
+    {
+      "id": "cc-01",
+      "raw_stt": "I need to go to the store no wait I mean the pharmacy",
+      "expected_output": "I need to go to the pharmacy.",
+      "category": "correction-cue",
+      "notes": "Simple correction with 'no wait I mean' cue"
+    },
+    {
+      "id": "cc-02",
+      "raw_stt": "Send the report to Greg actually send it to Sarah instead",
+      "expected_output": "Send the report to Sarah.",
+      "category": "correction-cue",
+      "notes": "'actually' as correction cue, replacing recipient"
+    },
+    {
+      "id": "cc-03",
+      "raw_stt": "The meeting is at three o'clock scratch that four o'clock",
+      "expected_output": "The meeting is at four o'clock.",
+      "category": "correction-cue",
+      "notes": "'scratch that' is an explicit retraction cue"
+    },
+    {
+      "id": "cc-04",
+      "raw_stt": "We should use Python no actually let's go with Rust",
+      "expected_output": "We should use Rust.",
+      "category": "correction-cue",
+      "notes": "'no actually' correction cue, technical term preserved"
+    },
+    {
+      "id": "cc-05",
+      "raw_stt": "Please schedule it for Tuesday sorry I meant Wednesday afternoon",
+      "expected_output": "Please schedule it for Wednesday afternoon.",
+      "category": "correction-cue",
+      "notes": "'sorry I meant' correction cue"
+    },
+    {
+      "id": "cc-06",
+      "raw_stt": "The budget is fifty thousand dollars wait no seventy five thousand dollars",
+      "expected_output": "The budget is $75,000.",
+      "category": "correction-cue",
+      "notes": "'wait no' correction cue, number formatting expected"
+    },
+    {
+      "id": "cc-07",
+      "raw_stt": "Hi Greg let's connect soon are you available Friday at three o'clock no I'm at four o'clock",
+      "expected_output": "Hi Greg, let's connect soon. Are you available Friday at four o'clock?",
+      "category": "correction-cue",
+      "notes": "Correction within a longer multi-sentence dictation, matches prompt example"
+    },
+    {
+      "id": "cc-08",
+      "raw_stt": "I'll take the blue one rather the green one",
+      "expected_output": "I'll take the green one.",
+      "category": "correction-cue",
+      "notes": "'rather' as correction cue"
+    },
+    {
+      "id": "cc-09",
+      "raw_stt": "Let's meet at the coffee shop on Main Street correction the one on Oak Avenue",
+      "expected_output": "Let's meet at the coffee shop on Oak Avenue.",
+      "category": "correction-cue",
+      "notes": "'correction' as explicit retraction keyword"
+    },
+    {
+      "id": "cc-10",
+      "raw_stt": "The API endpoint is slash users slash profile no sorry slash users slash account",
+      "expected_output": "The API endpoint is /users/account.",
+      "category": "correction-cue",
+      "notes": "Technical path correction with 'no sorry' cue"
+    },
+    {
+      "id": "cc-11",
+      "raw_stt": "We need three servers actually make that five servers for the deployment",
+      "expected_output": "We need five servers for the deployment.",
+      "category": "correction-cue",
+      "notes": "'actually make that' correction mid-sentence"
+    },
+    {
+      "id": "fr-01",
+      "raw_stt": "So um I was thinking uh we could maybe like start the project tomorrow",
+      "expected_output": "I was thinking we could start the project tomorrow.",
+      "category": "filler-removal",
+      "notes": "Multiple filler words: so, um, uh, like"
+    },
+    {
+      "id": "fr-02",
+      "raw_stt": "You know what I mean like the thing is uh we need more time",
+      "expected_output": "The thing is, we need more time.",
+      "category": "filler-removal",
+      "notes": "Discourse markers and fillers at beginning"
+    },
+    {
+      "id": "fr-03",
+      "raw_stt": "I I think we should um probably go ahead and and submit the the proposal",
+      "expected_output": "I think we should go ahead and submit the proposal.",
+      "category": "filler-removal",
+      "notes": "Stuttered repetitions and 'um'"
+    },
+    {
+      "id": "fr-04",
+      "raw_stt": "Well basically what happened was uh the server went down and um we lost like two hours of data",
+      "expected_output": "The server went down and we lost two hours of data.",
+      "category": "filler-removal",
+      "notes": "Discourse markers 'well basically', fillers, hedge word 'like'"
+    },
+    {
+      "id": "fr-05",
+      "raw_stt": "So yeah uh the the main issue is that um our latency numbers are you know kind of high right now",
+      "expected_output": "The main issue is that our latency numbers are high right now.",
+      "category": "filler-removal",
+      "notes": "Technical content buried under fillers and hedging"
+    },
+    {
+      "id": "fr-06",
+      "raw_stt": "I mean it's it's basically just a a wrapper around the the existing API you know",
+      "expected_output": "It's basically a wrapper around the existing API.",
+      "category": "filler-removal",
+      "notes": "Stuttered words and trailing 'you know'"
+    },
+    {
+      "id": "fmt-01",
+      "raw_stt": "new paragraph the second point is about scalability",
+      "expected_output": "\nThe second point is about scalability.",
+      "category": "formatting",
+      "notes": "Explicit 'new paragraph' verbal formatting cue"
+    },
+    {
+      "id": "fmt-02",
+      "raw_stt": "dear sir comma I am writing to inform you that your application has been approved period",
+      "expected_output": "Dear Sir, I am writing to inform you that your application has been approved.",
+      "category": "formatting",
+      "notes": "Spoken punctuation words: comma, period"
+    },
+    {
+      "id": "fmt-03",
+      "raw_stt": "the total cost is four hundred and fifty two dollars and seventy three cents",
+      "expected_output": "The total cost is $452.73.",
+      "category": "formatting",
+      "notes": "Spoken number to formatted currency"
+    },
+    {
+      "id": "fmt-04",
+      "raw_stt": "my email is john dot smith at example dot com",
+      "expected_output": "My email is john.smith@example.com.",
+      "category": "formatting",
+      "notes": "Spoken email address formatting"
+    },
+    {
+      "id": "fmt-05",
+      "raw_stt": "the function returns true if x is greater than zero and false otherwise new line also make sure to handle the null case",
+      "expected_output": "The function returns true if x is greater than zero and false otherwise.\nAlso make sure to handle the null case.",
+      "category": "formatting",
+      "notes": "'new line' verbal cue and technical content preservation"
+    },
+    {
+      "id": "fmt-06",
+      "raw_stt": "subject colon quarterly review new line hi team comma new paragraph please find attached the Q3 report period",
+      "expected_output": "Subject: Quarterly Review\nHi team,\n\nPlease find attached the Q3 report.",
+      "category": "formatting",
+      "notes": "Email dictation with multiple verbal formatting cues"
+    },
+    {
+      "id": "ls-01",
+      "raw_stt": "I want to pick up a few things from the store bread potato chips ice cream and orange juice",
+      "expected_output": "I want to pick up a few things from the store:\n* Bread\n* Potato chips\n* Ice cream\n* Orange juice",
+      "category": "list-structure",
+      "notes": "Grocery list with intro sentence, matches system prompt example pattern"
+    },
+    {
+      "id": "ls-02",
+      "raw_stt": "Required verifications request government issued ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification",
+      "expected_output": "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification",
+      "category": "list-structure",
+      "notes": "Complex verification list with correction cue inside list, matches system prompt example"
+    },
+    {
+      "id": "ls-03",
+      "raw_stt": "For the camping trip we need to bring first a tent second sleeping bags third a flashlight fourth a first aid kit and fifth some firewood",
+      "expected_output": "For the camping trip we need to bring:\n1. A tent\n2. Sleeping bags\n3. A flashlight\n4. A first aid kit\n5. Firewood",
+      "category": "list-structure",
+      "notes": "Ordered list with explicit sequence words (first, second, etc.)"
+    },
+    {
+      "id": "ls-04",
+      "raw_stt": "My grocery list eggs milk bread cheese butter yogurt apples and bananas",
+      "expected_output": "My grocery list:\n* Eggs\n* Milk\n* Bread\n* Cheese\n* Butter\n* Yogurt\n* Apples\n* Bananas",
+      "category": "list-structure",
+      "notes": "Explicit 'grocery list' intro with short noun items"
+    },
+    {
+      "id": "ls-05",
+      "raw_stt": "The steps to deploy are one clone the repo two run bun install three set up the env file four run bun run build and five deploy to production",
+      "expected_output": "The steps to deploy are:\n1. Clone the repo\n2. Run bun install\n3. Set up the env file\n4. Run bun run build\n5. Deploy to production",
+      "category": "list-structure",
+      "notes": "Technical deployment steps with numbered sequence cues"
+    },
+    {
+      "id": "ls-06",
+      "raw_stt": "Packing list for the trip passport phone charger headphones laptop adapter toothbrush and a change of clothes",
+      "expected_output": "Packing list for the trip:\n* Passport\n* Phone charger\n* Headphones\n* Laptop adapter\n* Toothbrush\n* A change of clothes",
+      "category": "list-structure",
+      "notes": "Packing list with short noun phrases"
+    },
+    {
+      "id": "pt-01",
+      "raw_stt": "Hello world",
+      "expected_output": "Hello world",
+      "category": "passthrough",
+      "notes": "Ultra-short, no processing needed"
+    },
+    {
+      "id": "pt-02",
+      "raw_stt": "The weather is nice today",
+      "expected_output": "The weather is nice today.",
+      "category": "passthrough",
+      "notes": "Simple sentence, only needs period"
+    },
+    {
+      "id": "pt-03",
+      "raw_stt": "I'll be there at five",
+      "expected_output": "I'll be there at five.",
+      "category": "passthrough",
+      "notes": "Short conversational sentence"
+    },
+    {
+      "id": "pt-04",
+      "raw_stt": "Thanks for letting me know",
+      "expected_output": "Thanks for letting me know.",
+      "category": "passthrough",
+      "notes": "Short polite response, should not be altered beyond punctuation"
+    },
+    {
+      "id": "pt-05",
+      "raw_stt": "See you tomorrow",
+      "expected_output": "See you tomorrow.",
+      "category": "passthrough",
+      "notes": "Very short, minimal changes expected"
+    },
+    {
+      "id": "pt-06",
+      "raw_stt": "Can you send me the file",
+      "expected_output": "Can you send me the file?",
+      "category": "passthrough",
+      "notes": "Question without question mark in STT output, should add it"
+    }
+  ]
+}

@@ -18,6 +18,10 @@
     "test:playwright:ui": "playwright test --ui",
     "regression:download": "bun scripts/download-regression-audio.ts",
     "regression:run": "bun scripts/run-audio-regression.ts",
+    "regression:compare": "bun scripts/run-regression-compare.ts",
+    "regression:diff": "bun scripts/compare-regression-reports.ts",
+    "eval:post-process": "bun scripts/eval-post-process.ts",
+    "eval:post-process:dry": "bun scripts/eval-post-process.ts --dry-run",
     "check:translations": "bun scripts/check-translations.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"
   },

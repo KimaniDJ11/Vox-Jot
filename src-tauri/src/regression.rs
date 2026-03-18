@@ -1,6 +1,7 @@
 use crate::actions::{
-    extract_spoken_submit_command, maybe_convert_chinese_variant, post_process_transcription,
-    should_block_paste_candidate, should_fallback_to_plain_text_candidate,
+    analyze_post_process_route, extract_spoken_submit_command, maybe_convert_chinese_variant,
+    post_process_transcription, should_block_paste_candidate,
+    should_fallback_to_plain_text_candidate,
 };
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
 use crate::cli::CliArgs;
@@ -113,6 +114,7 @@ struct RegressionEntryReport {
     final_exact_match: bool,
     raw_normalized_match: bool,
     final_normalized_match: bool,
+    post_process_route: Option<String>,
     paste_gate_fallback_applied: bool,
     error: Option<String>,
 }
@@ -410,6 +412,7 @@ fn run_entry(
             final_exact_match: false,
             raw_normalized_match: false,
             final_normalized_match: false,
+            post_process_route: None,
             paste_gate_fallback_applied: false,
             error: Some(err.to_string()),
         },
@@ -436,6 +439,8 @@ fn run_entry_inner(
     let dictionary_result = apply_personal_dictionary(&final_text, &settings.personal_dictionary);
     let safe_plain_text_fallback = dictionary_result.text.clone();
     final_text = dictionary_result.text;
+
+    let route_debug = analyze_post_process_route(&final_text);
 
     let post_processed: Option<PostProcessResult> =
         if settings.post_process_enabled && !skip_post_process && !final_text.trim().is_empty() {
@@ -483,6 +488,7 @@ fn run_entry_inner(
             == normalize_compare_text(&entry.expected_text),
         final_normalized_match: normalize_compare_text(&final_paste_text)
             == normalize_compare_text(&entry.expected_text),
+        post_process_route: Some(route_debug.route),
         paste_gate_fallback_applied,
         error: None,
     })

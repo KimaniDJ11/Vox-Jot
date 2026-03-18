@@ -48,3 +48,6 @@ test-data/audio-regression/extracted/
 test-data/audio-regression/clips/
 test-data/audio-regression/reports/
 test-data/audio-regression/manifest.json
+
+# Post-process eval output
+output/eval/

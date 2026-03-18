@@ -1,102 +1,156 @@
-.recording-overlay {
-  min-height: 36px;
-  width: 240px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  padding: 6px;
-  background: #000000cc;
-  border-radius: 18px;
-  opacity: 0;
-  transition: opacity 300ms ease-out;
-  box-sizing: border-box;
+/* ═══════════════════════════════════════════════════════════════
+   Vox Jot — Recording Overlay
+   Floating pill: 220 × 44 px native window
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --ov-bg: rgba(10, 14, 26, 0.88);
+  --ov-border: rgba(255, 255, 255, 0.08);
+  --ov-text: #f3f4f6;
+  --ov-muted: rgba(243, 244, 246, 0.55);
+  --ov-accent: #5b7dc9;
+  --ov-bar: #7b9ce8;
+  --ov-cancel-hover: rgba(196, 64, 64, 0.25);
+  --ov-cancel: #e87b7b;
+  --ov-radius: 14px;
 }
 
+/* ---------- overlay container -------------------------------- */
+.recording-overlay {
+  box-sizing: border-box;
+  width: 220px;
+  height: 44px;
+  display: grid;
+  grid-template-columns: 34px 1fr 30px;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--ov-bg);
+  border: 1px solid var(--ov-border);
+  border-radius: var(--ov-radius);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+  transition:
+    opacity 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.recording-overlay.fade-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ---------- left: icon area ---------------------------------- */
 .overlay-left {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(91, 125, 201, 0.12);
+  flex-shrink: 0;
 }
 
+.overlay-left.is-recording {
+  animation: icon-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes icon-breathe {
+  0%, 100% { background: rgba(91, 125, 201, 0.12); }
+  50% { background: rgba(91, 125, 201, 0.22); }
+}
+
+/* ---------- middle: content ---------------------------------- */
 .overlay-middle {
   display: flex;
   align-items: center;
-  justify-content: center;
+  min-width: 0;
+  padding: 0 2px;
 }
 
 .recording-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
   gap: 2px;
   width: 100%;
-}
-
-.overlay-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  min-width: 0;
 }
 
 .bars-container {
   display: flex;
-  align-items: end;
-  justify-content: center;
-  gap: 3px;
-  padding-bottom: 0px;
-  height: 24px;
-  overflow: hidden;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+.bar {
+  width: 2.5px;
+  min-height: 2.5px;
+  max-height: 16px;
+  border-radius: 1.5px;
+  background: var(--ov-bar);
+  will-change: height, opacity;
 }
 
 .partial-text {
   width: 100%;
-  max-width: 170px;
-  color: #fff;
-  font-size: 10px;
-  line-height: 1.2;
+  color: var(--ov-muted);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
-  opacity: 0.9;
 }
 
-.bar {
-  width: 6px;
-  background: #ffe5ee;
-  max-height: 20px;
-  border-radius: 2px;
-  transition: height 80ms linear;
-  min-height: 4px;
+/* -- transcribing / processing state -- */
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ov-text);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
-.recording-overlay.fade-in {
-  opacity: 1;
+.status-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ov-accent);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
-.transcribing-text {
-  color: white;
-  font-size: 12px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  animation: transcribing-pulse 1.5s infinite ease-in-out;
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
-@keyframes transcribing-pulse {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
+/* ---------- right: cancel button ----------------------------- */
+.overlay-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cancel-button {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,13 +159,22 @@
     background-color 150ms ease-out,
     transform 100ms ease-out;
   flex-shrink: 0;
+  padding: 0;
 }
 
 .cancel-button:hover {
-  background: #faa2ca33;
-  transform: scale(1.05);
+  background: var(--ov-cancel-hover);
 }
 
 .cancel-button:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+}
+
+/* ---------- reduced motion ----------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

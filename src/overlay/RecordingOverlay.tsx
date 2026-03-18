@@ -1,11 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  MicrophoneIcon,
-  TranscriptionIcon,
-  CancelIcon,
-} from "../components/icons";
 import "./RecordingOverlay.css";
 import { commands } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
@@ -13,83 +8,73 @@ import { getLanguageDirection } from "@/lib/utils/rtl";
 
 type OverlayState = "recording" | "transcribing" | "processing";
 
+const BAR_COUNT = 12;
+const SMOOTHING = 0.65;
+
 const RecordingOverlay: React.FC = () => {
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
-  const [levels, setLevels] = useState<number[]>(Array(16).fill(0));
+  const [levels, setLevels] = useState<number[]>(Array(BAR_COUNT).fill(0));
   const [partialText, setPartialText] = useState("");
-  const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
+  const smoothedRef = useRef<number[]>(Array(BAR_COUNT).fill(0));
   const direction = getLanguageDirection(i18n.language);
 
   useEffect(() => {
-    const setupEventListeners = async () => {
-      // Listen for show-overlay event from Rust
-      const unlistenShow = await listen("show-overlay", async (event) => {
-        // Sync language from settings each time overlay is shown
+    const setup = async () => {
+      const unShow = await listen("show-overlay", async (event) => {
         await syncLanguageFromSettings();
-        const overlayState = event.payload as OverlayState;
-        setState(overlayState);
+        setState(event.payload as OverlayState);
         setIsVisible(true);
       });
 
-      // Listen for hide-overlay event from Rust
-      const unlistenHide = await listen("hide-overlay", () => {
+      const unHide = await listen("hide-overlay", () => {
         setIsVisible(false);
         setPartialText("");
       });
 
-      // Listen for mic-level updates
-      const unlistenLevel = await listen<number[]>("mic-level", (event) => {
-        const newLevels = event.payload as number[];
-
-        // Apply smoothing to reduce jitter
-        const smoothed = smoothedLevelsRef.current.map((prev, i) => {
-          const target = newLevels[i] || 0;
-          return prev * 0.7 + target * 0.3; // Smooth transition
+      const unLevel = await listen<number[]>("mic-level", (event) => {
+        const raw = event.payload;
+        const smoothed = smoothedRef.current.map((prev, i) => {
+          const target = raw[i] ?? 0;
+          return prev * SMOOTHING + target * (1 - SMOOTHING);
         });
-
-        smoothedLevelsRef.current = smoothed;
-        setLevels(smoothed.slice(0, 9));
+        smoothedRef.current = smoothed;
+        setLevels(smoothed.slice(0, BAR_COUNT));
       });
 
-      const unlistenPartial = await listen<string>(
-        "partial-transcription",
-        (event) => {
-          const text = (event.payload as string) || "";
-          setPartialText(text);
-        },
-      );
+      const unPartial = await listen<string>("partial-transcription", (event) => {
+        setPartialText((event.payload as string) || "");
+      });
 
-      // Cleanup function
       return () => {
-        unlistenShow();
-        unlistenHide();
-        unlistenLevel();
-        unlistenPartial();
+        unShow();
+        unHide();
+        unLevel();
+        unPartial();
       };
     };
 
-    setupEventListeners();
+    setup();
   }, []);
-
-  const getIcon = () => {
-    if (state === "recording") {
-      return <MicrophoneIcon />;
-    } else {
-      return <TranscriptionIcon />;
-    }
-  };
 
   return (
     <div
       dir={direction}
       className={`recording-overlay ${isVisible ? "fade-in" : ""}`}
     >
-      <div className="overlay-left">{getIcon()}</div>
+      {/* Left: state icon */}
+      <div className={`overlay-left ${state === "recording" ? "is-recording" : ""}`}>
+        {state === "recording" ? (
+          <MicIcon />
+        ) : (
+          <WaveIcon />
+        )}
+      </div>
 
+      {/* Middle: content */}
       <div className="overlay-middle">
-        {state === "recording" && (
+        {state === "recording" ? (
           <div className="recording-content">
             <div className="bars-container">
               {levels.map((v, i) => (
@@ -97,9 +82,9 @@ const RecordingOverlay: React.FC = () => {
                   key={i}
                   className="bar"
                   style={{
-                    height: `${Math.min(20, 4 + Math.pow(v, 0.7) * 16)}px`,
-                    transition: "height 60ms ease-out, opacity 120ms ease-out",
-                    opacity: Math.max(0.2, v * 1.7),
+                    height: `${Math.min(18, 3 + Math.pow(v, 0.65) * 15)}px`,
+                    opacity: Math.max(0.25, Math.min(1, v * 2)),
+                    transition: "height 70ms ease-out, opacity 100ms ease-out",
                   }}
                 />
               ))}
@@ -110,29 +95,58 @@ const RecordingOverlay: React.FC = () => {
               </div>
             )}
           </div>
-        )}
-        {state === "transcribing" && (
-          <div className="transcribing-text">{t("overlay.transcribing")}</div>
-        )}
-        {state === "processing" && (
-          <div className="transcribing-text">{t("overlay.processing")}</div>
+        ) : (
+          <div className="status-text">
+            <span className="status-dot" />
+            {state === "transcribing"
+              ? t("overlay.transcribing")
+              : t("overlay.processing")}
+          </div>
         )}
       </div>
 
+      {/* Right: cancel */}
       <div className="overlay-right">
         {state === "recording" && (
-          <div
+          <button
             className="cancel-button"
-            onClick={() => {
-              commands.cancelOperation();
-            }}
+            onClick={() => commands.cancelOperation()}
+            aria-label={t("common.cancel")}
           >
-            <CancelIcon />
-          </div>
+            <XIcon />
+          </button>
         )}
       </div>
     </div>
   );
 };
+
+/* ── Inline SVG icons (no external deps in the overlay bundle) ── */
+
+const MicIcon: React.FC = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="7" y="2" width="6" height="10" rx="3" fill="#7b9ce8" />
+    <path
+      d="M4.5 9.5a5.5 5.5 0 0 0 11 0"
+      stroke="#7b9ce8"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <line x1="10" y1="15" x2="10" y2="18" stroke="#7b9ce8" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const WaveIcon: React.FC = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M3 10h2l1.5-3 2 6 2-8 2 10 1.5-5H16" stroke="#7b9ce8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </svg>
+);
+
+const XIcon: React.FC = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="#e87b7b" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
 
 export default RecordingOverlay;

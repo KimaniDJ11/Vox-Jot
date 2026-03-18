@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
@@ -48,6 +48,7 @@ function App() {
   const [previewDraft, setPreviewDraft] = useState("");
   const { settings, updateSetting } = useSettings();
   const direction = getLanguageDirection(i18n.language);
+  const modalRef = useRef<HTMLDivElement>(null);
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
   );
@@ -154,6 +155,38 @@ function App() {
     };
   }, []);
 
+  const handleModalKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      void resolvePreview(false);
+      return;
+    }
+    // Trap focus within modal
+    if (event.key === "Tab" && modalRef.current) {
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }, []);
+
+  // Auto-focus the modal when it appears
+  useEffect(() => {
+    if (pendingPreview && modalRef.current) {
+      const firstFocusable =
+        modalRef.current.querySelector<HTMLElement>("textarea, button");
+      firstFocusable?.focus();
+    }
+  }, [pendingPreview]);
+
   const resolvePreview = async (accepted: boolean) => {
     if (!pendingPreview) {
       return;
@@ -248,9 +281,15 @@ function App() {
     setOnboardingStep("done");
   };
 
-  // Still checking onboarding status
+  // Still checking onboarding status — show branded splash
   if (onboardingStep === null) {
-    return null;
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg)]">
+        <div className="flex flex-col items-center gap-3 animate-[fadeIn_300ms_ease-out]">
+          <div className="h-8 w-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+        </div>
+      </div>
+    );
   }
 
   if (onboardingStep === "onboarding") {
@@ -264,11 +303,11 @@ function App() {
 
   return (
     <div
-      dir="ltr"
+      dir={direction}
       className="shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200"
     >
       <Toaster
-        theme="light"
+        theme="system"
         toastOptions={{
           unstyled: true,
           classNames: {
@@ -304,7 +343,14 @@ function App() {
       </main>
 
       {pendingPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("settings.postProcessing.preview.modal.title")}
+          onKeyDown={handleModalKeyDown}
+          ref={modalRef}
+        >
           <div className="flat-card w-full max-w-3xl rounded-2xl">
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
               <div>

@@ -8,6 +8,7 @@
     "cancel": "Cancel"
   },
   "sidebar": {
+    "settingsLabel": "Settings",
     "general": "General",
     "models": "Models",
     "advanced": "Advanced",
@@ -15,8 +16,7 @@
     "history": "History",
     "debug": "Debug",
     "about": "About",
-    "ollama": "LLM Models",
-    "corrections": "Corrections"
+    "ollama": "LLM Models"
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",
@@ -669,54 +669,13 @@
       "save": "Save transcription",
       "unsave": "Remove from saved",
       "delete": "Delete entry",
-      "deleteError": "Failed to delete entry. Please try again."
-    },
-    "corrections": {
-      "title": "Auto-Corrections",
-      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
-      "tracking": {
-        "label": "Correction Tracking",
-        "description": "Monitor text fields after paste to learn from your corrections."
+      "deleteError": "Failed to delete entry. Please try again.",
+      "deleteConfirm": "Are you sure you want to delete this entry?",
+      "summary": {
+        "recordings": "Showing {{visible}} of {{total}} recordings",
+        "jots": "Showing {{visible}} of {{total}} jots"
       },
-      "autoApply": {
-        "label": "Auto-Apply Corrections",
-        "description": "Automatically apply learned corrections to future transcriptions."
-      },
-      "promptBias": {
-        "label": "Prompt Bias",
-        "description": "Include learned corrections as hints in the post-processing prompt."
-      },
-      "thresholds": {
-        "title": "Thresholds"
-      },
-      "monitoringDelay": {
-        "label": "Monitoring Delay",
-        "description": "How long to watch the text field for corrections after paste (seconds)."
-      },
-      "minFrequency": {
-        "label": "Min Frequency",
-        "description": "Minimum number of times a correction must occur before it is applied."
-      },
-      "minConfidence": {
-        "label": "Min Confidence",
-        "description": "Minimum confidence score required for a correction to be applied."
-      },
-      "dictionary": {
-        "title": "Learned Corrections",
-        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
-        "columns": {
-          "original": "Original",
-          "corrected": "Corrected",
-          "frequency": "Freq",
-          "confidence": "Conf",
-          "source": "Source App",
-          "active": "Active"
-        }
-      }
+      "searchPlaceholder": "Search transcript text"
     },
     "debug": {
       "title": "Debug",
@@ -821,6 +780,10 @@
     }
   },
   "footer": {
+    "modelNotSet": "Model not set",
+    "llmNotSet": "LLM not set",
+    "llmPrefix": "LLM: {{name}}",
+    "noModelsAvailable": "No models available",
     "downloadingModel": "Downloading {{model}}...",
     "checkingUpdates": "Checking for updates...",
     "updateAvailable": "Update available: {{version}}",
@@ -835,6 +798,8 @@
     "checkForUpdates": "Check for updates"
   },
   "common": {
+    "active": "Active",
+    "downloaded": "Downloaded",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -867,6 +832,28 @@
     "recordingFailed": "Failed to start recording: {{error}}",
     "modelLoadFailed": "Failed to load model: {{model}}",
     "modelLoadFailedUnknown": "unknown model"
+  },
+  "ollama": {
+    "title": "Ollama — Local LLM Engine",
+    "description": "Ollama runs tiny AI models locally on your device for post-processing transcripts. No internet required after setup.",
+    "notInstalled": "Ollama is not installed. Click below to install it automatically.",
+    "install": "Install Ollama",
+    "installing": "Installing...",
+    "notRunning": "Ollama is installed but not running.",
+    "start": "Start Ollama",
+    "checking": "Checking...",
+    "ready": "Ollama is installed and ready",
+    "downloadedModels": "Downloaded LLM Models",
+    "noDownloaded": "No local LLM models downloaded yet.",
+    "availableModels": "Available to Download",
+    "localModel": "Local Ollama model",
+    "setActive": "Set Active",
+    "download": "Download",
+    "pulling": "Pulling {{progress}}%",
+    "qualityEst": "quality est",
+    "speedEst": "speed est",
+    "pullError": "Could not start model download. Ensure Ollama is running and try again.",
+    "activateError": "Could not activate this model. Please try again."
   },
   "appLanguage": {
     "title": "Application Language",

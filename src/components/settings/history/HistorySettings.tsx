@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
 import { Button } from "../../ui/Button";
-import { Copy, Star, Check, Trash2, FolderOpen } from "lucide-react";
+import { Copy, Star, Check, Trash2, FolderOpen, X } from "lucide-react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -226,7 +227,7 @@ export const HistorySettings: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl w-full mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div className="space-y-2">
         <div className="px-4 flex items-center justify-between">
           <div>
@@ -300,15 +301,24 @@ export const HistorySettings: React.FC = () => {
                     total: jotsEntries.length,
                   })}
             </p>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t("settings.history.searchPlaceholder", {
-                defaultValue: "Search transcript text",
-              })}
-              className="w-full sm:w-72 rounded-md border border-mid-gray/30 bg-background px-3 py-2 text-sm text-text focus:border-logo-primary focus:outline-none"
-            />
+            <div className="relative w-full sm:w-72">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t("settings.history.searchPlaceholder")}
+                className="w-full rounded-md border border-mid-gray/30 bg-[var(--input)] px-3 py-2 pr-8 text-sm text-text hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] hover:border-[var(--accent)] focus:bg-[color-mix(in_srgb,var(--accent),transparent_85%)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-[var(--accent-glow)] transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text/40 hover:text-text/70 transition-colors cursor-pointer"
+                  aria-label={t("common.close")}
+                >
+                  <X width={14} height={14} />
+                </button>
+              )}
+            </div>
           </div>
           {activeTab === "recordings" ? (
             <div
@@ -365,6 +375,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [showCopied, setShowCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleLoadAudio = useCallback(
     () => getAudioUrl(entry.file_name),
@@ -380,9 +391,11 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const handleDeleteEntry = async () => {
     try {
       await deleteAudio(entry.id);
+      setShowDeleteConfirm(false);
     } catch (error) {
       console.error("Failed to delete entry:", error);
-      alert("Failed to delete entry. Please try again.");
+      toast.error(t("settings.history.deleteError"));
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -395,8 +408,9 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         <div className="flex items-center gap-1">
           <button
             onClick={handleCopyText}
-            className="text-text/50 hover:text-logo-primary  hover:border-logo-primary transition-colors cursor-pointer"
+            className="text-text/50 hover:text-logo-primary hover:border-logo-primary transition-colors cursor-pointer"
             title={t("settings.history.copyToClipboard")}
+            aria-label={t("settings.history.copyToClipboard")}
           >
             {showCopied ? (
               <Check width={16} height={16} />
@@ -416,6 +430,11 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 ? t("settings.history.unsave")
                 : t("settings.history.save")
             }
+            aria-label={
+              entry.saved
+                ? t("settings.history.unsave")
+                : t("settings.history.save")
+            }
           >
             <Star
               width={16}
@@ -423,13 +442,36 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
               fill={entry.saved ? "currentColor" : "none"}
             />
           </button>
-          <button
-            onClick={handleDeleteEntry}
-            className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer"
-            title={t("settings.history.delete")}
-          >
-            <Trash2 width={16} height={16} />
-          </button>
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-1 rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-0.5">
+              <span className="text-xs text-[var(--danger)]">
+                {t("common.delete")}?
+              </span>
+              <button
+                onClick={() => void handleDeleteEntry()}
+                className="text-[var(--danger)] hover:text-red-700 transition-colors cursor-pointer p-0.5"
+                aria-label={t("settings.history.delete")}
+              >
+                <Check width={14} height={14} />
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-text/50 hover:text-text transition-colors cursor-pointer p-0.5"
+                aria-label={t("common.cancel")}
+              >
+                <X width={14} height={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer"
+              title={t("settings.history.delete")}
+              aria-label={t("settings.history.delete")}
+            >
+              <Trash2 width={16} height={16} />
+            </button>
+          )}
         </div>
       </div>
       <p

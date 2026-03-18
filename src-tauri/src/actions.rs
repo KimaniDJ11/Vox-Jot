@@ -68,6 +68,8 @@ pub(crate) struct PostProcessExecution {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PostProcessPass {
+    /// Short, clean utterance — skip LLM entirely and use the plain text.
+    Skip,
     Pass1,
     Pass2,
     Command,
@@ -543,6 +545,102 @@ fn resolve_tone_context(
     })
 }
 
+/// Compute the fraction of words in `a` that also appear in `b` (case-insensitive).
+fn word_overlap_ratio(a: &str, b: &str) -> f64 {
+    let words_a: Vec<String> = a
+        .split_whitespace()
+        .map(|w| w.to_ascii_lowercase())
+        .collect();
+    if words_a.is_empty() {
+        return 0.0;
+    }
+    let words_b: std::collections::HashSet<String> = b
+        .split_whitespace()
+        .map(|w| w.to_ascii_lowercase())
+        .collect();
+
+    let matched = words_a.iter().filter(|w| words_b.contains(*w)).count();
+    matched as f64 / words_a.len() as f64
+}
+
+/// Count the number of word-level substitutions between two texts
+/// (simple positional diff on whitespace-split words, case-insensitive).
+fn count_word_substitutions(a: &str, b: &str) -> usize {
+    let wa: Vec<String> = a
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| c.is_ascii_punctuation()).to_ascii_lowercase())
+        .collect();
+    let wb: Vec<String> = b
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| c.is_ascii_punctuation()).to_ascii_lowercase())
+        .collect();
+
+    if wa.len() != wb.len() {
+        return usize::MAX;
+    }
+
+    wa.iter().zip(wb.iter()).filter(|(a, b)| a != b).count()
+}
+
+/// Post-LLM drift gate: returns `true` when the LLM candidate has drifted too
+/// far from the raw transcription and the plain text should be used instead.
+fn should_fallback_to_plain_text_drift(
+    raw_text: &str,
+    candidate: &str,
+    normalized_text: &str,
+) -> bool {
+    let raw_words = raw_text.split_whitespace().count();
+    let candidate_words = candidate.split_whitespace().count();
+
+    // Gate 1: Very low word-overlap for short texts — likely hallucination.
+    if raw_words <= 12 && raw_words > 0 {
+        let overlap = word_overlap_ratio(raw_text, candidate);
+        if overlap < 0.50 {
+            debug!(
+                "Drift gate: low overlap ({:.2}) for short utterance ({} words)",
+                overlap, raw_words
+            );
+            return true;
+        }
+    }
+
+    // Gate 2: Minor edits on short, well-formed text.
+    let raw_trimmed = raw_text.trim();
+    let has_terminal = raw_trimmed
+        .chars()
+        .last()
+        .map(|c| matches!(c, '.' | '!' | '?'))
+        .unwrap_or(false);
+
+    if has_terminal && raw_words <= 12 {
+        let norm_words = normalized_text.split_whitespace().count();
+
+        // (a) Same word count but 1-2 substitutions
+        let subs = count_word_substitutions(normalized_text, candidate);
+        if subs >= 1 && subs <= 2 && candidate_words == norm_words {
+            debug!(
+                "Drift gate: {} minor word swap(s) on clean short utterance ({} words)",
+                subs, raw_words
+            );
+            return true;
+        }
+
+        // (b) Word count changed on clean text without correction cues
+        if candidate_words != norm_words && !has_spoken_correction_restart(raw_text) {
+            let overlap = word_overlap_ratio(raw_text, candidate);
+            if overlap >= 0.50 {
+                debug!(
+                    "Drift gate: word count changed ({} -> {}) on clean short utterance",
+                    norm_words, candidate_words
+                );
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 fn build_post_process_result(
     settings: &AppSettings,
     raw_text: &str,
@@ -555,6 +653,19 @@ fn build_post_process_result(
     let final_text = strip_invisible_chars(&final_text);
     let final_text =
         maybe_apply_verification_request_fallback(raw_text, &final_text).unwrap_or(final_text);
+
+    // Apply drift gate: fall back to normalized text when LLM drifted too far
+    let final_text =
+        if should_fallback_to_plain_text_drift(raw_text, &final_text, &normalized_text) {
+            debug!(
+                "Drift gate triggered — falling back to plain text: '{}'",
+                normalized_text
+            );
+            normalized_text.clone()
+        } else {
+            final_text
+        };
+
     let edits = detect_post_process_edits(raw_text, &normalized_text, &final_text);
 
     PostProcessResult {
@@ -865,13 +976,16 @@ fn looks_incomplete_utterance(transcription: &str) -> bool {
         return false;
     }
 
-    let has_terminal_boundary = trimmed
-        .chars()
-        .last()
-        .map(|c| matches!(c, '.' | '!' | '?'))
-        .unwrap_or(false);
-    if has_terminal_boundary {
+    let last_char = trimmed.chars().last().unwrap_or(' ');
+
+    // Terminal sentence boundaries indicate a complete utterance
+    if matches!(last_char, '.' | '!' | '?') {
         return false;
+    }
+
+    // A trailing comma is a strong signal of an incomplete clause
+    if last_char == ',' {
+        return true;
     }
 
     let lower = trimmed.to_ascii_lowercase();
@@ -879,6 +993,27 @@ fn looks_incomplete_utterance(transcription: &str) -> bool {
     trailing_fragment_cues
         .iter()
         .any(|cue| lower.ends_with(cue))
+}
+
+/// Check whether ordinal/number words appear in a genuine list-like context.
+/// Single-word cues like "first", "then", "one" are common in everyday speech,
+/// so we require at least two distinct ordinal cues AND >= 8 words.
+fn has_ordinal_list_cues(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    let ordinal_words: &[&str] = &[
+        "first", "second", "third", "next", "then", "one", "two", "three",
+    ];
+
+    let hit_count = ordinal_words
+        .iter()
+        .filter(|cue| {
+            lower
+                .split(|c: char| !c.is_alphanumeric())
+                .any(|w| w == **cue)
+        })
+        .count();
+
+    hit_count >= 2 && lower.split_whitespace().count() >= 8
 }
 
 fn extract_route_features(transcription: &str) -> RouteFeatures {
@@ -893,14 +1028,6 @@ fn extract_route_features(transcription: &str) -> RouteFeatures {
         "required verifications",
         "verification request",
         "verification requests",
-        "first",
-        "second",
-        "third",
-        "next",
-        "then",
-        "one",
-        "two",
-        "three",
     ];
     let paragraph_cues = ["new line", "new paragraph", "skip a line"];
     let transform_cues = [
@@ -911,10 +1038,14 @@ fn extract_route_features(transcription: &str) -> RouteFeatures {
         "summarize this",
     ];
 
+    let has_list_cue = contains_any_ci(trimmed, &list_cues)
+        || has_ordinal_list_cues(trimmed)
+        || has_intro_plus_short_items(trimmed);
+
     RouteFeatures {
         word_count,
         has_correction_cue: has_spoken_correction_restart(trimmed),
-        has_list_cue: contains_any_ci(trimmed, &list_cues) || has_intro_plus_short_items(trimmed),
+        has_list_cue,
         has_paragraph_cue: contains_any_ci(trimmed, &paragraph_cues),
         has_transform_cue: contains_any_ci(trimmed, &transform_cues),
         has_technical_tokens: has_technical_tokens(trimmed),
@@ -956,12 +1087,13 @@ fn choose_post_process_pass(transcription: &str) -> PostProcessPass {
     if features.looks_incomplete {
         return PostProcessPass::Pass1;
     }
-    if features.word_count <= 6
-        && !features.has_correction_cue
-        && !features.has_list_cue
-        && !features.has_paragraph_cue
-    {
-        return PostProcessPass::Pass1;
+
+    // Skip LLM entirely for short, clean utterances with no processing cues.
+    let has_any_cue = features.has_correction_cue
+        || features.has_list_cue
+        || features.has_paragraph_cue;
+    if features.word_count <= 10 && !has_any_cue && !features.has_technical_tokens {
+        return PostProcessPass::Skip;
     }
 
     let score = route_score(&features);
@@ -979,6 +1111,7 @@ pub fn analyze_post_process_route(transcription: &str) -> PostProcessRouteDebug 
     let score = route_score(&features);
 
     let route_label = match route {
+        PostProcessPass::Skip => "skip",
         PostProcessPass::Pass1 => "pass1",
         PostProcessPass::Pass2 => "pass2",
         PostProcessPass::Command => "command",
@@ -1158,6 +1291,15 @@ pub(crate) async fn post_process_transcription(
 ) -> Option<PostProcessExecution> {
     let route_features = extract_route_features(transcription);
     let selected_pass = choose_post_process_pass(transcription);
+
+    if selected_pass == PostProcessPass::Skip {
+        debug!(
+            "Skipping post-process for short clean utterance ({} words)",
+            route_features.word_count
+        );
+        return None;
+    }
+
     let force_conservative_rewrite = should_force_conservative_rewrite(transcription);
     let prefers_stronger_list_rewrite = route_features.has_list_cue
         && (route_features.has_correction_cue || route_features.word_count >= 10);
@@ -1165,6 +1307,7 @@ pub(crate) async fn post_process_transcription(
         0
     } else {
         match selected_pass {
+            PostProcessPass::Skip => unreachable!(),
             PostProcessPass::Pass1 => settings.max_rewrite_strength.min(1),
             PostProcessPass::Pass2 => {
                 if prefers_stronger_list_rewrite {
@@ -2306,11 +2449,12 @@ mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
         build_apple_user_content, build_non_apple_tone_instruction, build_system_prompt,
-        choose_post_process_pass, extract_spoken_submit_command, live_partial_config_for_model,
+        choose_post_process_pass, extract_spoken_submit_command, has_ordinal_list_cues,
+        live_partial_config_for_model, looks_incomplete_utterance,
         maybe_apply_verification_request_fallback, parse_transcription_field_from_json,
         preview_app_context_from_override, resolve_tone_context, sanitize_plain_model_output,
         should_block_paste_candidate, should_fallback_to_plain_text_candidate,
-        should_force_conservative_rewrite, PostProcessPass,
+        should_fallback_to_plain_text_drift, should_force_conservative_rewrite, PostProcessPass,
     };
     use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
     use crate::settings::{get_default_settings, AutoSubmitKey};
@@ -2630,10 +2774,10 @@ mod tests {
     }
 
     #[test]
-    fn choose_pass_prefers_pass1_for_short_plain_phrase() {
+    fn choose_pass_skips_short_plain_phrase() {
         assert_eq!(
             choose_post_process_pass("sounds good"),
-            PostProcessPass::Pass1
+            PostProcessPass::Skip
         );
     }
 
@@ -2717,6 +2861,118 @@ mod tests {
         assert_eq!(result.route, "pass2");
         assert!(result.has_list_cue);
         assert!(!result.has_transform_cue);
+    }
+
+    // --- Regression tests for the 4 worsened entries ---
+
+    #[test]
+    fn trailing_comma_detected_as_incomplete() {
+        assert!(looks_incomplete_utterance("After the very first,"));
+    }
+
+    #[test]
+    fn incomplete_trailing_comma_routes_to_pass1() {
+        assert_eq!(
+            choose_post_process_pass("After the very first,"),
+            PostProcessPass::Pass1
+        );
+    }
+
+    #[test]
+    fn drift_gate_catches_hallucination_on_incomplete_clause() {
+        assert!(should_fallback_to_plain_text_drift(
+            "After the very first,",
+            "I meant previous landlord reference",
+            "After the very first,",
+        ));
+    }
+
+    #[test]
+    fn single_then_in_prose_is_not_list_cue() {
+        assert!(!has_ordinal_list_cues("What, then, my lord?"));
+    }
+
+    #[test]
+    fn short_prose_with_then_routes_to_skip() {
+        assert_eq!(
+            choose_post_process_pass("What, then, my lord?"),
+            PostProcessPass::Skip
+        );
+    }
+
+    #[test]
+    fn drift_gate_catches_semantic_rewrite() {
+        assert!(should_fallback_to_plain_text_drift(
+            "What, then, my lord?",
+            "What shall I do, my lord?",
+            "What, then, my lord?",
+        ));
+    }
+
+    #[test]
+    fn single_then_in_sentence_routes_to_skip() {
+        assert_eq!(
+            choose_post_process_pass("Then you don't know what you're talking about."),
+            PostProcessPass::Skip
+        );
+    }
+
+    #[test]
+    fn single_one_in_sentence_routes_to_skip() {
+        assert_eq!(
+            choose_post_process_pass("I have one great privilege."),
+            PostProcessPass::Skip
+        );
+    }
+
+    #[test]
+    fn drift_gate_catches_single_word_swap() {
+        assert!(should_fallback_to_plain_text_drift(
+            "I have one great privilege.",
+            "I have the great privilege.",
+            "I have one great privilege.",
+        ));
+    }
+
+    #[test]
+    fn multiple_ordinals_in_long_text_triggers_list_cue() {
+        assert!(has_ordinal_list_cues(
+            "my top goals this week are first finish the report second send the presentation"
+        ));
+    }
+
+    #[test]
+    fn single_ordinal_does_not_trigger_list_cue() {
+        assert!(!has_ordinal_list_cues("I have one great privilege."));
+        assert!(!has_ordinal_list_cues("After the very first,"));
+        assert!(!has_ordinal_list_cues(
+            "Then you don't know what you're talking about."
+        ));
+    }
+
+    #[test]
+    fn drift_gate_allows_legitimate_correction_cue() {
+        assert!(!should_fallback_to_plain_text_drift(
+            "Send the report to marketing actually send it to sales instead.",
+            "Send the report to sales instead.",
+            "Send the report to marketing actually send it to sales instead.",
+        ));
+    }
+
+    #[test]
+    fn drift_gate_allows_identical_text() {
+        assert!(!should_fallback_to_plain_text_drift(
+            "Hello world.",
+            "Hello world.",
+            "Hello world.",
+        ));
+    }
+
+    #[test]
+    fn analyze_route_skip_label_shown() {
+        let result = analyze_post_process_route("I have one great privilege.");
+        assert_eq!(result.route, "skip");
+        assert!(!result.has_list_cue);
     }
 }
 

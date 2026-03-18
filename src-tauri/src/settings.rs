@@ -795,7 +795,7 @@ fn default_typing_tool() -> TypingTool {
 }
 
 fn default_correction_tracking_enabled() -> bool {
-    false
+    true
 }
 
 fn default_correction_monitoring_delay_secs() -> u32 {
@@ -807,7 +807,7 @@ fn default_auto_apply_corrections() -> bool {
 }
 
 fn default_correction_prompt_bias_enabled() -> bool {
-    false
+    true
 }
 
 fn default_correction_min_frequency() -> u32 {

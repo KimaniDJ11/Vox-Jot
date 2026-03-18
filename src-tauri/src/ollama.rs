@@ -341,7 +341,16 @@ pub async fn get_ollama_status() -> OllamaStatus {
 }
 
 fn is_ollama_installed() -> bool {
-    // Check common install locations
+    find_ollama_binary().is_some()
+}
+
+/// Find the full path to the Ollama binary.
+///
+/// Bundled macOS `.app` processes have a minimal PATH that excludes
+/// `/usr/local/bin` and `/opt/homebrew/bin`, so we cannot rely on a bare
+/// `ollama` lookup.  This function checks well-known install locations first,
+/// then falls back to `which` for edge cases.
+fn find_ollama_binary() -> Option<String> {
     let paths = [
         "/usr/local/bin/ollama",
         "/usr/bin/ollama",
@@ -349,15 +358,18 @@ fn is_ollama_installed() -> bool {
     ];
     for path in &paths {
         if std::path::Path::new(path).exists() {
-            return true;
+            return Some(path.to_string());
         }
     }
-    // Fallback: check PATH
+    // Fallback: check PATH (works in dev, unlikely in bundled .app)
     std::process::Command::new("which")
         .arg("ollama")
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Install Ollama using the official install script (macOS/Linux)
@@ -409,11 +421,13 @@ pub async fn install_ollama_impl(app: &AppHandle) -> Result<(), String> {
     app.emit("ollama-install-progress", "Starting Ollama service...")
         .ok();
 
-    // Start Ollama serve in background
-    tokio::process::Command::new("ollama")
+    // Start Ollama serve in background (resolve full path after install)
+    let binary = find_ollama_binary()
+        .unwrap_or_else(|| "ollama".to_string());
+    tokio::process::Command::new(&binary)
         .arg("serve")
         .spawn()
-        .map_err(|e| format!("Failed to start Ollama service: {}", e))?;
+        .map_err(|e| format!("Failed to start Ollama service ({}): {}", binary, e))?;
 
     // Give it a moment to start
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -568,13 +582,13 @@ pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
 #[tauri::command]
 #[specta::specta]
 pub async fn start_ollama_serve() -> Result<(), String> {
-    if !is_ollama_installed() {
-        return Err("Ollama is not installed".to_string());
-    }
-    tokio::process::Command::new("ollama")
+    let binary = find_ollama_binary()
+        .ok_or_else(|| "Ollama is not installed".to_string())?;
+    info!("Starting Ollama serve via: {}", binary);
+    tokio::process::Command::new(&binary)
         .arg("serve")
         .spawn()
-        .map_err(|e| format!("Failed to start Ollama: {}", e))?;
+        .map_err(|e| format!("Failed to start Ollama ({}): {}", binary, e))?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     Ok(())
 }

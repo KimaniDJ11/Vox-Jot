@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
@@ -110,7 +111,7 @@ export const CorrectionDictionaryView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flat-card overflow-hidden">
       <div className="flex items-center justify-between px-5">
         <span className="text-sm text-[var(--muted)]">
           {corrections.length === 0
@@ -143,7 +144,7 @@ export const CorrectionDictionaryView: React.FC = () => {
       </div>
 
       {corrections.length > 0 && (
-        <div className="flat-card overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wider text-[var(--muted)]">
@@ -209,10 +210,12 @@ export const CorrectionDictionaryView: React.FC = () => {
                   <td className="px-4 py-2.5">
                     <button
                       type="button"
-                      className="text-red-500 hover:text-red-700 text-xs"
+                      className="text-red-500 hover:text-red-700"
                       onClick={() => handleDelete(c.id)}
+                      aria-label={t("common.delete")}
+                      title={t("common.delete")}
                     >
-                      {t("common.delete")}
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </td>
                 </tr>

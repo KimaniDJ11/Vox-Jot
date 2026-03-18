@@ -231,6 +231,53 @@
     }
   },
   "settings": {
+    "corrections": {
+      "title": "Auto-Corrections",
+      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
+      "tracking": {
+        "label": "Correction Tracking",
+        "description": "Monitor text fields after paste to learn from your corrections."
+      },
+      "autoApply": {
+        "label": "Auto-Apply Corrections",
+        "description": "Automatically apply learned corrections to future transcriptions."
+      },
+      "promptBias": {
+        "label": "Prompt Bias",
+        "description": "Include learned corrections as hints in the post-processing prompt."
+      },
+      "thresholds": {
+        "title": "When auto-corrections kick in"
+      },
+      "monitoringDelay": {
+        "label": "Monitoring window",
+        "description": "How long to watch the text field for edits after paste (seconds)."
+      },
+      "minFrequency": {
+        "label": "Apply after this many corrections",
+        "description": "Minimum number of times you must make the same correction before it is auto-applied."
+      },
+      "minConfidence": {
+        "label": "Confidence threshold",
+        "description": "Minimum confidence score required for a learned correction to be auto-applied."
+      },
+      "dictionary": {
+        "title": "Learned Corrections",
+        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
+        "count": "{{count}} learned correction(s)",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "columns": {
+          "original": "Original",
+          "corrected": "Corrected",
+          "frequency": "Times corrected",
+          "confidence": "Confidence",
+          "source": "Source app",
+          "active": "Active"
+        }
+      }
+    },
     "modelSettings": {
       "title": "{{model}} Settings",
       "noSettingsNeeded": "This model works automatically with no configuration needed."
@@ -493,6 +540,11 @@
           "label": "Fallback to normalized text on failure",
           "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
         }
+      },
+      "localPrivacy": {
+        "label": "Local Privacy Mode",
+        "description": "Force all post-processing to run on-device only. Cloud providers will be disabled while this is on.",
+        "cloudDisabled": "Cloud post-processing providers are disabled while Local Privacy Mode is enabled."
       },
       "appAware": {
         "title": "App-Aware Tone",

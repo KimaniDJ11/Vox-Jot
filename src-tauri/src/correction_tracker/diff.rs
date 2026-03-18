@@ -248,4 +248,67 @@ mod tests {
             Some("com.apple.TextEdit")
         );
     }
+
+    // ── Pipeline integration tests ──────────────────────────────────────
+
+    #[test]
+    fn test_dictionary_word_survives_no_false_correction() {
+        // Dictionary already replaced "cheyene" → "Cheyenne" before paste.
+        // Field observation reads back the same text — no correction should appear.
+        let pasted = "Cheyenne is great";
+        let observed = "Cheyenne is great";
+        let corrections = extract_corrections(pasted, observed, None);
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections when field matches pasted text, got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_dictionary_word_user_overrides() {
+        // Dictionary replaced "swift ui" → "SwiftUI" before paste.
+        // User changed "SwiftUI" back to "Swift UI".
+        let pasted = "SwiftUI works";
+        let observed = "Swift UI works";
+        let corrections = extract_corrections(pasted, observed, None);
+        assert_eq!(corrections.len(), 1);
+        assert_eq!(corrections[0].original, "SwiftUI");
+        assert_eq!(corrections[0].corrected, "Swift UI");
+    }
+
+    #[test]
+    fn test_dictionary_and_user_edit_combined() {
+        // Dictionary applied "api" → "API" (already in pasted text).
+        // User also fixed typo "teh" → "the".
+        let pasted = "teh API is ready";
+        let observed = "the API is ready";
+        let corrections = extract_corrections(pasted, observed, None);
+        assert_eq!(corrections.len(), 1);
+        assert_eq!(corrections[0].original, "teh");
+        assert_eq!(corrections[0].corrected, "the");
+    }
+
+    #[test]
+    fn test_no_correction_when_field_unchanged() {
+        let text = "The quick brown fox jumps over the lazy dog";
+        let corrections = extract_corrections(text, text, None);
+        assert!(corrections.is_empty());
+    }
+
+    #[test]
+    fn test_user_adds_text_around_dictionary_word() {
+        // Dictionary word "SwiftUI" stays intact. User appended " is awesome" after it.
+        // The diff should not produce a correction for "SwiftUI".
+        let pasted = "I love SwiftUI";
+        let observed = "I love SwiftUI so much";
+        let corrections = extract_corrections(pasted, observed, None);
+        // No correction should reference SwiftUI since it was not changed
+        for c in &corrections {
+            assert_ne!(
+                c.original, "SwiftUI",
+                "SwiftUI should not appear as the original of a correction"
+            );
+        }
+    }
 }

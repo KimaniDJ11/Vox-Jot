@@ -472,4 +472,212 @@ mod tests {
         // Medium
         assert_eq!(compute_priority(25, 0.8), 80);
     }
+
+    // ── Round-trip pipeline tests ────────────────────────────────────────
+
+    use crate::correction_tracker::diff::extract_corrections;
+    use crate::post_processing::{
+        apply_personal_dictionary, build_correction_bias_prompt, get_merged_dictionary,
+        DictionaryEntry,
+    };
+
+    fn make_pair(original: &str, corrected: &str) -> CorrectionPair {
+        CorrectionPair {
+            original: original.to_string(),
+            corrected: corrected.to_string(),
+            confidence: 0.9,
+            source_app: None,
+            first_seen: 1000,
+            last_seen: 1000,
+        }
+    }
+
+    /// Add a correction to the store `n` times to reach the desired frequency.
+    fn add_n_times(store: &CorrectionStore, pair: &CorrectionPair, n: usize) {
+        for _ in 0..n {
+            store.add_correction(pair).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_active_corrections_as_dictionary_entries() {
+        let (store, _dir) = setup_store();
+        let pair = make_pair("teh", "the");
+
+        // Add twice to meet min_frequency=2
+        add_n_times(&store, &pair, 2);
+
+        let entries = store.get_active_corrections(2, 0.5).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        let entry = &entries[0];
+        assert_eq!(entry.spoken, "teh");
+        assert_eq!(entry.written, "the");
+        assert!(!entry.case_sensitive);
+        assert!(!entry.exact_only);
+        // Priority should be computed from frequency=2, confidence=0.9
+        let expected_priority = compute_priority(2, 0.9);
+        assert_eq!(entry.priority, expected_priority);
+    }
+
+    #[test]
+    fn test_corrections_apply_to_future_transcriptions() {
+        let (store, _dir) = setup_store();
+        let pair = make_pair("teh", "the");
+
+        // Add twice to reach freq >= 2
+        add_n_times(&store, &pair, 2);
+
+        let entries = store.get_active_corrections(2, 0.5).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        let result = apply_personal_dictionary("teh world is great", &entries);
+        assert_eq!(result.text, "the world is great");
+    }
+
+    #[test]
+    fn test_inactive_corrections_dont_apply() {
+        let (store, _dir) = setup_store();
+        let pair = make_pair("teh", "the");
+
+        add_n_times(&store, &pair, 3);
+
+        // Deactivate the correction
+        let all = store.list_all().unwrap();
+        assert_eq!(all.len(), 1);
+        store.set_active(all[0].id, false).unwrap();
+
+        // Active corrections should be empty
+        let entries = store.get_active_corrections(1, 0.0).unwrap();
+        assert!(entries.is_empty());
+
+        // apply_personal_dictionary with empty entries should not change text
+        let result = apply_personal_dictionary("teh world", &entries);
+        assert_eq!(result.text, "teh world");
+    }
+
+    #[test]
+    fn test_high_frequency_corrections_get_higher_priority() {
+        let (store, _dir) = setup_store();
+        let pair = make_pair("recieve", "receive");
+
+        // Add twice — low frequency
+        add_n_times(&store, &pair, 2);
+        let entries_low = store.get_active_corrections(1, 0.0).unwrap();
+        let priority_low = entries_low[0].priority;
+
+        // Add many more times — high frequency
+        add_n_times(&store, &pair, 20);
+        let entries_high = store.get_active_corrections(1, 0.0).unwrap();
+        let priority_high = entries_high[0].priority;
+
+        assert!(
+            priority_high > priority_low,
+            "Higher frequency should yield higher priority: {} > {}",
+            priority_high,
+            priority_low
+        );
+    }
+
+    #[test]
+    fn test_corrections_merge_with_manual_dictionary() {
+        let (store, _dir) = setup_store();
+
+        // Auto correction: "teh" → "the"
+        let pair = make_pair("teh", "the");
+        add_n_times(&store, &pair, 3);
+
+        // Auto correction: "recieve" → "receive"
+        let pair2 = make_pair("recieve", "receive");
+        add_n_times(&store, &pair2, 3);
+
+        let auto_entries = store.get_active_corrections(1, 0.0).unwrap();
+
+        // Manual dictionary has a conflicting entry for "teh" with different target
+        let manual_entries = vec![DictionaryEntry {
+            spoken: "teh".to_string(),
+            written: "THE".to_string(),
+            priority: 255,
+            case_sensitive: false,
+            exact_only: false,
+        }];
+
+        let merged = get_merged_dictionary(&manual_entries, &auto_entries);
+
+        // Manual "teh" → "THE" should be present, auto "teh" → "the" should be skipped
+        let teh_entries: Vec<_> = merged
+            .iter()
+            .filter(|e| e.spoken.to_lowercase() == "teh")
+            .collect();
+        assert_eq!(teh_entries.len(), 1);
+        assert_eq!(teh_entries[0].written, "THE");
+
+        // "recieve" → "receive" should still be present (no conflict)
+        let recieve_entries: Vec<_> = merged
+            .iter()
+            .filter(|e| e.spoken == "recieve")
+            .collect();
+        assert_eq!(recieve_entries.len(), 1);
+        assert_eq!(recieve_entries[0].written, "receive");
+
+        // Apply to text — manual entry wins for "teh"
+        let result = apply_personal_dictionary("teh recieve", &merged);
+        assert_eq!(result.text, "THE receive");
+    }
+
+    #[test]
+    fn test_correction_bias_prompt_generation() {
+        let (store, _dir) = setup_store();
+        let pair1 = make_pair("teh", "the");
+        let pair2 = make_pair("recieve", "receive");
+        add_n_times(&store, &pair1, 2);
+        add_n_times(&store, &pair2, 2);
+
+        let entries = store.get_active_corrections(2, 0.5).unwrap();
+        assert!(!entries.is_empty());
+
+        let prompt = build_correction_bias_prompt(&entries);
+        assert!(prompt.is_some());
+
+        let prompt_text = prompt.unwrap();
+        assert!(prompt_text.contains("Known corrections"));
+        assert!(prompt_text.contains("\"teh\""));
+        assert!(prompt_text.contains("\"the\""));
+        assert!(prompt_text.contains("\"recieve\""));
+        assert!(prompt_text.contains("\"receive\""));
+        // Verify arrow formatting
+        assert!(prompt_text.contains("→"));
+    }
+
+    #[test]
+    fn test_full_round_trip_store_to_dictionary_to_text() {
+        let (store, _dir) = setup_store();
+
+        // Step 1: Store corrections (simulating learning from user edits)
+        let pair = make_pair("teh", "the");
+        add_n_times(&store, &pair, 3);
+
+        let pair2 = make_pair("recieve", "receive");
+        add_n_times(&store, &pair2, 3);
+
+        // Step 2: Export as DictionaryEntry
+        let entries = store.get_active_corrections(2, 0.5).unwrap();
+        assert_eq!(entries.len(), 2);
+
+        // Step 3: Apply to new transcription text
+        let result = apply_personal_dictionary("teh recieve was good", &entries);
+        assert_eq!(result.text, "the receive was good");
+
+        // Step 4: Simulate field observation — text is unchanged (user accepted corrections)
+        let pasted = &result.text;
+        let observed = "the receive was good";
+        let new_corrections = extract_corrections(pasted, observed, None);
+
+        // No new corrections should be extracted since text is unchanged
+        assert!(
+            new_corrections.is_empty(),
+            "Expected no new corrections when field text matches pasted text, got: {:?}",
+            new_corrections
+        );
+    }
 }

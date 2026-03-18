@@ -39,7 +39,7 @@ export const DebugSettings: React.FC = () => {
   const analyzeRoute = async () => {
     const text = routeInput.trim();
     if (!text) {
-      setRouteError("Enter sample dictation text to analyze.");
+      setRouteError(t("settings.debug.routeDebugger.enterText"));
       setRouteResult(null);
       return;
     }
@@ -54,7 +54,7 @@ export const DebugSettings: React.FC = () => {
       setRouteResult(result);
     } catch (error) {
       setRouteError(
-        error instanceof Error ? error.message : "Failed to analyze route",
+        error instanceof Error ? error.message : t("settings.debug.routeDebugger.analysisFailed"),
       );
       setRouteResult(null);
     } finally {
@@ -85,11 +85,10 @@ export const DebugSettings: React.FC = () => {
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Post-process Route Debugger">
+      <SettingsGroup title={t("settings.debug.routeDebugger.title")}>
         <div className="space-y-3 px-4 py-3">
           <p className="text-sm text-text/70">
-            Paste sample dictation text to see how Vox Jot routes it to pass1,
-            pass2, or command.
+            {t("settings.debug.routeDebugger.description")}
           </p>
           <textarea
             data-testid="route-debugger-input"
@@ -97,7 +96,7 @@ export const DebugSettings: React.FC = () => {
             onChange={(event) => setRouteInput(event.target.value)}
             rows={4}
             className="w-full rounded-md border border-mid-gray/30 bg-background px-3 py-2 text-sm text-text focus:border-logo-primary focus:outline-none"
-            placeholder="Example: my top goals this week are first finish the report second send the presentation"
+            placeholder={t("settings.debug.routeDebugger.placeholder")}
           />
           <div className="flex items-center gap-2">
             <Button
@@ -107,17 +106,12 @@ export const DebugSettings: React.FC = () => {
               disabled={routeLoading}
               data-testid="route-debugger-analyze"
             >
-              {routeLoading ? "Analyzing..." : "Analyze Route"}
+              {routeLoading ? t("settings.debug.routeDebugger.analyzing") : t("settings.debug.routeDebugger.analyzeRoute")}
             </Button>
             {routeResult && (
-              <span
-                className="text-sm text-text/70"
-                data-testid="route-debugger-result"
-              >
-                Route:{" "}
-                <strong className="text-logo-primary">
-                  {routeResult.route}
-                </strong>
+              <span className="text-sm text-text/70" data-testid="route-debugger-result">
+                {t("settings.debug.routeDebugger.routeLabel")}{" "}
+                <strong className="text-logo-primary">{routeResult.route}</strong>
               </span>
             )}
           </div>
@@ -129,48 +123,31 @@ export const DebugSettings: React.FC = () => {
             >
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">Words</p>
-                  <p className="text-sm font-semibold text-text">
-                    {routeResult.word_count}
-                  </p>
+                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.words")}</p>
+                  <p className="text-sm font-semibold text-text">{routeResult.word_count}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">Score</p>
-                  <p className="text-sm font-semibold text-text">
-                    {routeResult.score}
-                  </p>
+                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.score")}</p>
+                  <p className="text-sm font-semibold text-text">{routeResult.score}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">Route</p>
-                  <p className="text-sm font-semibold text-logo-primary">
-                    {routeResult.route}
-                  </p>
+                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.route")}</p>
+                  <p className="text-sm font-semibold text-logo-primary">{routeResult.route}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">
-                    Incomplete
-                  </p>
+                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.incomplete")}</p>
                   <p className="text-sm font-semibold text-text">
-                    {routeResult.looks_incomplete ? "yes" : "no"}
+                    {routeResult.looks_incomplete ? t("common.yes") : t("common.no")}
                   </p>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                <p>
-                  has_correction_cue: {String(routeResult.has_correction_cue)}
-                </p>
-                <p>has_list_cue: {String(routeResult.has_list_cue)}</p>
-                <p>
-                  has_paragraph_cue: {String(routeResult.has_paragraph_cue)}
-                </p>
-                <p>
-                  has_transform_cue: {String(routeResult.has_transform_cue)}
-                </p>
-                <p>
-                  has_technical_tokens:{" "}
-                  {String(routeResult.has_technical_tokens)}
-                </p>
-                <p>looks_incomplete: {String(routeResult.looks_incomplete)}</p>
+                <p>{t("settings.debug.routeDebugger.hasCorrectionCue")} {String(routeResult.has_correction_cue)}</p>
+                <p>{t("settings.debug.routeDebugger.hasListCue")} {String(routeResult.has_list_cue)}</p>
+                <p>{t("settings.debug.routeDebugger.hasParagraphCue")} {String(routeResult.has_paragraph_cue)}</p>
+                <p>{t("settings.debug.routeDebugger.hasTransformCue")} {String(routeResult.has_transform_cue)}</p>
+                <p>{t("settings.debug.routeDebugger.hasTechnicalTokens")} {String(routeResult.has_technical_tokens)}</p>
+                <p>{t("settings.debug.routeDebugger.looksIncomplete")} {String(routeResult.looks_incomplete)}</p>
               </div>
             </div>
           )}

@@ -483,6 +483,18 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       >
         {displayText}
       </p>
+      {entry.dictionary_hits.length > 0 && (
+        <div className="rounded-md border border-green-600/25 bg-green-50/50 dark:bg-green-950/20 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-green-700 dark:text-green-400 pb-1">
+            {t("settings.history.correctionsApplied", {
+              defaultValue: "Corrections applied",
+            })}
+          </p>
+          <p className="text-xs text-text/80 select-text cursor-text">
+            {entry.dictionary_hits.join(", ")}
+          </p>
+        </div>
+      )}
       {displayMode === "jots" && entry.post_process_prompt && (
         <div className="rounded-md border border-logo-primary/25 bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_95%)] px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-logo-primary/90 pb-1">

@@ -811,7 +811,7 @@ fn default_correction_prompt_bias_enabled() -> bool {
 }
 
 fn default_correction_min_frequency() -> u32 {
-    2
+    1
 }
 
 fn default_correction_min_confidence() -> f64 {

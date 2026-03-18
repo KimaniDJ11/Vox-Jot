@@ -362,6 +362,7 @@ pub fn get_merged_dictionary(
 ///
 /// This generates a concise list of known corrections that can be appended
 /// to the system prompt to bias the LLM toward correct spellings.
+#[allow(dead_code)]
 pub fn build_correction_bias_prompt(corrections: &[DictionaryEntry]) -> Option<String> {
     if corrections.is_empty() {
         return None;

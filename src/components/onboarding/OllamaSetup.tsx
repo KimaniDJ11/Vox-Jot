@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useOllamaStore } from "../../stores/ollamaStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 
@@ -8,6 +9,7 @@ interface OllamaSetupProps {
 }
 
 const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
+  const { t } = useTranslation();
   const {
     status,
     isChecking,
@@ -35,7 +37,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
     const ok = await installOllama();
     if (!ok) {
       setError(
-        "Installation failed. Please visit https://ollama.com to install manually.",
+        "Installation failed. Please visit https://ollama.com to install manually."
       );
     } else {
       await loadRecommendedModels();
@@ -78,14 +80,15 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
       <div className="flex flex-col items-center gap-6 p-6 max-w-lg mx-auto text-center">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl font-bold text-text">
-            Enable Local LLM Post-Processing
+            {t("onboarding.ollama.enableTitle")}
           </h2>
           <p className="text-text/70 text-sm">
-            Vox Jot can use tiny AI models running locally on your machine to
-            clean up and improve your transcriptions — no internet or API key
-            required. This requires{" "}
-            <span className="font-semibold">Ollama</span>, a free one-click
-            install.
+            <Trans
+              i18nKey="onboarding.ollama.enableDescription"
+              components={{
+                1: <span className="font-semibold" />,
+              }}
+            />
           </p>
         </div>
 
@@ -106,10 +109,10 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             {isInstalling ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                {installProgress || "Installing..."}
+                {installProgress || t("onboarding.ollama.installing")}
               </span>
             ) : (
-              "Install Ollama (Free, One-Click)"
+              t("onboarding.ollama.installButton")
             )}
           </button>
 
@@ -117,7 +120,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             onClick={onSkip}
             className="text-text/50 text-sm hover:text-text/80 transition-colors"
           >
-            Skip for now (use cloud LLM providers instead)
+            {t("onboarding.ollama.skipCloud")}
           </button>
         </div>
       </div>
@@ -128,10 +131,11 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
   if (status && status.installed && !status.running) {
     return (
       <div className="flex flex-col items-center gap-6 p-6 max-w-lg mx-auto text-center">
-        <h2 className="text-xl font-bold text-text">Ollama Is Installed</h2>
+        <h2 className="text-xl font-bold text-text">
+          {t("onboarding.ollama.installedTitle")}
+        </h2>
         <p className="text-text/70 text-sm">
-          Ollama is installed but not currently running. Click below to start
-          it.
+          {t("onboarding.ollama.installedNotRunning")}
         </p>
 
         {error && (
@@ -146,14 +150,14 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           className="w-full bg-logo-primary text-white font-semibold py-3 px-6 rounded-xl
                      hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
         >
-          Start Ollama
+          {t("onboarding.ollama.startOllama")}
         </button>
 
         <button
           onClick={onSkip}
           className="text-text/50 text-sm hover:text-text/80 transition-colors"
         >
-          Skip
+          {t("onboarding.ollama.skip")}
         </button>
       </div>
     );
@@ -162,10 +166,11 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
   return (
     <div className="flex flex-col gap-4 p-6 max-w-2xl mx-auto w-full">
       <div className="text-center">
-        <h2 className="text-xl font-bold text-text">Choose a Local LLM</h2>
+        <h2 className="text-xl font-bold text-text">
+          {t("onboarding.ollama.chooseTitle")}
+        </h2>
         <p className="text-text/70 text-sm mt-1">
-          Pick a tiny model to run post-processing on your transcriptions. Each
-          model runs 100% locally.
+          {t("onboarding.ollama.chooseDescription")}
         </p>
       </div>
 
@@ -178,7 +183,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
       <div className="flex flex-col gap-3">
         {recommendedModels.map((model) => {
           const isPulled = installedModels.some((m) =>
-            m.startsWith(model.id.split(":")[0]),
+            m.startsWith(model.id.split(":")[0])
           );
           const isPulling = pullingModels.has(model.id);
           const progress = pullProgress[model.id] ?? 0;
@@ -187,7 +192,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             installedModels.some(
               (m) =>
                 m === model.id &&
-                settings?.post_process_provider_id === "ollama",
+                settings?.post_process_provider_id === "ollama"
             );
 
           return (
@@ -202,12 +207,10 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             >
               <div className="flex flex-col">
                 <span className="font-semibold text-text">{model.label}</span>
-                <span className="text-text/60 text-xs">
-                  {model.description}
-                </span>
+                <span className="text-text/60 text-xs">{model.description}</span>
                 {model.id === "llama3.2:1b" && (
                   <span className="text-xs text-logo-primary mt-0.5 font-medium">
-                    Recommended
+                    {t("onboarding.ollama.recommended")}
                   </span>
                 )}
               </div>
@@ -233,7 +236,9 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                           : "bg-logo-primary/20 text-logo-primary hover:bg-logo-primary/30"
                       }`}
                   >
-                    {isSelected ? "Selected" : "Use This"}
+                    {isSelected
+                      ? t("onboarding.ollama.selected")
+                      : t("onboarding.ollama.useThis")}
                   </button>
                 ) : (
                   <button
@@ -242,7 +247,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                                border border-mid-gray/30 text-text/80 hover:bg-logo-primary/10
                                transition-colors"
                   >
-                    Download
+                    {t("onboarding.ollama.download")}
                   </button>
                 )}
               </div>
@@ -256,14 +261,14 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           onClick={onSkip}
           className="text-text/50 text-sm hover:text-text/80 transition-colors"
         >
-          Skip (configure later in Settings)
+          {t("onboarding.ollama.skipSettings")}
         </button>
         {installedModels.length > 0 && (
           <button
             onClick={onComplete}
             className="text-logo-primary text-sm font-medium hover:text-logo-primary/80 transition-colors"
           >
-            Continue →
+            {t("onboarding.ollama.continue")}
           </button>
         )}
       </div>

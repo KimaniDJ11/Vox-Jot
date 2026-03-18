@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::{debug, error, info};
+use log::{debug, info};
 use rusqlite::{params, Connection};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
@@ -113,7 +113,7 @@ impl CorrectionStore {
             )
             .ok();
 
-        if let Some((id, freq, existing_conf, first_seen)) = existing {
+        if let Some((id, freq, existing_conf, _first_seen)) = existing {
             let new_freq = freq + 1;
             // Rolling average for confidence
             let new_conf = (existing_conf * freq as f64 + pair.confidence) / (new_freq as f64);

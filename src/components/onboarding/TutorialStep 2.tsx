@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Mic, CheckCircle2 } from "lucide-react";
+import { useTranslation, Trans } from "react-i18next";
+import { CheckCircle2 } from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
 
 interface TutorialStepProps {
@@ -8,6 +9,7 @@ interface TutorialStepProps {
 }
 
 const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
+  const { t } = useTranslation();
   const [hasSpoken, setHasSpoken] = useState(false);
   const [dummyText, setDummyText] = useState("");
 
@@ -20,6 +22,12 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
     }
   };
 
+  const tabKeys = [
+    "onboarding.tutorial.tabs.message",
+    "onboarding.tutorial.tabs.email",
+    "onboarding.tutorial.tabs.whisperNote",
+  ] as const;
+
   return (
     <OnboardingLayout
       currentStep="learn"
@@ -27,24 +35,28 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
       leftContent={
         <>
           <h1 className="ob-heading">
-            Try <em style={{ fontStyle: "italic" }}>Smart Formatting</em>
+            <Trans i18nKey="onboarding.tutorial.heading">
+              Try <em style={{ fontStyle: "italic" }}>Smart Formatting</em>
+            </Trans>
           </h1>
           <p className="ob-subtext">
-            Hold down on the{" "}
-            <kbd
-              style={{
-                display: "inline-block",
-                padding: "2px 8px",
-                border: "1px solid var(--ob-border)",
-                borderRadius: 4,
-                fontSize: 13,
-                fontFamily: "monospace",
-                background: "#f5f2ec",
-              }}
-            >
-              fn
-            </kbd>{" "}
-            key, speak, and let go to insert spoken text.
+            <Trans i18nKey="onboarding.tutorial.holdInstruction">
+              Hold down on the{" "}
+              <kbd
+                style={{
+                  display: "inline-block",
+                  padding: "2px 8px",
+                  border: "1px solid var(--ob-border)",
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: "monospace",
+                  background: "#f5f2ec",
+                }}
+              >
+                fn
+              </kbd>{" "}
+              key, speak, and let go to insert spoken text.
+            </Trans>
           </p>
           <p
             style={{
@@ -54,15 +66,15 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
               lineHeight: 1.6,
             }}
           >
-            Vox Jot will punctuate and format for you.
+            {t("onboarding.tutorial.autoFormat")}
           </p>
 
           <div className="ob-bottom-actions">
             <button className="ob-btn-primary" onClick={onComplete}>
-              Continue
+              {t("onboarding.tutorial.continue")}
             </button>
             <button className="ob-btn-secondary" onClick={onComplete}>
-              Skip
+              {t("onboarding.tutorial.skip")}
             </button>
           </div>
         </>
@@ -79,9 +91,9 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
               marginBottom: 20,
             }}
           >
-            {["Message", "Email", "Whisper a note"].map((tab, i) => (
+            {tabKeys.map((tabKey, i) => (
               <span
-                key={tab}
+                key={tabKey}
                 style={{
                   fontSize: 14,
                   fontWeight: i === 0 ? 600 : 400,
@@ -94,7 +106,7 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                 }}
               >
                 {i === 0 && "✓ "}
-                {tab}
+                {t(tabKey)}
               </span>
             ))}
           </div>
@@ -113,14 +125,14 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                 marginBottom: 12,
               }}
             >
-              Try saying…
+              {t("onboarding.tutorial.trySaying")}
             </span>
           </div>
 
           <textarea
             value={dummyText}
             onChange={handleTextChange}
-            placeholder="Hold fn and start speaking…"
+            placeholder={t("onboarding.tutorial.placeholder")}
             style={{
               width: "100%",
               minHeight: 100,
@@ -150,7 +162,7 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
               }}
             >
               <CheckCircle2 size={18} />
-              Great job! You're ready to go.
+              {t("onboarding.tutorial.greatJob")}
             </div>
           )}
         </div>

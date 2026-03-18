@@ -8,9 +8,8 @@ use crate::managers::audio::AudioRecordingManager;
 use crate::managers::history::HistoryManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
-    apply_personal_dictionary, detect_post_process_edits,
-    get_merged_dictionary, ActiveAppContext, PostProcessMode, PostProcessPreviewPayload,
-    PostProcessResult, PreviewManager,
+    apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
+    PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
 use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
@@ -23,12 +22,13 @@ use crate::utils::{
 };
 use crate::TranscriptionCoordinator;
 use ferrous_opencc::{config::BuiltinConfig, OpenCC};
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use specta::Type;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use std::time::Instant;
 use tauri::Manager;
 use tauri::{AppHandle, Emitter};
@@ -58,10 +58,12 @@ struct TranscribeAction {
 
 /// Field name for structured output JSON schema
 const TRANSCRIPTION_FIELD: &str = "transcription";
+const HISTORY_FIELD_OBSERVATION_WINDOW_SECS: u64 = 15;
+const HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS: u64 = 1000;
 
-struct PostProcessExecution {
-    result: PostProcessResult,
-    prompt_used: Option<String>,
+pub(crate) struct PostProcessExecution {
+    pub(crate) result: PostProcessResult,
+    pub(crate) prompt_used: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,7 +208,238 @@ fn strip_invisible_chars(s: &str) -> String {
 /// Build a system prompt from the user's prompt template.
 /// Removes `${output}` placeholder since the transcription is sent as the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
-    prompt_template.replace("${output}", "").trim().to_string()
+    let without_output = prompt_template.replace("${output}", "");
+    let lines: Vec<&str> = without_output.lines().collect();
+    let mut end = lines.len();
+
+    while end > 0 {
+        let trimmed = lines[end - 1].trim();
+        if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("transcript:") {
+            end -= 1;
+        } else {
+            break;
+        }
+    }
+
+    lines[..end].join("\n").trim().to_string()
+}
+
+fn unwrap_markdown_code_fence(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+    if !trimmed.starts_with("```") {
+        return None;
+    }
+
+    let closing = trimmed.rfind("```")?;
+    if closing <= 3 {
+        return None;
+    }
+
+    let inner = &trimmed[3..closing];
+    let inner = inner.strip_prefix("json").unwrap_or(inner);
+    let inner = inner.strip_prefix("JSON").unwrap_or(inner);
+    Some(inner.trim().to_string())
+}
+
+fn looks_like_structured_blob(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    trimmed.starts_with('{')
+        || trimmed.starts_with('[')
+        || trimmed.starts_with("```")
+        || trimmed.contains("```")
+        || trimmed.starts_with("<think")
+        || trimmed.starts_with("<analysis")
+        || trimmed.starts_with("---")
+        || trimmed.contains("\n---")
+}
+
+fn looks_like_prompt_artifact(text: &str) -> bool {
+    let lower = text.trim().to_ascii_lowercase();
+    lower.contains("additional system instruction")
+        || lower.contains("strict output now applied")
+        || lower.contains("transcript output")
+        || lower.contains("no input processed for output")
+        || lower.contains("dictate or append exact content")
+        || lower.contains("as spoken, no changes")
+        || lower.contains("no punctuation added")
+        || (lower.contains("no changes") && text.contains('('))
+        || (text.lines().count() > 5
+            && (text.contains("**") || text.contains("---") || text.contains("```")))
+}
+
+fn strip_wrapping_quotes(text: &str) -> String {
+    let trimmed = text.trim();
+    let pairs = [('\"', '\"'), ('\'', '\''), ('“', '”')];
+
+    for (left, right) in pairs {
+        if trimmed.starts_with(left) && trimmed.ends_with(right) && trimmed.len() >= 2 {
+            let inner = trimmed[left.len_utf8()..trimmed.len() - right.len_utf8()].trim();
+            if !inner.is_empty() && !inner.contains('\n') {
+                return inner.to_string();
+            }
+        }
+    }
+
+    trimmed.to_string()
+}
+
+fn strip_simple_markdown_wrappers(text: &str) -> String {
+    let trimmed = text.trim();
+    for marker in ["**", "__", "*", "_"] {
+        if trimmed.starts_with(marker)
+            && trimmed.ends_with(marker)
+            && trimmed.len() > marker.len() * 2
+        {
+            let inner = trimmed[marker.len()..trimmed.len() - marker.len()].trim();
+            if !inner.is_empty() && !inner.contains('\n') {
+                return inner.to_string();
+            }
+        }
+    }
+
+    trimmed.to_string()
+}
+
+fn compare_tokens(text: &str) -> Vec<String> {
+    let mut normalized = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if ch.is_alphanumeric() || ch == '\'' {
+            normalized.push(ch.to_ascii_lowercase());
+        } else {
+            normalized.push(' ');
+        }
+    }
+
+    normalized
+        .split_whitespace()
+        .map(|token| token.to_string())
+        .collect()
+}
+
+pub(crate) fn should_fallback_to_plain_text_candidate(candidate: &str, fallback: &str) -> bool {
+    let candidate_tokens = compare_tokens(candidate);
+    let fallback_tokens = compare_tokens(fallback);
+
+    if candidate_tokens.is_empty() || fallback_tokens.is_empty() {
+        return false;
+    }
+
+    let shared = candidate_tokens
+        .iter()
+        .filter(|token| fallback_tokens.contains(token))
+        .count();
+    let overlap = shared as f32 / fallback_tokens.len() as f32;
+
+    let suspicious_expansion = fallback_tokens.len() <= 4
+        && candidate_tokens.len() >= fallback_tokens.len() + 3
+        && overlap < 0.9;
+    let suspicious_truncation = fallback_tokens.len() >= 4
+        && candidate_tokens.len() + 2 <= fallback_tokens.len()
+        && overlap < 0.9;
+    let suspicious_two_word_collapse =
+        fallback_tokens.len() == 2 && candidate_tokens.len() == 1 && overlap < 0.99;
+
+    suspicious_expansion || suspicious_truncation || suspicious_two_word_collapse
+}
+
+fn strip_common_output_label(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+    let lines: Vec<&str> = trimmed.lines().collect();
+    if lines.len() < 2 {
+        return None;
+    }
+
+    let first = lines[0].trim().to_ascii_lowercase();
+    let labeled_prefixes = [
+        "here is the cleaned transcript",
+        "here's the cleaned transcript",
+        "cleaned transcript",
+        "corrected transcript",
+        "final transcript",
+        "final text",
+        "rewritten text",
+        "transcription",
+        "output",
+    ];
+
+    if labeled_prefixes
+        .iter()
+        .any(|prefix| first == *prefix || first == format!("{prefix}:"))
+    {
+        let rest = lines[1..].join("\n").trim().to_string();
+        if !rest.is_empty() {
+            return Some(rest);
+        }
+    }
+
+    None
+}
+
+fn parse_transcription_field_from_json(content: &str) -> Option<String> {
+    let raw = content.trim();
+    let candidate = if raw.starts_with("```") {
+        unwrap_markdown_code_fence(raw)?
+    } else {
+        raw.to_string()
+    };
+
+    let json = serde_json::from_str::<serde_json::Value>(&candidate).ok()?;
+    json.get(TRANSCRIPTION_FIELD)
+        .and_then(|t| t.as_str())
+        .map(|value| strip_invisible_chars(value).trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn sanitize_plain_model_output(content: &str) -> Option<String> {
+    let cleaned = strip_invisible_chars(content).trim().to_string();
+    if cleaned.is_empty() {
+        return None;
+    }
+
+    let candidate = strip_common_output_label(&cleaned).unwrap_or(cleaned);
+    let candidate = strip_wrapping_quotes(&candidate);
+    let candidate = strip_simple_markdown_wrappers(&candidate);
+    let candidate = candidate.trim().to_string();
+    if candidate.is_empty() {
+        return None;
+    }
+
+    if looks_like_meta_refusal(&candidate)
+        || looks_like_structured_blob(&candidate)
+        || looks_like_prompt_artifact(&candidate)
+    {
+        return None;
+    }
+
+    Some(candidate)
+}
+
+pub(crate) fn should_block_paste_candidate(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    if looks_like_structured_blob(trimmed) {
+        return true;
+    }
+
+    if looks_like_prompt_artifact(trimmed) {
+        return true;
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("here is the cleaned transcript")
+        || lower.starts_with("here's the cleaned transcript")
+        || lower.starts_with("cleaned transcript:")
+        || lower.starts_with("corrected transcript:")
+        || lower.starts_with("final transcript:")
+        || lower.starts_with("final text:")
+        || lower.starts_with("rewritten text:")
 }
 
 fn strip_spoken_suffix(input: &str, suffix: &str) -> Option<String> {
@@ -253,7 +486,7 @@ fn looks_like_meta_refusal(text: &str) -> bool {
     refusal_patterns.iter().any(|p| lower.starts_with(p))
 }
 
-fn extract_spoken_submit_command(text: &str) -> (String, Option<AutoSubmitKey>) {
+pub(crate) fn extract_spoken_submit_command(text: &str) -> (String, Option<AutoSubmitKey>) {
     let candidates = [
         ("send with control enter", AutoSubmitKey::CtrlEnter),
         ("send with ctrl enter", AutoSubmitKey::CtrlEnter),
@@ -878,15 +1111,14 @@ fn apple_fallback_result(
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-fn capture_active_app_context(settings: &AppSettings) -> Option<ActiveAppContext> {
-    if !settings.app_aware_tone_enabled {
-        return None;
-    }
-
+fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+    // Always attempt to capture the frontmost app context.
+    // This is needed for correction tracking and field snapshots,
+    // not just app-aware tone post-processing.
     match apple_intelligence::get_frontmost_app_context() {
         Ok(context) => Some(context),
         Err(err) => {
-            warn!("Failed to detect frontmost app for app-aware tone: {}", err);
+            debug!("Could not detect frontmost app: {}", err);
             None
         }
     }
@@ -919,7 +1151,7 @@ fn preview_app_context_from_override(
     })
 }
 
-async fn post_process_transcription(
+pub(crate) async fn post_process_transcription(
     settings: &AppSettings,
     transcription: &str,
     active_app_context: Option<ActiveAppContext>,
@@ -1112,8 +1344,7 @@ async fn post_process_transcription(
         .unwrap_or_default();
 
     // Apply personal dictionary before sending to LLM (for all providers)
-    let dictionary_result =
-        apply_personal_dictionary(transcription, &settings.personal_dictionary);
+    let dictionary_result = apply_personal_dictionary(transcription, &settings.personal_dictionary);
     let dict_text = &dictionary_result.text;
     let dict_hits = dictionary_result.hits;
     if !dict_hits.is_empty() {
@@ -1167,67 +1398,31 @@ async fn post_process_transcription(
         .await
         {
             Ok(Some(content)) => {
-                // Parse the JSON response to extract the transcription field
-                match serde_json::from_str::<serde_json::Value>(&content) {
-                    Ok(json) => {
-                        if let Some(transcription_value) =
-                            json.get(TRANSCRIPTION_FIELD).and_then(|t| t.as_str())
-                        {
-                            let result = strip_invisible_chars(transcription_value);
-                            debug!(
-                                "Structured output post-processing succeeded for provider '{}'. Output length: {} chars",
-                                provider.id,
-                                result.len()
-                            );
-                            return Some(PostProcessExecution {
-                                result: build_post_process_result(
-                                    settings,
-                                    transcription,
-                                    dict_text.clone(),
-                                    result.clone(),
-                                    dict_hits.clone(),
-                                    None,
-                                    None,
-                                ),
-                                prompt_used: Some(system_prompt.clone()),
-                            });
-                        } else {
-                            error!("Structured output response missing 'transcription' field");
-                            let fallback = strip_invisible_chars(&content);
-                            return Some(PostProcessExecution {
-                                result: build_post_process_result(
-                                    settings,
-                                    transcription,
-                                    dict_text.clone(),
-                                    fallback.clone(),
-                                    dict_hits.clone(),
-                                    None,
-                                    None,
-                                ),
-                                prompt_used: Some(system_prompt.clone()),
-                            });
-                        }
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to parse structured output JSON: {}. Returning raw content.",
-                            e
-                        );
-                        let fallback = strip_invisible_chars(&content);
-                        return Some(PostProcessExecution {
-                            result: build_post_process_result(
-                                settings,
-                                transcription,
-                                dict_text.clone(),
-                                fallback.clone(),
-                                dict_hits.clone(),
-                                None,
-                                None,
-                            ),
-                            prompt_used: Some(system_prompt.clone()),
-                        });
-                    }
+                if let Some(result) = parse_transcription_field_from_json(&content) {
+                    debug!(
+                        "Structured output post-processing succeeded for provider '{}'. Output length: {} chars",
+                        provider.id,
+                        result.len()
+                    );
+                    return Some(PostProcessExecution {
+                        result: build_post_process_result(
+                            settings,
+                            transcription,
+                            dict_text.clone(),
+                            result.clone(),
+                            dict_hits.clone(),
+                            None,
+                            None,
+                        ),
+                        prompt_used: Some(system_prompt.clone()),
+                    });
                 }
+
+                warn!(
+                    "Structured output for provider '{}' was malformed or missing the transcription field; retrying in plain-text mode",
+                    provider.id
+                );
+                // Fall through to legacy mode below rather than trusting malformed content.
             }
             Ok(None) => {
                 error!("LLM API response has no content");
@@ -1258,16 +1453,13 @@ async fn post_process_transcription(
     .await
     {
         Ok(Some(content)) => {
-            let content = strip_invisible_chars(&content);
-
-            // If the model returns a meta/refusal-style response, treat it as failure
-            if looks_like_meta_refusal(&content) {
+            let Some(content) = sanitize_plain_model_output(&content) else {
                 warn!(
-                    "LLM post-processing for provider '{}' returned a meta-style response; falling back to non-LLM result",
+                    "LLM post-processing for provider '{}' returned non-transcript output; falling back to non-LLM result",
                     provider.id
                 );
                 return None;
-            }
+            };
 
             debug!(
                 "LLM post-processing succeeded for provider '{}'. Output length: {} chars",
@@ -1365,7 +1557,7 @@ async fn rewrite_selected_text(
         .await
         .ok()
         .flatten()
-        .map(|text| strip_invisible_chars(&text))
+        .and_then(|text| sanitize_plain_model_output(&text))
 }
 
 async fn maybe_preview_post_process_result(
@@ -1433,7 +1625,7 @@ pub(crate) async fn preview_post_process(
         .ok_or_else(|| "Post-processing did not produce a result".to_string())
 }
 
-async fn maybe_convert_chinese_variant(
+pub(crate) async fn maybe_convert_chinese_variant(
     settings: &AppSettings,
     transcription: &str,
 ) -> Option<String> {
@@ -1688,11 +1880,9 @@ impl ShortcutAction for TranscribeAction {
                             // Uses final_text which may already have Chinese conversion applied
                             let should_post_process =
                                 post_process && settings.post_process_enabled && !rewrite_selection;
-                            let active_app_context = if should_post_process {
-                                capture_active_app_context(&settings)
-                            } else {
-                                None
-                            };
+                            // Always capture app context — needed for correction tracking
+                            // and field snapshots, not just post-processing.
+                            let active_app_context = capture_active_app_context(&settings);
                             if should_post_process {
                                 show_processing_overlay(&ah);
                             }
@@ -1744,6 +1934,8 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
+                            let safe_plain_text_fallback = final_text.clone();
+
                             let processed = if should_post_process {
                                 post_process_transcription(
                                     &effective_settings,
@@ -1778,8 +1970,7 @@ impl ShortcutAction for TranscribeAction {
                                 post_processed_text = Some(final_text.clone());
                                 post_process_prompt = processed.prompt_used;
                                 if !processed.result.dictionary_hits.is_empty() {
-                                    dictionary_hits_for_history =
-                                        processed.result.dictionary_hits;
+                                    dictionary_hits_for_history = processed.result.dictionary_hits;
                                 }
                             } else if final_text != transcription {
                                 // Chinese conversion was applied but no LLM post-processing
@@ -1824,6 +2015,37 @@ impl ShortcutAction for TranscribeAction {
                                 *text = cleaned_text;
                             }
 
+                            if let Some(text) = text_to_paste.as_ref() {
+                                let block_candidate = should_block_paste_candidate(text);
+                                let suspicious_drift = should_fallback_to_plain_text_candidate(
+                                    text,
+                                    &safe_plain_text_fallback,
+                                );
+
+                                if block_candidate || suspicious_drift {
+                                    if rewrite_selection {
+                                        warn!(
+                                            "Blocking suspicious rewrite-selection output for binding '{}'; skipping paste",
+                                            binding_id
+                                        );
+                                        text_to_paste = None;
+                                    } else {
+                                        if suspicious_drift {
+                                            warn!(
+                                                "Blocking suspicious rewrite drift for binding '{}'; using plain-text fallback instead",
+                                                binding_id
+                                            );
+                                        } else {
+                                            warn!(
+                                                "Blocking suspicious paste candidate for binding '{}'; using plain-text fallback instead",
+                                                binding_id
+                                            );
+                                        }
+                                        text_to_paste = Some(safe_plain_text_fallback.clone());
+                                    }
+                                }
+                            }
+
                             // Save to history after preview resolution so stored text matches
                             // the final pasted output when preview editing is enabled.
                             let hm_clone = Arc::clone(&hm);
@@ -1831,19 +2053,29 @@ impl ShortcutAction for TranscribeAction {
                             let post_processed_for_history = post_processed_text.clone();
                             let post_process_prompt_for_history = post_process_prompt.clone();
                             let dict_hits_for_history = dictionary_hits_for_history.clone();
-                            let history_entry_id = hm_clone
+                            let pasted_text_for_history = text_to_paste.clone();
+                            let history_entry_id = match hm_clone
                                 .save_transcription(
                                     samples_clone,
                                     transcription_for_history,
                                     post_processed_for_history,
                                     post_process_prompt_for_history,
                                     dict_hits_for_history,
+                                    pasted_text_for_history,
                                 )
                                 .await
-                                .unwrap_or_else(|e| {
+                            {
+                                Ok(id) => {
+                                    info!("Saved transcription to history (id={})", id);
+                                    id
+                                }
+                                Err(e) => {
                                     error!("Failed to save transcription to history: {}", e);
+                                    // Notify the frontend so the user sees the failure
+                                    let _ = ah.emit("history-save-failed", e.to_string());
                                     -1
-                                });
+                                }
+                            };
 
                             if let Some(ref text_to_paste) = text_to_paste {
                                 // Start correction monitoring if enabled
@@ -1887,44 +2119,13 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                 }
 
-                                // Spawn 30-second field snapshot for history
-                                if history_entry_id > 0 {
-                                    let settings_snap = settings.clone();
-                                    let app_snap = ah.clone();
-                                    let active_app_id = active_app_context
-                                        .as_ref()
-                                        .map(|ctx| ctx.bundle_id.clone());
-
-                                    tokio::spawn(async move {
-                                        let delay =
-                                            settings_snap.correction_monitoring_delay_secs as u64;
-
-                                        if let Some(snapshot) =
-                                            crate::correction_tracker::capture_field_snapshot_after(
-                                                active_app_id, delay,
-                                            )
-                                            .await
-                                        {
-                                            let hm = app_snap.state::<std::sync::Arc<
-                                                crate::managers::history::HistoryManager,
-                                            >>();
-                                            if let Err(e) =
-                                                hm.update_field_snapshot(history_entry_id, snapshot)
-                                            {
-                                                log::warn!(
-                                                    "Failed to save field snapshot: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    });
-                                }
-
                                 // Paste the final text (either processed or original)
                                 let text_for_paste = text_to_paste.clone();
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
+                                let active_app_id_for_snapshot =
+                                    active_app_context.as_ref().map(|ctx| ctx.bundle_id.clone());
                                 ah.run_on_main_thread(move || {
                                     let paste_result = if let Some(submit_key) = submit_override {
                                         utils::paste_with_submit_override(
@@ -1937,10 +2138,92 @@ impl ShortcutAction for TranscribeAction {
                                     };
 
                                     match paste_result {
-                                        Ok(()) => debug!(
-                                            "Text pasted successfully in {:?}",
-                                            paste_time.elapsed()
-                                        ),
+                                        Ok(()) => {
+                                            debug!(
+                                                "Text pasted successfully in {:?}",
+                                                paste_time.elapsed()
+                                            );
+
+                                            if history_entry_id > 0 {
+                                                let hm = ah_clone.state::<std::sync::Arc<
+                                                    crate::managers::history::HistoryManager,
+                                                >>();
+                                                if let Err(e) =
+                                                    hm.mark_field_snapshot_pending(history_entry_id)
+                                                {
+                                                    log::warn!(
+                                                        "Failed to mark field snapshot pending: {}",
+                                                        e
+                                                    );
+                                                }
+
+                                                let app_snap = ah_clone.clone();
+                                                let active_app_id =
+                                                    active_app_id_for_snapshot.clone();
+                                                tauri::async_runtime::spawn(async move {
+                                                    let hm = app_snap.state::<std::sync::Arc<
+                                                        crate::managers::history::HistoryManager,
+                                                    >>();
+                                                    match crate::correction_tracker::observe_field_snapshot(
+                                                        active_app_id,
+                                                        HISTORY_FIELD_OBSERVATION_WINDOW_SECS,
+                                                        Duration::from_millis(
+                                                            HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS,
+                                                        ),
+                                                    )
+                                                    .await
+                                                    {
+                                                        crate::correction_tracker::FieldObservationOutcome::Captured {
+                                                            snapshot_text,
+                                                        } => {
+                                                            if let Err(e) = hm.update_field_snapshot(
+                                                                history_entry_id,
+                                                                snapshot_text,
+                                                            ) {
+                                                                log::warn!(
+                                                                    "Failed to save field snapshot: {}",
+                                                                    e
+                                                                );
+                                                            }
+                                                        }
+                                                        crate::correction_tracker::FieldObservationOutcome::SkippedFocusChanged {
+                                                            snapshot_text,
+                                                        } => {
+                                                            if let Err(e) = hm
+                                                                .update_field_snapshot_skipped(
+                                                                    history_entry_id,
+                                                                    snapshot_text,
+                                                                )
+                                                            {
+                                                                log::warn!(
+                                                                    "Failed to save skipped field snapshot: {}",
+                                                                    e
+                                                                );
+                                                            }
+                                                        }
+                                                        crate::correction_tracker::FieldObservationOutcome::Failed {
+                                                            error_message,
+                                                        } => {
+                                                            if let Err(e) = hm
+                                                                .update_field_snapshot_failure(
+                                                                    history_entry_id,
+                                                                    error_message.clone(),
+                                                                )
+                                                            {
+                                                                log::warn!(
+                                                                    "Failed to save field snapshot failure: {}",
+                                                                    e
+                                                                );
+                                                            }
+                                                            let _ = app_snap.emit(
+                                                                "field-snapshot-failed",
+                                                                error_message,
+                                                            );
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        }
                                         Err(e) => error!("Failed to paste transcription: {}", e),
                                     }
                                     // Hide the overlay after transcription is complete
@@ -2022,10 +2305,12 @@ impl ShortcutAction for TestAction {
 mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
-        build_apple_user_content, build_non_apple_tone_instruction, choose_post_process_pass,
-        extract_spoken_submit_command, live_partial_config_for_model,
-        maybe_apply_verification_request_fallback, preview_app_context_from_override,
-        resolve_tone_context, should_force_conservative_rewrite, PostProcessPass,
+        build_apple_user_content, build_non_apple_tone_instruction, build_system_prompt,
+        choose_post_process_pass, extract_spoken_submit_command, live_partial_config_for_model,
+        maybe_apply_verification_request_fallback, parse_transcription_field_from_json,
+        preview_app_context_from_override, resolve_tone_context, sanitize_plain_model_output,
+        should_block_paste_candidate, should_fallback_to_plain_text_candidate,
+        should_force_conservative_rewrite, PostProcessPass,
     };
     use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
     use crate::settings::{get_default_settings, AutoSubmitKey};
@@ -2101,6 +2386,102 @@ mod tests {
             "Please call me tomorrow morning"
         )
         .is_none());
+    }
+
+    #[test]
+    fn build_system_prompt_removes_trailing_transcript_label() {
+        let prompt = "Clean this up.\n\nTranscript:\n${output}";
+        assert_eq!(build_system_prompt(prompt), "Clean this up.");
+    }
+
+    #[test]
+    fn parse_transcription_field_handles_fenced_json() {
+        let content = "```json\n{\"transcription\":\"Hello world\"}\n```";
+        assert_eq!(
+            parse_transcription_field_from_json(content).as_deref(),
+            Some("Hello world")
+        );
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_strips_common_labels() {
+        let content = "Final text:\nHello world";
+        assert_eq!(
+            sanitize_plain_model_output(content).as_deref(),
+            Some("Hello world")
+        );
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_rejects_json_blob() {
+        assert!(sanitize_plain_model_output("{\"transcription\":\"Hello\"}").is_none());
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_strips_wrapping_quotes() {
+        assert_eq!(
+            sanitize_plain_model_output("\"Most wonderful\"").as_deref(),
+            Some("Most wonderful")
+        );
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_strips_simple_markdown_wrappers() {
+        assert_eq!(
+            sanitize_plain_model_output("**I've given my orders, sir.**").as_deref(),
+            Some("I've given my orders, sir.")
+        );
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_rejects_prompt_artifact() {
+        assert!(sanitize_plain_model_output(
+            "\"⚠️ Additional system instruction: Keep context active.\\n\\n---\\n**Transcript Output**\\n```oops```\""
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_rejects_parenthetical_meta_note() {
+        assert!(sanitize_plain_model_output(
+            "Comfortable, dear? (**No punctuation added; as spoken, no changes**)."
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn final_paste_gate_blocks_code_fence_wrappers() {
+        assert!(should_block_paste_candidate(
+            "```json\n{\"transcription\":\"Hello\"}\n```"
+        ));
+    }
+
+    #[test]
+    fn final_paste_gate_blocks_prompt_artifact_wrappers() {
+        assert!(should_block_paste_candidate(
+            "\"⚠️ Additional system instruction: Keep context active.\\n\\n---\\n**Transcript Output**\\n```oops```\""
+        ));
+    }
+
+    #[test]
+    fn final_paste_gate_allows_normal_plain_text() {
+        assert!(!should_block_paste_candidate("Hello world from Vox Jot"));
+    }
+
+    #[test]
+    fn plain_text_fallback_detects_suspicious_expansion() {
+        assert!(should_fallback_to_plain_text_candidate(
+            "Wait, I mean where are we talking about that from?",
+            "Where is that?"
+        ));
+    }
+
+    #[test]
+    fn plain_text_fallback_detects_two_word_collapse() {
+        assert!(should_fallback_to_plain_text_candidate(
+            "comfortable",
+            "Comfortable, dear?"
+        ));
     }
 
     #[test]

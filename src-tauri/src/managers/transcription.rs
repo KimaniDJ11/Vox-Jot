@@ -623,10 +623,16 @@ impl TranscriptionManager {
             result.text
         };
 
+        let filter_language = match settings.selected_language.as_str() {
+            "auto" => settings.app_language.as_str(),
+            "zh-Hans" | "zh-Hant" => "zh",
+            lang => lang,
+        };
+
         // Filter out filler words and hallucinations
         let filtered_result = filter_transcription_output(
             &corrected_result,
-            &settings.app_language,
+            filter_language,
             &settings.custom_filler_words,
         );
 
@@ -647,7 +653,10 @@ impl TranscriptionManager {
         if final_result.is_empty() {
             info!("Transcription result is empty");
         } else {
-            info!("Transcription result: {}", final_result);
+            debug!(
+                "Transcription produced {} chars after cleanup",
+                final_result.len()
+            );
         }
 
         self.maybe_unload_immediately("transcription");

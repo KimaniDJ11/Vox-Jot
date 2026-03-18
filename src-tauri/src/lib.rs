@@ -15,6 +15,7 @@ mod ollama;
 mod overlay;
 pub mod portable;
 mod post_processing;
+mod regression;
 mod settings;
 mod shortcut;
 mod signal_handle;
@@ -277,6 +278,21 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);
+
+    // Auto-start Ollama if it's the configured post-process provider
+    if settings.post_process_enabled
+        && settings.post_process_provider_id == settings::OLLAMA_PROVIDER_ID
+    {
+        tauri::async_runtime::spawn(async {
+            let status = ollama::get_ollama_status().await;
+            if status.installed && !status.running {
+                log::info!("Auto-starting Ollama serve (configured as post-process provider)");
+                if let Err(e) = ollama::start_ollama_serve().await {
+                    log::warn!("Failed to auto-start Ollama: {}", e);
+                }
+            }
+        });
+    }
 }
 
 #[tauri::command]
@@ -302,6 +318,14 @@ fn show_main_window_command(app: AppHandle) -> Result<(), String> {
 pub fn run(cli_args: CliArgs) {
     // Detect portable mode before anything else
     portable::init();
+
+    if cli_args.regression_manifest.is_some() {
+        if let Err(err) = regression::run_cli(&cli_args) {
+            eprintln!("Regression run failed: {err}");
+            std::process::exit(1);
+        }
+        return;
+    }
 
     // Parse console logging directives from RUST_LOG, falling back to info-level logging
     // when the variable is unset

@@ -16,6 +16,8 @@
     "format:backend": "cd src-tauri && cargo fmt",
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
+    "regression:download": "bun scripts/download-regression-audio.ts",
+    "regression:run": "bun scripts/run-audio-regression.ts",
     "check:translations": "bun scripts/check-translations.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"
   },

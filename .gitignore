@@ -41,3 +41,10 @@ blob-report/
 # Nix build output
 result
 output/model-release-assets/
+
+# Local audio regression corpus and reports
+test-data/audio-regression/downloads/
+test-data/audio-regression/extracted/
+test-data/audio-regression/clips/
+test-data/audio-regression/reports/
+test-data/audio-regression/manifest.json

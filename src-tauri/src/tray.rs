@@ -182,8 +182,9 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
 
 fn last_transcript_text(entry: &HistoryEntry) -> &str {
     entry
-        .post_processed_text
+        .pasted_text
         .as_deref()
+        .or(entry.post_processed_text.as_deref())
         .unwrap_or(&entry.transcription_text)
 }
 
@@ -234,8 +235,11 @@ mod tests {
             post_processed_text: post_processed.map(|text| text.to_string()),
             post_process_prompt: None,
             dictionary_hits: Vec::new(),
+            pasted_text: post_processed.map(|text| text.to_string()),
             field_snapshot_text: None,
             field_snapshot_at: None,
+            field_snapshot_status: crate::managers::history::FieldSnapshotStatus::NotRequested,
+            field_snapshot_error: None,
         }
     }
 

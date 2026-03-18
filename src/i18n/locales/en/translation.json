@@ -717,6 +717,14 @@
         "recordings": "Recordings",
         "jots": "Jots"
       },
+      "fieldObservation": {
+        "title": "Field observation",
+        "copyPair": "Copy pair",
+        "copied": "Copied correction pair",
+        "timestamp": "Observed at {{time}}",
+        "failed": "Could not read field text for observation: {{error}}"
+      },
+      "correctionsApplied": "Corrections applied",
       "promptUsed": "Prompt used",
       "copyToClipboard": "Copy transcription to clipboard",
       "save": "Save transcription",
@@ -724,6 +732,9 @@
       "delete": "Delete entry",
       "deleteError": "Failed to delete entry. Please try again.",
       "deleteConfirm": "Are you sure you want to delete this entry?",
+      "loadError": "Failed to load history: {{error}}",
+      "saveError": "Failed to save recording to history: {{error}}",
+      "saveToggleError": "Failed to update saved status: {{error}}",
       "summary": {
         "recordings": "Showing {{visible}} of {{total}} recordings",
         "jots": "Showing {{visible}} of {{total}} jots"

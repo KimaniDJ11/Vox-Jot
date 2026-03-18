@@ -99,3 +99,18 @@ pub async fn update_recording_retention_period(
 
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_field_snapshot(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+    field_snapshot_text: String,
+    field_snapshot_at: i64,
+) -> Result<(), String> {
+    history_manager
+        .update_field_snapshot(id, field_snapshot_text, field_snapshot_at)
+        .await
+        .map_err(|e| e.to_string())
+}

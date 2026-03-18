@@ -19,6 +19,7 @@ pub mod store;
 use log::{debug, info};
 use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use store::CorrectionStore;
 
 /// Manages the currently active inserted span and coordinates correction monitoring.
@@ -93,27 +94,99 @@ impl InsertedSpanTracker {
     }
 }
 
-/// Wait `delay_secs` then do a single read of the focused text field.
-/// Returns the text if readable, or `None` if the field is gone / unreadable.
-/// Intended for the history field-snapshot feature.
-pub async fn capture_field_snapshot_after(
+#[derive(Debug, Clone)]
+pub enum FieldObservationOutcome {
+    Captured { snapshot_text: String },
+    SkippedFocusChanged { snapshot_text: Option<String> },
+    Failed { error_message: String },
+}
+
+/// Observe the focused text field immediately after paste, polling for up to
+/// `window_secs` while the same field remains focused.
+pub async fn observe_field_snapshot(
     app_identifier: Option<String>,
-    delay_secs: u64,
-) -> Option<String> {
-    tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+    window_secs: u64,
+    poll_interval: Duration,
+) -> FieldObservationOutcome {
+    fn failed(error_message: impl Into<String>) -> FieldObservationOutcome {
+        FieldObservationOutcome::Failed {
+            error_message: error_message.into(),
+        }
+    }
 
     let reader = create_platform_reader(app_identifier);
 
-    match tokio::task::spawn_blocking(move || reader.read_focused_field_text()).await {
-        Ok(Ok(maybe_text)) => maybe_text,
+    let initial_text = match tokio::task::spawn_blocking({
+        let reader = reader.clone();
+        move || reader.read_focused_field_text()
+    })
+    .await
+    {
+        Ok(Ok(Some(text))) => text,
+        Ok(Ok(None)) => {
+            return failed(
+                "Focused field text was unreadable or unavailable immediately after paste (check Accessibility permissions / supported app field).",
+            );
+        }
         Ok(Err(e)) => {
-            log::warn!("field snapshot read error: {}", e);
-            None
+            log::warn!("initial field snapshot read error: {}", e);
+            return failed(e.to_string());
         }
-        Err(e) => {
-            log::error!("field snapshot task join error: {}", e);
-            None
+        Err(e) => return failed(format!("Field snapshot task failed: {}", e)),
+    };
+
+    let total_window = Duration::from_secs(window_secs);
+    let mut elapsed = Duration::ZERO;
+    let mut last_observed_text = initial_text;
+
+    while elapsed < total_window {
+        let step = poll_interval.min(total_window - elapsed);
+        tokio::time::sleep(step).await;
+        elapsed += step;
+
+        match tokio::task::spawn_blocking({
+            let reader = reader.clone();
+            move || reader.is_same_field_focused()
+        })
+        .await
+        {
+            Ok(Ok(true)) => {}
+            Ok(Ok(false)) => {
+                return FieldObservationOutcome::SkippedFocusChanged {
+                    snapshot_text: Some(last_observed_text),
+                };
+            }
+            Ok(Err(e)) => {
+                log::warn!("field focus check error: {}", e);
+                return failed(e.to_string());
+            }
+            Err(e) => return failed(format!("Field focus check task failed: {}", e)),
         }
+
+        match tokio::task::spawn_blocking({
+            let reader = reader.clone();
+            move || reader.read_focused_field_text()
+        })
+        .await
+        {
+            Ok(Ok(Some(text))) => {
+                last_observed_text = text;
+            }
+            Ok(Ok(None)) => {
+                return failed(
+                    "Focused field text became unreadable during observation (check Accessibility permissions / supported app field).",
+                );
+            }
+            Ok(Err(e)) => {
+                log::warn!("field snapshot polling read error: {}", e);
+                return failed(e.to_string());
+            }
+            Err(e) => return failed(format!("Field snapshot polling task failed: {}", e)),
+        }
+    }
+
+    FieldObservationOutcome::Captured {
+        snapshot_text: last_observed_text,
     }
 }
 
@@ -123,13 +196,9 @@ fn create_platform_reader(
 ) -> Arc<dyn field_monitor::FieldTextReader> {
     #[cfg(target_os = "macos")]
     {
-        // Try to get the PID from the app identifier
-        let pid = _app_identifier.as_ref().and_then(|_| {
-            // PID lookup would require NSWorkspace — for now pass None
-            // The macOS reader will use system-wide focused element
-            None
-        });
-        Arc::new(field_monitor_macos::MacosFieldTextReader::new(pid))
+        Arc::new(field_monitor_macos::MacosFieldTextReader::new(
+            _app_identifier,
+        ))
     }
 
     #[cfg(target_os = "windows")]

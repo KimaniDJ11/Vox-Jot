@@ -26,4 +26,28 @@ pub struct CliArgs {
     /// Enable debug mode with verbose logging
     #[arg(long)]
     pub debug: bool,
+
+    /// Run the offline audio regression harness against a manifest JSON file
+    #[arg(long)]
+    pub regression_manifest: Option<String>,
+
+    /// Write the regression report JSON to this path
+    #[arg(long)]
+    pub regression_output: Option<String>,
+
+    /// Override the settings_store.json path used by the regression harness
+    #[arg(long)]
+    pub regression_settings_file: Option<String>,
+
+    /// Limit regression processing to the first N manifest entries
+    #[arg(long)]
+    pub regression_limit: Option<usize>,
+
+    /// Override the selected STT model for the regression harness
+    #[arg(long)]
+    pub regression_model_id: Option<String>,
+
+    /// Skip LLM post-processing during regression runs
+    #[arg(long)]
+    pub regression_skip_post_process: bool,
 }

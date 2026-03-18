@@ -1038,7 +1038,8 @@ export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM"
-export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; field_snapshot_text: string | null; field_snapshot_at: number | null }
+export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
+export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null }
 /**
  * Result of changing keyboard implementation
  */

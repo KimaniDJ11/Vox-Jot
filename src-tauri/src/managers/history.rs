@@ -32,10 +32,26 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN post_processed_text TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN post_process_prompt TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN dictionary_hits TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN pasted_text TEXT;"),
     // Field snapshot captured ~30s after paste
     M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_text TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_at INTEGER;"),
+    M::up(
+        "ALTER TABLE transcription_history ADD COLUMN field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested';",
+    ),
+    M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_error TEXT;"),
 ];
+
+#[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum FieldSnapshotStatus {
+    #[default]
+    NotRequested,
+    Pending,
+    Captured,
+    Skipped,
+    Failed,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
 pub struct HistoryEntry {
@@ -48,8 +64,11 @@ pub struct HistoryEntry {
     pub post_processed_text: Option<String>,
     pub post_process_prompt: Option<String>,
     pub dictionary_hits: Vec<String>,
+    pub pasted_text: Option<String>,
     pub field_snapshot_text: Option<String>,
     pub field_snapshot_at: Option<i64>,
+    pub field_snapshot_status: FieldSnapshotStatus,
+    pub field_snapshot_error: Option<String>,
 }
 
 /// Parse a database row into a HistoryEntry, deserializing the dictionary_hits JSON column.
@@ -58,6 +77,23 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
     let dictionary_hits = hits_json
         .and_then(|json| serde_json::from_str::<Vec<String>>(&json).ok())
         .unwrap_or_default();
+    let field_snapshot_text: Option<String> = row.get("field_snapshot_text").unwrap_or(None);
+    let field_snapshot_at: Option<i64> = row.get("field_snapshot_at").unwrap_or(None);
+    let field_snapshot_error: Option<String> = row.get("field_snapshot_error").unwrap_or(None);
+    let field_snapshot_status_raw: Option<String> =
+        row.get("field_snapshot_status").unwrap_or(None);
+    let field_snapshot_status = match field_snapshot_status_raw.as_deref() {
+        Some("pending") => FieldSnapshotStatus::Pending,
+        Some("captured") => FieldSnapshotStatus::Captured,
+        Some("skipped") => FieldSnapshotStatus::Skipped,
+        Some("failed") => FieldSnapshotStatus::Failed,
+        Some("not_requested") => FieldSnapshotStatus::NotRequested,
+        _ if field_snapshot_error.is_some() => FieldSnapshotStatus::Failed,
+        _ if field_snapshot_text.is_some() || field_snapshot_at.is_some() => {
+            FieldSnapshotStatus::Captured
+        }
+        _ => FieldSnapshotStatus::NotRequested,
+    };
 
     HistoryEntry {
         id: row.get("id").unwrap_or_default(),
@@ -69,8 +105,11 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         post_processed_text: row.get("post_processed_text").unwrap_or(None),
         post_process_prompt: row.get("post_process_prompt").unwrap_or(None),
         dictionary_hits,
-        field_snapshot_text: row.get("field_snapshot_text").unwrap_or(None),
-        field_snapshot_at: row.get("field_snapshot_at").unwrap_or(None),
+        pasted_text: row.get("pasted_text").unwrap_or(None),
+        field_snapshot_text,
+        field_snapshot_at,
+        field_snapshot_status,
+        field_snapshot_error,
     }
 }
 
@@ -139,6 +178,46 @@ impl HistoryManager {
             );
         } else {
             debug!("Database already at latest version {}", version_after);
+        }
+
+        self.ensure_history_columns(&conn)?;
+
+        Ok(())
+    }
+
+    fn ensure_history_columns(&self, conn: &Connection) -> Result<()> {
+        let mut stmt = conn.prepare("PRAGMA table_info(transcription_history)")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+
+        let mut existing_columns = std::collections::HashSet::new();
+        for row in rows {
+            existing_columns.insert(row?);
+        }
+
+        let required_columns = [
+            ("post_processed_text", "ALTER TABLE transcription_history ADD COLUMN post_processed_text TEXT"),
+            ("post_process_prompt", "ALTER TABLE transcription_history ADD COLUMN post_process_prompt TEXT"),
+            ("dictionary_hits", "ALTER TABLE transcription_history ADD COLUMN dictionary_hits TEXT"),
+            ("pasted_text", "ALTER TABLE transcription_history ADD COLUMN pasted_text TEXT"),
+            ("field_snapshot_text", "ALTER TABLE transcription_history ADD COLUMN field_snapshot_text TEXT"),
+            ("field_snapshot_at", "ALTER TABLE transcription_history ADD COLUMN field_snapshot_at INTEGER"),
+            (
+                "field_snapshot_status",
+                "ALTER TABLE transcription_history ADD COLUMN field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested'",
+            ),
+            ("field_snapshot_error", "ALTER TABLE transcription_history ADD COLUMN field_snapshot_error TEXT"),
+        ];
+
+        for (column_name, sql) in required_columns {
+            if existing_columns.contains(column_name) {
+                continue;
+            }
+
+            info!(
+                "History schema drift detected; adding missing column '{}'",
+                column_name
+            );
+            conn.execute(sql, [])?;
         }
 
         Ok(())
@@ -214,6 +293,7 @@ impl HistoryManager {
         post_processed_text: Option<String>,
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
+        pasted_text: Option<String>,
     ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("handy-{}.wav", timestamp);
@@ -232,6 +312,7 @@ impl HistoryManager {
             post_processed_text,
             post_process_prompt,
             dictionary_hits,
+            pasted_text,
         )?;
 
         // Clean up old entries
@@ -254,6 +335,7 @@ impl HistoryManager {
         post_processed_text: Option<String>,
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
+        pasted_text: Option<String>,
     ) -> Result<i64> {
         let conn = self.get_connection()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
@@ -262,8 +344,8 @@ impl HistoryManager {
             Some(serde_json::to_string(&dictionary_hits).unwrap_or_default())
         };
         conn.execute(
-            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![file_name, timestamp, false, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits_json],
+            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![file_name, timestamp, false, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits_json, pasted_text],
         )?;
 
         let id = conn.last_insert_rowid();
@@ -277,13 +359,76 @@ impl HistoryManager {
         let conn = self.get_connection()?;
         let now = Utc::now().timestamp();
         conn.execute(
-            "UPDATE transcription_history SET field_snapshot_text = ?1, field_snapshot_at = ?2 WHERE id = ?3",
-            params![snapshot_text, now, id],
+            "UPDATE transcription_history SET field_snapshot_text = ?1, field_snapshot_at = ?2, field_snapshot_status = ?3, field_snapshot_error = NULL WHERE id = ?4",
+            params![snapshot_text, now, "captured", id],
         )?;
         debug!("Updated field snapshot for history entry {}", id);
 
         if let Err(e) = self.app_handle.emit("history-updated", ()) {
-            error!("Failed to emit history-updated after snapshot update: {}", e);
+            error!(
+                "Failed to emit history-updated after snapshot update: {}",
+                e
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn mark_field_snapshot_pending(&self, id: i64) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE transcription_history SET field_snapshot_status = ?1, field_snapshot_error = NULL WHERE id = ?2",
+            params!["pending", id],
+        )?;
+        debug!("Marked field snapshot pending for history entry {}", id);
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after snapshot pending: {}",
+                e
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn update_field_snapshot_failure(&self, id: i64, error_message: String) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = Utc::now().timestamp();
+        conn.execute(
+            "UPDATE transcription_history SET field_snapshot_at = ?1, field_snapshot_status = ?2, field_snapshot_error = ?3 WHERE id = ?4",
+            params![now, "failed", error_message, id],
+        )?;
+        debug!("Updated field snapshot failure for history entry {}", id);
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after snapshot failure: {}",
+                e
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn update_field_snapshot_skipped(
+        &self,
+        id: i64,
+        snapshot_text: Option<String>,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = Utc::now().timestamp();
+        conn.execute(
+            "UPDATE transcription_history SET field_snapshot_text = ?1, field_snapshot_at = ?2, field_snapshot_status = ?3, field_snapshot_error = NULL WHERE id = ?4",
+            params![snapshot_text, now, "skipped", id],
+        )?;
+        debug!("Updated field snapshot skipped for history entry {}", id);
+
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!(
+                "Failed to emit history-updated after snapshot skipped: {}",
+                e
+            );
         }
 
         Ok(())
@@ -412,12 +557,10 @@ impl HistoryManager {
     pub async fn get_history_entries(&self) -> Result<Vec<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at FROM transcription_history ORDER BY timestamp DESC"
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error FROM transcription_history ORDER BY timestamp DESC"
         )?;
 
-        let rows = stmt.query_map([], |row| {
-            Ok(row_to_history_entry(row))
-        })?;
+        let rows = stmt.query_map([], |row| Ok(row_to_history_entry(row)))?;
 
         let mut entries = Vec::new();
         for row in rows {
@@ -434,7 +577,7 @@ impl HistoryManager {
 
     fn get_latest_entry_with_conn(conn: &Connection) -> Result<Option<HistoryEntry>> {
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error
              FROM transcription_history
              ORDER BY timestamp DESC
              LIMIT 1",
@@ -481,7 +624,7 @@ impl HistoryManager {
     pub async fn get_entry_by_id(&self, id: i64) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, field_snapshot_text, field_snapshot_at
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error
              FROM transcription_history WHERE id = ?1",
         )?;
 
@@ -552,8 +695,11 @@ mod tests {
                 post_processed_text TEXT,
                 post_process_prompt TEXT,
                 dictionary_hits TEXT,
+                pasted_text TEXT,
                 field_snapshot_text TEXT,
-                field_snapshot_at INTEGER
+                field_snapshot_at INTEGER,
+                field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested',
+                field_snapshot_error TEXT
             );",
         )
         .expect("create transcription_history table");
@@ -562,8 +708,8 @@ mod tests {
 
     fn insert_entry(conn: &Connection, timestamp: i64, text: &str, post_processed: Option<&str>) {
         conn.execute(
-            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 format!("handy-{}.wav", timestamp),
                 timestamp,
@@ -572,7 +718,8 @@ mod tests {
                 text,
                 post_processed,
                 Option::<String>::None,
-                Option::<String>::None
+                Option::<String>::None,
+                post_processed.map(|value| value.to_string())
             ],
         )
         .expect("insert history entry");
@@ -598,6 +745,11 @@ mod tests {
         assert_eq!(entry.timestamp, 200);
         assert_eq!(entry.transcription_text, "second");
         assert_eq!(entry.post_processed_text.as_deref(), Some("processed"));
+        assert_eq!(entry.pasted_text.as_deref(), Some("processed"));
         assert!(entry.field_snapshot_text.is_none());
+        assert_eq!(
+            entry.field_snapshot_status,
+            FieldSnapshotStatus::NotRequested
+        );
     }
 }

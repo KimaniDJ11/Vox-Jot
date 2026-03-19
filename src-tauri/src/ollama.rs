@@ -422,8 +422,7 @@ pub async fn install_ollama_impl(app: &AppHandle) -> Result<(), String> {
         .ok();
 
     // Start Ollama serve in background (resolve full path after install)
-    let binary = find_ollama_binary()
-        .unwrap_or_else(|| "ollama".to_string());
+    let binary = find_ollama_binary().unwrap_or_else(|| "ollama".to_string());
     tokio::process::Command::new(&binary)
         .arg("serve")
         .spawn()
@@ -582,8 +581,7 @@ pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
 #[tauri::command]
 #[specta::specta]
 pub async fn start_ollama_serve() -> Result<(), String> {
-    let binary = find_ollama_binary()
-        .ok_or_else(|| "Ollama is not installed".to_string())?;
+    let binary = find_ollama_binary().ok_or_else(|| "Ollama is not installed".to_string())?;
     info!("Starting Ollama serve via: {}", binary);
     tokio::process::Command::new(&binary)
         .arg("serve")

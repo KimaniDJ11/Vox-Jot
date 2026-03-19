@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
+  checkInputMonitoringPermission,
   checkMicrophonePermission,
 } from "tauri-plugin-macos-permissions-api";
 import { ModelStateEvent } from "./lib/types/events";
@@ -234,11 +235,13 @@ function App() {
 
         if (currentPlatform === "macos") {
           try {
-            const [hasAccessibility, hasMicrophone] = await Promise.all([
+            const [hasAccessibility, hasMicrophone, hasInputMonitoring] =
+              await Promise.all([
               checkAccessibilityPermission(),
               checkMicrophonePermission(),
+              checkInputMonitoringPermission(),
             ]);
-            if (!hasAccessibility || !hasMicrophone) {
+            if (!hasAccessibility || !hasMicrophone || !hasInputMonitoring) {
               await revealMainWindowForPermissions();
               setOnboardingStep("onboarding");
               return;

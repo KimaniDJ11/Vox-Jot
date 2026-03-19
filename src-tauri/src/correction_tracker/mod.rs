@@ -4,7 +4,13 @@
 //! for user edits, extracts correction pairs (e.g. "Cheyene" → "Cheyenne"),
 //! and feeds them back into the personal dictionary so future transcriptions
 //! improve automatically.
+//!
+//! The system is app-aware: it classifies the target app as ephemeral (chat/search)
+//! or persistent (notes/editors) and adapts its monitoring strategy accordingly.
+//! In chat apps, it captures corrections even when the field clears after sending,
+//! and distinguishes "message sent" from "user manually deleted everything."
 
+pub mod app_classifier;
 pub mod diff;
 pub mod field_monitor;
 #[cfg(target_os = "linux")]
@@ -13,10 +19,13 @@ pub mod field_monitor_linux;
 pub mod field_monitor_macos;
 #[cfg(target_os = "windows")]
 pub mod field_monitor_windows;
+pub mod recent_input;
 pub mod span;
 pub mod store;
 
+use app_classifier::classify_app;
 use log::{debug, info};
+use recent_input::RecentInputTracker;
 use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -38,7 +47,9 @@ impl InsertedSpanTracker {
     /// Record a new span and start monitoring for corrections.
     ///
     /// This replaces any previously active span and spawns an async task
-    /// to monitor the text field for user edits.
+    /// to monitor the text field for user edits. The monitoring strategy
+    /// (poll interval, window duration, clear-event handling) is automatically
+    /// determined by classifying the target app.
     pub fn record_and_start_monitoring(
         &self,
         inserted_text: String,
@@ -46,7 +57,7 @@ impl InsertedSpanTracker {
         app_name: Option<String>,
         insertion_method: InsertionMethod,
         store: Arc<CorrectionStore>,
-        delay_secs: u32,
+        recent_input: Arc<RecentInputTracker>,
     ) {
         let span = InsertedSpan::new(
             inserted_text,
@@ -55,11 +66,19 @@ impl InsertedSpanTracker {
             insertion_method,
         );
 
+        // Classify the target app to determine monitoring strategy
+        let app_behavior = classify_app(app_identifier.as_deref());
+        let params = app_behavior.monitoring_params();
+
         info!(
-            "Recording inserted span '{}' ({} chars, app: {:?})",
+            "Recording inserted span '{}' ({} chars, app: {:?}, behavior: {:?}, fast poll: {}ms, steady poll: {}ms, window: {}s)",
             span.id,
             span.inserted_text.len(),
-            app_identifier
+            app_identifier,
+            app_behavior,
+            params.fast_poll_interval_ms,
+            params.steady_poll_interval_ms,
+            params.window_secs,
         );
 
         // Store the span
@@ -73,7 +92,8 @@ impl InsertedSpanTracker {
 
         // Spawn the monitoring task
         tokio::spawn(async move {
-            field_monitor::monitor_for_corrections(reader, span, store, delay_secs).await;
+            field_monitor::monitor_for_corrections(reader, span, store, app_behavior, recent_input)
+                .await;
         });
     }
 
@@ -96,9 +116,19 @@ impl InsertedSpanTracker {
 
 #[derive(Debug, Clone)]
 pub enum FieldObservationOutcome {
-    Captured { snapshot_text: String },
-    SkippedFocusChanged { snapshot_text: Option<String> },
-    Failed { error_message: String },
+    Captured {
+        snapshot_text: String,
+    },
+    SkippedFocusChanged {
+        snapshot_text: Option<String>,
+    },
+    SkippedUnreadable {
+        snapshot_text: Option<String>,
+        reason: String,
+    },
+    Failed {
+        error_message: String,
+    },
 }
 
 /// Observe the focused text field immediately after paste, polling for up to
@@ -124,9 +154,11 @@ pub async fn observe_field_snapshot(
     {
         Ok(Ok(Some(text))) => text,
         Ok(Ok(None)) => {
-            return failed(
-                "Focused field text was unreadable or unavailable immediately after paste (check Accessibility permissions / supported app field).",
-            );
+            return FieldObservationOutcome::SkippedUnreadable {
+                snapshot_text: None,
+                reason: "Focused field text was unreadable or unavailable immediately after paste."
+                    .to_string(),
+            };
         }
         Ok(Err(e)) => {
             log::warn!("initial field snapshot read error: {}", e);
@@ -173,9 +205,10 @@ pub async fn observe_field_snapshot(
                 last_observed_text = text;
             }
             Ok(Ok(None)) => {
-                return failed(
-                    "Focused field text became unreadable during observation (check Accessibility permissions / supported app field).",
-                );
+                return FieldObservationOutcome::SkippedUnreadable {
+                    snapshot_text: Some(last_observed_text),
+                    reason: "Focused field text became unreadable during observation.".to_string(),
+                };
             }
             Ok(Err(e)) => {
                 log::warn!("field snapshot polling read error: {}", e);
@@ -277,10 +310,7 @@ mod tests {
         assert!(retrieved.is_some(), "Expected active span to be set");
         let retrieved = retrieved.unwrap();
         assert_eq!(retrieved.inserted_text, "hello world");
-        assert_eq!(
-            retrieved.app_identifier.as_deref(),
-            Some("com.test.app")
-        );
+        assert_eq!(retrieved.app_identifier.as_deref(), Some("com.test.app"));
     }
 
     #[test]
@@ -358,9 +388,6 @@ mod tests {
             retrieved.inserted_text, "second text",
             "Expected the second span to overwrite the first"
         );
-        assert_eq!(
-            retrieved.app_identifier.as_deref(),
-            Some("com.app.two")
-        );
+        assert_eq!(retrieved.app_identifier.as_deref(), Some("com.app.two"));
     }
 }

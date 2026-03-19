@@ -3,49 +3,57 @@ import { useTranslation } from "react-i18next";
 import { type } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
+  checkInputMonitoringPermission,
   requestAccessibilityPermission,
+  requestInputMonitoringPermission,
 } from "tauri-plugin-macos-permissions-api";
 
-// Define permission state type
-type PermissionState = "request" | "verify" | "granted";
+type MissingPermission = "accessibility" | "inputMonitoring" | null;
 
-// Define button configuration type
-interface ButtonConfig {
-  text: string;
-  className: string;
+interface MacPermissionsState {
+  accessibility: boolean;
+  inputMonitoring: boolean;
 }
 
 const AccessibilityPermissions: React.FC = () => {
   const { t } = useTranslation();
-  const [hasAccessibility, setHasAccessibility] = useState<boolean>(false);
-  const [permissionState, setPermissionState] =
-    useState<PermissionState>("request");
+  const [permissions, setPermissions] = useState<MacPermissionsState>({
+    accessibility: false,
+    inputMonitoring: false,
+  });
+  const [busyPermission, setBusyPermission] = useState<MissingPermission>(null);
 
   // Accessibility permissions are only required on macOS
   const isMacOS = type() === "macos";
 
-  // Check permissions without requesting
-  const checkPermissions = async (): Promise<boolean> => {
-    const hasPermissions: boolean = await checkAccessibilityPermission();
-    setHasAccessibility(hasPermissions);
-    setPermissionState(hasPermissions ? "granted" : "verify");
-    return hasPermissions;
+  const refreshPermissions = async (): Promise<void> => {
+    const [accessibility, inputMonitoring] = await Promise.all([
+      checkAccessibilityPermission(),
+      checkInputMonitoringPermission(),
+    ]);
+
+    setPermissions({
+      accessibility,
+      inputMonitoring,
+    });
   };
 
-  // Handle the unified button action based on current state
-  const handleButtonClick = async (): Promise<void> => {
-    if (permissionState === "request") {
-      try {
+  const requestPermission = async (
+    permission: Exclude<MissingPermission, null>,
+  ): Promise<void> => {
+    setBusyPermission(permission);
+
+    try {
+      if (permission === "accessibility") {
         await requestAccessibilityPermission();
-        // After system prompt, transition to verification state
-        setPermissionState("verify");
-      } catch (error) {
-        console.error("Error requesting permissions:", error);
-        setPermissionState("verify");
+      } else {
+        await requestInputMonitoringPermission();
       }
-    } else if (permissionState === "verify") {
-      // State is "verify" - check if permission was granted
-      await checkPermissions();
+    } catch (error) {
+      console.error(`Error requesting ${permission} permission:`, error);
+    } finally {
+      await refreshPermissions();
+      setBusyPermission(null);
     }
   };
 
@@ -54,51 +62,75 @@ const AccessibilityPermissions: React.FC = () => {
     if (!isMacOS) return;
 
     const initialSetup = async (): Promise<void> => {
-      const hasPermissions: boolean = await checkAccessibilityPermission();
-      setHasAccessibility(hasPermissions);
-      setPermissionState(hasPermissions ? "granted" : "request");
+      await refreshPermissions();
     };
 
-    initialSetup();
+    void initialSetup();
   }, [isMacOS]);
 
-  // Skip rendering on non-macOS platforms or if permission is already granted
-  if (!isMacOS || hasAccessibility) {
+  const hasAllPermissions =
+    permissions.accessibility && permissions.inputMonitoring;
+
+  if (!isMacOS || hasAllPermissions) {
     return null;
   }
 
-  // Configure button text and style based on state
-  const buttonConfig: Record<PermissionState, ButtonConfig | null> = {
-    request: {
-      text: t("accessibility.openSettings"),
-      className:
-        "rounded-lg border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]",
-    },
-    verify: {
-      text: t("accessibility.openSettings"),
-      className:
-        "rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--input)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]",
-    },
-    granted: null,
-  };
-
-  const config = buttonConfig[permissionState] as ButtonConfig;
+  const buttonClassName =
+    "rounded-lg border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
-    <div className="flat-card w-full rounded-2xl p-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <p className="text-sm font-semibold">
-            {t("accessibility.permissionsDescription")}
-          </p>
-        </div>
-        <button
-          onClick={handleButtonClick}
-          className={`min-h-10 whitespace-nowrap ${config.className}`}
-        >
-          {config.text}
-        </button>
+    <div className="flat-card w-full rounded-2xl p-4 space-y-4">
+      <div>
+        <p className="text-sm font-semibold">
+          {t("accessibility.permissionsTitle")}
+        </p>
+        <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_28%)]">
+          {t("accessibility.permissionsDescription")}
+        </p>
       </div>
+
+      {!permissions.accessibility && (
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-medium">
+              {t("onboarding.permissions.accessibility.title")}
+            </p>
+            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+              {t("onboarding.permissions.accessibility.cardDescription")}
+            </p>
+          </div>
+          <button
+            onClick={() => void requestPermission("accessibility")}
+            className={buttonClassName}
+            disabled={busyPermission !== null}
+          >
+            {t("onboarding.permissions.grant")}
+          </button>
+        </div>
+      )}
+
+      {!permissions.inputMonitoring && (
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-medium">
+              {t("onboarding.permissions.inputMonitoring.title")}
+            </p>
+            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+              {t("onboarding.permissions.inputMonitoring.cardDescription")}
+            </p>
+            <p className="mt-2 text-xs text-[color-mix(in_srgb,var(--text),transparent_42%)]">
+              {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
+            </p>
+          </div>
+          <button
+            onClick={() => void requestPermission("inputMonitoring")}
+            className={buttonClassName}
+            disabled={busyPermission !== null}
+          >
+            {t("accessibility.openSettings")}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

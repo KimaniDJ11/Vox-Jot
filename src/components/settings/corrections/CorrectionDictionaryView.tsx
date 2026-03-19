@@ -4,10 +4,21 @@ import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
 import { Button } from "../../ui/Button";
+import { Input } from "../../ui/Input";
+
+type DraftState = Record<
+  number,
+  {
+    original: string;
+    corrected: string;
+    isSaving?: boolean;
+  }
+>;
 
 export const CorrectionDictionaryView: React.FC = () => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
+  const [drafts, setDrafts] = useState<DraftState>({});
   const [loading, setLoading] = useState(true);
 
   const loadCorrections = useCallback(async () => {
@@ -15,6 +26,7 @@ export const CorrectionDictionaryView: React.FC = () => {
       const result = await commands.getCorrections();
       if (result.status === "ok") {
         setCorrections(result.data);
+        setDrafts({});
       }
     } catch (error) {
       console.error("Failed to load corrections:", error);
@@ -102,6 +114,80 @@ export const CorrectionDictionaryView: React.FC = () => {
     input.click();
   };
 
+  const setDraftValue = (
+    id: number,
+    field: "original" | "corrected",
+    value: string,
+  ) => {
+    setDrafts((prev) => {
+      const existing = prev[id];
+      const current = corrections.find((correction) => correction.id === id);
+      return {
+        ...prev,
+        [id]: {
+          original: existing?.original ?? current?.original ?? "",
+          corrected: existing?.corrected ?? current?.corrected ?? "",
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const clearDraft = (id: number) => {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const handleSave = async (correction: StoredCorrection) => {
+    const draft = drafts[correction.id];
+    const original = (draft?.original ?? correction.original).trim();
+    const corrected = (draft?.corrected ?? correction.corrected).trim();
+
+    if (!original || !corrected) {
+      return;
+    }
+
+    setDrafts((prev) => ({
+      ...prev,
+      [correction.id]: {
+        original,
+        corrected,
+        isSaving: true,
+      },
+    }));
+
+    try {
+      const result = await commands.updateCorrection(
+        correction.id,
+        original,
+        corrected,
+      );
+      if (result.status === "ok") {
+        setCorrections((prev) =>
+          prev.map((entry) =>
+            entry.id === correction.id
+              ? { ...entry, original, corrected }
+              : entry,
+          ),
+        );
+        clearDraft(correction.id);
+      }
+    } catch (error) {
+      console.error("Failed to update correction:", error);
+      setDrafts((prev) => ({
+        ...prev,
+        [correction.id]: {
+          original,
+          corrected,
+          isSaving: false,
+        },
+      }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="px-5 py-4 text-sm text-[var(--muted)]">
@@ -166,7 +252,11 @@ export const CorrectionDictionaryView: React.FC = () => {
                 <th className="px-4 py-2.5 text-center">
                   {t("settings.corrections.dictionary.columns.active")}
                 </th>
-                <th className="px-4 py-2.5 w-16" />
+                <th className="px-4 py-2.5 w-32">
+                  {t("settings.corrections.dictionary.columns.actions", {
+                    defaultValue: "Actions",
+                  })}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -176,10 +266,20 @@ export const CorrectionDictionaryView: React.FC = () => {
                   className={`${!c.is_active ? "opacity-50" : ""}`}
                 >
                   <td className="px-4 py-2.5 font-mono text-[var(--text)]">
-                    {c.original}
+                    <Input
+                      value={drafts[c.id]?.original ?? c.original}
+                      onChange={(event) =>
+                        setDraftValue(c.id, "original", event.target.value)
+                      }
+                    />
                   </td>
                   <td className="px-4 py-2.5 font-mono text-[var(--text)]">
-                    {c.corrected}
+                    <Input
+                      value={drafts[c.id]?.corrected ?? c.corrected}
+                      onChange={(event) =>
+                        setDraftValue(c.id, "corrected", event.target.value)
+                      }
+                    />
                   </td>
                   <td className="px-4 py-2.5 text-center text-[var(--muted)]">
                     {c.frequency}
@@ -188,7 +288,10 @@ export const CorrectionDictionaryView: React.FC = () => {
                     {(c.confidence * 100).toFixed(0)}%
                   </td>
                   <td className="px-4 py-2.5 text-[var(--muted)] truncate max-w-[140px]">
-                    {c.source_app || "—"}
+                    {c.source_app ||
+                      t("settings.corrections.dictionary.sourceDetected", {
+                        defaultValue: "Detected automatically",
+                      })}
                   </td>
                   <td className="px-4 py-2.5 text-center">
                     <button
@@ -208,15 +311,61 @@ export const CorrectionDictionaryView: React.FC = () => {
                     </button>
                   </td>
                   <td className="px-4 py-2.5">
-                    <button
-                      type="button"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleDelete(c.id)}
-                      aria-label={t("common.delete")}
-                      title={t("common.delete")}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {(() => {
+                        const draft = drafts[c.id];
+                        const isDirty =
+                          !!draft &&
+                          (draft.original !== c.original ||
+                            draft.corrected !== c.corrected);
+                        const isSaving = draft?.isSaving === true;
+                        const saveDisabled =
+                          !isDirty ||
+                          isSaving ||
+                          !(draft?.original ?? c.original).trim() ||
+                          !(draft?.corrected ?? c.corrected).trim();
+
+                        return (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              disabled={!isDirty || isSaving}
+                              onClick={() => clearDraft(c.id)}
+                            >
+                              {t("common.cancel", {
+                                defaultValue: "Reset",
+                              })}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="primary-soft"
+                              disabled={saveDisabled}
+                              onClick={() => void handleSave(c)}
+                            >
+                              {isSaving
+                                ? t("common.saving", {
+                                    defaultValue: "Saving...",
+                                  })
+                                : t("common.save", {
+                                    defaultValue: "Save",
+                                  })}
+                            </Button>
+                            <button
+                              type="button"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => handleDelete(c.id)}
+                              aria-label={t("common.delete")}
+                              title={t("common.delete")}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </td>
                 </tr>
               ))}

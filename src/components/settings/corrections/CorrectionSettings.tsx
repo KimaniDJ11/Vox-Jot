@@ -1,26 +1,38 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Alert } from "../../ui/Alert";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { ToggleSwitch } from "../../ui/ToggleSwitch";
 import { useSettings } from "../../../hooks/useSettings";
 import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
+import { PersonalDictionaryEditor } from "./PersonalDictionaryEditor";
+import { CustomWords } from "../CustomWords";
 
 export const CorrectionSettings: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
 
   const trackingEnabled = getSetting("correction_tracking_enabled") || false;
-  const autoApply = getSetting("auto_apply_corrections") ?? true;
-  const promptBias = getSetting("correction_prompt_bias_enabled") || false;
-  const monitoringDelay = getSetting("correction_monitoring_delay_secs") ?? 30;
-  const minFrequency = getSetting("correction_min_frequency") ?? 2;
-  const minConfidence = getSetting("correction_min_confidence") ?? 0.5;
 
   return (
     <div className="w-full space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold">
+          {t("settings.corrections.title")}
+        </h1>
+        <p className="text-sm text-text/60">
+          {t("settings.corrections.description")}
+        </p>
+      </div>
+
       <SettingsGroup
-        title={t("settings.corrections.title")}
-        description={t("settings.corrections.description")}
+        title={t("settings.corrections.tracking.title", {
+          defaultValue: "Learning",
+        })}
+        description={t("settings.corrections.tracking.groupDescription", {
+          defaultValue:
+            "Let Vox Jot learn from edits you make after paste, then review or disable learned corrections here.",
+        })}
       >
         <ToggleSwitch
           checked={trackingEnabled}
@@ -33,122 +45,73 @@ export const CorrectionSettings: React.FC = () => {
           descriptionMode="tooltip"
           grouped={true}
         />
-        <ToggleSwitch
-          checked={autoApply}
-          onChange={(enabled) =>
-            updateSetting("auto_apply_corrections", enabled)
-          }
-          isUpdating={isUpdating("auto_apply_corrections")}
-          label={t("settings.corrections.autoApply.label")}
-          description={t("settings.corrections.autoApply.description")}
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("settings.corrections.manual.title", {
+          defaultValue: "Preferred spellings",
+        })}
+        description={t("settings.corrections.manual.description", {
+          defaultValue:
+            "Add the phrases and spellings you want Vox Jot to prefer every time.",
+        })}
+      >
+        <Alert variant="info" contained>
+          {t("settings.corrections.manual.helper", {
+            defaultValue:
+              "Manual entries win over learned corrections when they target the same phrase.",
+          })}
+        </Alert>
+        <PersonalDictionaryEditor />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("settings.corrections.boosts.title", {
+          defaultValue: "Recognition boosts",
+        })}
+        description={t("settings.corrections.boosts.description", {
+          defaultValue:
+            "Keep a fuzzy shortlist for names, brands, and terms that speech recognition often mangles.",
+        })}
+      >
+        <CustomWords
           descriptionMode="tooltip"
           grouped={true}
-          disabled={!trackingEnabled}
-        />
-        <ToggleSwitch
-          checked={promptBias}
-          onChange={(enabled) =>
-            updateSetting("correction_prompt_bias_enabled", enabled)
+          title={t("settings.corrections.boosts.editorTitle", {
+            defaultValue: "Recognition boosts",
+          })}
+          description={t("settings.corrections.boosts.editorDescription", {
+            defaultValue:
+              "These entries use fuzzy matching to rescue difficult names and product terms during transcription.",
+          })}
+          placeholder={t("settings.corrections.boosts.placeholder", {
+            defaultValue: "Add a name or term",
+          })}
+          addLabel={t("settings.corrections.boosts.add", {
+            defaultValue: "Add boost",
+          })}
+          formatDuplicateMessage={(word) =>
+            t("settings.corrections.boosts.duplicate", {
+              word,
+              defaultValue: '"{{word}}" is already in your boosts',
+            })
           }
-          isUpdating={isUpdating("correction_prompt_bias_enabled")}
-          label={t("settings.corrections.promptBias.label")}
-          description={t("settings.corrections.promptBias.description")}
-          descriptionMode="tooltip"
-          grouped={true}
-          disabled={!trackingEnabled}
+          formatRemoveLabel={(word) =>
+            t("settings.corrections.boosts.remove", {
+              word,
+              defaultValue: "Remove {{word}} boost",
+            })
+          }
         />
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.corrections.thresholds.title")}>
-        <div className="flex items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-[var(--text)]">
-              {t("settings.corrections.monitoringDelay.label")}
-            </p>
-            <p className="text-xs text-[var(--muted)]">
-              {t("settings.corrections.monitoringDelay.description")}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min={10}
-              max={120}
-              step={5}
-              value={monitoringDelay}
-              onChange={(e) =>
-                updateSetting(
-                  "correction_monitoring_delay_secs",
-                  Number(e.target.value),
-                )
-              }
-              disabled={!trackingEnabled}
-              className="w-24 accent-[var(--accent)]"
-            />
-            <span className="text-sm text-[var(--muted)] w-10 text-right">
-              {`${monitoringDelay}s`}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-[var(--text)]">
-              {t("settings.corrections.minFrequency.label")}
-            </p>
-            <p className="text-xs text-[var(--muted)]">
-              {t("settings.corrections.minFrequency.description")}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={minFrequency}
-              onChange={(e) =>
-                updateSetting(
-                  "correction_min_frequency",
-                  Number(e.target.value),
-                )
-              }
-              disabled={!trackingEnabled}
-              className="w-16 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-sm text-[var(--text)] text-center"
-            />
-          </div>
-        </div>
-        <div className="flex items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-[var(--text)]">
-              {t("settings.corrections.minConfidence.label")}
-            </p>
-            <p className="text-xs text-[var(--muted)]">
-              {t("settings.corrections.minConfidence.description")}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min={0.1}
-              max={1.0}
-              step={0.05}
-              value={minConfidence}
-              onChange={(e) =>
-                updateSetting(
-                  "correction_min_confidence",
-                  Number(e.target.value),
-                )
-              }
-              disabled={!trackingEnabled}
-              className="w-24 accent-[var(--accent)]"
-            />
-            <span className="text-sm text-[var(--muted)] w-10 text-right">
-              {(minConfidence * 100).toFixed(0)}%
-            </span>
-          </div>
-        </div>
-      </SettingsGroup>
-
-      <SettingsGroup title={t("settings.corrections.dictionary.title")}>
+      <SettingsGroup
+        title={t("settings.corrections.dictionary.title")}
+        description={t("settings.corrections.dictionary.description", {
+          defaultValue:
+            "Review the correction pairs Vox Jot has learned from your edits. You can adjust, disable, export, or remove them at any time.",
+        })}
+      >
         <CorrectionDictionaryView />
       </SettingsGroup>
     </div>

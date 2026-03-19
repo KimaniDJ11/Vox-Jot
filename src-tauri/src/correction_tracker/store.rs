@@ -223,6 +223,27 @@ impl CorrectionStore {
         Ok(())
     }
 
+    /// Update the original and corrected text for a learned correction.
+    pub fn update_correction(&self, id: i64, original: &str, corrected: &str) -> Result<()> {
+        let normalized_original = original.trim();
+        let normalized_corrected = corrected.trim();
+
+        if normalized_original.is_empty() || normalized_corrected.is_empty() {
+            anyhow::bail!("Original and corrected text must not be empty");
+        }
+
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE auto_corrections SET original = ?1, corrected = ?2 WHERE id = ?3",
+            params![normalized_original, normalized_corrected, id],
+        )?;
+        debug!(
+            "Updated correction {} to '{}' → '{}'",
+            id, normalized_original, normalized_corrected
+        );
+        Ok(())
+    }
+
     /// Toggle the is_active flag for a correction.
     pub fn set_active(&self, id: i64, active: bool) -> Result<()> {
         let conn = self.get_connection()?;
@@ -372,6 +393,29 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].spoken, "foo");
         assert_eq!(entries[0].written, "bar");
+    }
+
+    #[test]
+    fn test_update_correction() {
+        let (store, _dir) = setup_store();
+        let pair = CorrectionPair {
+            original: "teh".to_string(),
+            corrected: "the".to_string(),
+            confidence: 0.9,
+            source_app: None,
+            first_seen: 1000,
+            last_seen: 1000,
+        };
+
+        store.add_correction(&pair).unwrap();
+        let saved = store.list_all().unwrap();
+        let id = saved[0].id;
+
+        store.update_correction(id, "recieve", "receive").unwrap();
+
+        let updated = store.list_all().unwrap();
+        assert_eq!(updated[0].original, "recieve");
+        assert_eq!(updated[0].corrected, "receive");
     }
 
     #[test]
@@ -613,10 +657,7 @@ mod tests {
         assert_eq!(teh_entries[0].written, "THE");
 
         // "recieve" → "receive" should still be present (no conflict)
-        let recieve_entries: Vec<_> = merged
-            .iter()
-            .filter(|e| e.spoken == "recieve")
-            .collect();
+        let recieve_entries: Vec<_> = merged.iter().filter(|e| e.spoken == "recieve").collect();
         assert_eq!(recieve_entries.len(), 1);
         assert_eq!(recieve_entries[0].written, "receive");
 

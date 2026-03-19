@@ -166,16 +166,6 @@ const settingUpdaters: {
     commands.changeShowTrayIconSetting(value as boolean),
   correction_tracking_enabled: (value) =>
     commands.changeCorrectionTrackingEnabledSetting(value as boolean),
-  correction_monitoring_delay_secs: (value) =>
-    commands.changeCorrectionMonitoringDelaySetting(value as number),
-  auto_apply_corrections: (value) =>
-    commands.changeAutoApplyCorrectionsSetting(value as boolean),
-  correction_prompt_bias_enabled: (value) =>
-    commands.changeCorrectionPromptBiasSetting(value as boolean),
-  correction_min_frequency: (value) =>
-    commands.changeCorrectionMinFrequencySetting(value as number),
-  correction_min_confidence: (value) =>
-    commands.changeCorrectionMinConfidenceSetting(value as number),
 };
 
 export const useSettingsStore = create<SettingsStore>()(

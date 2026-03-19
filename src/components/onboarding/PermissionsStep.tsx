@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
+  checkInputMonitoringPermission,
   requestAccessibilityPermission,
+  requestInputMonitoringPermission,
   checkMicrophonePermission,
   requestMicrophonePermission,
 } from "tauri-plugin-macos-permissions-api";
@@ -24,6 +26,7 @@ type PermissionPlatform = "macos" | "windows" | "other";
 interface PermissionsState {
   accessibility: PermissionStatus;
   microphone: PermissionStatus;
+  inputMonitoring: PermissionStatus;
 }
 
 const PermissionsStep: React.FC<PermissionsStepProps> = ({
@@ -42,6 +45,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const [permissions, setPermissions] = useState<PermissionsState>({
     accessibility: "checking",
     microphone: "checking",
+    inputMonitoring: "checking",
   });
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,12 +56,14 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const isWindows = permissionPlatform === "windows";
   const showMicrophonePermission = isMacOS || isWindows;
   const showAccessibilityPermission = isMacOS;
+  const showInputMonitoringPermission = isMacOS;
   const showDevBypass =
     import.meta.env.DEV && isMacOS && permissions.accessibility !== "granted";
 
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
-      permissions.microphone === "granted"
+      permissions.microphone === "granted" &&
+      permissions.inputMonitoring === "granted"
     : isWindows
       ? permissions.microphone === "granted"
       : true;
@@ -94,9 +100,14 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     const checkInitial = async () => {
       if (nextPlatform === "macos") {
         try {
-          const [accessibilityGranted, microphoneGranted] = await Promise.all([
+          const [
+            accessibilityGranted,
+            microphoneGranted,
+            inputMonitoringGranted,
+          ] = await Promise.all([
             checkAccessibilityPermission(),
             checkMicrophonePermission(),
+            checkInputMonitoringPermission(),
           ]);
 
           if (accessibilityGranted) {
@@ -113,16 +124,25 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           const newState: PermissionsState = {
             accessibility: accessibilityGranted ? "granted" : "needed",
             microphone: microphoneGranted ? "granted" : "needed",
+            inputMonitoring: inputMonitoringGranted ? "granted" : "needed",
           };
           setPermissions(newState);
 
-          if (accessibilityGranted && microphoneGranted) {
+          if (
+            accessibilityGranted &&
+            microphoneGranted &&
+            inputMonitoringGranted
+          ) {
             await completeOnboarding();
           }
         } catch (error) {
           console.error("Failed to check macOS permissions:", error);
           toast.error(t("onboarding.permissions.errors.checkFailed"));
-          setPermissions({ accessibility: "needed", microphone: "needed" });
+          setPermissions({
+            accessibility: "needed",
+            microphone: "needed",
+            inputMonitoring: "needed",
+          });
         }
         return;
       }
@@ -133,11 +153,16 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         setPermissions({
           accessibility: "granted",
           microphone: microphoneGranted ? "granted" : "needed",
+          inputMonitoring: "granted",
         });
         if (microphoneGranted) await completeOnboarding();
       } catch (error) {
         console.warn("Failed to check Windows microphone permissions:", error);
-        setPermissions({ accessibility: "granted", microphone: "granted" });
+        setPermissions({
+          accessibility: "granted",
+          microphone: "granted",
+          inputMonitoring: "granted",
+        });
         await completeOnboarding();
       }
     };
@@ -165,9 +190,14 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           return;
         }
 
-        const [accessibilityGranted, microphoneGranted] = await Promise.all([
+        const [
+          accessibilityGranted,
+          microphoneGranted,
+          inputMonitoringGranted,
+        ] = await Promise.all([
           checkAccessibilityPermission(),
           checkMicrophonePermission(),
+          checkInputMonitoringPermission(),
         ]);
 
         setPermissions((prev) => {
@@ -184,10 +214,17 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           if (microphoneGranted && prev.microphone !== "granted") {
             newState.microphone = "granted";
           }
+          if (inputMonitoringGranted && prev.inputMonitoring !== "granted") {
+            newState.inputMonitoring = "granted";
+          }
           return newState;
         });
 
-        if (accessibilityGranted && microphoneGranted) {
+        if (
+          accessibilityGranted &&
+          microphoneGranted &&
+          inputMonitoringGranted
+        ) {
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
@@ -243,11 +280,23 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     }
   };
 
+  const handleGrantInputMonitoring = async () => {
+    try {
+      await requestInputMonitoringPermission();
+      setPermissions((prev) => ({ ...prev, inputMonitoring: "waiting" }));
+      startPolling();
+    } catch (error) {
+      console.error("Failed to request input monitoring permission:", error);
+      toast.error(t("onboarding.permissions.errors.requestFailed"));
+    }
+  };
+
   const isChecking =
     permissionPlatform === null ||
     (isMacOS &&
       permissions.accessibility === "checking" &&
-      permissions.microphone === "checking") ||
+      permissions.microphone === "checking" &&
+      permissions.inputMonitoring === "checking") ||
     (isWindows && permissions.microphone === "checking");
 
   if (isChecking) {
@@ -272,6 +321,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     status: PermissionStatus,
     onGrant: () => void,
     isWin?: boolean,
+    buttonLabel?: string,
   ) => {
     if (status === "granted") {
       return (
@@ -291,9 +341,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     return (
       <div style={{ display: "flex", alignItems: "center" }}>
         <button className="ob-perm-allow-btn" onClick={onGrant}>
-          {isWin
-            ? t("accessibility.openSettings")
-            : t("onboarding.permissions.grant")}
+          {buttonLabel ||
+            (isWin
+              ? t("accessibility.openSettings")
+              : t("onboarding.permissions.grant"))}
         </button>
         <span className="ob-info-wrap">
           <button
@@ -333,6 +384,28 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               {renderPermissionStatus(
                 permissions.accessibility,
                 handleGrantAccessibility,
+              )}
+            </div>
+          )}
+
+          {showInputMonitoringPermission && (
+            <div
+              className={`ob-perm-card ${permissions.inputMonitoring === "granted" ? "ob-perm-card-granted" : ""}`}
+            >
+              <p className="ob-perm-title">
+                {t("onboarding.permissions.inputMonitoring.cardTitle")}
+              </p>
+              <p className="ob-perm-desc">
+                {t("onboarding.permissions.inputMonitoring.cardDescription")}
+              </p>
+              <p className="ob-perm-desc">
+                {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
+              </p>
+              {renderPermissionStatus(
+                permissions.inputMonitoring,
+                handleGrantInputMonitoring,
+                false,
+                t("accessibility.openSettings"),
               )}
             </div>
           )}

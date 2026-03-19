@@ -780,29 +780,6 @@
         "label": "Correction Tracking",
         "description": "Monitor text fields after paste to learn from your corrections."
       },
-      "autoApply": {
-        "label": "Auto-Apply Corrections",
-        "description": "Automatically apply learned corrections to future transcriptions."
-      },
-      "promptBias": {
-        "label": "Prompt Bias",
-        "description": "Include learned corrections as hints in the post-processing prompt."
-      },
-      "thresholds": {
-        "title": "Thresholds"
-      },
-      "monitoringDelay": {
-        "label": "Monitoring Delay",
-        "description": "How long to watch the text field for corrections after paste (seconds)."
-      },
-      "minFrequency": {
-        "label": "Min Frequency",
-        "description": "Minimum number of times a correction must occur before it is applied."
-      },
-      "minConfidence": {
-        "label": "Min Confidence",
-        "description": "Minimum confidence score required for a correction to be applied."
-      },
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",

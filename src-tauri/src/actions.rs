@@ -1,6 +1,7 @@
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use crate::apple_intelligence;
 use crate::audio_feedback::{play_feedback_sound, play_feedback_sound_blocking, SoundType};
+use crate::correction_tracker::recent_input::RecentInputTracker;
 use crate::correction_tracker::span::InsertionMethod;
 use crate::correction_tracker::store::CorrectionStore;
 use crate::correction_tracker::InsertedSpanTracker;
@@ -261,13 +262,48 @@ fn looks_like_structured_blob(text: &str) -> bool {
 
 fn looks_like_prompt_artifact(text: &str) -> bool {
     let lower = text.trim().to_ascii_lowercase();
-    lower.contains("additional system instruction")
-        || lower.contains("strict output now applied")
-        || lower.contains("transcript output")
-        || lower.contains("no input processed for output")
-        || lower.contains("dictate or append exact content")
-        || lower.contains("as spoken, no changes")
-        || lower.contains("no punctuation added")
+    let direct_markers = [
+        "additional system instruction",
+        "strict output now applied",
+        "transcript output",
+        "no input processed for output",
+        "dictate or append exact content",
+        "as spoken, no changes",
+        "no punctuation added",
+        "understand prompt structure",
+        "optimize for output quality",
+        "format as dictation post-processor",
+        "dictation post-processor strictly",
+        "adapt tone/mode dynamically",
+        "fulfill specific user requests",
+        "without alteration or commentary",
+        "return only the final text",
+        "do not explain changes",
+        "do not mention rules",
+        "active mode:",
+        "rewrite strength:",
+        "additional custom instructions:",
+    ];
+
+    if direct_markers.iter().any(|marker| lower.contains(marker)) {
+        return true;
+    }
+
+    let suspicious_instruction_markers = [
+        "preserve meaning",
+        "handle corrections",
+        "prompt structure",
+        "output quality",
+        "tone/mode",
+        "personal dictionary",
+        "local dictation post-processor",
+    ];
+    let suspicious_marker_hits = suspicious_instruction_markers
+        .iter()
+        .filter(|marker| lower.contains(**marker))
+        .count();
+
+    suspicious_marker_hits >= 2
         || (lower.contains("no changes") && text.contains('('))
         || (text.lines().count() > 5
             && (text.contains("**") || text.contains("---") || text.contains("```")))
@@ -568,11 +604,17 @@ fn word_overlap_ratio(a: &str, b: &str) -> f64 {
 fn count_word_substitutions(a: &str, b: &str) -> usize {
     let wa: Vec<String> = a
         .split_whitespace()
-        .map(|w| w.trim_matches(|c: char| c.is_ascii_punctuation()).to_ascii_lowercase())
+        .map(|w| {
+            w.trim_matches(|c: char| c.is_ascii_punctuation())
+                .to_ascii_lowercase()
+        })
         .collect();
     let wb: Vec<String> = b
         .split_whitespace()
-        .map(|w| w.trim_matches(|c: char| c.is_ascii_punctuation()).to_ascii_lowercase())
+        .map(|w| {
+            w.trim_matches(|c: char| c.is_ascii_punctuation())
+                .to_ascii_lowercase()
+        })
         .collect();
 
     if wa.len() != wb.len() {
@@ -655,16 +697,16 @@ fn build_post_process_result(
         maybe_apply_verification_request_fallback(raw_text, &final_text).unwrap_or(final_text);
 
     // Apply drift gate: fall back to normalized text when LLM drifted too far
-    let final_text =
-        if should_fallback_to_plain_text_drift(raw_text, &final_text, &normalized_text) {
-            debug!(
-                "Drift gate triggered — falling back to plain text: '{}'",
-                normalized_text
-            );
-            normalized_text.clone()
-        } else {
-            final_text
-        };
+    let final_text = if should_fallback_to_plain_text_drift(raw_text, &final_text, &normalized_text)
+    {
+        debug!(
+            "Drift gate triggered — falling back to plain text: '{}'",
+            normalized_text
+        );
+        normalized_text.clone()
+    } else {
+        final_text
+    };
 
     let edits = detect_post_process_edits(raw_text, &normalized_text, &final_text);
 
@@ -1089,9 +1131,8 @@ fn choose_post_process_pass(transcription: &str) -> PostProcessPass {
     }
 
     // Skip LLM entirely for short, clean utterances with no processing cues.
-    let has_any_cue = features.has_correction_cue
-        || features.has_list_cue
-        || features.has_paragraph_cue;
+    let has_any_cue =
+        features.has_correction_cue || features.has_list_cue || features.has_paragraph_cue;
     if features.word_count <= 10 && !has_any_cue && !features.has_technical_tokens {
         return PostProcessPass::Skip;
     }
@@ -2031,14 +2072,16 @@ impl ShortcutAction for TranscribeAction {
                             }
 
                             // Merge auto-learned corrections into the personal dictionary
+                            // (always active when correction tracking is enabled)
                             let mut effective_settings = settings.clone();
-                            if settings.auto_apply_corrections {
+                            if settings.correction_tracking_enabled {
                                 if let Some(correction_store) =
                                     ah.try_state::<Arc<CorrectionStore>>()
                                 {
+                                    use crate::settings::correction_defaults;
                                     match correction_store.get_active_corrections(
-                                        settings.correction_min_frequency,
-                                        settings.correction_min_confidence,
+                                        correction_defaults::MIN_FREQUENCY,
+                                        correction_defaults::MIN_CONFIDENCE,
                                     ) {
                                         Ok(auto_entries) if !auto_entries.is_empty() => {
                                             debug!(
@@ -2230,34 +2273,37 @@ impl ShortcutAction for TranscribeAction {
                                         if let Some(correction_store) =
                                             ah.try_state::<Arc<CorrectionStore>>()
                                         {
-                                            let insertion_method = match correction_settings
-                                                .paste_method
+                                            if let Some(recent_input) =
+                                                ah.try_state::<Arc<RecentInputTracker>>()
                                             {
-                                                crate::settings::PasteMethod::Direct => {
-                                                    InsertionMethod::DirectType
-                                                }
-                                                crate::settings::PasteMethod::ExternalScript => {
-                                                    InsertionMethod::ExternalScript
-                                                }
-                                                _ => InsertionMethod::Clipboard,
-                                            };
+                                                let insertion_method = match correction_settings
+                                                    .paste_method
+                                                {
+                                                    crate::settings::PasteMethod::Direct => {
+                                                        InsertionMethod::DirectType
+                                                    }
+                                                    crate::settings::PasteMethod::ExternalScript => {
+                                                        InsertionMethod::ExternalScript
+                                                    }
+                                                    _ => InsertionMethod::Clipboard,
+                                                };
 
-                                            let app_id = active_app_context
-                                                .as_ref()
-                                                .map(|c| c.bundle_id.clone());
-                                            let app_name_val = active_app_context
-                                                .as_ref()
-                                                .map(|c| c.localized_name.clone());
+                                                let app_id = active_app_context
+                                                    .as_ref()
+                                                    .map(|c| c.bundle_id.clone());
+                                                let app_name_val = active_app_context
+                                                    .as_ref()
+                                                    .map(|c| c.localized_name.clone());
 
-                                            span_tracker.record_and_start_monitoring(
-                                                text_to_paste.clone(),
-                                                app_id,
-                                                app_name_val,
-                                                insertion_method,
-                                                (*correction_store).clone(),
-                                                correction_settings
-                                                    .correction_monitoring_delay_secs,
-                                            );
+                                                span_tracker.record_and_start_monitoring(
+                                                    text_to_paste.clone(),
+                                                    app_id,
+                                                    app_name_val,
+                                                    insertion_method,
+                                                    (*correction_store).clone(),
+                                                    (*recent_input).clone(),
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -2340,6 +2386,27 @@ impl ShortcutAction for TranscribeAction {
                                                             {
                                                                 log::warn!(
                                                                     "Failed to save skipped field snapshot: {}",
+                                                                    e
+                                                                );
+                                                            }
+                                                        }
+                                                        crate::correction_tracker::FieldObservationOutcome::SkippedUnreadable {
+                                                            snapshot_text,
+                                                            reason,
+                                                        } => {
+                                                            log::debug!(
+                                                                "Skipping field snapshot for history entry {}: {}",
+                                                                history_entry_id,
+                                                                reason
+                                                            );
+                                                            if let Err(e) = hm
+                                                                .update_field_snapshot_skipped(
+                                                                    history_entry_id,
+                                                                    snapshot_text,
+                                                                )
+                                                            {
+                                                                log::warn!(
+                                                                    "Failed to save unreadable field snapshot as skipped: {}",
                                                                     e
                                                                 );
                                                             }
@@ -2594,6 +2661,14 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_plain_model_output_rejects_instruction_leak_variant() {
+        assert!(sanitize_plain_model_output(
+            ": **Understand prompt structure, optimize for output quality, handle corrections, format as dictation post-processor strictly, and adapt tone/mode dynamically for intent preservation. Now, to fulfill specific user requests delivered without alteration or commentary**."
+        )
+        .is_none());
+    }
+
+    #[test]
     fn final_paste_gate_blocks_code_fence_wrappers() {
         assert!(should_block_paste_candidate(
             "```json\n{\"transcription\":\"Hello\"}\n```"
@@ -2604,6 +2679,13 @@ mod tests {
     fn final_paste_gate_blocks_prompt_artifact_wrappers() {
         assert!(should_block_paste_candidate(
             "\"⚠️ Additional system instruction: Keep context active.\\n\\n---\\n**Transcript Output**\\n```oops```\""
+        ));
+    }
+
+    #[test]
+    fn final_paste_gate_blocks_instruction_leak_variant() {
+        assert!(should_block_paste_candidate(
+            ": **Understand prompt structure, optimize for output quality, handle corrections, format as dictation post-processor strictly, and adapt tone/mode dynamically for intent preservation. Now, to fulfill specific user requests delivered without alteration or commentary**."
         ));
     }
 

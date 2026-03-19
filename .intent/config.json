@@ -1,0 +1,124 @@
+{
+  "scripts": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "mode": "command",
+      "category": "build"
+    },
+    {
+      "name": "preview",
+      "command": "npm run preview",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "tauri",
+      "command": "npm run tauri",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "lint:fix",
+      "command": "npm run lint:fix",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "format",
+      "command": "npm run format",
+      "mode": "command",
+      "category": "format"
+    },
+    {
+      "name": "format:check",
+      "command": "npm run format:check",
+      "mode": "command",
+      "category": "format"
+    },
+    {
+      "name": "format:frontend",
+      "command": "npm run format:frontend",
+      "mode": "command",
+      "category": "format"
+    },
+    {
+      "name": "format:backend",
+      "command": "npm run format:backend",
+      "mode": "command",
+      "category": "format"
+    },
+    {
+      "name": "test:playwright",
+      "command": "npm run test:playwright",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "test:playwright:ui",
+      "command": "npm run test:playwright:ui",
+      "mode": "command",
+      "category": "test"
+    },
+    {
+      "name": "regression:download",
+      "command": "npm run regression:download",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "regression:run",
+      "command": "npm run regression:run",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "regression:compare",
+      "command": "npm run regression:compare",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "regression:diff",
+      "command": "npm run regression:diff",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "eval:post-process",
+      "command": "npm run eval:post-process",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "eval:post-process:dry",
+      "command": "npm run eval:post-process:dry",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "check:translations",
+      "command": "npm run check:translations",
+      "mode": "command",
+      "category": "other"
+    },
+    {
+      "name": "postinstall",
+      "command": "npm run postinstall",
+      "mode": "command",
+      "category": "other"
+    }
+  ]
+}

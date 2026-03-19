@@ -387,16 +387,6 @@ pub struct AppSettings {
     pub app_tone_mappings: Vec<AppToneMapping>,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
-    #[serde(default = "default_correction_monitoring_delay_secs")]
-    pub correction_monitoring_delay_secs: u32,
-    #[serde(default = "default_auto_apply_corrections")]
-    pub auto_apply_corrections: bool,
-    #[serde(default = "default_correction_prompt_bias_enabled")]
-    pub correction_prompt_bias_enabled: bool,
-    #[serde(default = "default_correction_min_frequency")]
-    pub correction_min_frequency: u32,
-    #[serde(default = "default_correction_min_confidence")]
-    pub correction_min_confidence: f64,
 }
 
 fn default_model() -> String {
@@ -798,24 +788,13 @@ fn default_correction_tracking_enabled() -> bool {
     true
 }
 
-fn default_correction_monitoring_delay_secs() -> u32 {
-    30
-}
-
-fn default_auto_apply_corrections() -> bool {
-    true
-}
-
-fn default_correction_prompt_bias_enabled() -> bool {
-    true
-}
-
-fn default_correction_min_frequency() -> u32 {
-    1
-}
-
-fn default_correction_min_confidence() -> f64 {
-    0.5
+/// Internal constants for correction behavior — no longer user-configurable.
+/// These are optimized defaults that "just work."
+pub mod correction_defaults {
+    /// Minimum times a correction must be seen before auto-applying.
+    pub const MIN_FREQUENCY: u32 = 1;
+    /// Minimum confidence score (0.0–1.0) for auto-applying a correction.
+    pub const MIN_CONFIDENCE: f64 = 0.5;
 }
 
 fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
@@ -1080,11 +1059,6 @@ pub fn get_default_settings() -> AppSettings {
         tone_definitions: default_tone_definitions(),
         app_tone_mappings: default_app_tone_mappings(),
         correction_tracking_enabled: default_correction_tracking_enabled(),
-        correction_monitoring_delay_secs: default_correction_monitoring_delay_secs(),
-        auto_apply_corrections: default_auto_apply_corrections(),
-        correction_prompt_bias_enabled: default_correction_prompt_bias_enabled(),
-        correction_min_frequency: default_correction_min_frequency(),
-        correction_min_confidence: default_correction_min_confidence(),
     }
 }
 

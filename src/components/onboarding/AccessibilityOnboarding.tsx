@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
+  checkInputMonitoringPermission,
   requestAccessibilityPermission,
+  requestInputMonitoringPermission,
   checkMicrophonePermission,
   requestMicrophonePermission,
 } from "tauri-plugin-macos-permissions-api";
@@ -23,6 +25,7 @@ type PermissionPlatform = "macos" | "windows" | "other";
 interface PermissionsState {
   accessibility: PermissionStatus;
   microphone: PermissionStatus;
+  inputMonitoring: PermissionStatus;
 }
 
 const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
@@ -40,6 +43,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
   const [permissions, setPermissions] = useState<PermissionsState>({
     accessibility: "checking",
     microphone: "checking",
+    inputMonitoring: "checking",
   });
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,10 +54,12 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
   const isWindows = permissionPlatform === "windows";
   const showMicrophonePermission = isMacOS || isWindows;
   const showAccessibilityPermission = isMacOS;
+  const showInputMonitoringPermission = isMacOS;
 
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
-      permissions.microphone === "granted"
+      permissions.microphone === "granted" &&
+      permissions.inputMonitoring === "granted"
     : isWindows
       ? permissions.microphone === "granted"
       : true;
@@ -95,9 +101,14 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
     const checkInitial = async () => {
       if (nextPlatform === "macos") {
         try {
-          const [accessibilityGranted, microphoneGranted] = await Promise.all([
+          const [
+            accessibilityGranted,
+            microphoneGranted,
+            inputMonitoringGranted,
+          ] = await Promise.all([
             checkAccessibilityPermission(),
             checkMicrophonePermission(),
+            checkInputMonitoringPermission(),
           ]);
 
           // If accessibility is granted, initialize Enigo and shortcuts
@@ -115,11 +126,16 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
           const newState: PermissionsState = {
             accessibility: accessibilityGranted ? "granted" : "needed",
             microphone: microphoneGranted ? "granted" : "needed",
+            inputMonitoring: inputMonitoringGranted ? "granted" : "needed",
           };
 
           setPermissions(newState);
 
-          if (accessibilityGranted && microphoneGranted) {
+          if (
+            accessibilityGranted &&
+            microphoneGranted &&
+            inputMonitoringGranted
+          ) {
             await completeOnboarding();
           }
         } catch (error) {
@@ -128,6 +144,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
           setPermissions({
             accessibility: "needed",
             microphone: "needed",
+            inputMonitoring: "needed",
           });
         }
 
@@ -140,6 +157,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
         setPermissions({
           accessibility: "granted",
           microphone: microphoneGranted ? "granted" : "needed",
+          inputMonitoring: "granted",
         });
 
         if (microphoneGranted) {
@@ -150,6 +168,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
         setPermissions({
           accessibility: "granted",
           microphone: "granted",
+          inputMonitoring: "granted",
         });
         await completeOnboarding();
       }
@@ -182,9 +201,14 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
           return;
         }
 
-        const [accessibilityGranted, microphoneGranted] = await Promise.all([
+        const [
+          accessibilityGranted,
+          microphoneGranted,
+          inputMonitoringGranted,
+        ] = await Promise.all([
           checkAccessibilityPermission(),
           checkMicrophonePermission(),
+          checkInputMonitoringPermission(),
         ]);
 
         setPermissions((prev) => {
@@ -204,12 +228,19 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
           if (microphoneGranted && prev.microphone !== "granted") {
             newState.microphone = "granted";
           }
+          if (inputMonitoringGranted && prev.inputMonitoring !== "granted") {
+            newState.inputMonitoring = "granted";
+          }
 
           return newState;
         });
 
         // If both granted, stop polling, refresh audio devices, and proceed
-        if (accessibilityGranted && microphoneGranted) {
+        if (
+          accessibilityGranted &&
+          microphoneGranted &&
+          inputMonitoringGranted
+        ) {
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
@@ -274,11 +305,23 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
     }
   };
 
+  const handleGrantInputMonitoring = async () => {
+    try {
+      await requestInputMonitoringPermission();
+      setPermissions((prev) => ({ ...prev, inputMonitoring: "waiting" }));
+      startPolling();
+    } catch (error) {
+      console.error("Failed to request input monitoring permission:", error);
+      toast.error(t("onboarding.permissions.errors.requestFailed"));
+    }
+  };
+
   const isChecking =
     permissionPlatform === null ||
     (isMacOS &&
       permissions.accessibility === "checking" &&
-      permissions.microphone === "checking") ||
+      permissions.microphone === "checking" &&
+      permissions.inputMonitoring === "checking") ||
     (isWindows && permissions.microphone === "checking");
 
   // Still checking platform/initial permissions
@@ -390,6 +433,45 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
                     className="px-4 py-2 rounded-lg bg-logo-primary hover:bg-logo-primary/90 text-white text-sm font-medium transition-colors"
                   >
                     {t("onboarding.permissions.grant")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showInputMonitoringPermission && (
+          <div className="w-full p-4 rounded-lg bg-[var(--panel-bg)] border border-[var(--border)]">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-logo-primary/20 shrink-0">
+                <Keyboard className="w-6 h-6 text-logo-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-text">
+                  {t("onboarding.permissions.inputMonitoring.title")}
+                </h3>
+                <p className="text-sm text-text/60 mb-2">
+                  {t("onboarding.permissions.inputMonitoring.description")}
+                </p>
+                <p className="text-xs text-text/50 mb-3">
+                  {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
+                </p>
+                {permissions.inputMonitoring === "granted" ? (
+                  <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                    <Check className="w-4 h-4" />
+                    {t("onboarding.permissions.granted")}
+                  </div>
+                ) : permissions.inputMonitoring === "waiting" ? (
+                  <div className="flex items-center gap-2 text-text/50 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t("onboarding.permissions.waiting")}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGrantInputMonitoring}
+                    className="px-4 py-2 rounded-lg bg-logo-primary hover:bg-logo-primary/90 text-white text-sm font-medium transition-colors"
+                  >
+                    {t("accessibility.openSettings")}
                   </button>
                 )}
               </div>

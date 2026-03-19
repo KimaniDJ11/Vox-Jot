@@ -18,6 +18,21 @@ pub fn delete_correction(app: AppHandle, id: i64) -> Result<(), String> {
     store.delete_correction(id).map_err(|e| e.to_string())
 }
 
+/// Update the original and corrected text for a learned correction.
+#[tauri::command]
+#[specta::specta]
+pub fn update_correction(
+    app: AppHandle,
+    id: i64,
+    original: String,
+    corrected: String,
+) -> Result<(), String> {
+    let store = app.state::<Arc<CorrectionStore>>();
+    store
+        .update_correction(id, &original, &corrected)
+        .map_err(|e| e.to_string())
+}
+
 /// Toggle the active state of a correction.
 #[tauri::command]
 #[specta::specta]

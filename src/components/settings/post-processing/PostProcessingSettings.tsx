@@ -4,7 +4,6 @@ import { RefreshCcw } from "lucide-react";
 import {
   commands,
   type AppToneMapping,
-  type DictionaryEntry,
   type PostProcessResult,
   type ToneDefinition,
 } from "@/bindings";
@@ -188,10 +187,9 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
   );
 };
 
-const PostProcessingSettingsPromptsComponent: React.FC<ProviderSectionProps> = ({
-  disabled = false,
-  providerState: _providerState,
-}) => {
+const PostProcessingSettingsPromptsComponent: React.FC<
+  ProviderSectionProps
+> = ({ disabled = false, providerState: _providerState }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating, refreshSettings } =
     useSettings();
@@ -493,14 +491,6 @@ export const PostProcessingSettingsPrompts = React.memo(
 );
 PostProcessingSettingsPrompts.displayName = "PostProcessingSettingsPrompts";
 
-const emptyDictionaryEntry = (): DictionaryEntry => ({
-  spoken: "",
-  written: "",
-  priority: 0,
-  case_sensitive: false,
-  exact_only: false,
-});
-
 const emptyToneDefinition = (): ToneDefinition => ({
   id: "",
   label: "",
@@ -522,7 +512,9 @@ const PostProcessSetupStatus: React.FC<{
   const postProcessEnabled = getSetting("post_process_enabled") ?? false;
   const prompts = getSetting("post_process_prompts") || [];
   const selectedPromptId = getSetting("post_process_selected_prompt_id") || "";
-  const selectedPromptExists = prompts.some((prompt) => prompt.id === selectedPromptId);
+  const selectedPromptExists = prompts.some(
+    (prompt) => prompt.id === selectedPromptId,
+  );
   const apiKey = getSetting("post_process_api_keys")?.[
     providerState.selectedProviderId
   ];
@@ -545,7 +537,10 @@ const PostProcessSetupStatus: React.FC<{
       };
     }
 
-    if (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) {
+    if (
+      providerState.isAppleProvider &&
+      providerState.appleIntelligenceUnavailable
+    ) {
       return {
         variant: "warning",
         message: t("settings.postProcessing.status.appleUnavailable"),
@@ -678,7 +673,10 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
         <Dropdown
           selectedValue={selectedMode}
           onSelect={(value) =>
-            void updateSetting("post_process_mode", value as "literal" | "intent")
+            void updateSetting(
+              "post_process_mode",
+              value as "literal" | "intent",
+            )
           }
           options={[
             {
@@ -717,7 +715,9 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
             },
             {
               value: "1",
-              label: t("settings.postProcessing.apple.rewriteStrength.balanced"),
+              label: t(
+                "settings.postProcessing.apple.rewriteStrength.balanced",
+              ),
             },
             {
               value: "2",
@@ -800,7 +800,9 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
     <>
       <ToggleSwitch
         checked={enabled}
-        onChange={(value) => void updateSetting("app_aware_tone_enabled", value)}
+        onChange={(value) =>
+          void updateSetting("app_aware_tone_enabled", value)
+        }
         isUpdating={isUpdating("app_aware_tone_enabled")}
         label={t("settings.postProcessing.appAware.toggle.label")}
         description={t("settings.postProcessing.appAware.toggle.description")}
@@ -889,7 +891,11 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                 <Textarea
                   value={definition.instruction}
                   onChange={(event) =>
-                    updateToneDefinition(index, "instruction", event.target.value)
+                    updateToneDefinition(
+                      index,
+                      "instruction",
+                      event.target.value,
+                    )
                   }
                   placeholder={t(
                     "settings.postProcessing.appAware.tones.placeholders.instruction",
@@ -904,7 +910,10 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
 
           <Button
             onClick={() =>
-              persistToneDefinitions([...toneDefinitions, emptyToneDefinition()])
+              persistToneDefinitions([
+                ...toneDefinitions,
+                emptyToneDefinition(),
+              ])
             }
             variant="primary-soft"
             size="md"
@@ -973,7 +982,9 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                     variant="danger-ghost"
                     size="sm"
                     onClick={() =>
-                      persistMappings(appToneMappings.filter((_, i) => i !== index))
+                      persistMappings(
+                        appToneMappings.filter((_, i) => i !== index),
+                      )
                     }
                     disabled={
                       mappingControlsDisabled || isUpdating("app_tone_mappings")
@@ -1008,171 +1019,15 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
             }
             variant="primary-soft"
             size="md"
-            disabled={mappingControlsDisabled || isUpdating("app_tone_mappings")}
+            disabled={
+              mappingControlsDisabled || isUpdating("app_tone_mappings")
+            }
           >
             {t("settings.postProcessing.appAware.mappings.add")}
           </Button>
         </div>
       </SettingContainer>
     </>
-  );
-};
-
-const PersonalDictionarySettings: React.FC<ProviderSectionProps> = ({
-  disabled = false,
-  providerState,
-}) => {
-  const { t } = useTranslation();
-  const { getSetting, updateSetting, isUpdating } = useSettings();
-
-  if (!providerState.isAppleProvider) {
-    return null;
-  }
-
-  const entries = getSetting("personal_dictionary") || [];
-  const duplicateSpokenForms = new Set<string>();
-  const seenSpokenForms = new Set<string>();
-  entries.forEach((entry) => {
-    const key = entry.spoken.trim().toLowerCase();
-    if (!key) return;
-    if (seenSpokenForms.has(key)) {
-      duplicateSpokenForms.add(key);
-    } else {
-      seenSpokenForms.add(key);
-    }
-  });
-
-  const persistEntries = (nextEntries: DictionaryEntry[]) => {
-    void updateSetting("personal_dictionary", nextEntries);
-  };
-
-  const updateEntry = (
-    index: number,
-    field: keyof DictionaryEntry,
-    value: DictionaryEntry[keyof DictionaryEntry],
-  ) => {
-    const nextEntries = entries.map((entry, currentIndex) =>
-      currentIndex === index ? { ...entry, [field]: value } : entry,
-    );
-    persistEntries(nextEntries);
-  };
-
-  return (
-    <SettingContainer
-      title={t("settings.postProcessing.dictionary.editor.title")}
-      description={t("settings.postProcessing.dictionary.editor.description")}
-      descriptionMode="tooltip"
-      layout="stacked"
-      grouped={true}
-      disabled={disabled}
-    >
-      <div className="space-y-3">
-        {duplicateSpokenForms.size > 0 && (
-          <Alert variant="warning" contained>
-            {t("settings.postProcessing.dictionary.duplicateWarning")}
-          </Alert>
-        )}
-
-        {entries.length === 0 && (
-          <div className="rounded-md border border-mid-gray/20 bg-mid-gray/5 p-3 text-sm text-mid-gray">
-            {t("settings.postProcessing.dictionary.empty")}
-          </div>
-        )}
-
-        {entries.map((entry, index) => {
-          const spokenKey = entry.spoken.trim().toLowerCase();
-          const isDuplicate =
-            spokenKey.length > 0 && duplicateSpokenForms.has(spokenKey);
-
-          return (
-            <div
-              key={`${entry.spoken}-${entry.written}-${index}`}
-              className="rounded-md border border-mid-gray/20 p-3 space-y-3"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
-                    {t("settings.postProcessing.dictionary.columns.spoken")}
-                  </label>
-                  <Input
-                    value={entry.spoken}
-                    onChange={(event) =>
-                      updateEntry(index, "spoken", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.dictionary.placeholders.spoken",
-                    )}
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
-                    {t("settings.postProcessing.dictionary.columns.written")}
-                  </label>
-                  <Input
-                    value={entry.written}
-                    onChange={(event) =>
-                      updateEntry(index, "written", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.dictionary.placeholders.written",
-                    )}
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  />
-                </div>
-
-                <div className="flex items-end justify-end">
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    onClick={() =>
-                      persistEntries(entries.filter((_, currentIndex) => currentIndex !== index))
-                    }
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  >
-                    {t("settings.postProcessing.dictionary.remove")}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={entry.exact_only}
-                    onChange={(event) =>
-                      updateEntry(index, "exact_only", event.target.checked)
-                    }
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  />
-                  <span>
-                    {t("settings.postProcessing.dictionary.columns.exactOnly")}
-                  </span>
-                </label>
-
-                {isDuplicate && (
-                  <span className="text-xs text-yellow-400">
-                    {t("settings.postProcessing.dictionary.duplicateBadge")}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        <Button
-          onClick={() =>
-            persistEntries([...entries, emptyDictionaryEntry()])
-          }
-          variant="primary-soft"
-          size="md"
-          disabled={disabled || isUpdating("personal_dictionary")}
-        >
-          {t("settings.postProcessing.dictionary.add")}
-        </Button>
-      </div>
-    </SettingContainer>
   );
 };
 
@@ -1202,7 +1057,8 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
 
   const controlsDisabled =
     disabled ||
-    (providerState.isAppleProvider && providerState.appleIntelligenceUnavailable) ||
+    (providerState.isAppleProvider &&
+      providerState.appleIntelligenceUnavailable) ||
     isLoading;
 
   const runPreview = async () => {
@@ -1263,7 +1119,9 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
             <Textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={t("settings.postProcessing.preview.testInput.placeholder")}
+              placeholder={t(
+                "settings.postProcessing.preview.testInput.placeholder",
+              )}
               disabled={controlsDisabled}
             />
             <div className="flex gap-2">
@@ -1343,7 +1201,9 @@ export const PostProcessingSettings: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       <div className="space-y-2">
-        <h1 className="text-xl font-semibold">{t("settings.postProcessing.title")}</h1>
+        <h1 className="text-xl font-semibold">
+          {t("settings.postProcessing.title")}
+        </h1>
         <p className="text-sm text-text/60">
           {t("settings.postProcessing.description")}
         </p>
@@ -1356,7 +1216,9 @@ export const PostProcessingSettings: React.FC = () => {
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
         <ToggleSwitch
           checked={localPrivacyMode}
-          onChange={(enabled) => void updateSetting("local_privacy_mode", enabled)}
+          onChange={(enabled) =>
+            void updateSetting("local_privacy_mode", enabled)
+          }
           isUpdating={isUpdating("local_privacy_mode")}
           label={t("settings.postProcessing.localPrivacy.label")}
           description={t("settings.postProcessing.localPrivacy.description")}
@@ -1406,16 +1268,14 @@ export const PostProcessingSettings: React.FC = () => {
           </SettingsGroup>
 
           <SettingsGroup
-            title={t("settings.postProcessing.sections.applePersonalization.title")}
+            title={t(
+              "settings.postProcessing.sections.applePersonalization.title",
+            )}
             description={t(
               "settings.postProcessing.sections.applePersonalization.description",
             )}
           >
             <AppAwareToneSettings
-              disabled={controlsDisabled}
-              providerState={providerState}
-            />
-            <PersonalDictionarySettings
               disabled={controlsDisabled}
               providerState={providerState}
             />

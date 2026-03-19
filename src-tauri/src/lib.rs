@@ -29,6 +29,7 @@ pub use cli::CliArgs;
 use specta_typescript::{BigIntExportBehavior, Typescript};
 use tauri_specta::{collect_commands, Builder};
 
+use correction_tracker::recent_input::RecentInputTracker;
 use correction_tracker::store::CorrectionStore;
 use correction_tracker::InsertedSpanTracker;
 use env_filter::Builder as EnvFilterBuilder;
@@ -383,11 +384,6 @@ pub fn run(cli_args: CliArgs) {
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
         shortcut::change_correction_tracking_enabled_setting,
-        shortcut::change_correction_monitoring_delay_setting,
-        shortcut::change_auto_apply_corrections_setting,
-        shortcut::change_correction_prompt_bias_setting,
-        shortcut::change_correction_min_frequency_setting,
-        shortcut::change_correction_min_confidence_setting,
         shortcut::handy_keys::start_handy_keys_recording,
         shortcut::handy_keys::stop_handy_keys_recording,
         trigger_update_check,
@@ -453,6 +449,7 @@ pub fn run(cli_args: CliArgs) {
         ollama::start_ollama_serve,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
+        commands::corrections::update_correction,
         commands::corrections::toggle_correction,
         commands::corrections::clear_all_corrections,
         commands::corrections::export_corrections,
@@ -571,7 +568,10 @@ pub fn run(cli_args: CliArgs) {
             let correction_store = Arc::new(
                 CorrectionStore::new(&app_data_dir).expect("Failed to initialize correction store"),
             );
+            let recent_input_tracker = Arc::new(RecentInputTracker::new());
+            recent_input_tracker.start_listener();
             app.manage(correction_store);
+            app.manage(recent_input_tracker);
             app.manage(InsertedSpanTracker::new());
 
             initialize_core_logic(&app_handle);

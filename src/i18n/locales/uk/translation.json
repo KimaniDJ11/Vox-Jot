@@ -5,6 +5,7 @@
     "checkUpdates": "Перевірити оновлення...",
     "copyLastTranscript": "Скопіювати останню транскрипцію",
     "unloadModel": "Вивантажити модель",
+    "scratchpad": "Scratchpad",
     "quit": "Вийти",
     "cancel": "Скасувати"
   },
@@ -880,5 +881,16 @@
   "overlay": {
     "transcribing": "Обробка...",
     "processing": "Постобробка..."
+  },
+  "scratchpad": {
+    "newNote": "New Note",
+    "empty": "No notes yet. Click + to create one.",
+    "untitled": "Untitled",
+    "titlePlaceholder": "Note title",
+    "contentPlaceholder": "Start typing...",
+    "noNoteSelected": "Select a note or create a new one",
+    "createFirst": "Create a note",
+    "pin": "Pin",
+    "unpin": "Unpin"
   }
 }

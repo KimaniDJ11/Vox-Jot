@@ -5,6 +5,7 @@
     "checkUpdates": "업데이트 확인...",
     "copyLastTranscript": "마지막 녹음 내용 복사",
     "unloadModel": "모델 언로드",
+    "scratchpad": "Scratchpad",
     "quit": "종료",
     "cancel": "취소"
   },
@@ -880,5 +881,16 @@
   "overlay": {
     "transcribing": "텍스트로 변환 중...",
     "processing": "처리 중..."
+  },
+  "scratchpad": {
+    "newNote": "New Note",
+    "empty": "No notes yet. Click + to create one.",
+    "untitled": "Untitled",
+    "titlePlaceholder": "Note title",
+    "contentPlaceholder": "Start typing...",
+    "noNoteSelected": "Select a note or create a new one",
+    "createFirst": "Create a note",
+    "pin": "Pin",
+    "unpin": "Unpin"
   }
 }

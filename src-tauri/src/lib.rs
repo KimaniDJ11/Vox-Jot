@@ -17,6 +17,7 @@ pub mod portable;
 mod post_processing;
 mod regression;
 mod settings;
+mod scratchpad;
 pub mod snippets;
 mod shortcut;
 mod signal_handle;
@@ -37,6 +38,7 @@ use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
 use managers::history::HistoryManager;
 use managers::model::ModelManager;
+use managers::notes::NotesManager;
 use managers::transcription::TranscriptionManager;
 use post_processing::PreviewManager;
 #[cfg(unix)]
@@ -166,12 +168,15 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     );
     let history_manager =
         Arc::new(HistoryManager::new(app_handle).expect("Failed to initialize history manager"));
+    let notes_manager =
+        Arc::new(NotesManager::new(app_handle).expect("Failed to initialize notes manager"));
 
     // Add managers to Tauri's managed state
     app_handle.manage(recording_manager.clone());
     app_handle.manage(model_manager.clone());
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
+    app_handle.manage(notes_manager.clone());
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -235,6 +240,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                     Ok(()) => log::info!("Model unloaded via tray."),
                     Err(e) => log::error!("Failed to unload model via tray: {}", e),
                 }
+            }
+            "scratchpad" => {
+                crate::scratchpad::toggle_scratchpad(app);
             }
             "start_recording" => {
                 signal_handle::send_transcription_input(app, "transcribe", "Tray");
@@ -455,6 +463,16 @@ pub fn run(cli_args: CliArgs) {
         ollama::delete_ollama_model,
         ollama::get_recommended_ollama_models,
         ollama::start_ollama_serve,
+        commands::notes::get_notes,
+        commands::notes::get_note,
+        commands::notes::create_note,
+        commands::notes::update_note,
+        commands::notes::delete_note,
+        commands::notes::toggle_note_pin,
+        commands::notes::export_notes,
+        commands::notes::delete_all_notes,
+        commands::notes::show_scratchpad,
+        commands::notes::toggle_scratchpad,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
         commands::corrections::update_correction,

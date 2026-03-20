@@ -19,9 +19,11 @@
     "ollama": "LLM Models",
     "corrections": "Corrections",
     "snippets": "Snippets",
+    "styles": "Styles",
     "history": "История",
     "debug": "Отладка",
-    "about": "О программе"
+    "about": "О программе",
+    "settingsLabel": "Settings"
   },
   "onboarding": {
     "subtitle": "Для начала выберите модель транскрипции",
@@ -119,7 +121,14 @@
       "continue": "Continue",
       "moreInfo": "More info",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app."
+      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app.",
+      "inputMonitoring": {
+        "title": "Input Monitoring",
+        "description": "Required so Vox Jot can better tell the difference between sending a message and manually clearing text.",
+        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
+        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app."
+      }
     },
     "steps": {
       "welcome": "Overview",
@@ -252,6 +261,52 @@
         "expansion": "Expands to",
         "triggerPlaceholder": "What you say (e.g. my email)",
         "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
+    "styles": {
+      "title": "Styles",
+      "description": "Styles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
+      "disabledMessage": "Enable styles to automatically match tone to the app you are dictating into.",
+      "toggle": {
+        "label": "Enable app-aware styles",
+        "description": "Automatically apply a different writing style for chat, email, notes, and other apps."
+      },
+      "tones": {
+        "title": "Starter styles",
+        "description": "Start with the built-in presets, tweak their instructions as needed, and add custom styles only if you want something extra.",
+        "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
+        "columns": {
+          "id": "Style ID",
+          "label": "Display name",
+          "instruction": "Instruction"
+        },
+        "placeholders": {
+          "id": "casual",
+          "label": "Casual",
+          "instruction": "Use a casual, conversational tone suitable for chat messages."
+        },
+        "add": "Add custom style",
+        "restore": "Restore starter styles",
+        "starterBadge": "Starter",
+        "customBadge": "Custom",
+        "unused": "No apps mapped yet",
+        "editId": "Edit style ID"
+      },
+      "mappings": {
+        "title": "App mappings",
+        "description": "Assign apps to a style preset. Bundle IDs are the most reliable match key.",
+        "columns": {
+          "appName": "App",
+          "bundleId": "Bundle ID",
+          "tone": "Style"
+        },
+        "placeholders": {
+          "appName": "Slack",
+          "bundleId": "com.tinyspeck.slackmacgap"
+        },
+        "selectTone": "Select style…",
+        "add": "Add app",
+        "empty": "No app mappings yet. Add one below to tailor tone per app."
       }
     },
     "modelSettings": {
@@ -676,6 +731,11 @@
         "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
         "finishSetup": "Post Process is on, but a few setup steps are still missing:",
         "ready": "Post Process is configured and ready to use."
+      },
+      "localPrivacy": {
+        "label": "Local Privacy Mode",
+        "description": "Force all post-processing to run on-device only. Cloud providers will be disabled while this is on.",
+        "cloudDisabled": "Cloud post-processing providers are disabled while Local Privacy Mode is enabled."
       }
     },
     "history": {
@@ -688,7 +748,19 @@
       "unsave": "Удалить из сохраненных",
       "delete": "Удалить запись",
       "deleteError": "Не удалось удалить запись. Пожалуйста, попробуйте еще раз.",
-      "promptUsed": "Prompt used"
+      "promptUsed": "Prompt used",
+      "fieldObservation": {
+        "title": "Field observation",
+        "copyPair": "Copy pair",
+        "copied": "Copied correction pair",
+        "timestamp": "Observed at {{time}}",
+        "failed": "Could not read field text for observation: {{error}}"
+      },
+      "correctionsApplied": "Corrections applied",
+      "deleteConfirm": "Are you sure you want to delete this entry?",
+      "loadError": "Failed to load history: {{error}}",
+      "saveError": "Failed to save recording to history: {{error}}",
+      "saveToggleError": "Failed to update saved status: {{error}}"
     },
     "debug": {
       "title": "Отлаживать",
@@ -838,7 +910,11 @@
     "downloading": "Загрузка... {{progress}} %",
     "installing": "Установка...",
     "preparing": "Подготовка...",
-    "checkForUpdates": "Проверить наличие обновлений"
+    "checkForUpdates": "Проверить наличие обновлений",
+    "modelNotSet": "Model not set",
+    "llmNotSet": "LLM not set",
+    "llmPrefix": "LLM: {{name}}",
+    "noModelsAvailable": "No models available"
   },
   "common": {
     "loading": "Загрузка...",
@@ -860,13 +936,16 @@
     "off": "Выключенный",
     "yes": "Да",
     "no": "Нет",
-    "noOptionsFound": "Вариантов не найдено"
+    "noOptionsFound": "Вариантов не найдено",
+    "active": "Active",
+    "downloaded": "Downloaded"
   },
   "accessibility": {
     "permissionsRequired": "Требуются разрешения на доступ",
     "permissionsDescription": "Vox Jot необходимы разрешения на доступ для ввода расшифрованного текста.",
     "openSettings": "Открыть настройки системы",
-    "dismiss": "Увольнять"
+    "dismiss": "Увольнять",
+    "permissionsTitle": "macOS permissions need attention"
   },
   "errors": {
     "loadDirectory": "Ошибка загрузки каталога: {{error}}.",
@@ -892,5 +971,35 @@
     "createFirst": "Create a note",
     "pin": "Pin",
     "unpin": "Unpin"
+  },
+  "titleBar": {
+    "streak": "{{count}}d streak",
+    "totalWords": "{{count}} words",
+    "todayWords": "{{count}} today",
+    "accuracy": "{{value}}%",
+    "noStats": "No dictations yet"
+  },
+  "ollama": {
+    "title": "Ollama — Local LLM Engine",
+    "description": "Ollama runs tiny AI models locally on your device for post-processing transcripts. No internet required after setup.",
+    "notInstalled": "Ollama is not installed. Click below to install it automatically.",
+    "install": "Install Ollama",
+    "installing": "Installing...",
+    "notRunning": "Ollama is installed but not running.",
+    "start": "Start Ollama",
+    "checking": "Checking...",
+    "titleBarStatusCheckFailed": "Unable to verify Ollama. It may be unreachable.",
+    "ready": "Ollama is installed and ready",
+    "downloadedModels": "Downloaded LLM Models",
+    "noDownloaded": "No local LLM models downloaded yet.",
+    "availableModels": "Available to Download",
+    "localModel": "Local Ollama model",
+    "setActive": "Set Active",
+    "download": "Download",
+    "pulling": "Pulling {{progress}}%",
+    "qualityEst": "quality est",
+    "speedEst": "speed est",
+    "pullError": "Could not start model download. Ensure Ollama is running and try again.",
+    "activateError": "Could not activate this model. Please try again."
   }
 }

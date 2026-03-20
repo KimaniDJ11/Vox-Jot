@@ -1,12 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCcw } from "lucide-react";
-import {
-  commands,
-  type AppToneMapping,
-  type PostProcessResult,
-  type ToneDefinition,
-} from "@/bindings";
+import { commands, type PostProcessResult } from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
 import {
@@ -479,18 +474,6 @@ export const PostProcessingSettingsPrompts = React.memo(
 );
 PostProcessingSettingsPrompts.displayName = "PostProcessingSettingsPrompts";
 
-const emptyToneDefinition = (): ToneDefinition => ({
-  id: "",
-  label: "",
-  instruction: "",
-});
-
-const emptyAppToneMapping = (): AppToneMapping => ({
-  bundle_id: "",
-  app_name: "",
-  tone_id: "",
-});
-
 const PostProcessSetupStatus: React.FC<{
   providerState: PostProcessProviderState;
 }> = ({ providerState }) => {
@@ -730,292 +713,6 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
   );
 };
 
-const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
-  disabled = false,
-  providerState,
-}) => {
-  const { t } = useTranslation();
-  const { getSetting, updateSetting, isUpdating } = useSettings();
-
-  if (!providerState.isAppleProvider) {
-    return null;
-  }
-
-  const enabled = getSetting("app_aware_tone_enabled") || false;
-  const toneDefinitions = getSetting("tone_definitions") || [];
-  const appToneMappings = getSetting("app_tone_mappings") || [];
-  const toneOptions = toneDefinitions.map((tone) => ({
-    value: tone.id,
-    label: tone.label || tone.id,
-  }));
-
-  const persistToneDefinitions = (nextDefinitions: ToneDefinition[]) => {
-    void updateSetting("tone_definitions", nextDefinitions);
-  };
-
-  const persistMappings = (nextMappings: AppToneMapping[]) => {
-    void updateSetting("app_tone_mappings", nextMappings);
-  };
-
-  const updateToneDefinition = (
-    index: number,
-    field: keyof ToneDefinition,
-    value: string,
-  ) => {
-    const nextDefinitions = toneDefinitions.map((definition, currentIndex) =>
-      currentIndex === index ? { ...definition, [field]: value } : definition,
-    );
-    persistToneDefinitions(nextDefinitions);
-  };
-
-  const updateMapping = (
-    index: number,
-    field: keyof AppToneMapping,
-    value: string,
-  ) => {
-    const nextMappings = appToneMappings.map((mapping, currentIndex) =>
-      currentIndex === index ? { ...mapping, [field]: value } : mapping,
-    );
-    persistMappings(nextMappings);
-  };
-
-  const mappingControlsDisabled = disabled || !enabled;
-
-  return (
-    <>
-      <ToggleSwitch
-        checked={enabled}
-        onChange={(value) =>
-          void updateSetting("app_aware_tone_enabled", value)
-        }
-        isUpdating={isUpdating("app_aware_tone_enabled")}
-        label={t("settings.postProcessing.appAware.toggle.label")}
-        description={t("settings.postProcessing.appAware.toggle.description")}
-        grouped={true}
-        disabled={disabled}
-      />
-
-      <Alert variant="info" contained>
-        {enabled
-          ? t("settings.postProcessing.appAware.description")
-          : t("settings.postProcessing.appAware.disabledMessage")}
-      </Alert>
-
-      <SettingContainer
-        title={t("settings.postProcessing.appAware.tones.title")}
-        description={t("settings.postProcessing.appAware.tones.description")}
-        descriptionMode="tooltip"
-        layout="stacked"
-        grouped={true}
-        disabled={mappingControlsDisabled}
-      >
-        <div className="space-y-3">
-          {toneDefinitions.map((definition, index) => (
-            <div
-              key={`${definition.id}-${index}`}
-              className="rounded-md border border-mid-gray/20 p-3 space-y-3"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-mid-gray">
-                    {t("settings.postProcessing.appAware.tones.columns.id")}
-                  </label>
-                  <Input
-                    value={definition.id}
-                    onChange={(event) =>
-                      updateToneDefinition(index, "id", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.appAware.tones.placeholders.id",
-                    )}
-                    disabled={
-                      mappingControlsDisabled || isUpdating("tone_definitions")
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-mid-gray">
-                    {t("settings.postProcessing.appAware.tones.columns.label")}
-                  </label>
-                  <Input
-                    value={definition.label}
-                    onChange={(event) =>
-                      updateToneDefinition(index, "label", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.appAware.tones.placeholders.label",
-                    )}
-                    disabled={
-                      mappingControlsDisabled || isUpdating("tone_definitions")
-                    }
-                  />
-                </div>
-                <div className="flex items-end justify-end">
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    onClick={() =>
-                      persistToneDefinitions(
-                        toneDefinitions.filter((_, i) => i !== index),
-                      )
-                    }
-                    disabled={
-                      mappingControlsDisabled || isUpdating("tone_definitions")
-                    }
-                  >
-                    {t("settings.postProcessing.appAware.remove")}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-mid-gray">
-                  {t(
-                    "settings.postProcessing.appAware.tones.columns.instruction",
-                  )}
-                </label>
-                <Textarea
-                  value={definition.instruction}
-                  onChange={(event) =>
-                    updateToneDefinition(
-                      index,
-                      "instruction",
-                      event.target.value,
-                    )
-                  }
-                  placeholder={t(
-                    "settings.postProcessing.appAware.tones.placeholders.instruction",
-                  )}
-                  disabled={
-                    mappingControlsDisabled || isUpdating("tone_definitions")
-                  }
-                />
-              </div>
-            </div>
-          ))}
-
-          <Button
-            onClick={() =>
-              persistToneDefinitions([
-                ...toneDefinitions,
-                emptyToneDefinition(),
-              ])
-            }
-            variant="primary-soft"
-            size="md"
-            disabled={mappingControlsDisabled || isUpdating("tone_definitions")}
-          >
-            {t("settings.postProcessing.appAware.tones.add")}
-          </Button>
-        </div>
-      </SettingContainer>
-
-      <SettingContainer
-        title={t("settings.postProcessing.appAware.mappings.title")}
-        description={t("settings.postProcessing.appAware.mappings.description")}
-        descriptionMode="tooltip"
-        layout="stacked"
-        grouped={true}
-        disabled={mappingControlsDisabled}
-      >
-        <div className="space-y-3">
-          {appToneMappings.map((mapping, index) => (
-            <div
-              key={`${mapping.bundle_id}-${index}`}
-              className="rounded-md border border-mid-gray/20 p-3 space-y-3"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-mid-gray">
-                    {t(
-                      "settings.postProcessing.appAware.mappings.columns.appName",
-                    )}
-                  </label>
-                  <Input
-                    value={mapping.app_name}
-                    onChange={(event) =>
-                      updateMapping(index, "app_name", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.appAware.mappings.placeholders.appName",
-                    )}
-                    disabled={
-                      mappingControlsDisabled || isUpdating("app_tone_mappings")
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-mid-gray">
-                    {t(
-                      "settings.postProcessing.appAware.mappings.columns.bundleId",
-                    )}
-                  </label>
-                  <Input
-                    value={mapping.bundle_id}
-                    onChange={(event) =>
-                      updateMapping(index, "bundle_id", event.target.value)
-                    }
-                    placeholder={t(
-                      "settings.postProcessing.appAware.mappings.placeholders.bundleId",
-                    )}
-                    disabled={
-                      mappingControlsDisabled || isUpdating("app_tone_mappings")
-                    }
-                  />
-                </div>
-                <div className="flex items-end justify-end">
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    onClick={() =>
-                      persistMappings(
-                        appToneMappings.filter((_, i) => i !== index),
-                      )
-                    }
-                    disabled={
-                      mappingControlsDisabled || isUpdating("app_tone_mappings")
-                    }
-                  >
-                    {t("settings.postProcessing.appAware.remove")}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-mid-gray">
-                  {t("settings.postProcessing.appAware.mappings.columns.tone")}
-                </label>
-                <Dropdown
-                  selectedValue={mapping.tone_id}
-                  onSelect={(value) => updateMapping(index, "tone_id", value)}
-                  options={toneOptions}
-                  disabled={
-                    mappingControlsDisabled ||
-                    isUpdating("app_tone_mappings") ||
-                    toneOptions.length === 0
-                  }
-                />
-              </div>
-            </div>
-          ))}
-
-          <Button
-            onClick={() =>
-              persistMappings([...appToneMappings, emptyAppToneMapping()])
-            }
-            variant="primary-soft"
-            size="md"
-            disabled={
-              mappingControlsDisabled || isUpdating("app_tone_mappings")
-            }
-          >
-            {t("settings.postProcessing.appAware.mappings.add")}
-          </Button>
-        </div>
-      </SettingContainer>
-    </>
-  );
-};
-
 const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
   disabled = false,
   providerState,
@@ -1194,9 +891,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
 
   return (
     <div className="w-full space-y-6">
-      <SettingsGroup
-        title={t("settings.postProcessing.sections.setup.title")}
-      >
+      <SettingsGroup title={t("settings.postProcessing.sections.setup.title")}>
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
         {!omitLocalPrivacy && (
           <>
@@ -1207,7 +902,9 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
               }
               isUpdating={isUpdating("local_privacy_mode")}
               label={t("settings.postProcessing.localPrivacy.label")}
-              description={t("settings.postProcessing.localPrivacy.description")}
+              description={t(
+                "settings.postProcessing.localPrivacy.description",
+              )}
               descriptionMode="tooltip"
               grouped={true}
             />
@@ -1231,9 +928,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
 
       <PostProcessSetupStatus providerState={providerState} />
 
-      <SettingsGroup
-        title={t("settings.postProcessing.sections.review.title")}
-      >
+      <SettingsGroup title={t("settings.postProcessing.sections.review.title")}>
         <PostProcessReviewSettings
           disabled={controlsDisabled}
           providerState={providerState}
@@ -1241,27 +936,14 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
       </SettingsGroup>
 
       {providerState.isAppleProvider && (
-        <>
-          <SettingsGroup
-            title={t("settings.postProcessing.sections.appleCleanup.title")}
-          >
-            <ApplePostProcessingSettings
-              disabled={controlsDisabled}
-              providerState={providerState}
-            />
-          </SettingsGroup>
-
-          <SettingsGroup
-            title={t(
-              "settings.postProcessing.sections.applePersonalization.title",
-            )}
-          >
-            <AppAwareToneSettings
-              disabled={controlsDisabled}
-              providerState={providerState}
-            />
-          </SettingsGroup>
-        </>
+        <SettingsGroup
+          title={t("settings.postProcessing.sections.appleCleanup.title")}
+        >
+          <ApplePostProcessingSettings
+            disabled={controlsDisabled}
+            providerState={providerState}
+          />
+        </SettingsGroup>
       )}
 
       {!providerState.isAppleProvider && (

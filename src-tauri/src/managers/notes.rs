@@ -63,8 +63,7 @@ impl NotesManager {
 
         migrations.to_latest(&mut conn)?;
 
-        let version_after: i32 =
-            conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        let version_after: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
         if version_after > version_before {
             info!(
                 "Notes DB migrated from version {} to {}",

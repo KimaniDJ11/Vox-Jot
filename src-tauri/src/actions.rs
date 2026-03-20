@@ -12,12 +12,12 @@ use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
     PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
-use crate::snippets::apply_snippets;
 use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
     APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::shortcut;
+use crate::snippets::apply_snippets;
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
@@ -703,12 +703,9 @@ fn should_fallback_to_plain_text_drift(
         || candidate.contains("##")
         || candidate.contains("* **")
         || candidate.contains("- **");
-    let raw_had_markdown = raw_text.contains("**")
-        || raw_text.contains("##");
+    let raw_had_markdown = raw_text.contains("**") || raw_text.contains("##");
     if has_markdown_formatting && !raw_had_markdown {
-        debug!(
-            "Drift gate: candidate contains markdown formatting not present in raw text"
-        );
+        debug!("Drift gate: candidate contains markdown formatting not present in raw text");
         return true;
     }
 
@@ -1605,6 +1602,10 @@ pub(crate) async fn post_process_transcription(
     }
 
     let tone_context = resolve_tone_context(settings, active_app_context.as_ref());
+    let applied_tone_id = tone_context.as_ref().map(|tc| tc.tone_id.clone());
+    let tone_app_context = tone_context
+        .as_ref()
+        .map(|tc| tc.active_app_context.clone());
     let mut base_system_prompt = build_apple_system_prompt(
         settings,
         tone_context.as_ref(),
@@ -1661,8 +1662,8 @@ pub(crate) async fn post_process_transcription(
                             dict_text.clone(),
                             result.clone(),
                             dict_hits.clone(),
-                            None,
-                            None,
+                            tone_app_context.clone(),
+                            applied_tone_id.clone(),
                         ),
                         prompt_used: Some(system_prompt.clone()),
                     });
@@ -1723,8 +1724,8 @@ pub(crate) async fn post_process_transcription(
                     dict_text.clone(),
                     content.clone(),
                     dict_hits,
-                    None,
-                    None,
+                    tone_app_context.clone(),
+                    applied_tone_id.clone(),
                 ),
                 prompt_used: Some(system_prompt),
             })
@@ -2594,9 +2595,9 @@ impl ShortcutAction for TestAction {
 mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
-        build_apple_user_content, build_non_apple_tone_instruction, build_system_prompt,
-        choose_post_process_pass, extract_spoken_submit_command, has_ordinal_list_cues,
-        live_partial_config_for_model, looks_incomplete_utterance,
+        build_apple_user_content, build_non_apple_tone_instruction, build_post_process_result,
+        build_system_prompt, choose_post_process_pass, extract_spoken_submit_command,
+        has_ordinal_list_cues, live_partial_config_for_model, looks_incomplete_utterance,
         maybe_apply_verification_request_fallback, parse_transcription_field_from_json,
         preview_app_context_from_override, resolve_tone_context, sanitize_plain_model_output,
         should_block_paste_candidate, should_fallback_to_plain_text_candidate,
@@ -2901,6 +2902,28 @@ mod tests {
 
         assert!(instruction.contains("Slack"));
         assert!(instruction.contains("tone: casual"));
+    }
+
+    #[test]
+    fn post_process_result_preserves_tone_metadata() {
+        let settings = get_default_settings();
+        let active_app_context = ActiveAppContext {
+            bundle_id: "com.tinyspeck.slackmacgap".to_string(),
+            localized_name: "Slack".to_string(),
+        };
+
+        let result = build_post_process_result(
+            &settings,
+            "raw text",
+            "normalized text".to_string(),
+            "final text".to_string(),
+            vec![],
+            Some(active_app_context.clone()),
+            Some("casual".to_string()),
+        );
+
+        assert_eq!(result.applied_tone_id.as_deref(), Some("casual"));
+        assert_eq!(result.active_app_context, Some(active_app_context));
     }
 
     #[test]

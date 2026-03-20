@@ -112,10 +112,7 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
                         .rev()
                         .collect();
 
-                    output.push(format!(
-                        "{}{}{}",
-                        leading, snippet.expansion, trailing
-                    ));
+                    output.push(format!("{}{}{}", leading, snippet.expansion, trailing));
                     hits.push(snippet.trigger.clone());
                     debug!(
                         "Snippet expanded: '{}' → '{}'",
@@ -195,10 +192,7 @@ mod tests {
 
     #[test]
     fn longer_trigger_wins() {
-        let snippets = vec![
-            snippet("my address", "123 Main St"),
-            snippet("my", "mine"),
-        ];
+        let snippets = vec![snippet("my address", "123 Main St"), snippet("my", "mine")];
         let result = apply_snippets("type my address here", &snippets);
         assert_eq!(result.text, "type 123 Main St here");
     }

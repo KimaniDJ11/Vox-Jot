@@ -1205,10 +1205,7 @@ pub fn change_correction_tracking_enabled_setting(
 
 #[tauri::command]
 #[specta::specta]
-pub fn change_snippets_enabled_setting(
-    app: AppHandle,
-    enabled: bool,
-) -> Result<(), String> {
+pub fn change_snippets_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.snippets_enabled = enabled;
     settings::write_settings(&app, settings);

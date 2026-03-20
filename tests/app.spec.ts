@@ -6,6 +6,7 @@ type Scenario = {
   historyEntries: Array<Record<string, unknown>>;
   permissions: {
     accessibility: boolean;
+    inputMonitoring: boolean;
     microphone: boolean;
   };
   platform: "macos" | "windows" | "linux";
@@ -169,6 +170,7 @@ const baseScenario: Scenario = {
   models: [downloadedModel],
   permissions: {
     accessibility: true,
+    inputMonitoring: true,
     microphone: true,
   },
   platform: "macos",
@@ -263,9 +265,12 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return "en-US";
           case "plugin:macos-permissions|check_accessibility_permission":
             return activeScenario.permissions.accessibility;
+          case "plugin:macos-permissions|check_input_monitoring_permission":
+            return activeScenario.permissions.inputMonitoring;
           case "plugin:macos-permissions|check_microphone_permission":
             return activeScenario.permissions.microphone;
           case "plugin:macos-permissions|request_accessibility_permission":
+          case "plugin:macos-permissions|request_input_monitoring_permission":
           case "plugin:macos-permissions|request_microphone_permission":
           case "show_main_window_command":
           case "initialize_enigo":
@@ -505,8 +510,80 @@ test.describe("Vox Jot app", () => {
     await page.getByText("Post Process").click();
 
     await expect(page.getByText("Apple Cleanup")).toBeVisible();
-    await expect(page.getByText("Apple Personalization")).toBeVisible();
+    await expect(page.getByText("Apple Personalization")).toHaveCount(0);
     await expect(page.getByText("Prompting")).toHaveCount(0);
+  });
+
+  test("shows styles as a dedicated section with starter presets and app mappings", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      settings: {
+        app_aware_tone_enabled: true,
+        post_process_enabled: true,
+        post_process_provider_id: "openai",
+        tone_definitions: [
+          {
+            id: "neutral",
+            instruction:
+              "Keep the tone neutral and close to the speaker's original wording.",
+            label: "Neutral",
+          },
+          {
+            id: "casual",
+            instruction:
+              "Use a casual, conversational tone suitable for quick chat messages while preserving meaning.",
+            label: "Casual",
+          },
+          {
+            id: "professional",
+            instruction:
+              "Use a polished, professional tone suitable for email or documents while preserving meaning.",
+            label: "Professional",
+          },
+        ],
+        app_tone_mappings: [
+          {
+            app_name: "Slack",
+            bundle_id: "com.tinyspeck.slackmacgap",
+            tone_id: "casual",
+          },
+          {
+            app_name: "Mail",
+            bundle_id: "com.apple.mail",
+            tone_id: "professional",
+          },
+        ],
+      },
+    });
+
+    await expect(page.getByText("Styles").first()).toBeVisible();
+    await page.getByText("Styles").first().click();
+
+    await expect(
+      page.getByRole("heading", { name: /^Styles$/i }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^Starter styles$/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^Casual$/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^Professional$/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^Neutral$/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^App mappings$/i }),
+    ).toBeVisible();
+    await expect(page.locator('input[value="Slack"]')).toBeVisible();
+    await expect(
+      page.locator('input[value="com.tinyspeck.slackmacgap"]'),
+    ).toBeVisible();
+    await expect(page.locator('input[value="Mail"]')).toBeVisible();
+    await expect(page.locator('input[value="com.apple.mail"]')).toBeVisible();
   });
 
   test("renders prompting for non-Apple providers", async ({ page }) => {

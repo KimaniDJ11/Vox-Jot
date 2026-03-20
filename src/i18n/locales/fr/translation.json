@@ -5,21 +5,21 @@
     "checkUpdates": "Rechercher des mises à jour...",
     "copyLastTranscript": "Copier la dernière transcription",
     "unloadModel": "Décharger le modèle",
-    "scratchpad": "Scratchpad",
     "quit": "Quitter",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "jotPad": "Jot Pad"
   },
   "sidebar": {
     "collapsePanel": "Masquer le panneau latéral des réglages",
     "expandPanel": "Afficher le panneau latéral des réglages",
     "system": "Système",
     "models": "Modèles",
-    "dataPrivacy": "Données et confidentialité",
-    "experimental": "Expérimental",
+    "dataPrivacy": "Confidentialité et données",
+    "experimental": "Labo",
     "ollama": "LLM Models",
     "corrections": "Corrections",
-    "snippets": "Snippets",
-    "styles": "Styles",
+    "snippets": "Clés de phrase",
+    "styles": "Profils d'écriture",
     "history": "Historique",
     "debug": "Débogage",
     "about": "À propos",
@@ -246,67 +246,67 @@
   "settings": {
     "snippets": {
       "toggle": {
-        "title": "Snippets",
-        "label": "Enable Snippets",
-        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+        "title": "Clés de phrase",
+        "label": "Activer les clés de phrase",
+        "description": "Développez de courts déclencheurs parlés en texte complet pendant la dictée. Dites votre déclencheur et Vox Jot insère le texte enregistré."
       },
       "list": {
-        "title": "Your Snippets",
-        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
-        "add": "Add Snippet",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
-        "trigger": "Trigger",
-        "expansion": "Expands to",
-        "triggerPlaceholder": "What you say (e.g. my email)",
-        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+        "title": "Vos clés de phrase",
+        "empty": "Aucune clé de phrase. Ajoutez un déclencheur et le texte cible.",
+        "add": "Ajouter une clé de phrase",
+        "import": "Importer",
+        "export": "Exporter",
+        "clearAll": "Tout effacer",
+        "trigger": "Déclencheur oral",
+        "expansion": "S’étend en",
+        "triggerPlaceholder": "Ce que vous dites (ex. : mon e-mail)",
+        "expansionPlaceholder": "Texte inséré (ex. : user@example.com)"
       }
     },
     "styles": {
-      "title": "Styles",
-      "description": "Styles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
-      "disabledMessage": "Enable styles to automatically match tone to the app you are dictating into.",
+      "title": "Profils d'écriture",
+      "description": "Les profils d'écriture adaptent le post-traitement à l'application active. Slack peut rester décontracté, Mail et Word plus professionnels.",
+      "disabledMessage": "Activez les profils d'écriture pour adapter automatiquement le ton à l'application dans laquelle vous dictez.",
       "toggle": {
-        "label": "Enable app-aware styles",
-        "description": "Automatically apply a different writing style for chat, email, notes, and other apps."
+        "label": "Activer les profils d'écriture contextuels",
+        "description": "Appliquez un profil d'écriture différent pour le chat, le courriel, les notes et d'autres apps selon le contexte."
       },
       "tones": {
-        "title": "Starter styles",
-        "description": "Start with the built-in presets, tweak their instructions as needed, and add custom styles only if you want something extra.",
-        "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
+        "title": "Profils de départ",
+        "description": "Commencez par les préréglages intégrés, ajustez les instructions et ajoutez des profils personnalisés si besoin.",
+        "helper": "Les préréglages couvrent la plupart des usages : décontracté pour le chat, professionnel pour le courrier et les documents, neutre pour le reste.",
         "columns": {
-          "id": "Style ID",
-          "label": "Display name",
-          "instruction": "Instruction"
+          "id": "ID du profil",
+          "label": "Nom affiché",
+          "instruction": "Consigne"
         },
         "placeholders": {
           "id": "casual",
-          "label": "Casual",
-          "instruction": "Use a casual, conversational tone suitable for chat messages."
+          "label": "Décontracté",
+          "instruction": "Ton décontracté et conversationnel adapté au chat."
         },
-        "add": "Add custom style",
-        "restore": "Restore starter styles",
-        "starterBadge": "Starter",
-        "customBadge": "Custom",
-        "unused": "No apps mapped yet",
-        "editId": "Edit style ID"
+        "add": "Ajouter un profil personnalisé",
+        "restore": "Restaurer les profils de départ",
+        "starterBadge": "Intégré",
+        "customBadge": "Perso",
+        "unused": "Aucune app associée",
+        "editId": "Modifier l'ID du profil"
       },
       "mappings": {
-        "title": "App mappings",
-        "description": "Assign apps to a style preset. Bundle IDs are the most reliable match key.",
+        "title": "Associations d'apps",
+        "description": "Associez des apps à un profil. Les identifiants de bundle sont les plus fiables.",
         "columns": {
           "appName": "App",
           "bundleId": "Bundle ID",
-          "tone": "Style"
+          "tone": "Profil"
         },
         "placeholders": {
           "appName": "Slack",
           "bundleId": "com.tinyspeck.slackmacgap"
         },
-        "selectTone": "Select style…",
-        "add": "Add app",
-        "empty": "No app mappings yet. Add one below to tailor tone per app."
+        "selectTone": "Choisir un profil…",
+        "add": "Ajouter une app",
+        "empty": "Aucune association. Ajoutez-en une ci-dessous pour adapter le ton par app."
       }
     },
     "modelSettings": {
@@ -415,11 +415,11 @@
         "output": "Sortie",
         "transcription": "Transcription",
         "history": "Historique",
-        "experimental": "Expérimental"
+        "experimental": "Labo"
       },
       "experimentalToggle": {
-        "label": "Fonctionnalités Expérimentales",
-        "description": "Activer les fonctionnalités expérimentales encore en développement."
+        "label": "Fonctions labo",
+        "description": "Activer les options en cours de développement. À utiliser avec prudence."
       },
       "startHidden": {
         "label": "Démarrer masqué",
@@ -895,7 +895,7 @@
       }
     },
     "experimental": {
-      "title": "Experimental"
+      "title": "Labo"
     }
   },
   "footer": {
@@ -961,17 +961,6 @@
     "transcribing": "Transcription...",
     "processing": "Traitement..."
   },
-  "scratchpad": {
-    "newNote": "New Note",
-    "empty": "No notes yet. Click + to create one.",
-    "untitled": "Untitled",
-    "titlePlaceholder": "Note title",
-    "contentPlaceholder": "Start typing...",
-    "noNoteSelected": "Select a note or create a new one",
-    "createFirst": "Create a note",
-    "pin": "Pin",
-    "unpin": "Unpin"
-  },
   "titleBar": {
     "streak": "{{count}}d streak",
     "totalWords": "{{count}} words",
@@ -1001,5 +990,16 @@
     "speedEst": "speed est",
     "pullError": "Could not start model download. Ensure Ollama is running and try again.",
     "activateError": "Could not activate this model. Please try again."
+  },
+  "jotPad": {
+    "newNote": "New note",
+    "empty": "No notes yet. Click + to create one.",
+    "untitled": "Untitled",
+    "titlePlaceholder": "Note title",
+    "contentPlaceholder": "Start typing…",
+    "noNoteSelected": "Select a note or create a new one",
+    "createFirst": "Create a note",
+    "pin": "Pin",
+    "unpin": "Unpin"
   }
 }

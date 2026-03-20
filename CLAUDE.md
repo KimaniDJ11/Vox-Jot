@@ -86,6 +86,8 @@ All user-facing strings must use i18next translations. ESLint enforces this (no 
 1. Add key to `src/i18n/locales/en/translation.json`
 2. Use in component: `const { t } = useTranslation(); t('key.path')`
 
+**Product vocabulary (user-facing):** Use **Jot Pad** (tray/window; i18n `tray.jotPad`, `jotPad.*`), **Phrase keys** (sidebar + settings; not “Snippets”), **Write profiles** (sidebar + settings; app-aware tone; not “Flow Styles”), **Labs** (experimental settings), **Privacy & data** (data/privacy section). Tray menu labels are generated from `translation.json` at build time (`src-tauri/build.rs`). To re-sync non-English locales after large English copy changes, adjust and run `scripts/sync_differentiated_naming_i18n.py` as a starting point, then run `bun run check:translations`.
+
 **File structure:**
 
 ```

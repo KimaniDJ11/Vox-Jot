@@ -42,7 +42,7 @@ fn create_scratchpad_window(app: &AppHandle) {
     let webview_data_dir = crate::portable::data_dir().map(|dir| dir.join("webview"));
     let builder = PanelBuilder::<_, ScratchpadPanel>::new(app, SCRATCHPAD_LABEL)
         .url(tauri::WebviewUrl::App("src/scratchpad/index.html".into()))
-        .title("Scratchpad")
+        .title("Jot Pad")
         .size(tauri::Size::Logical(tauri::LogicalSize {
             width: SCRATCHPAD_WIDTH,
             height: SCRATCHPAD_HEIGHT,
@@ -107,7 +107,7 @@ fn create_scratchpad_window(app: &AppHandle) {
         SCRATCHPAD_LABEL,
         tauri::WebviewUrl::App("src/scratchpad/index.html".into()),
     )
-    .title("Scratchpad")
+    .title("Jot Pad")
     .inner_size(SCRATCHPAD_WIDTH, SCRATCHPAD_HEIGHT)
     .min_inner_size(SCRATCHPAD_MIN_WIDTH, SCRATCHPAD_MIN_HEIGHT)
     .resizable(true)

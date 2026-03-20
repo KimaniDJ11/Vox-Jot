@@ -557,14 +557,14 @@ test.describe("Vox Jot app", () => {
       },
     });
 
-    await expect(page.getByText("Styles").first()).toBeVisible();
-    await page.getByText("Styles").first().click();
+    await expect(page.getByText("Write profiles").first()).toBeVisible();
+    await page.getByText("Write profiles").first().click();
 
     await expect(
-      page.getByRole("heading", { name: /^Styles$/i }).first(),
+      page.getByRole("heading", { name: /^Write profiles$/i }).first(),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: /^Starter styles$/i }),
+      page.getByRole("heading", { name: /^Starter profiles$/i }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: /^Casual$/i }),

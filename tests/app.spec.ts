@@ -523,7 +523,7 @@ test.describe("Vox Jot app", () => {
     await expect(page.getByText("Apple Cleanup")).toHaveCount(0);
   });
 
-  test("shows recording and jot tabs with search filtering", async ({
+  test("shows unified history preferring post-processed text", async ({
     page,
   }) => {
     await bootApp(page, {
@@ -551,14 +551,8 @@ test.describe("Vox Jot app", () => {
 
     await page.getByText("History").click();
 
-    await expect(page.getByTestId("history-tab-recordings")).toBeVisible();
-    await expect(page.getByTestId("history-tab-jots")).toBeVisible();
+    await expect(page.getByTestId("history-entries")).toBeVisible();
     await expect(page.getByText("buy bread and apples")).toBeVisible();
-
-    await page.getByRole("searchbox").fill("status");
-    await expect(page.getByText("buy bread and apples")).toHaveCount(0);
-
-    await page.getByTestId("history-tab-jots").click();
     await expect(
       page.getByText("Draft a clear status update for the team"),
     ).toBeVisible();

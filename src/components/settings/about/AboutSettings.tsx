@@ -19,7 +19,7 @@ export const AboutSettings: React.FC = () => {
         setVersion(appVersion);
       } catch (error) {
         console.error("Failed to get app version:", error);
-        setVersion("0.7.10");
+        setVersion("1.0.0");
       }
     };
 

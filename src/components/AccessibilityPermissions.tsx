@@ -92,7 +92,7 @@ const AccessibilityPermissions: React.FC = () => {
       {!permissions.accessibility && (
         <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-semibold">
               {t("onboarding.permissions.accessibility.title")}
             </p>
             <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
@@ -112,7 +112,7 @@ const AccessibilityPermissions: React.FC = () => {
       {!permissions.inputMonitoring && (
         <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-semibold">
               {t("onboarding.permissions.inputMonitoring.title")}
             </p>
             <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">

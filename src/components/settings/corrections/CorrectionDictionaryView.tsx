@@ -1,32 +1,82 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Trash2 } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Download, Plus, Trash2, Upload, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 
-type DraftState = Record<
-  number,
-  {
-    original: string;
-    corrected: string;
-    isSaving?: boolean;
-  }
->;
+/**
+ * A group of corrections that share the same corrected word.
+ * Multiple originals → one corrected target.
+ */
+interface CorrectionGroup {
+  corrected: string;
+  entries: StoredCorrection[];
+  totalFrequency: number;
+  avgConfidence: number;
+  allActive: boolean;
+}
 
-export const CorrectionDictionaryView: React.FC = () => {
+function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
+  const map = new Map<string, StoredCorrection[]>();
+
+  for (const c of corrections) {
+    const key = c.corrected.toLowerCase();
+    const existing = map.get(key);
+    if (existing) {
+      existing.push(c);
+    } else {
+      map.set(key, [c]);
+    }
+  }
+
+  const groups: CorrectionGroup[] = [];
+  for (const entries of map.values()) {
+    const totalFrequency = entries.reduce((sum, e) => sum + e.frequency, 0);
+    const avgConfidence =
+      entries.reduce((sum, e) => sum + e.confidence, 0) / entries.length;
+    const allActive = entries.every((e) => e.is_active);
+
+    groups.push({
+      corrected: entries[0].corrected,
+      entries,
+      totalFrequency,
+      avgConfidence,
+      allActive,
+    });
+  }
+
+  // Sort by most recent activity
+  groups.sort((a, b) => {
+    const aMax = Math.max(...a.entries.map((e) => e.last_seen));
+    const bMax = Math.max(...b.entries.map((e) => e.last_seen));
+    return bMax - aMax;
+  });
+
+  return groups;
+}
+
+interface CorrectionDictionaryViewProps {
+  /** Shown in the row above the card, with import/export/clear icons trailing right. */
+  sectionTitle: string;
+}
+
+export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> = ({
+  sectionTitle,
+}) => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
-  const [drafts, setDrafts] = useState<DraftState>({});
   const [loading, setLoading] = useState(true);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [newOriginal, setNewOriginal] = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   const loadCorrections = useCallback(async () => {
     try {
       const result = await commands.getCorrections();
       if (result.status === "ok") {
         setCorrections(result.data);
-        setDrafts({});
       }
     } catch (error) {
       console.error("Failed to load corrections:", error);
@@ -39,6 +89,12 @@ export const CorrectionDictionaryView: React.FC = () => {
     loadCorrections();
   }, [loadCorrections]);
 
+  useEffect(() => {
+    if (addingTo && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [addingTo]);
+
   const handleDelete = async (id: number) => {
     try {
       const result = await commands.deleteCorrection(id);
@@ -50,18 +106,91 @@ export const CorrectionDictionaryView: React.FC = () => {
     }
   };
 
-  const handleToggle = async (id: number, currentActive: boolean) => {
+  const handleDeleteGroup = async (group: CorrectionGroup) => {
     try {
-      const result = await commands.toggleCorrection(id, !currentActive);
+      for (const entry of group.entries) {
+        await commands.deleteCorrection(entry.id);
+      }
+      const ids = new Set(group.entries.map((e) => e.id));
+      setCorrections((prev) => prev.filter((c) => !ids.has(c.id)));
+    } catch (error) {
+      console.error("Failed to delete group:", error);
+    }
+  };
+
+  const handleToggleGroup = async (group: CorrectionGroup) => {
+    const newActive = !group.allActive;
+    try {
+      for (const entry of group.entries) {
+        await commands.toggleCorrection(entry.id, newActive);
+      }
+      const ids = new Set(group.entries.map((e) => e.id));
+      setCorrections((prev) =>
+        prev.map((c) => (ids.has(c.id) ? { ...c, is_active: newActive } : c)),
+      );
+    } catch (error) {
+      console.error("Failed to toggle group:", error);
+    }
+  };
+
+  const handleUpdateCorrected = async (
+    group: CorrectionGroup,
+    newCorrected: string,
+  ) => {
+    const trimmed = newCorrected.trim();
+    if (!trimmed || trimmed === group.corrected) return;
+
+    try {
+      for (const entry of group.entries) {
+        await commands.updateCorrection(entry.id, entry.original, trimmed);
+      }
+      const ids = new Set(group.entries.map((e) => e.id));
+      setCorrections((prev) =>
+        prev.map((c) => (ids.has(c.id) ? { ...c, corrected: trimmed } : c)),
+      );
+    } catch (error) {
+      console.error("Failed to update corrected text:", error);
+    }
+  };
+
+  const handleUpdateOriginal = async (
+    entry: StoredCorrection,
+    newOriginal: string,
+  ) => {
+    const trimmed = newOriginal.trim();
+    if (!trimmed || trimmed === entry.original) return;
+
+    try {
+      const result = await commands.updateCorrection(
+        entry.id,
+        trimmed,
+        entry.corrected,
+      );
       if (result.status === "ok") {
         setCorrections((prev) =>
           prev.map((c) =>
-            c.id === id ? { ...c, is_active: !currentActive } : c,
+            c.id === entry.id ? { ...c, original: trimmed } : c,
           ),
         );
       }
     } catch (error) {
-      console.error("Failed to toggle correction:", error);
+      console.error("Failed to update original:", error);
+    }
+  };
+
+  const handleAddOriginal = async (corrected: string) => {
+    const trimmed = newOriginal.trim();
+    if (!trimmed) return;
+
+    try {
+      const result = await commands.addManualCorrection(trimmed, corrected);
+      if (result.status === "ok") {
+        setNewOriginal("");
+        setAddingTo(null);
+        await loadCorrections();
+      }
+    } catch (error) {
+      console.error("Failed to add correction:", error);
     }
   };
 
@@ -114,265 +243,261 @@ export const CorrectionDictionaryView: React.FC = () => {
     input.click();
   };
 
-  const setDraftValue = (
-    id: number,
-    field: "original" | "corrected",
-    value: string,
-  ) => {
-    setDrafts((prev) => {
-      const existing = prev[id];
-      const current = corrections.find((correction) => correction.id === id);
-      return {
-        ...prev,
-        [id]: {
-          original: existing?.original ?? current?.original ?? "",
-          corrected: existing?.corrected ?? current?.corrected ?? "",
-          [field]: value,
-        },
-      };
-    });
-  };
+  const groups = loading ? [] : groupCorrections(corrections);
+  const bulkActionsDisabled = loading || corrections.length === 0;
 
-  const clearDraft = (id: number) => {
-    setDrafts((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
-  const handleSave = async (correction: StoredCorrection) => {
-    const draft = drafts[correction.id];
-    const original = (draft?.original ?? correction.original).trim();
-    const corrected = (draft?.corrected ?? correction.corrected).trim();
-
-    if (!original || !corrected) {
-      return;
-    }
-
-    setDrafts((prev) => ({
-      ...prev,
-      [correction.id]: {
-        original,
-        corrected,
-        isSaving: true,
-      },
-    }));
-
-    try {
-      const result = await commands.updateCorrection(
-        correction.id,
-        original,
-        corrected,
-      );
-      if (result.status === "ok") {
-        setCorrections((prev) =>
-          prev.map((entry) =>
-            entry.id === correction.id
-              ? { ...entry, original, corrected }
-              : entry,
-          ),
-        );
-        clearDraft(correction.id);
-      }
-    } catch (error) {
-      console.error("Failed to update correction:", error);
-      setDrafts((prev) => ({
-        ...prev,
-        [correction.id]: {
-          original,
-          corrected,
-          isSaving: false,
-        },
-      }));
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="px-5 py-4 text-sm text-[var(--muted)]">
-        {t("common.loading")}
+  return (
+    <section className="space-y-2">
+      <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+          {sectionTitle}
+        </h2>
+        <div className="flex gap-1 shrink-0">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="p-1.5"
+            onClick={handleImport}
+            title={t("settings.corrections.dictionary.import")}
+            aria-label={t("settings.corrections.dictionary.import")}
+          >
+            <Upload className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="p-1.5"
+            onClick={handleExport}
+            disabled={bulkActionsDisabled}
+            title={t("settings.corrections.dictionary.export")}
+            aria-label={t("settings.corrections.dictionary.export")}
+          >
+            <Download className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="danger-ghost"
+            className="p-1.5"
+            onClick={handleClearAll}
+            disabled={bulkActionsDisabled}
+            title={t("settings.corrections.dictionary.clearAll")}
+            aria-label={t("settings.corrections.dictionary.clearAll")}
+          >
+            <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+        </div>
       </div>
+
+      <div className="flat-card overflow-visible">
+        {loading ? (
+          <div className="px-5 py-4 text-sm text-[var(--muted)]">
+            {t("common.loading")}
+          </div>
+        ) : groups.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-mid-gray">
+            {t("settings.corrections.dictionary.empty")}
+          </div>
+        ) : (
+          <div className="divide-y divide-[var(--border)]">
+            {groups.map((group) => (
+              <div
+                key={group.corrected}
+                className={`px-5 py-3 space-y-2.5 transition-opacity ${
+                  !group.allActive ? "opacity-50" : ""
+                }`}
+              >
+                {/* Top row: corrected word + controls */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0">
+                    {t("settings.corrections.dictionary.columns.corrected")}
+                  </span>
+                  <Input
+                    variant="compact"
+                    className="flex-1 font-semibold min-w-0"
+                    defaultValue={group.corrected}
+                    onBlur={(e) => handleUpdateCorrected(group, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                  />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      className={`inline-block w-7 h-3.5 rounded-full transition-colors ${
+                        group.allActive
+                          ? "bg-[var(--accent)]"
+                          : "bg-[var(--border)]"
+                      }`}
+                      onClick={() => handleToggleGroup(group)}
+                      title={
+                        group.allActive
+                          ? t("common.disable", { defaultValue: "Disable" })
+                          : t("common.enable", { defaultValue: "Enable" })
+                      }
+                    >
+                      <span
+                        className={`block w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${
+                          group.allActive ? "translate-x-3.5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-mid-gray/60 hover:text-red-500 transition-colors p-0.5"
+                      onClick={() => handleDeleteGroup(group)}
+                      title={t("common.delete")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray mr-1">
+                    {t("settings.corrections.dictionary.columns.original")}
+                  </span>
+                  {group.entries.map((entry) => (
+                    <OriginalChip
+                      key={entry.id}
+                      entry={entry}
+                      onUpdate={handleUpdateOriginal}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                  {addingTo === group.corrected ? (
+                    <form
+                      className="inline-flex items-center gap-1"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleAddOriginal(group.corrected);
+                      }}
+                    >
+                      <input
+                        ref={addInputRef}
+                        type="text"
+                        value={newOriginal}
+                        onChange={(e) => setNewOriginal(e.target.value)}
+                        onBlur={() => {
+                          if (!newOriginal.trim()) {
+                            setAddingTo(null);
+                            setNewOriginal("");
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setAddingTo(null);
+                            setNewOriginal("");
+                          }
+                        }}
+                        className="px-2 py-0.5 text-xs bg-mid-gray/10 border border-mid-gray/60 rounded-full w-24 focus:outline-none focus:border-[var(--accent)] focus:bg-[var(--accent)]/10"
+                        placeholder={t("common.add", { defaultValue: "Add..." })}
+                      />
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-mid-gray/70 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/30 hover:border-[var(--accent)]/40"
+                      onClick={() => {
+                        setAddingTo(group.corrected);
+                        setNewOriginal("");
+                      }}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-3 text-[10px] text-mid-gray/60">
+                  <span>
+                    {t("settings.corrections.dictionary.columns.frequency")}:{" "}
+                    {group.totalFrequency}
+                  </span>
+                  <span>
+                    {t("settings.corrections.dictionary.columns.confidence")}:{" "}
+                    {(group.avgConfidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+/**
+ * Editable chip for an original word.
+ * Click to edit inline, blur to auto-save.
+ */
+const OriginalChip: React.FC<{
+  entry: StoredCorrection;
+  onUpdate: (entry: StoredCorrection, newOriginal: string) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}> = ({ entry, onUpdate, onDelete }) => {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(entry.original);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commitEdit = () => {
+    setEditing(false);
+    if (value.trim() && value.trim() !== entry.original) {
+      void onUpdate(entry, value.trim());
+    } else {
+      setValue(entry.original);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commitEdit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commitEdit();
+          if (e.key === "Escape") {
+            setValue(entry.original);
+            setEditing(false);
+          }
+        }}
+        className="px-2 py-0.5 text-xs font-mono bg-mid-gray/10 border border-[var(--accent)]/60 rounded-full focus:outline-none focus:border-[var(--accent)] min-w-[3rem]"
+        style={{ width: `${Math.max(value.length, 3) + 2}ch` }}
+      />
     );
   }
 
   return (
-    <div className="flat-card overflow-hidden">
-      <div className="flex items-center justify-between px-5">
-        <span className="text-sm text-[var(--muted)]">
-          {corrections.length === 0
-            ? t("settings.corrections.dictionary.empty")
-            : t("settings.corrections.dictionary.count", {
-                count: corrections.length,
-              })}
-        </span>
-        <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={handleImport}>
-            {t("settings.corrections.dictionary.import")}
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleExport}
-            disabled={corrections.length === 0}
-          >
-            {t("settings.corrections.dictionary.export")}
-          </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={handleClearAll}
-            disabled={corrections.length === 0}
-          >
-            {t("settings.corrections.dictionary.clearAll")}
-          </Button>
-        </div>
-      </div>
-
-      {corrections.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wider text-[var(--muted)]">
-                <th className="px-4 py-2.5">
-                  {t("settings.corrections.dictionary.columns.original")}
-                </th>
-                <th className="px-4 py-2.5">
-                  {t("settings.corrections.dictionary.columns.corrected")}
-                </th>
-                <th className="px-4 py-2.5 text-center">
-                  {t("settings.corrections.dictionary.columns.frequency")}
-                </th>
-                <th className="px-4 py-2.5 text-center">
-                  {t("settings.corrections.dictionary.columns.confidence")}
-                </th>
-                <th className="px-4 py-2.5">
-                  {t("settings.corrections.dictionary.columns.source")}
-                </th>
-                <th className="px-4 py-2.5 text-center">
-                  {t("settings.corrections.dictionary.columns.active")}
-                </th>
-                <th className="px-4 py-2.5 w-32">
-                  {t("settings.corrections.dictionary.columns.actions", {
-                    defaultValue: "Actions",
-                  })}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {corrections.map((c) => (
-                <tr
-                  key={c.id}
-                  className={`${!c.is_active ? "opacity-50" : ""}`}
-                >
-                  <td className="px-4 py-2.5 font-mono text-[var(--text)]">
-                    <Input
-                      value={drafts[c.id]?.original ?? c.original}
-                      onChange={(event) =>
-                        setDraftValue(c.id, "original", event.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-[var(--text)]">
-                    <Input
-                      value={drafts[c.id]?.corrected ?? c.corrected}
-                      onChange={(event) =>
-                        setDraftValue(c.id, "corrected", event.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 text-center text-[var(--muted)]">
-                    {c.frequency}
-                  </td>
-                  <td className="px-4 py-2.5 text-center text-[var(--muted)]">
-                    {(c.confidence * 100).toFixed(0)}%
-                  </td>
-                  <td className="px-4 py-2.5 text-[var(--muted)] truncate max-w-[140px]">
-                    {c.source_app ||
-                      t("settings.corrections.dictionary.sourceDetected", {
-                        defaultValue: "Detected automatically",
-                      })}
-                  </td>
-                  <td className="px-4 py-2.5 text-center">
-                    <button
-                      type="button"
-                      className={`inline-block w-8 h-4 rounded-full transition-colors ${
-                        c.is_active
-                          ? "bg-[var(--accent)]"
-                          : "bg-[var(--border)]"
-                      }`}
-                      onClick={() => handleToggle(c.id, c.is_active)}
-                    >
-                      <span
-                        className={`block w-3 h-3 rounded-full bg-white shadow transition-transform ${
-                          c.is_active ? "translate-x-4" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center justify-end gap-2">
-                      {(() => {
-                        const draft = drafts[c.id];
-                        const isDirty =
-                          !!draft &&
-                          (draft.original !== c.original ||
-                            draft.corrected !== c.corrected);
-                        const isSaving = draft?.isSaving === true;
-                        const saveDisabled =
-                          !isDirty ||
-                          isSaving ||
-                          !(draft?.original ?? c.original).trim() ||
-                          !(draft?.corrected ?? c.corrected).trim();
-
-                        return (
-                          <>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              disabled={!isDirty || isSaving}
-                              onClick={() => clearDraft(c.id)}
-                            >
-                              {t("common.cancel", {
-                                defaultValue: "Reset",
-                              })}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="primary-soft"
-                              disabled={saveDisabled}
-                              onClick={() => void handleSave(c)}
-                            >
-                              {isSaving
-                                ? t("common.saving", {
-                                    defaultValue: "Saving...",
-                                  })
-                                : t("common.save", {
-                                    defaultValue: "Save",
-                                  })}
-                            </Button>
-                            <button
-                              type="button"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => handleDelete(c.id)}
-                              aria-label={t("common.delete")}
-                              title={t("common.delete")}
-                            >
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    <span className="group inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-mono bg-mid-gray/10 border border-mid-gray/30 rounded-full hover:border-mid-gray/50 transition-colors">
+      <button
+        type="button"
+        className="cursor-text"
+        onClick={() => setEditing(true)}
+        title={entry.source_app || undefined}
+      >
+        {entry.original}
+      </button>
+      <button
+        type="button"
+        className="opacity-0 group-hover:opacity-100 text-mid-gray/50 hover:text-red-500 transition-all -mr-0.5"
+        onClick={() => void onDelete(entry.id)}
+      >
+        <X className="h-2.5 w-2.5" />
+      </button>
+    </span>
   );
 };

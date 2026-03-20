@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "Paramètres...",
     "checkUpdates": "Rechercher des mises à jour...",
     "copyLastTranscript": "Copier la dernière transcription",
@@ -8,6 +9,8 @@
     "cancel": "Annuler"
   },
   "sidebar": {
+    "collapsePanel": "Masquer le panneau latéral des réglages",
+    "expandPanel": "Afficher le panneau latéral des réglages",
     "general": "Général",
     "models": "Modèles",
     "advanced": "Avancé",
@@ -16,7 +19,6 @@
     "debug": "Débogage",
     "about": "À propos",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {
@@ -665,11 +667,6 @@
       "unsave": "Retirer des favoris",
       "delete": "Supprimer l'entrée",
       "deleteError": "Échec de la suppression de l'entrée. Veuillez réessayer.",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "promptUsed": "Prompt used"
     },
     "debug": {
@@ -783,7 +780,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",

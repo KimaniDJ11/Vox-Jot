@@ -86,9 +86,9 @@ export const PersonalDictionaryEditor: React.FC<
               key={`${entry.spoken}-${entry.written}-${index}`}
               className="rounded-md border border-mid-gray/20 p-3 space-y-3"
             >
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t("settings.postProcessing.dictionary.columns.spoken")}
                   </label>
                   <Input
@@ -100,11 +100,12 @@ export const PersonalDictionaryEditor: React.FC<
                       "settings.postProcessing.dictionary.placeholders.spoken",
                     )}
                     disabled={disabled || isUpdating("personal_dictionary")}
+                    className="w-full"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t("settings.postProcessing.dictionary.columns.written")}
                   </label>
                   <Input
@@ -116,47 +117,50 @@ export const PersonalDictionaryEditor: React.FC<
                       "settings.postProcessing.dictionary.placeholders.written",
                     )}
                     disabled={disabled || isUpdating("personal_dictionary")}
+                    className="w-full"
                   />
-                </div>
-
-                <div className="flex items-end justify-end">
-                  <Button
-                    variant="danger-ghost"
-                    size="sm"
-                    onClick={() =>
-                      persistEntries(
-                        entries.filter(
-                          (_, currentIndex) => currentIndex !== index,
-                        ),
-                      )
-                    }
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  >
-                    {t("settings.postProcessing.dictionary.remove")}
-                  </Button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={entry.exact_only}
-                    onChange={(event) =>
-                      updateEntry(index, "exact_only", event.target.checked)
-                    }
-                    disabled={disabled || isUpdating("personal_dictionary")}
-                  />
-                  <span>
-                    {t("settings.postProcessing.dictionary.columns.exactOnly")}
-                  </span>
-                </label>
-
-                {isDuplicate && (
-                  <span className="text-xs text-yellow-400">
-                    {t("settings.postProcessing.dictionary.duplicateBadge")}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={entry.exact_only}
+                      onChange={(event) =>
+                        updateEntry(index, "exact_only", event.target.checked)
+                      }
+                      disabled={disabled || isUpdating("personal_dictionary")}
+                    />
+                    <span>
+                      {t(
+                        "settings.postProcessing.dictionary.columns.exactOnly",
+                      )}
+                    </span>
+                  </label>
+                  {isDuplicate && (
+                    <span className="text-xs text-yellow-400">
+                      {t(
+                        "settings.postProcessing.dictionary.duplicateBadge",
+                      )}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="danger-ghost"
+                  size="sm"
+                  onClick={() =>
+                    persistEntries(
+                      entries.filter(
+                        (_, currentIndex) => currentIndex !== index,
+                      ),
+                    )
+                  }
+                  disabled={disabled || isUpdating("personal_dictionary")}
+                >
+                  {t("settings.postProcessing.dictionary.remove")}
+                </Button>
               </div>
             </div>
           );

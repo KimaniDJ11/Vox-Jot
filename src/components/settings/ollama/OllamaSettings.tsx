@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Download, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
 import { useSettings } from "@/hooks/useSettings";
+import { Button } from "../../ui/Button";
 
 const splitDescription = (
   description: string,
@@ -125,38 +126,44 @@ const OllamaSettings: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Ollama Status */}
-      <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-text">{t("ollama.title")}</h3>
-        <p className="text-xs text-text/60">{t("ollama.description")}</p>
-
+    <div className="w-full space-y-6">
+      <div className="px-5">
         {!isInstalled ? (
-          <div className="flex flex-col gap-3 p-4 rounded-lg border border-mid-gray/20 bg-background">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-1">
             <p className="text-sm text-text/80">{t("ollama.notInstalled")}</p>
             <button
+              type="button"
               onClick={installOllama}
               disabled={isInstalling}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
               {isInstalling ? t("ollama.installing") : t("ollama.install")}
             </button>
           </div>
         ) : !isRunning ? (
-          <div className="flex flex-col gap-3 p-4 rounded-lg border border-mid-gray/20 bg-background">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-1">
             <p className="text-sm text-text/80">{t("ollama.notRunning")}</p>
             <button
+              type="button"
               onClick={startServe}
               disabled={isChecking}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-logo-primary text-white hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
               {isChecking ? t("ollama.checking") : t("ollama.start")}
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-green-500">
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-            {t("ollama.ready")}
+          <div className="flex items-center py-1 md:hidden">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="p-1.5 text-emerald-600 hover:!text-emerald-700 dark:text-emerald-400 dark:hover:!text-emerald-300"
+              title={t("ollama.ready")}
+              aria-label={t("ollama.ready")}
+            >
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+            </Button>
           </div>
         )}
       </div>
@@ -170,7 +177,7 @@ const OllamaSettings: React.FC = () => {
             </div>
           )}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-text/60">
+            <h4 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] px-5">
               {t("ollama.downloadedModels")}
             </h4>
             {downloadedModels.length === 0 ? (
@@ -201,7 +208,7 @@ const OllamaSettings: React.FC = () => {
                             {model.label}
                           </h3>
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium ${
+                            className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold ${
                               isActive
                                 ? "bg-logo-primary text-white"
                                 : "bg-mid-gray/15 text-text/75"
@@ -290,7 +297,7 @@ const OllamaSettings: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-text/60">
+            <h4 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] px-5">
               {t("ollama.availableModels")}
             </h4>
             {availableModels.map((model) => {

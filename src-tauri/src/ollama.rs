@@ -258,6 +258,7 @@ async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
     let mut tiny = registry
         .models
         .into_iter()
+        .filter(|m| m.size > 0) // Skip models with unknown size
         .filter(|m| looks_like_tiny_model(&m.name, m.size))
         .filter(|m| !exceeds_hard_param_limit(&m.name, m.size))
         .collect::<Vec<_>>();

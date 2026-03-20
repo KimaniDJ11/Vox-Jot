@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "Налаштування...",
     "checkUpdates": "Перевірити оновлення...",
     "copyLastTranscript": "Скопіювати останню транскрипцію",
@@ -8,6 +9,8 @@
     "cancel": "Скасувати"
   },
   "sidebar": {
+    "collapsePanel": "Сховати бічну панель налаштувань",
+    "expandPanel": "Показати бічну панель налаштувань",
     "general": "Загальні",
     "models": "Моделі",
     "advanced": "Розширені",
@@ -16,7 +19,6 @@
     "debug": "Дебаг",
     "about": "Інфо",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {
@@ -665,11 +667,6 @@
       "unsave": "Видалити зі збережених",
       "delete": "Видалити запис",
       "deleteError": "Не вдалося видалити запис. Спробуйте ще раз.",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "promptUsed": "Prompt used"
     },
     "debug": {
@@ -783,7 +780,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",

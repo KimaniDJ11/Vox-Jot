@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "설정...",
     "checkUpdates": "업데이트 확인...",
     "copyLastTranscript": "마지막 녹음 내용 복사",
@@ -8,6 +9,8 @@
     "cancel": "취소"
   },
   "sidebar": {
+    "collapsePanel": "설정 사이드바 숨기기",
+    "expandPanel": "설정 사이드바 표시",
     "general": "일반",
     "models": "모델",
     "advanced": "고급",
@@ -16,7 +19,6 @@
     "debug": "디버그",
     "about": "정보",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {
@@ -665,11 +667,6 @@
       "unsave": "저장에서 제거",
       "delete": "항목 삭제",
       "deleteError": "항목 삭제에 실패했습니다. 다시 시도해주세요.",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "promptUsed": "Prompt used"
     },
     "debug": {
@@ -783,7 +780,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",

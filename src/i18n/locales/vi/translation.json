@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "Cài đặt...",
     "checkUpdates": "Kiểm tra cập nhật...",
     "copyLastTranscript": "Sao chép bản chép lời mới nhất",
@@ -8,6 +9,8 @@
     "cancel": "Hủy"
   },
   "sidebar": {
+    "collapsePanel": "Ẩn thanh cài đặt bên",
+    "expandPanel": "Hiện thanh cài đặt bên",
     "general": "Chung",
     "models": "Mô hình",
     "advanced": "Nâng cao",
@@ -16,7 +19,6 @@
     "debug": "Gỡ lỗi",
     "about": "Giới thiệu",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {
@@ -665,11 +667,6 @@
       "unsave": "Xóa khỏi đã lưu",
       "delete": "Xóa mục",
       "deleteError": "Không thể xóa mục. Vui lòng thử lại.",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "promptUsed": "Prompt used"
     },
     "debug": {
@@ -783,7 +780,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",

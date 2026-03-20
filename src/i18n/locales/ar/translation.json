@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "...الإعدادات",
     "checkUpdates": "...التحقق من وجود تحديثات",
     "copyLastTranscript": "نسخ آخر نص تم تفريغه",
@@ -8,6 +9,8 @@
     "cancel": "إلغاء"
   },
   "sidebar": {
+    "collapsePanel": "إخفاء الشريط الجانبي للإعدادات",
+    "expandPanel": "إظهار الشريط الجانبي للإعدادات",
     "general": "عام",
     "advanced": "متقدم",
     "postProcessing": "معالجة لاحقة",
@@ -16,7 +19,6 @@
     "about": "حول",
     "models": "النماذج",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
     "corrections": "Corrections"
   },
   "onboarding": {
@@ -643,11 +645,6 @@
       "unsave": "إزالة من المحفوظات",
       "delete": "حذف الإدخال",
       "deleteError": ".فشل حذف الإدخال. يرجى المحاولة مرة أخرى",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "promptUsed": "Prompt used"
     },
     "debug": {
@@ -783,7 +780,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",

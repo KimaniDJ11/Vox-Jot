@@ -10,7 +10,6 @@ import {
   Bot,
   SpellCheck,
 } from "lucide-react";
-import VoxJotTextLogo from "./icons/VoxJotTextLogo";
 import VoxJotMark from "./icons/VoxJotMark";
 import {
   GeneralSettings,
@@ -107,11 +106,13 @@ export const SECTIONS_CONFIG = {
 interface SidebarProps {
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
+  collapsed: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeSection,
   onSectionChange,
+  collapsed,
 }) => {
   const { t } = useTranslation();
   const settings = useSettingsStore((s) => s.settings);
@@ -121,16 +122,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
+    <aside
+      className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300"
+      aria-hidden={collapsed}
+    >
       <div className="flex flex-col flex-1 px-5 py-4 overflow-y-auto">
-        <VoxJotTextLogo
-          width={128}
-          className="mb-8 mt-2 shrink-0 hidden md:block"
-        />
         <nav aria-label={t("sidebar.settingsLabel")}>
-          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {t("sidebar.settingsLabel")}
-          </div>
           <div className="flex flex-col gap-2 w-full">
             {availableSections.map((section) => {
               const Icon = section.icon;
@@ -141,8 +138,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={section.id}
                   className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 min-w-0 ${
                     isActive
-                      ? "bg-[var(--accent)] text-white font-semibold shadow-sm"
-                      : "bg-transparent text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
+                      ? "bg-[var(--accent)] text-white font-bold shadow-sm"
+                      : "bg-transparent text-[var(--text)] font-semibold hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                   }`}
                   type="button"
                   onClick={() => onSectionChange(section.id)}
@@ -151,6 +148,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Icon
                     width={18}
                     height={18}
+                    strokeWidth={
+                      section.id === "general"
+                        ? undefined
+                        : isActive
+                          ? 2.75
+                          : 2.5
+                    }
                     className={`shrink-0 transition-colors duration-200 ${
                       isActive
                         ? "text-white"

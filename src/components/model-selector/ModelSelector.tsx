@@ -21,9 +21,15 @@ type ModelStatus =
 
 interface ModelSelectorProps {
   onError?: (error: string) => void;
+  statusButtonLabelClassName?: string;
+  statusButtonDensity?: "default" | "titleBar";
 }
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
+const ModelSelector: React.FC<ModelSelectorProps> = ({
+  onError,
+  statusButtonLabelClassName,
+  statusButtonDensity,
+}) => {
   const { t } = useTranslation();
   const {
     models,
@@ -225,15 +231,40 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
     return modelStatus;
   };
 
+  // Title bar: green when selected model is on disk (like LLM “configured”); live states win.
+  const getTitleBarDotStatus = (): ModelStatus => {
+    if (Object.keys(extractingModels).length > 0) return "extracting";
+    if (Object.keys(downloadProgress).length > 0) return "downloading";
+    if (modelStatus === "loading") return "loading";
+    if (modelStatus === "error") return "error";
+
+    const id = displayModelId;
+    if (!id) return "none";
+
+    const info = models.find((m) => m.id === id);
+    if (!info) return "unloaded";
+    if (info.is_downloading) return "downloading";
+    if (!info.is_downloaded) return "unloaded";
+
+    return "ready";
+  };
+
+  const statusForButton =
+    statusButtonDensity === "titleBar"
+      ? getTitleBarDotStatus()
+      : getDisplayStatus();
+
   return (
     <>
       {/* Model Status and Switcher */}
       <div className="relative" ref={dropdownRef}>
         <ModelStatusButton
-          status={getDisplayStatus()}
+          status={statusForButton}
           displayText={getModelDisplayText()}
           isDropdownOpen={showModelDropdown}
           onClick={() => setShowModelDropdown(!showModelDropdown)}
+          labelClassName={statusButtonLabelClassName}
+          density={statusButtonDensity}
         />
 
         {/* Model Dropdown */}

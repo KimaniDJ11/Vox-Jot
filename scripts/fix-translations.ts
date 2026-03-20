@@ -47,12 +47,6 @@ const MISSING_KEYS = {
       },
     },
     history: {
-      emptyJots:
-        "No jots yet. Enable post-processing to see completed results.",
-      tabs: {
-        recordings: "Recordings",
-        jots: "Jots",
-      },
       promptUsed: "Prompt used",
     },
     corrections: {

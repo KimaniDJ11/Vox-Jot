@@ -1,3 +1,4 @@
+use crate::correction_tracker::diff::CorrectionPair;
 use crate::correction_tracker::store::{CorrectionStore, StoredCorrection};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
@@ -55,6 +56,30 @@ pub fn clear_all_corrections(app: AppHandle) -> Result<(), String> {
 pub fn export_corrections(app: AppHandle) -> Result<String, String> {
     let store = app.state::<Arc<CorrectionStore>>();
     store.export_json().map_err(|e| e.to_string())
+}
+
+/// Manually add a new correction pair.
+#[tauri::command]
+#[specta::specta]
+pub fn add_manual_correction(
+    app: AppHandle,
+    original: String,
+    corrected: String,
+) -> Result<(), String> {
+    let store = app.state::<Arc<CorrectionStore>>();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    let pair = CorrectionPair {
+        original,
+        corrected,
+        confidence: 1.0,
+        source_app: Some("manual".to_string()),
+        first_seen: now,
+        last_seen: now,
+    };
+    store.add_correction(&pair).map_err(|e| e.to_string())
 }
 
 /// Import corrections from a JSON string.

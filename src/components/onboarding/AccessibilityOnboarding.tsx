@@ -340,7 +340,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
         <div className="p-4 rounded-full bg-emerald-500/20">
           <Check className="w-12 h-12 text-emerald-400" />
         </div>
-        <p className="text-lg font-medium text-text">
+        <p className="text-lg font-semibold text-text">
           {t("onboarding.permissions.allGranted")}
         </p>
       </div>
@@ -372,7 +372,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
                 <Mic className="w-6 h-6 text-logo-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-text">
+                <h3 className="font-semibold text-text">
                   {t("onboarding.permissions.microphone.title")}
                 </h3>
                 <p className="text-sm text-text/60 mb-3">
@@ -411,7 +411,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
                 <Keyboard className="w-6 h-6 text-logo-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-text">
+                <h3 className="font-semibold text-text">
                   {t("onboarding.permissions.accessibility.title")}
                 </h3>
                 <p className="text-sm text-text/60 mb-3">
@@ -447,7 +447,7 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
                 <Keyboard className="w-6 h-6 text-logo-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-text">
+                <h3 className="font-semibold text-text">
                   {t("onboarding.permissions.inputMonitoring.title")}
                 </h3>
                 <p className="text-sm text-text/60 mb-2">

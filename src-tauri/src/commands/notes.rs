@@ -20,14 +20,18 @@ pub fn get_note(app: AppHandle, id: i64) -> Result<Option<Note>, String> {
 #[specta::specta]
 pub fn create_note(app: AppHandle, title: String, content: String) -> Result<Note, String> {
     let manager = app.state::<Arc<NotesManager>>();
-    manager.create_note(&title, &content).map_err(|e| e.to_string())
+    manager
+        .create_note(&title, &content)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 #[specta::specta]
 pub fn update_note(app: AppHandle, id: i64, title: String, content: String) -> Result<(), String> {
     let manager = app.state::<Arc<NotesManager>>();
-    manager.update_note(id, &title, &content).map_err(|e| e.to_string())
+    manager
+        .update_note(id, &title, &content)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

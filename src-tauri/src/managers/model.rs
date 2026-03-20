@@ -758,10 +758,7 @@ impl ModelManager {
             };
 
             if size_mb == 0 {
-                warn!(
-                    "Skipping custom model {} — file size is 0 bytes",
-                    filename
-                );
+                warn!("Skipping custom model {} — file size is 0 bytes", filename);
                 continue;
             }
 

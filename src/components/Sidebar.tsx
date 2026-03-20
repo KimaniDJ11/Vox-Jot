@@ -10,6 +10,7 @@ import {
   Shield,
   TestTube2,
   TextQuote,
+  Palette,
 } from "lucide-react";
 import VoxJotMark from "./icons/VoxJotMark";
 import {
@@ -23,6 +24,7 @@ import {
   OllamaSettings,
   CorrectionSettings,
   SnippetSettings,
+  StylesSettings,
 } from "./settings";
 import { useSettingsStore } from "../stores/settingsStore";
 
@@ -88,6 +90,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.snippets",
     icon: TextQuote,
     component: SnippetSettings,
+    enabled: () => true,
+  },
+  styles: {
+    labelKey: "sidebar.styles",
+    icon: Palette,
+    component: StylesSettings,
     enabled: () => true,
   },
   history: {

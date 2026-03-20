@@ -20,6 +20,7 @@
     "experimental": "Experimental",
     "corrections": "Personal Dictionary",
     "snippets": "Snippets",
+    "styles": "Styles",
     "history": "History",
     "debug": "Debug",
     "about": "About"
@@ -283,6 +284,52 @@
         "expansion": "Expands to",
         "triggerPlaceholder": "What you say (e.g. my email)",
         "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
+    "styles": {
+      "title": "Styles",
+      "description": "Styles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
+      "disabledMessage": "Enable styles to automatically match tone to the app you are dictating into.",
+      "toggle": {
+        "label": "Enable app-aware styles",
+        "description": "Automatically apply a different writing style for chat, email, notes, and other apps."
+      },
+      "tones": {
+        "title": "Starter styles",
+        "description": "Start with the built-in presets, tweak their instructions as needed, and add custom styles only if you want something extra.",
+        "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
+        "columns": {
+          "id": "Style ID",
+          "label": "Display name",
+          "instruction": "Instruction"
+        },
+        "placeholders": {
+          "id": "casual",
+          "label": "Casual",
+          "instruction": "Use a casual, conversational tone suitable for chat messages."
+        },
+        "add": "Add custom style",
+        "restore": "Restore starter styles",
+        "starterBadge": "Starter",
+        "customBadge": "Custom",
+        "unused": "No apps mapped yet",
+        "editId": "Edit style ID"
+      },
+      "mappings": {
+        "title": "App mappings",
+        "description": "Assign apps to a style preset. Bundle IDs are the most reliable match key.",
+        "columns": {
+          "appName": "App",
+          "bundleId": "Bundle ID",
+          "tone": "Style"
+        },
+        "placeholders": {
+          "appName": "Slack",
+          "bundleId": "com.tinyspeck.slackmacgap"
+        },
+        "selectTone": "Select style…",
+        "add": "Add app",
+        "empty": "No app mappings yet. Add one below to tailor tone per app."
       }
     },
     "modelSettings": {

@@ -11,6 +11,7 @@ export { ModelsSettings } from "./models/ModelsSettings";
 export { default as OllamaSettings } from "./ollama/OllamaSettings";
 export { CorrectionSettings } from "./corrections/CorrectionSettings";
 export { SnippetSettings } from "./snippets/SnippetSettings";
+export { StylesSettings } from "./styles/StylesSettings";
 
 // Individual setting components
 export { MicrophoneSelector } from "./MicrophoneSelector";

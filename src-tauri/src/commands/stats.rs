@@ -36,10 +36,7 @@ pub async fn get_dictation_stats(
         .map_err(|e| e.to_string())?;
 
     let now_local = Local::now();
-    let today_start = now_local
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
+    let today_start = now_local.date_naive().and_hms_opt(0, 0, 0).unwrap();
     let today_start_utc = Local
         .from_local_datetime(&today_start)
         .earliest()
@@ -77,9 +74,7 @@ pub async fn get_dictation_stats(
         }
 
         // Accuracy: if we have both pasted_text and field_snapshot_text, compare
-        if let (Some(pasted), Some(snapshot)) =
-            (&entry.pasted_text, &entry.field_snapshot_text)
-        {
+        if let (Some(pasted), Some(snapshot)) = (&entry.pasted_text, &entry.field_snapshot_text) {
             accuracy_total += 1;
             // Normalize whitespace for comparison
             let pasted_normalized: String = pasted.split_whitespace().collect::<Vec<_>>().join(" ");

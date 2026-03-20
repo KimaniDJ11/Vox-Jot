@@ -875,7 +875,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
 };
 
 export type PostProcessingSettingsProps = {
-  /** When true, local privacy controls are shown under Data & privacy instead. */
+  /** When true, local privacy controls are shown under Privacy & data instead. */
   omitLocalPrivacy?: boolean;
 };
 

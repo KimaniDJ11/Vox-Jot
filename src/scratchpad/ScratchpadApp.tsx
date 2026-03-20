@@ -177,8 +177,8 @@ const ScratchpadApp: React.FC = () => {
             size="sm"
             className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
             onClick={() => void handleCreateNote()}
-            aria-label={t("scratchpad.newNote")}
-            title={t("scratchpad.newNote")}
+            aria-label={t("jotPad.newNote")}
+            title={t("jotPad.newNote")}
           >
             <Plus className="shrink-0" aria-hidden />
           </Button>
@@ -197,14 +197,14 @@ const ScratchpadApp: React.FC = () => {
         <div className="flex-1 overflow-y-auto">
           {notes.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
-              {t("scratchpad.empty")}
+              {t("jotPad.empty")}
             </div>
           ) : (
             <div className="flex flex-col gap-0.5 p-1.5">
               {notes.map((note) => {
                 const isActive = note.id === activeNoteId;
                 const displayTitle =
-                  note.title || note.content.slice(0, 30) || t("scratchpad.untitled");
+                  note.title || note.content.slice(0, 30) || t("jotPad.untitled");
 
                 return (
                   <button
@@ -256,8 +256,8 @@ const ScratchpadApp: React.FC = () => {
                         }}
                         title={
                           note.is_pinned
-                            ? t("scratchpad.unpin")
-                            : t("scratchpad.pin")
+                            ? t("jotPad.unpin")
+                            : t("jotPad.pin")
                         }
                       >
                         {note.is_pinned ? (
@@ -299,7 +299,7 @@ const ScratchpadApp: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder={t("scratchpad.titlePlaceholder")}
+              placeholder={t("jotPad.titlePlaceholder")}
               className="w-full text-xl font-display font-bold bg-transparent border-none outline-none placeholder:text-[var(--muted)]/40 mb-2"
             />
 
@@ -308,7 +308,7 @@ const ScratchpadApp: React.FC = () => {
               ref={contentRef}
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder={t("scratchpad.contentPlaceholder")}
+              placeholder={t("jotPad.contentPlaceholder")}
               className="flex-1 w-full bg-transparent border-none outline-none resize-none text-sm leading-relaxed font-body placeholder:text-[var(--muted)]/40"
             />
           </div>
@@ -316,13 +316,13 @@ const ScratchpadApp: React.FC = () => {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center text-[var(--muted)]">
               <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">{t("scratchpad.noNoteSelected")}</p>
+              <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
               <button
                 type="button"
                 onClick={() => void handleCreateNote()}
                 className="mt-3 text-sm text-[var(--accent)] hover:underline"
               >
-                {t("scratchpad.createFirst")}
+                {t("jotPad.createFirst")}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
+use crate::snippets::Snippet;
 use log::{debug, warn};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -387,6 +388,10 @@ pub struct AppSettings {
     pub app_tone_mappings: Vec<AppToneMapping>,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
+    #[serde(default = "default_snippets_enabled")]
+    pub snippets_enabled: bool,
+    #[serde(default)]
+    pub snippets: Vec<Snippet>,
 }
 
 fn default_model() -> String {
@@ -788,6 +793,10 @@ fn default_correction_tracking_enabled() -> bool {
     true
 }
 
+fn default_snippets_enabled() -> bool {
+    true
+}
+
 /// Internal constants for correction behavior — no longer user-configurable.
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
@@ -1059,6 +1068,8 @@ pub fn get_default_settings() -> AppSettings {
         tone_definitions: default_tone_definitions(),
         app_tone_mappings: default_app_tone_mappings(),
         correction_tracking_enabled: default_correction_tracking_enabled(),
+        snippets_enabled: default_snippets_enabled(),
+        snippets: Vec::new(),
     }
 }
 

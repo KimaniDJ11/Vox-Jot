@@ -1177,7 +1177,14 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
   );
 };
 
-export const PostProcessingSettings: React.FC = () => {
+export type PostProcessingSettingsProps = {
+  /** When true, local privacy controls are shown under Data & privacy instead. */
+  omitLocalPrivacy?: boolean;
+};
+
+export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
+  omitLocalPrivacy = false,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const providerState = usePostProcessProviderState();
@@ -1191,21 +1198,25 @@ export const PostProcessingSettings: React.FC = () => {
         title={t("settings.postProcessing.sections.setup.title")}
       >
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
-        <ToggleSwitch
-          checked={localPrivacyMode}
-          onChange={(enabled) =>
-            void updateSetting("local_privacy_mode", enabled)
-          }
-          isUpdating={isUpdating("local_privacy_mode")}
-          label={t("settings.postProcessing.localPrivacy.label")}
-          description={t("settings.postProcessing.localPrivacy.description")}
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-        {localPrivacyMode && (
-          <Alert variant="info" contained>
-            {t("settings.postProcessing.localPrivacy.cloudDisabled")}
-          </Alert>
+        {!omitLocalPrivacy && (
+          <>
+            <ToggleSwitch
+              checked={localPrivacyMode}
+              onChange={(enabled) =>
+                void updateSetting("local_privacy_mode", enabled)
+              }
+              isUpdating={isUpdating("local_privacy_mode")}
+              label={t("settings.postProcessing.localPrivacy.label")}
+              description={t("settings.postProcessing.localPrivacy.description")}
+              descriptionMode="tooltip"
+              grouped={true}
+            />
+            {localPrivacyMode && (
+              <Alert variant="info" contained>
+                {t("settings.postProcessing.localPrivacy.cloudDisabled")}
+              </Alert>
+            )}
+          </>
         )}
         <ShortcutInput
           shortcutId="transcribe_with_post_process"

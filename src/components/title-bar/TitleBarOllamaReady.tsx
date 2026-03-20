@@ -1,37 +1,68 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2 } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 import { useOllamaStore } from "@/stores/ollamaStore";
 import { Button } from "../ui/Button";
 
-interface TitleBarOllamaReadyProps {
-  /** When false, render nothing (e.g. not on LLM Models settings). */
-  active: boolean;
-}
+const POLL_MS = 45_000;
 
 /**
- * Green Ollama “running” indicator for the window title bar (trailing).
- * Mirrors the ready state shown in Ollama settings on small screens only.
+ * Ollama status glyph for the window title bar (always visible).
+ * Color reflects installed / running / unreachable state.
  */
-const TitleBarOllamaReady: React.FC<TitleBarOllamaReadyProps> = ({ active }) => {
+const TitleBarOllamaReady: React.FC = () => {
   const { t } = useTranslation();
-  const { status, checkStatus } = useOllamaStore();
+  const { status, statusCheckFailed, isChecking, checkStatus } =
+    useOllamaStore();
 
   useEffect(() => {
-    if (active) {
+    void checkStatus();
+  }, [checkStatus]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
       void checkStatus();
-    }
-  }, [active, checkStatus]);
+    }, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [checkStatus]);
 
-  if (!active) {
-    return null;
-  }
+  const loading = isChecking || status === null;
 
-  const isInstalled = status?.installed ?? false;
-  const isRunning = status?.running ?? false;
+  let title: string;
+  let iconClass: string;
+  let Icon: typeof CheckCircle2;
 
-  if (!isInstalled || !isRunning) {
-    return null;
+  if (loading) {
+    title = t("ollama.checking");
+    iconClass =
+      "text-[var(--muted)] animate-spin dark:text-[var(--muted)]";
+    Icon = Loader2;
+  } else if (statusCheckFailed) {
+    title = t("ollama.titleBarStatusCheckFailed");
+    iconClass =
+      "text-amber-600 hover:!text-amber-700 dark:text-amber-400 dark:hover:!text-amber-300";
+    Icon = AlertTriangle;
+  } else if (!status.installed) {
+    title = t("ollama.notInstalled");
+    iconClass =
+      "text-red-600 hover:!text-red-700 dark:text-red-400 dark:hover:!text-red-300";
+    Icon = XCircle;
+  } else if (!status.running) {
+    title = t("ollama.notRunning");
+    iconClass =
+      "text-amber-600 hover:!text-amber-700 dark:text-amber-400 dark:hover:!text-amber-300";
+    Icon = AlertCircle;
+  } else {
+    title = t("ollama.ready");
+    iconClass =
+      "text-emerald-600 hover:!text-emerald-700 dark:text-emerald-400 dark:hover:!text-emerald-300";
+    Icon = CheckCircle2;
   }
 
   return (
@@ -39,11 +70,11 @@ const TitleBarOllamaReady: React.FC<TitleBarOllamaReadyProps> = ({ active }) => 
       type="button"
       size="sm"
       variant="ghost"
-      className="border-transparent p-1.5 text-emerald-600 hover:!text-emerald-700 dark:text-emerald-400 dark:hover:!text-emerald-300"
-      title={t("ollama.ready")}
-      aria-label={t("ollama.ready")}
+      className={`border-transparent p-1.5 ${iconClass}`}
+      title={title}
+      aria-label={title}
     >
-      <CheckCircle2
+      <Icon
         className="h-5 w-5 shrink-0"
         aria-hidden
         strokeWidth={2.5}

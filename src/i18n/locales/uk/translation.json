@@ -11,15 +11,16 @@
   "sidebar": {
     "collapsePanel": "Сховати бічну панель налаштувань",
     "expandPanel": "Показати бічну панель налаштувань",
-    "general": "Загальні",
+    "system": "Система",
     "models": "Моделі",
-    "advanced": "Розширені",
-    "postProcessing": "Постобробка",
+    "dataPrivacy": "Дані та конфіденційність",
+    "experimental": "Експериментальне",
+    "ollama": "LLM Models",
+    "corrections": "Corrections",
+    "snippets": "Snippets",
     "history": "Історія",
     "debug": "Дебаг",
-    "about": "Інфо",
-    "ollama": "LLM Models",
-    "corrections": "Corrections"
+    "about": "Інфо"
   },
   "onboarding": {
     "subtitle": "Для початку оберіть модель транскрипції",
@@ -233,6 +234,25 @@
     "cancelDownload": "Скасувати завантаження"
   },
   "settings": {
+    "snippets": {
+      "toggle": {
+        "title": "Snippets",
+        "label": "Enable Snippets",
+        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+      },
+      "list": {
+        "title": "Your Snippets",
+        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
+        "add": "Add Snippet",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "trigger": "Trigger",
+        "expansion": "Expands to",
+        "triggerPlaceholder": "What you say (e.g. my email)",
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
     "modelSettings": {
       "title": "Налаштування {{model}}",
       "noSettingsNeeded": "Ця модель працює автоматично без потреби в налаштуванні."
@@ -792,6 +812,17 @@
           "active": "Active"
         }
       }
+    },
+    "dataPrivacy": {
+      "introTitle": "How Vox Jot handles your data",
+      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "groups": {
+        "storage": "Storage & history",
+        "postProcessing": "AI post-processing"
+      }
+    },
+    "experimental": {
+      "title": "Experimental"
     }
   },
   "footer": {

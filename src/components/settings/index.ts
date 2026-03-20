@@ -1,6 +1,8 @@
 // Settings section components
 export { GeneralSettings } from "./general/GeneralSettings";
-export { AdvancedSettings } from "./advanced/AdvancedSettings";
+export { SystemSettings } from "./system/SystemSettings";
+export { DataPrivacySettings } from "./data-privacy/DataPrivacySettings";
+export { ExperimentalSettings } from "./experimental/ExperimentalSettings";
 export { DebugSettings } from "./debug/DebugSettings";
 export { HistorySettings } from "./history/HistorySettings";
 export { AboutSettings } from "./about/AboutSettings";
@@ -8,6 +10,7 @@ export { PostProcessingSettings } from "./post-processing/PostProcessingSettings
 export { ModelsSettings } from "./models/ModelsSettings";
 export { default as OllamaSettings } from "./ollama/OllamaSettings";
 export { CorrectionSettings } from "./corrections/CorrectionSettings";
+export { SnippetSettings } from "./snippets/SnippetSettings";
 
 // Individual setting components
 export { MicrophoneSelector } from "./MicrophoneSelector";

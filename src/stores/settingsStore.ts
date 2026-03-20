@@ -6,6 +6,7 @@ import type {
   AudioDevice,
   DictionaryEntry,
   PostProcessResult,
+  Snippet,
   ToneDefinition,
 } from "@/bindings";
 import { commands } from "@/bindings";
@@ -166,6 +167,9 @@ const settingUpdaters: {
     commands.changeShowTrayIconSetting(value as boolean),
   correction_tracking_enabled: (value) =>
     commands.changeCorrectionTrackingEnabledSetting(value as boolean),
+  snippets_enabled: (value) =>
+    commands.changeSnippetsEnabledSetting(value as boolean),
+  snippets: (value) => commands.updateSnippets(value as Snippet[]),
 };
 
 export const useSettingsStore = create<SettingsStore>()(

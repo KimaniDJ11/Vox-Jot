@@ -12,6 +12,7 @@ use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
     PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
+use crate::snippets::apply_snippets;
 use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
     APPLE_INTELLIGENCE_PROVIDER_ID,
@@ -2182,6 +2183,19 @@ impl ShortcutAction for TranscribeAction {
                                     );
                                     dictionary_hits_for_history = dict_result.hits;
                                     final_text = dict_result.text;
+                                }
+                            }
+
+                            // Apply snippet expansions (after dictionary, before post-processing)
+                            if settings.snippets_enabled && !settings.snippets.is_empty() {
+                                let snippet_result =
+                                    apply_snippets(&final_text, &settings.snippets);
+                                if snippet_result.text != final_text {
+                                    debug!(
+                                        "Applied {} snippet expansion(s)",
+                                        snippet_result.hits.len()
+                                    );
+                                    final_text = snippet_result.text;
                                 }
                             }
 

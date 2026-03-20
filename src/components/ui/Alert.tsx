@@ -58,7 +58,7 @@ export const Alert: React.FC<AlertProps> = ({
       className={`flex items-start gap-3 p-4 ${styles.container} ${contained ? "" : "rounded-lg"} ${className}`}
     >
       <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${styles.icon}`} />
-      <p className={`text-sm ${styles.text}`}>{children}</p>
+      <div className={`text-sm ${styles.text} min-w-0`}>{children}</div>
     </div>
   );
 };

@@ -26,6 +26,8 @@ export interface OllamaPullProgress {
 interface OllamaStore {
   // Status
   status: OllamaStatus | null;
+  /** Last `checkStatus` threw (e.g. backend error); `status` may be a fallback placeholder. */
+  statusCheckFailed: boolean;
   isChecking: boolean;
   isInstalling: boolean;
   installProgress: string;
@@ -49,6 +51,7 @@ interface OllamaStore {
 
 export const useOllamaStore = create<OllamaStore>((set, get) => ({
   status: null,
+  statusCheckFailed: false,
   isChecking: false,
   isInstalling: false,
   installProgress: "",
@@ -58,13 +61,14 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
   pullingModels: new Set(),
 
   checkStatus: async () => {
-    set({ isChecking: true });
+    set({ isChecking: true, statusCheckFailed: false });
     try {
       const status = await invoke<OllamaStatus>("check_ollama_status");
       set({
         status,
         installedModels: status.models,
         isChecking: false,
+        statusCheckFailed: false,
       });
       return status;
     } catch (e) {
@@ -74,7 +78,11 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
         running: false,
         models: [],
       };
-      set({ status: fallback, isChecking: false });
+      set({
+        status: fallback,
+        isChecking: false,
+        statusCheckFailed: true,
+      });
       return fallback;
     }
   },

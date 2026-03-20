@@ -11,15 +11,16 @@
   "sidebar": {
     "collapsePanel": "설정 사이드바 숨기기",
     "expandPanel": "설정 사이드바 표시",
-    "general": "일반",
+    "system": "시스템",
     "models": "모델",
-    "advanced": "고급",
-    "postProcessing": "후처리",
+    "dataPrivacy": "데이터 및 개인정보 보호",
+    "experimental": "실험적 기능",
+    "ollama": "LLM Models",
+    "corrections": "Corrections",
+    "snippets": "Snippets",
     "history": "히스토리",
     "debug": "디버그",
-    "about": "정보",
-    "ollama": "LLM Models",
-    "corrections": "Corrections"
+    "about": "정보"
   },
   "onboarding": {
     "subtitle": "시작하려면 음성 인식 모델을 선택하세요",
@@ -233,6 +234,25 @@
     }
   },
   "settings": {
+    "snippets": {
+      "toggle": {
+        "title": "Snippets",
+        "label": "Enable Snippets",
+        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+      },
+      "list": {
+        "title": "Your Snippets",
+        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
+        "add": "Add Snippet",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "trigger": "Trigger",
+        "expansion": "Expands to",
+        "triggerPlaceholder": "What you say (e.g. my email)",
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
     "modelSettings": {
       "title": "{{model}} 설정",
       "noSettingsNeeded": "이 모델은 별도의 설정 없이 자동으로 작동합니다."
@@ -792,6 +812,17 @@
           "active": "Active"
         }
       }
+    },
+    "dataPrivacy": {
+      "introTitle": "How Vox Jot handles your data",
+      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "groups": {
+        "storage": "Storage & history",
+        "postProcessing": "AI post-processing"
+      }
+    },
+    "experimental": {
+      "title": "Experimental"
     }
   },
   "footer": {

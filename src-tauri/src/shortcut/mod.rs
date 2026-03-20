@@ -23,8 +23,10 @@ use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, T
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
     KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme,
-    TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
-    OLLAMA_PROVIDER_ID,
+    TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
+    TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
+    TranslationRoutePreference, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
+    APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID,
 };
 use crate::tray;
 
@@ -523,6 +525,17 @@ pub fn change_sound_theme_setting(app: AppHandle, theme: String) -> Result<(), S
 pub fn change_translate_to_english_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.translate_to_english = enabled;
+    settings.translation_output_mode = if enabled {
+        TranslationOutputMode::Translated
+    } else {
+        TranslationOutputMode::Source
+    };
+    settings.translation_target_language = "en".to_string();
+    settings.translation_route_preference = if enabled {
+        TranslationRoutePreference::WhisperEnglish
+    } else {
+        TranslationRoutePreference::Auto
+    };
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -532,6 +545,238 @@ pub fn change_translate_to_english_setting(app: AppHandle, enabled: bool) -> Res
 pub fn change_selected_language_setting(app: AppHandle, language: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.selected_language = language;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_output_mode_setting(app: AppHandle, mode: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_output_mode = match mode.as_str() {
+        "source" => TranslationOutputMode::Source,
+        "translated" => TranslationOutputMode::Translated,
+        "bilingual" => TranslationOutputMode::Bilingual,
+        other => return Err(format!("Invalid translation output mode '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_target_language_setting(
+    app: AppHandle,
+    language: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_target_language = language;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_route_preference_setting(
+    app: AppHandle,
+    route: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_route_preference = match route.as_str() {
+        "auto" => TranslationRoutePreference::Auto,
+        "whisper_english" => TranslationRoutePreference::WhisperEnglish,
+        "offline_pack" => TranslationRoutePreference::OfflinePack,
+        "local_ai" => TranslationRoutePreference::LocalAi,
+        "remote_ai" => TranslationRoutePreference::RemoteAi,
+        other => return Err(format!("Invalid translation route '{}'", other)),
+    };
+    settings.enforce_local_privacy_mode();
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_bilingual_layout_setting(
+    app: AppHandle,
+    layout: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_bilingual_layout = match layout.as_str() {
+        "translation_then_source" => TranslationBilingualLayout::TranslationThenSource,
+        "source_then_translation" => TranslationBilingualLayout::SourceThenTranslation,
+        other => return Err(format!("Invalid bilingual layout '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_translate_snippets_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_translate_snippets = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_translation_destination_mode_setting(
+    app: AppHandle,
+    mode: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.translation_destination_mode = match mode.as_str() {
+        "paste_in_place" => TranslationDestinationMode::PasteInPlace,
+        "preview_then_paste" => TranslationDestinationMode::PreviewThenPaste,
+        "open_in_jot_pad" => TranslationDestinationMode::OpenInJotPad,
+        other => return Err(format!("Invalid translation destination '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_selection_translation_destination_mode_setting(
+    app: AppHandle,
+    mode: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.selection_translation_destination_mode = match mode.as_str() {
+        "replace_selection" => {
+            crate::settings::SelectionTranslationDestinationMode::ReplaceSelection
+        }
+        "preview_then_replace" => {
+            crate::settings::SelectionTranslationDestinationMode::PreviewThenReplace
+        }
+        "open_in_jot_pad" => crate::settings::SelectionTranslationDestinationMode::OpenInJotPad,
+        other => {
+            return Err(format!(
+                "Invalid selection translation destination '{}'",
+                other
+            ))
+        }
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_engine_preference_setting(
+    app: AppHandle,
+    preference: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_engine_preference = match preference.as_str() {
+        "auto" => TtsEnginePreference::Auto,
+        "system" => TtsEnginePreference::System,
+        "sherpa_onnx" => TtsEnginePreference::SherpaOnnx,
+        "sidecar" => TtsEnginePreference::Sidecar,
+        other => return Err(format!("Invalid TTS engine preference '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_auto_readback_mode_setting(
+    app: AppHandle,
+    mode: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_auto_readback_mode = match mode.as_str() {
+        "off" => TtsAutoReadbackMode::Off,
+        "after_output" => TtsAutoReadbackMode::AfterOutput,
+        "after_preview_confirm" => TtsAutoReadbackMode::AfterPreviewConfirm,
+        other => return Err(format!("Invalid TTS readback mode '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_auto_readback_scope_setting(
+    app: AppHandle,
+    scope: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_auto_readback_scope = match scope.as_str() {
+        "dictation_only" => TtsAutoReadbackScope::DictationOnly,
+        "dictation_and_selection" => TtsAutoReadbackScope::DictationAndSelection,
+        other => return Err(format!("Invalid TTS readback scope '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_readback_text_mode_setting(
+    app: AppHandle,
+    mode: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_readback_text_mode = match mode.as_str() {
+        "final_output" => TtsReadbackTextMode::FinalOutput,
+        "translated_block" => TtsReadbackTextMode::TranslatedBlock,
+        other => return Err(format!("Invalid TTS readback text mode '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_default_voice_id_setting(
+    app: AppHandle,
+    voice_id: Option<String>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_default_voice_id = voice_id.filter(|value| !value.trim().is_empty());
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_rate_setting(app: AppHandle, rate: f32) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_rate = rate.clamp(0.5, 2.0);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_volume_setting(app: AppHandle, volume: f32) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_volume = volume.clamp(0.0, 1.0);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_tts_stop_on_record_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.tts_stop_on_record = enabled;
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -991,6 +1236,20 @@ pub fn change_post_process_model_setting(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_translation_model_setting(
+    app: AppHandle,
+    provider_id: String,
+    model: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    validate_provider_exists(&settings, &provider_id)?;
+    settings.translation_model_ids.insert(provider_id, model);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
@@ -1002,6 +1261,24 @@ pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<
     }
 
     settings.post_process_provider_id = provider_id;
+    settings.enforce_local_privacy_mode();
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_translation_provider(app: AppHandle, provider_id: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    validate_provider_exists(&settings, &provider_id)?;
+
+    if settings.local_privacy_mode && !settings.is_post_process_provider_local(&provider_id) {
+        return Err(
+            "Local privacy mode is enabled. Select a local translation provider.".to_string(),
+        );
+    }
+
+    settings.translation_provider_id = provider_id;
     settings.enforce_local_privacy_mode();
     settings::write_settings(&app, settings);
     Ok(())

@@ -2,8 +2,10 @@ import React, { useEffect, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { Plus, Trash2, Pin, PinOff, FileText } from "lucide-react";
+import { toast, Toaster } from "sonner";
+import { Plus, Trash2, Pin, PinOff, FileText, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { commands } from "@/bindings";
 import { useNotesStore } from "./notesStore";
 
 const AUTO_SAVE_DELAY = 2000;
@@ -44,6 +46,15 @@ const ScratchpadApp: React.FC = () => {
       unlisten.then((fn) => fn());
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const unlisten = listen<string>("tts-error", (event) => {
+      toast.error(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   // Sync editor state when active note changes
   useEffect(() => {
@@ -152,6 +163,30 @@ const ScratchpadApp: React.FC = () => {
     await deleteNote(id);
   };
 
+  const handleSpeakNote = async () => {
+    if (!content.trim()) {
+      return;
+    }
+
+    const result = await commands.ttsSpeak(
+      content,
+      null,
+      null,
+      "scratchpad_note",
+      false,
+    );
+    if (result.status !== "ok") {
+      toast.error(result.error);
+    }
+  };
+
+  const handleStopSpeaking = async () => {
+    const result = await commands.ttsStop();
+    if (result.status !== "ok") {
+      toast.error(result.error);
+    }
+  };
+
   const activeNote = getActiveNote();
 
   if (isLoading) {
@@ -164,6 +199,7 @@ const ScratchpadApp: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[var(--bg)] text-[var(--text)] font-body" style={{ paddingTop: "max(36px, env(titlebar-area-height, 36px))" }}>
+      <Toaster />
       {/* Title bar — same pattern as main app */}
       <header className="app-macos-titlebar-overlay" dir="ltr">
         <div
@@ -181,6 +217,29 @@ const ScratchpadApp: React.FC = () => {
             title={t("jotPad.newNote")}
           >
             <Plus className="shrink-0" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+            onClick={() => void handleSpeakNote()}
+            aria-label="Play note"
+            title="Play note"
+            disabled={!content.trim()}
+          >
+            <Play className="shrink-0" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+            onClick={() => void handleStopSpeaking()}
+            aria-label="Stop speaking"
+            title="Stop speaking"
+          >
+            <Square className="shrink-0" aria-hidden />
           </Button>
         </div>
         <div

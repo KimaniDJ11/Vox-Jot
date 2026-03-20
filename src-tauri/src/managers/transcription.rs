@@ -508,9 +508,19 @@ impl TranscriptionManager {
                                 Some(normalized)
                             };
 
+                            let whisper_translate_to_english =
+                                settings.translation_output_mode
+                                    == crate::settings::TranslationOutputMode::Translated
+                                    && settings.translation_target_language == "en"
+                                    && matches!(
+                                        settings.translation_route_preference,
+                                        crate::settings::TranslationRoutePreference::Auto
+                                            | crate::settings::TranslationRoutePreference::WhisperEnglish
+                                    );
+
                             let params = WhisperInferenceParams {
                                 language: whisper_language,
-                                translate: settings.translate_to_english,
+                                translate: whisper_translate_to_english,
                                 ..Default::default()
                             };
 
@@ -637,7 +647,14 @@ impl TranscriptionManager {
         );
 
         let et = std::time::Instant::now();
-        let translation_note = if settings.translate_to_english {
+        let translation_note = if settings.translation_output_mode
+            == crate::settings::TranslationOutputMode::Translated
+            && settings.translation_target_language == "en"
+            && matches!(
+                settings.translation_route_preference,
+                crate::settings::TranslationRoutePreference::Auto
+                    | crate::settings::TranslationRoutePreference::WhisperEnglish
+            ) {
             " (translated)"
         } else {
             ""

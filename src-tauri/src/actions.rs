@@ -6,7 +6,8 @@ use crate::correction_tracker::span::InsertionMethod;
 use crate::correction_tracker::store::CorrectionStore;
 use crate::correction_tracker::InsertedSpanTracker;
 use crate::managers::audio::AudioRecordingManager;
-use crate::managers::history::HistoryManager;
+use crate::managers::history::{HistoryManager, TranslationHistoryContext};
+use crate::managers::notes::NotesManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
@@ -18,6 +19,15 @@ use crate::settings::{
 };
 use crate::shortcut;
 use crate::snippets::apply_snippets;
+use crate::tts::{
+    build_auto_speak_plan, choose_readback_locale, normalize_locale, SpeakRequest, TtsHistoryContext,
+    TtsManager,
+};
+use crate::translation::{
+    destination_label_for_dictation, dictation_requires_preview, normalize_language_code,
+    selection_destination_label, selection_requires_preview, should_open_jot_pad_for_dictation,
+    should_open_jot_pad_for_selection, translate_text, TranslationExecution, TranslationOrigin,
+};
 use crate::tray::{change_tray_icon, TrayIconState};
 use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
@@ -57,6 +67,11 @@ struct TranscribeAction {
     post_process: bool,
     rewrite_selection: bool,
 }
+
+struct TranslateSelectionAction;
+struct SpeakSelectionAction;
+struct SpeakLastOutputAction;
+struct StopSpeakingAction;
 
 /// Field name for structured output JSON schema
 const TRANSCRIPTION_FIELD: &str = "transcription";
@@ -1811,6 +1826,167 @@ async fn rewrite_selected_text(
         .and_then(|text| sanitize_plain_model_output(&text))
 }
 
+async fn run_translate_selection(app: AppHandle) {
+    let settings = get_settings(&app);
+    let selected_text = match utils::capture_selected_text(&app) {
+        Ok(Some(text)) => text,
+        Ok(None) => {
+            let _ = app.emit(
+                "translation-error",
+                "No selected text was available to translate.".to_string(),
+            );
+            return;
+        }
+        Err(err) => {
+            let message = format!("Failed to capture selected text: {err}");
+            error!("{message}");
+            let _ = app.emit("translation-error", message);
+            return;
+        }
+    };
+
+    let mut execution = match translate_text(
+        &settings,
+        &selected_text,
+        normalize_language_code(Some(&settings.selected_language)).as_deref(),
+        TranslationOrigin::Selection,
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            error!("Selection translation failed: {}", err);
+            let _ = app.emit("translation-error", err);
+            return;
+        }
+    };
+
+    let destination_label =
+        selection_destination_label(settings.selection_translation_destination_mode);
+    let needs_preview = selection_requires_preview(&settings, &selected_text);
+    if needs_preview {
+        match maybe_preview_translation_result(
+            &app,
+            &execution.source_text,
+            execution.translated_text.as_deref(),
+            &execution.final_text,
+            destination_label,
+            TranslationOrigin::Selection,
+        )
+        .await
+        {
+            Some(updated_text) => execution.final_text = updated_text,
+            None => return,
+        }
+    }
+
+    let readback_locale = choose_readback_locale(
+        &settings,
+        TranslationOrigin::Selection,
+        execution.source_language_detected.as_deref(),
+        execution.target_language.as_deref(),
+    );
+    remember_last_output(&app, &execution.final_text, readback_locale.clone());
+
+    let mut routed_to_jot_pad = false;
+    if should_open_jot_pad_for_selection(&settings, false) {
+        send_translation_to_jot_pad(&app, &execution, destination_label);
+        routed_to_jot_pad = true;
+    } else {
+        if let Err(err) = utils::paste(execution.final_text.clone(), app.clone()) {
+            warn!("Failed to replace selected text with translation: {}", err);
+            send_translation_to_jot_pad(&app, &execution, destination_label);
+            routed_to_jot_pad = true;
+        }
+    }
+
+    let auto_speak_plan = build_auto_speak_plan(
+        &settings,
+        TranslationOrigin::Selection,
+        needs_preview,
+        &execution.final_text,
+        execution.translated_text.as_deref(),
+        readback_locale.clone(),
+    );
+
+    if let Some(history_manager) = app.try_state::<Arc<HistoryManager>>() {
+        match history_manager
+            .save_transcription(
+                Vec::new(),
+                selected_text.clone(),
+                Some(execution.final_text.clone()),
+                None,
+                Vec::new(),
+                if routed_to_jot_pad {
+                    None
+                } else {
+                    Some(execution.final_text.clone())
+                },
+                TranslationHistoryContext {
+                    source_language_detected: execution.source_language_detected.clone(),
+                    translation_target_language: execution.target_language.clone(),
+                    translated_text: execution.translated_text.clone(),
+                    translation_route: Some(translation_route_label(execution.route).to_string()),
+                    translation_provider_id: execution.provider_id.clone(),
+                    translation_model_id: execution.model_id.clone(),
+                    translation_origin: Some("selection".to_string()),
+                    translation_destination: Some(if routed_to_jot_pad {
+                        "open_in_jot_pad".to_string()
+                    } else {
+                        destination_label.to_string()
+                    }),
+                },
+                tts_history_context_from_plan(&auto_speak_plan),
+            )
+            .await
+        {
+            Ok(history_id) => {
+                if auto_speak_plan.should_speak {
+                    spawn_tts_playback(
+                        &app,
+                        SpeakRequest {
+                            text: auto_speak_plan.text.clone(),
+                            locale: auto_speak_plan.locale.clone(),
+                            preferred_voice_id: None,
+                            trigger: Some(auto_speak_plan.trigger.clone()),
+                            remember_last_output: false,
+                        },
+                        Some(history_id),
+                    );
+                }
+            }
+            Err(err) => {
+                error!("Failed to save selection translation history: {}", err);
+                if auto_speak_plan.should_speak {
+                    spawn_tts_playback(
+                        &app,
+                        SpeakRequest {
+                            text: auto_speak_plan.text,
+                            locale: auto_speak_plan.locale,
+                            preferred_voice_id: None,
+                            trigger: Some(auto_speak_plan.trigger),
+                            remember_last_output: false,
+                        },
+                        None,
+                    );
+                }
+            }
+        }
+    } else if auto_speak_plan.should_speak {
+        spawn_tts_playback(
+            &app,
+            SpeakRequest {
+                text: auto_speak_plan.text,
+                locale: auto_speak_plan.locale,
+                preferred_voice_id: None,
+                trigger: Some(auto_speak_plan.trigger),
+                remember_last_output: false,
+            },
+            None,
+        );
+    }
+}
+
 async fn maybe_preview_post_process_result(
     app: &AppHandle,
     settings: &AppSettings,
@@ -1826,6 +2002,9 @@ async fn maybe_preview_post_process_result(
         request_id: request_id.clone(),
         source_text: result.normalized_text.clone(),
         preview_text: result.final_text.clone(),
+        translated_text: None,
+        destination_label: None,
+        origin: Some("post_process".to_string()),
     };
 
     crate::show_main_window(app);
@@ -1856,6 +2035,202 @@ async fn maybe_preview_post_process_result(
             preview_manager.clear_request(&request_id);
             None
         }
+    }
+}
+
+async fn maybe_preview_translation_result(
+    app: &AppHandle,
+    source_text: &str,
+    translated_text: Option<&str>,
+    preview_text: &str,
+    destination_label: &str,
+    origin: TranslationOrigin,
+) -> Option<String> {
+    let preview_manager = app.state::<PreviewManager>();
+    let (request_id, rx) = preview_manager.create_request();
+    let payload = PostProcessPreviewPayload {
+        request_id: request_id.clone(),
+        source_text: source_text.to_string(),
+        preview_text: preview_text.to_string(),
+        translated_text: translated_text.map(|value| value.to_string()),
+        destination_label: Some(destination_label.to_string()),
+        origin: Some(
+            match origin {
+                TranslationOrigin::Dictation => "translation_dictation",
+                TranslationOrigin::Selection => "translation_selection",
+            }
+            .to_string(),
+        ),
+    };
+
+    crate::show_main_window(app);
+    if let Err(err) = app.emit("post-process-preview-request", payload) {
+        error!("Failed to emit translation preview request: {}", err);
+        preview_manager.clear_request(&request_id);
+        return Some(preview_text.to_string());
+    }
+
+    match tokio::time::timeout(std::time::Duration::from_secs(300), rx).await {
+        Ok(Ok(resolution)) => {
+            if resolution.accepted {
+                Some(
+                    resolution
+                        .final_text
+                        .unwrap_or_else(|| preview_text.to_string()),
+                )
+            } else {
+                None
+            }
+        }
+        Ok(Err(_)) => {
+            warn!(
+                "Translation preview request '{}' closed before resolution",
+                request_id
+            );
+            None
+        }
+        Err(_) => {
+            warn!("Translation preview request '{}' timed out", request_id);
+            preview_manager.clear_request(&request_id);
+            None
+        }
+    }
+}
+
+fn build_translation_note(
+    execution: &TranslationExecution,
+    destination_label: &str,
+) -> (String, String) {
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %I:%M %p").to_string();
+    let target = execution
+        .target_language
+        .clone()
+        .unwrap_or_else(|| "translated".to_string());
+    let title = format!("Translation {timestamp}");
+    let content = format!(
+        "Origin: {}\nDestination: {}\nSource language: {}\nTarget language: {}\n\nSource:\n{}\n\nTranslated:\n{}",
+        match execution.origin {
+            TranslationOrigin::Dictation => "dictation",
+            TranslationOrigin::Selection => "selection",
+        },
+        destination_label,
+        execution
+            .source_language_detected
+            .clone()
+            .unwrap_or_else(|| "auto".to_string()),
+        target,
+        execution.source_text,
+        execution.final_text
+    );
+    (title, content)
+}
+
+fn send_translation_to_jot_pad(
+    app: &AppHandle,
+    execution: &TranslationExecution,
+    destination_label: &str,
+) {
+    if let Some(notes_manager) = app.try_state::<Arc<NotesManager>>() {
+        let (title, content) = build_translation_note(execution, destination_label);
+        if let Err(err) = notes_manager.create_note(&title, &content) {
+            error!("Failed to create translation note: {}", err);
+        }
+    }
+
+    crate::scratchpad::show_scratchpad(app);
+}
+
+fn remember_last_output(app: &AppHandle, text: &str, locale: Option<String>) {
+    if let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() {
+        tts_manager.set_last_output(text.to_string(), locale);
+    }
+}
+
+fn tts_history_context_from_plan(plan: &crate::tts::TtsAutoSpeakPlan) -> TtsHistoryContext {
+    TtsHistoryContext {
+        tts_requested: Some(plan.tts_requested),
+        tts_engine: plan.tts_engine.clone(),
+        tts_voice_id: plan.tts_voice_id.clone(),
+        tts_locale: plan.tts_locale.clone(),
+        tts_trigger: Some(plan.trigger.clone()),
+        tts_status: plan.tts_status.clone(),
+    }
+}
+
+fn spawn_tts_playback(app: &AppHandle, request: SpeakRequest, history_entry_id: Option<i64>) {
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let result = if let Some(tts_manager) = app_handle.try_state::<Arc<TtsManager>>() {
+            tts_manager.speak(request).await
+        } else {
+            Err("TTS manager is unavailable.".to_string())
+        };
+
+        if let Some(history_entry_id) = history_entry_id {
+            if let Some(history_manager) = app_handle.try_state::<Arc<HistoryManager>>() {
+                let status = if result.is_ok() { "played" } else { "failed" };
+                if let Err(err) = history_manager.update_tts_status(history_entry_id, status) {
+                    error!("Failed to update TTS history status: {}", err);
+                }
+            }
+        }
+
+        if let Err(err) = result {
+            error!("Speech output failed: {}", err);
+            let _ = app_handle.emit("tts-error", err);
+        }
+    });
+}
+
+async fn run_speak_selection(app: AppHandle) {
+    let selected_text = match utils::capture_selected_text(&app) {
+        Ok(Some(text)) => text,
+        Ok(None) => {
+            let _ = app.emit(
+                "tts-error",
+                "No selected text was available to speak.".to_string(),
+            );
+            return;
+        }
+        Err(err) => {
+            let message = format!("Failed to capture selected text: {err}");
+            let _ = app.emit("tts-error", message);
+            return;
+        }
+    };
+
+    let locale = normalize_locale(Some(&get_settings(&app).selected_language));
+    let request = SpeakRequest {
+        text: selected_text,
+        locale,
+        preferred_voice_id: None,
+        trigger: Some("speak_selection".to_string()),
+        remember_last_output: false,
+    };
+    spawn_tts_playback(&app, request, None);
+}
+
+async fn run_speak_last_output(app: AppHandle) {
+    let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() else {
+        let _ = app.emit("tts-error", "TTS manager is unavailable.".to_string());
+        return;
+    };
+
+    match tts_manager.speak_last_output_request() {
+        Ok(request) => spawn_tts_playback(&app, request, None),
+        Err(err) => {
+            let _ = app.emit("tts-error", err);
+        }
+    }
+}
+
+fn translation_route_label(route: crate::translation::TranslationRoute) -> &'static str {
+    match route {
+        crate::translation::TranslationRoute::None => "none",
+        crate::translation::TranslationRoute::WhisperEnglish => "whisper_english",
+        crate::translation::TranslationRoute::OfflinePack => "offline_pack",
+        crate::translation::TranslationRoute::LocalAi => "local_ai",
+        crate::translation::TranslationRoute::RemoteAi => "remote_ai",
     }
 }
 
@@ -1932,6 +2307,12 @@ impl ShortcutAction for TranscribeAction {
                 binding_id
             );
             return;
+        }
+
+        if settings.tts_stop_on_record {
+            if let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() {
+                tts_manager.stop();
+            }
         }
 
         // Load model in the background
@@ -2119,6 +2500,7 @@ impl ShortcutAction for TranscribeAction {
                             let mut post_processed_text: Option<String> = None;
                             let mut post_process_prompt: Option<String> = None;
                             let mut dictionary_hits_for_history: Vec<String> = Vec::new();
+                            let mut preview_was_shown = false;
 
                             // First, check if Chinese variant conversion is needed
                             if let Some(converted_text) =
@@ -2200,20 +2582,64 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
-                            let safe_plain_text_fallback = final_text.clone();
+                            let source_language_hint =
+                                normalize_language_code(Some(&settings.selected_language));
+                            let mut translation_execution = if rewrite_selection {
+                                None
+                            } else {
+                                match translate_text(
+                                    &effective_settings,
+                                    &final_text,
+                                    source_language_hint.as_deref(),
+                                    TranslationOrigin::Dictation,
+                                )
+                                .await
+                                {
+                                    Ok(execution) => Some(execution),
+                                    Err(err) => {
+                                        warn!("Translation failed: {}", err);
+                                        let _ = ah.emit("translation-error", err.clone());
+                                        None
+                                    }
+                                }
+                            };
+
+                            if let Some(execution) = translation_execution.as_ref() {
+                                if execution.translated_text.is_some() {
+                                    final_text = execution.final_text.clone();
+                                }
+                            }
+
+                            let safe_plain_text_fallback = translation_execution
+                                .as_ref()
+                                .and_then(|execution| {
+                                    execution
+                                        .translated_text
+                                        .as_ref()
+                                        .map(|_| execution.final_text.clone())
+                                })
+                                .unwrap_or_else(|| final_text.clone());
+
+                            let mut text_to_paste = Some(final_text.clone());
+                            let post_process_input = translation_execution
+                                .as_ref()
+                                .and_then(|execution| execution.translated_text.clone())
+                                .unwrap_or_else(|| final_text.clone());
 
                             let processed = if should_post_process {
                                 post_process_transcription(
                                     &effective_settings,
-                                    &final_text,
+                                    &post_process_input,
                                     active_app_context.clone(),
                                 )
                                 .await
                             } else {
                                 None
                             };
-                            let mut text_to_paste = Some(final_text.clone());
                             if let Some(processed) = processed {
+                                if should_post_process && settings.show_preview_before_paste {
+                                    preview_was_shown = true;
+                                }
                                 let preview_text = if should_post_process {
                                     maybe_preview_post_process_result(
                                         &ah,
@@ -2226,7 +2652,30 @@ impl ShortcutAction for TranscribeAction {
                                 };
 
                                 if let Some(preview_text) = preview_text {
-                                    final_text = preview_text;
+                                    if let Some(execution) = translation_execution.as_mut() {
+                                        execution.translated_text = Some(preview_text.clone());
+                                        execution.final_text = match settings.translation_output_mode {
+                                            crate::settings::TranslationOutputMode::Bilingual => {
+                                                if settings.translation_bilingual_layout
+                                                    == crate::settings::TranslationBilingualLayout::TranslationThenSource
+                                                {
+                                                    format!(
+                                                        "{}\n\n{}",
+                                                        preview_text, execution.source_text
+                                                    )
+                                                } else {
+                                                    format!(
+                                                        "{}\n\n{}",
+                                                        execution.source_text, preview_text
+                                                    )
+                                                }
+                                            }
+                                            _ => preview_text.clone(),
+                                        };
+                                        final_text = execution.final_text.clone();
+                                    } else {
+                                        final_text = preview_text;
+                                    }
                                     text_to_paste = Some(final_text.clone());
                                 } else {
                                     text_to_paste = None;
@@ -2239,8 +2688,45 @@ impl ShortcutAction for TranscribeAction {
                                     dictionary_hits_for_history = processed.result.dictionary_hits;
                                 }
                             } else if final_text != transcription {
-                                // Chinese conversion was applied but no LLM post-processing
                                 post_processed_text = Some(final_text.clone());
+                            }
+
+                            if !rewrite_selection {
+                                if let Some(execution) = translation_execution.as_mut() {
+                                    let destination_label =
+                                        destination_label_for_dictation(&settings);
+                                    let should_preview_translation =
+                                        execution.translated_text.is_some()
+                                            && dictation_requires_preview(
+                                                &settings,
+                                                &execution.final_text,
+                                            )
+                                            && !(should_post_process
+                                                && settings.show_preview_before_paste);
+
+                                    if should_preview_translation {
+                                        preview_was_shown = true;
+                                        match maybe_preview_translation_result(
+                                            &ah,
+                                            &execution.source_text,
+                                            execution.translated_text.as_deref(),
+                                            &execution.final_text,
+                                            destination_label,
+                                            TranslationOrigin::Dictation,
+                                        )
+                                        .await
+                                        {
+                                            Some(updated_text) => {
+                                                execution.final_text = updated_text.clone();
+                                                final_text = updated_text.clone();
+                                                text_to_paste = Some(updated_text);
+                                            }
+                                            None => {
+                                                text_to_paste = None;
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             if rewrite_selection {
@@ -2275,10 +2761,27 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
+                            let mut routed_to_jot_pad = false;
+                            if !rewrite_selection {
+                                if let Some(execution) = translation_execution.as_ref() {
+                                    if execution.translated_text.is_some()
+                                        && should_open_jot_pad_for_dictation(&settings)
+                                    {
+                                        send_translation_to_jot_pad(
+                                            &ah,
+                                            execution,
+                                            destination_label_for_dictation(&settings),
+                                        );
+                                        text_to_paste = None;
+                                        routed_to_jot_pad = true;
+                                    }
+                                }
+                            }
+
                             let (cleaned_text, submit_override) =
                                 extract_spoken_submit_command(&final_text);
                             if let Some(text) = text_to_paste.as_mut() {
-                                *text = cleaned_text;
+                                *text = cleaned_text.clone();
                             }
 
                             if let Some(text) = text_to_paste.as_ref() {
@@ -2312,6 +2815,42 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
+                            let readback_locale = choose_readback_locale(
+                                &settings,
+                                TranslationOrigin::Dictation,
+                                translation_execution
+                                    .as_ref()
+                                    .and_then(|execution| execution.source_language_detected.as_deref())
+                                    .or(source_language_hint.as_deref()),
+                                translation_execution
+                                    .as_ref()
+                                    .and_then(|execution| execution.target_language.as_deref()),
+                            );
+                            let spoken_output_text = if routed_to_jot_pad {
+                                cleaned_text.clone()
+                            } else {
+                                text_to_paste
+                                    .clone()
+                                    .unwrap_or_else(|| cleaned_text.clone())
+                            };
+                            if !spoken_output_text.trim().is_empty() {
+                                remember_last_output(&ah, &spoken_output_text, readback_locale.clone());
+                            }
+                            let mut auto_speak_plan = build_auto_speak_plan(
+                                &settings,
+                                TranslationOrigin::Dictation,
+                                preview_was_shown,
+                                if routed_to_jot_pad || text_to_paste.is_some() {
+                                    &spoken_output_text
+                                } else {
+                                    ""
+                                },
+                                translation_execution
+                                    .as_ref()
+                                    .and_then(|execution| execution.translated_text.as_deref()),
+                                readback_locale.clone(),
+                            );
+
                             // Save to history after preview resolution so stored text matches
                             // the final pasted output when preview editing is enabled.
                             let hm_clone = Arc::clone(&hm);
@@ -2320,6 +2859,27 @@ impl ShortcutAction for TranscribeAction {
                             let post_process_prompt_for_history = post_process_prompt.clone();
                             let dict_hits_for_history = dictionary_hits_for_history.clone();
                             let pasted_text_for_history = text_to_paste.clone();
+                            let translation_history_context = translation_execution
+                                .as_ref()
+                                .map(|execution| TranslationHistoryContext {
+                                    source_language_detected: execution
+                                        .source_language_detected
+                                        .clone(),
+                                    translation_target_language: execution.target_language.clone(),
+                                    translated_text: execution.translated_text.clone(),
+                                    translation_route: Some(
+                                        translation_route_label(execution.route).to_string(),
+                                    ),
+                                    translation_provider_id: execution.provider_id.clone(),
+                                    translation_model_id: execution.model_id.clone(),
+                                    translation_origin: Some("dictation".to_string()),
+                                    translation_destination: Some(if routed_to_jot_pad {
+                                        "open_in_jot_pad".to_string()
+                                    } else {
+                                        destination_label_for_dictation(&settings).to_string()
+                                    }),
+                                })
+                                .unwrap_or_default();
                             let history_entry_id = match hm_clone
                                 .save_transcription(
                                     samples_clone,
@@ -2328,6 +2888,8 @@ impl ShortcutAction for TranscribeAction {
                                     post_process_prompt_for_history,
                                     dict_hits_for_history,
                                     pasted_text_for_history,
+                                    translation_history_context,
+                                    tts_history_context_from_plan(&auto_speak_plan),
                                 )
                                 .await
                             {
@@ -2342,6 +2904,25 @@ impl ShortcutAction for TranscribeAction {
                                     -1
                                 }
                             };
+
+                            if routed_to_jot_pad && auto_speak_plan.should_speak {
+                                spawn_tts_playback(
+                                    &ah,
+                                    SpeakRequest {
+                                        text: auto_speak_plan.text.clone(),
+                                        locale: auto_speak_plan.locale.clone(),
+                                        preferred_voice_id: None,
+                                        trigger: Some(auto_speak_plan.trigger.clone()),
+                                        remember_last_output: false,
+                                    },
+                                    if history_entry_id > 0 {
+                                        Some(history_entry_id)
+                                    } else {
+                                        None
+                                    },
+                                );
+                                auto_speak_plan.should_speak = false;
+                            }
 
                             if let Some(ref text_to_paste) = text_to_paste {
                                 // Start correction monitoring if enabled
@@ -2395,6 +2976,17 @@ impl ShortcutAction for TranscribeAction {
                                 let submit_override = submit_override;
                                 let active_app_id_for_snapshot =
                                     active_app_context.as_ref().map(|ctx| ctx.bundle_id.clone());
+                                let auto_speak_request = if auto_speak_plan.should_speak {
+                                    Some(SpeakRequest {
+                                        text: auto_speak_plan.text.clone(),
+                                        locale: auto_speak_plan.locale.clone(),
+                                        preferred_voice_id: None,
+                                        trigger: Some(auto_speak_plan.trigger.clone()),
+                                        remember_last_output: false,
+                                    })
+                                } else {
+                                    None
+                                };
                                 ah.run_on_main_thread(move || {
                                     let paste_result = if let Some(submit_key) = submit_override {
                                         utils::paste_with_submit_override(
@@ -2513,6 +3105,18 @@ impl ShortcutAction for TranscribeAction {
                                                     }
                                                 });
                                             }
+
+                                            if let Some(auto_speak_request) = auto_speak_request.clone() {
+                                                spawn_tts_playback(
+                                                    &ah_clone,
+                                                    auto_speak_request,
+                                                    if history_entry_id > 0 {
+                                                        Some(history_entry_id)
+                                                    } else {
+                                                        None
+                                                    },
+                                                );
+                                            }
                                         }
                                         Err(e) => error!("Failed to paste transcription: {}", e),
                                     }
@@ -2553,6 +3157,68 @@ impl ShortcutAction for TranscribeAction {
             stop_time.elapsed()
         );
     }
+}
+
+impl ShortcutAction for TranslateSelectionAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!(
+            "TranslateSelectionAction::start called for binding: {}",
+            binding_id
+        );
+
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            run_translate_selection(app_handle).await;
+        });
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
+}
+
+impl ShortcutAction for SpeakSelectionAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!(
+            "SpeakSelectionAction::start called for binding: {}",
+            binding_id
+        );
+
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            run_speak_selection(app_handle).await;
+        });
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
+}
+
+impl ShortcutAction for SpeakLastOutputAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!(
+            "SpeakLastOutputAction::start called for binding: {}",
+            binding_id
+        );
+
+        let app_handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            run_speak_last_output(app_handle).await;
+        });
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
+}
+
+impl ShortcutAction for StopSpeakingAction {
+    fn start(&self, app: &AppHandle, binding_id: &str, _shortcut_str: &str) {
+        debug!(
+            "StopSpeakingAction::start called for binding: {}",
+            binding_id
+        );
+        if let Some(tts_manager) = app.try_state::<Arc<TtsManager>>() {
+            tts_manager.stop();
+        }
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
 }
 
 // Cancel Action
@@ -3242,6 +3908,22 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
             post_process: true,
             rewrite_selection: true,
         }) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "translate_selection".to_string(),
+        Arc::new(TranslateSelectionAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "speak_selection".to_string(),
+        Arc::new(SpeakSelectionAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "speak_last_output".to_string(),
+        Arc::new(SpeakLastOutputAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "stop_speaking".to_string(),
+        Arc::new(StopSpeakingAction) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "cancel".to_string(),

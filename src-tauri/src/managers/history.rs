@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 
 use crate::audio_toolkit::save_wav_file;
+use crate::tts::TtsHistoryContext;
 
 /// Database migrations for transcription history.
 /// Each migration is applied in order. The library tracks which migrations
@@ -40,6 +41,20 @@ static MIGRATIONS: &[M] = &[
         "ALTER TABLE transcription_history ADD COLUMN field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested';",
     ),
     M::up("ALTER TABLE transcription_history ADD COLUMN field_snapshot_error TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN source_language_detected TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_target_language TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translated_text TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_route TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_provider_id TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_model_id TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_origin TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN translation_destination TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_requested BOOLEAN;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_engine TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_voice_id TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_locale TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_trigger TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN tts_status TEXT;"),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
@@ -69,6 +84,32 @@ pub struct HistoryEntry {
     pub field_snapshot_at: Option<i64>,
     pub field_snapshot_status: FieldSnapshotStatus,
     pub field_snapshot_error: Option<String>,
+    pub source_language_detected: Option<String>,
+    pub translation_target_language: Option<String>,
+    pub translated_text: Option<String>,
+    pub translation_route: Option<String>,
+    pub translation_provider_id: Option<String>,
+    pub translation_model_id: Option<String>,
+    pub translation_origin: Option<String>,
+    pub translation_destination: Option<String>,
+    pub tts_requested: Option<bool>,
+    pub tts_engine: Option<String>,
+    pub tts_voice_id: Option<String>,
+    pub tts_locale: Option<String>,
+    pub tts_trigger: Option<String>,
+    pub tts_status: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TranslationHistoryContext {
+    pub source_language_detected: Option<String>,
+    pub translation_target_language: Option<String>,
+    pub translated_text: Option<String>,
+    pub translation_route: Option<String>,
+    pub translation_provider_id: Option<String>,
+    pub translation_model_id: Option<String>,
+    pub translation_origin: Option<String>,
+    pub translation_destination: Option<String>,
 }
 
 /// Parse a database row into a HistoryEntry, deserializing the dictionary_hits JSON column.
@@ -110,6 +151,20 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         field_snapshot_at,
         field_snapshot_status,
         field_snapshot_error,
+        source_language_detected: row.get("source_language_detected").unwrap_or(None),
+        translation_target_language: row.get("translation_target_language").unwrap_or(None),
+        translated_text: row.get("translated_text").unwrap_or(None),
+        translation_route: row.get("translation_route").unwrap_or(None),
+        translation_provider_id: row.get("translation_provider_id").unwrap_or(None),
+        translation_model_id: row.get("translation_model_id").unwrap_or(None),
+        translation_origin: row.get("translation_origin").unwrap_or(None),
+        translation_destination: row.get("translation_destination").unwrap_or(None),
+        tts_requested: row.get("tts_requested").unwrap_or(None),
+        tts_engine: row.get("tts_engine").unwrap_or(None),
+        tts_voice_id: row.get("tts_voice_id").unwrap_or(None),
+        tts_locale: row.get("tts_locale").unwrap_or(None),
+        tts_trigger: row.get("tts_trigger").unwrap_or(None),
+        tts_status: row.get("tts_status").unwrap_or(None),
     }
 }
 
@@ -206,6 +261,20 @@ impl HistoryManager {
                 "ALTER TABLE transcription_history ADD COLUMN field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested'",
             ),
             ("field_snapshot_error", "ALTER TABLE transcription_history ADD COLUMN field_snapshot_error TEXT"),
+            ("source_language_detected", "ALTER TABLE transcription_history ADD COLUMN source_language_detected TEXT"),
+            ("translation_target_language", "ALTER TABLE transcription_history ADD COLUMN translation_target_language TEXT"),
+            ("translated_text", "ALTER TABLE transcription_history ADD COLUMN translated_text TEXT"),
+            ("translation_route", "ALTER TABLE transcription_history ADD COLUMN translation_route TEXT"),
+            ("translation_provider_id", "ALTER TABLE transcription_history ADD COLUMN translation_provider_id TEXT"),
+            ("translation_model_id", "ALTER TABLE transcription_history ADD COLUMN translation_model_id TEXT"),
+            ("translation_origin", "ALTER TABLE transcription_history ADD COLUMN translation_origin TEXT"),
+            ("translation_destination", "ALTER TABLE transcription_history ADD COLUMN translation_destination TEXT"),
+            ("tts_requested", "ALTER TABLE transcription_history ADD COLUMN tts_requested BOOLEAN"),
+            ("tts_engine", "ALTER TABLE transcription_history ADD COLUMN tts_engine TEXT"),
+            ("tts_voice_id", "ALTER TABLE transcription_history ADD COLUMN tts_voice_id TEXT"),
+            ("tts_locale", "ALTER TABLE transcription_history ADD COLUMN tts_locale TEXT"),
+            ("tts_trigger", "ALTER TABLE transcription_history ADD COLUMN tts_trigger TEXT"),
+            ("tts_status", "ALTER TABLE transcription_history ADD COLUMN tts_status TEXT"),
         ];
 
         for (column_name, sql) in required_columns {
@@ -294,6 +363,8 @@ impl HistoryManager {
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
         pasted_text: Option<String>,
+        translation_context: TranslationHistoryContext,
+        tts_context: TtsHistoryContext,
     ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("handy-{}.wav", timestamp);
@@ -313,6 +384,8 @@ impl HistoryManager {
             post_process_prompt,
             dictionary_hits,
             pasted_text,
+            translation_context,
+            tts_context,
         )?;
 
         // Clean up old entries
@@ -336,6 +409,8 @@ impl HistoryManager {
         post_process_prompt: Option<String>,
         dictionary_hits: Vec<String>,
         pasted_text: Option<String>,
+        translation_context: TranslationHistoryContext,
+        tts_context: TtsHistoryContext,
     ) -> Result<i64> {
         let conn = self.get_connection()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
@@ -344,8 +419,56 @@ impl HistoryManager {
             Some(serde_json::to_string(&dictionary_hits).unwrap_or_default())
         };
         conn.execute(
-            "INSERT INTO transcription_history (file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![file_name, timestamp, false, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits_json, pasted_text],
+            "INSERT INTO transcription_history (
+                file_name,
+                timestamp,
+                saved,
+                title,
+                transcription_text,
+                post_processed_text,
+                post_process_prompt,
+                dictionary_hits,
+                pasted_text,
+                source_language_detected,
+                translation_target_language,
+                translated_text,
+                translation_route,
+                translation_provider_id,
+                translation_model_id,
+                translation_origin,
+                translation_destination,
+                tts_requested,
+                tts_engine,
+                tts_voice_id,
+                tts_locale,
+                tts_trigger,
+                tts_status
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)",
+            params![
+                file_name,
+                timestamp,
+                false,
+                title,
+                transcription_text,
+                post_processed_text,
+                post_process_prompt,
+                dictionary_hits_json,
+                pasted_text,
+                translation_context.source_language_detected,
+                translation_context.translation_target_language,
+                translation_context.translated_text,
+                translation_context.translation_route,
+                translation_context.translation_provider_id,
+                translation_context.translation_model_id,
+                translation_context.translation_origin,
+                translation_context.translation_destination,
+                tts_context.tts_requested,
+                tts_context.tts_engine,
+                tts_context.tts_voice_id,
+                tts_context.tts_locale,
+                tts_context.tts_trigger,
+                tts_context.tts_status
+            ],
         )?;
 
         let id = conn.last_insert_rowid();
@@ -431,6 +554,18 @@ impl HistoryManager {
             );
         }
 
+        Ok(())
+    }
+
+    pub fn update_tts_status(&self, id: i64, status: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE transcription_history SET tts_status = ?1 WHERE id = ?2",
+            params![status, id],
+        )?;
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!("Failed to emit history-updated after TTS status update: {}", e);
+        }
         Ok(())
     }
 
@@ -557,7 +692,7 @@ impl HistoryManager {
     pub async fn get_history_entries(&self) -> Result<Vec<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error FROM transcription_history ORDER BY timestamp DESC"
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status FROM transcription_history ORDER BY timestamp DESC"
         )?;
 
         let rows = stmt.query_map([], |row| Ok(row_to_history_entry(row)))?;
@@ -577,7 +712,7 @@ impl HistoryManager {
 
     fn get_latest_entry_with_conn(conn: &Connection) -> Result<Option<HistoryEntry>> {
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status
              FROM transcription_history
              ORDER BY timestamp DESC
              LIMIT 1",
@@ -624,7 +759,7 @@ impl HistoryManager {
     pub async fn get_entry_by_id(&self, id: i64) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status
              FROM transcription_history WHERE id = ?1",
         )?;
 
@@ -699,7 +834,21 @@ mod tests {
                 field_snapshot_text TEXT,
                 field_snapshot_at INTEGER,
                 field_snapshot_status TEXT NOT NULL DEFAULT 'not_requested',
-                field_snapshot_error TEXT
+                field_snapshot_error TEXT,
+                source_language_detected TEXT,
+                translation_target_language TEXT,
+                translated_text TEXT,
+                translation_route TEXT,
+                translation_provider_id TEXT,
+                translation_model_id TEXT,
+                translation_origin TEXT,
+                translation_destination TEXT,
+                tts_requested BOOLEAN,
+                tts_engine TEXT,
+                tts_voice_id TEXT,
+                tts_locale TEXT,
+                tts_trigger TEXT,
+                tts_status TEXT
             );",
         )
         .expect("create transcription_history table");
@@ -751,5 +900,46 @@ mod tests {
             entry.field_snapshot_status,
             FieldSnapshotStatus::NotRequested
         );
+    }
+
+    #[test]
+    fn row_mapping_includes_tts_columns() {
+        let conn = setup_conn();
+        conn.execute(
+            "INSERT INTO transcription_history (
+                file_name, timestamp, saved, title, transcription_text, post_processed_text,
+                post_process_prompt, dictionary_hits, pasted_text,
+                tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            params![
+                "tts.wav",
+                300,
+                false,
+                "TTS Recording",
+                "hello",
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+                Some("hello".to_string()),
+                Some(true),
+                Some("system".to_string()),
+                Some("Samantha".to_string()),
+                Some("en-US".to_string()),
+                Some("auto_readback_dictation".to_string()),
+                Some("pending".to_string())
+            ],
+        )
+        .expect("insert history entry with tts metadata");
+
+        let entry = HistoryManager::get_latest_entry_with_conn(&conn)
+            .expect("fetch latest entry")
+            .expect("entry exists");
+
+        assert_eq!(entry.tts_requested, Some(true));
+        assert_eq!(entry.tts_engine.as_deref(), Some("system"));
+        assert_eq!(entry.tts_voice_id.as_deref(), Some("Samantha"));
+        assert_eq!(entry.tts_locale.as_deref(), Some("en-US"));
+        assert_eq!(entry.tts_trigger.as_deref(), Some("auto_readback_dictation"));
+        assert_eq!(entry.tts_status.as_deref(), Some("pending"));
     }
 }

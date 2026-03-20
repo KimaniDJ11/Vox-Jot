@@ -3,7 +3,7 @@ import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { platform } from "@tauri-apps/plugin-os";
-import { PanelLeft, PanelLeftClose } from "lucide-react";
+import { PanelLeft, PanelLeftClose, Play, Square } from "lucide-react";
 import {
   TitleBarStats,
   TitleBarModels,
@@ -32,6 +32,9 @@ type PostProcessPreviewRequest = {
   request_id: string;
   source_text: string;
   preview_text: string;
+  translated_text?: string | null;
+  destination_label?: string | null;
+  origin?: string | null;
 };
 
 const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
@@ -176,6 +179,24 @@ function App() {
     };
   }, [t]);
 
+  useEffect(() => {
+    const unlisten = listen<string>("translation-error", (event) => {
+      toast.error(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<string>("tts-error", (event) => {
+      toast.error(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   // Listen for model loading failures and show a toast
   useEffect(() => {
     const unlisten = listen<ModelStateEvent>("model-state-changed", (event) => {
@@ -268,6 +289,51 @@ function App() {
     }
   };
 
+  const previewSpeakLocale = useMemo(() => {
+    if (!pendingPreview) {
+      return null;
+    }
+
+    const sourceLocale =
+      settings?.selected_language && settings.selected_language !== "auto"
+        ? settings.selected_language
+        : null;
+
+    if (pendingPreview.origin?.startsWith("translation")) {
+      return settings?.translation_target_language ?? sourceLocale;
+    }
+
+    return sourceLocale;
+  }, [
+    pendingPreview,
+    settings?.selected_language,
+    settings?.translation_target_language,
+  ]);
+
+  const handlePreviewSpeak = useCallback(async () => {
+    if (!previewDraft.trim()) {
+      return;
+    }
+
+    const result = await commands.ttsSpeak(
+      previewDraft,
+      previewSpeakLocale,
+      settings?.tts_default_voice_id ?? null,
+      "preview_modal",
+      false,
+    );
+    if (result.status !== "ok") {
+      toast.error(result.error);
+    }
+  }, [previewDraft, previewSpeakLocale, settings?.tts_default_voice_id]);
+
+  const handlePreviewStop = useCallback(async () => {
+    const result = await commands.ttsStop();
+    if (result.status !== "ok") {
+      toast.error(result.error);
+    }
+  }, []);
+
   const revealMainWindowForPermissions = async () => {
     try {
       await commands.showMainWindowCommand();
@@ -291,10 +357,10 @@ function App() {
           try {
             const [hasAccessibility, hasMicrophone, hasInputMonitoring] =
               await Promise.all([
-              checkAccessibilityPermission(),
-              checkMicrophonePermission(),
-              checkInputMonitoringPermission(),
-            ]);
+                checkAccessibilityPermission(),
+                checkMicrophonePermission(),
+                checkInputMonitoringPermission(),
+              ]);
             if (!hasAccessibility || !hasMicrophone || !hasInputMonitoring) {
               await revealMainWindowForPermissions();
               setOnboardingStep("onboarding");
@@ -491,11 +557,37 @@ function App() {
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
               <div>
                 <h2 className="text-lg font-bold">
-                  {t("settings.postProcessing.preview.modal.title")}
+                  {pendingPreview.origin?.startsWith("translation")
+                    ? "Review Translation"
+                    : t("settings.postProcessing.preview.modal.title")}
                 </h2>
                 <p className="text-sm text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
-                  {t("settings.postProcessing.preview.modal.description")}
+                  {pendingPreview.origin?.startsWith("translation")
+                    ? "Confirm the translated text before Vox Jot pastes or routes it."
+                    : t("settings.postProcessing.preview.modal.description")}
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handlePreviewSpeak()}
+                  className="inline-flex items-center gap-1"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Play
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handlePreviewStop()}
+                  className="inline-flex items-center gap-1"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  Stop
+                </Button>
               </div>
             </div>
 
@@ -507,15 +599,33 @@ function App() {
                 <Textarea value={pendingPreview.source_text} readOnly />
               </div>
 
+              {pendingPreview.translated_text && (
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                    Translated
+                  </div>
+                  <Textarea value={pendingPreview.translated_text} readOnly />
+                </div>
+              )}
+
               <div className="space-y-1">
                 <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
-                  {t("settings.postProcessing.preview.modal.editedLabel")}
+                  {pendingPreview.origin?.startsWith("translation")
+                    ? "Final output"
+                    : t("settings.postProcessing.preview.modal.editedLabel")}
                 </div>
                 <Textarea
                   value={previewDraft}
                   onChange={(event) => setPreviewDraft(event.target.value)}
                 />
               </div>
+
+              {pendingPreview.destination_label && (
+                <div className="text-xs font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--color-text),transparent_45%)]">
+                  Destination:{" "}
+                  {pendingPreview.destination_label.replace(/_/g, " ")}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4 sm:flex-row">

@@ -377,12 +377,6 @@ const PostProcessingSettingsPromptsComponent: React.FC<
                 )}
                 disabled={disabled}
               />
-              <p
-                className="text-xs text-mid-gray/70"
-                dangerouslySetInnerHTML={{
-                  __html: t("settings.postProcessing.prompts.promptTip"),
-                }}
-              />
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -447,12 +441,6 @@ const PostProcessingSettingsPromptsComponent: React.FC<
                   "settings.postProcessing.prompts.promptInstructionsPlaceholder",
                 )}
                 disabled={disabled}
-              />
-              <p
-                className="text-xs text-mid-gray/70"
-                dangerouslySetInnerHTML={{
-                  __html: t("settings.postProcessing.prompts.promptTip"),
-                }}
               />
             </div>
 
@@ -607,6 +595,10 @@ const PostProcessSetupStatus: React.FC<{
     t,
   ]);
 
+  if (setupStatus.variant === "success") {
+    return null;
+  }
+
   return <Alert variant={setupStatus.variant}>{setupStatus.message}</Alert>;
 };
 
@@ -631,13 +623,6 @@ const PostProcessReviewSettings: React.FC<ProviderSectionProps> = ({
         grouped={true}
         disabled={disabled}
       />
-      <Alert variant={enabled ? "info" : "warning"} contained>
-        {disabled
-          ? t("settings.postProcessing.review.status.disabled")
-          : enabled
-            ? t("settings.postProcessing.review.status.enabled")
-            : t("settings.postProcessing.review.status.off")}
-      </Alert>
     </>
   );
 };
@@ -832,7 +817,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
             >
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t("settings.postProcessing.appAware.tones.columns.id")}
                   </label>
                   <Input
@@ -849,7 +834,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t("settings.postProcessing.appAware.tones.columns.label")}
                   </label>
                   <Input
@@ -883,7 +868,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-mid-gray">
+                <label className="text-xs font-semibold text-mid-gray">
                   {t(
                     "settings.postProcessing.appAware.tones.columns.instruction",
                   )}
@@ -940,7 +925,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
             >
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t(
                       "settings.postProcessing.appAware.mappings.columns.appName",
                     )}
@@ -959,7 +944,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-mid-gray">
+                  <label className="text-xs font-semibold text-mid-gray">
                     {t(
                       "settings.postProcessing.appAware.mappings.columns.bundleId",
                     )}
@@ -996,7 +981,7 @@ const AppAwareToneSettings: React.FC<ProviderSectionProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-mid-gray">
+                <label className="text-xs font-semibold text-mid-gray">
                   {t("settings.postProcessing.appAware.mappings.columns.tone")}
                 </label>
                 <Dropdown
@@ -1085,7 +1070,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
 
   return (
     <SettingContainer
-      title={t("settings.postProcessing.preview.testInput.title")}
+      title={t("settings.postProcessing.sections.preview.title")}
       description={t("settings.postProcessing.preview.testInput.description")}
       descriptionMode="tooltip"
       layout="stacked"
@@ -1100,7 +1085,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
         )}
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-mid-gray">
+          <label className="text-xs font-semibold text-mid-gray">
             {t("settings.postProcessing.preview.previewApp.label")}
           </label>
           <Dropdown
@@ -1111,9 +1096,9 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-mid-gray">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="text-xs font-semibold text-mid-gray shrink-0">
               {t("settings.postProcessing.preview.testInput.title")}
             </div>
             <Textarea
@@ -1123,8 +1108,9 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
                 "settings.postProcessing.preview.testInput.placeholder",
               )}
               disabled={controlsDisabled}
+              className="w-full shrink-0 !min-h-[88px] max-h-[280px] overflow-y-auto [field-sizing:content]"
             />
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <Button
                 onClick={runPreview}
                 disabled={controlsDisabled || !input.trim()}
@@ -1136,14 +1122,15 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-mid-gray">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="text-xs font-semibold text-mid-gray shrink-0">
               {t("settings.postProcessing.preview.outputLabel")}
             </div>
             <Textarea
               value={result?.final_text || ""}
               placeholder={t("settings.postProcessing.preview.outputLabel")}
               readOnly
+              className="w-full shrink-0 !min-h-[88px] max-h-[280px] overflow-y-auto [field-sizing:content]"
             />
           </div>
         </div>
@@ -1200,18 +1187,8 @@ export const PostProcessingSettings: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold">
-          {t("settings.postProcessing.title")}
-        </h1>
-        <p className="text-sm text-text/60">
-          {t("settings.postProcessing.description")}
-        </p>
-      </div>
-
       <SettingsGroup
         title={t("settings.postProcessing.sections.setup.title")}
-        description={t("settings.postProcessing.sections.setup.description")}
       >
         <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
         <ToggleSwitch
@@ -1245,7 +1222,6 @@ export const PostProcessingSettings: React.FC = () => {
 
       <SettingsGroup
         title={t("settings.postProcessing.sections.review.title")}
-        description={t("settings.postProcessing.sections.review.description")}
       >
         <PostProcessReviewSettings
           disabled={controlsDisabled}
@@ -1257,9 +1233,6 @@ export const PostProcessingSettings: React.FC = () => {
         <>
           <SettingsGroup
             title={t("settings.postProcessing.sections.appleCleanup.title")}
-            description={t(
-              "settings.postProcessing.sections.appleCleanup.description",
-            )}
           >
             <ApplePostProcessingSettings
               disabled={controlsDisabled}
@@ -1270,9 +1243,6 @@ export const PostProcessingSettings: React.FC = () => {
           <SettingsGroup
             title={t(
               "settings.postProcessing.sections.applePersonalization.title",
-            )}
-            description={t(
-              "settings.postProcessing.sections.applePersonalization.description",
             )}
           >
             <AppAwareToneSettings
@@ -1286,9 +1256,6 @@ export const PostProcessingSettings: React.FC = () => {
       {!providerState.isAppleProvider && (
         <SettingsGroup
           title={t("settings.postProcessing.sections.prompting.title")}
-          description={t(
-            "settings.postProcessing.sections.prompting.description",
-          )}
         >
           <PostProcessingSettingsPrompts
             disabled={controlsDisabled}
@@ -1297,10 +1264,7 @@ export const PostProcessingSettings: React.FC = () => {
         </SettingsGroup>
       )}
 
-      <SettingsGroup
-        title={t("settings.postProcessing.sections.preview.title")}
-        description={t("settings.postProcessing.sections.preview.description")}
-      >
+      <SettingsGroup>
         <PostProcessPreviewTester
           disabled={controlsDisabled}
           providerState={providerState}

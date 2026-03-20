@@ -202,29 +202,136 @@ body,
   /* Core App Shell Grid layout */
   .shell {
     display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 0 1fr;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
     height: 100vh;
     width: 100vw;
     transition: grid-template-columns var(--transition-smooth);
     background: var(--bg);
   }
 
-  .app-titlebar {
-    grid-row: 1;
-    grid-column: 1 / -1;
-    height: 0;
-    -webkit-app-region: drag;
-    display: block;
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-bottom: none;
-    z-index: 50;
+  @media (min-width: 769px) {
+    .shell.shell--sidebar-collapsed {
+      grid-template-columns: 0px minmax(0, 1fr);
+    }
+
+    .shell.shell--sidebar-collapsed .sidebar {
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      border-right-width: 0;
+      padding-inline: 0;
+    }
   }
 
-  [data-theme="dark"] .app-titlebar {
-    background: rgba(17, 24, 39, 0.5);
+  /* macOS: overlay title bar — web content shares the row with traffic lights (Rust: Overlay + hidden_title) */
+  .shell.shell--macos-titlebar-overlay {
+    grid-template-rows: 1fr;
+    padding-top: max(36px, env(titlebar-area-height, 36px));
+    box-sizing: border-box;
+  }
+
+  .shell.shell--macos-titlebar-overlay .sidebar,
+  .shell.shell--macos-titlebar-overlay .main-content {
+    grid-row: 1;
+    min-height: 0;
+  }
+
+  .app-macos-titlebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: max(36px, env(titlebar-area-height, 36px));
+    padding-inline-end: 12px;
+    pointer-events: none;
+  }
+
+  .app-macos-titlebar-overlay > * {
+    pointer-events: auto;
+  }
+
+  /* Reserve space up to the title region (after traffic lights); env() is correct in WK when overlay title bar is used */
+  .app-macos-titlebar-overlay__traffic-shim {
+    pointer-events: none;
+    flex: 0 0 auto;
+    /* Native inset + gap before the toggle (traffic lights are ~12pt diameter) */
+    width: calc(env(titlebar-area-x, 68px) + 22px);
+  }
+
+  .app-macos-titlebar-overlay__leading {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding-top: 4px;
+  }
+
+  /* Match macOS traffic-light control size (~12×12pt) */
+  .app-macos-titlebar-overlay__leading svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .app-macos-titlebar-overlay__drag {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 32px;
+    align-self: stretch;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .app-macos-titlebar-overlay__trailing {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding-top: 2px;
+    padding-inline-end: 4px;
+  }
+
+  /* Clickable controls over the drag region (macOS traffic lights) */
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  /* Title bar dictation stats & model labels: bold black in light, white in dark */
+  .title-bar-stats,
+  .title-bar-models {
+    color: #000;
+  }
+
+  [data-theme="dark"] .title-bar-stats,
+  [data-theme="dark"] .title-bar-models {
+    color: #fff;
+  }
+
+  /* Top strip: sidebar toggle + draggable area (under native window controls) */
+  .app-window-toolbar {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: stretch;
+    min-height: 2.75rem;
+    z-index: 50;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .app-window-toolbar__drag {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 2.75rem;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  [data-theme="dark"] .app-window-toolbar {
+    background: var(--bg);
   }
 
   .sidebar {
@@ -242,19 +349,40 @@ body,
   }
 
   @media (max-width: 768px) {
-    .shell {
+    .shell:not(.shell--macos-titlebar-overlay) {
       grid-template-columns: 1fr;
-      grid-template-rows: 0 auto 1fr;
+      grid-template-rows: auto auto 1fr;
     }
-    .sidebar {
+    .shell:not(.shell--macos-titlebar-overlay) .app-window-toolbar {
+      grid-row: 1;
+      grid-column: 1;
+    }
+    .shell:not(.shell--macos-titlebar-overlay) .sidebar {
       grid-row: 2;
       grid-column: 1;
       height: auto;
       border-right: none;
       border-bottom: 1px solid var(--border);
     }
-    .main-content {
+    .shell:not(.shell--macos-titlebar-overlay) .main-content {
       grid-row: 3;
+      grid-column: 1;
+    }
+
+    .shell.shell--macos-titlebar-overlay {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      padding-top: max(36px, env(titlebar-area-height, 36px));
+    }
+    .shell.shell--macos-titlebar-overlay .sidebar {
+      grid-row: 1;
+      grid-column: 1;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .shell.shell--macos-titlebar-overlay .main-content {
+      grid-row: 2;
       grid-column: 1;
     }
   }

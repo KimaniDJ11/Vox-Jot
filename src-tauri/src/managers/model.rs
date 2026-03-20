@@ -745,14 +745,25 @@ impl ModelManager {
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            // Get file size in MB
+            // Get file size in MB — skip models with unknown size
             let size_mb = match path.metadata() {
                 Ok(meta) => meta.len() / (1024 * 1024),
                 Err(e) => {
-                    warn!("Failed to get metadata for {}: {}", filename, e);
-                    0
+                    warn!(
+                        "Skipping custom model {} — failed to get metadata: {}",
+                        filename, e
+                    );
+                    continue;
                 }
             };
+
+            if size_mb == 0 {
+                warn!(
+                    "Skipping custom model {} — file size is 0 bytes",
+                    filename
+                );
+                continue;
+            }
 
             info!(
                 "Discovered custom Whisper model: {} ({}, {} MB)",

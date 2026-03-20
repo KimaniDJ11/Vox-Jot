@@ -202,21 +202,13 @@ export const ModelsSettings: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl w-full mx-auto space-y-4">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold mb-2">
-          {t("settings.models.title")}
-        </h1>
-        <p className="text-sm text-text/60">
-          {t("settings.models.description")}
-        </p>
-      </div>
+    <div className="w-full space-y-6">
       {filteredModels.length > 0 ? (
         <div className="space-y-6">
           {/* Downloaded Models Section — header always visible so filter stays accessible */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-text/60">
+            <div className="flex items-center justify-between px-5">
+              <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)]">
                 {t("settings.models.yourModels")}
               </h2>
               {/* Language filter dropdown */}
@@ -224,7 +216,7 @@ export const ModelsSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
                     languageFilter !== "all"
                       ? "bg-logo-primary text-white"
                       : "bg-mid-gray/10 text-text/60 hover:bg-mid-gray/20"
@@ -331,7 +323,7 @@ export const ModelsSettings: React.FC = () => {
           {/* Available Models Section */}
           {availableModels.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-medium text-text/60">
+              <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] px-5">
                 {t("settings.models.availableModels")}
               </h2>
               {availableModels.map((model: ModelInfo) => (

@@ -11,10 +11,7 @@ import {
   FolderOpen,
   X,
   ArrowRight,
-  Clock3,
-  CircleAlert,
   CheckCircle2,
-  Waves,
   Sparkles,
   Type,
 } from "lucide-react";
@@ -29,8 +26,6 @@ import {
 import { formatDateTime } from "@/utils/dateFormat";
 import { useOsType } from "@/hooks/useOsType";
 
-type HistoryTab = "recordings" | "jots";
-
 interface OpenRecordingsButtonProps {
   onClick: () => void;
   label: string;
@@ -41,14 +36,15 @@ const OpenRecordingsButton: React.FC<OpenRecordingsButtonProps> = ({
   label,
 }) => (
   <Button
+    type="button"
     onClick={onClick}
-    variant="secondary"
+    variant="ghost"
     size="sm"
-    className="flex items-center gap-2"
+    className="p-1.5 text-text/50 hover:text-logo-primary"
     title={label}
+    aria-label={label}
   >
-    <FolderOpen className="w-4 h-4" />
-    <span>{label}</span>
+    <FolderOpen className="h-4 w-4 shrink-0" aria-hidden />
   </Button>
 );
 
@@ -56,8 +52,6 @@ export const HistorySettings: React.FC = () => {
   const { t } = useTranslation();
   const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<HistoryTab>("recordings");
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadHistoryEntries = useCallback(async () => {
@@ -208,39 +202,7 @@ export const HistorySettings: React.FC = () => {
     }
   };
 
-  const recordingsEntries = historyEntries;
-  const jotsEntries = historyEntries.filter((entry) =>
-    Boolean(entry.post_processed_text?.trim()),
-  );
-
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filterEntries = useCallback(
-    (entries: HistoryEntry[], viewMode: HistoryTab) => {
-      if (!normalizedQuery) {
-        return entries;
-      }
-
-      return entries.filter((entry) => {
-        const raw = entry.transcription_text.toLowerCase();
-        const jot = entry.post_processed_text?.toLowerCase() ?? "";
-        const activeText = viewMode === "jots" ? jot : raw;
-        return activeText.includes(normalizedQuery);
-      });
-    },
-    [normalizedQuery],
-  );
-
-  const visibleRecordingsEntries = filterEntries(
-    recordingsEntries,
-    "recordings",
-  );
-  const visibleJotsEntries = filterEntries(jotsEntries, "jots");
-
-  const renderEntries = (
-    entries: HistoryEntry[],
-    viewMode: HistoryTab,
-    emptyMessage: string,
-  ) => {
+  const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {
       return (
         <div className="px-4 py-3 text-center text-text/60">{emptyMessage}</div>
@@ -248,18 +210,16 @@ export const HistorySettings: React.FC = () => {
     }
 
     return (
-      <div className="divide-y divide-mid-gray/20">
+      <div className="divide-y divide-mid-gray/20" data-testid="history-entries">
         {entries.map((entry) => {
           const fallbackText = entry.transcription_text;
           const jotText = entry.post_processed_text?.trim();
-          const displayText =
-            viewMode === "jots" && jotText ? jotText : fallbackText;
+          const displayText = jotText || fallbackText;
 
           return (
             <HistoryEntryComponent
               key={entry.id}
               entry={entry}
-              displayMode={viewMode}
               displayText={displayText}
               onToggleSaved={() => toggleSaved(entry.id)}
               onCopyText={() => copyToClipboard(displayText)}
@@ -276,18 +236,16 @@ export const HistorySettings: React.FC = () => {
     return (
       <div className="w-full space-y-6">
         <div className="space-y-2">
-          <div className="px-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-medium text-mid-gray uppercase tracking-wide">
-                {t("settings.history.title")}
-              </h2>
-            </div>
+          <div className="px-5 flex items-center justify-between">
+            <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)]">
+              {t("settings.history.title")}
+            </h2>
             <OpenRecordingsButton
               onClick={openRecordingsFolder}
               label={t("settings.history.openFolder")}
             />
           </div>
-          <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
+          <div className="flat-card overflow-visible">
             <div className="px-4 py-3 text-center text-text/60">
               {t("settings.history.loading")}
             </div>
@@ -300,125 +258,17 @@ export const HistorySettings: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       <div className="space-y-2">
-        <div className="px-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-medium text-mid-gray uppercase tracking-wide">
-              {t("settings.history.title")}
-            </h2>
-          </div>
+        <div className="px-5 flex items-center justify-between">
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)]">
+            {t("settings.history.title")}
+          </h2>
           <OpenRecordingsButton
             onClick={openRecordingsFolder}
             label={t("settings.history.openFolder")}
           />
         </div>
-        <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
-          <div
-            className="border-b border-mid-gray/20 px-3 py-2 flex items-center gap-4"
-            role="tablist"
-            aria-label={t("settings.history.title")}
-          >
-            <button
-              type="button"
-              id="history-tab-recordings"
-              role="tab"
-              data-testid="history-tab-recordings"
-              aria-selected={activeTab === "recordings"}
-              aria-controls="history-panel-recordings"
-              onClick={() => setActiveTab("recordings")}
-              className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
-                activeTab === "recordings"
-                  ? "border-logo-primary text-logo-primary"
-                  : "border-transparent text-text/70 hover:text-text hover:border-text/30"
-              }`}
-            >
-              {t("settings.history.tabs.recordings", {
-                defaultValue: "Recordings",
-              })}
-              <span className="ml-2 text-xs text-text/70">
-                ({recordingsEntries.length})
-              </span>
-            </button>
-            <button
-              type="button"
-              id="history-tab-jots"
-              role="tab"
-              data-testid="history-tab-jots"
-              aria-selected={activeTab === "jots"}
-              aria-controls="history-panel-jots"
-              onClick={() => setActiveTab("jots")}
-              className={`pb-2 -mb-[9px] text-sm font-medium transition-colors border-b-2 cursor-pointer ${
-                activeTab === "jots"
-                  ? "border-logo-primary text-logo-primary"
-                  : "border-transparent text-text/70 hover:text-text hover:border-text/30"
-              }`}
-            >
-              {t("settings.history.tabs.jots", { defaultValue: "Jots" })}
-              <span className="ml-2 text-xs text-text/70">
-                ({jotsEntries.length})
-              </span>
-            </button>
-          </div>
-          <div className="px-4 py-3 border-b border-mid-gray/20 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-text/60">
-              {activeTab === "recordings"
-                ? t("settings.history.summary.recordings", {
-                    defaultValue: "Showing {{visible}} of {{total}} recordings",
-                    visible: visibleRecordingsEntries.length,
-                    total: recordingsEntries.length,
-                  })
-                : t("settings.history.summary.jots", {
-                    defaultValue: "Showing {{visible}} of {{total}} jots",
-                    visible: visibleJotsEntries.length,
-                    total: jotsEntries.length,
-                  })}
-            </p>
-            <div className="relative w-full sm:w-72">
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={t("settings.history.searchPlaceholder")}
-                className="w-full rounded-md border border-mid-gray/30 bg-[var(--input)] px-3 py-2 pr-8 text-sm text-text hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] hover:border-[var(--accent)] focus:bg-[color-mix(in_srgb,var(--accent),transparent_85%)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-[var(--accent-glow)] transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text/40 hover:text-text/70 transition-colors cursor-pointer"
-                  aria-label={t("common.close")}
-                >
-                  <X width={14} height={14} />
-                </button>
-              )}
-            </div>
-          </div>
-          {activeTab === "recordings" ? (
-            <div
-              id="history-panel-recordings"
-              role="tabpanel"
-              aria-labelledby="history-tab-recordings"
-            >
-              {renderEntries(
-                visibleRecordingsEntries,
-                "recordings",
-                t("settings.history.empty"),
-              )}
-            </div>
-          ) : (
-            <div
-              id="history-panel-jots"
-              role="tabpanel"
-              aria-labelledby="history-tab-jots"
-            >
-              {renderEntries(
-                visibleJotsEntries,
-                "jots",
-                t("settings.history.emptyJots", {
-                  defaultValue:
-                    "No jots yet. Enable post-processing to see completed results.",
-                }),
-              )}
-            </div>
-          )}
+        <div className="flat-card overflow-visible">
+          {renderEntries(historyEntries, t("settings.history.empty"))}
         </div>
       </div>
     </div>
@@ -427,7 +277,6 @@ export const HistorySettings: React.FC = () => {
 
 interface HistoryEntryProps {
   entry: HistoryEntry;
-  displayMode: HistoryTab;
   displayText: string;
   onToggleSaved: () => void;
   onCopyText: () => void;
@@ -436,7 +285,7 @@ interface HistoryEntryProps {
 }
 
 const sectionLabelClassName =
-  "text-[11px] font-medium uppercase tracking-[0.16em] text-text/55";
+  "text-[11px] font-semibold uppercase tracking-[0.16em] text-text/55";
 const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[color-mix(in_srgb,var(--background),white_2%)] px-3 py-3";
 
@@ -469,7 +318,6 @@ const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
 
 const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   entry,
-  displayMode,
   displayText,
   onToggleSaved,
   onCopyText,
@@ -516,11 +364,6 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     Boolean(observedText) &&
     pastedText.length > 0 &&
     observedText !== pastedText;
-  const fieldCheckUnchanged =
-    fieldSnapshotStatus === "captured" &&
-    Boolean(observedText) &&
-    pastedText.length > 0 &&
-    observedText === pastedText;
   const fieldStatusLabel =
     fieldSnapshotStatus === "pending"
       ? t("settings.history.fieldObservation.pending", {
@@ -547,25 +390,26 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             });
 
   return (
-    <div className="px-4 py-2 pb-5 flex flex-col gap-3">
+    <div className="px-4 py-3 flex flex-col gap-2.5">
+      {/* Header: date + actions */}
       <div className="flex justify-between items-center">
-        <p className="text-sm font-medium">{formattedDate}</p>
+        <p className="text-sm font-semibold">{formattedDate}</p>
         <div className="flex items-center gap-1">
           <button
             onClick={handleCopyText}
-            className="text-text/50 hover:text-logo-primary hover:border-logo-primary transition-colors cursor-pointer"
+            className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
             title={t("settings.history.copyToClipboard")}
             aria-label={t("settings.history.copyToClipboard")}
           >
             {showCopied ? (
-              <Check width={16} height={16} />
+              <Check width={14} height={14} />
             ) : (
-              <Copy width={16} height={16} />
+              <Copy width={14} height={14} />
             )}
           </button>
           <button
             onClick={onToggleSaved}
-            className={`p-2 rounded-md transition-colors cursor-pointer ${
+            className={`p-1 transition-colors cursor-pointer ${
               entry.saved
                 ? "text-logo-primary hover:text-logo-primary/80"
                 : "text-text/50 hover:text-logo-primary"
@@ -582,8 +426,8 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             }
           >
             <Star
-              width={16}
-              height={16}
+              width={14}
+              height={14}
               fill={entry.saved ? "currentColor" : "none"}
             />
           </button>
@@ -610,267 +454,98 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           ) : (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer"
+              className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer p-1"
               title={t("settings.history.delete")}
               aria-label={t("settings.history.delete")}
             >
-              <Trash2 width={16} height={16} />
+              <Trash2 width={14} height={14} />
             </button>
           )}
         </div>
       </div>
-      <div
-        className={`rounded-xl border px-3 py-3 ${
-          displayMode === "jots"
-            ? "border-logo-primary/20 bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_95%)]"
-            : "border-mid-gray/20 bg-mid-gray/5"
-        }`}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={sectionLabelClassName}>
-            {displayMode === "jots"
-              ? t("settings.history.primary.jot", {
-                  defaultValue: "Jot view",
-                })
-              : t("settings.history.primary.recording", {
-                  defaultValue: "Recording view",
-                })}
+
+      {/* Display text */}
+      <p className="text-sm text-text/95 select-text cursor-text leading-relaxed">
+        {displayText}
+      </p>
+
+      {/* Audio player */}
+      <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
+
+      {/* Compact detail badges */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+          {postProcessApplied
+            ? t("settings.history.badges.postProcessOn", { defaultValue: "Post process on" })
+            : t("settings.history.badges.postProcessOff", { defaultValue: "Raw transcript" })}
+        </span>
+        {dictionaryApplied && (
+          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+            {t("settings.history.badges.dictionaryOn", { defaultValue: "Dictionary applied" })}
           </span>
-          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[11px] text-text/70">
-            {postProcessApplied
-              ? t("settings.history.badges.postProcessOn", {
-                  defaultValue: "Post process on",
-                })
-              : t("settings.history.badges.postProcessOff", {
-                  defaultValue: "Raw transcript",
-                })}
-          </span>
-          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[11px] text-text/70">
-            {dictionaryApplied
-              ? t("settings.history.badges.dictionaryOn", {
-                  defaultValue: "Dictionary applied",
-                })
-              : t("settings.history.badges.dictionaryOff", {
-                  defaultValue: "No dictionary hits",
-                })}
-          </span>
-          <span
-            className={`rounded-full border px-2 py-0.5 text-[11px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
-          >
-            {fieldStatusLabel}
-          </span>
-        </div>
-        <p className="mt-3 text-sm text-text/95 select-text cursor-text">
-          {displayText}
-        </p>
+        )}
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
+        >
+          {fieldStatusLabel}
+        </span>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <HistoryDetailSection
-          title={t("settings.history.sections.sound", {
-            defaultValue: "Sound",
-          })}
-          icon={<Waves className="h-4 w-4" />}
-        >
-          <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
-        </HistoryDetailSection>
-
-        <HistoryDetailSection
-          title={t("settings.history.sections.text", {
-            defaultValue: "Transcribed text",
-          })}
-          icon={<Type className="h-4 w-4" />}
-        >
-          <p className="text-sm text-text/90 italic select-text cursor-text">
-            {rawText}
-          </p>
-        </HistoryDetailSection>
-
-        <HistoryDetailSection
-          title={t("settings.history.sections.inserted", {
-            defaultValue: "Final text",
-          })}
-          icon={<ArrowRight className="h-4 w-4" />}
-        >
-          <div className="space-y-2">
-            <p className="text-sm text-text/90 select-text cursor-text">
-              {pastedText}
-            </p>
-            {!insertedText && (
-              <p className="text-xs text-text/55">
-                {t("settings.history.sections.insertedFallback", {
-                  defaultValue:
-                    "Showing the best final text available for this entry. No explicit paste record was saved.",
-                })}
+      {/* Conditional detail sections — only show when there's data */}
+      {(postProcessApplied || dictionaryApplied || (fieldCheckChanged && observedText)) && (
+        <div className="grid gap-2 lg:grid-cols-2 mt-1">
+          {rawText !== displayText && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.text", { defaultValue: "Transcribed text" })}
+              icon={<Type className="h-3.5 w-3.5" />}
+            >
+              <p className="text-xs text-text/80 italic select-text cursor-text">
+                {rawText}
               </p>
-            )}
-          </div>
-        </HistoryDetailSection>
+            </HistoryDetailSection>
+          )}
 
-        <HistoryDetailSection
-          title={t("settings.history.sections.postProcess", {
-            defaultValue: "Post process",
-          })}
-          icon={<Sparkles className="h-4 w-4" />}
-        >
-          {postProcessApplied ? (
-            <div className="space-y-3">
-              <p className="text-sm text-text/90 select-text cursor-text">
+          {postProcessApplied && polishedText !== displayText && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.postProcess", { defaultValue: "Post process" })}
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+            >
+              <p className="text-xs text-text/80 select-text cursor-text">
                 {polishedText}
               </p>
-              {entry.post_process_prompt && (
-                <div className="rounded-lg border border-logo-primary/20 bg-[color-mix(in_srgb,var(--color-logo-primary),transparent_96%)] px-3 py-2">
-                  <p className={sectionLabelClassName}>
-                    {t("settings.history.promptUsed", {
-                      defaultValue: "Prompt used",
-                    })}
-                  </p>
-                  <p className="mt-1 text-xs text-text/80 select-text cursor-text">
-                    {entry.post_process_prompt}
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-text/60">
-              {t("settings.history.sections.postProcessEmpty", {
-                defaultValue: "Post-processing was not applied for this entry.",
-              })}
-            </p>
+            </HistoryDetailSection>
           )}
-        </HistoryDetailSection>
 
-        <HistoryDetailSection
-          title={t("settings.history.sections.dictionary", {
-            defaultValue: "Dictionary",
-          })}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-        >
-          {dictionaryApplied ? (
-            <div className="space-y-2">
-              <p className="text-sm text-text/90">
-                {t("settings.history.correctionsApplied", {
-                  defaultValue: "Corrections applied",
-                })}
-              </p>
+          {dictionaryApplied && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.dictionary", { defaultValue: "Dictionary" })}
+              icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            >
               <p className="text-xs text-text/80 select-text cursor-text">
                 {entry.dictionary_hits.join(", ")}
               </p>
-            </div>
-          ) : (
-            <p className="text-sm text-text/60">
-              {t("settings.history.sections.dictionaryEmpty", {
-                defaultValue: "No personal dictionary corrections were applied.",
-              })}
-            </p>
+            </HistoryDetailSection>
           )}
-        </HistoryDetailSection>
 
-        <HistoryDetailSection
-          title={t("settings.history.fieldObservation.title", {
-            defaultValue: "Text field check",
-          })}
-          icon={
-            fieldSnapshotStatus === "failed" ? (
-              <CircleAlert className="h-4 w-4" />
-            ) : fieldSnapshotStatus === "pending" ? (
-              <Clock3 className="h-4 w-4" />
-            ) : fieldSnapshotStatus === "skipped" ? (
-              <ArrowRight className="h-4 w-4" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )
-          }
-        >
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full border px-2 py-0.5 text-[11px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
-              >
-                {fieldStatusLabel}
-              </span>
-              {entry.field_snapshot_at && (
-                <span className="text-[11px] text-text/50">
-                  {t("settings.history.fieldObservation.timestamp", {
-                    defaultValue: "Checked at {{time}}",
-                    time: formatDateTime(String(entry.field_snapshot_at), i18n.language),
-                  })}
-                </span>
-              )}
-            </div>
-
-            {fieldSnapshotStatus === "pending" && (
-              <p className="text-sm text-text/60">
-                {t("settings.history.fieldObservation.pendingDescription", {
-                  defaultValue:
-                    "Vox Jot started checking this field right after paste and will keep watching for up to 15 seconds while the same field stays focused.",
-                })}
-              </p>
-            )}
-
-            {fieldSnapshotStatus === "skipped" && (
-              <div className="space-y-2">
-                <p className="text-sm text-text/60">
-                  {t("settings.history.fieldObservation.skippedDescription", {
-                    defaultValue:
-                      "Monitoring stopped because focus moved away from the original field before the full 15-second window ended.",
-                  })}
-                </p>
-                {Boolean(observedText) && (
-                  <div className="flex items-center gap-2 text-xs text-text/80 select-text cursor-text">
-                    <span className="font-mono truncate max-w-[40%]" title={pastedText}>
-                      {pastedText}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-text/50 shrink-0" />
-                    <span className="font-mono truncate flex-1" title={observedText}>
-                      {observedText}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {fieldSnapshotStatus === "failed" && (
-              <p className="text-sm text-[var(--danger)]">
-                {entry.field_snapshot_error ||
-                  t("settings.history.fieldObservation.failed", {
-                    defaultValue:
-                      "Could not read field text for observation.",
-                  })}
-              </p>
-            )}
-
-            {fieldSnapshotStatus === "captured" && Boolean(observedText) && (
-              <div className="space-y-2">
+          {fieldCheckChanged && observedText && (
+            <HistoryDetailSection
+              title={t("settings.history.fieldObservation.title", { defaultValue: "Text field check" })}
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+            >
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-xs text-text/80 select-text cursor-text">
                   <span className="font-mono truncate max-w-[40%]" title={pastedText}>
                     {pastedText}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-text/50 shrink-0" />
+                  <ArrowRight className="w-3 h-3 text-text/50 shrink-0" />
                   <span className="font-mono truncate flex-1" title={observedText}>
                     {observedText}
                   </span>
                 </div>
-                <p className="text-sm text-text/60">
-                  {fieldCheckChanged
-                    ? t("settings.history.fieldObservation.changedDescription", {
-                        defaultValue:
-                          "The observed field text differed from what Vox Jot inserted.",
-                      })
-                    : fieldCheckUnchanged
-                      ? t("settings.history.fieldObservation.unchangedDescription", {
-                          defaultValue:
-                            "The observed field text still matched the inserted text when the delayed check ran.",
-                        })
-                      : t("settings.history.fieldObservation.capturedDescription", {
-                          defaultValue:
-                            "Vox Jot captured the field contents after the delayed check completed.",
-                        })}
-                </p>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="h-7 w-fit px-2"
+                  className="h-6 w-fit px-2 text-[10px]"
                   onClick={() => {
                     const payload = `spoken: ${pastedText}\nwritten: ${observedText}`;
                     void navigator.clipboard
@@ -886,29 +561,15 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                         console.error("Failed to copy correction pair:", error);
                       });
                   }}
-                  title={t("settings.history.fieldObservation.copyPair", {
-                    defaultValue: "Copy correction pair",
-                  })}
                 >
-                  <Copy className="mr-1 h-3.5 w-3.5" />
-                  {t("settings.history.fieldObservation.copyPair", {
-                    defaultValue: "Copy pair",
-                  })}
+                  <Copy className="mr-1 h-3 w-3" />
+                  {t("settings.history.fieldObservation.copyPair", { defaultValue: "Copy pair" })}
                 </Button>
               </div>
-            )}
-
-            {fieldSnapshotStatus === "not_requested" && (
-              <p className="text-sm text-text/60">
-                {t("settings.history.fieldObservation.notRequestedDescription", {
-                  defaultValue:
-                    "No delayed text-field check was recorded for this history item.",
-                })}
-              </p>
-            )}
-          </div>
-        </HistoryDetailSection>
-      </div>
+            </HistoryDetailSection>
+          )}
+        </div>
+      )}
     </div>
   );
 };

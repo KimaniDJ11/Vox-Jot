@@ -57,7 +57,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         <div className={containerClasses}>
           <div className="flex items-center gap-2 mb-2">
             <h3
-              className={`text-[15px] font-medium tracking-tight ${disabled ? "opacity-50" : ""}`}
+              className={`text-[15px] font-semibold tracking-tight ${disabled ? "opacity-50" : ""}`}
             >
               {title}
             </h3>
@@ -108,7 +108,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
       <div className={containerClasses}>
         <div className="mb-2">
           <h3
-            className={`text-[15px] font-medium tracking-tight ${disabled ? "opacity-50" : ""}`}
+            className={`text-[15px] font-semibold tracking-tight ${disabled ? "opacity-50" : ""}`}
           >
             {title}
           </h3>
@@ -134,7 +134,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3
-              className={`text-[15px] font-medium tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
+              className={`text-[15px] font-semibold tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
             >
               {title}
             </h3>
@@ -186,7 +186,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     <div className={horizontalContainerClasses}>
       <div className="flex-1 pr-6 min-w-0">
         <h3
-          className={`text-[15px] font-medium tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
+          className={`text-[15px] font-semibold tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
         >
           {title}
         </h3>

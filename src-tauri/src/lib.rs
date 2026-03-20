@@ -235,6 +235,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                     Err(e) => log::error!("Failed to unload model via tray: {}", e),
                 }
             }
+            "start_recording" => {
+                signal_handle::send_transcription_input(app, "transcribe", "Tray");
+            }
             "cancel" => {
                 use crate::utils::cancel_current_operation;
 
@@ -454,15 +457,30 @@ pub fn run(cli_args: CliArgs) {
         commands::corrections::clear_all_corrections,
         commands::corrections::export_corrections,
         commands::corrections::import_corrections,
+        commands::corrections::add_manual_correction,
+        commands::stats::get_dictation_stats,
     ]);
 
-    #[cfg(debug_assertions)] // <- Only export on non-release builds
-    specta_builder
-        .export(
-            Typescript::default().bigint(BigIntExportBehavior::Number),
-            "../src/bindings.ts",
-        )
-        .expect("Failed to export typescript bindings");
+    // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite
+    // does not full-reload on every native app start.
+    #[cfg(debug_assertions)]
+    {
+        let bindings_path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
+        let ts = Typescript::default().bigint(BigIntExportBehavior::Number);
+        let generated = specta_builder
+            .export_str(&ts)
+            .expect("Failed to generate typescript bindings");
+        let needs_write = match std::fs::read_to_string(&bindings_path) {
+            Ok(existing) => existing != generated,
+            Err(_) => true,
+        };
+        if needs_write {
+            specta_builder
+                .export(ts, &bindings_path)
+                .expect("Failed to export typescript bindings");
+        }
+    }
 
     let mut builder = tauri::Builder::default()
         .device_event_filter(tauri::DeviceEventFilter::Always)
@@ -539,6 +557,13 @@ pub fn run(cli_args: CliArgs) {
                     .resizable(true)
                     .maximizable(false)
                     .visible(false);
+
+            #[cfg(target_os = "macos")]
+            {
+                win_builder = win_builder
+                    .title_bar_style(tauri::TitleBarStyle::Overlay)
+                    .hidden_title(true);
+            }
 
             if let Some(data_dir) = portable::data_dir() {
                 win_builder = win_builder.data_directory(data_dir.join("webview"));

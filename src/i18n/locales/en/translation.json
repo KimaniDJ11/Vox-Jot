@@ -1,5 +1,6 @@
 {
   "tray": {
+    "startRecording": "Start Recording",
     "settings": "Settings...",
     "checkUpdates": "Check for Updates...",
     "copyLastTranscript": "Copy Last Transcript",
@@ -8,6 +9,8 @@
     "cancel": "Cancel"
   },
   "sidebar": {
+    "collapsePanel": "Hide settings sidebar",
+    "expandPanel": "Show settings sidebar",
     "settingsLabel": "Settings",
     "general": "General",
     "models": "Models",
@@ -248,7 +251,6 @@
       "dictionary": {
         "title": "Learned Corrections",
         "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "count": "{{count}} learned correction(s)",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",
@@ -696,11 +698,6 @@
       "openFolder": "Open Recordings Folder",
       "loading": "Loading history...",
       "empty": "No transcriptions yet. Start recording to build your history!",
-      "emptyJots": "No jots yet. Enable post-processing to see completed results.",
-      "tabs": {
-        "recordings": "Recordings",
-        "jots": "Jots"
-      },
       "fieldObservation": {
         "title": "Field observation",
         "copyPair": "Copy pair",
@@ -718,12 +715,7 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}",
-      "summary": {
-        "recordings": "Showing {{visible}} of {{total}} recordings",
-        "jots": "Showing {{visible}} of {{total}} jots"
-      },
-      "searchPlaceholder": "Search transcript text"
+      "saveToggleError": "Failed to update saved status: {{error}}"
     },
     "debug": {
       "title": "Debug",
@@ -826,6 +818,13 @@
         }
       }
     }
+  },
+  "titleBar": {
+    "streak": "{{count}}d streak",
+    "totalWords": "{{count}} words",
+    "todayWords": "{{count}} today",
+    "accuracy": "{{value}}%",
+    "noStats": "No dictations yet"
   },
   "footer": {
     "modelNotSet": "Model not set",

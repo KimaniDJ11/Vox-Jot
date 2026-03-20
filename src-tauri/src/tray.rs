@@ -93,13 +93,6 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
     let (settings_accelerator, quit_accelerator) = (Some("Ctrl+,"), Some("Ctrl+Q"));
 
     // Create common menu items
-    let version_label = if cfg!(debug_assertions) {
-        format!("Vox Jot v{} (Dev)", env!("CARGO_PKG_VERSION"))
-    } else {
-        format!("Vox Jot v{}", env!("CARGO_PKG_VERSION"))
-    };
-    let version_i = MenuItem::with_id(app, "version", &version_label, false, None::<&str>)
-        .expect("failed to create version item");
     let settings_i = MenuItem::with_id(
         app,
         "settings",
@@ -137,6 +130,15 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
         .expect("failed to create quit item");
     let separator = || PredefinedMenuItem::separator(app).expect("failed to create separator");
 
+    let start_recording_i = MenuItem::with_id(
+        app,
+        "start_recording",
+        &strings.start_recording,
+        true,
+        None::<&str>,
+    )
+    .expect("failed to create start recording item");
+
     let menu = match state {
         TrayIconState::Recording | TrayIconState::Transcribing => {
             let cancel_i = MenuItem::with_id(app, "cancel", &strings.cancel, true, None::<&str>)
@@ -144,27 +146,36 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             Menu::with_items(
                 app,
                 &[
-                    &version_i,
-                    &separator(),
                     &cancel_i,
                     &separator(),
                     &copy_last_transcript_i,
-                    &separator(),
                     &settings_i,
-                    &check_updates_i,
                     &separator(),
                     &quit_i,
                 ],
             )
             .expect("failed to create menu")
         }
+        TrayIconState::Idle if model_loaded => Menu::with_items(
+            app,
+            &[
+                &start_recording_i,
+                &copy_last_transcript_i,
+                &separator(),
+                &settings_i,
+                &check_updates_i,
+                &separator(),
+                &unload_model_i,
+                &separator(),
+                &quit_i,
+            ],
+        )
+        .expect("failed to create menu"),
         TrayIconState::Idle => Menu::with_items(
             app,
             &[
-                &version_i,
-                &separator(),
+                &start_recording_i,
                 &copy_last_transcript_i,
-                &unload_model_i,
                 &separator(),
                 &settings_i,
                 &check_updates_i,

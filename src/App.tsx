@@ -1,8 +1,14 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { platform } from "@tauri-apps/plugin-os";
+import { PanelLeft, PanelLeftClose } from "lucide-react";
+import {
+  TitleBarStats,
+  TitleBarModels,
+  TitleBarOllamaReady,
+} from "./components/title-bar";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -28,6 +34,8 @@ type PostProcessPreviewRequest = {
   preview_text: string;
 };
 
+const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
+
 const renderSettingsContent = (section: SidebarSection) => {
   const ActiveComponent =
     SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.general.component;
@@ -47,6 +55,15 @@ function App() {
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    if (!window.matchMedia("(min-width: 769px)").matches) return false;
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const { settings, updateSetting } = useSettings();
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -58,8 +75,45 @@ function App() {
   );
   const hasCompletedPostOnboardingInit = useRef(false);
 
+  const macTitlebarOverlay = useMemo(() => {
+    try {
+      return platform() === "macos";
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     checkOnboardingStatus();
+  }, []);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 769px)");
+    const sync = () => {
+      if (!mq.matches) {
+        setSidebarCollapsed(false);
+        try {
+          localStorage.setItem(SIDEBAR_COLLAPSED_KEY, "0");
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    mq.addEventListener("change", sync);
+    sync();
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   // Initialize RTL direction when language changes
@@ -307,7 +361,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className="shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200"
+      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}`}
     >
       <Toaster
         theme="system"
@@ -322,13 +376,92 @@ function App() {
           },
         }}
       />
-      {/* Invisible draggable titlebar for macOS traffic lights overlay */}
-      <div data-tauri-drag-region className="app-titlebar" />
+      {macTitlebarOverlay ? (
+        <header className="app-macos-titlebar-overlay" dir="ltr">
+          <div
+            className="app-macos-titlebar-overlay__traffic-shim"
+            aria-hidden
+          />
+          <div className="app-macos-titlebar-overlay__leading app-no-drag hidden md:flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+              onClick={toggleSidebarCollapsed}
+              aria-label={
+                sidebarCollapsed
+                  ? t("sidebar.expandPanel")
+                  : t("sidebar.collapsePanel")
+              }
+              title={
+                sidebarCollapsed
+                  ? t("sidebar.expandPanel")
+                  : t("sidebar.collapsePanel")
+              }
+            >
+              {sidebarCollapsed ? (
+                <PanelLeft className="shrink-0" aria-hidden />
+              ) : (
+                <PanelLeftClose className="shrink-0" aria-hidden />
+              )}
+            </Button>
+          </div>
+          <div
+            className="app-macos-titlebar-overlay__drag"
+            data-tauri-drag-region
+            aria-hidden
+          />
+          <div className="app-macos-titlebar-overlay__trailing app-no-drag hidden md:flex items-center gap-4">
+            <TitleBarStats />
+            <TitleBarModels />
+            <TitleBarOllamaReady active={currentSection === "ollama"} />
+          </div>
+        </header>
+      ) : (
+        <header className="app-window-toolbar" dir="ltr">
+          <div className="app-no-drag hidden items-center ps-1 pe-1 md:flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="border-transparent p-1.5 text-[var(--muted)] hover:text-[var(--accent)]"
+              onClick={toggleSidebarCollapsed}
+              aria-label={
+                sidebarCollapsed
+                  ? t("sidebar.expandPanel")
+                  : t("sidebar.collapsePanel")
+              }
+              title={
+                sidebarCollapsed
+                  ? t("sidebar.expandPanel")
+                  : t("sidebar.collapsePanel")
+              }
+            >
+              {sidebarCollapsed ? (
+                <PanelLeft className="h-5 w-5 shrink-0" aria-hidden />
+              ) : (
+                <PanelLeftClose className="h-5 w-5 shrink-0" aria-hidden />
+              )}
+            </Button>
+          </div>
+          <div
+            className="app-window-toolbar__drag"
+            data-tauri-drag-region
+            aria-hidden
+          />
+          <div className="app-no-drag hidden items-center gap-4 pe-2 md:flex">
+            <TitleBarStats />
+            <TitleBarModels />
+            <TitleBarOllamaReady active={currentSection === "ollama"} />
+          </div>
+        </header>
+      )}
 
-      {/* Main content grid area */}
       <Sidebar
         activeSection={currentSection}
         onSectionChange={setCurrentSection}
+        collapsed={sidebarCollapsed}
       />
       {/* Scrollable content area */}
       <main className="main-content relative flex flex-col min-w-0 overflow-hidden bg-[var(--bg)]">
@@ -340,7 +473,7 @@ function App() {
         </div>
 
         {/* Fixed footer sticks to bottom of main-content */}
-        <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)] px-2 py-3 md:px-6">
+        <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
           <Footer />
         </div>
       </main>
@@ -357,7 +490,7 @@ function App() {
           <div className="flat-card w-full max-w-3xl rounded-2xl">
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold">
+                <h2 className="text-lg font-bold">
                   {t("settings.postProcessing.preview.modal.title")}
                 </h2>
                 <p className="text-sm text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
@@ -368,14 +501,14 @@ function App() {
 
             <div className="space-y-4 p-5">
               <div className="space-y-1">
-                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.originalLabel")}
                 </div>
                 <Textarea value={pendingPreview.source_text} readOnly />
               </div>
 
               <div className="space-y-1">
-                <div className="text-xs font-medium text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.editedLabel")}
                 </div>
                 <Textarea

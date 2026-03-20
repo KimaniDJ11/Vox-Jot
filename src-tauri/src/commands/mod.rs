@@ -2,6 +2,7 @@ pub mod audio;
 pub mod corrections;
 pub mod history;
 pub mod models;
+pub mod stats;
 pub mod transcription;
 
 use crate::actions::PostProcessRouteDebug;

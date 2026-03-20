@@ -986,6 +986,25 @@ async importCorrections(json: string) : Promise<Result<number, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Manually add a new correction pair.
+ */
+async addManualCorrection(original: string, corrected: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_manual_correction", { original, corrected }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getDictationStats() : Promise<Result<DictationStats, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_dictation_stats") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -1007,6 +1026,30 @@ export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type CustomSounds = { start: boolean; stop: boolean }
+/**
+ * Aggregated dictation statistics computed from history entries.
+ */
+export type DictationStats = { 
+/**
+ * Total words transcribed (lifetime).
+ */
+total_words: number; 
+/**
+ * Words transcribed today (local time).
+ */
+today_words: number; 
+/**
+ * Current daily streak (consecutive days with at least one transcription).
+ */
+streak_days: number; 
+/**
+ * Accuracy percentage (0–100). Based on correction/snapshot data when available.
+ */
+accuracy_percent: number | null; 
+/**
+ * Total number of transcriptions (lifetime).
+ */
+total_sessions: number }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM"
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"

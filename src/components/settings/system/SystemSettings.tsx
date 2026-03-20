@@ -1,5 +1,6 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { GeneralSettings } from "../general/GeneralSettings";
+import { PostProcessingSettings } from "../post-processing/PostProcessingSettings";
 import { ShowOverlay } from "../ShowOverlay";
 import { ModelUnloadTimeoutSetting } from "../ModelUnloadTimeout";
 import { SettingsGroup } from "../../ui/SettingsGroup";
@@ -11,26 +12,20 @@ import { TypingToolSetting } from "../TypingTool";
 import { ClipboardHandlingSetting } from "../ClipboardHandling";
 import { AutoSubmit } from "../AutoSubmit";
 import { AppendTrailingSpace } from "../AppendTrailingSpace";
-import { HistoryLimit } from "../HistoryLimit";
-import { RecordingRetentionPeriodSelector } from "../RecordingRetentionPeriod";
-import { ExperimentalToggle } from "../ExperimentalToggle";
-import { useSettings } from "../../../hooks/useSettings";
-import { KeyboardImplementationSelector } from "../debug/KeyboardImplementationSelector";
+import { useTranslation } from "react-i18next";
 
-export const AdvancedSettings: React.FC = () => {
+export const SystemSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting } = useSettings();
-  const experimentalEnabled = getSetting("experimental_enabled") || false;
 
   return (
     <div className="w-full space-y-6">
+      <GeneralSettings />
       <SettingsGroup title={t("settings.advanced.groups.app")}>
         <StartHidden descriptionMode="tooltip" grouped={true} />
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
         <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
-        <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
       <SettingsGroup title={t("settings.advanced.groups.output")}>
@@ -44,22 +39,7 @@ export const AdvancedSettings: React.FC = () => {
         <AppendTrailingSpace descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.advanced.groups.history")}>
-        <HistoryLimit descriptionMode="tooltip" grouped={true} />
-        <RecordingRetentionPeriodSelector
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-      </SettingsGroup>
-
-      {experimentalEnabled && (
-        <SettingsGroup title={t("settings.advanced.groups.experimental")}>
-          <KeyboardImplementationSelector
-            descriptionMode="tooltip"
-            grouped={true}
-          />
-        </SettingsGroup>
-      )}
+      <PostProcessingSettings omitLocalPrivacy />
     </div>
   );
 };

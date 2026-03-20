@@ -11,15 +11,16 @@
   "sidebar": {
     "collapsePanel": "設定サイドバーを隠す",
     "expandPanel": "設定サイドバーを表示",
-    "general": "一般",
+    "system": "システム",
     "models": "モデル",
-    "advanced": "詳細設定",
-    "postProcessing": "後処理",
+    "dataPrivacy": "データとプライバシー",
+    "experimental": "実験的機能",
+    "ollama": "LLM Models",
+    "corrections": "Corrections",
+    "snippets": "Snippets",
     "history": "履歴",
     "debug": "デバッグ",
-    "about": "概要",
-    "ollama": "LLM Models",
-    "corrections": "Corrections"
+    "about": "概要"
   },
   "onboarding": {
     "subtitle": "開始するには、文字起こしモデルを選択してください",
@@ -233,6 +234,25 @@
     "cancelDownload": "ダウンロードをキャンセル"
   },
   "settings": {
+    "snippets": {
+      "toggle": {
+        "title": "Snippets",
+        "label": "Enable Snippets",
+        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+      },
+      "list": {
+        "title": "Your Snippets",
+        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
+        "add": "Add Snippet",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "trigger": "Trigger",
+        "expansion": "Expands to",
+        "triggerPlaceholder": "What you say (e.g. my email)",
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
     "modelSettings": {
       "title": "{{model}} 設定",
       "noSettingsNeeded": "このモデルは設定不要で自動的に動作します。"
@@ -792,6 +812,17 @@
           "active": "Active"
         }
       }
+    },
+    "dataPrivacy": {
+      "introTitle": "How Vox Jot handles your data",
+      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "groups": {
+        "storage": "Storage & history",
+        "postProcessing": "AI post-processing"
+      }
+    },
+    "experimental": {
+      "title": "Experimental"
     }
   },
   "footer": {

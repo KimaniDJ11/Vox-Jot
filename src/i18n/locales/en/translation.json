@@ -12,15 +12,16 @@
     "collapsePanel": "Hide settings sidebar",
     "expandPanel": "Show settings sidebar",
     "settingsLabel": "Settings",
-    "general": "General",
+    "system": "System",
     "models": "Models",
-    "advanced": "Advanced",
-    "postProcessing": "Post Process",
+    "ollama": "LLM Models",
+    "dataPrivacy": "Data & privacy",
+    "experimental": "Experimental",
+    "corrections": "Personal Dictionary",
+    "snippets": "Snippets",
     "history": "History",
     "debug": "Debug",
-    "about": "About",
-    "ollama": "LLM Models",
-    "corrections": "Personal Dictionary"
+    "about": "About"
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",
@@ -264,6 +265,25 @@
         }
       }
     },
+    "snippets": {
+      "toggle": {
+        "title": "Snippets",
+        "label": "Enable Snippets",
+        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+      },
+      "list": {
+        "title": "Your Snippets",
+        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
+        "add": "Add Snippet",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "trigger": "Trigger",
+        "expansion": "Expands to",
+        "triggerPlaceholder": "What you say (e.g. my email)",
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
     "modelSettings": {
       "title": "{{model}} Settings",
       "noSettingsNeeded": "This model works automatically with no configuration needed."
@@ -463,6 +483,17 @@
         "remove": "Remove {{word}}",
         "duplicate": "\"{{word}}\" already exists"
       }
+    },
+    "dataPrivacy": {
+      "introTitle": "How Vox Jot handles your data",
+      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot's servers because there is no cloud account.",
+      "groups": {
+        "storage": "Storage & history",
+        "postProcessing": "AI post-processing"
+      }
+    },
+    "experimental": {
+      "title": "Experimental"
     },
     "postProcessing": {
       "title": "Post Process",
@@ -890,6 +921,7 @@
     "notRunning": "Ollama is installed but not running.",
     "start": "Start Ollama",
     "checking": "Checking...",
+    "titleBarStatusCheckFailed": "Unable to verify Ollama. It may be unreachable.",
     "ready": "Ollama is installed and ready",
     "downloadedModels": "Downloaded LLM Models",
     "noDownloaded": "No local LLM models downloaded yet.",

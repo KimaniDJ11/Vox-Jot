@@ -11,15 +11,16 @@
   "sidebar": {
     "collapsePanel": "隐藏设置边栏",
     "expandPanel": "显示设置边栏",
-    "general": "通用",
+    "system": "系统",
     "models": "模型",
-    "advanced": "高级",
-    "postProcessing": "后处理",
+    "dataPrivacy": "数据与隐私",
+    "experimental": "实验性功能",
+    "ollama": "LLM Models",
+    "corrections": "Corrections",
+    "snippets": "Snippets",
     "history": "历史记录",
     "debug": "调试",
-    "about": "关于",
-    "ollama": "LLM Models",
-    "corrections": "Corrections"
+    "about": "关于"
   },
   "onboarding": {
     "subtitle": "请选择一个转录模型以开始使用",
@@ -233,6 +234,25 @@
     "cancelDownload": "取消下载"
   },
   "settings": {
+    "snippets": {
+      "toggle": {
+        "title": "Snippets",
+        "label": "Enable Snippets",
+        "description": "Automatically expand trigger phrases into full text during dictation. Say a short trigger and Vox Jot replaces it with the full snippet."
+      },
+      "list": {
+        "title": "Your Snippets",
+        "empty": "No snippets yet. Add a snippet to expand short phrases into longer text.",
+        "add": "Add Snippet",
+        "import": "Import",
+        "export": "Export",
+        "clearAll": "Clear All",
+        "trigger": "Trigger",
+        "expansion": "Expands to",
+        "triggerPlaceholder": "What you say (e.g. my email)",
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+      }
+    },
     "modelSettings": {
       "title": "{{model}} 设置",
       "noSettingsNeeded": "此模型自动运行，无需配置。"
@@ -792,6 +812,17 @@
           "active": "Active"
         }
       }
+    },
+    "dataPrivacy": {
+      "introTitle": "How Vox Jot handles your data",
+      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "groups": {
+        "storage": "Storage & history",
+        "postProcessing": "AI post-processing"
+      }
+    },
+    "experimental": {
+      "title": "Experimental"
     }
   },
   "footer": {

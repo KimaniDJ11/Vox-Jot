@@ -17,6 +17,7 @@ pub mod portable;
 mod post_processing;
 mod regression;
 mod settings;
+pub mod snippets;
 mod shortcut;
 mod signal_handle;
 mod transcription_coordinator;
@@ -387,6 +388,10 @@ pub fn run(cli_args: CliArgs) {
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
         shortcut::change_correction_tracking_enabled_setting,
+        shortcut::change_snippets_enabled_setting,
+        shortcut::update_snippets,
+        shortcut::import_snippets,
+        shortcut::export_snippets,
         shortcut::handy_keys::start_handy_keys_recording,
         shortcut::handy_keys::stop_handy_keys_recording,
         trigger_update_check,

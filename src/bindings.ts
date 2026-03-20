@@ -419,6 +419,38 @@ async changeCorrectionTrackingEnabledSetting(enabled: boolean) : Promise<Result<
     else return { status: "error", error: e  as any };
 }
 },
+async changeSnippetsEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_snippets_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSnippets(snippets: Snippet[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_snippets", { snippets }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async importSnippets(json: string) : Promise<Result<number, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("import_snippets", { json }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async exportSnippets() : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_snippets") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Start key recording mode
  */
@@ -1019,7 +1051,7 @@ async getDictationStats() : Promise<Result<DictationStats, string>> {
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; correction_tracking_enabled?: boolean }
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; correction_tracking_enabled?: boolean; snippets_enabled?: boolean; snippets?: Snippet[] }
 export type AppToneMapping = { bundle_id: string; app_name: string; tone_id: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
@@ -1080,6 +1112,11 @@ export type PostProcessResult = { raw_text: string; normalized_text: string; fin
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
+/**
+ * A text expansion snippet: when the trigger phrase is spoken,
+ * it gets replaced with the full expansion text.
+ */
+export type Snippet = { id: string; trigger: string; expansion: string; enabled?: boolean }
 export type SoundTheme = "marimba" | "pop" | "custom"
 /**
  * A stored correction entry, as returned to the frontend.

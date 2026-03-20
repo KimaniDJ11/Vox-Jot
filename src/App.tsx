@@ -38,7 +38,7 @@ const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
 
 const renderSettingsContent = (section: SidebarSection) => {
   const ActiveComponent =
-    SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.general.component;
+    SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.system.component;
   return <ActiveComponent />;
 };
 
@@ -51,7 +51,7 @@ function App() {
   // (vs a new user who needs full onboarding including model selection)
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [currentSection, setCurrentSection] =
-    useState<SidebarSection>("general");
+    useState<SidebarSection>("system");
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
@@ -415,12 +415,12 @@ function App() {
           <div className="app-macos-titlebar-overlay__trailing app-no-drag hidden md:flex items-center gap-4">
             <TitleBarStats />
             <TitleBarModels />
-            <TitleBarOllamaReady active={currentSection === "ollama"} />
+            <TitleBarOllamaReady />
           </div>
         </header>
       ) : (
         <header className="app-window-toolbar" dir="ltr">
-          <div className="app-no-drag hidden items-center ps-1 pe-1 md:flex">
+          <div className="app-window-toolbar__sidebar-toggle app-no-drag hidden items-center ps-1 pe-1 md:flex">
             <Button
               type="button"
               variant="ghost"
@@ -453,7 +453,7 @@ function App() {
           <div className="app-no-drag hidden items-center gap-4 pe-2 md:flex">
             <TitleBarStats />
             <TitleBarModels />
-            <TitleBarOllamaReady active={currentSection === "ollama"} />
+            <TitleBarOllamaReady />
           </div>
         </header>
       )}

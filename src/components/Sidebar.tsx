@@ -1,26 +1,28 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Cog,
   FlaskConical,
   History,
   Info,
-  Sparkles,
   Cpu,
   Bot,
   SpellCheck,
+  Shield,
+  TestTube2,
+  TextQuote,
 } from "lucide-react";
 import VoxJotMark from "./icons/VoxJotMark";
 import {
-  GeneralSettings,
-  AdvancedSettings,
+  SystemSettings,
+  DataPrivacySettings,
+  ExperimentalSettings,
   HistorySettings,
   DebugSettings,
   AboutSettings,
-  PostProcessingSettings,
   ModelsSettings,
   OllamaSettings,
   CorrectionSettings,
+  SnippetSettings,
 } from "./settings";
 import { useSettingsStore } from "../stores/settingsStore";
 
@@ -46,10 +48,10 @@ interface SectionConfig {
 }
 
 export const SECTIONS_CONFIG = {
-  general: {
-    labelKey: "sidebar.general",
+  system: {
+    labelKey: "sidebar.system",
     icon: SidebarBrandIcon,
-    component: GeneralSettings,
+    component: SystemSettings,
     enabled: () => true,
   },
   models: {
@@ -64,22 +66,28 @@ export const SECTIONS_CONFIG = {
     component: OllamaSettings,
     enabled: () => true,
   },
-  advanced: {
-    labelKey: "sidebar.advanced",
-    icon: Cog,
-    component: AdvancedSettings,
+  dataPrivacy: {
+    labelKey: "sidebar.dataPrivacy",
+    icon: Shield,
+    component: DataPrivacySettings,
     enabled: () => true,
   },
-  postprocessing: {
-    labelKey: "sidebar.postProcessing",
-    icon: Sparkles,
-    component: PostProcessingSettings,
+  experimental: {
+    labelKey: "sidebar.experimental",
+    icon: TestTube2,
+    component: ExperimentalSettings,
     enabled: () => true,
   },
   corrections: {
     labelKey: "sidebar.corrections",
     icon: SpellCheck,
     component: CorrectionSettings,
+    enabled: () => true,
+  },
+  snippets: {
+    labelKey: "sidebar.snippets",
+    icon: TextQuote,
+    component: SnippetSettings,
     enabled: () => true,
   },
   history: {
@@ -155,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     width={iconSize}
                     height={iconSize}
                     strokeWidth={
-                      section.id === "general"
+                      section.id === "system"
                         ? undefined
                         : isActive
                           ? 2.75

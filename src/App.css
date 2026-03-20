@@ -266,7 +266,8 @@ body,
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    padding-top: 4px;
+    padding-top: 0;
+    transform: translateY(-2px);
   }
 
   /* Match macOS traffic-light control size (~12×12pt) */
@@ -327,6 +328,10 @@ body,
     min-height: 2.75rem;
     -webkit-app-region: drag;
     app-region: drag;
+  }
+
+  .app-window-toolbar__sidebar-toggle {
+    transform: translateY(-6px);
   }
 
   [data-theme="dark"] .app-window-toolbar {

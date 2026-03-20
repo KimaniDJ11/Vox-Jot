@@ -1202,3 +1202,71 @@ pub fn change_correction_tracking_enabled_setting(
     settings::write_settings(&app, settings);
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_snippets_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.snippets_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_snippets(
+    app: AppHandle,
+    snippets: Vec<crate::snippets::Snippet>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.snippets = snippets;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn import_snippets(app: AppHandle, json: String) -> Result<usize, String> {
+    let imported: Vec<crate::snippets::Snippet> =
+        serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    if imported.len() > 1000 {
+        return Err("Import limit is 1,000 snippets".to_string());
+    }
+
+    let mut settings = settings::get_settings(&app);
+    let existing_triggers: std::collections::HashSet<String> = settings
+        .snippets
+        .iter()
+        .map(|s| s.trigger.to_lowercase())
+        .collect();
+
+    let mut added = 0;
+    for snippet in imported {
+        if snippet.trigger.is_empty() || snippet.expansion.is_empty() {
+            continue;
+        }
+        if snippet.trigger.len() > 60 || snippet.expansion.len() > 4000 {
+            continue;
+        }
+        if existing_triggers.contains(&snippet.trigger.to_lowercase()) {
+            continue;
+        }
+        settings.snippets.push(snippet);
+        added += 1;
+    }
+
+    settings::write_settings(&app, settings);
+    Ok(added)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn export_snippets(app: AppHandle) -> Result<String, String> {
+    let settings = settings::get_settings(&app);
+    serde_json::to_string_pretty(&settings.snippets)
+        .map_err(|e| format!("Failed to serialize snippets: {}", e))
+}

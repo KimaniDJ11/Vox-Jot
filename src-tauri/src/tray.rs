@@ -138,6 +138,14 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
         None::<&str>,
     )
     .expect("failed to create start recording item");
+    let scratchpad_i = MenuItem::with_id(
+        app,
+        "scratchpad",
+        &strings.scratchpad,
+        true,
+        None::<&str>,
+    )
+    .expect("failed to create scratchpad item");
 
     let menu = match state {
         TrayIconState::Recording | TrayIconState::Transcribing => {
@@ -161,6 +169,7 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             &[
                 &start_recording_i,
                 &copy_last_transcript_i,
+                &scratchpad_i,
                 &separator(),
                 &settings_i,
                 &check_updates_i,
@@ -176,6 +185,7 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
             &[
                 &start_recording_i,
                 &copy_last_transcript_i,
+                &scratchpad_i,
                 &separator(),
                 &settings_i,
                 &check_updates_i,

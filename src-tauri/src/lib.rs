@@ -580,13 +580,16 @@ pub fn run(cli_args: CliArgs) {
         .setup(move |app| {
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)
+            // Min size: shell uses two-column layout from 769px wide (260px sidebar + main).
+            // 800×600 leaves a small margin; content scrolls below that. No max — zoom/full screen
+            // should use the full display (CSS uses minmax(0,1fr) and overflow).
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                     .title("Vox Jot")
                     .inner_size(940.0, 760.0)
-                    .min_inner_size(820.0, 640.0)
+                    .min_inner_size(800.0, 600.0)
                     .resizable(true)
-                    .maximizable(false)
+                    .maximizable(true)
                     .visible(false);
 
             #[cfg(target_os = "macos")]

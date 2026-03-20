@@ -367,7 +367,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       currentStep="permissions"
       onBack={onBack}
       leftContent={
-        <>
+        <div className="ob-permissions-flow">
           <h1 className="ob-heading">{t("onboarding.permissions.heading")}</h1>
 
           {/* Accessibility Permission */}
@@ -398,7 +398,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               <p className="ob-perm-desc">
                 {t("onboarding.permissions.inputMonitoring.cardDescription")}
               </p>
-              <p className="ob-perm-desc">
+              <p className="ob-perm-desc ob-perm-hint-line">
                 {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
               </p>
               {renderPermissionStatus(
@@ -452,10 +452,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               )}
             </div>
           )}
-        </>
+        </div>
       }
       rightContent={
-        <div className="ob-visual-card ob-visual-center">
+        <div className="ob-visual-card ob-visual-center ob-permissions-visual">
           <div className="ob-permission-path-card">
             <p className="ob-permission-path-text">
               {t("onboarding.permissions.visualPath")}

@@ -521,8 +521,11 @@ pub fn run(cli_args: CliArgs) {
         builder = builder.plugin(tauri_nspanel::init());
     }
 
-    builder
-        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+    // Release only: dev/debug builds must not use single-instance, or `cargo run` exits
+    // immediately when the App Store / installed build is already running (same app id).
+    #[cfg(not(debug_assertions))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.iter().any(|a| a == "--toggle-transcription") {
                 signal_handle::send_transcription_input(app, "transcribe", "CLI");
             } else if args.iter().any(|a| a == "--toggle-post-process") {
@@ -532,7 +535,10 @@ pub fn run(cli_args: CliArgs) {
             } else {
                 show_main_window(app);
             }
-        }))
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
@@ -545,7 +551,9 @@ pub fn run(cli_args: CliArgs) {
             MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
-        .manage(cli_args.clone())
+        .manage(cli_args.clone());
+
+    builder
         .setup(move |app| {
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)

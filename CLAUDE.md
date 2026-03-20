@@ -18,6 +18,8 @@ bun run tauri dev
 # If cmake error on macOS:
 CMAKE_POLICY_VERSION_MINIMUM=3.5 bun run tauri dev
 
+# Debug builds skip single-instance so dev can run while the installed app is open.
+
 # Build for production
 bun run tauri build
 

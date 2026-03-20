@@ -122,32 +122,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
-    <aside
-      className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300"
-      aria-hidden={collapsed}
-    >
-      <div className="flex flex-col flex-1 px-5 py-4 overflow-y-auto">
+    <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
+      <div
+        className={`flex flex-col flex-1 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-5"}`}
+      >
         <nav aria-label={t("sidebar.settingsLabel")}>
           <div className="flex flex-col gap-2 w-full">
             {availableSections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
+              const iconSize = collapsed ? 20 : 18;
 
               return (
                 <button
                   key={section.id}
-                  className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 min-w-0 ${
+                  className={`group relative flex w-full items-center rounded-xl transition-all duration-200 min-w-0 ${
+                    collapsed
+                      ? "justify-center px-0 py-2.5"
+                      : "gap-3 px-4 py-3 text-left"
+                  } ${
                     isActive
                       ? "bg-[var(--accent)] text-white font-bold shadow-sm"
                       : "bg-transparent text-[var(--text)] font-semibold hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                   }`}
                   type="button"
+                  aria-label={collapsed ? t(section.labelKey) : undefined}
+                  title={collapsed ? t(section.labelKey) : undefined}
+                  aria-current={isActive ? "page" : undefined}
                   onClick={() => onSectionChange(section.id)}
                 >
-                  {/* We can optionally handle a side indicator or remove it since the background is solid. Removing it for cleaner look. */}
                   <Icon
-                    width={18}
-                    height={18}
+                    width={iconSize}
+                    height={iconSize}
                     strokeWidth={
                       section.id === "general"
                         ? undefined
@@ -161,12 +167,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         : "text-[var(--muted)] group-hover:text-[var(--text)]"
                     }`}
                   />
-                  <span
-                    className="truncate text-[15px] leading-6 tracking-wide flex-1"
-                    title={t(section.labelKey)}
-                  >
-                    {t(section.labelKey)}
-                  </span>
+                  {!collapsed && (
+                    <span
+                      className="truncate text-[15px] leading-6 tracking-wide flex-1"
+                      title={t(section.labelKey)}
+                    >
+                      {t(section.labelKey)}
+                    </span>
+                  )}
                 </button>
               );
             })}

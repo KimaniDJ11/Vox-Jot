@@ -211,16 +211,15 @@ body,
   }
 
   @media (min-width: 769px) {
+    /* Icon rail: keep section icons visible when “collapsed” */
     .shell.shell--sidebar-collapsed {
-      grid-template-columns: 0px minmax(0, 1fr);
+      grid-template-columns: 4.5rem minmax(0, 1fr);
     }
 
     .shell.shell--sidebar-collapsed .sidebar {
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
-      border-right-width: 0;
-      padding-inline: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      border-right-width: 1px;
     }
   }
 

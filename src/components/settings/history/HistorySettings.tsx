@@ -213,8 +213,10 @@ export const HistorySettings: React.FC = () => {
       <div className="divide-y divide-mid-gray/20" data-testid="history-entries">
         {entries.map((entry) => {
           const fallbackText = entry.transcription_text;
-          const jotText = entry.post_processed_text?.trim();
-          const displayText = jotText || fallbackText;
+          const displayText =
+            entry.pasted_text?.trim() ||
+            entry.post_processed_text?.trim() ||
+            fallbackText;
 
           return (
             <HistoryEntryComponent
@@ -532,39 +534,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
               title={t("settings.history.fieldObservation.title", { defaultValue: "Text field check" })}
               icon={<Sparkles className="h-3.5 w-3.5" />}
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs text-text/80 select-text cursor-text">
-                  <span className="font-mono truncate max-w-[40%]" title={pastedText}>
-                    {pastedText}
-                  </span>
-                  <ArrowRight className="w-3 h-3 text-text/50 shrink-0" />
-                  <span className="font-mono truncate flex-1" title={observedText}>
-                    {observedText}
-                  </span>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="h-6 w-fit px-2 text-[10px]"
-                  onClick={() => {
-                    const payload = `spoken: ${pastedText}\nwritten: ${observedText}`;
-                    void navigator.clipboard
-                      .writeText(payload)
-                      .then(() => {
-                        toast.success(
-                          t("settings.history.fieldObservation.copied", {
-                            defaultValue: "Copied correction pair",
-                          }),
-                        );
-                      })
-                      .catch((error) => {
-                        console.error("Failed to copy correction pair:", error);
-                      });
-                  }}
-                >
-                  <Copy className="mr-1 h-3 w-3" />
-                  {t("settings.history.fieldObservation.copyPair", { defaultValue: "Copy pair" })}
-                </Button>
+              <div className="flex items-start gap-2 text-xs text-text/80 select-text cursor-text overflow-hidden">
+                <span className="font-mono break-words min-w-0 max-w-[45%]" title={pastedText}>
+                  {pastedText}
+                </span>
+                <ArrowRight className="w-3 h-3 text-text/50 shrink-0 mt-0.5" />
+                <span className="font-mono break-words min-w-0 flex-1" title={observedText}>
+                  {observedText}
+                </span>
               </div>
             </HistoryDetailSection>
           )}

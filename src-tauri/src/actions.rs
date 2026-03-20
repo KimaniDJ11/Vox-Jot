@@ -381,7 +381,26 @@ pub(crate) fn should_fallback_to_plain_text_candidate(candidate: &str, fallback:
     let suspicious_two_word_collapse =
         fallback_tokens.len() == 2 && candidate_tokens.len() == 1 && overlap < 0.99;
 
-    suspicious_expansion || suspicious_truncation || suspicious_two_word_collapse
+    // Dramatic expansion on any length — LLM answered instead of cleaning.
+    // Candidate is more than 2x longer with less-than-perfect overlap.
+    // When output is dramatically longer, even high overlap is suspicious
+    // because common words inflate the ratio.
+    let expansion_ratio = candidate_tokens.len() as f32 / fallback_tokens.len().max(1) as f32;
+    let overlap_threshold = if expansion_ratio > 4.0 {
+        0.95
+    } else if expansion_ratio > 3.0 {
+        0.85
+    } else {
+        0.6
+    };
+    let suspicious_dramatic_expansion = candidate_tokens.len() > fallback_tokens.len() * 2
+        && candidate_tokens.len() >= fallback_tokens.len() + 10
+        && overlap < overlap_threshold;
+
+    suspicious_expansion
+        || suspicious_truncation
+        || suspicious_two_word_collapse
+        || suspicious_dramatic_expansion
 }
 
 fn strip_common_output_label(text: &str) -> Option<String> {
@@ -634,8 +653,12 @@ fn should_fallback_to_plain_text_drift(
     let raw_words = raw_text.split_whitespace().count();
     let candidate_words = candidate.split_whitespace().count();
 
+    if raw_words == 0 {
+        return false;
+    }
+
     // Gate 1: Very low word-overlap for short texts — likely hallucination.
-    if raw_words <= 12 && raw_words > 0 {
+    if raw_words <= 12 {
         let overlap = word_overlap_ratio(raw_text, candidate);
         if overlap < 0.50 {
             debug!(
@@ -646,7 +669,49 @@ fn should_fallback_to_plain_text_drift(
         }
     }
 
-    // Gate 2: Minor edits on short, well-formed text.
+    // Gate 2: LLM answered a question or generated content instead of cleaning.
+    // Detect dramatic expansion with low overlap — the hallmark of the LLM
+    // treating dictation as a conversational prompt.
+    if candidate_words > raw_words * 2 && candidate_words >= raw_words + 10 {
+        let overlap = word_overlap_ratio(raw_text, candidate);
+        if overlap < 0.60 {
+            debug!(
+                "Drift gate: dramatic expansion ({} -> {} words, overlap {:.2}) — LLM likely answered instead of cleaning",
+                raw_words, candidate_words, overlap
+            );
+            return true;
+        }
+    }
+
+    // Gate 3: Low overlap on any length — the LLM produced substantially
+    // different content regardless of length change.
+    if raw_words > 4 {
+        let overlap = word_overlap_ratio(raw_text, candidate);
+        if overlap < 0.35 {
+            debug!(
+                "Drift gate: very low overlap ({:.2}) for {} word utterance — likely hallucination",
+                overlap, raw_words
+            );
+            return true;
+        }
+    }
+
+    // Gate 4: Response contains markdown formatting (bold, headers, bullets
+    // with bold) that wasn't in the original — suggests conversational answer.
+    let has_markdown_formatting = candidate.contains("**")
+        || candidate.contains("##")
+        || candidate.contains("* **")
+        || candidate.contains("- **");
+    let raw_had_markdown = raw_text.contains("**")
+        || raw_text.contains("##");
+    if has_markdown_formatting && !raw_had_markdown {
+        debug!(
+            "Drift gate: candidate contains markdown formatting not present in raw text"
+        );
+        return true;
+    }
+
+    // Gate 5: Minor edits on short, well-formed text.
     let raw_trimmed = raw_text.trim();
     let has_terminal = raw_trimmed
         .chars()
@@ -3055,6 +3120,65 @@ mod tests {
         let result = analyze_post_process_route("I have one great privilege.");
         assert_eq!(result.route, "skip");
         assert!(!result.has_list_cue);
+    }
+
+    #[test]
+    fn drift_gate_catches_llm_answering_question() {
+        // User asked a question; LLM answered it instead of cleaning the transcription
+        assert!(should_fallback_to_plain_text_drift(
+            "In the history area what's the difference between raw text and transcribed text",
+            "In the History area, the **Raw text** and **Transcribed text** differ in processing:\n\n* **Raw text** → The exact speech-to-text output as recorded without modifications.\n* **Transcribed text** → Processed to make it readable while preserving the intended meaning.",
+            "In the history area what's the difference between raw text and transcribed text",
+        ));
+    }
+
+    #[test]
+    fn drift_gate_catches_markdown_formatting_injection() {
+        // LLM added markdown formatting that wasn't in the original
+        assert!(should_fallback_to_plain_text_drift(
+            "tell me about the app settings",
+            "The **app settings** allow you to configure:\n\n* **Audio** — recording device\n* **Model** — transcription model\n* **Shortcuts** — keyboard bindings",
+            "tell me about the app settings",
+        ));
+    }
+
+    #[test]
+    fn drift_gate_catches_dramatic_expansion_on_longer_input() {
+        // 14-word input gets a 50+ word explanation
+        assert!(should_fallback_to_plain_text_drift(
+            "Yes come up with a sound solution that works that we can also test",
+            "Here is a comprehensive solution that addresses the issue. First, we need to implement proper validation checks. Second, we should add unit tests covering edge cases. Third, we need integration tests to verify the full pipeline works correctly end to end. Finally, we should add regression tests to prevent future breakage.",
+            "Yes come up with a sound solution that works that we can also test",
+        ));
+    }
+
+    #[test]
+    fn drift_gate_allows_normal_cleanup_on_longer_input() {
+        // Legitimate cleanup: minor punctuation/capitalization fixes
+        assert!(!should_fallback_to_plain_text_drift(
+            "in the history area what's the difference between raw text and transcribed text",
+            "In the history area, what's the difference between raw text and transcribed text?",
+            "in the history area what's the difference between raw text and transcribed text",
+        ));
+    }
+
+    #[test]
+    fn drift_gate_allows_moderate_list_formatting() {
+        // Legitimate list formatting from spoken items (no markdown bold)
+        assert!(!should_fallback_to_plain_text_drift(
+            "pick up milk eggs bread and butter from the store",
+            "Pick up from the store:\n* Milk\n* Eggs\n* Bread\n* Butter",
+            "pick up milk eggs bread and butter from the store",
+        ));
+    }
+
+    #[test]
+    fn paste_gate_catches_llm_answering_unrelated_question() {
+        // LLM generated a long answer with low overlap to the original input
+        assert!(should_fallback_to_plain_text_candidate(
+            "Sure! The best approach is to implement a comprehensive validation layer that checks all inputs before processing. You should add unit tests for each validation rule, integration tests for the full pipeline, and regression tests to prevent future issues from occurring in production environments.",
+            "How should we handle input validation in the app",
+        ));
     }
 }
 

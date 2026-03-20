@@ -473,6 +473,13 @@ build_release_notes() {
       echo "Whisper binaries are verified against [ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) and are not mirrored by default."
       echo "Omit \`--skip-whisper\` if you want to publish them into this pinned release too."
     fi
+    echo
+    echo "### Translation pack follow-up"
+    echo
+    echo "Translation packs live in the same GitHub models repo, but under a separate release tag such as \`v0.2.0-translation-models\`."
+    echo "Expected asset names follow the pattern \`translate-<source>-<target>-ct2.tar.gz\`."
+    echo "Point \`VOX_JOT_TRANSLATION_MODELS_BASE_URL\` at that release when wiring the multilingual translation downloader."
+    echo "Before shipping, verify the release and every asset filename in the GitHub web UI as part of the browser-driven rollout checklist."
   } >"$notes_file"
 
   printf '%s' "$notes_file"

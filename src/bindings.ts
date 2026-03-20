@@ -85,6 +85,134 @@ async changeSelectedLanguageSetting(language: string) : Promise<Result<null, str
     else return { status: "error", error: e  as any };
 }
 },
+async changeTranslationOutputModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_output_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTranslationTargetLanguageSetting(language: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_target_language_setting", { language }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTranslationRoutePreferenceSetting(route: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_route_preference_setting", { route }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTranslationBilingualLayoutSetting(layout: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_bilingual_layout_setting", { layout }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTranslationTranslateSnippetsSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_translate_snippets_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTranslationDestinationModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_destination_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeSelectionTranslationDestinationModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_selection_translation_destination_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsEnginePreferenceSetting(preference: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_engine_preference_setting", { preference }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsAutoReadbackModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_auto_readback_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsAutoReadbackScopeSetting(scope: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_auto_readback_scope_setting", { scope }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsReadbackTextModeSetting(mode: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_readback_text_mode_setting", { mode }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsDefaultVoiceIdSetting(voiceId: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_default_voice_id_setting", { voiceId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsRateSetting(rate: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_rate_setting", { rate }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsVolumeSetting(volume: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_volume_setting", { volume }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeTtsStopOnRecordSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_tts_stop_on_record_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeOverlayPositionSetting(position: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_overlay_position_setting", { position }) };
@@ -216,9 +344,25 @@ async changePostProcessModelSetting(providerId: string, model: string) : Promise
     else return { status: "error", error: e  as any };
 }
 },
+async changeTranslationModelSetting(providerId: string, model: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_translation_model_setting", { providerId, model }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async setPostProcessProvider(providerId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_post_process_provider", { providerId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setTranslationProvider(providerId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_translation_provider", { providerId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -582,6 +726,62 @@ async resolvePostProcessPreview(requestId: string, accepted: boolean, finalText:
 async debugAnalyzePostProcessRoute(text: string) : Promise<Result<PostProcessRouteDebug, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("debug_analyze_post_process_route", { text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async ttsSpeak(text: string, locale: string | null, preferredVoiceId: string | null, trigger: string | null, rememberLastOutput: boolean | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("tts_speak", { text, locale, preferredVoiceId, trigger, rememberLastOutput }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async ttsStop() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("tts_stop") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getAvailableTtsVoices() : Promise<Result<VoiceInfo[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_available_tts_voices") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async previewTtsVoice(voiceId: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_tts_voice", { voiceId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getAvailableTtsPacks() : Promise<Result<TtsPackInfo[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_available_tts_packs") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async downloadTtsPack(packId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_tts_pack", { packId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async removeTtsPack(packId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_tts_pack", { packId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1131,7 +1331,7 @@ async getDictationStats() : Promise<Result<DictationStats, string>> {
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; correction_tracking_enabled?: boolean; snippets_enabled?: boolean; snippets?: Snippet[] }
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: Partial<{ [key in string]: string }>; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; correction_tracking_enabled?: boolean; snippets_enabled?: boolean; snippets?: Snippet[] }
 export type AppToneMapping = { bundle_id: string; app_name: string; tone_id: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
@@ -1165,7 +1365,7 @@ total_sessions: number }
 export type DictionaryEntry = { spoken: string; written: string; priority?: number; case_sensitive?: boolean; exact_only?: boolean }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM"
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
-export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null }
+export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null }
 /**
  * Result of changing keyboard implementation
  */
@@ -1192,6 +1392,7 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
+export type SelectionTranslationDestinationMode = "replace_selection" | "preview_then_replace" | "open_in_jot_pad"
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 /**
  * A text expansion snippet: when the trigger phrase is spoken,
@@ -1204,7 +1405,18 @@ export type SoundTheme = "marimba" | "pop" | "custom"
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
 export type ToneDefinition = { id: string; label: string; instruction: string }
+export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
+export type TranslationDestinationMode = "paste_in_place" | "preview_then_paste" | "open_in_jot_pad"
+export type TranslationOutputMode = "source" | "translated" | "bilingual"
+export type TranslationRoutePreference = "auto" | "whisper_english" | "offline_pack" | "local_ai" | "remote_ai"
+export type TtsAutoReadbackMode = "off" | "after_output" | "after_preview_confirm"
+export type TtsAutoReadbackScope = "dictation_only" | "dictation_and_selection"
+export type TtsEngineKind = "system" | "sherpa_onnx" | "sidecar"
+export type TtsEnginePreference = "auto" | "system" | "sherpa_onnx" | "sidecar"
+export type TtsPackInfo = { id: string; label: string; locale: string; voice_id: string; archive_name: string; installed: boolean }
+export type TtsReadbackTextMode = "final_output" | "translated_block"
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
+export type VoiceInfo = { id: string; label: string; locale: string | null; engine: TtsEngineKind; installed: boolean; available: boolean }
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
 
 /** tauri-specta globals **/

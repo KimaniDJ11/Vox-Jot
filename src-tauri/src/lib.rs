@@ -1,6 +1,7 @@
 mod actions;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod apple_intelligence;
+mod audio_playback;
 mod audio_feedback;
 pub mod audio_toolkit;
 pub mod cli;
@@ -22,8 +23,10 @@ mod shortcut;
 mod signal_handle;
 pub mod snippets;
 mod transcription_coordinator;
+mod translation;
 mod tray;
 mod tray_i18n;
+mod tts;
 mod utils;
 
 pub use cli::CliArgs;
@@ -56,6 +59,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::settings::get_settings;
+use crate::tts::TtsManager;
 
 // Global atomic to store the file log level filter
 // We use u8 to store the log::LevelFilter as a number
@@ -170,6 +174,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         Arc::new(HistoryManager::new(app_handle).expect("Failed to initialize history manager"));
     let notes_manager =
         Arc::new(NotesManager::new(app_handle).expect("Failed to initialize notes manager"));
+    let tts_manager = Arc::new(TtsManager::new(app_handle));
 
     // Add managers to Tauri's managed state
     app_handle.manage(recording_manager.clone());
@@ -177,6 +182,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(transcription_manager.clone());
     app_handle.manage(history_manager.clone());
     app_handle.manage(notes_manager.clone());
+    app_handle.manage(tts_manager.clone());
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -355,6 +361,22 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_autostart_setting,
         shortcut::change_translate_to_english_setting,
         shortcut::change_selected_language_setting,
+        shortcut::change_translation_output_mode_setting,
+        shortcut::change_translation_target_language_setting,
+        shortcut::change_translation_route_preference_setting,
+        shortcut::change_translation_bilingual_layout_setting,
+        shortcut::change_translation_translate_snippets_setting,
+        shortcut::change_translation_destination_mode_setting,
+        shortcut::change_selection_translation_destination_mode_setting,
+        shortcut::change_tts_enabled_setting,
+        shortcut::change_tts_engine_preference_setting,
+        shortcut::change_tts_auto_readback_mode_setting,
+        shortcut::change_tts_auto_readback_scope_setting,
+        shortcut::change_tts_readback_text_mode_setting,
+        shortcut::change_tts_default_voice_id_setting,
+        shortcut::change_tts_rate_setting,
+        shortcut::change_tts_volume_setting,
+        shortcut::change_tts_stop_on_record_setting,
         shortcut::change_overlay_position_setting,
         shortcut::change_debug_mode_setting,
         shortcut::change_word_correction_threshold_setting,
@@ -372,7 +394,9 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_post_process_base_url_setting,
         shortcut::change_post_process_api_key_setting,
         shortcut::change_post_process_model_setting,
+        shortcut::change_translation_model_setting,
         shortcut::set_post_process_provider,
+        shortcut::set_translation_provider,
         shortcut::fetch_post_process_models,
         shortcut::add_post_process_prompt,
         shortcut::update_post_process_prompt,
@@ -417,6 +441,13 @@ pub fn run(cli_args: CliArgs) {
         commands::preview_post_process_text,
         commands::resolve_post_process_preview,
         commands::debug_analyze_post_process_route,
+        commands::tts::tts_speak,
+        commands::tts::tts_stop,
+        commands::tts::get_available_tts_voices,
+        commands::tts::preview_tts_voice,
+        commands::tts::get_available_tts_packs,
+        commands::tts::download_tts_pack,
+        commands::tts::remove_tts_pack,
         commands::initialize_enigo,
         commands::initialize_shortcuts,
         commands::models::get_available_models,

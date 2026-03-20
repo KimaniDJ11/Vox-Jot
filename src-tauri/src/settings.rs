@@ -279,6 +279,132 @@ impl Default for TypingTool {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationOutputMode {
+    Source,
+    Translated,
+    Bilingual,
+}
+
+impl Default for TranslationOutputMode {
+    fn default() -> Self {
+        TranslationOutputMode::Source
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationRoutePreference {
+    Auto,
+    WhisperEnglish,
+    OfflinePack,
+    LocalAi,
+    RemoteAi,
+}
+
+impl Default for TranslationRoutePreference {
+    fn default() -> Self {
+        TranslationRoutePreference::Auto
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationBilingualLayout {
+    TranslationThenSource,
+    SourceThenTranslation,
+}
+
+impl Default for TranslationBilingualLayout {
+    fn default() -> Self {
+        TranslationBilingualLayout::TranslationThenSource
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TranslationDestinationMode {
+    PasteInPlace,
+    PreviewThenPaste,
+    OpenInJotPad,
+}
+
+impl Default for TranslationDestinationMode {
+    fn default() -> Self {
+        TranslationDestinationMode::PasteInPlace
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectionTranslationDestinationMode {
+    ReplaceSelection,
+    PreviewThenReplace,
+    OpenInJotPad,
+}
+
+impl Default for SelectionTranslationDestinationMode {
+    fn default() -> Self {
+        SelectionTranslationDestinationMode::ReplaceSelection
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TtsEnginePreference {
+    Auto,
+    System,
+    SherpaOnnx,
+    Sidecar,
+}
+
+impl Default for TtsEnginePreference {
+    fn default() -> Self {
+        TtsEnginePreference::Auto
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TtsAutoReadbackMode {
+    Off,
+    AfterOutput,
+    AfterPreviewConfirm,
+}
+
+impl Default for TtsAutoReadbackMode {
+    fn default() -> Self {
+        TtsAutoReadbackMode::Off
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TtsAutoReadbackScope {
+    DictationOnly,
+    DictationAndSelection,
+}
+
+impl Default for TtsAutoReadbackScope {
+    fn default() -> Self {
+        TtsAutoReadbackScope::DictationOnly
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TtsReadbackTextMode {
+    FinalOutput,
+    TranslatedBlock,
+}
+
+impl Default for TtsReadbackTextMode {
+    fn default() -> Self {
+        TtsReadbackTextMode::FinalOutput
+    }
+}
+
 /* still handy for composing the initial JSON in the store ------------- */
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct AppSettings {
@@ -309,6 +435,42 @@ pub struct AppSettings {
     pub translate_to_english: bool,
     #[serde(default = "default_selected_language")]
     pub selected_language: String,
+    #[serde(default)]
+    pub translation_output_mode: TranslationOutputMode,
+    #[serde(default = "default_translation_target_language")]
+    pub translation_target_language: String,
+    #[serde(default)]
+    pub translation_route_preference: TranslationRoutePreference,
+    #[serde(default = "default_translation_provider_id")]
+    pub translation_provider_id: String,
+    #[serde(default = "default_translation_model_ids")]
+    pub translation_model_ids: HashMap<String, String>,
+    #[serde(default)]
+    pub translation_bilingual_layout: TranslationBilingualLayout,
+    #[serde(default)]
+    pub translation_translate_snippets: bool,
+    #[serde(default)]
+    pub translation_destination_mode: TranslationDestinationMode,
+    #[serde(default)]
+    pub selection_translation_destination_mode: SelectionTranslationDestinationMode,
+    #[serde(default)]
+    pub tts_enabled: bool,
+    #[serde(default)]
+    pub tts_engine_preference: TtsEnginePreference,
+    #[serde(default)]
+    pub tts_auto_readback_mode: TtsAutoReadbackMode,
+    #[serde(default)]
+    pub tts_auto_readback_scope: TtsAutoReadbackScope,
+    #[serde(default)]
+    pub tts_readback_text_mode: TtsReadbackTextMode,
+    #[serde(default)]
+    pub tts_default_voice_id: Option<String>,
+    #[serde(default = "default_tts_rate")]
+    pub tts_rate: f32,
+    #[serde(default = "default_tts_volume")]
+    pub tts_volume: f32,
+    #[serde(default = "default_tts_stop_on_record")]
+    pub tts_stop_on_record: bool,
     #[serde(default = "default_overlay_position")]
     pub overlay_position: OverlayPosition,
     #[serde(default = "default_debug_mode")]
@@ -420,6 +582,22 @@ fn default_update_checks_enabled() -> bool {
 
 fn default_selected_language() -> String {
     "auto".to_string()
+}
+
+fn default_translation_target_language() -> String {
+    "en".to_string()
+}
+
+fn default_tts_rate() -> f32 {
+    1.0
+}
+
+fn default_tts_volume() -> f32 {
+    0.85
+}
+
+fn default_tts_stop_on_record() -> bool {
+    true
 }
 
 fn default_overlay_position() -> OverlayPosition {
@@ -573,6 +751,10 @@ fn default_post_process_provider_id() -> String {
     return "openai".to_string();
 }
 
+fn default_translation_provider_id() -> String {
+    default_post_process_provider_id()
+}
+
 fn default_post_process_providers() -> Vec<PostProcessProvider> {
     let mut providers = vec![
         PostProcessProvider {
@@ -698,6 +880,10 @@ fn default_post_process_models() -> HashMap<String, String> {
     map
 }
 
+fn default_translation_model_ids() -> HashMap<String, String> {
+    default_post_process_models()
+}
+
 fn default_post_process_prompt_template() -> &'static str {
     r#"You are a local dictation post-processor.
 
@@ -795,6 +981,73 @@ fn default_correction_tracking_enabled() -> bool {
 
 fn default_snippets_enabled() -> bool {
     true
+}
+
+fn ensure_translation_defaults(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+
+    if settings.translate_to_english
+        && settings.translation_output_mode == TranslationOutputMode::Source
+    {
+        settings.translation_output_mode = TranslationOutputMode::Translated;
+        settings.translation_target_language = "en".to_string();
+        settings.translation_route_preference = TranslationRoutePreference::WhisperEnglish;
+        changed = true;
+    }
+
+    if settings.translation_target_language.trim().is_empty() {
+        settings.translation_target_language = default_translation_target_language();
+        changed = true;
+    }
+
+    if settings.translation_provider_id.trim().is_empty() {
+        settings.translation_provider_id = default_translation_provider_id();
+        changed = true;
+    }
+
+    for (provider_id, default_model) in default_translation_model_ids() {
+        match settings.translation_model_ids.get_mut(&provider_id) {
+            Some(existing) => {
+                if existing.is_empty() && !default_model.is_empty() {
+                    *existing = default_model.clone();
+                    changed = true;
+                }
+            }
+            None => {
+                settings
+                    .translation_model_ids
+                    .insert(provider_id, default_model);
+                changed = true;
+            }
+        }
+    }
+
+    changed
+}
+
+fn ensure_tts_defaults(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+
+    if !(0.5..=2.0).contains(&settings.tts_rate) {
+        settings.tts_rate = default_tts_rate();
+        changed = true;
+    }
+
+    if !(0.0..=1.0).contains(&settings.tts_volume) {
+        settings.tts_volume = default_tts_volume();
+        changed = true;
+    }
+
+    if matches!(
+        settings.translation_output_mode,
+        TranslationOutputMode::Bilingual
+    ) && settings.tts_readback_text_mode == TtsReadbackTextMode::FinalOutput
+    {
+        settings.tts_readback_text_mode = TtsReadbackTextMode::TranslatedBlock;
+        changed = true;
+    }
+
+    changed
 }
 
 /// Internal constants for correction behavior — no longer user-configurable.
@@ -999,6 +1252,82 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: default_rewrite_shortcut.to_string(),
         },
     );
+    #[cfg(target_os = "windows")]
+    let default_translate_selection_shortcut = "ctrl+alt+t";
+    #[cfg(target_os = "macos")]
+    let default_translate_selection_shortcut = "option+command+t";
+    #[cfg(target_os = "linux")]
+    let default_translate_selection_shortcut = "ctrl+alt+t";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_translate_selection_shortcut = "alt+shift+t";
+
+    bindings.insert(
+        "translate_selection".to_string(),
+        ShortcutBinding {
+            id: "translate_selection".to_string(),
+            name: "Translate Selection".to_string(),
+            description: "Translates the currently selected text.".to_string(),
+            default_binding: default_translate_selection_shortcut.to_string(),
+            current_binding: default_translate_selection_shortcut.to_string(),
+        },
+    );
+    #[cfg(target_os = "windows")]
+    let default_speak_selection_shortcut = "ctrl+alt+s";
+    #[cfg(target_os = "macos")]
+    let default_speak_selection_shortcut = "option+command+s";
+    #[cfg(target_os = "linux")]
+    let default_speak_selection_shortcut = "ctrl+alt+s";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_speak_selection_shortcut = "alt+shift+s";
+
+    bindings.insert(
+        "speak_selection".to_string(),
+        ShortcutBinding {
+            id: "speak_selection".to_string(),
+            name: "Speak Selection".to_string(),
+            description: "Reads the currently selected text aloud.".to_string(),
+            default_binding: default_speak_selection_shortcut.to_string(),
+            current_binding: default_speak_selection_shortcut.to_string(),
+        },
+    );
+    #[cfg(target_os = "windows")]
+    let default_speak_last_output_shortcut = "ctrl+alt+l";
+    #[cfg(target_os = "macos")]
+    let default_speak_last_output_shortcut = "option+command+l";
+    #[cfg(target_os = "linux")]
+    let default_speak_last_output_shortcut = "ctrl+alt+l";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_speak_last_output_shortcut = "alt+shift+l";
+
+    bindings.insert(
+        "speak_last_output".to_string(),
+        ShortcutBinding {
+            id: "speak_last_output".to_string(),
+            name: "Speak Last Output".to_string(),
+            description: "Reads the last text Vox Jot produced aloud.".to_string(),
+            default_binding: default_speak_last_output_shortcut.to_string(),
+            current_binding: default_speak_last_output_shortcut.to_string(),
+        },
+    );
+    #[cfg(target_os = "windows")]
+    let default_stop_speaking_shortcut = "ctrl+alt+x";
+    #[cfg(target_os = "macos")]
+    let default_stop_speaking_shortcut = "option+command+x";
+    #[cfg(target_os = "linux")]
+    let default_stop_speaking_shortcut = "ctrl+alt+x";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_stop_speaking_shortcut = "alt+shift+x";
+
+    bindings.insert(
+        "stop_speaking".to_string(),
+        ShortcutBinding {
+            id: "stop_speaking".to_string(),
+            name: "Stop Speaking".to_string(),
+            description: "Stops current speech playback.".to_string(),
+            default_binding: default_stop_speaking_shortcut.to_string(),
+            current_binding: default_stop_speaking_shortcut.to_string(),
+        },
+    );
     bindings.insert(
         "cancel".to_string(),
         ShortcutBinding {
@@ -1026,6 +1355,24 @@ pub fn get_default_settings() -> AppSettings {
         selected_output_device: None,
         translate_to_english: false,
         selected_language: "auto".to_string(),
+        translation_output_mode: TranslationOutputMode::default(),
+        translation_target_language: default_translation_target_language(),
+        translation_route_preference: TranslationRoutePreference::default(),
+        translation_provider_id: default_translation_provider_id(),
+        translation_model_ids: default_translation_model_ids(),
+        translation_bilingual_layout: TranslationBilingualLayout::default(),
+        translation_translate_snippets: false,
+        translation_destination_mode: TranslationDestinationMode::default(),
+        selection_translation_destination_mode: SelectionTranslationDestinationMode::default(),
+        tts_enabled: false,
+        tts_engine_preference: TtsEnginePreference::default(),
+        tts_auto_readback_mode: TtsAutoReadbackMode::default(),
+        tts_auto_readback_scope: TtsAutoReadbackScope::default(),
+        tts_readback_text_mode: TtsReadbackTextMode::default(),
+        tts_default_voice_id: None,
+        tts_rate: default_tts_rate(),
+        tts_volume: default_tts_volume(),
+        tts_stop_on_record: default_tts_stop_on_record(),
         overlay_position: default_overlay_position(),
         debug_mode: false,
         log_level: default_log_level(),
@@ -1074,6 +1421,10 @@ pub fn get_default_settings() -> AppSettings {
 }
 
 impl AppSettings {
+    pub fn translation_enabled(&self) -> bool {
+        self.translation_output_mode != TranslationOutputMode::Source
+    }
+
     pub fn active_post_process_provider(&self) -> Option<&PostProcessProvider> {
         self.post_process_providers
             .iter()
@@ -1093,6 +1444,37 @@ impl AppSettings {
         self.post_process_providers
             .iter_mut()
             .find(|provider| provider.id == provider_id)
+    }
+
+    pub fn active_translation_provider(&self) -> Option<&PostProcessProvider> {
+        self.post_process_providers
+            .iter()
+            .find(|provider| provider.id == self.translation_provider_id)
+    }
+
+    pub fn active_translation_provider_is_local(&self) -> bool {
+        self.active_translation_provider()
+            .map(post_process_provider_is_local)
+            .unwrap_or(false)
+    }
+
+    pub fn preferred_local_translation_provider_id(&self) -> Option<String> {
+        if self.active_translation_provider_is_local() {
+            return Some(self.translation_provider_id.clone());
+        }
+
+        if self.is_post_process_provider_local(APPLE_INTELLIGENCE_PROVIDER_ID) {
+            return Some(APPLE_INTELLIGENCE_PROVIDER_ID.to_string());
+        }
+
+        if self.is_post_process_provider_local("custom") {
+            return Some("custom".to_string());
+        }
+
+        self.post_process_providers
+            .iter()
+            .find(|provider| post_process_provider_is_local(provider))
+            .map(|provider| provider.id.clone())
     }
 
     pub fn tone_definition(&self, tone_id: &str) -> Option<&ToneDefinition> {
@@ -1153,6 +1535,15 @@ impl AppSettings {
                 // If no local provider exists, force-disable post-processing.
                 self.post_process_enabled = false;
                 changed = true;
+            }
+        }
+
+        if self.translation_enabled() && !self.active_translation_provider_is_local() {
+            if let Some(provider_id) = self.preferred_local_translation_provider_id() {
+                if self.translation_provider_id != provider_id {
+                    self.translation_provider_id = provider_id;
+                    changed = true;
+                }
             }
         }
 
@@ -1226,7 +1617,11 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         default_settings
     };
 
-    if ensure_post_process_defaults(&mut settings) {
+    let translation_changed = ensure_translation_defaults(&mut settings);
+    let tts_changed = ensure_tts_defaults(&mut settings);
+    let post_process_changed = ensure_post_process_defaults(&mut settings);
+
+    if translation_changed || tts_changed || post_process_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
 
@@ -1250,7 +1645,11 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         default_settings
     };
 
-    if ensure_post_process_defaults(&mut settings) {
+    let translation_changed = ensure_translation_defaults(&mut settings);
+    let tts_changed = ensure_tts_defaults(&mut settings);
+    let post_process_changed = ensure_post_process_defaults(&mut settings);
+
+    if translation_changed || tts_changed || post_process_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
 
@@ -1490,5 +1889,28 @@ mod tests {
         assert_eq!(settings.post_process_provider_id, "openai");
         assert!(settings.post_process_enabled);
         // changed may be true for other reasons (other defaults), but provider must stay
+    }
+
+    #[test]
+    fn default_settings_include_tts_defaults_and_shortcuts() {
+        let settings = get_default_settings();
+
+        assert!(!settings.tts_enabled);
+        assert_eq!(settings.tts_engine_preference, TtsEnginePreference::Auto);
+        assert_eq!(settings.tts_auto_readback_mode, TtsAutoReadbackMode::Off);
+        assert_eq!(
+            settings.tts_auto_readback_scope,
+            TtsAutoReadbackScope::DictationOnly
+        );
+        assert_eq!(
+            settings.tts_readback_text_mode,
+            TtsReadbackTextMode::FinalOutput
+        );
+        assert_eq!(settings.tts_rate, default_tts_rate());
+        assert_eq!(settings.tts_volume, default_tts_volume());
+        assert!(settings.tts_stop_on_record);
+        assert!(settings.bindings.contains_key("speak_selection"));
+        assert!(settings.bindings.contains_key("speak_last_output"));
+        assert!(settings.bindings.contains_key("stop_speaking"));
     }
 }

@@ -255,6 +255,20 @@ mod tests {
             field_snapshot_at: None,
             field_snapshot_status: crate::managers::history::FieldSnapshotStatus::NotRequested,
             field_snapshot_error: None,
+            source_language_detected: None,
+            translation_target_language: None,
+            translated_text: None,
+            translation_route: None,
+            translation_provider_id: None,
+            translation_model_id: None,
+            translation_origin: None,
+            translation_destination: None,
+            tts_requested: None,
+            tts_engine: None,
+            tts_voice_id: None,
+            tts_locale: None,
+            tts_trigger: None,
+            tts_status: None,
         }
     }
 

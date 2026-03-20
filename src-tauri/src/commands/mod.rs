@@ -5,6 +5,7 @@ pub mod models;
 pub mod notes;
 pub mod stats;
 pub mod transcription;
+pub mod tts;
 
 use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{PostProcessResult, PreviewManager};

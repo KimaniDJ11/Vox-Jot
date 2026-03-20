@@ -76,6 +76,12 @@ pub struct PostProcessPreviewPayload {
     pub request_id: String,
     pub source_text: String,
     pub preview_text: String,
+    #[serde(default)]
+    pub translated_text: Option<String>,
+    #[serde(default)]
+    pub destination_label: Option<String>,
+    #[serde(default)]
+    pub origin: Option<String>,
 }
 
 #[derive(Debug)]

@@ -316,7 +316,50 @@ You can publish or refresh the pinned model mirror release yourself with:
 > By default, Vox Jot downloads every built-in model from this pinned GitHub release.
 > Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.
 > Non-Whisper download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
+> Translation pack download base can be customized with `VOX_JOT_TRANSLATION_MODELS_BASE_URL`.
 > Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.
+
+**Pinned translation pack release (GitHub):**
+
+- Release tag: `v0.2.0-translation-models`
+- Repo: `KimaniDJ11/Vox-Jot-models`
+- Initial pack filenames:
+  - `translate-en-es-ct2.tar.gz`
+  - `translate-es-en-ct2.tar.gz`
+  - `translate-en-fr-ct2.tar.gz`
+  - `translate-fr-en-ct2.tar.gz`
+  - `translate-en-de-ct2.tar.gz`
+  - `translate-de-en-ct2.tar.gz`
+  - `translate-en-pt-ct2.tar.gz`
+  - `translate-pt-en-ct2.tar.gz`
+  - `translate-en-it-ct2.tar.gz`
+  - `translate-it-en-ct2.tar.gz`
+  - `translate-en-nl-ct2.tar.gz`
+  - `translate-nl-en-ct2.tar.gz`
+  - `translate-en-ja-ct2.tar.gz`
+  - `translate-ja-en-ct2.tar.gz`
+  - `translate-en-ko-ct2.tar.gz`
+  - `translate-ko-en-ct2.tar.gz`
+  - `translate-en-zh-Hans-ct2.tar.gz`
+  - `translate-zh-Hans-en-ct2.tar.gz`
+  - `translate-en-zh-Hant-ct2.tar.gz`
+  - `translate-zh-Hant-en-ct2.tar.gz`
+  - `translate-en-ru-ct2.tar.gz`
+  - `translate-ru-en-ct2.tar.gz`
+  - `translate-en-uk-ct2.tar.gz`
+  - `translate-uk-en-ct2.tar.gz`
+  - `translate-en-pl-ct2.tar.gz`
+  - `translate-pl-en-ct2.tar.gz`
+  - `translate-en-tr-ct2.tar.gz`
+  - `translate-tr-en-ct2.tar.gz`
+
+**GitHub publishing + browser verification workflow:**
+
+1. Use `gh release create` or `gh release upload` to publish the translation assets into `KimaniDJ11/Vox-Jot-models`.
+2. Open both GitHub repos in a browser and verify the release state:
+   - `KimaniDJ11/Vox-Jot`
+   - `KimaniDJ11/Vox-Jot-models`
+3. Confirm the release tag exists, every asset is visible, filenames match the app-side expectations exactly, and download URLs resolve publicly before shipping.
 
 #### Step 4: Install Models
 

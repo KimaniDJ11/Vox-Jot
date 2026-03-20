@@ -117,6 +117,37 @@ const settingUpdaters: {
     commands.changeTranslateToEnglishSetting(value as boolean),
   selected_language: (value) =>
     commands.changeSelectedLanguageSetting(value as string),
+  translation_output_mode: (value) =>
+    commands.changeTranslationOutputModeSetting(value as string),
+  translation_target_language: (value) =>
+    commands.changeTranslationTargetLanguageSetting(value as string),
+  translation_route_preference: (value) =>
+    commands.changeTranslationRoutePreferenceSetting(value as string),
+  translation_provider_id: (value) =>
+    commands.setTranslationProvider(value as string),
+  translation_bilingual_layout: (value) =>
+    commands.changeTranslationBilingualLayoutSetting(value as string),
+  translation_translate_snippets: (value) =>
+    commands.changeTranslationTranslateSnippetsSetting(value as boolean),
+  translation_destination_mode: (value) =>
+    commands.changeTranslationDestinationModeSetting(value as string),
+  selection_translation_destination_mode: (value) =>
+    commands.changeSelectionTranslationDestinationModeSetting(value as string),
+  tts_enabled: (value) => commands.changeTtsEnabledSetting(value as boolean),
+  tts_engine_preference: (value) =>
+    commands.changeTtsEnginePreferenceSetting(value as string),
+  tts_auto_readback_mode: (value) =>
+    commands.changeTtsAutoReadbackModeSetting(value as string),
+  tts_auto_readback_scope: (value) =>
+    commands.changeTtsAutoReadbackScopeSetting(value as string),
+  tts_readback_text_mode: (value) =>
+    commands.changeTtsReadbackTextModeSetting(value as string),
+  tts_default_voice_id: (value) =>
+    commands.changeTtsDefaultVoiceIdSetting((value as string | null) ?? null),
+  tts_rate: (value) => commands.changeTtsRateSetting(value as number),
+  tts_volume: (value) => commands.changeTtsVolumeSetting(value as number),
+  tts_stop_on_record: (value) =>
+    commands.changeTtsStopOnRecordSetting(value as boolean),
   overlay_position: (value) =>
     commands.changeOverlayPositionSetting(value as string),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),

@@ -41,6 +41,14 @@ pub fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String
 
 #[tauri::command]
 #[specta::specta]
+pub fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
+    let manager = app.state::<Arc<TtsManager>>();
+    manager.invalidate_voice_cache();
+    manager.get_available_voices()
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn preview_tts_voice(
     app: AppHandle,
     voice_id: Option<String>,

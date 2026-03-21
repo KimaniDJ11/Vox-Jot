@@ -6,11 +6,42 @@ use enigo::{Direction, Enigo, Key, Keyboard};
 use log::info;
 use std::process::Command;
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 #[cfg(target_os = "linux")]
 use crate::utils::{is_kde_wayland, is_wayland};
+
+const SCRATCHPAD_WINDOW_LABEL: &str = "scratchpad";
+const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
+
+fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Result<bool, String> {
+    if !crate::scratchpad::consume_pending_insert_target(app_handle) {
+        return Ok(false);
+    }
+
+    if let Some(window) = app_handle.get_webview_window(SCRATCHPAD_WINDOW_LABEL) {
+        window
+            .emit(SCRATCHPAD_INSERT_EVENT, text.to_string())
+            .map_err(|e| format!("Failed to insert dictated text into Jot Pad: {}", e))?;
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn clipboard_restore_delay_ms(app_handle: &AppHandle) -> u64 {
+    if let Some(window) = app_handle.get_webview_window(SCRATCHPAD_WINDOW_LABEL) {
+        if window.is_focused().unwrap_or(false) {
+            // Webview-backed editors like Jot Pad can read the clipboard later than
+            // native text fields. Keep the fresh clipboard around longer so the
+            // intended dictation wins instead of the restored previous clipboard.
+            return 700;
+        }
+    }
+
+    150
+}
 
 /// Pastes text using the clipboard: saves current content, writes text, sends paste keystroke, restores clipboard.
 fn paste_via_clipboard(
@@ -61,7 +92,13 @@ fn paste_via_clipboard(
         }
     }
 
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    // Allow enough time for the target app to process the paste keystroke
+    // before restoring the previous clipboard content. Webview-based windows
+    // (including the Jot Pad) need more time than native text fields because
+    // the event passes through the browser engine before the clipboard is read.
+    std::thread::sleep(std::time::Duration::from_millis(
+        clipboard_restore_delay_ms(app_handle),
+    ));
 
     // Restore original clipboard content
     // On Wayland, prefer wl-copy for better compatibility
@@ -632,6 +669,17 @@ pub fn paste_with_submit_override(
     } else {
         text
     };
+
+    if try_insert_into_focused_scratchpad(&text, &app_handle)? {
+        if settings.clipboard_handling == ClipboardHandling::CopyToClipboard {
+            let clipboard = app_handle.clipboard();
+            clipboard
+                .write_text(&text)
+                .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+        }
+
+        return Ok(());
+    }
 
     info!(
         "Using paste method: {:?}, delay: {}ms",

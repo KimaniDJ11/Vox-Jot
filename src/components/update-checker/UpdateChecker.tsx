@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
+import { Check, Download, RefreshCw } from "lucide-react";
 import { useSettings } from "../../hooks/useSettings";
 import {
   checkForCustomUpdate,
@@ -11,9 +12,13 @@ import {
 
 interface UpdateCheckerProps {
   className?: string;
+  iconOnly?: boolean;
 }
 
-const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
+const UpdateChecker: React.FC<UpdateCheckerProps> = ({
+  className = "",
+  iconOnly = false,
+}) => {
   const { t } = useTranslation();
   const [isChecking, setIsChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<CustomUpdateResult | null>(null);
@@ -124,6 +129,48 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
   const isUpdateDisabled = !updateChecksEnabled || isChecking;
   const isUpdateClickable =
     !isUpdateDisabled && (Boolean(updateInfo?.available) || !showUpToDate);
+
+  const iconTitle = getUpdateStatusText();
+
+  if (iconOnly) {
+    const Icon = isChecking
+      ? RefreshCw
+      : updateInfo?.available
+        ? Download
+        : showUpToDate
+          ? Check
+          : RefreshCw;
+
+    const iconClassName = isChecking
+      ? "animate-spin"
+      : updateInfo?.available
+        ? "text-logo-primary"
+        : "";
+
+    return (
+      <div className={`flex items-center ${className}`}>
+        {isUpdateClickable ? (
+          <button
+            onClick={getUpdateStatusAction()}
+            disabled={isUpdateDisabled}
+            className="rounded-md p-1.5 text-[color-mix(in_srgb,var(--color-text),transparent_35%)] transition-colors hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_64%)]"
+            title={iconTitle}
+            aria-label={iconTitle}
+          >
+            <Icon className={`h-3.5 w-3.5 ${iconClassName}`} />
+          </button>
+        ) : (
+          <span
+            className="rounded-md p-1.5 text-[color-mix(in_srgb,var(--color-text),transparent_35%)]"
+            title={iconTitle}
+            aria-label={iconTitle}
+          >
+            <Icon className={`h-3.5 w-3.5 ${iconClassName}`} />
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

@@ -7,6 +7,7 @@ pub mod audio_toolkit;
 pub mod cli;
 mod clipboard;
 mod commands;
+mod detail_view;
 mod correction_tracker;
 mod helpers;
 mod github_release;
@@ -60,6 +61,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::settings::get_settings;
+use crate::scratchpad::ScratchpadRoutingState;
 use crate::tts::TtsManager;
 
 // Global atomic to store the file log level filter
@@ -177,6 +179,15 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         Arc::new(NotesManager::new(app_handle).expect("Failed to initialize notes manager"));
     let tts_manager = Arc::new(TtsManager::new(app_handle));
 
+    // Pre-warm the system voice cache in a background thread so the first
+    // UI request returns instantly instead of spawning a subprocess.
+    {
+        let tts = tts_manager.clone();
+        std::thread::spawn(move || {
+            let _ = tts.get_available_voices();
+        });
+    }
+
     // Add managers to Tauri's managed state
     app_handle.manage(recording_manager.clone());
     app_handle.manage(model_manager.clone());
@@ -184,6 +195,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(history_manager.clone());
     app_handle.manage(notes_manager.clone());
     app_handle.manage(tts_manager.clone());
+    app_handle.manage(ScratchpadRoutingState::default());
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -445,6 +457,7 @@ pub fn run(cli_args: CliArgs) {
         commands::tts::tts_speak,
         commands::tts::tts_stop,
         commands::tts::get_available_tts_voices,
+        commands::tts::refresh_tts_voices,
         commands::tts::preview_tts_voice,
         commands::tts::get_available_tts_packs,
         commands::tts::download_tts_pack,
@@ -505,6 +518,7 @@ pub fn run(cli_args: CliArgs) {
         commands::notes::delete_all_notes,
         commands::notes::show_scratchpad,
         commands::notes::toggle_scratchpad,
+        commands::notes::set_scratchpad_editor_armed,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
         commands::corrections::update_correction,
@@ -514,6 +528,7 @@ pub fn run(cli_args: CliArgs) {
         commands::corrections::import_corrections,
         commands::corrections::add_manual_correction,
         commands::stats::get_dictation_stats,
+        commands::show_detail_view,
     ]);
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite

@@ -276,6 +276,17 @@ body,
     height: 14px;
   }
 
+  .app-macos-titlebar-overlay__center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    pointer-events: auto;
+  }
+
   .app-macos-titlebar-overlay__drag {
     flex: 1 1 0;
     min-width: 0;
@@ -314,6 +325,7 @@ body,
   .app-window-toolbar {
     grid-row: 1;
     grid-column: 1 / -1;
+    position: relative;
     display: flex;
     align-items: stretch;
     min-height: 2.75rem;
@@ -328,6 +340,14 @@ body,
     min-height: 2.75rem;
     -webkit-app-region: drag;
     app-region: drag;
+  }
+
+  .app-window-toolbar__center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    align-self: center;
+    z-index: 1;
   }
 
   .app-window-toolbar__sidebar-toggle {

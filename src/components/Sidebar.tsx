@@ -1,194 +1,96 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import {
-  FlaskConical,
-  History,
-  Info,
-  Cpu,
-  Bot,
-  SpellCheck,
-  Shield,
-  TestTube2,
-  TextQuote,
-  Palette,
-} from "lucide-react";
-import VoxJotMark from "./icons/VoxJotMark";
-import {
-  SystemSettings,
-  DataPrivacySettings,
-  ExperimentalSettings,
-  HistorySettings,
-  DebugSettings,
-  AboutSettings,
-  ModelsSettings,
-  OllamaSettings,
-  CorrectionSettings,
-  SnippetSettings,
-  StylesSettings,
-} from "./settings";
-import { useSettingsStore } from "../stores/settingsStore";
+import { Settings2 } from "lucide-react";
 
-const SidebarBrandIcon: React.FC<IconProps> = (props) => (
-  <VoxJotMark {...props} monochrome />
-);
-
-export type SidebarSection = keyof typeof SECTIONS_CONFIG;
-
-interface IconProps {
+type SidebarIcon = React.ComponentType<{
+  className?: string;
   width?: number | string;
   height?: number | string;
-  size?: number | string;
-  className?: string;
-  [key: string]: any;
-}
+  strokeWidth?: number | string;
+}>;
 
-interface SectionConfig {
-  labelKey: string;
-  icon: React.ComponentType<IconProps>;
-  component: React.ComponentType;
-  enabled: (settings?: any) => boolean;
+export interface SidebarItem {
+  id: string;
+  label: string;
+  icon: SidebarIcon;
 }
-
-export const SECTIONS_CONFIG = {
-  system: {
-    labelKey: "sidebar.system",
-    icon: SidebarBrandIcon,
-    component: SystemSettings,
-    enabled: () => true,
-  },
-  models: {
-    labelKey: "sidebar.models",
-    icon: Cpu,
-    component: ModelsSettings,
-    enabled: () => true,
-  },
-  ollama: {
-    labelKey: "sidebar.ollama",
-    icon: Bot,
-    component: OllamaSettings,
-    enabled: () => true,
-  },
-  dataPrivacy: {
-    labelKey: "sidebar.dataPrivacy",
-    icon: Shield,
-    component: DataPrivacySettings,
-    enabled: () => true,
-  },
-  experimental: {
-    labelKey: "sidebar.experimental",
-    icon: TestTube2,
-    component: ExperimentalSettings,
-    enabled: () => true,
-  },
-  corrections: {
-    labelKey: "sidebar.corrections",
-    icon: SpellCheck,
-    component: CorrectionSettings,
-    enabled: () => true,
-  },
-  snippets: {
-    labelKey: "sidebar.snippets",
-    icon: TextQuote,
-    component: SnippetSettings,
-    enabled: () => true,
-  },
-  styles: {
-    labelKey: "sidebar.styles",
-    icon: Palette,
-    component: StylesSettings,
-    enabled: () => true,
-  },
-  history: {
-    labelKey: "sidebar.history",
-    icon: History,
-    component: HistorySettings,
-    enabled: () => true,
-  },
-  debug: {
-    labelKey: "sidebar.debug",
-    icon: FlaskConical,
-    component: DebugSettings,
-    enabled: (settings?: { debug_mode?: boolean }) =>
-      settings?.debug_mode === true,
-  },
-  about: {
-    labelKey: "sidebar.about",
-    icon: Info,
-    component: AboutSettings,
-    enabled: () => true,
-  },
-} as const satisfies Record<string, SectionConfig>;
 
 interface SidebarProps {
-  activeSection: SidebarSection;
-  onSectionChange: (section: SidebarSection) => void;
+  activeSectionId: string;
+  items: SidebarItem[];
   collapsed: boolean;
+  settingsActive: boolean;
+  viewLabel: string;
+  onSectionChange: (id: string) => void;
+  onSettingsClick: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  activeSection,
-  onSectionChange,
+  activeSectionId,
+  items,
   collapsed,
+  settingsActive,
+  viewLabel,
+  onSectionChange,
+  onSettingsClick,
 }) => {
   const { t } = useTranslation();
-  const settings = useSettingsStore((s) => s.settings);
-
-  const availableSections = Object.entries(SECTIONS_CONFIG)
-    .filter(([_, config]) => config.enabled(settings ?? undefined))
-    .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
   return (
     <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
       <div
-        className={`flex flex-col flex-1 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-5"}`}
+        className={`flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-4" : "px-4 py-5"}`}
       >
-        <nav aria-label={t("sidebar.settingsLabel")}>
-          <div className="flex flex-col gap-2 w-full">
-            {availableSections.map((section) => {
-              const Icon = section.icon;
-              const isActive = activeSection === section.id;
-              const iconSize = collapsed ? 20 : 18;
+        {!collapsed && (
+          <div className="mb-4 px-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+              {viewLabel}
+            </p>
+          </div>
+        )}
+
+        <nav
+          aria-label={t("sidebar.settingsLabel", {
+            defaultValue: "Section navigation",
+          })}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <div className="flex flex-col gap-2">
+            {items.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSectionId === item.id;
 
               return (
                 <button
-                  key={section.id}
-                  className={`group relative flex w-full items-center rounded-xl transition-all duration-200 min-w-0 ${
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSectionChange(item.id)}
+                  className={`group relative flex w-full items-center rounded-2xl transition-all duration-200 ${
                     collapsed
-                      ? "justify-center px-0 py-2.5"
+                      ? "justify-center px-0 py-3"
                       : "gap-3 px-4 py-3 text-left"
                   } ${
                     isActive
-                      ? "bg-[var(--accent)] text-white font-bold shadow-sm"
-                      : "bg-transparent text-[var(--text)] font-semibold hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
+                      ? "bg-[var(--accent)] text-white shadow-sm"
+                      : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                   }`}
-                  type="button"
-                  aria-label={collapsed ? t(section.labelKey) : undefined}
-                  title={collapsed ? t(section.labelKey) : undefined}
                   aria-current={isActive ? "page" : undefined}
-                  onClick={() => onSectionChange(section.id)}
+                  aria-label={collapsed ? item.label : undefined}
+                  title={collapsed ? item.label : undefined}
                 >
                   <Icon
-                    width={iconSize}
-                    height={iconSize}
-                    strokeWidth={
-                      section.id === "system"
-                        ? undefined
-                        : isActive
-                          ? 2.75
-                          : 2.5
-                    }
-                    className={`shrink-0 transition-colors duration-200 ${
+                    width={collapsed ? 19 : 18}
+                    height={collapsed ? 19 : 18}
+                    strokeWidth={isActive ? 2.6 : 2.35}
+                    className={`shrink-0 ${
                       isActive
                         ? "text-white"
                         : "text-[var(--muted)] group-hover:text-[var(--text)]"
                     }`}
                   />
                   {!collapsed && (
-                    <span
-                      className="truncate text-[15px] leading-6 tracking-wide flex-1"
-                      title={t(section.labelKey)}
-                    >
-                      {t(section.labelKey)}
+                    <span className="truncate text-[15px] font-semibold leading-6">
+                      {item.label}
                     </span>
                   )}
                 </button>
@@ -196,6 +98,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
         </nav>
+
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <button
+            type="button"
+            onClick={onSettingsClick}
+            className={`group relative flex w-full items-center rounded-2xl transition-all duration-200 ${
+              collapsed
+                ? "justify-center px-0 py-3"
+                : "gap-3 px-4 py-3 text-left"
+            } ${
+              settingsActive
+                ? "bg-[var(--accent)] text-white shadow-sm"
+                : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
+            }`}
+            aria-current={settingsActive ? "page" : undefined}
+            aria-label={collapsed ? "Settings" : undefined}
+            title={collapsed ? "Settings" : undefined}
+          >
+            <Settings2
+              width={collapsed ? 19 : 18}
+              height={collapsed ? 19 : 18}
+              strokeWidth={settingsActive ? 2.6 : 2.35}
+              className={`shrink-0 ${
+                settingsActive
+                  ? "text-white"
+                  : "text-[var(--muted)] group-hover:text-[var(--text)]"
+              }`}
+            />
+            {!collapsed && (
+              <span className="truncate text-[15px] font-semibold leading-6">
+                Settings
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </aside>
   );

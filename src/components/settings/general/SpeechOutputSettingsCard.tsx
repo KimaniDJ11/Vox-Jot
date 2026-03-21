@@ -7,6 +7,7 @@ import { SettingContainer } from "@/components/ui/SettingContainer";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Slider } from "@/components/ui/Slider";
 import { Button } from "@/components/ui/Button";
+import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 
 function SelectField({
   value,
@@ -39,7 +40,7 @@ function localeLabel(locale: string | null | undefined) {
   return locale ? ` (${locale})` : "";
 }
 
-export const SpeechOutputSettingsCard: React.FC = () => {
+function useSpeechOutputState() {
   const { settings, updateSetting, isUpdating } = useSettings();
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [packs, setPacks] = useState<TtsPackInfo[]>([]);
@@ -49,9 +50,22 @@ export const SpeechOutputSettingsCard: React.FC = () => {
   const [busyPackId, setBusyPackId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const refreshVoices = useCallback(async () => {
+  const loadVoices = useCallback(async () => {
     setLoadingVoices(true);
     const result = await commands.getAvailableTtsVoices();
+    if (result.status === "ok") {
+      setVoices(result.data);
+      setStatusMessage(null);
+    } else {
+      setVoices([]);
+      setStatusMessage(result.error);
+    }
+    setLoadingVoices(false);
+  }, []);
+
+  const refreshVoices = useCallback(async () => {
+    setLoadingVoices(true);
+    const result = await commands.refreshTtsVoices();
     if (result.status === "ok") {
       setVoices(result.data);
       setStatusMessage(null);
@@ -75,9 +89,9 @@ export const SpeechOutputSettingsCard: React.FC = () => {
     if (!settings) {
       return;
     }
-    void refreshVoices();
+    void loadVoices();
     void refreshPacks();
-  }, [refreshPacks, refreshVoices, settings?.tts_engine_preference, settings?.tts_enabled]);
+  }, [loadVoices, refreshPacks, settings?.tts_engine_preference, settings?.tts_enabled]);
 
   const selectedVoiceId = settings?.tts_default_voice_id ?? "__auto__";
   const ttsEnabled = settings?.tts_enabled ?? false;
@@ -115,16 +129,42 @@ export const SpeechOutputSettingsCard: React.FC = () => {
     }
   }, [packInstalled, settings]);
 
-  if (!settings) {
+  return {
+    settings,
+    updateSetting,
+    isUpdating,
+    voices,
+    packs,
+    loadingVoices,
+    loadingPacks,
+    previewingVoice,
+    busyPackId,
+    statusMessage,
+    setStatusMessage,
+    setPreviewingVoice,
+    setBusyPackId,
+    refreshVoices,
+    refreshPacks,
+    selectedVoiceId,
+    ttsEnabled,
+    voiceOptions,
+    engineStatus,
+  };
+}
+
+export const SpeechVoiceEngineSettingsCard: React.FC = () => {
+  const speech = useSpeechOutputState();
+
+  if (!speech.settings) {
     return null;
   }
 
   return (
-    <SettingsGroup title="Speech Output">
+    <SettingsGroup title="Voice & Engine">
       <ToggleSwitch
-        checked={ttsEnabled}
-        onChange={(enabled) => void updateSetting("tts_enabled", enabled)}
-        isUpdating={isUpdating("tts_enabled")}
+        checked={speech.ttsEnabled}
+        onChange={(enabled) => void speech.updateSetting("tts_enabled", enabled)}
+        isUpdating={speech.isUpdating("tts_enabled")}
         label="Enable Speech Output"
         description="Read back final Vox Jot output after dictation, translation, or selection flows."
         descriptionMode="tooltip"
@@ -138,11 +178,11 @@ export const SpeechOutputSettingsCard: React.FC = () => {
         grouped={true}
       >
         <SelectField
-          value={settings.tts_engine_preference ?? "auto"}
+          value={speech.settings.tts_engine_preference ?? "auto"}
           onChange={(value) =>
-            void updateSetting("tts_engine_preference", value as any)
+            void speech.updateSetting("tts_engine_preference", value as any)
           }
-          disabled={isUpdating("tts_engine_preference")}
+          disabled={speech.isUpdating("tts_engine_preference")}
           options={[
             { value: "auto", label: "Auto" },
             { value: "system", label: "System" },
@@ -158,30 +198,36 @@ export const SpeechOutputSettingsCard: React.FC = () => {
         descriptionMode="tooltip"
         grouped={true}
         layout="stacked"
-        disabled={!ttsEnabled}
+        disabled={!speech.ttsEnabled}
       >
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <SelectField
-              value={selectedVoiceId}
+              value={speech.selectedVoiceId}
               onChange={(value) =>
-                void updateSetting(
+                void speech.updateSetting(
                   "tts_default_voice_id",
                   value === "__auto__" ? null : value,
                 )
               }
-              disabled={!ttsEnabled || loadingVoices || isUpdating("tts_default_voice_id")}
-              options={voiceOptions}
+              disabled={
+                !speech.ttsEnabled ||
+                speech.loadingVoices ||
+                speech.isUpdating("tts_default_voice_id")
+              }
+              options={speech.voiceOptions}
             />
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => void refreshVoices()}
-              disabled={loadingVoices}
+              onClick={() => void speech.refreshVoices()}
+              disabled={speech.loadingVoices}
               className="inline-flex items-center gap-1"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loadingVoices ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${speech.loadingVoices ? "animate-spin" : ""}`}
+              />
               Refresh
             </Button>
             <Button
@@ -189,18 +235,18 @@ export const SpeechOutputSettingsCard: React.FC = () => {
               variant="secondary"
               size="sm"
               onClick={async () => {
-                setPreviewingVoice(true);
+                speech.setPreviewingVoice(true);
                 const result = await commands.previewTtsVoice(
-                  settings.tts_default_voice_id ?? null,
+                  speech.settings?.tts_default_voice_id ?? null,
                 );
                 if (result.status !== "ok") {
-                  setStatusMessage(result.error);
+                  speech.setStatusMessage(result.error);
                 } else {
-                  setStatusMessage(null);
+                  speech.setStatusMessage(null);
                 }
-                setPreviewingVoice(false);
+                speech.setPreviewingVoice(false);
               }}
-              disabled={!ttsEnabled || previewingVoice}
+              disabled={!speech.ttsEnabled || speech.previewingVoice}
               className="inline-flex items-center gap-1"
             >
               <Play className="h-3.5 w-3.5" />
@@ -211,7 +257,7 @@ export const SpeechOutputSettingsCard: React.FC = () => {
               variant="ghost"
               size="sm"
               onClick={() => void commands.ttsStop()}
-              disabled={!ttsEnabled}
+              disabled={!speech.ttsEnabled}
               className="inline-flex items-center gap-1"
             >
               <Square className="h-3.5 w-3.5" />
@@ -219,11 +265,106 @@ export const SpeechOutputSettingsCard: React.FC = () => {
             </Button>
           </div>
           <p className="text-xs text-[var(--muted)]">
-            {statusMessage ?? engineStatus}
+            {speech.statusMessage ?? speech.engineStatus}
           </p>
         </div>
       </SettingContainer>
 
+      <SettingContainer
+        title="Offline Voice Packs"
+        description="Download and remove packaged offline voices hosted with Vox Jot model assets."
+        descriptionMode="tooltip"
+        grouped={true}
+        layout="stacked"
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-[var(--muted)]">
+            {speech.loadingPacks
+              ? "Loading pack catalog..."
+              : "Offline packs are managed separately from STT models so Vox Jot can expand speech output over time."}
+          </p>
+          <div className="space-y-2">
+            {speech.packs.map((pack) => (
+              <div
+                key={pack.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[var(--text)]">
+                    {pack.label}
+                  </div>
+                  <div className="text-xs text-[var(--muted)]">
+                    {pack.archive_name}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[var(--muted)]">
+                    {pack.installed ? "Installed" : "Not installed"}
+                  </span>
+                  {pack.installed ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={speech.busyPackId === pack.id}
+                      onClick={async () => {
+                        speech.setBusyPackId(pack.id);
+                        const result = await commands.removeTtsPack(pack.id);
+                        if (result.status !== "ok") {
+                          speech.setStatusMessage(result.error);
+                        } else {
+                          speech.setStatusMessage(null);
+                          await speech.refreshPacks();
+                          await speech.refreshVoices();
+                        }
+                        speech.setBusyPackId(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={speech.busyPackId === pack.id}
+                      onClick={async () => {
+                        speech.setBusyPackId(pack.id);
+                        const result = await commands.downloadTtsPack(pack.id);
+                        if (result.status !== "ok") {
+                          speech.setStatusMessage(result.error);
+                        } else {
+                          speech.setStatusMessage(null);
+                          await speech.refreshPacks();
+                          await speech.refreshVoices();
+                        }
+                        speech.setBusyPackId(null);
+                      }}
+                    >
+                      Download
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SettingContainer>
+    </SettingsGroup>
+  );
+};
+
+export const SpeechAutoReadbackSettingsCard: React.FC = () => {
+  const { settings, updateSetting, isUpdating } = useSettings();
+
+  if (!settings) {
+    return null;
+  }
+
+  const ttsEnabled = settings.tts_enabled ?? false;
+
+  return (
+    <SettingsGroup title="Auto Readback">
       <SettingContainer
         title="Auto Readback"
         description="Choose when Vox Jot automatically speaks the final output."
@@ -329,87 +470,30 @@ export const SpeechOutputSettingsCard: React.FC = () => {
         formatValue={(value) => `${Math.round(value * 100)}%`}
         disabled={!ttsEnabled}
       />
+    </SettingsGroup>
+  );
+};
 
-      <SettingContainer
-        title="Offline Voice Packs"
-        description="Download and remove packaged offline voices hosted with Vox Jot model assets."
+export const SpeechPlaybackDeviceSettingsCard: React.FC = () => {
+  const { settings } = useSettings();
+
+  return (
+    <SettingsGroup title="Playback Device">
+      <OutputDeviceSelector
         descriptionMode="tooltip"
         grouped={true}
-        layout="stacked"
-      >
-        <div className="space-y-3">
-          <p className="text-xs text-[var(--muted)]">
-            {loadingPacks
-              ? "Loading pack catalog..."
-              : "Offline packs are managed separately from STT models so Vox Jot can expand speech output over time."}
-          </p>
-          <div className="space-y-2">
-            {packs.map((pack) => (
-              <div
-                key={pack.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-[var(--text)]">
-                    {pack.label}
-                  </div>
-                  <div className="text-xs text-[var(--muted)]">
-                    {pack.archive_name}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--muted)]">
-                    {pack.installed ? "Installed" : "Not installed"}
-                  </span>
-                  {pack.installed ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={busyPackId === pack.id}
-                      onClick={async () => {
-                        setBusyPackId(pack.id);
-                        const result = await commands.removeTtsPack(pack.id);
-                        if (result.status !== "ok") {
-                          setStatusMessage(result.error);
-                        } else {
-                          setStatusMessage(null);
-                          await refreshPacks();
-                          await refreshVoices();
-                        }
-                        setBusyPackId(null);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={busyPackId === pack.id}
-                      onClick={async () => {
-                        setBusyPackId(pack.id);
-                        const result = await commands.downloadTtsPack(pack.id);
-                        if (result.status !== "ok") {
-                          setStatusMessage(result.error);
-                        } else {
-                          setStatusMessage(null);
-                          await refreshPacks();
-                          await refreshVoices();
-                        }
-                        setBusyPackId(null);
-                      }}
-                    >
-                      Download
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </SettingContainer>
+        disabled={!(settings?.tts_enabled || settings?.audio_feedback)}
+      />
     </SettingsGroup>
+  );
+};
+
+export const SpeechOutputSettingsCard: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <SpeechVoiceEngineSettingsCard />
+      <SpeechAutoReadbackSettingsCard />
+      <SpeechPlaybackDeviceSettingsCard />
+    </div>
   );
 };

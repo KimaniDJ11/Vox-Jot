@@ -184,6 +184,7 @@ pub struct TtsManager {
     app_handle: AppHandle,
     current_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
     last_output: Mutex<Option<LastOutput>>,
+    cached_system_voices: Mutex<Option<Vec<VoiceInfo>>>,
 }
 
 impl TtsManager {
@@ -192,6 +193,7 @@ impl TtsManager {
             app_handle: app_handle.clone(),
             current_stop_flag: Mutex::new(None),
             last_output: Mutex::new(None),
+            cached_system_voices: Mutex::new(None),
         }
     }
 
@@ -680,18 +682,31 @@ impl TtsManager {
     }
 
     fn system_voices(&self) -> Result<Vec<VoiceInfo>, String> {
-        #[cfg(target_os = "macos")]
         {
-            macos_system_voices()
+            let cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(voices) = cache.as_ref() {
+                return Ok(voices.clone());
+            }
         }
-        #[cfg(target_os = "windows")]
-        {
-            windows_system_voices()
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-        {
-            Ok(Vec::new())
-        }
+
+        let voices = {
+            #[cfg(target_os = "macos")]
+            { macos_system_voices()? }
+            #[cfg(target_os = "windows")]
+            { windows_system_voices()? }
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            { Vec::new() }
+        };
+
+        let mut cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+        *cache = Some(voices.clone());
+        Ok(voices)
+    }
+
+    /// Clear the cached system voices so the next call re-enumerates.
+    pub fn invalidate_voice_cache(&self) {
+        let mut cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+        *cache = None;
     }
 
     fn select_voice(

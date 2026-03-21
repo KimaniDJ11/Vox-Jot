@@ -755,6 +755,14 @@ async getAvailableTtsVoices() : Promise<Result<VoiceInfo[], string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async refreshTtsVoices() : Promise<Result<VoiceInfo[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("refresh_tts_voices") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async previewTtsVoice(voiceId: string | null) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("preview_tts_voice", { voiceId }) };
@@ -1222,6 +1230,14 @@ async toggleScratchpad() : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async setScratchpadEditorArmed(armed: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_scratchpad_editor_armed", { armed }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Get all stored corrections.
  */
@@ -1313,6 +1329,14 @@ async addManualCorrection(original: string, corrected: string) : Promise<Result<
 async getDictationStats() : Promise<Result<DictationStats, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_dictation_stats") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async showDetailView(section: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("show_detail_view", { section }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

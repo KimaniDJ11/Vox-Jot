@@ -9,6 +9,24 @@ import { commands } from "@/bindings";
 import { useNotesStore } from "./notesStore";
 
 const AUTO_SAVE_DELAY = 2000;
+const SCRATCHPAD_INSERT_EVENT = "scratchpad-insert-text";
+
+function insertAtSelection(
+  currentValue: string,
+  insertedText: string,
+  selectionStart: number | null | undefined,
+  selectionEnd: number | null | undefined,
+) {
+  const start = selectionStart ?? currentValue.length;
+  const end = selectionEnd ?? currentValue.length;
+  const nextValue =
+    currentValue.slice(0, start) + insertedText + currentValue.slice(end);
+
+  return {
+    nextValue,
+    caretPosition: start + insertedText.length,
+  };
+}
 
 const ScratchpadApp: React.FC = () => {
   const { t } = useTranslation();
@@ -29,8 +47,19 @@ const ScratchpadApp: React.FC = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const isMountedRef = useRef(false);
+  const activeNoteIdRef = useRef<number | null>(null);
+  const titleValueRef = useRef("");
+  const contentValueRef = useRef("");
+
+  const setEditorArmed = useCallback(async (armed: boolean) => {
+    const result = await commands.setScratchpadEditorArmed(armed);
+    if (result.status !== "ok") {
+      console.error("Failed to update Jot Pad editor target state:", result.error);
+    }
+  }, []);
 
   // Initialize on mount
   useEffect(() => {
@@ -56,6 +85,21 @@ const ScratchpadApp: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const clearArmedState = () => {
+      void setEditorArmed(false);
+    };
+
+    window.addEventListener("blur", clearArmedState);
+    document.addEventListener("visibilitychange", clearArmedState);
+
+    return () => {
+      window.removeEventListener("blur", clearArmedState);
+      document.removeEventListener("visibilitychange", clearArmedState);
+      void setEditorArmed(false);
+    };
+  }, [setEditorArmed]);
+
   // Sync editor state when active note changes
   useEffect(() => {
     const note = getActiveNote();
@@ -67,6 +111,18 @@ const ScratchpadApp: React.FC = () => {
       setContent("");
     }
   }, [activeNoteId, notes, getActiveNote]);
+
+  useEffect(() => {
+    activeNoteIdRef.current = activeNoteId;
+  }, [activeNoteId]);
+
+  useEffect(() => {
+    titleValueRef.current = title;
+  }, [title]);
+
+  useEffect(() => {
+    contentValueRef.current = content;
+  }, [content]);
 
   // Auto-save with debounce
   const scheduleSave = useCallback(
@@ -151,9 +207,97 @@ const ScratchpadApp: React.FC = () => {
     }
   };
 
+  const focusContentAt = useCallback((caretPosition: number) => {
+    setTimeout(() => {
+      const editor = contentRef.current;
+      if (!editor) {
+        return;
+      }
+
+      editor.focus();
+      editor.setSelectionRange(caretPosition, caretPosition);
+    }, 0);
+  }, []);
+
+  const focusTitleAt = useCallback((caretPosition: number) => {
+    setTimeout(() => {
+      const input = titleInputRef.current;
+      if (!input) {
+        return;
+      }
+
+      input.focus();
+      input.setSelectionRange(caretPosition, caretPosition);
+    }, 0);
+  }, []);
+
+  const handleScratchpadInsert = useCallback(
+    async (insertedText: string) => {
+      if (!insertedText) {
+        return;
+      }
+
+      const existingNoteId = activeNoteIdRef.current;
+      if (existingNoteId === null) {
+        const createdNote = await createNote("", insertedText);
+        if (!createdNote) {
+          toast.error("Failed to create a Jot Pad note for dictation.");
+          return;
+        }
+
+        setTitle("");
+        setContent(insertedText);
+        titleValueRef.current = "";
+        contentValueRef.current = insertedText;
+        focusContentAt(insertedText.length);
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      const titleInput = titleInputRef.current;
+      const contentInput = contentRef.current;
+
+      if (activeElement === titleInput && titleInput) {
+        const { nextValue, caretPosition } = insertAtSelection(
+          titleValueRef.current,
+          insertedText,
+          titleInput.selectionStart,
+          titleInput.selectionEnd,
+        );
+        setTitle(nextValue);
+        titleValueRef.current = nextValue;
+        scheduleSave(existingNoteId, nextValue, contentValueRef.current);
+        focusTitleAt(caretPosition);
+        return;
+      }
+
+      const { nextValue, caretPosition } = insertAtSelection(
+        contentValueRef.current,
+        insertedText,
+        contentInput?.selectionStart,
+        contentInput?.selectionEnd,
+      );
+      setContent(nextValue);
+      contentValueRef.current = nextValue;
+      scheduleSave(existingNoteId, titleValueRef.current, nextValue);
+      focusContentAt(caretPosition);
+    },
+    [createNote, focusContentAt, focusTitleAt, scheduleSave],
+  );
+
+  useEffect(() => {
+    const unlisten = listen<string>(SCRATCHPAD_INSERT_EVENT, (event) => {
+      void handleScratchpadInsert(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [handleScratchpadInsert]);
+
   const handleCreateNote = async () => {
     // Flush any pending save before creating
     saveNow();
+    void setEditorArmed(false);
     await createNote();
     // Focus the content area after creation
     setTimeout(() => contentRef.current?.focus(), 100);
@@ -251,9 +395,9 @@ const ScratchpadApp: React.FC = () => {
 
       <div className="flex flex-1 min-h-0">
       {/* Note list sidebar */}
-      <div className="w-52 shrink-0 border-r border-[var(--border)] bg-[var(--sidebar-bg)] flex flex-col">
+      <div className="flex min-h-0 w-52 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)]">
         {/* Notes list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {notes.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
               {t("jotPad.empty")}
@@ -277,6 +421,7 @@ const ScratchpadApp: React.FC = () => {
                     onClick={() => {
                       // Flush save before switching
                       saveNow();
+                      void setEditorArmed(false);
                       setActiveNote(note.id);
                     }}
                   >
@@ -350,14 +495,16 @@ const ScratchpadApp: React.FC = () => {
       </div>
 
       {/* Editor area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {activeNote ? (
           <div className="flex-1 flex flex-col px-5 pb-4 min-h-0">
             {/* Title input */}
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
+              onFocus={() => void setEditorArmed(true)}
               placeholder={t("jotPad.titlePlaceholder")}
               className="w-full text-xl font-display font-bold bg-transparent border-none outline-none placeholder:text-[var(--muted)]/40 mb-2"
             />
@@ -367,6 +514,7 @@ const ScratchpadApp: React.FC = () => {
               ref={contentRef}
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
+              onFocus={() => void setEditorArmed(true)}
               placeholder={t("jotPad.contentPlaceholder")}
               className="flex-1 w-full bg-transparent border-none outline-none resize-none text-sm leading-relaxed font-body placeholder:text-[var(--muted)]/40"
             />

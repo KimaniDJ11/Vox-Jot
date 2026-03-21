@@ -1,4 +1,5 @@
 use log::{debug, error};
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 
 #[cfg(not(target_os = "macos"))]
@@ -12,6 +13,59 @@ const SCRATCHPAD_WIDTH: f64 = 480.0;
 const SCRATCHPAD_HEIGHT: f64 = 560.0;
 const SCRATCHPAD_MIN_WIDTH: f64 = 340.0;
 const SCRATCHPAD_MIN_HEIGHT: f64 = 300.0;
+
+#[derive(Default)]
+pub struct ScratchpadRoutingState {
+    editor_armed: Mutex<bool>,
+    pending_insert: Mutex<bool>,
+}
+
+impl ScratchpadRoutingState {
+    fn set_editor_armed(&self, armed: bool) {
+        if let Ok(mut state) = self.editor_armed.lock() {
+            *state = armed;
+        }
+    }
+
+    fn snapshot_pending_insert(&self) {
+        let armed = self.editor_armed.lock().map(|state| *state).unwrap_or(false);
+        if let Ok(mut pending) = self.pending_insert.lock() {
+            *pending = armed;
+        }
+    }
+
+    fn consume_pending_insert(&self) -> bool {
+        if let Ok(mut pending) = self.pending_insert.lock() {
+            let was_pending = *pending;
+            *pending = false;
+            return was_pending;
+        }
+
+        false
+    }
+
+    fn clear_pending_insert(&self) {
+        if let Ok(mut pending) = self.pending_insert.lock() {
+            *pending = false;
+        }
+    }
+}
+
+pub struct PendingScratchpadInsertGuard {
+    app: AppHandle,
+}
+
+impl PendingScratchpadInsertGuard {
+    pub fn new(app: &AppHandle) -> Self {
+        Self { app: app.clone() }
+    }
+}
+
+impl Drop for PendingScratchpadInsertGuard {
+    fn drop(&mut self) {
+        clear_pending_insert_target(&self.app);
+    }
+}
 
 #[cfg(target_os = "macos")]
 tauri_panel! {
@@ -65,8 +119,7 @@ fn create_scratchpad_window(app: &AppHandle) {
                 .closable()
                 .miniaturizable()
                 .resizable()
-                .full_size_content_view()
-                .nonactivating_panel(),
+                .full_size_content_view(),
         )
         .with_window(move |w| {
             let w = w
@@ -167,4 +220,24 @@ pub fn toggle_scratchpad(app: &AppHandle) {
     } else {
         show_scratchpad(app);
     }
+}
+
+pub fn set_scratchpad_editor_armed(app: &AppHandle, armed: bool) {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.set_editor_armed(armed);
+}
+
+pub fn snapshot_pending_insert_target(app: &AppHandle) {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.snapshot_pending_insert();
+}
+
+pub fn consume_pending_insert_target(app: &AppHandle) -> bool {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.consume_pending_insert()
+}
+
+pub fn clear_pending_insert_target(app: &AppHandle) {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.clear_pending_insert();
 }

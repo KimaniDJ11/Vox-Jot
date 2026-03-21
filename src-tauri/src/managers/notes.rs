@@ -146,6 +146,21 @@ impl NotesManager {
         Ok(())
     }
 
+    /// Append text to an existing note's content, separated by a newline.
+    pub fn append_to_note(&self, id: i64, text: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = chrono::Utc::now().timestamp();
+
+        conn.execute(
+            "UPDATE notes SET content = CASE WHEN content = '' THEN ?1 ELSE content || char(10) || ?1 END, updated_at = ?2 WHERE id = ?3",
+            params![text, now, id],
+        )?;
+
+        debug!("Appended text to note id={}", id);
+        self.emit_updated();
+        Ok(())
+    }
+
     pub fn delete_note(&self, id: i64) -> Result<()> {
         let conn = self.get_connection()?;
         conn.execute("DELETE FROM notes WHERE id = ?1", params![id])?;

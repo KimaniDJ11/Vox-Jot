@@ -1,14 +1,35 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { platform } from "@tauri-apps/plugin-os";
-import { PanelLeft, PanelLeftClose, Play, Square } from "lucide-react";
 import {
-  TitleBarStats,
-  TitleBarModels,
-  TitleBarOllamaReady,
-} from "./components/title-bar";
+  AppWindow,
+  Cpu,
+  FlaskConical,
+  History,
+  Info,
+  Keyboard,
+  Languages,
+  NotebookPen,
+  PanelLeft,
+  PanelLeftClose,
+  Play,
+  Shield,
+  SlidersHorizontal,
+  SpellCheck,
+  Square,
+  Volume2,
+  WandSparkles,
+  WholeWord,
+} from "lucide-react";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -19,15 +40,39 @@ import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
 import { OnboardingWizard } from "./components/onboarding";
-import { Sidebar, SidebarSection, SECTIONS_CONFIG } from "./components/Sidebar";
+import { Sidebar, type SidebarItem } from "./components/Sidebar";
 import { Button } from "./components/ui/Button";
 import { Textarea } from "./components/ui/Textarea";
 import { useSettings } from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
+import {
+  AboutSection,
+  AISetupSettingsSection,
+  CorrectionsSection,
+  DictateHistorySection,
+  DiagnosticsSettingsSection,
+  DictateModelsSection,
+  GeneralAppSettingsSection,
+  JotPadSection,
+  ListenAutoReadbackSection,
+  ListenPlaybackDeviceSection,
+  ListenVoiceEngineSection,
+  OutputPasteSettingsSection,
+  PrivacyStorageSettingsSection,
+  RefineProfilesSection,
+  RecordingDevicesSettingsSection,
+  RefineModelsSection,
+  RefinePhraseKeysSection,
+  RefineTranslationSection,
+  ShortcutsSettingsSection,
+} from "@/components/AppSections";
 
 type OnboardingStep = "onboarding" | "done";
+type PrimaryMode = "dictate" | "refine" | "listen";
+type RootView = PrimaryMode | "settings";
+
 type PostProcessPreviewRequest = {
   request_id: string;
   source_text: string;
@@ -37,12 +82,122 @@ type PostProcessPreviewRequest = {
   origin?: string | null;
 };
 
+type ViewSection = SidebarItem & {
+  title: string;
+  description: string;
+  content: React.ReactNode;
+};
+
 const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
 
-const renderSettingsContent = (section: SidebarSection) => {
-  const ActiveComponent =
-    SECTIONS_CONFIG[section]?.component || SECTIONS_CONFIG.system.component;
-  return <ActiveComponent />;
+const AppContentSection = React.forwardRef<
+  HTMLElement,
+  {
+    id: string;
+    title: string;
+    description: string;
+    children: React.ReactNode;
+  }
+>(({ id, title, description, children }, ref) => (
+  <section
+    id={id}
+    ref={ref}
+    className="scroll-mt-24 space-y-5 border-b border-[var(--border)]/80 pb-8 last:border-b-0 last:pb-0"
+  >
+    <div className="space-y-2 px-1">
+      <h2 className="text-[13px] font-bold uppercase tracking-[0.24em] text-[var(--muted)]">
+        {title}
+      </h2>
+      <p className="max-w-2xl text-sm leading-7 text-[var(--muted)]">
+        {description}
+      </p>
+    </div>
+    {children}
+  </section>
+));
+
+AppContentSection.displayName = "AppContentSection";
+
+const DeferredSectionBody: React.FC<{
+  immediate?: boolean;
+  children: React.ReactNode;
+}> = ({ immediate = false, children }) => {
+  const [ready, setReady] = useState(immediate);
+
+  useEffect(() => {
+    if (ready) return;
+
+    if (immediate) {
+      setReady(true);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setReady(true);
+    }, 40);
+
+    return () => window.clearTimeout(timer);
+  }, [immediate, ready]);
+
+  if (ready) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-6 text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
+      Loading section...
+    </div>
+  );
+};
+
+const PrimaryModeSwitcher: React.FC<{
+  activeMode: PrimaryMode;
+  onSelect: (mode: PrimaryMode) => void;
+}> = ({ activeMode, onSelect }) => {
+  const items: Array<{ id: PrimaryMode; label: string }> = [
+    { id: "dictate", label: "Dictate" },
+    { id: "refine", label: "Refine" },
+    { id: "listen", label: "Listen" },
+  ];
+
+  return (
+    <div className="app-mode-switcher app-no-drag">
+      <div className="flex items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow-sm)]">
+        {items.map((item) => {
+          const isActive = activeMode === item.id;
+          const activate = () => onSelect(item.id);
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={isActive}
+              onPointerDown={(event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+                event.preventDefault();
+                activate();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  activate();
+                }
+              }}
+              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                isActive
+                  ? "bg-[var(--accent)] text-white shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 function App() {
@@ -50,11 +205,13 @@ function App() {
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep | null>(
     null,
   );
-  // Track if this is a returning user who just needs to grant permissions
-  // (vs a new user who needs full onboarding including model selection)
   const [isReturningUser, setIsReturningUser] = useState(false);
-  const [currentSection, setCurrentSection] =
-    useState<SidebarSection>("system");
+  const [activeMode, setActiveMode] = useState<PrimaryMode>("dictate");
+  const [activeRootView, setActiveRootView] = useState<RootView>("dictate");
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const [pendingSectionJump, setPendingSectionJump] = useState<string | null>(
+    null,
+  );
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
@@ -70,6 +227,8 @@ function App() {
   const { settings, updateSetting } = useSettings();
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
   );
@@ -85,6 +244,231 @@ function App() {
       return false;
     }
   }, []);
+
+  const handleSectionJump = useCallback(
+    (sectionId: string, behavior: ScrollBehavior = "smooth") => {
+      setActiveSectionId(sectionId);
+      const container = contentScrollRef.current;
+      const node = sectionRefs.current[sectionId];
+      if (!container || !node) {
+        return;
+      }
+      const top = Math.max(node.offsetTop - 20, 0);
+      container.scrollTo({ top, behavior });
+    },
+    [],
+  );
+
+  const handleWorkflowSectionNavigate = useCallback(
+    (mode: PrimaryMode, sectionId: string) => {
+      if (activeRootView === mode) {
+        handleSectionJump(sectionId);
+        return;
+      }
+
+      setActiveMode(mode);
+      setPendingSectionJump(sectionId);
+      startTransition(() => {
+        setActiveRootView(mode);
+      });
+    },
+    [activeRootView, handleSectionJump],
+  );
+
+  const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
+    () => ({
+      dictate: [
+        {
+          id: "history",
+          label: "History",
+          icon: History,
+          title: "History & Recordings",
+          description:
+            "Review previous dictations, pasted results, and the recordings behind them.",
+          content: <DictateHistorySection />,
+        },
+        {
+          id: "jot-pad",
+          label: "Jot Pad",
+          icon: NotebookPen,
+          title: "Jot Pad",
+          description:
+            "Collect thoughts, keep notes handy, and dictate into a scratch space.",
+          content: <JotPadSection />,
+        },
+        {
+          id: "models",
+          label: "Models",
+          icon: Cpu,
+          title: "Models",
+          description:
+            "Choose the speech model and spoken language Vox Jot should use for live dictation.",
+          content: <DictateModelsSection />,
+        },
+      ],
+      refine: [
+        {
+          id: "phrase-keys",
+          label: "Phrase Keys",
+          icon: WholeWord,
+          title: "Phrase Keys",
+          description:
+            "Manage your reusable snippet triggers so refined text can expand quickly into full phrases.",
+          content: <RefinePhraseKeysSection />,
+        },
+        {
+          id: "write-profiles",
+          label: "Write Profiles",
+          icon: WandSparkles,
+          title: "Write Profiles",
+          description:
+            "Shape tone and cleanup behavior for chat, notes, email, and other apps you use every day.",
+          content: <RefineProfilesSection />,
+        },
+        {
+          id: "translation",
+          label: "Translation",
+          icon: Languages,
+          title: "Translation",
+          description:
+            "Control translation behavior for refined dictation and selected text actions.",
+          content: <RefineTranslationSection />,
+        },
+        {
+          id: "models",
+          label: "Models",
+          icon: Cpu,
+          title: "Models",
+          description:
+            "See which cleanup model is active and manage local refine engines like Ollama.",
+          content: <RefineModelsSection />,
+        },
+      ],
+      listen: [
+        {
+          id: "voice-engine",
+          label: "Voice & Engine",
+          icon: Volume2,
+          title: "Voice & Engine",
+          description:
+            "Choose the voice, playback engine, and platform speech route Vox Jot should use.",
+          content: (
+            <ListenVoiceEngineSection
+              onNavigateToSection={handleWorkflowSectionNavigate}
+            />
+          ),
+        },
+        {
+          id: "auto-readback",
+          label: "Auto Readback",
+          icon: Play,
+          title: "Auto Readback",
+          description:
+            "Control when Vox Jot speaks automatically and what it reads aloud.",
+          content: <ListenAutoReadbackSection />,
+        },
+        {
+          id: "playback-device",
+          label: "Playback Device",
+          icon: SlidersHorizontal,
+          title: "Playback Device",
+          description:
+            "Pick where voice previews and speech output should play.",
+          content: <ListenPlaybackDeviceSection />,
+        },
+      ],
+      settings: [
+        {
+          id: "general",
+          label: "General",
+          icon: AppWindow,
+          title: "General",
+          description:
+            "Global app behavior, launch settings, language, updates, and model lifecycle options.",
+          content: <GeneralAppSettingsSection />,
+        },
+        {
+          id: "shortcuts",
+          label: "Shortcuts",
+          icon: Keyboard,
+          title: "Shortcuts",
+          description:
+            "Configure the keyboard triggers for dictation, rewrite, translation, speech, and cancel actions.",
+          content: <ShortcutsSettingsSection />,
+        },
+        {
+          id: "recording-devices",
+          label: "Recording & Devices",
+          icon: Volume2,
+          title: "Recording & Devices",
+          description:
+            "Set microphones, recording cues, overlays, filler-word cleanup, and playback device behavior.",
+          content: <RecordingDevicesSettingsSection />,
+        },
+        {
+          id: "output-paste",
+          label: "Output & Paste",
+          icon: SlidersHorizontal,
+          title: "Output & Paste",
+          description:
+            "Control how Vox Jot inserts text, submits forms, and works with clipboard or direct typing tools.",
+          content: <OutputPasteSettingsSection />,
+        },
+        {
+          id: "ai-setup",
+          label: "AI Setup",
+          icon: Cpu,
+          title: "AI Setup",
+          description:
+            "Manage cleanup providers, prompt setup, translation overrides, file transcription, and local AI engines.",
+          content: <AISetupSettingsSection />,
+        },
+        {
+          id: "corrections",
+          label: "Corrections",
+          icon: SpellCheck,
+          title: "Personal Dictionary",
+          description:
+            "Review learned corrections, preferred spellings, and recognition boosts so Vox Jot adapts to the way you write and speak.",
+          content: <CorrectionsSection />,
+        },
+        {
+          id: "privacy",
+          label: "Privacy & Storage",
+          icon: Shield,
+          title: "Privacy & Storage",
+          description:
+            "Choose local-only behavior, history retention, recording storage limits, and data locations.",
+          content: <PrivacyStorageSettingsSection />,
+        },
+        {
+          id: "diagnostics",
+          label: "Diagnostics",
+          icon: FlaskConical,
+          title: "Diagnostics",
+          description:
+            "Experimental controls, keyboard internals, route debugging, and log verbosity live here.",
+          content: <DiagnosticsSettingsSection />,
+        },
+        {
+          id: "about",
+          label: "About",
+          icon: Info,
+          title: "About",
+          description:
+            "Version information and acknowledgments for the tech that powers Vox Jot.",
+          content: <AboutSection />,
+        },
+      ],
+    }),
+    [handleWorkflowSectionNavigate],
+  );
+
+  const activeSections = sectionsByView[activeRootView];
+  const sidebarViewLabel =
+    activeRootView === "settings"
+      ? "Settings"
+      : `${activeMode.charAt(0).toUpperCase()}${activeMode.slice(1)}`;
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -119,35 +503,30 @@ function App() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Initialize RTL direction when language changes
   useEffect(() => {
     initializeRTL(i18n.language);
   }, [i18n.language]);
 
-  // Keep UI in light mode by default to avoid high-contrast dark surfaces.
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", "light");
   }, []);
 
-  // Initialize Enigo, shortcuts, and refresh audio devices when main app loads
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {
       hasCompletedPostOnboardingInit.current = true;
       Promise.all([
         commands.initializeEnigo(),
         commands.initializeShortcuts(),
-      ]).catch((e) => {
-        console.warn("Failed to initialize:", e);
+      ]).catch((error) => {
+        console.warn("Failed to initialize:", error);
       });
       refreshAudioDevices();
       refreshOutputDevices();
     }
   }, [onboardingStep, refreshAudioDevices, refreshOutputDevices]);
 
-  // Handle keyboard shortcuts for debug mode toggle
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Ctrl+Shift+D (Windows/Linux) or Cmd+Shift+D (macOS)
       const isDebugShortcut =
         event.shiftKey &&
         event.key.toLowerCase() === "d" &&
@@ -156,20 +535,16 @@ function App() {
       if (isDebugShortcut) {
         event.preventDefault();
         const currentDebugMode = settings?.debug_mode ?? false;
-        updateSetting("debug_mode", !currentDebugMode);
+        void updateSetting("debug_mode", !currentDebugMode);
       }
     };
 
-    // Add event listener when component mounts
     document.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup event listener when component unmounts
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [settings?.debug_mode, updateSetting]);
 
-  // Listen for recording errors from the backend and show a toast
   useEffect(() => {
     const unlisten = listen<string>("recording-error", (event) => {
       toast.error(t("errors.recordingFailed", { error: event.payload }));
@@ -197,7 +572,6 @@ function App() {
     };
   }, []);
 
-  // Listen for model loading failures and show a toast
   useEffect(() => {
     const unlisten = listen<ModelStateEvent>("model-state-changed", (event) => {
       if (event.payload.event_type === "loading_failed") {
@@ -231,12 +605,59 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const firstSectionId = activeSections[0]?.id || "";
+    const nextSectionId =
+      pendingSectionJump &&
+      activeSections.some((section) => section.id === pendingSectionJump)
+        ? pendingSectionJump
+        : firstSectionId;
+
+    setActiveSectionId(nextSectionId);
+
+    requestAnimationFrame(() => {
+      const container = contentScrollRef.current;
+      const node = sectionRefs.current[nextSectionId];
+      if (container && node) {
+        const top = Math.max(node.offsetTop - 20, 0);
+        container.scrollTo({ top, behavior: "auto" });
+      } else {
+        container?.scrollTo({ top: 0, behavior: "auto" });
+      }
+    });
+    setPendingSectionJump(null);
+  }, [activeRootView, activeSections, pendingSectionJump]);
+
+  useEffect(() => {
+    const container = contentScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    const syncActiveSection = () => {
+      const threshold = container.scrollTop + 120;
+      let current = activeSections[0]?.id || "";
+
+      for (const section of activeSections) {
+        const node = sectionRefs.current[section.id];
+        if (node && node.offsetTop <= threshold) {
+          current = section.id;
+        }
+      }
+
+      setActiveSectionId((prev) => (prev === current ? prev : current));
+    };
+
+    syncActiveSection();
+    container.addEventListener("scroll", syncActiveSection);
+    return () => container.removeEventListener("scroll", syncActiveSection);
+  }, [activeSections]);
+
   const handleModalKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === "Escape") {
       void resolvePreview(false);
       return;
     }
-    // Trap focus within modal
     if (event.key === "Tab" && modalRef.current) {
       const focusable = modalRef.current.querySelectorAll<HTMLElement>(
         'button, textarea, [tabindex]:not([tabindex="-1"])',
@@ -254,7 +675,6 @@ function App() {
     }
   }, []);
 
-  // Auto-focus the modal when it appears
   useEffect(() => {
     if (pendingPreview && modalRef.current) {
       const firstFocusable =
@@ -337,20 +757,18 @@ function App() {
   const revealMainWindowForPermissions = async () => {
     try {
       await commands.showMainWindowCommand();
-    } catch (e) {
-      console.warn("Failed to show main window for permission onboarding:", e);
+    } catch (error) {
+      console.warn("Failed to show main window for permission onboarding:", error);
     }
   };
 
   const checkOnboardingStatus = async () => {
     try {
-      // Check if they have any models available
       const result = await commands.hasAnyModelsAvailable();
       const hasModels = result.status === "ok" && result.data;
       const currentPlatform = platform();
 
       if (hasModels) {
-        // Returning user - check if they need to grant permissions first
         setIsReturningUser(true);
 
         if (currentPlatform === "macos") {
@@ -366,8 +784,8 @@ function App() {
               setOnboardingStep("onboarding");
               return;
             }
-          } catch (e) {
-            console.warn("Failed to check macOS permissions:", e);
+          } catch (error) {
+            console.warn("Failed to check macOS permissions:", error);
           }
         }
 
@@ -383,14 +801,13 @@ function App() {
               setOnboardingStep("onboarding");
               return;
             }
-          } catch (e) {
-            console.warn("Failed to check Windows microphone permissions:", e);
+          } catch (error) {
+            console.warn("Failed to check Windows microphone permissions:", error);
           }
         }
 
         setOnboardingStep("done");
       } else {
-        // New user - start full onboarding wizard
         setIsReturningUser(false);
         setOnboardingStep("onboarding");
       }
@@ -404,7 +821,28 @@ function App() {
     setOnboardingStep("done");
   };
 
-  // Still checking onboarding status — show branded splash
+  const handleModeSelect = useCallback((mode: PrimaryMode) => {
+    setActiveMode(mode);
+    setPendingSectionJump(null);
+    startTransition(() => {
+      setActiveRootView(mode);
+    });
+  }, []);
+
+  const handleSettingsOpen = useCallback(() => {
+    setPendingSectionJump(null);
+    startTransition(() => {
+      setActiveRootView("settings");
+    });
+  }, []);
+
+  const setSectionRef = useCallback(
+    (sectionId: string) => (node: HTMLElement | null) => {
+      sectionRefs.current[sectionId] = node;
+    },
+    [],
+  );
+
   if (onboardingStep === null) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg)]">
@@ -442,13 +880,14 @@ function App() {
           },
         }}
       />
+
       {macTitlebarOverlay ? (
         <header className="app-macos-titlebar-overlay" dir="ltr">
           <div
             className="app-macos-titlebar-overlay__traffic-shim"
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__leading app-no-drag hidden md:flex">
+          <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
             <Button
               type="button"
               variant="ghost"
@@ -473,20 +912,22 @@ function App() {
               )}
             </Button>
           </div>
+          <div className="app-macos-titlebar-overlay__center">
+            <PrimaryModeSwitcher
+              activeMode={activeMode}
+              onSelect={handleModeSelect}
+            />
+          </div>
           <div
             className="app-macos-titlebar-overlay__drag"
             data-tauri-drag-region
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__trailing app-no-drag hidden md:flex items-center gap-4">
-            <TitleBarStats />
-            <TitleBarModels />
-            <TitleBarOllamaReady />
-          </div>
+          <div className="app-macos-titlebar-overlay__trailing app-no-drag flex items-center gap-4" />
         </header>
       ) : (
         <header className="app-window-toolbar" dir="ltr">
-          <div className="app-window-toolbar__sidebar-toggle app-no-drag hidden items-center ps-1 pe-1 md:flex">
+          <div className="app-window-toolbar__sidebar-toggle app-no-drag flex items-center ps-1 pe-1">
             <Button
               type="button"
               variant="ghost"
@@ -511,34 +952,54 @@ function App() {
               )}
             </Button>
           </div>
+          <div className="app-window-toolbar__center app-no-drag">
+            <PrimaryModeSwitcher
+              activeMode={activeMode}
+              onSelect={handleModeSelect}
+            />
+          </div>
           <div
             className="app-window-toolbar__drag"
             data-tauri-drag-region
             aria-hidden
           />
-          <div className="app-no-drag hidden items-center gap-4 pe-2 md:flex">
-            <TitleBarStats />
-            <TitleBarModels />
-            <TitleBarOllamaReady />
-          </div>
+          <div className="app-no-drag flex items-center gap-4 pe-2" />
         </header>
       )}
 
       <Sidebar
-        activeSection={currentSection}
-        onSectionChange={setCurrentSection}
+        activeSectionId={activeSectionId}
+        items={activeSections}
         collapsed={sidebarCollapsed}
+        settingsActive={activeRootView === "settings"}
+        viewLabel={sidebarViewLabel}
+        onSectionChange={handleSectionJump}
+        onSettingsClick={handleSettingsOpen}
       />
-      {/* Scrollable content area */}
-      <main className="main-content relative flex flex-col min-w-0 overflow-hidden bg-[var(--bg)]">
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-4xl p-6 md:p-8">
+
+      <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
+        <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 md:p-8">
             <AccessibilityPermissions />
-            {renderSettingsContent(currentSection)}
+
+            {activeSections.map((section, index) => (
+              <AppContentSection
+                key={section.id}
+                id={section.id}
+                ref={setSectionRef(section.id)}
+                title={section.title}
+                description={section.description}
+              >
+                <DeferredSectionBody
+                  immediate={index === 0 || activeSectionId === section.id}
+                >
+                  {section.content}
+                </DeferredSectionBody>
+              </AppContentSection>
+            ))}
           </div>
         </div>
 
-        {/* Fixed footer sticks to bottom of main-content */}
         <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
           <Footer />
         </div>

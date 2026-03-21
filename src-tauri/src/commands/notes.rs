@@ -75,3 +75,10 @@ pub fn toggle_scratchpad(app: AppHandle) -> Result<(), String> {
     crate::scratchpad::toggle_scratchpad(&app);
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_scratchpad_editor_armed(app: AppHandle, armed: bool) -> Result<(), String> {
+    crate::scratchpad::set_scratchpad_editor_armed(&app, armed);
+    Ok(())
+}

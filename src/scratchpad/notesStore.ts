@@ -32,7 +32,7 @@ interface NotesStore {
 
   initialize: () => Promise<void>;
   refresh: () => Promise<void>;
-  createNote: () => Promise<Note | null>;
+  createNote: (title?: string, content?: string) => Promise<Note | null>;
   updateNote: (id: number, title: string, content: string) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
   togglePin: (id: number, pinned: boolean) => Promise<void>;
@@ -76,9 +76,9 @@ export const useNotesStore = create<NotesStore>()((set, get) => ({
     }
   },
 
-  createNote: async () => {
+  createNote: async (title = "", content = "") => {
     try {
-      const result = await commands.createNote("", "");
+      const result = await commands.createNote(title, content);
       if (result.status === "ok") {
         const note = result.data;
         await get().refresh();

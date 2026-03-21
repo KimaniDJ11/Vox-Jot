@@ -2318,6 +2318,7 @@ impl ShortcutAction for TranscribeAction {
         // Load model in the background
         let tm = app.state::<Arc<TranscriptionManager>>();
         tm.initiate_model_load();
+        crate::scratchpad::snapshot_pending_insert_target(app);
 
         let binding_id = binding_id.to_string();
         change_tray_icon(app, TrayIconState::Recording);
@@ -2470,6 +2471,7 @@ impl ShortcutAction for TranscribeAction {
 
         tauri::async_runtime::spawn(async move {
             let _guard = FinishGuard(ah.clone());
+            let _scratchpad_guard = crate::scratchpad::PendingScratchpadInsertGuard::new(&ah);
             crate::overlay::emit_partial_transcription(&ah, "");
             let binding_id = binding_id.clone(); // Clone for the inner async task
             debug!(

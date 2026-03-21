@@ -4,10 +4,11 @@ import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { SettingContainer } from "@/components/ui/SettingContainer";
-import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Slider } from "@/components/ui/Slider";
 import { Button } from "@/components/ui/Button";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 
 function SelectField({
   value,
@@ -152,7 +153,13 @@ function useSpeechOutputState() {
   };
 }
 
-export const SpeechVoiceEngineSettingsCard: React.FC = () => {
+interface SpeechVoiceEngineSettingsCardProps {
+  showEnabledToggle?: boolean;
+}
+
+export const SpeechVoiceEngineSettingsCard: React.FC<
+  SpeechVoiceEngineSettingsCardProps
+> = ({ showEnabledToggle = true }) => {
   const speech = useSpeechOutputState();
 
   if (!speech.settings) {
@@ -161,15 +168,9 @@ export const SpeechVoiceEngineSettingsCard: React.FC = () => {
 
   return (
     <SettingsGroup title="Voice & Engine">
-      <ToggleSwitch
-        checked={speech.ttsEnabled}
-        onChange={(enabled) => void speech.updateSetting("tts_enabled", enabled)}
-        isUpdating={speech.isUpdating("tts_enabled")}
-        label="Enable Speech Output"
-        description="Read back final Vox Jot output after dictation, translation, or selection flows."
-        descriptionMode="tooltip"
-        grouped={true}
-      />
+      {showEnabledToggle && (
+        <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
+      )}
 
       <SettingContainer
         title="Speech Engine"

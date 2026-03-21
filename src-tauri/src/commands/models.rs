@@ -2,7 +2,7 @@ use crate::managers::model::{ModelInfo, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, write_settings};
 use std::sync::Arc;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 
 #[tauri::command]
 #[specta::specta]
@@ -84,6 +84,9 @@ pub async fn set_active_model(
     let mut settings = get_settings(&app_handle);
     settings.selected_model = model_id.clone();
     write_settings(&app_handle, settings);
+    app_handle
+        .emit("active-model-changed", model_id)
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }

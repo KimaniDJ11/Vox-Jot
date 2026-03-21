@@ -371,6 +371,14 @@ export const useModelStore = create<ModelsStore>()(
         get().loadCurrentModel();
       });
 
+      listen<string>("active-model-changed", (event) => {
+        set({
+          currentModel: event.payload,
+          isFirstRun: false,
+          hasAnyModels: true,
+        });
+      });
+
       listen("model-state-changed", () => {
         get().loadModels();
         get().loadCurrentModel();

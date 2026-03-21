@@ -1,6 +1,6 @@
 use crate::managers::notes::{Note, NotesManager};
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[tauri::command]
 #[specta::specta]
@@ -71,6 +71,16 @@ pub fn show_scratchpad(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
+pub fn show_scratchpad_for_note(app: AppHandle, note_id: i64) -> Result<(), String> {
+    crate::scratchpad::set_pending_note_target(&app, note_id);
+    crate::scratchpad::show_scratchpad(&app);
+    app.emit_to("scratchpad", "scratchpad-select-note", note_id)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn toggle_scratchpad(app: AppHandle) -> Result<(), String> {
     crate::scratchpad::toggle_scratchpad(&app);
     Ok(())
@@ -81,4 +91,10 @@ pub fn toggle_scratchpad(app: AppHandle) -> Result<(), String> {
 pub fn set_scratchpad_editor_armed(app: AppHandle, armed: bool) -> Result<(), String> {
     crate::scratchpad::set_scratchpad_editor_armed(&app, armed);
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn consume_scratchpad_target_note(app: AppHandle) -> Result<Option<i64>, String> {
+    Ok(crate::scratchpad::consume_pending_note_target(&app))
 }

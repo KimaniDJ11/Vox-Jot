@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { listen } from "@tauri-apps/api/event";
 import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
 
-import { commands, type ModelInfo, type Note } from "@/bindings";
+import { commands, type Note } from "@/bindings";
 import { CappedSection } from "@/components/ui/CappedSection";
 import { ShowMoreFooter } from "@/components/ui/ShowMoreFooter";
 import { useSettings } from "@/hooks/useSettings";
-import { useModelStore } from "@/stores/modelStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -42,6 +42,7 @@ import { RecordingRetentionPeriodSelector } from "@/components/settings/Recordin
 import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
+import { CorrectionTrackingToggle } from "@/components/settings/CorrectionTrackingToggle";
 import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
 import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
 import { LogDirectory } from "@/components/settings/debug/LogDirectory";
@@ -55,6 +56,7 @@ import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { StylesSettings } from "@/components/settings/styles/StylesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
+import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
 import {
   SpeechAutoReadbackSettingsCard,
@@ -64,6 +66,9 @@ import {
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
 import OllamaSettings from "@/components/settings/ollama/OllamaSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
+import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
+import { AppAwareWriteProfilesToggle } from "@/components/settings/AppAwareWriteProfilesToggle";
+import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 import UpdateChecker from "@/components/update-checker";
 
 const subtleCardClassName =
@@ -88,10 +93,10 @@ const WorkflowLinkCard: React.FC<{
 }> = ({ eyebrow, title, description, actionLabel, onAction }) => {
   return (
     <div className={subtleCardClassName}>
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
         {eyebrow}
       </p>
-      <p className="mt-2 text-lg font-semibold text-[var(--text)]">{title}</p>
+      <p className="mt-2 text-lg font-bold text-[var(--text)]">{title}</p>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
         {description}
       </p>
@@ -109,38 +114,12 @@ const WorkflowLinkCard: React.FC<{
   );
 };
 
-const getModelDisplayName = (model: ModelInfo | undefined): string => {
-  if (!model) {
-    return "No speech model selected";
-  }
-  return model.name || model.id;
-};
-
 export const DictateModelsSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
-  const { currentModel, models } = useModelStore();
-  const currentModelInfo = useMemo(
-    () => models.find((model) => model.id === currentModel),
-    [currentModel, models],
-  );
-
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-          Active Speech Model
-        </p>
-        <p className="mt-2 text-lg font-semibold text-[var(--text)]">
-          {getModelDisplayName(currentModelInfo)}
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          Pick the speech engine and spoken language Vox Jot should use before
-          you start dictating.
-        </p>
-      </div>
-
-      <SettingsGroup title="Language">
+      <SettingsGroup>
         <LanguageSelector descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
@@ -199,12 +178,6 @@ export const DictateTranslationSection: React.FC = () => {
 export const RefineTranslationSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-sm leading-6 text-[var(--muted)]">
-          Control how Vox Jot rewrites, translates, previews, and routes refined
-          text for both dictation and selection actions.
-        </p>
-      </div>
       <SettingsGroup title="Translation">
         <TranslationSettingsCard />
       </SettingsGroup>
@@ -216,7 +189,7 @@ export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
   if (!capped) {
-    return <SnippetSettings />;
+    return <SnippetSettings showEnabledToggle={false} />;
   }
 
   return (
@@ -225,7 +198,7 @@ export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
       showMoreLabel="Show all phrase keys"
       maxHeight={520}
     >
-      <SnippetSettings />
+      <SnippetSettings showEnabledToggle={false} />
     </CappedSection>
   );
 };
@@ -235,7 +208,7 @@ export const RefineProfilesSection: React.FC<ExpandableSectionProps> = ({
 }) => {
   const content = (
     <div className="space-y-6">
-      <StylesSettings />
+      <StylesSettings showEnabledToggle={false} />
     </div>
   );
 
@@ -262,22 +235,15 @@ export const RefineModelsSection: React.FC<ExpandableSectionProps> = ({
   const selectedProvider = (
     getSetting("post_process_providers") || []
   ).find((provider) => provider.id === selectedProviderId);
-  const selectedModel =
-    getSetting("post_process_models")?.[selectedProviderId] || "";
 
   return (
     <div className="space-y-6">
       <div className={subtleCardClassName}>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
           Active Refine Engine
         </p>
-        <p className="mt-2 text-lg font-semibold text-[var(--text)]">
+        <p className="mt-2 text-lg font-bold text-[var(--text)]">
           {selectedProvider?.label || "No refine provider selected"}
-        </p>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          {selectedProviderId === "apple_intelligence"
-            ? "Apple Intelligence handles cleanup and rewriting."
-            : selectedModel || "Choose a cleanup model in Settings > AI Setup."}
         </p>
       </div>
 
@@ -300,17 +266,25 @@ export const CorrectionsSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
   if (!capped) {
-    return <CorrectionSettings />;
+    return <CorrectionSettings showTrackingToggle={false} />;
   }
 
   return (
     <CappedSection
-      section="corrections"
+      section="learned-corrections"
       showMoreLabel="Show all learned corrections"
       maxHeight={520}
     >
-      <CorrectionSettings />
+      <CorrectionSettings showTrackingToggle={false} />
     </CappedSection>
+  );
+};
+
+export const LearnedCorrectionsSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <CorrectionDictionaryView sectionTitle="Learned Corrections" />
+    </div>
   );
 };
 
@@ -319,14 +293,7 @@ export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-sm leading-6 text-[var(--muted)]">
-          Choose how Vox Jot speaks text aloud, which voice it uses, and how
-          playback is generated across platforms.
-        </p>
-      </div>
-
-      <SpeechVoiceEngineSettingsCard />
+      <SpeechVoiceEngineSettingsCard showEnabledToggle={false} />
 
       <WorkflowLinkCard
         eyebrow="Need Past Sessions?"
@@ -342,13 +309,6 @@ export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
 export const ListenAutoReadbackSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-sm leading-6 text-[var(--muted)]">
-          Control when Vox Jot speaks automatically and how much of the final
-          output it reads back.
-        </p>
-      </div>
-
       <SpeechAutoReadbackSettingsCard />
     </div>
   );
@@ -357,13 +317,6 @@ export const ListenAutoReadbackSection: React.FC = () => {
 export const ListenPlaybackDeviceSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-sm leading-6 text-[var(--muted)]">
-          Pick the output device Vox Jot should use for spoken playback and
-          voice previews.
-        </p>
-      </div>
-
       <SpeechPlaybackDeviceSettingsCard />
     </div>
   );
@@ -393,7 +346,7 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
     <button
       type="button"
       onClick={onOpen}
-      className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)]"
+      className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)]"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -439,23 +392,30 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
     loadNotes();
   }, [loadNotes]);
 
-  const openNoteInJotPad = useCallback((noteId?: number) => {
-    // Open the scratchpad; the scratchpad will auto-select the note via persisted state
+  useEffect(() => {
+    const unlisten = listen("notes-updated", () => {
+      loadNotes();
+    });
+
+    return () => {
+      unlisten.then((cleanup) => cleanup());
+    };
+  }, [loadNotes]);
+
+  const openNoteInJotPad = useCallback(async (noteId?: number) => {
     if (noteId !== undefined) {
-      try {
-        localStorage.setItem("scratchpad_active_note_id", String(noteId));
-      } catch {
-        // noop
-      }
+      await commands.showScratchpadForNote(noteId);
+      return;
     }
-    void commands.showScratchpad();
+
+    await commands.showScratchpad();
   }, []);
 
   const createNote = useCallback(async () => {
     const result = await commands.createNote("", "");
     if (result.status === "ok") {
       loadNotes();
-      openNoteInJotPad(result.data.id);
+      void openNoteInJotPad(result.data.id);
     }
   }, [loadNotes, openNoteInJotPad]);
 
@@ -469,41 +429,17 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
 
   const visibleNoteCount = capped ? JOTPAD_INLINE_CAP : sortedNotes.length;
   const visibleNotes = sortedNotes.slice(0, visibleNoteCount);
-  const hasMore = capped && sortedNotes.length > JOTPAD_INLINE_CAP;
+  const showAllJotPad = capped && notes.length > 0;
 
   return (
     <div className="space-y-4">
-      {/* Header with note count + actions */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--muted)]">
-          {notes.length === 0
-            ? "No notes yet"
-            : notes.length === 1
-              ? "1 note"
-              : `${notes.length} notes`}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => void createNote()}>
-            <Plus className="mr-1 h-4 w-4" />
-            New
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => openNoteInJotPad()}
-          >
-            Open Jot Pad
-          </Button>
-        </div>
-      </div>
-
       {/* Notes list */}
       {isLoading ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-8 text-center text-sm text-[var(--muted)]">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
           Loading notes...
         </div>
       ) : notes.length === 0 ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-8 text-center">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center shadow-[var(--shadow-sm)]">
           <NotebookPen className="mx-auto h-8 w-8 text-[var(--muted)] opacity-50" />
           <p className="mt-3 text-sm font-medium text-[var(--text)]">
             Start your first note
@@ -522,21 +458,21 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
           </Button>
         </div>
       ) : (
-        <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]">
+        <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
           {visibleNotes.map((note) => (
             <NoteRow
               key={note.id}
               note={note}
-              onOpen={() => openNoteInJotPad(note.id)}
+              onOpen={() => void openNoteInJotPad(note.id)}
             />
           ))}
         </div>
       )}
 
-      {hasMore && (
+      {showAllJotPad && (
         <ShowMoreFooter
-          section="jot-pad"
-          label={`Show all ${sortedNotes.length} notes`}
+          label="Show all Jot Pad"
+          onClick={() => void openNoteInJotPad()}
         />
       )}
     </div>
@@ -553,6 +489,16 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <AppLanguageSelector descriptionMode="tooltip" grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title="Feature Toggles">
+        <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
+        <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
+        <AppAwareWriteProfilesToggle
+          descriptionMode="tooltip"
+          grouped={true}
+        />
+        <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
     </div>
   );

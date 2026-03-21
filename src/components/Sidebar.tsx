@@ -20,7 +20,6 @@ interface SidebarProps {
   items: SidebarItem[];
   collapsed: boolean;
   settingsActive: boolean;
-  viewLabel: string;
   onSectionChange: (id: string) => void;
   onSettingsClick: () => void;
 }
@@ -30,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   items,
   collapsed,
   settingsActive,
-  viewLabel,
   onSectionChange,
   onSettingsClick,
 }) => {
@@ -41,14 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div
         className={`flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-4" : "px-4 py-5"}`}
       >
-        {!collapsed && (
-          <div className="mb-4 px-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-              {viewLabel}
-            </p>
-          </div>
-        )}
-
         <nav
           aria-label={t("sidebar.settingsLabel", {
             defaultValue: "Section navigation",
@@ -89,7 +79,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   />
                   {!collapsed && (
-                    <span className="truncate text-[15px] font-semibold leading-6">
+                    <span
+                      className={`truncate text-[15px] font-bold leading-6 ${
+                        isActive
+                          ? "text-white"
+                          : "text-black dark:text-[var(--text)]"
+                      }`}
+                    >
                       {item.label}
                     </span>
                   )}
@@ -127,7 +123,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             />
             {!collapsed && (
-              <span className="truncate text-[15px] font-semibold leading-6">
+              <span
+                className={`truncate text-[15px] font-bold leading-6 ${
+                  settingsActive
+                    ? "text-white"
+                    : "text-black dark:text-[var(--text)]"
+                }`}
+              >
                 Settings
               </span>
             )}

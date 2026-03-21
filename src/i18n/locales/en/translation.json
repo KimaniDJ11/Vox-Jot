@@ -18,7 +18,7 @@
     "ollama": "LLM Models",
     "dataPrivacy": "Privacy & data",
     "experimental": "Labs",
-    "corrections": "Personal Dictionary",
+    "corrections": "Dictionary",
     "snippets": "Phrase keys",
     "styles": "Write profiles",
     "history": "History",
@@ -245,7 +245,7 @@
   },
   "settings": {
     "corrections": {
-      "title": "Personal Dictionary",
+      "title": "Dictionary",
       "description": "Manage the words, spellings, and learned corrections that shape how Vox Jot transcribes for you.",
       "tracking": {
         "label": "Correction Tracking",
@@ -651,7 +651,7 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Personal Dictionary",
+        "title": "Dictionary",
         "editor": {
           "title": "Preferred spellings",
           "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before final cleanup or paste."
@@ -775,6 +775,8 @@
     "history": {
       "title": "History",
       "openFolder": "Open Recordings Folder",
+      "showRecordingInFolder": "Show recording in folder",
+      "revealError": "Could not show recording: {{error}}",
       "loading": "Loading history...",
       "empty": "No transcriptions yet. Start recording to build your history!",
       "fieldObservation": {

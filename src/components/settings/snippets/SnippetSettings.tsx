@@ -13,8 +13,8 @@ import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
 import { Button } from "../../ui/Button";
 import { SettingsGroup } from "../../ui/SettingsGroup";
-import { ToggleSwitch } from "../../ui/ToggleSwitch";
 import { useSettings } from "../../../hooks/useSettings";
+import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
 
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
@@ -23,11 +23,16 @@ function generateId(): string {
   return `snippet_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export const SnippetSettings: React.FC = () => {
+interface SnippetSettingsProps {
+  showEnabledToggle?: boolean;
+}
+
+export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
+  showEnabledToggle = true,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
 
-  const snippetsEnabled = getSetting("snippets_enabled") ?? true;
   const snippets: Snippet[] = getSetting("snippets") ?? [];
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -169,17 +174,11 @@ export const SnippetSettings: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      <SettingsGroup title={t("settings.snippets.toggle.title")}>
-        <ToggleSwitch
-          checked={snippetsEnabled}
-          onChange={(enabled) => updateSetting("snippets_enabled", enabled)}
-          isUpdating={isUpdating("snippets_enabled")}
-          label={t("settings.snippets.toggle.label")}
-          description={t("settings.snippets.toggle.description")}
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-      </SettingsGroup>
+      {showEnabledToggle && (
+        <SettingsGroup title={t("settings.snippets.toggle.title")}>
+          <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
+        </SettingsGroup>
+      )}
 
       <section className="space-y-2">
         <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">

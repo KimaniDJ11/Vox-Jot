@@ -17,7 +17,7 @@
     "dataPrivacy": "Quyền riêng tư & dữ liệu",
     "experimental": "Phòng thử",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "Khóa cụm từ",
     "styles": "Hồ sơ viết",
     "history": "Lịch sử",
@@ -612,10 +612,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Từ điển cá nhân",
+        "title": "Dictionary",
         "editor": {
-          "title": "Cách viết ưu tiên",
-          "description": "Định nghĩa các cụm từ nói và dạng viết ưu tiên của chúng. Vox Jot áp dụng các thay thế này trước khi chạy Apple Intelligence."
+          "description": "Định nghĩa các cụm từ nói và dạng viết ưu tiên của chúng. Vox Jot áp dụng các thay thế này trước khi chạy Apple Intelligence.",
+          "title": "Chính tả ưu tiên"
         },
         "duplicateWarning": "Đã phát hiện cụm từ nói bị trùng. Mục khớp dài hơn hoặc có ưu tiên cao hơn sẽ được dùng.",
         "empty": "Chưa có mục nào trong từ điển cá nhân.",
@@ -760,7 +760,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "Hiện bản ghi trong thư mục",
+      "revealError": "Không thể hiển thị bản ghi: {{error}}"
     },
     "debug": {
       "title": "Gỡ lỗi",
@@ -864,7 +866,7 @@
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

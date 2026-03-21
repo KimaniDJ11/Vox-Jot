@@ -17,7 +17,7 @@
     "dataPrivacy": "الخصوصية والبيانات",
     "experimental": "المختبر",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "مفاتيح العبارات",
     "styles": "ملفات الكتابة",
     "history": "السجل",
@@ -546,10 +546,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Personal Dictionary",
+        "title": "Dictionary",
         "editor": {
-          "title": "Preferred spellings",
-          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs.",
+          "title": "التهجيات المفضلة"
         },
         "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
         "empty": "No personal dictionary entries yet.",
@@ -673,7 +673,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "إظهار التسجيل في المجلد",
+      "revealError": "تعذر عرض التسجيل: {{error}}"
     },
     "debug": {
       "title": "تصحيح الأخطاء",
@@ -864,7 +866,7 @@
       "noModelsMatch": "لا توجد نماذج مطابقة لهذا الفلتر."
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

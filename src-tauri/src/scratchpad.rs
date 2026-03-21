@@ -18,6 +18,7 @@ const SCRATCHPAD_MIN_HEIGHT: f64 = 300.0;
 pub struct ScratchpadRoutingState {
     editor_armed: Mutex<bool>,
     pending_insert: Mutex<bool>,
+    pending_note_target: Mutex<Option<i64>>,
 }
 
 impl ScratchpadRoutingState {
@@ -48,6 +49,20 @@ impl ScratchpadRoutingState {
         if let Ok(mut pending) = self.pending_insert.lock() {
             *pending = false;
         }
+    }
+
+    fn set_pending_note_target(&self, note_id: i64) {
+        if let Ok(mut pending) = self.pending_note_target.lock() {
+            *pending = Some(note_id);
+        }
+    }
+
+    fn consume_pending_note_target(&self) -> Option<i64> {
+        if let Ok(mut pending) = self.pending_note_target.lock() {
+            return pending.take();
+        }
+
+        None
     }
 }
 
@@ -240,4 +255,14 @@ pub fn consume_pending_insert_target(app: &AppHandle) -> bool {
 pub fn clear_pending_insert_target(app: &AppHandle) {
     let state = app.state::<ScratchpadRoutingState>();
     state.clear_pending_insert();
+}
+
+pub fn set_pending_note_target(app: &AppHandle, note_id: i64) {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.set_pending_note_target(note_id);
+}
+
+pub fn consume_pending_note_target(app: &AppHandle) -> Option<i64> {
+    let state = app.state::<ScratchpadRoutingState>();
+    state.consume_pending_note_target()
 }

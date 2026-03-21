@@ -17,7 +17,7 @@
     "dataPrivacy": "Confidentialité et données",
     "experimental": "Labo",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "Clés de phrase",
     "styles": "Profils d'écriture",
     "history": "Historique",
@@ -612,10 +612,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Dictionnaire personnel",
+        "title": "Dictionary",
         "editor": {
-          "title": "Orthographes préférées",
-          "description": "Définissez des expressions prononcées et leurs formes écrites préférées. Vox Jot applique ces remplacements avant d'exécuter Apple Intelligence."
+          "description": "Définissez des expressions prononcées et leurs formes écrites préférées. Vox Jot applique ces remplacements avant d'exécuter Apple Intelligence.",
+          "title": "Orthographes préférées"
         },
         "duplicateWarning": "Des expressions prononcées en double ont été détectées. La correspondance la plus longue ou la plus prioritaire sera utilisée.",
         "empty": "Aucune entrée dans le dictionnaire personnel pour le moment.",
@@ -760,7 +760,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "Afficher l’enregistrement dans le dossier",
+      "revealError": "Impossible d’afficher l’enregistrement : {{error}}"
     },
     "debug": {
       "title": "Débogage",
@@ -864,7 +866,7 @@
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

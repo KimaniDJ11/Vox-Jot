@@ -61,6 +61,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
 use crate::settings::get_settings;
+use crate::detail_view::DetailViewRoutingState;
 use crate::scratchpad::ScratchpadRoutingState;
 use crate::tts::TtsManager;
 
@@ -196,6 +197,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(notes_manager.clone());
     app_handle.manage(tts_manager.clone());
     app_handle.manage(ScratchpadRoutingState::default());
+    app_handle.manage(DetailViewRoutingState::default());
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -497,6 +499,7 @@ pub fn run(cli_args: CliArgs) {
         commands::history::get_history_entries,
         commands::history::toggle_history_entry_saved,
         commands::history::get_audio_file_path,
+        commands::history::reveal_history_recording_in_folder,
         commands::history::delete_history_entry,
         commands::history::update_history_limit,
         commands::history::update_recording_retention_period,
@@ -517,8 +520,10 @@ pub fn run(cli_args: CliArgs) {
         commands::notes::export_notes,
         commands::notes::delete_all_notes,
         commands::notes::show_scratchpad,
+        commands::notes::show_scratchpad_for_note,
         commands::notes::toggle_scratchpad,
         commands::notes::set_scratchpad_editor_armed,
+        commands::notes::consume_scratchpad_target_note,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
         commands::corrections::update_correction,
@@ -529,6 +534,7 @@ pub fn run(cli_args: CliArgs) {
         commands::corrections::add_manual_correction,
         commands::stats::get_dictation_stats,
         commands::show_detail_view,
+        commands::get_detail_target_section,
     ]);
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite

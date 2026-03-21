@@ -10,6 +10,7 @@ import { useNotesStore } from "./notesStore";
 
 const AUTO_SAVE_DELAY = 2000;
 const SCRATCHPAD_INSERT_EVENT = "scratchpad-insert-text";
+const SCRATCHPAD_SELECT_NOTE_EVENT = "scratchpad-select-note";
 
 function insertAtSelection(
   currentValue: string,
@@ -63,7 +64,14 @@ const ScratchpadApp: React.FC = () => {
 
   // Initialize on mount
   useEffect(() => {
-    initialize();
+    void (async () => {
+      await initialize();
+
+      const result = await commands.consumeScratchpadTargetNote();
+      if (result.status === "ok" && result.data !== null) {
+        setActiveNote(result.data);
+      }
+    })();
   }, [initialize]);
 
   // Listen for backend notes-updated events
@@ -293,6 +301,23 @@ const ScratchpadApp: React.FC = () => {
       unlisten.then((fn) => fn());
     };
   }, [handleScratchpadInsert]);
+
+  useEffect(() => {
+    const unlisten = listen<number>(SCRATCHPAD_SELECT_NOTE_EVENT, (event) => {
+      const noteId = Number(event.payload);
+      if (!Number.isFinite(noteId)) {
+        return;
+      }
+
+      saveNow();
+      void setEditorArmed(false);
+      setActiveNote(noteId);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [saveNow, setActiveNote, setEditorArmed]);
 
   const handleCreateNote = async () => {
     // Flush any pending save before creating

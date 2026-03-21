@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
-import { Button } from "../../ui/Button";
 import {
   Copy,
   Star,
@@ -23,33 +22,48 @@ import {
   type FieldSnapshotStatus,
   type HistoryEntry,
 } from "@/bindings";
-import { formatDateTime } from "@/utils/dateFormat";
+import { formatDate, formatTime } from "@/utils/dateFormat";
 import { useOsType } from "@/hooks/useOsType";
 
-interface OpenRecordingsButtonProps {
-  onClick: () => void;
-  label: string;
-}
+const getHistoryDateKey = (timestamp: number): string => {
+  const date = new Date(timestamp * 1000);
 
-const OpenRecordingsButton: React.FC<OpenRecordingsButtonProps> = ({
-  onClick,
-  label,
-}) => (
-  <Button
-    type="button"
-    onClick={onClick}
-    variant="ghost"
-    size="sm"
-    className="p-1.5 text-text/50 hover:text-logo-primary"
-    title={label}
-    aria-label={label}
-  >
-    <FolderOpen className="h-4 w-4 shrink-0" aria-hidden />
-  </Button>
-);
+  if (Number.isNaN(date.getTime())) {
+    return String(timestamp);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const isSameLocalDay = (left: Date, right: Date): boolean =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const formatHistoryGroupLabel = (
+  timestamp: number,
+  locale: string,
+  todayLabel: string,
+): string => {
+  const date = new Date(timestamp * 1000);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(timestamp);
+  }
+
+  if (isSameLocalDay(date, new Date())) {
+    return todayLabel;
+  }
+
+  return formatDate(String(timestamp), locale);
+};
 
 export const HistorySettings: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,13 +208,20 @@ export const HistorySettings: React.FC = () => {
     }
   };
 
-  const openRecordingsFolder = async () => {
-    try {
-      await commands.openRecordingsFolder();
-    } catch (error) {
-      console.error("Failed to open recordings folder:", error);
-    }
-  };
+  const revealRecordingInFolder = useCallback(
+    async (fileName: string) => {
+      const result = await commands.revealHistoryRecordingInFolder(fileName);
+      if (result.status !== "ok") {
+        toast.error(
+          t("settings.history.revealError", {
+            defaultValue: "Could not show recording: {{error}}",
+            error: result.error,
+          }),
+        );
+      }
+    },
+    [t],
+  );
 
   const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {
@@ -209,27 +230,65 @@ export const HistorySettings: React.FC = () => {
       );
     }
 
-    return (
-      <div className="divide-y divide-mid-gray/20" data-testid="history-entries">
-        {entries.map((entry) => {
-          const fallbackText = entry.transcription_text;
-          const displayText =
-            entry.pasted_text?.trim() ||
-            entry.post_processed_text?.trim() ||
-            fallbackText;
+    const sortedEntries = [...entries].sort((left, right) => {
+      return right.timestamp - left.timestamp;
+    });
+    const todayLabel = t("settings.history.today", {
+      defaultValue: "Today",
+    });
+    const groupedEntries = sortedEntries.reduce<
+      Array<{ key: string; label: string; entries: HistoryEntry[] }>
+    >((groups, entry) => {
+      const key = getHistoryDateKey(entry.timestamp);
+      const lastGroup = groups[groups.length - 1];
 
-          return (
-            <HistoryEntryComponent
-              key={entry.id}
-              entry={entry}
-              displayText={displayText}
-              onToggleSaved={() => toggleSaved(entry.id)}
-              onCopyText={() => copyToClipboard(displayText)}
-              getAudioUrl={getAudioUrl}
-              deleteAudio={deleteAudioEntry}
-            />
-          );
-        })}
+      if (lastGroup?.key === key) {
+        lastGroup.entries.push(entry);
+        return groups;
+      }
+
+      groups.push({
+        key,
+        label: formatHistoryGroupLabel(entry.timestamp, i18n.language, todayLabel),
+        entries: [entry],
+      });
+
+      return groups;
+    }, []);
+
+    return (
+      <div className="space-y-5 px-4 py-4" data-testid="history-entries">
+        {groupedEntries.map((group) => (
+          <section key={group.key} className="space-y-2.5">
+            <p className="px-1 text-sm font-bold uppercase tracking-[0.2em] text-[var(--text)]">
+              {group.label}
+            </p>
+            <div className="flat-card overflow-hidden rounded-[22px] divide-y divide-mid-gray/20">
+              {group.entries.map((entry) => {
+                const fallbackText = entry.transcription_text;
+                const displayText =
+                  entry.pasted_text?.trim() ||
+                  entry.post_processed_text?.trim() ||
+                  fallbackText;
+
+                return (
+                  <HistoryEntryComponent
+                    key={entry.id}
+                    entry={entry}
+                    displayText={displayText}
+                    onToggleSaved={() => toggleSaved(entry.id)}
+                    onCopyText={() => copyToClipboard(displayText)}
+                    onRevealInFolder={() =>
+                      void revealRecordingInFolder(entry.file_name)
+                    }
+                    getAudioUrl={getAudioUrl}
+                    deleteAudio={deleteAudioEntry}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     );
   };
@@ -237,44 +296,16 @@ export const HistorySettings: React.FC = () => {
   if (loading) {
     return (
       <div className="w-full space-y-6">
-        <div className="space-y-2">
-          <div className="px-5 flex items-center justify-between">
-            <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)]">
-              {t("settings.history.title")}
-            </h2>
-            <OpenRecordingsButton
-              onClick={openRecordingsFolder}
-              label={t("settings.history.openFolder")}
-            />
-          </div>
-          <div className="flat-card overflow-visible">
-            <div className="px-4 py-3 text-center text-text/60">
-              {t("settings.history.loading")}
-            </div>
+        <div className="flat-card overflow-visible">
+          <div className="px-4 py-3 text-center text-text/60">
+            {t("settings.history.loading")}
           </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="w-full space-y-6">
-      <div className="space-y-2">
-        <div className="px-5 flex items-center justify-between">
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)]">
-            {t("settings.history.title")}
-          </h2>
-          <OpenRecordingsButton
-            onClick={openRecordingsFolder}
-            label={t("settings.history.openFolder")}
-          />
-        </div>
-        <div className="flat-card overflow-visible">
-          {renderEntries(historyEntries, t("settings.history.empty"))}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="w-full">{renderEntries(historyEntries, t("settings.history.empty"))}</div>;
 };
 
 interface HistoryEntryProps {
@@ -282,14 +313,19 @@ interface HistoryEntryProps {
   displayText: string;
   onToggleSaved: () => void;
   onCopyText: () => void;
+  onRevealInFolder: () => void;
   getAudioUrl: (fileName: string) => Promise<string | null>;
   deleteAudio: (id: number) => Promise<void>;
 }
 
 const sectionLabelClassName =
-  "text-[11px] font-semibold uppercase tracking-[0.16em] text-text/55";
+  "text-[11px] font-bold uppercase tracking-[0.16em] text-text/55";
 const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[color-mix(in_srgb,var(--background),white_2%)] px-3 py-3";
+
+/** Time + main transcript line: same font, size, and line-height for alignment. */
+const historyEntryPrimaryLineClass =
+  "font-[var(--font-body)] text-base font-normal leading-6 text-black dark:text-[var(--text)]";
 
 const HistoryDetailSection: React.FC<{
   title: string;
@@ -323,6 +359,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   displayText,
   onToggleSaved,
   onCopyText,
+  onRevealInFolder,
   getAudioUrl,
   deleteAudio,
 }) => {
@@ -352,7 +389,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     }
   };
 
-  const formattedDate = formatDateTime(String(entry.timestamp), i18n.language);
+  const formattedTime = formatTime(String(entry.timestamp), i18n.language);
   const rawText = entry.transcription_text.trim();
   const polishedText = entry.post_processed_text?.trim() || "";
   const insertedText = entry.pasted_text?.trim() || "";
@@ -392,159 +429,193 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             });
 
   return (
-    <div className="px-4 py-3 flex flex-col gap-2.5">
-      {/* Header: date + actions */}
-      <div className="flex justify-between items-center">
-        <p className="text-sm font-semibold">{formattedDate}</p>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleCopyText}
-            className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
-            title={t("settings.history.copyToClipboard")}
-            aria-label={t("settings.history.copyToClipboard")}
-          >
-            {showCopied ? (
-              <Check width={14} height={14} />
-            ) : (
-              <Copy width={14} height={14} />
-            )}
-          </button>
-          <button
-            onClick={onToggleSaved}
-            className={`p-1 transition-colors cursor-pointer ${
-              entry.saved
-                ? "text-logo-primary hover:text-logo-primary/80"
-                : "text-text/50 hover:text-logo-primary"
-            }`}
-            title={
-              entry.saved
-                ? t("settings.history.unsave")
-                : t("settings.history.save")
-            }
-            aria-label={
-              entry.saved
-                ? t("settings.history.unsave")
-                : t("settings.history.save")
-            }
-          >
-            <Star
-              width={14}
-              height={14}
-              fill={entry.saved ? "currentColor" : "none"}
-            />
-          </button>
-          {showDeleteConfirm ? (
-            <div className="flex items-center gap-1 rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-0.5">
-              <span className="text-xs text-[var(--danger)]">
-                {t("common.delete")}?
-              </span>
-              <button
-                onClick={() => void handleDeleteEntry()}
-                className="text-[var(--danger)] hover:text-red-700 transition-colors cursor-pointer p-0.5"
-                aria-label={t("settings.history.delete")}
-              >
-                <Check width={14} height={14} />
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-text/50 hover:text-text transition-colors cursor-pointer p-0.5"
-                aria-label={t("common.cancel")}
-              >
-                <X width={14} height={14} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer p-1"
-              title={t("settings.history.delete")}
-              aria-label={t("settings.history.delete")}
-            >
-              <Trash2 width={14} height={14} />
-            </button>
-          )}
-        </div>
+    <div className="grid grid-cols-[5.75rem_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2.5 px-4 py-4">
+      <div className={`min-w-0 ${historyEntryPrimaryLineClass}`}>
+        {formattedTime}
       </div>
 
-      {/* Display text */}
-      <p className="text-sm text-text/95 select-text cursor-text leading-relaxed">
+      <p
+        className={`m-0 min-w-0 cursor-text select-text ${historyEntryPrimaryLineClass}`}
+      >
         {displayText}
       </p>
 
-      {/* Audio player */}
-      <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
+      <div className="col-start-2 flex flex-wrap items-center justify-between gap-2">
+        <AudioPlayer
+          onLoadRequest={handleLoadAudio}
+          className="min-w-0 flex-1 sm:min-w-[220px]"
+        />
 
-      {/* Compact detail badges */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
-          {postProcessApplied
-            ? t("settings.history.badges.postProcessOn", { defaultValue: "Post process on" })
-            : t("settings.history.badges.postProcessOff", { defaultValue: "Raw transcript" })}
-        </span>
-        {dictionaryApplied && (
-          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
-            {t("settings.history.badges.dictionaryOn", { defaultValue: "Dictionary applied" })}
-          </span>
-        )}
-        <span
-          className={`rounded-full border px-2 py-0.5 text-[10px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
-        >
-          {fieldStatusLabel}
-        </span>
+        <div className="flex items-center gap-1">
+            <button
+              onClick={handleCopyText}
+              className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
+              title={t("settings.history.copyToClipboard")}
+              aria-label={t("settings.history.copyToClipboard")}
+            >
+              {showCopied ? (
+                <Check width={14} height={14} />
+              ) : (
+                <Copy width={14} height={14} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onRevealInFolder}
+              className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
+              title={t("settings.history.showRecordingInFolder")}
+              aria-label={t("settings.history.showRecordingInFolder")}
+            >
+              <FolderOpen width={14} height={14} aria-hidden />
+            </button>
+            <button
+              onClick={onToggleSaved}
+              className={`p-1 transition-colors cursor-pointer ${
+                entry.saved
+                  ? "text-logo-primary hover:text-logo-primary/80"
+                  : "text-text/50 hover:text-logo-primary"
+              }`}
+              title={
+                entry.saved
+                  ? t("settings.history.unsave")
+                  : t("settings.history.save")
+              }
+              aria-label={
+                entry.saved
+                  ? t("settings.history.unsave")
+                  : t("settings.history.save")
+              }
+            >
+              <Star
+                width={14}
+                height={14}
+                fill={entry.saved ? "currentColor" : "none"}
+              />
+            </button>
+            {showDeleteConfirm ? (
+              <div className="flex items-center gap-1 rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-0.5">
+                <span className="text-xs text-[var(--danger)]">
+                  {t("common.delete")}?
+                </span>
+                <button
+                  onClick={() => void handleDeleteEntry()}
+                  className="text-[var(--danger)] hover:text-red-700 transition-colors cursor-pointer p-0.5"
+                  aria-label={t("settings.history.delete")}
+                >
+                  <Check width={14} height={14} />
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-text/50 hover:text-text transition-colors cursor-pointer p-0.5"
+                  aria-label={t("common.cancel")}
+                >
+                  <X width={14} height={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer p-1"
+                title={t("settings.history.delete")}
+                aria-label={t("settings.history.delete")}
+              >
+                <Trash2 width={14} height={14} />
+              </button>
+            )}
+          </div>
       </div>
 
-      {/* Conditional detail sections — only show when there's data */}
-      {(postProcessApplied || dictionaryApplied || (fieldCheckChanged && observedText)) && (
-        <div className="grid gap-2 lg:grid-cols-2 mt-1">
-          {rawText !== displayText && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.text", { defaultValue: "Transcribed text" })}
-              icon={<Type className="h-3.5 w-3.5" />}
-            >
-              <p className="text-xs text-text/80 italic select-text cursor-text">
-                {rawText}
-              </p>
-            </HistoryDetailSection>
-          )}
-
-          {postProcessApplied && polishedText !== displayText && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.postProcess", { defaultValue: "Post process" })}
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-            >
-              <p className="text-xs text-text/80 select-text cursor-text">
-                {polishedText}
-              </p>
-            </HistoryDetailSection>
-          )}
-
+      <div className="col-start-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+            {postProcessApplied
+              ? t("settings.history.badges.postProcessOn", {
+                  defaultValue: "Post process on",
+                })
+              : t("settings.history.badges.postProcessOff", {
+                  defaultValue: "Raw transcript",
+                })}
+          </span>
           {dictionaryApplied && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.dictionary", { defaultValue: "Dictionary" })}
-              icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            >
-              <p className="text-xs text-text/80 select-text cursor-text">
-                {entry.dictionary_hits.join(", ")}
-              </p>
-            </HistoryDetailSection>
+            <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+              {t("settings.history.badges.dictionaryOn", {
+                defaultValue: "Dictionary applied",
+              })}
+            </span>
           )}
+          <span
+            className={`rounded-full border px-2 py-0.5 text-[10px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
+          >
+            {fieldStatusLabel}
+          </span>
+      </div>
 
-          {fieldCheckChanged && observedText && (
-            <HistoryDetailSection
-              title={t("settings.history.fieldObservation.title", { defaultValue: "Text field check" })}
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-            >
-              <div className="flex items-start gap-2 text-xs text-text/80 select-text cursor-text overflow-hidden">
-                <span className="font-mono break-words min-w-0 max-w-[45%]" title={pastedText}>
-                  {pastedText}
-                </span>
-                <ArrowRight className="w-3 h-3 text-text/50 shrink-0 mt-0.5" />
-                <span className="font-mono break-words min-w-0 flex-1" title={observedText}>
-                  {observedText}
-                </span>
-              </div>
-            </HistoryDetailSection>
-          )}
+      {(postProcessApplied ||
+        dictionaryApplied ||
+        (fieldCheckChanged && observedText)) && (
+        <div className="col-start-2 mt-1 grid gap-2 lg:grid-cols-2">
+            {rawText !== displayText && (
+              <HistoryDetailSection
+                title={t("settings.history.sections.text", {
+                  defaultValue: "Transcribed text",
+                })}
+                icon={<Type className="h-3.5 w-3.5" />}
+              >
+                <p className="text-xs text-text/80 italic select-text cursor-text">
+                  {rawText}
+                </p>
+              </HistoryDetailSection>
+            )}
+
+            {postProcessApplied && polishedText !== displayText && (
+              <HistoryDetailSection
+                title={t("settings.history.sections.postProcess", {
+                  defaultValue: "Post process",
+                })}
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+              >
+                <p className="text-xs text-text/80 select-text cursor-text">
+                  {polishedText}
+                </p>
+              </HistoryDetailSection>
+            )}
+
+            {dictionaryApplied && (
+              <HistoryDetailSection
+                title={t("settings.history.sections.dictionary", {
+                  defaultValue: "Dictionary",
+                })}
+                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+              >
+                <p className="text-xs text-text/80 select-text cursor-text">
+                  {entry.dictionary_hits.join(", ")}
+                </p>
+              </HistoryDetailSection>
+            )}
+
+            {fieldCheckChanged && observedText && (
+              <HistoryDetailSection
+                title={t("settings.history.fieldObservation.title", {
+                  defaultValue: "Text field check",
+                })}
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+              >
+                <div className="flex items-start gap-2 overflow-hidden text-xs text-text/80 select-text cursor-text">
+                  <span
+                    className="min-w-0 max-w-[45%] break-words font-mono"
+                    title={pastedText}
+                  >
+                    {pastedText}
+                  </span>
+                  <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-text/50" />
+                  <span
+                    className="min-w-0 flex-1 break-words font-mono"
+                    title={observedText}
+                  >
+                    {observedText}
+                  </span>
+                </div>
+              </HistoryDetailSection>
+            )}
         </div>
       )}
     </div>

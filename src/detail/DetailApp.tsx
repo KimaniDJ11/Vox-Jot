@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { commands } from "@/bindings";
 import {
-  CorrectionsSection,
   DictateHistorySection,
   DictateModelsSection,
   JotPadSection,
+  LearnedCorrectionsSection,
   RefineModelsSection,
   RefinePhraseKeysSection,
   RefineProfilesSection,
@@ -34,7 +35,11 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   },
   corrections: {
     title: "Learned Corrections",
-    component: () => <CorrectionsSection capped={false} />,
+    component: () => <LearnedCorrectionsSection />,
+  },
+  "learned-corrections": {
+    title: "Learned Corrections",
+    component: () => <LearnedCorrectionsSection />,
   },
   "jot-pad": {
     title: "Jot Pad",
@@ -57,6 +62,13 @@ const DetailApp: React.FC = () => {
   const [sectionId, setSectionId] = useState(getSectionFromUrl);
 
   useEffect(() => {
+    void (async () => {
+      const result = await commands.getDetailTargetSection();
+      if (result.status === "ok" && result.data && SECTION_MAP[result.data]) {
+        setSectionId(result.data);
+      }
+    })();
+
     // Listen for backend-driven section changes
     const unlisten = listen<string>("detail-navigate", (event) => {
       if (event.payload && SECTION_MAP[event.payload]) {
@@ -68,6 +80,11 @@ const DetailApp: React.FC = () => {
       unlisten.then((fn) => fn());
     };
   }, []);
+
+  useEffect(() => {
+    // Listen for backend-driven section changes
+    window.history.replaceState(null, "", `?section=${encodeURIComponent(sectionId)}`);
+  }, [sectionId]);
 
   const entry = SECTION_MAP[sectionId];
 
@@ -89,7 +106,7 @@ const DetailApp: React.FC = () => {
         data-tauri-drag-region=""
       >
         <h1
-          className="text-sm font-semibold text-[var(--text)] pl-16"
+          className="text-sm font-bold text-[var(--text)] pl-16"
           data-tauri-drag-region=""
         >
           {entry.title}

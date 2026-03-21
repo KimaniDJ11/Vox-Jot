@@ -119,6 +119,12 @@ pub fn show_detail_view(app: AppHandle, section: String) -> Result<(), String> {
     Ok(())
 }
 
+#[specta::specta]
+#[tauri::command]
+pub fn get_detail_target_section(app: AppHandle) -> Result<Option<String>, String> {
+    Ok(crate::detail_view::get_detail_target_section(&app))
+}
+
 /// Check if Apple Intelligence is available on this device.
 /// Called by the frontend when the user selects Apple Intelligence provider.
 #[specta::specta]

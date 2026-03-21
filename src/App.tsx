@@ -84,7 +84,6 @@ type PostProcessPreviewRequest = {
 
 type ViewSection = SidebarItem & {
   title: string;
-  description: string;
   content: React.ReactNode;
 };
 
@@ -95,22 +94,18 @@ const AppContentSection = React.forwardRef<
   {
     id: string;
     title: string;
-    description: string;
     children: React.ReactNode;
   }
->(({ id, title, description, children }, ref) => (
+>(({ id, title, children }, ref) => (
   <section
     id={id}
     ref={ref}
     className="scroll-mt-24 space-y-5 border-b border-[var(--border)]/80 pb-8 last:border-b-0 last:pb-0"
   >
-    <div className="space-y-2 px-1">
-      <h2 className="text-[13px] font-bold uppercase tracking-[0.24em] text-[var(--muted)]">
+    <div className="px-1">
+      <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-black dark:text-[var(--text)]">
         {title}
       </h2>
-      <p className="max-w-2xl text-sm leading-7 text-[var(--muted)]">
-        {description}
-      </p>
     </div>
     {children}
   </section>
@@ -229,6 +224,7 @@ function App() {
   const modalRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const lastAlignedRootViewRef = useRef<RootView | null>(null);
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
   );
@@ -282,18 +278,21 @@ function App() {
           id: "history",
           label: "History",
           icon: History,
-          title: "History & Recordings",
-          description:
-            "Review previous dictations, pasted results, and the recordings behind them.",
+          title: "History",
           content: <DictateHistorySection />,
+        },
+        {
+          id: "corrections",
+          label: "Dictionary",
+          icon: SpellCheck,
+          title: "Dictionary",
+          content: <CorrectionsSection />,
         },
         {
           id: "jot-pad",
           label: "Jot Pad",
           icon: NotebookPen,
           title: "Jot Pad",
-          description:
-            "Collect thoughts, keep notes handy, and dictate into a scratch space.",
           content: <JotPadSection />,
         },
         {
@@ -301,8 +300,6 @@ function App() {
           label: "Models",
           icon: Cpu,
           title: "Models",
-          description:
-            "Choose the speech model and spoken language Vox Jot should use for live dictation.",
           content: <DictateModelsSection />,
         },
       ],
@@ -312,8 +309,6 @@ function App() {
           label: "Phrase Keys",
           icon: WholeWord,
           title: "Phrase Keys",
-          description:
-            "Manage your reusable snippet triggers so refined text can expand quickly into full phrases.",
           content: <RefinePhraseKeysSection />,
         },
         {
@@ -321,8 +316,6 @@ function App() {
           label: "Write Profiles",
           icon: WandSparkles,
           title: "Write Profiles",
-          description:
-            "Shape tone and cleanup behavior for chat, notes, email, and other apps you use every day.",
           content: <RefineProfilesSection />,
         },
         {
@@ -330,8 +323,6 @@ function App() {
           label: "Translation",
           icon: Languages,
           title: "Translation",
-          description:
-            "Control translation behavior for refined dictation and selected text actions.",
           content: <RefineTranslationSection />,
         },
         {
@@ -339,8 +330,6 @@ function App() {
           label: "Models",
           icon: Cpu,
           title: "Models",
-          description:
-            "See which cleanup model is active and manage local refine engines like Ollama.",
           content: <RefineModelsSection />,
         },
       ],
@@ -350,8 +339,6 @@ function App() {
           label: "Voice & Engine",
           icon: Volume2,
           title: "Voice & Engine",
-          description:
-            "Choose the voice, playback engine, and platform speech route Vox Jot should use.",
           content: (
             <ListenVoiceEngineSection
               onNavigateToSection={handleWorkflowSectionNavigate}
@@ -363,8 +350,6 @@ function App() {
           label: "Auto Readback",
           icon: Play,
           title: "Auto Readback",
-          description:
-            "Control when Vox Jot speaks automatically and what it reads aloud.",
           content: <ListenAutoReadbackSection />,
         },
         {
@@ -372,8 +357,6 @@ function App() {
           label: "Playback Device",
           icon: SlidersHorizontal,
           title: "Playback Device",
-          description:
-            "Pick where voice previews and speech output should play.",
           content: <ListenPlaybackDeviceSection />,
         },
       ],
@@ -383,8 +366,6 @@ function App() {
           label: "General",
           icon: AppWindow,
           title: "General",
-          description:
-            "Global app behavior, launch settings, language, updates, and model lifecycle options.",
           content: <GeneralAppSettingsSection />,
         },
         {
@@ -392,8 +373,6 @@ function App() {
           label: "Shortcuts",
           icon: Keyboard,
           title: "Shortcuts",
-          description:
-            "Configure the keyboard triggers for dictation, rewrite, translation, speech, and cancel actions.",
           content: <ShortcutsSettingsSection />,
         },
         {
@@ -401,8 +380,6 @@ function App() {
           label: "Recording & Devices",
           icon: Volume2,
           title: "Recording & Devices",
-          description:
-            "Set microphones, recording cues, overlays, filler-word cleanup, and playback device behavior.",
           content: <RecordingDevicesSettingsSection />,
         },
         {
@@ -410,8 +387,6 @@ function App() {
           label: "Output & Paste",
           icon: SlidersHorizontal,
           title: "Output & Paste",
-          description:
-            "Control how Vox Jot inserts text, submits forms, and works with clipboard or direct typing tools.",
           content: <OutputPasteSettingsSection />,
         },
         {
@@ -419,17 +394,13 @@ function App() {
           label: "AI Setup",
           icon: Cpu,
           title: "AI Setup",
-          description:
-            "Manage cleanup providers, prompt setup, translation overrides, file transcription, and local AI engines.",
           content: <AISetupSettingsSection />,
         },
         {
           id: "corrections",
-          label: "Corrections",
+          label: "Dictionary",
           icon: SpellCheck,
-          title: "Personal Dictionary",
-          description:
-            "Review learned corrections, preferred spellings, and recognition boosts so Vox Jot adapts to the way you write and speak.",
+          title: "Dictionary",
           content: <CorrectionsSection />,
         },
         {
@@ -437,8 +408,6 @@ function App() {
           label: "Privacy & Storage",
           icon: Shield,
           title: "Privacy & Storage",
-          description:
-            "Choose local-only behavior, history retention, recording storage limits, and data locations.",
           content: <PrivacyStorageSettingsSection />,
         },
         {
@@ -446,8 +415,6 @@ function App() {
           label: "Diagnostics",
           icon: FlaskConical,
           title: "Diagnostics",
-          description:
-            "Experimental controls, keyboard internals, route debugging, and log verbosity live here.",
           content: <DiagnosticsSettingsSection />,
         },
         {
@@ -455,8 +422,6 @@ function App() {
           label: "About",
           icon: Info,
           title: "About",
-          description:
-            "Version information and acknowledgments for the tech that powers Vox Jot.",
           content: <AboutSection />,
         },
       ],
@@ -465,10 +430,6 @@ function App() {
   );
 
   const activeSections = sectionsByView[activeRootView];
-  const sidebarViewLabel =
-    activeRootView === "settings"
-      ? "Settings"
-      : `${activeMode.charAt(0).toUpperCase()}${activeMode.slice(1)}`;
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -607,11 +568,19 @@ function App() {
 
   useEffect(() => {
     const firstSectionId = activeSections[0]?.id || "";
-    const nextSectionId =
+    const hasPendingSectionJump = Boolean(
       pendingSectionJump &&
-      activeSections.some((section) => section.id === pendingSectionJump)
-        ? pendingSectionJump
-        : firstSectionId;
+        activeSections.some((section) => section.id === pendingSectionJump),
+    );
+    const rootViewChanged = lastAlignedRootViewRef.current !== activeRootView;
+
+    if (!hasPendingSectionJump && !rootViewChanged) {
+      return;
+    }
+
+    const nextSectionId = hasPendingSectionJump
+      ? (pendingSectionJump as string)
+      : firstSectionId;
 
     setActiveSectionId(nextSectionId);
 
@@ -625,7 +594,11 @@ function App() {
         container?.scrollTo({ top: 0, behavior: "auto" });
       }
     });
-    setPendingSectionJump(null);
+
+    lastAlignedRootViewRef.current = activeRootView;
+    if (pendingSectionJump !== null) {
+      setPendingSectionJump(null);
+    }
   }, [activeRootView, activeSections, pendingSectionJump]);
 
   useEffect(() => {
@@ -972,7 +945,6 @@ function App() {
         items={activeSections}
         collapsed={sidebarCollapsed}
         settingsActive={activeRootView === "settings"}
-        viewLabel={sidebarViewLabel}
         onSectionChange={handleSectionJump}
         onSettingsClick={handleSettingsOpen}
       />
@@ -988,7 +960,6 @@ function App() {
                 id={section.id}
                 ref={setSectionRef(section.id)}
                 title={section.title}
-                description={section.description}
               >
                 <DeferredSectionBody
                   immediate={index === 0 || activeSectionId === section.id}

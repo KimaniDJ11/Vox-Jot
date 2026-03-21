@@ -1,4 +1,5 @@
 use log::{debug, error};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(not(target_os = "macos"))]
@@ -13,6 +14,26 @@ const DETAIL_WIDTH: f64 = 560.0;
 const DETAIL_HEIGHT: f64 = 640.0;
 const DETAIL_MIN_WIDTH: f64 = 400.0;
 const DETAIL_MIN_HEIGHT: f64 = 400.0;
+
+#[derive(Default)]
+pub struct DetailViewRoutingState {
+    target_section: Mutex<Option<String>>,
+}
+
+impl DetailViewRoutingState {
+    fn set_target_section(&self, section: &str) {
+        if let Ok(mut target) = self.target_section.lock() {
+            *target = Some(section.to_string());
+        }
+    }
+
+    fn get_target_section(&self) -> Option<String> {
+        self.target_section
+            .lock()
+            .ok()
+            .and_then(|target| target.clone())
+    }
+}
 
 #[cfg(target_os = "macos")]
 tauri_panel! {
@@ -158,6 +179,9 @@ fn create_detail_window(app: &AppHandle, section: &str) {
 /// Show the detail view window for a given section.
 /// If the window already exists, it emits an event to switch sections and shows it.
 pub fn show_detail_view(app: &AppHandle, section: &str) {
+    let state = app.state::<DetailViewRoutingState>();
+    state.set_target_section(section);
+
     if let Some(window) = app.get_webview_window(DETAIL_LABEL) {
         emit_section(app, section);
         let _ = window.unminimize();
@@ -168,4 +192,9 @@ pub fn show_detail_view(app: &AppHandle, section: &str) {
     }
 
     create_detail_window(app, section);
+}
+
+pub fn get_detail_target_section(app: &AppHandle) -> Option<String> {
+    let state = app.state::<DetailViewRoutingState>();
+    state.get_target_section()
 }

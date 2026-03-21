@@ -17,7 +17,7 @@
     "dataPrivacy": "Privacidad y datos",
     "experimental": "Laboratorio",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "Claves de frase",
     "styles": "Perfiles de escritura",
     "history": "Historial",
@@ -612,10 +612,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Diccionario personal",
+        "title": "Dictionary",
         "editor": {
-          "title": "Ortografías preferidas",
-          "description": "Define frases habladas y sus formas escritas preferidas. Vox Jot aplica estos reemplazos antes de ejecutar Apple Intelligence."
+          "description": "Define frases habladas y sus formas escritas preferidas. Vox Jot aplica estos reemplazos antes de ejecutar Apple Intelligence.",
+          "title": "Ortografías preferidas"
         },
         "duplicateWarning": "Se detectaron frases habladas duplicadas. Ganará la coincidencia más larga o de mayor prioridad.",
         "empty": "Aún no hay entradas en el diccionario personal.",
@@ -760,7 +760,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "Mostrar grabación en la carpeta",
+      "revealError": "No se pudo mostrar la grabación: {{error}}"
     },
     "debug": {
       "title": "Depuración",
@@ -864,7 +866,7 @@
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

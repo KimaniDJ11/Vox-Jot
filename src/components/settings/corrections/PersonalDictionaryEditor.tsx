@@ -56,7 +56,9 @@ export const PersonalDictionaryEditor: React.FC<
 
   return (
     <SettingContainer
-      title={t("settings.postProcessing.dictionary.editor.title")}
+      title={t("settings.postProcessing.dictionary.editor.title", {
+        defaultValue: "Preferred spellings",
+      })}
       description={t("settings.postProcessing.dictionary.editor.description")}
       descriptionMode="tooltip"
       layout="stacked"

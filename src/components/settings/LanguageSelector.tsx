@@ -109,7 +109,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            className={`px-2 py-1 text-sm font-semibold bg-mid-gray/10 border border-mid-gray/80 rounded min-w-[200px] text-start flex items-center justify-between transition-all duration-150 ${
+            className={`flex min-w-[200px] items-center justify-between rounded-lg border border-mid-gray/80 bg-mid-gray/10 px-2 py-1 text-start text-sm font-semibold transition-all duration-150 ${
               isUpdating("selected_language")
                 ? "opacity-50 cursor-not-allowed"
                 : "hover:bg-logo-primary/10 cursor-pointer hover:border-logo-primary"
@@ -136,7 +136,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
           </button>
 
           {isOpen && !isUpdating("selected_language") && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-mid-gray/80 rounded shadow-lg z-50 max-h-60 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-hidden rounded border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
               {/* Search input */}
               <div className="p-2 border-b border-mid-gray/80">
                 <input

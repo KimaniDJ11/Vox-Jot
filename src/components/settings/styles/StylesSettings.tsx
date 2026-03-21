@@ -18,8 +18,12 @@ import { Dropdown } from "../../ui/Dropdown";
 import { Input } from "../../ui/Input";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { Textarea } from "../../ui/Textarea";
-import { ToggleSwitch } from "../../ui/ToggleSwitch";
 import { useSettings } from "../../../hooks/useSettings";
+import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
+
+interface StylesSettingsProps {
+  showEnabledToggle?: boolean;
+}
 
 const DEFAULT_STYLE_PRESETS: ToneDefinition[] = [
   {
@@ -332,7 +336,9 @@ const MappingRow: React.FC<MappingRowProps> = ({
   );
 };
 
-export const StylesSettings: React.FC = () => {
+export const StylesSettings: React.FC<StylesSettingsProps> = ({
+  showEnabledToggle = true,
+}) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
 
@@ -474,18 +480,14 @@ export const StylesSettings: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      <SettingsGroup title={t("settings.styles.title")}>
-        <ToggleSwitch
-          checked={enabled}
-          onChange={(value) =>
-            void updateSetting("app_aware_tone_enabled", value)
-          }
-          isUpdating={isUpdating("app_aware_tone_enabled")}
-          label={t("settings.styles.toggle.label")}
-          description={t("settings.styles.toggle.description")}
-          grouped={true}
-        />
-      </SettingsGroup>
+      {showEnabledToggle && (
+        <SettingsGroup title={t("settings.styles.title")}>
+          <AppAwareWriteProfilesToggle
+            descriptionMode="tooltip"
+            grouped={true}
+          />
+        </SettingsGroup>
+      )}
 
       <Alert variant="info" contained>
         {enabled

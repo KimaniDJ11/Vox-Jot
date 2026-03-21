@@ -17,7 +17,7 @@
     "dataPrivacy": "개인정보 및 데이터",
     "experimental": "실험실",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "문구 키",
     "styles": "작성 프로필",
     "history": "히스토리",
@@ -633,10 +633,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Personal Dictionary",
+        "title": "Dictionary",
         "editor": {
-          "title": "Preferred spellings",
-          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs.",
+          "title": "선호 표기"
         },
         "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
         "empty": "No personal dictionary entries yet.",
@@ -760,7 +760,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "폴더에서 녹음 표시",
+      "revealError": "녹음을 표시할 수 없음: {{error}}"
     },
     "debug": {
       "title": "디버그",
@@ -864,7 +866,7 @@
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

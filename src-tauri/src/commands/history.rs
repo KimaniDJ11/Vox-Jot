@@ -1,6 +1,7 @@
 use crate::managers::history::{HistoryEntry, HistoryManager};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
+use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
 #[specta::specta]
@@ -38,6 +39,22 @@ pub async fn get_audio_file_path(
     path.to_str()
         .ok_or_else(|| "Invalid file path".to_string())
         .map(|s| s.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn reveal_history_recording_in_folder(
+    app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    file_name: String,
+) -> Result<(), String> {
+    let path = history_manager.get_audio_file_path(&file_name);
+    if !path.exists() {
+        return Err(format!("Recording file not found: {file_name}"));
+    }
+    app.opener()
+        .reveal_item_in_dir(&path)
+        .map_err(|e| format!("Failed to reveal recording: {e}"))
 }
 
 #[tauri::command]

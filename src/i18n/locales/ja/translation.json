@@ -17,7 +17,7 @@
     "dataPrivacy": "プライバシーとデータ",
     "experimental": "ラボ",
     "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "corrections": "Dictionary",
     "snippets": "フレーズキー",
     "styles": "ライトプロファイル",
     "history": "履歴",
@@ -633,10 +633,10 @@
         "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
       },
       "dictionary": {
-        "title": "Personal Dictionary",
+        "title": "Dictionary",
         "editor": {
-          "title": "Preferred spellings",
-          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs."
+          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs.",
+          "title": "優先する表記"
         },
         "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
         "empty": "No personal dictionary entries yet.",
@@ -760,7 +760,9 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "showRecordingInFolder": "フォルダ内の録音を表示",
+      "revealError": "録音を表示できません: {{error}}"
     },
     "debug": {
       "title": "デバッグ",
@@ -864,7 +866,7 @@
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
+      "title": "Dictionary",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",

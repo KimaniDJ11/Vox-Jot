@@ -1,51 +1,37 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { SettingsGroup } from "../../ui/SettingsGroup";
-import { ToggleSwitch } from "../../ui/ToggleSwitch";
-import { useSettings } from "../../../hooks/useSettings";
 import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
 import { PersonalDictionaryEditor } from "./PersonalDictionaryEditor";
 import { CustomWords } from "../CustomWords";
+import { CorrectionTrackingToggle } from "../CorrectionTrackingToggle";
 
-export const CorrectionSettings: React.FC = () => {
+interface CorrectionSettingsProps {
+  showTrackingToggle?: boolean;
+}
+
+export const CorrectionSettings: React.FC<CorrectionSettingsProps> = ({
+  showTrackingToggle = true,
+}) => {
   const { t } = useTranslation();
-  const { getSetting, updateSetting, isUpdating } = useSettings();
-
-  const trackingEnabled = getSetting("correction_tracking_enabled") || false;
 
   return (
     <div className="w-full space-y-6">
-      <SettingsGroup
-        title={t("settings.corrections.tracking.title", {
-          defaultValue: "Learning",
-        })}
-      >
-        <ToggleSwitch
-          checked={trackingEnabled}
-          onChange={(enabled) =>
-            updateSetting("correction_tracking_enabled", enabled)
-          }
-          isUpdating={isUpdating("correction_tracking_enabled")}
-          label={t("settings.corrections.tracking.label")}
-          description={t("settings.corrections.tracking.description")}
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-      </SettingsGroup>
+      {showTrackingToggle && (
+        <SettingsGroup
+          title={t("settings.corrections.tracking.title", {
+            defaultValue: "Learning",
+          })}
+        >
+          <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
+        </SettingsGroup>
+      )}
 
-      <SettingsGroup
-        title={t("settings.corrections.manual.title", {
-          defaultValue: "Preferred spellings",
-        })}
-      >
+      <SettingsGroup>
         <PersonalDictionaryEditor />
       </SettingsGroup>
 
-      <SettingsGroup
-        title={t("settings.corrections.boosts.title", {
-          defaultValue: "Recognition boosts",
-        })}
-      >
+      <SettingsGroup>
         <CustomWords
           descriptionMode="tooltip"
           grouped={true}

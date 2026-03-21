@@ -3,13 +3,14 @@ use crate::settings::{
     TtsEnginePreference, TtsReadbackTextMode,
 };
 use crate::translation::TranslationOrigin;
+use crate::github_release;
 use crate::{audio_playback, portable};
 use log::info;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs::{self, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,6 +23,9 @@ static SAY_VOICE_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|
 
 const DEFAULT_SIDECAR_URL: &str = "http://127.0.0.1:8008/v1/audio/speech";
 const PREVIEW_SAMPLE_TEXT: &str = "Vox Jot is ready.";
+const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
+const DEFAULT_TTS_ASSET_BASE_URL: &str =
+    "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -49,6 +53,27 @@ pub struct TtsPackInfo {
     pub voice_id: String,
     pub archive_name: String,
     pub installed: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum SherpaModelFamily {
+    Vits,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SherpaPackManifest {
+    id: String,
+    label: String,
+    locale: String,
+    source_url: String,
+    source_name: String,
+    model_family: SherpaModelFamily,
+    model_file: String,
+    tokens_file: String,
+    data_dir: Option<String>,
+    lexicon_file: Option<String>,
+    rule_fsts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -96,24 +121,64 @@ struct PackDefinition {
     locale: &'static str,
     voice_id: &'static str,
     archive_name: &'static str,
+    source_name: &'static str,
+    source_url: &'static str,
+    model_family: SherpaModelFamily,
+    model_file: &'static str,
+    tokens_file: &'static str,
+    data_dir: Option<&'static str>,
+    lexicon_file: Option<&'static str>,
+    rule_fsts: &'static [&'static str],
 }
 
 const PACK_DEFINITIONS: &[PackDefinition] = &[
     PackDefinition {
-        id: "tts-sherpa-en-us-ljspeech",
-        label: "English (US) - LJSpeech",
+        id: "tts-sherpa-en-us-lessac-medium",
+        label: "English (US) - Lessac",
         locale: "en-US",
-        voice_id: "ljspeech",
-        archive_name: "tts-sherpa-en-us-ljspeech.tar.gz",
+        voice_id: "lessac-medium",
+        archive_name: "tts-sherpa-en-us-lessac-medium.tar.gz",
+        source_name: "k2-fsa sherpa-onnx tts-models",
+        source_url:
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+        model_family: SherpaModelFamily::Vits,
+        model_file: "en_US-lessac-medium.onnx",
+        tokens_file: "tokens.txt",
+        data_dir: Some("espeak-ng-data"),
+        lexicon_file: None,
+        rule_fsts: &[],
     },
     PackDefinition {
-        id: "tts-sherpa-zh-cn-baker",
-        label: "Chinese (Mainland) - Baker",
+        id: "tts-sherpa-zh-cn-melo",
+        label: "Chinese + English - Melo",
         locale: "zh-CN",
-        voice_id: "baker",
-        archive_name: "tts-sherpa-zh-cn-baker.tar.gz",
+        voice_id: "melo-zh-en",
+        archive_name: "tts-sherpa-zh-cn-melo.tar.gz",
+        source_name: "k2-fsa sherpa-onnx tts-models",
+        source_url:
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+        model_family: SherpaModelFamily::Vits,
+        model_file: "model.onnx",
+        tokens_file: "tokens.txt",
+        data_dir: None,
+        lexicon_file: Some("lexicon.txt"),
+        rule_fsts: &["date.fst", "number.fst", "phone.fst", "new_heteronym.fst"],
     },
 ];
+
+#[derive(Debug, Clone)]
+struct SherpaRuntimeDefinition {
+    platform_id: &'static str,
+    archive_name: &'static str,
+    source_url: &'static str,
+}
+
+#[derive(Debug, Clone)]
+struct SherpaContext {
+    runtime_root: PathBuf,
+    pack_root: PathBuf,
+    manifest: SherpaPackManifest,
+}
 
 pub struct TtsManager {
     app_handle: AppHandle,
@@ -185,7 +250,7 @@ impl TtsManager {
                 locale: definition.locale.to_string(),
                 voice_id: definition.voice_id.to_string(),
                 archive_name: definition.archive_name.to_string(),
-                installed: self.pack_install_dir(definition.id).exists(),
+                installed: self.installed_pack_root(definition.id).is_some(),
             })
             .collect()
     }
@@ -195,45 +260,22 @@ impl TtsManager {
             .iter()
             .find(|definition| definition.id == pack_id)
             .ok_or_else(|| format!("Unknown TTS pack '{pack_id}'"))?;
-
-        let response = reqwest::get(self.pack_download_url(definition.archive_name))
-            .await
-            .map_err(|err| format!("Failed to download TTS pack: {err}"))?;
-        if !response.status().is_success() {
-            return Err(format!(
-                "Failed to download TTS pack: HTTP {}",
-                response.status()
-            ));
-        }
-
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|err| format!("Failed to read TTS pack bytes: {err}"))?;
-
-        let app_data_dir =
-            portable::app_data_dir(&self.app_handle).map_err(|err| format!("TTS dir error: {err}"))?;
-        let tts_dir = app_data_dir.join("tts-packs");
-        fs::create_dir_all(&tts_dir).map_err(|err| format!("Failed to create TTS dir: {err}"))?;
-
-        let archive_path = tts_dir.join(definition.archive_name);
-        fs::write(&archive_path, bytes).map_err(|err| format!("Failed to save TTS pack: {err}"))?;
-
-        let file = File::open(&archive_path).map_err(|err| format!("Failed to reopen TTS pack: {err}"))?;
-        let decoder = flate2::read::GzDecoder::new(file);
-        let mut archive = tar::Archive::new(decoder);
         let install_dir = self.pack_install_dir(definition.id);
-        if install_dir.exists() {
-            fs::remove_dir_all(&install_dir)
-                .map_err(|err| format!("Failed to clear existing TTS pack: {err}"))?;
-        }
-        fs::create_dir_all(&install_dir)
-            .map_err(|err| format!("Failed to create TTS pack dir: {err}"))?;
-        archive
-            .unpack(&install_dir)
-            .map_err(|err| format!("Failed to extract TTS pack: {err}"))?;
-        let _ = fs::remove_file(&archive_path);
+        self.download_and_extract_archive(
+            &[
+                self.asset_download_url(definition.archive_name),
+                definition.source_url.to_string(),
+            ],
+            &install_dir,
+            &format!("TTS pack '{}'", definition.label),
+        )
+        .await?;
 
+        let pack_root = self
+            .installed_pack_root(definition.id)
+            .ok_or_else(|| format!("Downloaded TTS pack '{}' could not be located", definition.id))?;
+        self.write_default_pack_manifest(definition, &pack_root)?;
+        let _ = self.ensure_sherpa_runtime_installed().await?;
         Ok(())
     }
 
@@ -278,6 +320,12 @@ impl TtsManager {
         let chunks = chunk_text(trimmed);
         let engine = self.resolve_engine_kind(&settings, locale.as_deref())?;
         let voice = self.select_voice(&settings, engine, locale.as_deref(), request.preferred_voice_id.as_deref())?;
+        let sherpa_context = match engine {
+            TtsEngineKind::SherpaOnnx => {
+                Some(self.prepare_sherpa_context(locale.as_deref(), voice.as_ref()).await?)
+            }
+            _ => None,
+        };
         let tts_volume = settings.tts_volume.clamp(0.0, 1.0);
         let output_device = settings.selected_output_device.clone();
         let app_handle = self.app_handle.clone();
@@ -312,10 +360,17 @@ impl TtsManager {
                         )?;
                     }
                     TtsEngineKind::SherpaOnnx => {
-                        return Err(
-                            "Sherpa-ONNX TTS packs can be downloaded now, but speech synthesis is not bundled in this desktop build yet."
-                                .to_string(),
-                        );
+                        let sherpa_context = sherpa_context
+                            .as_ref()
+                            .ok_or_else(|| "No Sherpa-ONNX TTS pack is available.".to_string())?;
+                        speak_sherpa_chunk(
+                            &chunk,
+                            sherpa_context,
+                            settings.tts_rate,
+                            tts_volume,
+                            output_device.clone(),
+                            &stop_flag,
+                        )?;
                     }
                     TtsEngineKind::Sidecar => {
                         speak_sidecar_chunk(
@@ -344,6 +399,11 @@ impl TtsManager {
 
     pub fn sidecar_base_url(&self) -> String {
         std::env::var("VOX_JOT_TTS_SIDECAR_URL").unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string())
+    }
+
+    fn tts_asset_base_url(&self) -> String {
+        std::env::var("VOX_JOT_TTS_MODELS_BASE_URL")
+            .unwrap_or_else(|_| DEFAULT_TTS_ASSET_BASE_URL.to_string())
     }
 
     fn resolve_engine_kind(
@@ -394,12 +454,8 @@ impl TtsManager {
         Ok(TtsEngineKind::Sidecar)
     }
 
-    fn pack_download_url(&self, archive_name: &str) -> String {
-        let base_url = std::env::var("VOX_JOT_TTS_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.3.0-tts-models"
-                .to_string()
-        });
-        format!("{}/{}", base_url.trim_end_matches('/'), archive_name)
+    fn asset_download_url(&self, archive_name: &str) -> String {
+        format!("{}/{}", self.tts_asset_base_url().trim_end_matches('/'), archive_name)
     }
 
     fn pack_install_dir(&self, pack_id: &str) -> PathBuf {
@@ -407,6 +463,13 @@ impl TtsManager {
             .unwrap_or_else(|_| PathBuf::from("."))
             .join("tts-packs")
             .join(pack_id)
+    }
+
+    fn runtime_install_dir(&self, platform_id: &str) -> PathBuf {
+        portable::app_data_dir(&self.app_handle)
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join("tts-runtime")
+            .join(platform_id)
     }
 
     #[cfg(target_os = "linux")]
@@ -424,7 +487,7 @@ impl TtsManager {
             .into_iter()
             .filter(|pack| pack.installed)
             .map(|pack| VoiceInfo {
-                id: pack.voice_id,
+                id: pack.id,
                 label: pack.label,
                 locale: Some(pack.locale),
                 engine: TtsEngineKind::SherpaOnnx,
@@ -432,6 +495,188 @@ impl TtsManager {
                 available: true,
             })
             .collect()
+    }
+
+    fn installed_pack_root(&self, pack_id: &str) -> Option<PathBuf> {
+        resolve_extracted_root(&self.pack_install_dir(pack_id))
+    }
+
+    fn definition_for_voice(&self, voice: &VoiceInfo) -> Option<&'static PackDefinition> {
+        PACK_DEFINITIONS.iter().find(|definition| {
+            definition.id == voice.id || definition.voice_id == voice.id
+        })
+    }
+
+    async fn prepare_sherpa_context(
+        &self,
+        locale: Option<&str>,
+        voice: Option<&VoiceInfo>,
+    ) -> Result<SherpaContext, String> {
+        let runtime_root = self.ensure_sherpa_runtime_installed().await?;
+
+        let definition = if let Some(voice) = voice {
+            self.definition_for_voice(voice)
+        } else {
+            PACK_DEFINITIONS.iter().find(|definition| {
+                self.installed_pack_root(definition.id).is_some()
+                    && locale_matches(Some(definition.locale), locale)
+            })
+        }
+        .or_else(|| {
+            PACK_DEFINITIONS
+                .iter()
+                .find(|definition| self.installed_pack_root(definition.id).is_some())
+        })
+        .ok_or_else(|| {
+            "No Sherpa-ONNX TTS pack is installed yet. Download a pack in Speech Output settings first."
+                .to_string()
+        })?;
+
+        let pack_root = self
+            .installed_pack_root(definition.id)
+            .ok_or_else(|| format!("Installed pack '{}' is missing on disk", definition.id))?;
+        self.write_default_pack_manifest(definition, &pack_root)?;
+        let manifest = self
+            .read_pack_manifest(&pack_root)
+            .unwrap_or_else(|_| self.default_pack_manifest(definition));
+
+        Ok(SherpaContext {
+            runtime_root,
+            pack_root,
+            manifest,
+        })
+    }
+
+    async fn ensure_sherpa_runtime_installed(&self) -> Result<PathBuf, String> {
+        let definition = sherpa_runtime_definition().ok_or_else(|| {
+            "Sherpa-ONNX runtime is not supported on this platform yet.".to_string()
+        })?;
+
+        let install_dir = self.runtime_install_dir(definition.platform_id);
+        if let Some(root) = resolve_extracted_root(&install_dir) {
+            if sherpa_runtime_binary_path(&root).exists() {
+                return Ok(root);
+            }
+        }
+
+        self.download_and_extract_archive(
+            &[
+                self.asset_download_url(definition.archive_name),
+                definition.source_url.to_string(),
+            ],
+            &install_dir,
+            "Sherpa-ONNX runtime",
+        )
+        .await?;
+
+        let root = resolve_extracted_root(&install_dir)
+            .ok_or_else(|| "Sherpa-ONNX runtime extraction did not produce any files.".to_string())?;
+        if !sherpa_runtime_binary_path(&root).exists() {
+            return Err("Sherpa-ONNX runtime download completed, but the offline-tts binary is missing.".to_string());
+        }
+
+        Ok(root)
+    }
+
+    async fn download_and_extract_archive(
+        &self,
+        candidate_urls: &[String],
+        install_dir: &Path,
+        label: &str,
+    ) -> Result<(), String> {
+        let app_data_dir =
+            portable::app_data_dir(&self.app_handle).map_err(|err| format!("TTS dir error: {err}"))?;
+        let download_dir = app_data_dir.join("tts-downloads");
+        fs::create_dir_all(&download_dir)
+            .map_err(|err| format!("Failed to create TTS download dir: {err}"))?;
+
+        let mut last_error = None;
+        for url in candidate_urls {
+            match self.download_archive(url, &download_dir, label).await {
+                Ok(archive_path) => {
+                    let extract_result = extract_archive(&archive_path, install_dir);
+                    let _ = fs::remove_file(&archive_path);
+                    return extract_result;
+                }
+                Err(err) => last_error = Some(err),
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| format!("Failed to download {label}.")))
+    }
+
+    async fn download_archive(
+        &self,
+        url: &str,
+        download_dir: &Path,
+        label: &str,
+    ) -> Result<PathBuf, String> {
+        let client = reqwest::Client::new();
+        let response = github_release::get_with_optional_github_auth(&client, url, None)
+            .await
+            .map_err(|err| format!("Failed to download {label}: {err}"))?;
+        if !response.status().is_success() {
+            return Err(format!("Failed to download {label}: HTTP {} ({url})", response.status()));
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|err| format!("Failed to read {label} bytes: {err}"))?;
+
+        let file_name = url
+            .split('/')
+            .next_back()
+            .filter(|name| !name.is_empty())
+            .unwrap_or("tts-asset.tar.gz");
+        let archive_path = download_dir.join(format!("{}-{}", Uuid::new_v4(), file_name));
+        fs::write(&archive_path, bytes)
+            .map_err(|err| format!("Failed to save {label}: {err}"))?;
+        Ok(archive_path)
+    }
+
+    fn default_pack_manifest(&self, definition: &PackDefinition) -> SherpaPackManifest {
+        SherpaPackManifest {
+            id: definition.id.to_string(),
+            label: definition.label.to_string(),
+            locale: definition.locale.to_string(),
+            source_url: definition.source_url.to_string(),
+            source_name: definition.source_name.to_string(),
+            model_family: definition.model_family,
+            model_file: definition.model_file.to_string(),
+            tokens_file: definition.tokens_file.to_string(),
+            data_dir: definition.data_dir.map(ToString::to_string),
+            lexicon_file: definition.lexicon_file.map(ToString::to_string),
+            rule_fsts: definition
+                .rule_fsts
+                .iter()
+                .map(|value| value.to_string())
+                .collect(),
+        }
+    }
+
+    fn write_default_pack_manifest(
+        &self,
+        definition: &PackDefinition,
+        pack_root: &Path,
+    ) -> Result<(), String> {
+        let manifest_path = pack_root.join(PACK_MANIFEST_NAME);
+        if manifest_path.exists() {
+            return Ok(());
+        }
+
+        let manifest = self.default_pack_manifest(definition);
+        let bytes = serde_json::to_vec_pretty(&manifest)
+            .map_err(|err| format!("Failed to serialize TTS pack manifest: {err}"))?;
+        fs::write(&manifest_path, bytes)
+            .map_err(|err| format!("Failed to write TTS pack manifest: {err}"))
+    }
+
+    fn read_pack_manifest(&self, pack_root: &Path) -> Result<SherpaPackManifest, String> {
+        let bytes = fs::read(pack_root.join(PACK_MANIFEST_NAME))
+            .map_err(|err| format!("Failed to read TTS pack manifest: {err}"))?;
+        serde_json::from_slice(&bytes)
+            .map_err(|err| format!("Failed to parse TTS pack manifest: {err}"))
     }
 
     fn system_voices(&self) -> Result<Vec<VoiceInfo>, String> {
@@ -609,6 +854,219 @@ fn windows_system_voices() -> Result<Vec<VoiceInfo>, String> {
     Ok(Vec::new())
 }
 
+fn sherpa_runtime_definition() -> Option<SherpaRuntimeDefinition> {
+    #[cfg(target_os = "macos")]
+    {
+        return Some(SherpaRuntimeDefinition {
+            platform_id: "macos-universal2",
+            archive_name: "tts-sherpa-runtime-macos-universal2.tar.gz",
+            source_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-osx-universal2-shared.tar.bz2",
+        });
+    }
+    #[cfg(target_os = "linux")]
+    {
+        return Some(SherpaRuntimeDefinition {
+            platform_id: "linux-x64",
+            archive_name: "tts-sherpa-runtime-linux-x64.tar.gz",
+            source_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-linux-x64-shared.tar.bz2",
+        });
+    }
+    #[cfg(target_os = "windows")]
+    {
+        return Some(SherpaRuntimeDefinition {
+            platform_id: "windows-x64",
+            archive_name: "tts-sherpa-runtime-win-x64.tar.gz",
+            source_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-win-x64-shared.tar.bz2",
+        });
+    }
+    #[allow(unreachable_code)]
+    None
+}
+
+fn sherpa_runtime_binary_path(runtime_root: &Path) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        return runtime_root
+            .join("bin")
+            .join("sherpa-onnx-offline-tts.exe");
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        runtime_root
+            .join("bin")
+            .join("sherpa-onnx-offline-tts")
+    }
+}
+
+fn resolve_extracted_root(base_dir: &Path) -> Option<PathBuf> {
+    if !base_dir.exists() {
+        return None;
+    }
+
+    let mut current = base_dir.to_path_buf();
+    loop {
+        let entries = fs::read_dir(&current).ok()?;
+        let mut child_dirs = Vec::new();
+        let mut saw_file = false;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.starts_with('.'))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+
+            if entry.file_type().ok()?.is_dir() {
+                child_dirs.push(path);
+            } else {
+                saw_file = true;
+            }
+        }
+
+        if !saw_file && child_dirs.len() == 1 {
+            current = child_dirs.pop().unwrap();
+            continue;
+        }
+
+        return Some(current);
+    }
+}
+
+fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String> {
+    if install_dir.exists() {
+        fs::remove_dir_all(install_dir)
+            .map_err(|err| format!("Failed to clear archive destination: {err}"))?;
+    }
+    fs::create_dir_all(install_dir)
+        .map_err(|err| format!("Failed to create archive destination: {err}"))?;
+
+    let file = File::open(archive_path)
+        .map_err(|err| format!("Failed to open archive {:?}: {err}", archive_path))?;
+    let archive_name = archive_path.to_string_lossy();
+
+    if archive_name.ends_with(".tar.gz") {
+        let decoder = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(decoder);
+        archive
+            .unpack(install_dir)
+            .map_err(|err| format!("Failed to extract tar.gz archive: {err}"))?;
+    } else if archive_name.ends_with(".tar.bz2") {
+        let decoder = bzip2::read::BzDecoder::new(file);
+        let mut archive = tar::Archive::new(decoder);
+        archive
+            .unpack(install_dir)
+            .map_err(|err| format!("Failed to extract tar.bz2 archive: {err}"))?;
+    } else {
+        return Err(format!(
+            "Unsupported TTS archive format: {}",
+            archive_path.display()
+        ));
+    }
+
+    Ok(())
+}
+
+fn speak_sherpa_chunk(
+    text: &str,
+    context: &SherpaContext,
+    rate: f32,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
+    let temp_file = std::env::temp_dir().join(format!("vox-jot-sherpa-{}.wav", Uuid::new_v4()));
+    let binary_path = sherpa_runtime_binary_path(&context.runtime_root);
+    let lib_dir = context.runtime_root.join("lib");
+    let mut command = Command::new(&binary_path);
+    command
+        .arg("--output-filename")
+        .arg(&temp_file)
+        .arg("--num-threads")
+        .arg("2");
+
+    match context.manifest.model_family {
+        SherpaModelFamily::Vits => {
+            command
+                .arg("--vits-model")
+                .arg(context.pack_root.join(&context.manifest.model_file))
+                .arg("--vits-tokens")
+                .arg(context.pack_root.join(&context.manifest.tokens_file))
+                .arg("--vits-length-scale")
+                .arg(format!("{:.3}", (1.0 / rate.clamp(0.5, 2.0)).clamp(0.5, 2.0)));
+
+            if let Some(data_dir) = context.manifest.data_dir.as_deref() {
+                command.arg("--vits-data-dir").arg(context.pack_root.join(data_dir));
+            }
+            if let Some(lexicon_file) = context.manifest.lexicon_file.as_deref() {
+                command
+                    .arg("--vits-lexicon")
+                    .arg(context.pack_root.join(lexicon_file));
+            }
+        }
+    }
+
+    if !context.manifest.rule_fsts.is_empty() {
+        let joined = context
+            .manifest
+            .rule_fsts
+            .iter()
+            .map(|file| context.pack_root.join(file).display().to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        command.arg("--tts-rule-fsts").arg(joined);
+    }
+
+    #[cfg(target_os = "macos")]
+    command.env("DYLD_LIBRARY_PATH", &lib_dir);
+    #[cfg(target_os = "linux")]
+    command.env("LD_LIBRARY_PATH", &lib_dir);
+    #[cfg(target_os = "windows")]
+    {
+        let existing_path = std::env::var_os("PATH").unwrap_or_default();
+        let mut runtime_path = std::ffi::OsString::from(lib_dir.as_os_str());
+        runtime_path.push(";");
+        runtime_path.push(context.runtime_root.join("bin"));
+        runtime_path.push(";");
+        runtime_path.push(existing_path);
+        command.env("PATH", runtime_path);
+    }
+
+    let output = command
+        .arg(text)
+        .output()
+        .map_err(|err| format!("Failed to run Sherpa-ONNX TTS: {err}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return Err(if !stderr.is_empty() {
+            format!("Sherpa-ONNX TTS failed: {stderr}")
+        } else if !stdout.is_empty() {
+            format!("Sherpa-ONNX TTS failed: {stdout}")
+        } else {
+            "Sherpa-ONNX TTS failed without a detailed error.".to_string()
+        });
+    }
+
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = fs::remove_file(&temp_file);
+        return Ok(());
+    }
+
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play Sherpa-ONNX speech audio: {err}"));
+    let _ = fs::remove_file(&temp_file);
+    play_result
+}
+
 fn speak_system_chunk(
     app_handle: &AppHandle,
     text: &str,
@@ -645,7 +1103,11 @@ fn speak_system_chunk_macos(
     output_device: Option<String>,
     stop_flag: &AtomicBool,
 ) -> Result<(), String> {
-    let temp_file = tts_temp_file(app_handle, "wav")?;
+    // `say` on this macOS stack will happily synthesize AIFF, while our playback
+    // path is happiest with PCM WAV. Generate AIFF first, then normalize with
+    // `afconvert` before playback.
+    let synthesized_file = tts_temp_file(app_handle, "aiff")?;
+    let playback_file = tts_temp_file(app_handle, "wav")?;
     let rate_wpm = (rate_to_words_per_minute(rate)).to_string();
     let mut command = Command::new("/usr/bin/say");
     if let Some(voice) = voice {
@@ -655,8 +1117,7 @@ fn speak_system_chunk_macos(
         .arg("-r")
         .arg(rate_wpm)
         .arg("-o")
-        .arg(&temp_file)
-        .arg("--file-format=WAVE")
+        .arg(&synthesized_file)
         .arg(text)
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -669,7 +1130,15 @@ fn speak_system_chunk_macos(
         match child.try_wait() {
             Ok(Some(status)) => {
                 if !status.success() {
-                    return Err("macOS speech synthesis failed.".to_string());
+                    let output = child
+                        .wait_with_output()
+                        .map_err(|err| format!("Failed to read macOS speech synthesis error: {err}"))?;
+                    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                    return Err(if stderr.is_empty() {
+                        "macOS speech synthesis failed.".to_string()
+                    } else {
+                        format!("macOS speech synthesis failed: {stderr}")
+                    });
                 }
                 break;
             }
@@ -681,13 +1150,43 @@ fn speak_system_chunk_macos(
     if stop_flag.load(Ordering::Relaxed) {
         let _ = child.kill();
         let _ = child.wait();
-        let _ = fs::remove_file(&temp_file);
+        let _ = fs::remove_file(&synthesized_file);
+        let _ = fs::remove_file(&playback_file);
         return Ok(());
     }
 
-    audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
+    if !synthesized_file.exists() {
+        return Err("macOS speech synthesis did not create an audio file.".to_string());
+    }
+
+    let afconvert_output = Command::new("/usr/bin/afconvert")
+        .args([
+            "-f",
+            "WAVE",
+            "-d",
+            "LEI16@22050",
+        ])
+        .arg(&synthesized_file)
+        .arg(&playback_file)
+        .output()
+        .map_err(|err| format!("Failed to start macOS audio conversion: {err}"))?;
+    if !afconvert_output.status.success() {
+        let stderr = String::from_utf8_lossy(&afconvert_output.stderr)
+            .trim()
+            .to_string();
+        let _ = fs::remove_file(&synthesized_file);
+        let _ = fs::remove_file(&playback_file);
+        return Err(if stderr.is_empty() {
+            "macOS audio conversion failed.".to_string()
+        } else {
+            format!("macOS audio conversion failed: {stderr}")
+        });
+    }
+
+    audio_playback::play_audio_file_with_stop(&playback_file, output_device, volume, stop_flag)
         .map_err(|err| format!("Failed to play speech audio: {err}"))?;
-    let _ = fs::remove_file(&temp_file);
+    let _ = fs::remove_file(&synthesized_file);
+    let _ = fs::remove_file(&playback_file);
     Ok(())
 }
 

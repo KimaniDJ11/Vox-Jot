@@ -1,3 +1,4 @@
+use crate::github_release;
 use crate::settings::{get_settings, write_settings};
 use anyhow::Result;
 use flate2::read::GzDecoder;
@@ -66,14 +67,14 @@ pub struct ModelManager {
 impl ModelManager {
     fn whisper_models_base_url() -> String {
         std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models"
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models"
                 .to_string()
         })
     }
 
     fn model_source_base_url() -> String {
         std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models"
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models"
                 .to_string()
         })
     }
@@ -848,13 +849,10 @@ impl ModelManager {
 
         // Create HTTP client with range request for resuming
         let client = reqwest::Client::new();
-        let mut request = client.get(&url);
-
-        if resume_from > 0 {
-            request = request.header("Range", format!("bytes={}-", resume_from));
-        }
-
-        let mut response = request.send().await?;
+        let mut response =
+            github_release::get_with_optional_github_auth(&client, &url, Some(resume_from))
+                .await
+                .map_err(anyhow::Error::msg)?;
 
         // If we tried to resume but server returned 200 (not 206 Partial Content),
         // the server doesn't support range requests. Delete partial file and restart
@@ -871,7 +869,9 @@ impl ModelManager {
             resume_from = 0;
 
             // Restart download without range header
-            response = client.get(&url).send().await?;
+            response = github_release::get_with_optional_github_auth(&client, &url, None)
+                .await
+                .map_err(anyhow::Error::msg)?;
         }
 
         // Check for success or partial content status

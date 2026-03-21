@@ -299,30 +299,32 @@ You can publish or refresh the pinned model mirror release yourself with:
 
 **Pinned model release (GitHub):**
 
-- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-small.bin`
-- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-medium.bin`
-- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
-- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
-- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
-- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
-- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
-- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-base.tar.gz`
-- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
-- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
-- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
-- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
-- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot-models/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
+- Whisper Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-small.bin`
+- Whisper Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-medium.bin`
+- Whisper Turbo: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-turbo.bin`
+- Whisper Large: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/ggml-large-v3-q5_0.bin`
+- Breeze ASR: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/breeze-asr-q5_k.bin`
+- Parakeet V2: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v2-int8.tar.gz`
+- Parakeet V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/parakeet-v3-int8.tar.gz`
+- Moonshine Base: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-base.tar.gz`
+- Moonshine Streaming Tiny: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-tiny-streaming-en.tar.gz`
+- Moonshine Streaming Small: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-small-streaming-en.tar.gz`
+- Moonshine Streaming Medium: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/moonshine-medium-streaming-en.tar.gz`
+- SenseVoice: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/sense-voice-int8.tar.gz`
+- GigaAM V3: `https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models/giga-am-v3.tar.gz`
 
 > By default, Vox Jot downloads every built-in model from this pinned GitHub release.
 > Whisper download base can be customized with `VOX_JOT_WHISPER_MODELS_BASE_URL`.
 > Non-Whisper download base can be customized with `VOX_JOT_STT_MODELS_BASE_URL`.
 > Translation pack download base can be customized with `VOX_JOT_TRANSLATION_MODELS_BASE_URL`.
+> TTS runtime and voice-pack download base can be customized with `VOX_JOT_TTS_MODELS_BASE_URL`.
 > Per-model overrides are supported via env vars like `VOX_JOT_STT_MODEL_URL_SMALL`.
+> If the repo is private, Vox Jot will look for GitHub release-asset auth in `VOX_JOT_GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`, then `GITHUB_TOKEN`.
 
 **Pinned translation pack release (GitHub):**
 
 - Release tag: `v0.2.0-translation-models`
-- Repo: `KimaniDJ11/Vox-Jot-models`
+- Repo: `KimaniDJ11/Vox-Jot`
 - Initial pack filenames:
   - `translate-en-es-ct2.tar.gz`
   - `translate-es-en-ct2.tar.gz`
@@ -355,11 +357,35 @@ You can publish or refresh the pinned model mirror release yourself with:
 
 **GitHub publishing + browser verification workflow:**
 
-1. Use `gh release create` or `gh release upload` to publish the translation assets into `KimaniDJ11/Vox-Jot-models`.
-2. Open both GitHub repos in a browser and verify the release state:
+1. Use `gh release create` or `gh release upload` to publish the translation assets into `KimaniDJ11/Vox-Jot`.
+2. Open the main GitHub repo in a browser and verify the release state:
    - `KimaniDJ11/Vox-Jot`
-   - `KimaniDJ11/Vox-Jot-models`
 3. Confirm the release tag exists, every asset is visible, filenames match the app-side expectations exactly, and download URLs resolve publicly before shipping.
+
+**Pinned TTS release (GitHub):**
+
+- Publish or refresh it with:
+
+```bash
+./scripts/mirror-tts-assets.sh --dry-run
+./scripts/mirror-tts-assets.sh
+```
+
+- Release tag: `v0.3.0-tts-models`
+- Repo: `KimaniDJ11/Vox-Jot`
+- Runtime assets:
+  - `tts-sherpa-runtime-macos-universal2.tar.gz`
+  - `tts-sherpa-runtime-linux-x64.tar.gz`
+  - `tts-sherpa-runtime-win-x64.tar.gz`
+- Voice-pack assets:
+  - `tts-sherpa-en-us-lessac-medium.tar.gz`
+  - `tts-sherpa-zh-cn-melo.tar.gz`
+
+**Canonical upstream TTS sources:**
+
+- Runtime: `https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.20`
+- English voice: `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2`
+- Chinese + English voice: `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2`
 
 #### Step 4: Install Models
 

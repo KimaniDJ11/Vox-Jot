@@ -9,6 +9,7 @@ mod clipboard;
 mod commands;
 mod correction_tracker;
 mod helpers;
+mod github_release;
 mod input;
 mod llm_client;
 mod managers;

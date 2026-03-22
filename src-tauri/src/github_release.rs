@@ -173,7 +173,10 @@ mod tests {
         assert_eq!(parsed.owner, "KimaniDJ11");
         assert_eq!(parsed.repo, "Vox-Jot");
         assert_eq!(parsed.tag, "v0.3.0-tts-models");
-        assert_eq!(parsed.asset_name, "tts-sherpa-runtime-macos-universal2.tar.gz");
+        assert_eq!(
+            parsed.asset_name,
+            "tts-sherpa-runtime-macos-universal2.tar.gz"
+        );
     }
 
     #[test]

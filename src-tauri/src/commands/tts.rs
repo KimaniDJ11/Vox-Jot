@@ -49,10 +49,7 @@ pub fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn preview_tts_voice(
-    app: AppHandle,
-    voice_id: Option<String>,
-) -> Result<(), String> {
+pub async fn preview_tts_voice(app: AppHandle, voice_id: Option<String>) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
     manager.speak(default_preview_request(voice_id)).await
 }

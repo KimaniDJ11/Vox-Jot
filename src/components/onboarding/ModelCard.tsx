@@ -53,6 +53,8 @@ interface ModelCardProps {
   downloadProgress?: number;
   downloadSpeed?: number; // MB/s
   showRecommended?: boolean;
+  providerLabel?: string;
+  runtimeLabel?: string;
 }
 
 const ModelCard: React.FC<ModelCardProps> = ({
@@ -68,6 +70,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
   downloadProgress,
   downloadSpeed,
   showRecommended = true,
+  providerLabel,
+  runtimeLabel,
 }) => {
   const { t } = useTranslation();
   const isFeatured = variant === "featured";
@@ -146,6 +150,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
             {model.is_custom && (
               <Badge variant="secondary">{t("modelSelector.custom")}</Badge>
             )}
+            {providerLabel && (
+              <Badge variant="secondary">{providerLabel}</Badge>
+            )}
             {status === "switching" && (
               <Badge variant="secondary">
                 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -211,6 +218,14 @@ const ModelCard: React.FC<ModelCardProps> = ({
           >
             <Languages className="w-3.5 h-3.5" />
             <span>{t("modelSelector.capabilities.translate")}</span>
+          </div>
+        )}
+        {runtimeLabel && (
+          <div
+            className="flex items-center gap-1 text-xs text-[var(--muted)]"
+            title="Runtime selected automatically by Vox Jot"
+          >
+            <span>{runtimeLabel}</span>
           </div>
         )}
         {status === "downloadable" && (

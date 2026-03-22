@@ -63,7 +63,10 @@ fn attach_close_handler(app: &AppHandle) {
 /// Tell the detail-view frontend to switch sections via an event.
 fn emit_section(app: &AppHandle, section: &str) {
     if let Err(e) = app.emit_to(DETAIL_LABEL, "detail-navigate", section) {
-        error!("Failed to emit detail-navigate for section '{}': {}", section, e);
+        error!(
+            "Failed to emit detail-navigate for section '{}': {}",
+            section, e
+        );
     }
 }
 

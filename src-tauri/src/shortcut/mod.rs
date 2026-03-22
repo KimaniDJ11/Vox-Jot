@@ -23,10 +23,12 @@ use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, T
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
     KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme,
-    TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
     TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
-    TranslationRoutePreference, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
-    APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID,
+    TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference,
+    TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
+    APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
+    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID,
 };
 use crate::tray;
 
@@ -703,16 +705,41 @@ pub fn change_tts_engine_preference_setting(
         "sidecar" => TtsEnginePreference::Sidecar,
         other => return Err(format!("Invalid TTS engine preference '{}'", other)),
     };
+    settings.selected_tts_provider_id = match settings.tts_engine_preference {
+        TtsEnginePreference::System => TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string(),
+        TtsEnginePreference::SherpaOnnx => TTS_PROVIDER_SHERPA_PACK_ID.to_string(),
+        TtsEnginePreference::Sidecar => TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+        TtsEnginePreference::Auto => {
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            {
+                TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string()
+            }
+            #[cfg(target_os = "linux")]
+            {
+                TTS_PROVIDER_SHERPA_PACK_ID.to_string()
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string()
+            }
+        }
+    };
+    if settings.selected_tts_model_id.is_none() {
+        settings.selected_tts_model_id = match settings.selected_tts_provider_id.as_str() {
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID => Some(TTS_MODEL_SYSTEM_DEFAULT_ID.to_string()),
+            TTS_PROVIDER_LOCAL_SIDECAR_API_ID => {
+                Some(TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID.to_string())
+            }
+            _ => settings.tts_default_voice_id.clone(),
+        };
+    }
     settings::write_settings(&app, settings);
     Ok(())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn change_tts_auto_readback_mode_setting(
-    app: AppHandle,
-    mode: String,
-) -> Result<(), String> {
+pub fn change_tts_auto_readback_mode_setting(app: AppHandle, mode: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.tts_auto_readback_mode = match mode.as_str() {
         "off" => TtsAutoReadbackMode::Off,
@@ -726,10 +753,7 @@ pub fn change_tts_auto_readback_mode_setting(
 
 #[tauri::command]
 #[specta::specta]
-pub fn change_tts_auto_readback_scope_setting(
-    app: AppHandle,
-    scope: String,
-) -> Result<(), String> {
+pub fn change_tts_auto_readback_scope_setting(app: AppHandle, scope: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.tts_auto_readback_scope = match scope.as_str() {
         "dictation_only" => TtsAutoReadbackScope::DictationOnly,
@@ -742,10 +766,7 @@ pub fn change_tts_auto_readback_scope_setting(
 
 #[tauri::command]
 #[specta::specta]
-pub fn change_tts_readback_text_mode_setting(
-    app: AppHandle,
-    mode: String,
-) -> Result<(), String> {
+pub fn change_tts_readback_text_mode_setting(app: AppHandle, mode: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.tts_readback_text_mode = match mode.as_str() {
         "final_output" => TtsReadbackTextMode::FinalOutput,
@@ -764,6 +785,10 @@ pub fn change_tts_default_voice_id_setting(
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.tts_default_voice_id = voice_id.filter(|value| !value.trim().is_empty());
+    settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
+    if settings.selected_tts_provider_id == TTS_PROVIDER_SHERPA_PACK_ID {
+        settings.selected_tts_model_id = settings.selected_tts_voice_id.clone();
+    }
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -1243,7 +1268,13 @@ pub fn change_post_process_model_setting(
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
-    settings.post_process_models.insert(provider_id, model);
+    settings
+        .post_process_models
+        .insert(provider_id.clone(), model.clone());
+    if settings.post_process_provider_id == provider_id {
+        settings.selected_llm_provider_id = settings.post_process_provider_id.clone();
+        settings.selected_llm_model_id = model;
+    }
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -1274,7 +1305,13 @@ pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<
         );
     }
 
-    settings.post_process_provider_id = provider_id;
+    settings.post_process_provider_id = provider_id.clone();
+    settings.selected_llm_provider_id = provider_id.clone();
+    settings.selected_llm_model_id = settings
+        .post_process_models
+        .get(&provider_id)
+        .cloned()
+        .unwrap_or_default();
     settings.enforce_local_privacy_mode();
     settings::write_settings(&app, settings);
     Ok(())

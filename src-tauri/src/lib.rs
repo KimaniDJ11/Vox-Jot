@@ -1,19 +1,20 @@
 mod actions;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod apple_intelligence;
-mod audio_playback;
 mod audio_feedback;
+mod audio_playback;
 pub mod audio_toolkit;
 pub mod cli;
 mod clipboard;
 mod commands;
-mod detail_view;
 mod correction_tracker;
-mod helpers;
+mod detail_view;
 mod github_release;
+mod helpers;
 mod input;
 mod llm_client;
 mod managers;
+mod model_platform;
 mod ollama;
 mod overlay;
 pub mod portable;
@@ -66,9 +67,9 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
-use crate::settings::get_settings;
 use crate::detail_view::DetailViewRoutingState;
 use crate::scratchpad::ScratchpadRoutingState;
+use crate::settings::get_settings;
 use crate::tts::TtsManager;
 
 // Global atomic to store the file log level filter
@@ -475,9 +476,12 @@ pub fn run(cli_args: CliArgs) {
         commands::initialize_shortcuts,
         commands::models::get_available_models,
         commands::models::get_model_info,
+        commands::models::get_model_platform_overview,
         commands::models::download_model,
         commands::models::delete_model,
         commands::models::cancel_download,
+        commands::models::set_stt_platform_selection,
+        commands::models::set_tts_platform_selection,
         commands::models::set_active_model,
         commands::models::get_current_model,
         commands::models::get_transcription_model_status,

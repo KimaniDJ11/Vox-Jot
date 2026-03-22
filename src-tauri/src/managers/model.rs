@@ -65,17 +65,26 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
+    fn stt_provider_id_for_engine(engine_type: &EngineType) -> &'static str {
+        match engine_type {
+            EngineType::Whisper => "stt_whisper",
+            EngineType::Parakeet => "stt_parakeet",
+            EngineType::Moonshine => "stt_moonshine",
+            EngineType::MoonshineStreaming => "stt_moonshine_streaming",
+            EngineType::SenseVoice => "stt_sensevoice",
+            EngineType::GigaAM => "stt_gigaam",
+        }
+    }
+
     fn whisper_models_base_url() -> String {
         std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models"
-                .to_string()
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
         })
     }
 
     fn model_source_base_url() -> String {
         std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models"
-                .to_string()
+            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
         })
     }
 
@@ -642,6 +651,8 @@ impl ModelManager {
                     settings.selected_model
                 );
                 settings.selected_model = String::new();
+                settings.selected_stt_model_id = String::new();
+                settings.selected_stt_provider_id = String::new();
                 write_settings(&self.app_handle, settings.clone());
             }
         }
@@ -659,6 +670,9 @@ impl ModelManager {
                 // Update settings with the selected model
                 let mut updated_settings = settings;
                 updated_settings.selected_model = available_model.id.clone();
+                updated_settings.selected_stt_model_id = available_model.id.clone();
+                updated_settings.selected_stt_provider_id =
+                    Self::stt_provider_id_for_engine(&available_model.engine_type).to_string();
                 write_settings(&self.app_handle, updated_settings);
 
                 info!("Successfully auto-selected model: {}", available_model.id);

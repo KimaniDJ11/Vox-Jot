@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/Button";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
+import {
+  getModelPlatformOverview,
+  setTtsPlatformSelection,
+  type CatalogModelDescriptor,
+  type ModelPlatformOverview,
+  type ProviderDescriptor,
+} from "@/lib/modelPlatform";
 
 function SelectField({
   value,
@@ -18,7 +25,7 @@ function SelectField({
 }: {
   value: string;
   onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
   disabled?: boolean;
 }) {
   return (
@@ -30,7 +37,11 @@ function SelectField({
         disabled={disabled}
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}
@@ -41,7 +52,12 @@ function SelectField({
         stroke="currentColor"
         viewBox="0 0 24 24"
       >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 9l-7 7-7-7"
+        />
       </svg>
     </div>
   );
@@ -55,8 +71,11 @@ function useSpeechOutputState() {
   const { settings, updateSetting, isUpdating } = useSettings();
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [packs, setPacks] = useState<TtsPackInfo[]>([]);
+  const [platformOverview, setPlatformOverview] =
+    useState<ModelPlatformOverview | null>(null);
   const [loadingVoices, setLoadingVoices] = useState(false);
   const [loadingPacks, setLoadingPacks] = useState(false);
+  const [loadingPlatform, setLoadingPlatform] = useState(false);
   const [previewingVoice, setPreviewingVoice] = useState(false);
   const [busyPackId, setBusyPackId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -96,13 +115,35 @@ function useSpeechOutputState() {
     setLoadingPacks(false);
   }, []);
 
+  const refreshPlatform = useCallback(async () => {
+    setLoadingPlatform(true);
+    try {
+      const overview = await getModelPlatformOverview();
+      setPlatformOverview(overview);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to load TTS catalog",
+      );
+    } finally {
+      setLoadingPlatform(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!settings) {
       return;
     }
     void loadVoices();
     void refreshPacks();
-  }, [loadVoices, refreshPacks, settings?.tts_engine_preference, settings?.tts_enabled]);
+    void refreshPlatform();
+  }, [
+    loadVoices,
+    refreshPacks,
+    refreshPlatform,
+    settings?.tts_engine_preference,
+    settings?.tts_enabled,
+    settings?.tts_default_voice_id,
+  ]);
 
   const selectedVoiceId = settings?.tts_default_voice_id ?? "__auto__";
   const ttsEnabled = settings?.tts_enabled ?? false;
@@ -119,26 +160,65 @@ function useSpeechOutputState() {
     [voices],
   );
 
-  const engineStatus = useMemo(() => {
-    if (!settings) {
-      return null;
-    }
+  const selectedProviderId =
+    platformOverview?.selection.selected_tts_provider_id ?? "";
+  const selectedModelId =
+    platformOverview?.selection.selected_tts_model_id ?? "__auto__";
+  const selectedProvider = useMemo<ProviderDescriptor | null>(
+    () =>
+      platformOverview?.tts.providers.find(
+        (provider) => provider.id === selectedProviderId,
+      ) ?? null,
+    [platformOverview, selectedProviderId],
+  );
+  const selectedModel = useMemo<CatalogModelDescriptor | null>(
+    () =>
+      platformOverview?.tts.models.find(
+        (model) => model.id === selectedModelId,
+      ) ?? null,
+    [platformOverview, selectedModelId],
+  );
 
-    switch (settings.tts_engine_preference) {
-      case "system":
-        return "System voices are available on macOS and Windows. Linux needs an offline pack or sidecar.";
-      case "sherpa_onnx":
-        return packInstalled
-          ? "Offline voice packs are installed and ready to manage."
-          : "Install an offline voice pack to prepare cross-platform neural speech output.";
-      case "sidecar":
-        return "Sidecar mode sends speech requests to a local TTS API endpoint.";
-      default:
-        return packInstalled
-          ? "Auto mode will prefer system voices when available and can use installed offline packs."
-          : "Auto mode uses system voices on macOS and Windows, and falls back to other configured engines.";
+  const providerOptions = useMemo(
+    () =>
+      (platformOverview?.tts.providers ?? []).map((provider) => ({
+        value: provider.id,
+        label: provider.coming_soon
+          ? `${provider.label} (Coming soon)`
+          : provider.label,
+        disabled: provider.coming_soon || !provider.available,
+      })),
+    [platformOverview],
+  );
+
+  const modelOptions = useMemo(
+    () =>
+      (platformOverview?.tts.models ?? [])
+        .filter((model) => model.provider_id === selectedProviderId)
+        .map((model) => ({
+          value: model.id,
+          label: model.capabilities.coming_soon
+            ? `${model.label} (Coming soon)`
+            : model.label,
+          disabled: model.capabilities.coming_soon,
+        })),
+    [platformOverview, selectedProviderId],
+  );
+
+  const engineStatus = useMemo(() => {
+    if (statusMessage) {
+      return statusMessage;
     }
-  }, [packInstalled, settings]);
+    if (selectedProvider && selectedModel) {
+      return `${selectedProvider.runtime.label}. ${selectedProvider.source_label}.`;
+    }
+    if (selectedProvider) {
+      return `${selectedProvider.runtime.label}. ${selectedProvider.description}`;
+    }
+    return packInstalled
+      ? "Speech output is ready and will auto-route to the selected local runtime."
+      : "Choose a provider and model, then Vox Jot will handle the speech runtime automatically.";
+  }, [packInstalled, selectedModel, selectedProvider, statusMessage]);
 
   return {
     settings,
@@ -146,8 +226,10 @@ function useSpeechOutputState() {
     isUpdating,
     voices,
     packs,
+    platformOverview,
     loadingVoices,
     loadingPacks,
+    loadingPlatform,
     previewingVoice,
     busyPackId,
     statusMessage,
@@ -156,7 +238,14 @@ function useSpeechOutputState() {
     setBusyPackId,
     refreshVoices,
     refreshPacks,
+    refreshPlatform,
     selectedVoiceId,
+    selectedProvider,
+    selectedProviderId,
+    selectedModel,
+    selectedModelId,
+    providerOptions,
+    modelOptions,
     ttsEnabled,
     voiceOptions,
     engineStatus,
@@ -184,23 +273,65 @@ export const SpeechVoiceEngineSettingsCard: React.FC<
       )}
 
       <SettingContainer
-        title="Speech Engine"
-        description="Choose whether Vox Jot uses platform voices, downloadable offline packs, or a local sidecar."
+        title="Speech Provider"
+        description="Pick the local TTS provider family. Vox Jot will route speech to the right backend automatically."
         descriptionMode="tooltip"
         grouped={true}
       >
         <SelectField
-          value={speech.settings.tts_engine_preference ?? "auto"}
-          onChange={(value) =>
-            void speech.updateSetting("tts_engine_preference", value as any)
+          value={
+            speech.selectedProviderId || speech.providerOptions[0]?.value || ""
           }
-          disabled={speech.isUpdating("tts_engine_preference")}
-          options={[
-            { value: "auto", label: "Auto" },
-            { value: "system", label: "System" },
-            { value: "sherpa_onnx", label: "Offline pack" },
-            { value: "sidecar", label: "Local sidecar" },
-          ]}
+          onChange={(value) => {
+            const defaultModelId =
+              speech.platformOverview?.tts.models.find(
+                (model) =>
+                  model.provider_id === value &&
+                  !model.capabilities.coming_soon,
+              )?.id ?? null;
+            void setTtsPlatformSelection(value, defaultModelId)
+              .then(async () => {
+                await speech.refreshPlatform();
+                await speech.refreshVoices();
+              })
+              .catch((error) => {
+                speech.setStatusMessage(
+                  error instanceof Error ? error.message : String(error),
+                );
+              });
+          }}
+          disabled={!speech.ttsEnabled || speech.loadingPlatform}
+          options={speech.providerOptions}
+        />
+      </SettingContainer>
+
+      <SettingContainer
+        title="Speech Model"
+        description="Choose the installed or planned model within the selected provider."
+        descriptionMode="tooltip"
+        grouped={true}
+        disabled={!speech.ttsEnabled}
+      >
+        <SelectField
+          value={speech.selectedModelId || speech.modelOptions[0]?.value || ""}
+          onChange={(value) => {
+            void setTtsPlatformSelection(speech.selectedProviderId, value)
+              .then(async () => {
+                await speech.refreshPlatform();
+                await speech.refreshVoices();
+              })
+              .catch((error) => {
+                speech.setStatusMessage(
+                  error instanceof Error ? error.message : String(error),
+                );
+              });
+          }}
+          disabled={
+            !speech.ttsEnabled ||
+            speech.loadingPlatform ||
+            speech.modelOptions.length === 0
+          }
+          options={speech.modelOptions}
         />
       </SettingContainer>
 
@@ -279,6 +410,15 @@ export const SpeechVoiceEngineSettingsCard: React.FC<
           <p className="text-xs text-[var(--muted)]">
             {speech.statusMessage ?? speech.engineStatus}
           </p>
+          {speech.selectedProvider ? (
+            <div className="grid gap-1 text-xs text-[var(--muted)]">
+              <p>Runtime: {speech.selectedProvider.runtime.label}</p>
+              <p>Source: {speech.selectedProvider.source_label}</p>
+              {speech.selectedModel?.license_label ? (
+                <p>License: {speech.selectedModel.license_label}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </SettingContainer>
 
@@ -448,7 +588,9 @@ export const SpeechAutoReadbackSettingsCard: React.FC<{
 
       <ToggleSwitch
         checked={settings.tts_stop_on_record ?? true}
-        onChange={(enabled) => void updateSetting("tts_stop_on_record", enabled)}
+        onChange={(enabled) =>
+          void updateSetting("tts_stop_on_record", enabled)
+        }
         isUpdating={isUpdating("tts_stop_on_record")}
         label="Stop Speech On Record"
         description="Cancel current speech output as soon as recording starts."

@@ -11,6 +11,15 @@ use tauri_plugin_store::StoreExt;
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
+pub const TTS_PROVIDER_SYSTEM_BUILTIN_ID: &str = "system_builtin";
+pub const TTS_PROVIDER_SHERPA_PACK_ID: &str = "sherpa_pack";
+pub const TTS_PROVIDER_LOCAL_SIDECAR_API_ID: &str = "local_sidecar_api";
+pub const TTS_PROVIDER_QWEN3_NATIVE_ID: &str = "qwen3_native";
+pub const TTS_PROVIDER_FISH_SPEECH_LOCAL_ID: &str = "fish_speech_local";
+pub const TTS_PROVIDER_TADA_LOCAL_ID: &str = "tada_local";
+pub const TTS_PROVIDER_HF_S2S_LOCAL_ID: &str = "hf_s2s_local";
+pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
+pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
 const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 5;
 const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
@@ -423,6 +432,10 @@ pub struct AppSettings {
     pub update_checks_enabled: bool,
     #[serde(default = "default_model")]
     pub selected_model: String,
+    #[serde(default)]
+    pub selected_stt_provider_id: String,
+    #[serde(default)]
+    pub selected_stt_model_id: String,
     #[serde(default = "default_always_on_microphone")]
     pub always_on_microphone: bool,
     #[serde(default)]
@@ -465,6 +478,14 @@ pub struct AppSettings {
     pub tts_readback_text_mode: TtsReadbackTextMode,
     #[serde(default)]
     pub tts_default_voice_id: Option<String>,
+    #[serde(default)]
+    pub selected_tts_provider_id: String,
+    #[serde(default)]
+    pub selected_tts_model_id: Option<String>,
+    #[serde(default)]
+    pub selected_tts_voice_id: Option<String>,
+    #[serde(default)]
+    pub selected_tts_profile_id: Option<String>,
     #[serde(default = "default_tts_rate")]
     pub tts_rate: f32,
     #[serde(default = "default_tts_volume")]
@@ -509,6 +530,10 @@ pub struct AppSettings {
     pub post_process_api_keys: HashMap<String, String>,
     #[serde(default = "default_post_process_models")]
     pub post_process_models: HashMap<String, String>,
+    #[serde(default = "default_selected_llm_provider_id")]
+    pub selected_llm_provider_id: String,
+    #[serde(default = "default_selected_llm_model_id")]
+    pub selected_llm_model_id: String,
     #[serde(default = "default_post_process_prompts")]
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
@@ -604,6 +629,44 @@ fn default_tts_volume() -> f32 {
 
 fn default_tts_stop_on_record() -> bool {
     true
+}
+
+fn default_selected_llm_provider_id() -> String {
+    default_post_process_provider_id()
+}
+
+fn default_selected_llm_model_id() -> String {
+    default_model_for_provider(&default_selected_llm_provider_id())
+}
+
+fn default_selected_tts_provider_id_from_legacy(preference: TtsEnginePreference) -> &'static str {
+    match preference {
+        TtsEnginePreference::System => TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+        TtsEnginePreference::SherpaOnnx => TTS_PROVIDER_SHERPA_PACK_ID,
+        TtsEnginePreference::Sidecar => TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
+        TtsEnginePreference::Auto => {
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            {
+                TTS_PROVIDER_SYSTEM_BUILTIN_ID
+            }
+            #[cfg(target_os = "linux")]
+            {
+                TTS_PROVIDER_SHERPA_PACK_ID
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+            }
+        }
+    }
+}
+
+fn default_selected_tts_model_id_for_provider(provider_id: &str) -> Option<String> {
+    match provider_id {
+        TTS_PROVIDER_SYSTEM_BUILTIN_ID => Some(TTS_MODEL_SYSTEM_DEFAULT_ID.to_string()),
+        TTS_PROVIDER_LOCAL_SIDECAR_API_ID => Some(TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID.to_string()),
+        _ => None,
+    }
 }
 
 fn default_overlay_position() -> OverlayPosition {
@@ -943,7 +1006,11 @@ pub fn default_app_tone_mappings() -> Vec<AppToneMapping> {
                             .and_then(|o| {
                                 if o.status.success() {
                                     let id = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                                    if id.is_empty() { None } else { Some(id) }
+                                    if id.is_empty() {
+                                        None
+                                    } else {
+                                        Some(id)
+                                    }
                                 } else {
                                     None
                                 }
@@ -1296,6 +1363,54 @@ fn ensure_tts_defaults(settings: &mut AppSettings) -> bool {
     changed
 }
 
+fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+
+    if settings.selected_stt_model_id != settings.selected_model {
+        settings.selected_stt_model_id = settings.selected_model.clone();
+        changed = true;
+    }
+
+    if settings.selected_llm_provider_id.trim().is_empty() {
+        settings.selected_llm_provider_id = settings.post_process_provider_id.clone();
+        changed = true;
+    }
+
+    let expected_llm_model = settings
+        .post_process_models
+        .get(&settings.post_process_provider_id)
+        .cloned()
+        .unwrap_or_else(|| default_model_for_provider(&settings.post_process_provider_id));
+    if settings.selected_llm_model_id.trim().is_empty()
+        || settings.selected_llm_provider_id != settings.post_process_provider_id
+    {
+        settings.selected_llm_provider_id = settings.post_process_provider_id.clone();
+        settings.selected_llm_model_id = expected_llm_model;
+        changed = true;
+    }
+
+    if settings.selected_tts_provider_id.trim().is_empty() {
+        settings.selected_tts_provider_id =
+            default_selected_tts_provider_id_from_legacy(settings.tts_engine_preference)
+                .to_string();
+        changed = true;
+    }
+
+    if settings.selected_tts_voice_id != settings.tts_default_voice_id {
+        settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
+        changed = true;
+    }
+
+    if settings.selected_tts_model_id.is_none() {
+        settings.selected_tts_model_id = settings.selected_tts_voice_id.clone().or_else(|| {
+            default_selected_tts_model_id_for_provider(&settings.selected_tts_provider_id)
+        });
+        changed = true;
+    }
+
+    changed
+}
+
 /// Internal constants for correction behavior — no longer user-configurable.
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
@@ -1631,6 +1746,8 @@ pub fn get_default_settings() -> AppSettings {
         autostart_enabled: default_autostart_enabled(),
         update_checks_enabled: default_update_checks_enabled(),
         selected_model: "".to_string(),
+        selected_stt_provider_id: String::new(),
+        selected_stt_model_id: String::new(),
         always_on_microphone: false,
         selected_microphone: None,
         clamshell_microphone: None,
@@ -1652,6 +1769,10 @@ pub fn get_default_settings() -> AppSettings {
         tts_auto_readback_scope: TtsAutoReadbackScope::default(),
         tts_readback_text_mode: TtsReadbackTextMode::default(),
         tts_default_voice_id: None,
+        selected_tts_provider_id: String::new(),
+        selected_tts_model_id: None,
+        selected_tts_voice_id: None,
+        selected_tts_profile_id: None,
         tts_rate: default_tts_rate(),
         tts_volume: default_tts_volume(),
         tts_stop_on_record: default_tts_stop_on_record(),
@@ -1674,6 +1795,8 @@ pub fn get_default_settings() -> AppSettings {
         post_process_providers: default_post_process_providers(),
         post_process_api_keys: default_post_process_api_keys(),
         post_process_models: default_post_process_models(),
+        selected_llm_provider_id: default_selected_llm_provider_id(),
+        selected_llm_model_id: default_selected_llm_model_id(),
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: default_post_process_prompts()
             .first()
@@ -1903,8 +2026,9 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let translation_changed = ensure_translation_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
+    let model_platform_changed = ensure_model_platform_defaults(&mut settings);
 
-    if translation_changed || tts_changed || post_process_changed {
+    if translation_changed || tts_changed || post_process_changed || model_platform_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
 
@@ -1931,8 +2055,9 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let translation_changed = ensure_translation_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
+    let model_platform_changed = ensure_model_platform_defaults(&mut settings);
 
-    if translation_changed || tts_changed || post_process_changed {
+    if translation_changed || tts_changed || post_process_changed || model_platform_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());
     }
 
@@ -2192,6 +2317,19 @@ mod tests {
         assert_eq!(settings.tts_rate, default_tts_rate());
         assert_eq!(settings.tts_volume, default_tts_volume());
         assert!(settings.tts_stop_on_record);
+        assert_eq!(settings.selected_stt_model_id, "");
+        assert_eq!(settings.selected_stt_provider_id, "");
+        assert_eq!(settings.selected_tts_provider_id, "");
+        assert!(settings.selected_tts_model_id.is_none());
+        assert!(settings.selected_tts_voice_id.is_none());
+        assert_eq!(
+            settings.selected_llm_provider_id,
+            default_selected_llm_provider_id()
+        );
+        assert_eq!(
+            settings.selected_llm_model_id,
+            default_selected_llm_model_id()
+        );
         assert!(settings.bindings.contains_key("speak_selection"));
         assert!(settings.bindings.contains_key("speak_last_output"));
         assert!(settings.bindings.contains_key("stop_speaking"));

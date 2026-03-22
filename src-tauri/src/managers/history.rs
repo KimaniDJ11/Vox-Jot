@@ -564,7 +564,10 @@ impl HistoryManager {
             params![status, id],
         )?;
         if let Err(e) = self.app_handle.emit("history-updated", ()) {
-            error!("Failed to emit history-updated after TTS status update: {}", e);
+            error!(
+                "Failed to emit history-updated after TTS status update: {}",
+                e
+            );
         }
         Ok(())
     }
@@ -939,7 +942,10 @@ mod tests {
         assert_eq!(entry.tts_engine.as_deref(), Some("system"));
         assert_eq!(entry.tts_voice_id.as_deref(), Some("Samantha"));
         assert_eq!(entry.tts_locale.as_deref(), Some("en-US"));
-        assert_eq!(entry.tts_trigger.as_deref(), Some("auto_readback_dictation"));
+        assert_eq!(
+            entry.tts_trigger.as_deref(),
+            Some("auto_readback_dictation")
+        );
         assert_eq!(entry.tts_status.as_deref(), Some("pending"));
     }
 }

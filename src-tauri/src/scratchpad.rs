@@ -30,7 +30,11 @@ impl ScratchpadRoutingState {
     }
 
     fn snapshot_pending_insert(&self) {
-        let armed = self.editor_armed.lock().map(|state| *state).unwrap_or(false);
+        let armed = self
+            .editor_armed
+            .lock()
+            .map(|state| *state)
+            .unwrap_or(false);
         if let Ok(mut pending) = self.pending_insert.lock() {
             *pending = armed;
         }

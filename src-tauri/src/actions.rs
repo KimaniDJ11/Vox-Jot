@@ -19,16 +19,16 @@ use crate::settings::{
 };
 use crate::shortcut;
 use crate::snippets::apply_snippets;
-use crate::tts::{
-    build_auto_speak_plan, choose_readback_locale, normalize_locale, SpeakRequest, TtsHistoryContext,
-    TtsManager,
-};
 use crate::translation::{
     destination_label_for_dictation, dictation_requires_preview, normalize_language_code,
     selection_destination_label, selection_requires_preview, should_open_jot_pad_for_dictation,
     should_open_jot_pad_for_selection, translate_text, TranslationExecution, TranslationOrigin,
 };
 use crate::tray::{change_tray_icon, TrayIconState};
+use crate::tts::{
+    build_auto_speak_plan, choose_readback_locale, normalize_locale, SpeakRequest,
+    TtsHistoryContext, TtsManager,
+};
 use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
 };
@@ -2526,9 +2526,7 @@ impl ShortcutAction for TranscribeAction {
                             // and always include user-approved manual corrections
                             // from the corrections store.
                             let mut effective_settings = settings.clone();
-                            if let Some(correction_store) =
-                                ah.try_state::<Arc<CorrectionStore>>()
-                            {
+                            if let Some(correction_store) = ah.try_state::<Arc<CorrectionStore>>() {
                                 use crate::settings::correction_defaults;
                                 match correction_store.get_dictionary_entries(
                                     settings.correction_tracking_enabled,
@@ -2822,7 +2820,9 @@ impl ShortcutAction for TranscribeAction {
                                 TranslationOrigin::Dictation,
                                 translation_execution
                                     .as_ref()
-                                    .and_then(|execution| execution.source_language_detected.as_deref())
+                                    .and_then(|execution| {
+                                        execution.source_language_detected.as_deref()
+                                    })
                                     .or(source_language_hint.as_deref()),
                                 translation_execution
                                     .as_ref()
@@ -2836,7 +2836,11 @@ impl ShortcutAction for TranscribeAction {
                                     .unwrap_or_else(|| cleaned_text.clone())
                             };
                             if !spoken_output_text.trim().is_empty() {
-                                remember_last_output(&ah, &spoken_output_text, readback_locale.clone());
+                                remember_last_output(
+                                    &ah,
+                                    &spoken_output_text,
+                                    readback_locale.clone(),
+                                );
                             }
                             let mut auto_speak_plan = build_auto_speak_plan(
                                 &settings,

@@ -11,8 +11,9 @@ use crate::post_processing::DictionaryEntry;
 use super::diff::CorrectionPair;
 
 /// Database migrations for the corrections store.
-static MIGRATIONS: &[M] = &[M::up(
-    "CREATE TABLE IF NOT EXISTS auto_corrections (
+static MIGRATIONS: &[M] = &[
+    M::up(
+        "CREATE TABLE IF NOT EXISTS auto_corrections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         original TEXT NOT NULL,
         corrected TEXT NOT NULL,
@@ -25,9 +26,9 @@ static MIGRATIONS: &[M] = &[M::up(
         user_approved BOOLEAN NOT NULL DEFAULT 0,
         UNIQUE(original, corrected) ON CONFLICT REPLACE
     );",
-), M::up(
-    "ALTER TABLE auto_corrections ADD COLUMN exact_only BOOLEAN NOT NULL DEFAULT 0;",
-)];
+    ),
+    M::up("ALTER TABLE auto_corrections ADD COLUMN exact_only BOOLEAN NOT NULL DEFAULT 0;"),
+];
 
 /// A stored correction entry, as returned to the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

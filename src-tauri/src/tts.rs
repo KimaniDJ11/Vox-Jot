@@ -1,9 +1,16 @@
+use crate::github_release;
+use crate::model_platform::{
+    CapabilityFlags, CatalogModelDescriptor, DomainCatalog, ModelDomain, ProviderDescriptor,
+    RuntimeRequirement,
+};
 use crate::settings::{
     get_settings, is_local_base_url, AppSettings, TtsAutoReadbackMode, TtsAutoReadbackScope,
-    TtsEnginePreference, TtsReadbackTextMode,
+    TtsEnginePreference, TtsReadbackTextMode, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
+    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
+    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
 };
 use crate::translation::TranslationOrigin;
-use crate::github_release;
 use crate::{audio_playback, portable};
 use log::info;
 use regex::Regex;
@@ -209,7 +216,8 @@ impl TtsManager {
     }
 
     pub fn set_last_output(&self, text: String, locale: Option<String>) {
-        *self.last_output.lock().unwrap_or_else(|e| e.into_inner()) = Some(LastOutput { text, locale });
+        *self.last_output.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some(LastOutput { text, locale });
     }
 
     pub fn speak_last_output_request(&self) -> Result<SpeakRequest, String> {
@@ -257,6 +265,419 @@ impl TtsManager {
             .collect()
     }
 
+    pub fn selected_provider_id(&self, settings: &AppSettings) -> String {
+        if !settings.selected_tts_provider_id.trim().is_empty() {
+            return settings.selected_tts_provider_id.clone();
+        }
+
+        match settings.tts_engine_preference {
+            TtsEnginePreference::System => TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string(),
+            TtsEnginePreference::SherpaOnnx => TTS_PROVIDER_SHERPA_PACK_ID.to_string(),
+            TtsEnginePreference::Sidecar => TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+            TtsEnginePreference::Auto => {
+                #[cfg(any(target_os = "macos", target_os = "windows"))]
+                {
+                    TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string()
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    TTS_PROVIDER_SHERPA_PACK_ID.to_string()
+                }
+                #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+                {
+                    TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string()
+                }
+            }
+        }
+    }
+
+    pub fn selected_model_id(&self, settings: &AppSettings) -> Option<String> {
+        settings
+            .selected_tts_model_id
+            .clone()
+            .or_else(|| settings.selected_tts_voice_id.clone())
+            .or_else(|| settings.tts_default_voice_id.clone())
+            .or_else(|| {
+                let provider_id = self.selected_provider_id(settings);
+                match provider_id.as_str() {
+                    TTS_PROVIDER_SYSTEM_BUILTIN_ID => Some(TTS_MODEL_SYSTEM_DEFAULT_ID.to_string()),
+                    TTS_PROVIDER_LOCAL_SIDECAR_API_ID => {
+                        Some(TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID.to_string())
+                    }
+                    _ => None,
+                }
+            })
+    }
+
+    pub fn domain_catalog(&self, settings: &AppSettings) -> DomainCatalog {
+        let selected_provider_id = self.selected_provider_id(settings);
+        let selected_model_id = self.selected_model_id(settings);
+
+        let system_runtime = RuntimeRequirement {
+            id: "system_tts".to_string(),
+            label: "OS speech runtime".to_string(),
+            engine_family: "system".to_string(),
+            auto_routed: true,
+        };
+        let sherpa_runtime = RuntimeRequirement {
+            id: "sherpa_onnx".to_string(),
+            label: "Sherpa ONNX offline runtime".to_string(),
+            engine_family: "sherpa_onnx".to_string(),
+            auto_routed: true,
+        };
+        let sidecar_runtime = RuntimeRequirement {
+            id: "local_sidecar_api".to_string(),
+            label: "Local speech API runtime".to_string(),
+            engine_family: "sidecar".to_string(),
+            auto_routed: true,
+        };
+
+        let mut providers = vec![
+            ProviderDescriptor {
+                id: TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "System Built-In".to_string(),
+                description: "Use platform speech synthesis and choose from installed system voices."
+                    .to_string(),
+                source_label: "Platform runtime".to_string(),
+                runtime: system_runtime.clone(),
+                available: self.ensure_system_engine_supported().is_ok(),
+                local_only: true,
+                coming_soon: false,
+                license_label: None,
+                capabilities: CapabilityFlags {
+                    downloadable: false,
+                    loadable: true,
+                    local_only: true,
+                    supports_translation: false,
+                    supports_streaming: false,
+                    supports_voice_cloning: false,
+                    supports_instruction_prompt: false,
+                    supports_inline_tags: false,
+                    coming_soon: false,
+                },
+            },
+            ProviderDescriptor {
+                id: TTS_PROVIDER_SHERPA_PACK_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "Sherpa Pack".to_string(),
+                description:
+                    "Use Vox Jot-managed offline voice packs with automatic local runtime routing."
+                        .to_string(),
+                source_label: "Vox Jot curated assets".to_string(),
+                runtime: sherpa_runtime.clone(),
+                available: true,
+                local_only: true,
+                coming_soon: false,
+                license_label: Some("Sherpa ONNX model assets".to_string()),
+                capabilities: CapabilityFlags {
+                    downloadable: true,
+                    loadable: true,
+                    local_only: true,
+                    supports_translation: false,
+                    supports_streaming: false,
+                    supports_voice_cloning: false,
+                    supports_instruction_prompt: false,
+                    supports_inline_tags: false,
+                    coming_soon: false,
+                },
+            },
+            ProviderDescriptor {
+                id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "Local Sidecar API".to_string(),
+                description:
+                    "Route speech to a local OpenAI-compatible speech endpoint managed outside the app."
+                        .to_string(),
+                source_label: "User-managed local endpoint".to_string(),
+                runtime: sidecar_runtime.clone(),
+                available: self.ensure_sidecar_supported(settings).is_ok(),
+                local_only: true,
+                coming_soon: false,
+                license_label: None,
+                capabilities: CapabilityFlags {
+                    downloadable: false,
+                    loadable: true,
+                    local_only: true,
+                    supports_translation: false,
+                    supports_streaming: false,
+                    supports_voice_cloning: false,
+                    supports_instruction_prompt: false,
+                    supports_inline_tags: false,
+                    coming_soon: false,
+                },
+            },
+        ];
+
+        let planned_capabilities = CapabilityFlags {
+            downloadable: false,
+            loadable: false,
+            local_only: true,
+            supports_translation: false,
+            supports_streaming: true,
+            supports_voice_cloning: true,
+            supports_instruction_prompt: true,
+            supports_inline_tags: true,
+            coming_soon: true,
+        };
+
+        providers.extend([
+            ProviderDescriptor {
+                id: TTS_PROVIDER_QWEN3_NATIVE_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "Qwen3 Native".to_string(),
+                description:
+                    "Planned native Rust Qwen3 runtime with preset voices, instructions, and cloning."
+                        .to_string(),
+                source_label: "Provider-hosted model weights".to_string(),
+                runtime: RuntimeRequirement {
+                    id: "qwen3_native".to_string(),
+                    label: "Qwen3 native runtime".to_string(),
+                    engine_family: "qwen3".to_string(),
+                    auto_routed: true,
+                },
+                available: false,
+                local_only: true,
+                coming_soon: true,
+                license_label: Some("Apache-2.0".to_string()),
+                capabilities: planned_capabilities.clone(),
+            },
+            ProviderDescriptor {
+                id: TTS_PROVIDER_FISH_SPEECH_LOCAL_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "Fish Speech Local".to_string(),
+                description:
+                    "Planned local server integration for Fish Speech multilingual expressive cloning."
+                        .to_string(),
+                source_label: "Provider-hosted local server".to_string(),
+                runtime: RuntimeRequirement {
+                    id: "fish_speech_local".to_string(),
+                    label: "Fish Speech local server".to_string(),
+                    engine_family: "fish_speech".to_string(),
+                    auto_routed: true,
+                },
+                available: false,
+                local_only: true,
+                coming_soon: true,
+                license_label: Some("Fish Audio Research License".to_string()),
+                capabilities: planned_capabilities.clone(),
+            },
+            ProviderDescriptor {
+                id: TTS_PROVIDER_TADA_LOCAL_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "TADA Local".to_string(),
+                description: "Planned local sidecar integration for Hume TADA models.".to_string(),
+                source_label: "Provider-hosted model weights".to_string(),
+                runtime: RuntimeRequirement {
+                    id: "tada_local".to_string(),
+                    label: "TADA local sidecar".to_string(),
+                    engine_family: "tada".to_string(),
+                    auto_routed: true,
+                },
+                available: false,
+                local_only: true,
+                coming_soon: true,
+                license_label: Some("Llama 3.2".to_string()),
+                capabilities: planned_capabilities.clone(),
+            },
+            ProviderDescriptor {
+                id: TTS_PROVIDER_HF_S2S_LOCAL_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "HF Speech-to-Speech".to_string(),
+                description:
+                    "Planned local adapter for the Hugging Face speech-to-speech pipeline."
+                        .to_string(),
+                source_label: "Local pipeline adapter".to_string(),
+                runtime: RuntimeRequirement {
+                    id: "hf_s2s_local".to_string(),
+                    label: "speech-to-speech local pipeline".to_string(),
+                    engine_family: "speech_to_speech".to_string(),
+                    auto_routed: true,
+                },
+                available: false,
+                local_only: true,
+                coming_soon: true,
+                license_label: None,
+                capabilities: planned_capabilities.clone(),
+            },
+        ]);
+
+        let mut models = vec![
+            CatalogModelDescriptor {
+                id: TTS_MODEL_SYSTEM_DEFAULT_ID.to_string(),
+                provider_id: TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "System Voices".to_string(),
+                description: "Uses the operating system voice inventory.".to_string(),
+                installed: true,
+                selected: selected_provider_id == TTS_PROVIDER_SYSTEM_BUILTIN_ID
+                    && selected_model_id.as_deref() == Some(TTS_MODEL_SYSTEM_DEFAULT_ID),
+                downloadable: false,
+                source_label: "Platform runtime".to_string(),
+                runtime: system_runtime,
+                license_label: None,
+                locale: None,
+                supported_languages: Vec::new(),
+                capabilities: CapabilityFlags {
+                    downloadable: false,
+                    loadable: true,
+                    local_only: true,
+                    supports_translation: false,
+                    supports_streaming: false,
+                    supports_voice_cloning: false,
+                    supports_instruction_prompt: false,
+                    supports_inline_tags: false,
+                    coming_soon: false,
+                },
+            },
+            CatalogModelDescriptor {
+                id: TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID.to_string(),
+                provider_id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+                domain: ModelDomain::Tts,
+                label: "OpenAI-Compatible Speech API".to_string(),
+                description: "Routes synthesis to the configured local speech endpoint."
+                    .to_string(),
+                installed: true,
+                selected: selected_provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+                    && selected_model_id.as_deref() == Some(TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID),
+                downloadable: false,
+                source_label: "User-managed local endpoint".to_string(),
+                runtime: sidecar_runtime,
+                license_label: None,
+                locale: None,
+                supported_languages: Vec::new(),
+                capabilities: CapabilityFlags {
+                    downloadable: false,
+                    loadable: true,
+                    local_only: true,
+                    supports_translation: false,
+                    supports_streaming: false,
+                    supports_voice_cloning: false,
+                    supports_instruction_prompt: false,
+                    supports_inline_tags: false,
+                    coming_soon: false,
+                },
+            },
+        ];
+
+        models.extend(
+            self.get_available_packs()
+                .into_iter()
+                .map(|pack| CatalogModelDescriptor {
+                    id: pack.id.clone(),
+                    provider_id: TTS_PROVIDER_SHERPA_PACK_ID.to_string(),
+                    domain: ModelDomain::Tts,
+                    label: pack.label.clone(),
+                    description: format!("Offline pack for {}", pack.locale),
+                    installed: pack.installed,
+                    selected: selected_provider_id == TTS_PROVIDER_SHERPA_PACK_ID
+                        && selected_model_id.as_deref() == Some(pack.id.as_str()),
+                    downloadable: true,
+                    source_label: "Vox Jot curated assets".to_string(),
+                    runtime: sherpa_runtime.clone(),
+                    license_label: Some("Sherpa ONNX model assets".to_string()),
+                    locale: Some(pack.locale.clone()),
+                    supported_languages: vec![pack.locale.clone()],
+                    capabilities: CapabilityFlags {
+                        downloadable: true,
+                        loadable: true,
+                        local_only: true,
+                        supports_translation: false,
+                        supports_streaming: false,
+                        supports_voice_cloning: false,
+                        supports_instruction_prompt: false,
+                        supports_inline_tags: false,
+                        coming_soon: false,
+                    },
+                }),
+        );
+
+        models.extend(
+            [
+                (
+                    "qwen3-0.6b-base",
+                    TTS_PROVIDER_QWEN3_NATIVE_ID,
+                    "Qwen3 0.6B Base",
+                    "Voice cloning from reference audio.",
+                    Some("Apache-2.0"),
+                ),
+                (
+                    "qwen3-0.6b-customvoice",
+                    TTS_PROVIDER_QWEN3_NATIVE_ID,
+                    "Qwen3 0.6B CustomVoice",
+                    "Preset voices with local native runtime.",
+                    Some("Apache-2.0"),
+                ),
+                (
+                    "qwen3-1.7b-customvoice",
+                    TTS_PROVIDER_QWEN3_NATIVE_ID,
+                    "Qwen3 1.7B CustomVoice",
+                    "Preset voices plus expressive instruction control.",
+                    Some("Apache-2.0"),
+                ),
+                (
+                    "fish-s2-pro",
+                    TTS_PROVIDER_FISH_SPEECH_LOCAL_ID,
+                    "Fish Speech S2 Pro",
+                    "Multilingual expressive local server runtime.",
+                    Some("Fish Audio Research License"),
+                ),
+                (
+                    "tada-1b",
+                    TTS_PROVIDER_TADA_LOCAL_ID,
+                    "TADA 1B",
+                    "English voice cloning and long-form generation.",
+                    Some("Llama 3.2"),
+                ),
+                (
+                    "tada-3b-ml",
+                    TTS_PROVIDER_TADA_LOCAL_ID,
+                    "TADA 3B ML",
+                    "Multilingual local sidecar model.",
+                    Some("Llama 3.2"),
+                ),
+                (
+                    "hf-s2s-default",
+                    TTS_PROVIDER_HF_S2S_LOCAL_ID,
+                    "speech-to-speech Adapter",
+                    "Local adapter that orchestrates external TTS backends.",
+                    None,
+                ),
+            ]
+            .into_iter()
+            .map(
+                |(id, provider_id, label, description, license_label)| CatalogModelDescriptor {
+                    id: id.to_string(),
+                    provider_id: provider_id.to_string(),
+                    domain: ModelDomain::Tts,
+                    label: label.to_string(),
+                    description: description.to_string(),
+                    installed: false,
+                    selected: selected_provider_id == provider_id
+                        && selected_model_id.as_deref() == Some(id),
+                    downloadable: false,
+                    source_label: "Planned provider integration".to_string(),
+                    runtime: providers
+                        .iter()
+                        .find(|provider| provider.id == provider_id)
+                        .map(|provider| provider.runtime.clone())
+                        .unwrap_or(RuntimeRequirement {
+                            id: provider_id.to_string(),
+                            label: provider_id.to_string(),
+                            engine_family: provider_id.to_string(),
+                            auto_routed: true,
+                        }),
+                    license_label: license_label.map(|value| value.to_string()),
+                    locale: None,
+                    supported_languages: Vec::new(),
+                    capabilities: planned_capabilities.clone(),
+                },
+            ),
+        );
+
+        DomainCatalog { providers, models }
+    }
+
     pub async fn download_pack(&self, pack_id: &str) -> Result<(), String> {
         let definition = PACK_DEFINITIONS
             .iter()
@@ -273,9 +694,12 @@ impl TtsManager {
         )
         .await?;
 
-        let pack_root = self
-            .installed_pack_root(definition.id)
-            .ok_or_else(|| format!("Downloaded TTS pack '{}' could not be located", definition.id))?;
+        let pack_root = self.installed_pack_root(definition.id).ok_or_else(|| {
+            format!(
+                "Downloaded TTS pack '{}' could not be located",
+                definition.id
+            )
+        })?;
         self.write_default_pack_manifest(definition, &pack_root)?;
         let _ = self.ensure_sherpa_runtime_installed().await?;
         Ok(())
@@ -314,18 +738,27 @@ impl TtsManager {
 
         let stop_flag = Arc::new(AtomicBool::new(false));
         {
-            let mut guard = self.current_stop_flag.lock().unwrap_or_else(|e| e.into_inner());
+            let mut guard = self
+                .current_stop_flag
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             *guard = Some(stop_flag.clone());
         }
 
         let locale = normalize_locale(request.locale.as_deref());
         let chunks = chunk_text(trimmed);
         let engine = self.resolve_engine_kind(&settings, locale.as_deref())?;
-        let voice = self.select_voice(&settings, engine, locale.as_deref(), request.preferred_voice_id.as_deref())?;
+        let voice = self.select_voice(
+            &settings,
+            engine,
+            locale.as_deref(),
+            request.preferred_voice_id.as_deref(),
+        )?;
         let sherpa_context = match engine {
-            TtsEngineKind::SherpaOnnx => {
-                Some(self.prepare_sherpa_context(locale.as_deref(), voice.as_ref()).await?)
-            }
+            TtsEngineKind::SherpaOnnx => Some(
+                self.prepare_sherpa_context(locale.as_deref(), voice.as_ref())
+                    .await?,
+            ),
             _ => None,
         };
         let tts_volume = settings.tts_volume.clamp(0.0, 1.0);
@@ -413,6 +846,35 @@ impl TtsManager {
         settings: &AppSettings,
         locale: Option<&str>,
     ) -> Result<TtsEngineKind, String> {
+        match self.selected_provider_id(settings).as_str() {
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID => return self.ensure_system_engine_supported(),
+            TTS_PROVIDER_SHERPA_PACK_ID => return Ok(TtsEngineKind::SherpaOnnx),
+            TTS_PROVIDER_LOCAL_SIDECAR_API_ID => return self.ensure_sidecar_supported(settings),
+            TTS_PROVIDER_QWEN3_NATIVE_ID => {
+                return Err(
+                    "Qwen3 native TTS is planned but not available in this build yet.".to_string(),
+                )
+            }
+            TTS_PROVIDER_FISH_SPEECH_LOCAL_ID => {
+                return Err(
+                    "Fish Speech local TTS is planned but not available in this build yet."
+                        .to_string(),
+                )
+            }
+            TTS_PROVIDER_TADA_LOCAL_ID => {
+                return Err(
+                    "TADA local TTS is planned but not available in this build yet.".to_string(),
+                )
+            }
+            TTS_PROVIDER_HF_S2S_LOCAL_ID => {
+                return Err(
+                    "HF speech-to-speech TTS is planned but not available in this build yet."
+                        .to_string(),
+                )
+            }
+            _ => {}
+        }
+
         match settings.tts_engine_preference {
             TtsEnginePreference::System => self.ensure_system_engine_supported(),
             TtsEnginePreference::SherpaOnnx => Ok(TtsEngineKind::SherpaOnnx),
@@ -457,7 +919,11 @@ impl TtsManager {
     }
 
     fn asset_download_url(&self, archive_name: &str) -> String {
-        format!("{}/{}", self.tts_asset_base_url().trim_end_matches('/'), archive_name)
+        format!(
+            "{}/{}",
+            self.tts_asset_base_url().trim_end_matches('/'),
+            archive_name
+        )
     }
 
     fn pack_install_dir(&self, pack_id: &str) -> PathBuf {
@@ -504,9 +970,9 @@ impl TtsManager {
     }
 
     fn definition_for_voice(&self, voice: &VoiceInfo) -> Option<&'static PackDefinition> {
-        PACK_DEFINITIONS.iter().find(|definition| {
-            definition.id == voice.id || definition.voice_id == voice.id
-        })
+        PACK_DEFINITIONS
+            .iter()
+            .find(|definition| definition.id == voice.id || definition.voice_id == voice.id)
     }
 
     async fn prepare_sherpa_context(
@@ -571,10 +1037,14 @@ impl TtsManager {
         )
         .await?;
 
-        let root = resolve_extracted_root(&install_dir)
-            .ok_or_else(|| "Sherpa-ONNX runtime extraction did not produce any files.".to_string())?;
+        let root = resolve_extracted_root(&install_dir).ok_or_else(|| {
+            "Sherpa-ONNX runtime extraction did not produce any files.".to_string()
+        })?;
         if !sherpa_runtime_binary_path(&root).exists() {
-            return Err("Sherpa-ONNX runtime download completed, but the offline-tts binary is missing.".to_string());
+            return Err(
+                "Sherpa-ONNX runtime download completed, but the offline-tts binary is missing."
+                    .to_string(),
+            );
         }
 
         Ok(root)
@@ -586,8 +1056,8 @@ impl TtsManager {
         install_dir: &Path,
         label: &str,
     ) -> Result<(), String> {
-        let app_data_dir =
-            portable::app_data_dir(&self.app_handle).map_err(|err| format!("TTS dir error: {err}"))?;
+        let app_data_dir = portable::app_data_dir(&self.app_handle)
+            .map_err(|err| format!("TTS dir error: {err}"))?;
         let download_dir = app_data_dir.join("tts-downloads");
         fs::create_dir_all(&download_dir)
             .map_err(|err| format!("Failed to create TTS download dir: {err}"))?;
@@ -618,7 +1088,10 @@ impl TtsManager {
             .await
             .map_err(|err| format!("Failed to download {label}: {err}"))?;
         if !response.status().is_success() {
-            return Err(format!("Failed to download {label}: HTTP {} ({url})", response.status()));
+            return Err(format!(
+                "Failed to download {label}: HTTP {} ({url})",
+                response.status()
+            ));
         }
 
         let bytes = response
@@ -632,8 +1105,7 @@ impl TtsManager {
             .filter(|name| !name.is_empty())
             .unwrap_or("tts-asset.tar.gz");
         let archive_path = download_dir.join(format!("{}-{}", Uuid::new_v4(), file_name));
-        fs::write(&archive_path, bytes)
-            .map_err(|err| format!("Failed to save {label}: {err}"))?;
+        fs::write(&archive_path, bytes).map_err(|err| format!("Failed to save {label}: {err}"))?;
         Ok(archive_path)
     }
 
@@ -683,7 +1155,10 @@ impl TtsManager {
 
     fn system_voices(&self) -> Result<Vec<VoiceInfo>, String> {
         {
-            let cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+            let cache = self
+                .cached_system_voices
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(voices) = cache.as_ref() {
                 return Ok(voices.clone());
             }
@@ -691,21 +1166,33 @@ impl TtsManager {
 
         let voices = {
             #[cfg(target_os = "macos")]
-            { macos_system_voices()? }
+            {
+                macos_system_voices()?
+            }
             #[cfg(target_os = "windows")]
-            { windows_system_voices()? }
+            {
+                windows_system_voices()?
+            }
             #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-            { Vec::new() }
+            {
+                Vec::new()
+            }
         };
 
-        let mut cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cached_system_voices
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         *cache = Some(voices.clone());
         Ok(voices)
     }
 
     /// Clear the cached system voices so the next call re-enumerates.
     pub fn invalidate_voice_cache(&self) {
-        let mut cache = self.cached_system_voices.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self
+            .cached_system_voices
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         *cache = None;
     }
 
@@ -728,6 +1215,26 @@ impl TtsManager {
 
         if let Some(voice_id) = preferred_voice_id {
             if let Some(voice) = voices.iter().find(|voice| voice.id == voice_id) {
+                return Ok(Some(voice.clone()));
+            }
+        }
+
+        if let Some(voice_id) = settings
+            .selected_tts_voice_id
+            .as_deref()
+            .filter(|voice_id| !voice_id.trim().is_empty())
+        {
+            if let Some(voice) = voices.iter().find(|voice| voice.id == voice_id) {
+                return Ok(Some(voice.clone()));
+            }
+        }
+
+        if let Some(model_id) = settings
+            .selected_tts_model_id
+            .as_deref()
+            .filter(|model_id| !model_id.trim().is_empty())
+        {
+            if let Some(voice) = voices.iter().find(|voice| voice.id == model_id) {
                 return Ok(Some(voice.clone()));
             }
         }
@@ -829,8 +1336,8 @@ $voices | ConvertTo-Json -Compress
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let parsed: serde_json::Value =
-        serde_json::from_str(stdout.trim()).map_err(|err| format!("Failed to parse Windows voices: {err}"))?;
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim())
+        .map_err(|err| format!("Failed to parse Windows voices: {err}"))?;
     let entries = match parsed {
         serde_json::Value::Array(values) => values,
         serde_json::Value::Object(_) => vec![parsed],
@@ -901,15 +1408,11 @@ fn sherpa_runtime_definition() -> Option<SherpaRuntimeDefinition> {
 fn sherpa_runtime_binary_path(runtime_root: &Path) -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        return runtime_root
-            .join("bin")
-            .join("sherpa-onnx-offline-tts.exe");
+        return runtime_root.join("bin").join("sherpa-onnx-offline-tts.exe");
     }
     #[cfg(not(target_os = "windows"))]
     {
-        runtime_root
-            .join("bin")
-            .join("sherpa-onnx-offline-tts")
+        runtime_root.join("bin").join("sherpa-onnx-offline-tts")
     }
 }
 
@@ -1015,10 +1518,15 @@ fn speak_sherpa_chunk(
                 .arg("--vits-tokens")
                 .arg(context.pack_root.join(&context.manifest.tokens_file))
                 .arg("--vits-length-scale")
-                .arg(format!("{:.3}", (1.0 / rate.clamp(0.5, 2.0)).clamp(0.5, 2.0)));
+                .arg(format!(
+                    "{:.3}",
+                    (1.0 / rate.clamp(0.5, 2.0)).clamp(0.5, 2.0)
+                ));
 
             if let Some(data_dir) = context.manifest.data_dir.as_deref() {
-                command.arg("--vits-data-dir").arg(context.pack_root.join(data_dir));
+                command
+                    .arg("--vits-data-dir")
+                    .arg(context.pack_root.join(data_dir));
             }
             if let Some(lexicon_file) = context.manifest.lexicon_file.as_deref() {
                 command
@@ -1095,15 +1603,41 @@ fn speak_system_chunk(
     #[cfg(target_os = "macos")]
     {
         let _ = locale;
-        speak_system_chunk_macos(app_handle, text, voice, rate, volume, output_device, stop_flag)
+        speak_system_chunk_macos(
+            app_handle,
+            text,
+            voice,
+            rate,
+            volume,
+            output_device,
+            stop_flag,
+        )
     }
     #[cfg(target_os = "windows")]
     {
-        speak_system_chunk_windows(app_handle, text, locale, voice, rate, volume, output_device, stop_flag)
+        speak_system_chunk_windows(
+            app_handle,
+            text,
+            locale,
+            voice,
+            rate,
+            volume,
+            output_device,
+            stop_flag,
+        )
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let _ = (app_handle, text, locale, voice, rate, volume, output_device, stop_flag);
+        let _ = (
+            app_handle,
+            text,
+            locale,
+            voice,
+            rate,
+            volume,
+            output_device,
+            stop_flag,
+        );
         Err("System TTS is not supported on this platform.".to_string())
     }
 }
@@ -1145,9 +1679,9 @@ fn speak_system_chunk_macos(
         match child.try_wait() {
             Ok(Some(status)) => {
                 if !status.success() {
-                    let output = child
-                        .wait_with_output()
-                        .map_err(|err| format!("Failed to read macOS speech synthesis error: {err}"))?;
+                    let output = child.wait_with_output().map_err(|err| {
+                        format!("Failed to read macOS speech synthesis error: {err}")
+                    })?;
                     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                     return Err(if stderr.is_empty() {
                         "macOS speech synthesis failed.".to_string()
@@ -1175,12 +1709,7 @@ fn speak_system_chunk_macos(
     }
 
     let afconvert_output = Command::new("/usr/bin/afconvert")
-        .args([
-            "-f",
-            "WAVE",
-            "-d",
-            "LEI16@22050",
-        ])
+        .args(["-f", "WAVE", "-d", "LEI16@22050"])
         .arg(&synthesized_file)
         .arg(&playback_file)
         .output()
@@ -1221,9 +1750,14 @@ fn speak_system_chunk_windows(
         "Add-Type -AssemblyName System.Speech\n$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer\n",
     );
     if let Some(voice) = voice {
-        script.push_str(&format!("$synth.SelectVoice('{}')\n", voice.id.replace('\'', "''")));
+        script.push_str(&format!(
+            "$synth.SelectVoice('{}')\n",
+            voice.id.replace('\'', "''")
+        ));
     } else if let Some(locale) = locale {
-        script.push_str("$voice = $synth.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -eq '");
+        script.push_str(
+            "$voice = $synth.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -eq '",
+        );
         script.push_str(&locale.replace('\'', "''"));
         script.push_str("' } | Select-Object -First 1\nif ($voice) { $synth.SelectVoice($voice.VoiceInfo.Name) }\n");
     }
@@ -1266,8 +1800,8 @@ fn speak_sidecar_chunk(
     }
 
     let runtime = tokio::runtime::Handle::current();
-    let sidecar_url =
-        std::env::var("VOX_JOT_TTS_SIDECAR_URL").unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string());
+    let sidecar_url = std::env::var("VOX_JOT_TTS_SIDECAR_URL")
+        .unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string());
 
     let payload = serde_json::json!({
         "input": text,
@@ -1303,7 +1837,8 @@ fn speak_sidecar_chunk(
 }
 
 fn tts_temp_file(app_handle: &AppHandle, extension: &str) -> Result<PathBuf, String> {
-    let base_dir = portable::app_data_dir(app_handle).map_err(|err| format!("Failed to resolve app data dir: {err}"))?;
+    let base_dir = portable::app_data_dir(app_handle)
+        .map_err(|err| format!("Failed to resolve app data dir: {err}"))?;
     let tts_dir = base_dir.join("tts-cache");
     fs::create_dir_all(&tts_dir).map_err(|err| format!("Failed to create TTS cache dir: {err}"))?;
     Ok(tts_dir.join(format!("{}.{}", Uuid::new_v4(), extension)))
@@ -1475,7 +2010,8 @@ pub fn build_auto_speak_plan(
         TtsAutoReadbackMode::AfterPreviewConfirm => had_preview,
     };
 
-    let should_speak = settings.tts_enabled && scope_allows && mode_allows && !final_text.trim().is_empty();
+    let should_speak =
+        settings.tts_enabled && scope_allows && mode_allows && !final_text.trim().is_empty();
     let text = match settings.tts_readback_text_mode {
         TtsReadbackTextMode::TranslatedBlock => translated_text
             .filter(|value| !value.trim().is_empty())
@@ -1485,13 +2021,15 @@ pub fn build_auto_speak_plan(
     };
 
     let engine = if should_speak {
-        Some(match settings.tts_engine_preference {
-            TtsEnginePreference::Auto => "auto",
-            TtsEnginePreference::System => "system",
-            TtsEnginePreference::SherpaOnnx => "sherpa_onnx",
-            TtsEnginePreference::Sidecar => "sidecar",
-        }
-        .to_string())
+        Some(
+            match settings.tts_engine_preference {
+                TtsEnginePreference::Auto => "auto",
+                TtsEnginePreference::System => "system",
+                TtsEnginePreference::SherpaOnnx => "sherpa_onnx",
+                TtsEnginePreference::Sidecar => "sidecar",
+            }
+            .to_string(),
+        )
     } else {
         None
     };
@@ -1523,10 +2061,13 @@ pub fn choose_readback_locale(
     target_language: Option<&str>,
 ) -> Option<String> {
     match settings.tts_readback_text_mode {
-        TtsReadbackTextMode::TranslatedBlock => normalize_locale(target_language.or(source_language)),
+        TtsReadbackTextMode::TranslatedBlock => {
+            normalize_locale(target_language.or(source_language))
+        }
         TtsReadbackTextMode::FinalOutput => {
             if matches!(origin, TranslationOrigin::Dictation)
-                && settings.translation_output_mode == crate::settings::TranslationOutputMode::Bilingual
+                && settings.translation_output_mode
+                    == crate::settings::TranslationOutputMode::Bilingual
             {
                 normalize_locale(target_language.or(source_language))
             } else {

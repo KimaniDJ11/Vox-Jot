@@ -296,15 +296,13 @@ pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, String> {
                     continue;
                 }
 
-                let name = bundle_name
-                    .filter(|n| !n.is_empty())
-                    .unwrap_or_else(|| {
-                        // Fall back to the .app directory name
-                        std::path::Path::new(app_path)
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().to_string())
-                            .unwrap_or_default()
-                    });
+                let name = bundle_name.filter(|n| !n.is_empty()).unwrap_or_else(|| {
+                    // Fall back to the .app directory name
+                    std::path::Path::new(app_path)
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default()
+                });
 
                 apps.push(InstalledApp {
                     bundle_id: bid,

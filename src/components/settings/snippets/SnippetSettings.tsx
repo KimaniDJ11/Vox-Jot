@@ -198,7 +198,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           type="button"
           size="sm"
           variant="ghost"
-          className="p-1.5"
+          className="h-10 w-10 p-0"
           onClick={() => {
             setAdding(true);
             setNewTrigger("");
@@ -213,7 +213,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           type="button"
           size="sm"
           variant="ghost"
-          className="p-1.5"
+          className="h-10 w-10 p-0"
           onClick={handleImport}
           title={t("settings.snippets.list.import")}
           aria-label={t("settings.snippets.list.import")}
@@ -224,7 +224,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           type="button"
           size="sm"
           variant="ghost"
-          className="p-1.5"
+          className="h-10 w-10 p-0"
           onClick={handleExport}
           disabled={bulkDisabled}
           title={t("settings.snippets.list.export")}
@@ -236,7 +236,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           type="button"
           size="sm"
           variant="danger-ghost"
-          className="p-1.5"
+          className="h-10 w-10 p-0"
           onClick={handleClearAll}
           disabled={bulkDisabled}
           title={t("settings.snippets.list.clearAll")}
@@ -268,7 +268,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
 
         {showEnabledToggle ? (
           <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
-            <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
               {t("settings.snippets.list.title")}
             </h2>
             <div className="flex gap-1 shrink-0">{actionButtons}</div>
@@ -280,7 +280,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           {adding && (
             <div className="px-5 py-3 border-b border-[var(--border)] space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0 w-16">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
                   {t("settings.snippets.list.trigger")}
                 </span>
                 <input
@@ -298,12 +298,12 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     }
                   }}
                 />
-                <span className="text-[10px] text-mid-gray/60 shrink-0">
+                <span className="text-xs text-[var(--muted)] shrink-0">
                   {newTrigger.length}/{TRIGGER_MAX}
                 </span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0 w-16 pt-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
                   {t("settings.snippets.list.expansion")}
                 </span>
                 <textarea
@@ -322,7 +322,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     }
                   }}
                 />
-                <span className="text-[10px] text-mid-gray/60 shrink-0 pt-1.5">
+                <span className="text-xs text-[var(--muted)] shrink-0 pt-1.5">
                   {newExpansion.length}/{EXPANSION_MAX}
                 </span>
               </div>
@@ -349,7 +349,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
 
           {/* Snippet list */}
           {snippets.length === 0 && !adding ? (
-            <div className="px-5 py-8 text-center text-sm text-mid-gray">
+            <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
               {t("settings.snippets.list.empty")}
             </div>
           ) : (
@@ -365,7 +365,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     /* Edit mode */
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0 w-16">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
                           {t("settings.snippets.list.trigger")}
                         </span>
                         <input
@@ -385,7 +385,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         />
                       </div>
                       <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0 w-16 pt-1.5">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
                           {t("settings.snippets.list.expansion")}
                         </span>
                         <textarea
@@ -425,7 +425,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     /* View mode */
                     <>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
                           {t("settings.snippets.list.trigger")}
                         </span>
                         <span className="text-sm font-semibold truncate flex-1 min-w-0">
@@ -434,7 +434,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
-                            className="text-mid-gray/60 hover:text-[var(--accent)] transition-colors p-0.5"
+                            className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors p-0.5"
                             onClick={() => startEdit(snippet)}
                             title={t("common.edit", {
                               defaultValue: "Edit",
@@ -470,7 +470,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           </button>
                           <button
                             type="button"
-                            className="text-mid-gray/60 hover:text-red-500 transition-colors p-0.5"
+                            className="text-[var(--muted)] hover:text-[var(--danger)] transition-colors p-0.5"
                             onClick={() => void handleDelete(snippet.id)}
                             title={t("common.delete")}
                           >
@@ -479,10 +479,10 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         </div>
                       </div>
                       <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
                           {t("settings.snippets.list.expansion")}
                         </span>
-                        <span className="text-xs text-mid-gray leading-relaxed line-clamp-2 min-w-0">
+                        <span className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2 min-w-0">
                           {snippet.expansion}
                         </span>
                       </div>

@@ -216,7 +216,7 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-mid-gray">
+        <div className="text-sm text-[var(--muted)]">
           {t("settings.general.shortcut.loading")}
         </div>
       </SettingContainer>
@@ -232,7 +232,7 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-mid-gray">
+        <div className="text-sm text-[var(--muted)]">
           {t("settings.general.shortcut.none")}
         </div>
       </SettingContainer>
@@ -248,7 +248,7 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-mid-gray">
+        <div className="text-sm text-[var(--muted)]">
           {t("settings.general.shortcut.none")}
         </div>
       </SettingContainer>

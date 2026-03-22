@@ -57,7 +57,7 @@ const ModelStatusButton: React.FC<ModelStatusButtonProps> = ({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center hover:text-text/80 transition-colors ${
+      className={`flex items-center hover:text-[var(--text)] transition-colors ${
         isTitleBar ? "gap-2.5" : "gap-2"
       } ${className}`}
       title={`Model status: ${displayText}`}

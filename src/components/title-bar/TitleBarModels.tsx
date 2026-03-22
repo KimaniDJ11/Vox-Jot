@@ -63,7 +63,7 @@ const TitleBarModels: React.FC = () => {
   }, []);
 
   return (
-    <div className="title-bar-models flex items-center gap-4 text-[13px] font-bold tabular-nums leading-none">
+    <div className="title-bar-models flex items-center gap-4 text-sm font-bold tabular-nums leading-none">
       <ModelSelector
         statusButtonLabelClassName="font-bold"
         statusButtonDensity="titleBar"
@@ -100,7 +100,7 @@ const TitleBarModels: React.FC = () => {
                     aria-selected={selectedLlmModel === model}
                     className={`w-full px-3 py-2 text-start text-sm transition-colors ${
                       selectedLlmModel === model
-                        ? "bg-logo-primary text-white hover:bg-logo-primary hover:brightness-110"
+                        ? "bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary hover:brightness-110"
                         : "hover:bg-mid-gray/10"
                     }`}
                     onClick={() => {
@@ -114,7 +114,7 @@ const TitleBarModels: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="truncate pe-4">{model}</span>
                       {selectedLlmModel === model && (
-                        <span className="text-xs text-white">
+                        <span className="text-xs text-[var(--inverse-text)]">
                           {t("common.active")}
                         </span>
                       )}
@@ -122,7 +122,7 @@ const TitleBarModels: React.FC = () => {
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-text/60">
+                <div className="px-3 py-2 text-sm text-[var(--muted)]">
                   {t("footer.noModelsAvailable")}
                 </div>
               )}

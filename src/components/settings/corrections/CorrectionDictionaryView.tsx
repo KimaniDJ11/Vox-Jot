@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { createPortal } from "react-dom";
 import { Download, Plus, Trash2, Upload, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
@@ -68,6 +75,7 @@ interface CorrectionDictionaryViewProps {
   /** Shown in the row above the card, with import/export/clear icons trailing right. */
   sectionTitle: string;
   showHeaderTitle?: boolean;
+  titleActionTargetId?: string;
 }
 
 type ManualCorrectionDraft = {
@@ -85,6 +93,7 @@ const emptyManualCorrectionDraft = (): ManualCorrectionDraft => ({
 export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> = ({
   sectionTitle,
   showHeaderTitle = true,
+  titleActionTargetId,
 }) => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
@@ -95,6 +104,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
   const [manualDraft, setManualDraft] = useState<ManualCorrectionDraft>(
     emptyManualCorrectionDraft,
   );
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const loadCorrections = useCallback(async () => {
@@ -119,6 +129,15 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
       addInputRef.current.focus();
     }
   }, [addingTo]);
+
+  useEffect(() => {
+    if (!titleActionTargetId) {
+      setPortalTarget(null);
+      return;
+    }
+
+    setPortalTarget(document.getElementById(titleActionTargetId));
+  }, [titleActionTargetId]);
 
   const handleDelete = async (id: number) => {
     try {
@@ -298,72 +317,82 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
 
   const groups = loading ? [] : groupCorrections(corrections);
   const bulkActionsDisabled = loading || corrections.length === 0;
+  const actionButtons = useMemo(
+    () => (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-10 w-10 p-0"
+          onClick={() => {
+            setShowManualEditor(true);
+            setManualDraft(emptyManualCorrectionDraft());
+          }}
+          title={t("settings.postProcessing.dictionary.add", {
+            defaultValue: "Add entry",
+          })}
+          aria-label={t("settings.postProcessing.dictionary.add", {
+            defaultValue: "Add entry",
+          })}
+        >
+          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-10 w-10 p-0"
+          onClick={handleImport}
+          title={t("settings.corrections.dictionary.import")}
+          aria-label={t("settings.corrections.dictionary.import")}
+        >
+          <Upload className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-10 w-10 p-0"
+          onClick={handleExport}
+          disabled={bulkActionsDisabled}
+          title={t("settings.corrections.dictionary.export")}
+          aria-label={t("settings.corrections.dictionary.export")}
+        >
+          <Download className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="danger-ghost"
+          className="h-10 w-10 p-0"
+          onClick={handleClearAll}
+          disabled={bulkActionsDisabled}
+          title={t("settings.corrections.dictionary.clearAll")}
+          aria-label={t("settings.corrections.dictionary.clearAll")}
+        >
+          <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+      </>
+    ),
+    [bulkActionsDisabled, t],
+  );
+  const shouldPortalActions = !showHeaderTitle && !!portalTarget;
 
   return (
     <section className="space-y-2">
+      {shouldPortalActions ? createPortal(actionButtons, portalTarget) : null}
       <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
         {showHeaderTitle ? (
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
             {sectionTitle}
           </h2>
         ) : (
           <div className="min-w-0 flex-1" />
         )}
-        <div className="flex gap-1 shrink-0">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="p-1.5"
-            onClick={() => {
-              setShowManualEditor(true);
-              setManualDraft(emptyManualCorrectionDraft());
-            }}
-            title={t("settings.postProcessing.dictionary.add", {
-              defaultValue: "Add entry",
-            })}
-            aria-label={t("settings.postProcessing.dictionary.add", {
-              defaultValue: "Add entry",
-            })}
-          >
-            <Plus className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="p-1.5"
-            onClick={handleImport}
-            title={t("settings.corrections.dictionary.import")}
-            aria-label={t("settings.corrections.dictionary.import")}
-          >
-            <Upload className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="p-1.5"
-            onClick={handleExport}
-            disabled={bulkActionsDisabled}
-            title={t("settings.corrections.dictionary.export")}
-            aria-label={t("settings.corrections.dictionary.export")}
-          >
-            <Download className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="danger-ghost"
-            className="p-1.5"
-            onClick={handleClearAll}
-            disabled={bulkActionsDisabled}
-            title={t("settings.corrections.dictionary.clearAll")}
-            aria-label={t("settings.corrections.dictionary.clearAll")}
-          >
-            <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-        </div>
+        {!shouldPortalActions ? (
+          <div className="flex gap-1 shrink-0">{actionButtons}</div>
+        ) : null}
       </div>
 
       <div className="flat-card overflow-visible">
@@ -371,7 +400,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
           <div className="space-y-3 border-b border-[var(--border)] px-5 py-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-mid-gray">
+                <label className="text-xs font-semibold text-[var(--muted)]">
                   {t("settings.postProcessing.dictionary.columns.spoken")}
                 </label>
                 <Input
@@ -389,7 +418,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-mid-gray">
+                <label className="text-xs font-semibold text-[var(--muted)]">
                   {t("settings.postProcessing.dictionary.columns.written")}
                 </label>
                 <Input
@@ -447,7 +476,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
             {t("common.loading")}
           </div>
         ) : groups.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-mid-gray">
+          <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
             {t("settings.corrections.dictionary.empty")}
           </div>
         ) : (
@@ -461,7 +490,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
               >
                 {/* Top row: corrected word + controls */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray shrink-0">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
                     {t("settings.corrections.dictionary.columns.corrected")}
                   </span>
                   <Input
@@ -498,7 +527,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                     </button>
                     <button
                       type="button"
-                      className="text-mid-gray/60 hover:text-red-500 transition-colors p-0.5"
+                      className="text-[var(--muted)] hover:text-[var(--danger)] transition-colors p-0.5"
                       onClick={() => handleDeleteGroup(group)}
                       title={t("common.delete")}
                     >
@@ -508,7 +537,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 items-center">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-mid-gray mr-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mr-1">
                     {t("settings.corrections.dictionary.columns.original")}
                   </span>
                   {group.entries.map((entry) => (
@@ -551,7 +580,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-mid-gray/70 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/30 hover:border-[var(--accent)]/40"
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/30 hover:border-[var(--accent)]/40"
                       onClick={() => {
                         setAddingTo(group.corrected);
                         setNewOriginal("");
@@ -562,7 +591,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                   )}
                 </div>
 
-                <div className="flex gap-3 text-[10px] text-mid-gray/60">
+                <div className="flex gap-3 text-xs text-[var(--muted)]">
                   <span>
                     {t("settings.corrections.dictionary.columns.frequency")}:{" "}
                     {group.totalFrequency}
@@ -643,7 +672,7 @@ const OriginalChip: React.FC<{
       </button>
       <button
         type="button"
-        className="opacity-0 group-hover:opacity-100 text-mid-gray/50 hover:text-red-500 transition-all -mr-0.5"
+        className="opacity-0 group-hover:opacity-100 text-[var(--muted)] hover:text-[var(--danger)] transition-all -mr-0.5"
         onClick={() => void onDelete(entry.id)}
       >
         <X className="h-2.5 w-2.5" />

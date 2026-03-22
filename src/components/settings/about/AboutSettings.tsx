@@ -50,7 +50,7 @@ export const AboutSettings: React.FC = () => {
           grouped={true}
           layout="stacked"
         >
-          <div className="text-sm text-mid-gray">
+          <div className="text-sm text-[var(--muted)]">
             {t("settings.about.acknowledgments.whisper.details")}
           </div>
         </SettingContainer>

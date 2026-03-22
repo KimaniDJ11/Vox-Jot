@@ -51,7 +51,7 @@ const TitleBarOllamaReady: React.FC = () => {
   } else if (!status.installed) {
     title = t("ollama.notInstalled");
     iconClass =
-      "text-red-600 hover:!text-red-700 dark:text-red-400 dark:hover:!text-red-300";
+      "text-[var(--danger)] hover:!text-[var(--danger)] dark:text-[var(--danger)] dark:hover:!text-[var(--danger)]";
     Icon = XCircle;
   } else if (!status.running) {
     title = t("ollama.notRunning");

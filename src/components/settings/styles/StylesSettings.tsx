@@ -101,7 +101,7 @@ const ToneCard: React.FC<ToneCardProps> = ({
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {tone.label || tone.id}
             </h3>
-            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
               {badgeLabel}
             </span>
           </div>
@@ -125,7 +125,7 @@ const ToneCard: React.FC<ToneCardProps> = ({
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-red-500 disabled:opacity-40"
+              className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-[var(--danger)] disabled:opacity-40"
               title={t("common.delete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -326,7 +326,7 @@ const MappingRow: React.FC<MappingRowProps> = ({
           type="button"
           onClick={onDelete}
           disabled={disabled}
-          className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-red-500 disabled:opacity-40"
+          className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-[var(--danger)] disabled:opacity-40"
           title={t("common.delete")}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -473,7 +473,7 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
           setAddingTone(true);
         }}
         disabled={toneControlsDisabled}
-        className="px-2"
+        className="h-10 w-10 p-0"
         aria-label={t("settings.styles.tones.add")}
         title={t("settings.styles.tones.add")}
       >

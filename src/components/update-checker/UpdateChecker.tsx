@@ -144,7 +144,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({
     const iconClassName = isChecking
       ? "animate-spin"
       : updateInfo?.available
-        ? "text-logo-primary"
+        ? "text-[var(--accent)]"
         : "";
 
     return (
@@ -180,7 +180,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({
           disabled={isUpdateDisabled}
           className={`rounded-md px-2 py-1 text-xs transition-colors tabular-nums disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_64%)] ${
             updateInfo?.available
-              ? "font-semibold text-logo-primary hover:text-logo-primary/80"
+              ? "font-semibold text-[var(--accent)] hover:text-[var(--accent)]"
               : "text-[color-mix(in_srgb,var(--color-text),transparent_35%)] hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)]"
           }`}
         >

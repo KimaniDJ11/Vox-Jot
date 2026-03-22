@@ -16,24 +16,24 @@ const variantStyles: Record<
   { container: string; icon: string; text: string }
 > = {
   error: {
-    container: "border border-red-200 bg-red-50",
-    icon: "text-red-700",
-    text: "text-red-800",
+    container: "border border-[color-mix(in_srgb,var(--danger),transparent_75%)] bg-[var(--danger-soft)]",
+    icon: "text-[var(--danger)]",
+    text: "text-[var(--danger)]",
   },
   warning: {
-    container: "border border-amber-200 bg-amber-50",
-    icon: "text-amber-700",
-    text: "text-amber-800",
+    container: "border border-[color-mix(in_srgb,var(--warning),transparent_72%)] bg-[var(--warning-soft)]",
+    icon: "text-[var(--warning)]",
+    text: "text-[var(--warning)]",
   },
   info: {
-    container: "border border-sky-200 bg-sky-50",
-    icon: "text-sky-700",
-    text: "text-sky-800",
+    container: "border border-[color-mix(in_srgb,var(--info),transparent_74%)] bg-[var(--info-soft)]",
+    icon: "text-[var(--info)]",
+    text: "text-[var(--info)]",
   },
   success: {
-    container: "border border-emerald-200 bg-emerald-50",
-    icon: "text-emerald-700",
-    text: "text-emerald-800",
+    container: "border border-[color-mix(in_srgb,var(--success),transparent_74%)] bg-[var(--success-soft)]",
+    icon: "text-[var(--success)]",
+    text: "text-[var(--success)]",
   },
 };
 

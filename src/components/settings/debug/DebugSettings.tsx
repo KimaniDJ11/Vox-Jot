@@ -87,7 +87,7 @@ export const DebugSettings: React.FC = () => {
 
       <SettingsGroup title={t("settings.debug.routeDebugger.title")}>
         <div className="space-y-3 px-4 py-3">
-          <p className="text-sm text-text/70">
+          <p className="text-sm text-[var(--muted)]">
             {t("settings.debug.routeDebugger.description")}
           </p>
           <textarea
@@ -109,33 +109,33 @@ export const DebugSettings: React.FC = () => {
               {routeLoading ? t("settings.debug.routeDebugger.analyzing") : t("settings.debug.routeDebugger.analyzeRoute")}
             </Button>
             {routeResult && (
-              <span className="text-sm text-text/70" data-testid="route-debugger-result">
+              <span className="text-sm text-[var(--muted)]" data-testid="route-debugger-result">
                 {t("settings.debug.routeDebugger.routeLabel")}{" "}
-                <strong className="text-logo-primary">{routeResult.route}</strong>
+                <strong className="text-[var(--accent)]">{routeResult.route}</strong>
               </span>
             )}
           </div>
-          {routeError && <p className="text-sm text-red-500">{routeError}</p>}
+          {routeError && <p className="text-sm text-[var(--danger)]">{routeError}</p>}
           {routeResult && (
             <div
-              className="rounded-md border border-mid-gray/25 bg-background px-3 py-3 text-xs text-text/80"
+              className="rounded-md border border-mid-gray/25 bg-background px-3 py-3 text-xs text-[var(--text)]"
               data-testid="route-debugger-metrics"
             >
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.words")}</p>
+                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.words")}</p>
                   <p className="text-sm font-semibold text-text">{routeResult.word_count}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.score")}</p>
+                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.score")}</p>
                   <p className="text-sm font-semibold text-text">{routeResult.score}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.route")}</p>
-                  <p className="text-sm font-semibold text-logo-primary">{routeResult.route}</p>
+                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.route")}</p>
+                  <p className="text-sm font-semibold text-[var(--accent)]">{routeResult.route}</p>
                 </div>
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-[10px] uppercase text-text/60">{t("settings.debug.routeDebugger.incomplete")}</p>
+                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.incomplete")}</p>
                   <p className="text-sm font-semibold text-text">
                     {routeResult.looks_incomplete ? t("common.yes") : t("common.no")}
                   </p>

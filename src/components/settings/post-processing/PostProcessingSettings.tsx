@@ -399,7 +399,7 @@ const PostProcessingSettingsPromptsComponent: React.FC<
 
         {!isCreating && !selectedPrompt && (
           <div className="p-3 bg-mid-gray/5 rounded-md border border-mid-gray/20">
-            <p className="text-sm text-mid-gray">
+            <p className="text-sm text-[var(--muted)]">
               {hasPrompts
                 ? t("settings.postProcessing.prompts.selectToEdit")
                 : t("settings.postProcessing.prompts.createFirst")}
@@ -782,7 +782,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
         )}
 
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-mid-gray">
+          <label className="text-xs font-semibold text-[var(--muted)]">
             {t("settings.postProcessing.preview.previewApp.label")}
           </label>
           <Dropdown
@@ -795,7 +795,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="text-xs font-semibold text-mid-gray shrink-0">
+            <div className="text-xs font-semibold text-[var(--muted)] shrink-0">
               {t("settings.postProcessing.preview.testInput.title")}
             </div>
             <Textarea
@@ -820,7 +820,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
           </div>
 
           <div className="flex min-w-0 flex-col gap-2">
-            <div className="text-xs font-semibold text-mid-gray shrink-0">
+            <div className="text-xs font-semibold text-[var(--muted)] shrink-0">
               {t("settings.postProcessing.preview.outputLabel")}
             </div>
             <Textarea
@@ -837,7 +837,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
         {result && (
           <div className="space-y-3 rounded-md border border-mid-gray/20 p-3">
             {result.dictionary_hits.length > 0 && (
-              <div className="text-xs text-mid-gray">
+              <div className="text-xs text-[var(--muted)]">
                 {t("settings.postProcessing.preview.dictionaryHits", {
                   hits: result.dictionary_hits.join(", "),
                 })}
@@ -845,7 +845,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
             )}
 
             {result.active_app_context && (
-              <div className="text-xs text-mid-gray">
+              <div className="text-xs text-[var(--muted)]">
                 {t("settings.postProcessing.preview.appContext", {
                   app:
                     result.active_app_context.localized_name ||
@@ -857,7 +857,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
               </div>
             )}
 
-            <div className="text-xs text-mid-gray">
+            <div className="text-xs text-[var(--muted)]">
               {t("settings.postProcessing.preview.editSummary", {
                 bullets: result.edits.added_bullets
                   ? t("common.yes")

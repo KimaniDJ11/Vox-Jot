@@ -27,7 +27,8 @@
   --input: #f5f1ec;
   --border: #e0d6ca;
   --text: #2c2418;
-  --muted: #8c7e6f;
+  --muted: #6f6256;
+  --inverse-text: #ffffff;
 
   --accent: #27408b;
   --accent-hover: #1f3370;
@@ -36,6 +37,12 @@
 
   --danger: #c44040;
   --danger-soft: rgba(196, 64, 64, 0.07);
+  --success: #2f7d57;
+  --success-soft: rgba(47, 125, 87, 0.1);
+  --warning: #8a6519;
+  --warning-soft: rgba(138, 101, 25, 0.1);
+  --info: #305f9f;
+  --info-soft: rgba(48, 95, 159, 0.1);
 
   --shadow-sm: 0 1px 3px rgba(44, 36, 24, 0.06);
   --shadow-md: 0 4px 16px rgba(44, 36, 24, 0.08);
@@ -69,12 +76,22 @@
   --input: #374151;
   --border: #374151;
   --text: #f3f4f6;
-  --muted: #9ca3af;
+  --muted: #b7c0cd;
+  --inverse-text: #ffffff;
 
   --accent: #5b7dc9;
   --accent-hover: #7b9ce8;
   --accent-soft: rgba(91, 125, 201, 0.12);
   --accent-glow: rgba(91, 125, 201, 0.25);
+
+  --danger: #ef7b7b;
+  --danger-soft: rgba(239, 123, 123, 0.14);
+  --success: #6bc08c;
+  --success-soft: rgba(107, 192, 140, 0.14);
+  --warning: #d7af55;
+  --warning-soft: rgba(215, 175, 85, 0.16);
+  --info: #8db2ff;
+  --info-soft: rgba(141, 178, 255, 0.16);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -90,12 +107,22 @@
     --input: #374151;
     --border: #374151;
     --text: #f3f4f6;
-    --muted: #9ca3af;
+    --muted: #b7c0cd;
+    --inverse-text: #ffffff;
 
     --accent: #5b7dc9;
     --accent-hover: #7b9ce8;
     --accent-soft: rgba(91, 125, 201, 0.12);
     --accent-glow: rgba(91, 125, 201, 0.25);
+
+    --danger: #ef7b7b;
+    --danger-soft: rgba(239, 123, 123, 0.14);
+    --success: #6bc08c;
+    --success-soft: rgba(107, 192, 140, 0.14);
+    --warning: #d7af55;
+    --warning-soft: rgba(215, 175, 85, 0.16);
+    --info: #8db2ff;
+    --info-soft: rgba(141, 178, 255, 0.16);
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -113,7 +140,8 @@ body,
   padding: 0;
   overflow: hidden;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--text);
   background: var(--bg);
   /* Apply transition to background for smooth theme switching */

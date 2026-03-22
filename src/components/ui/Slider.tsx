@@ -63,7 +63,7 @@ export const Slider: React.FC<SliderProps> = ({
             }}
           />
           {showValue && (
-            <span className="text-sm font-semibold text-text/90 min-w-10 text-end">
+            <span className="text-sm font-semibold text-[var(--text)] min-w-10 text-end">
               {formatValue(value)}
             </span>
           )}

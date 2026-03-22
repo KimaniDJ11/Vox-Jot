@@ -14,11 +14,11 @@ const TitleBarStats: React.FC = () => {
   const { stats } = useDictationStats();
 
   const labelClass =
-    "title-bar-stats flex items-center gap-6 text-[13px] font-bold tabular-nums leading-none";
+    "title-bar-stats flex items-center gap-6 text-sm font-bold tabular-nums leading-none";
 
   if (!stats || stats.total_sessions === 0) {
     return (
-      <span className="title-bar-stats text-[13px] font-bold tabular-nums leading-none opacity-70">
+      <span className="title-bar-stats text-sm font-bold tabular-nums leading-none opacity-70">
         {t("titleBar.noStats")}
       </span>
     );

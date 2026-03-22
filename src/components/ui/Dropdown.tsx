@@ -62,7 +62,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        className={`px-3 py-1.5 text-sm font-semibold border border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] rounded-xl min-w-[200px] text-start flex items-center justify-between transition-all duration-150 ${
+        className={`flex min-h-11 min-w-[220px] items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-start text-base font-semibold text-[var(--text)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] cursor-pointer hover:border-[var(--accent)]"
@@ -88,7 +88,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       {isOpen && !disabled && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-[80] max-h-60 overflow-y-auto">
           {options.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-[var(--muted)]">
+            <div className="px-3 py-2 text-[14px] text-[var(--muted)]">
               {t("common.noOptionsFound")}
             </div>
           ) : (
@@ -96,9 +96,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
               <button
                 key={option.value}
                 type="button"
-                className={`w-full px-3 py-2 text-sm text-start text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] transition-colors duration-150 ${
+                className={`w-full px-3 py-2 text-start text-[14px] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] transition-colors duration-150 ${
                   selectedValue === option.value
-                    ? "bg-logo-primary text-white font-semibold"
+                    ? "bg-logo-primary text-[var(--inverse-text)] font-semibold"
                     : ""
                 } ${option.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 onClick={() => handleSelect(option.value)}

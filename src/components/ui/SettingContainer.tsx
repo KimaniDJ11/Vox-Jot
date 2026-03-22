@@ -24,7 +24,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   tooltipPosition = "top",
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLButtonElement>(null);
 
   // Handle click outside to close tooltip
   useEffect(() => {
@@ -48,9 +48,42 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     setShowTooltip(!showTooltip);
   };
 
+  const tooltipTrigger = description ? (
+    <button
+      ref={tooltipRef}
+      type="button"
+      className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors duration-200 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      onClick={toggleTooltip}
+      aria-label="More information"
+      aria-expanded={showTooltip}
+    >
+      <svg
+        className="h-4 w-4 select-none"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      {showTooltip && (
+        <Tooltip targetRef={tooltipRef} position={tooltipPosition}>
+          <p className="text-sm text-center leading-relaxed">{description}</p>
+        </Tooltip>
+      )}
+    </button>
+  ) : null;
+
   const containerClasses = grouped
-    ? "px-4 py-3"
-    : "px-4 py-3 rounded-lg border border-mid-gray/20";
+    ? "px-4 py-3.5"
+    : "rounded-lg border border-mid-gray/20 px-4 py-3.5";
 
   if (layout === "stacked") {
     if (descriptionMode === "tooltip") {
@@ -60,48 +93,12 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
             <div className="mb-2 flex items-center gap-2">
               {title ? (
                 <h3
-                  className={`text-[15px] font-semibold tracking-tight ${disabled ? "opacity-50" : ""}`}
+                  className={`text-[16px] font-semibold leading-6 tracking-tight ${disabled ? "opacity-50" : ""}`}
                 >
                   {title}
                 </h3>
               ) : null}
-              <div
-                ref={tooltipRef}
-                className="relative"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                onClick={toggleTooltip}
-              >
-                <svg
-                  className="w-4 h-4 text-mid-gray cursor-help hover:text-logo-primary transition-colors duration-200 select-none"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-label="More information"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleTooltip();
-                    }
-                  }}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                {showTooltip && (
-                  <Tooltip targetRef={tooltipRef} position="top">
-                    <p className="text-sm text-center leading-relaxed">
-                      {description}
-                    </p>
-                  </Tooltip>
-                )}
-              </div>
+              {tooltipTrigger}
             </div>
           )}
           <div className="w-full">{children}</div>
@@ -114,13 +111,13 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         <div className="mb-2">
           {title ? (
             <h3
-              className={`text-[15px] font-semibold tracking-tight ${disabled ? "opacity-50" : ""}`}
+              className={`text-[16px] font-semibold leading-6 tracking-tight ${disabled ? "opacity-50" : ""}`}
             >
               {title}
             </h3>
           ) : null}
           <p
-            className={`text-[13px] text-mid-gray leading-relaxed ${disabled ? "opacity-50" : ""}`}
+            className={`text-[14px] leading-6 text-[var(--muted)] ${disabled ? "opacity-50" : ""}`}
           >
             {description}
           </p>
@@ -132,58 +129,22 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
 
   // Horizontal layout (default)
   const horizontalContainerClasses = grouped
-    ? "flex items-center justify-between px-5 py-3.5 gap-6"
-    : "flex items-center justify-between px-6 py-4 rounded-xl border border-mid-gray/20 gap-6";
+    ? "flex items-center justify-between gap-6 px-5 py-4"
+    : "flex items-center justify-between gap-6 rounded-xl border border-mid-gray/20 px-6 py-4";
 
-    if (descriptionMode === "tooltip") {
+  if (descriptionMode === "tooltip") {
     return (
       <div className={horizontalContainerClasses}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {title ? (
               <h3
-                className={`text-[15px] font-semibold tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
+                className={`text-[16px] font-semibold leading-6 tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
               >
                 {title}
               </h3>
             ) : null}
-            <div
-              ref={tooltipRef}
-              className="relative"
-              onMouseEnter={() => setShowTooltip(true)}
-              onMouseLeave={() => setShowTooltip(false)}
-              onClick={toggleTooltip}
-            >
-              <svg
-                className="w-4 h-4 text-mid-gray cursor-help hover:text-logo-primary transition-colors duration-200 select-none"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-label="More information"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleTooltip();
-                  }
-                }}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              {showTooltip && (
-                <Tooltip targetRef={tooltipRef} position={tooltipPosition}>
-                  <p className="text-sm text-center leading-relaxed">
-                    {description}
-                  </p>
-                </Tooltip>
-              )}
-            </div>
+            {tooltipTrigger}
           </div>
         </div>
         <div className="relative shrink-0 self-center">{children}</div>
@@ -196,13 +157,13 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
       <div className="flex-1 pr-6 min-w-0">
         {title ? (
           <h3
-            className={`text-[15px] font-semibold tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
+            className={`text-[16px] font-semibold leading-6 tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
           >
             {title}
           </h3>
         ) : null}
         <p
-          className={`text-[13px] text-mid-gray leading-relaxed mt-1 line-clamp-2 ${disabled ? "opacity-50" : ""}`}
+          className={`mt-1 text-[14px] leading-6 text-[var(--muted)] line-clamp-2 ${disabled ? "opacity-50" : ""}`}
         >
           {description}
         </p>

@@ -23,15 +23,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      "border-[var(--accent)] bg-[var(--accent)] text-white hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
+      "border-[var(--accent)] bg-[var(--accent)] text-[var(--inverse-text)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
       "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_85%)]",
     secondary:
       "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--text)] hover:bg-[var(--input)]",
     danger:
-      "border-red-500 bg-red-600 text-white hover:border-red-600 hover:bg-red-700",
+      "border-[var(--danger)] bg-[var(--danger)] text-[var(--inverse-text)] hover:border-[color-mix(in_srgb,var(--danger),black_12%)] hover:bg-[color-mix(in_srgb,var(--danger),black_12%)]",
     "danger-ghost":
-      "border-transparent text-red-500 hover:bg-red-500/10 hover:text-red-600",
+      "border-transparent text-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
     ghost:
       "border-transparent text-[var(--text)] hover:border-[var(--accent-soft)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
   };

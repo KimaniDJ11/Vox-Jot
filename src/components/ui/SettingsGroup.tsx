@@ -20,11 +20,11 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
         <div className="px-5 mb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-extrabold uppercase tracking-[0.16em] text-black dark:text-[var(--text)]">
+              <h2 className="text-xl font-extrabold uppercase tracking-[0.14em] text-black dark:text-[var(--text)]">
                 {title}
               </h2>
               {description && (
-                <p className="mt-1.5 text-[13px] text-mid-gray leading-relaxed">
+                <p className="mt-2 text-[14px] leading-6 text-[var(--muted)]">
                   {description}
                 </p>
               )}

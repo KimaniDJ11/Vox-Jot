@@ -27,7 +27,12 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   },
   "stt-models": {
     title: "Speech Models",
-    component: () => <DictateModelsSection capped={false} />,
+    component: () => (
+      <DictateModelsSection
+        capped={false}
+        titleActionTargetId="stt-models-section-actions"
+      />
+    ),
   },
   "llm-models": {
     title: "Refine Models",
@@ -35,11 +40,15 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   },
   corrections: {
     title: "Learned Corrections",
-    component: () => <LearnedCorrectionsSection />,
+    component: () => (
+      <LearnedCorrectionsSection titleActionTargetId="corrections-section-actions" />
+    ),
   },
   "learned-corrections": {
     title: "Learned Corrections",
-    component: () => <LearnedCorrectionsSection />,
+    component: () => (
+      <LearnedCorrectionsSection titleActionTargetId="learned-corrections-section-actions" />
+    ),
   },
   "jot-pad": {
     title: "Jot Pad",
@@ -105,12 +114,18 @@ const DetailApp: React.FC = () => {
         className="flex h-12 shrink-0 items-center px-5"
         data-tauri-drag-region=""
       >
-        <h1
-          className="text-sm font-bold text-[var(--text)] pl-16"
-          data-tauri-drag-region=""
-        >
-          {entry.title}
-        </h1>
+        <div className="flex w-full items-center justify-between gap-4 pl-16">
+          <h1
+            className="text-sm font-bold text-[var(--text)]"
+            data-tauri-drag-region=""
+          >
+            {entry.title}
+          </h1>
+          <div
+            id={`${sectionId}-section-actions`}
+            className="app-no-drag flex shrink-0 items-center gap-1"
+          />
+        </div>
       </div>
 
       {/* Scrollable content */}

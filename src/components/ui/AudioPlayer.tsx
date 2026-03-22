@@ -234,7 +234,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       <button
         onClick={togglePlay}
         disabled={isLoading}
-        className="transition-colors cursor-pointer text-text hover:text-logo-primary disabled:opacity-50"
+        className="transition-colors cursor-pointer text-text hover:text-[var(--accent)] disabled:opacity-50"
         aria-label={isPlaying ? "Pause" : "Play"}
       >
         {isPlaying ? (
@@ -245,7 +245,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       </button>
 
       <div className="flex-1 flex items-center gap-2">
-        <span className="text-xs text-text/60 min-w-[30px] tabular-nums">
+        <span className="text-xs text-[var(--muted)] min-w-[30px] tabular-nums">
           {formatTime(currentTime)}
         </span>
 
@@ -264,7 +264,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           }}
         />
 
-        <span className="text-xs text-text/60 min-w-[30px] tabular-nums">
+        <span className="text-xs text-[var(--muted)] min-w-[30px] tabular-nums">
           {formatTime(duration)}
         </span>
       </div>

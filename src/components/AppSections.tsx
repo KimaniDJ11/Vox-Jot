@@ -114,8 +114,11 @@ const WorkflowLinkCard: React.FC<{
   );
 };
 
-export const DictateModelsSection: React.FC<ExpandableSectionProps> = ({
+export const DictateModelsSection: React.FC<
+  ExpandableSectionProps & { titleActionTargetId?: string }
+> = ({
   capped = true,
+  titleActionTargetId,
 }) => {
   return (
     <div className="space-y-6">
@@ -125,10 +128,10 @@ export const DictateModelsSection: React.FC<ExpandableSectionProps> = ({
           showMoreLabel="Show all models"
           maxHeight={520}
         >
-          <ModelsSettings />
+          <ModelsSettings titleActionTargetId={titleActionTargetId} />
         </CappedSection>
       ) : (
-        <ModelsSettings />
+        <ModelsSettings titleActionTargetId={titleActionTargetId} />
       )}
     </div>
   );
@@ -285,12 +288,15 @@ export const CorrectionsSection: React.FC<ExpandableSectionProps> = ({
   );
 };
 
-export const LearnedCorrectionsSection: React.FC = () => {
+export const LearnedCorrectionsSection: React.FC<{
+  titleActionTargetId?: string;
+}> = ({ titleActionTargetId }) => {
   return (
     <div className="space-y-6">
       <CorrectionDictionaryView
         sectionTitle="Learned Corrections"
         showHeaderTitle={false}
+        titleActionTargetId={titleActionTargetId}
       />
     </div>
   );

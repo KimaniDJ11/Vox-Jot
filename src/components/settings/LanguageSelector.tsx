@@ -152,7 +152,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
               <div className="max-h-48 overflow-y-auto">
                 {filteredLanguages.length === 0 ? (
-                  <div className="px-2 py-2 text-sm text-mid-gray text-center">
+                  <div className="px-2 py-2 text-sm text-[var(--muted)] text-center">
                     {t("settings.general.language.noResults")}
                   </div>
                 ) : (
@@ -162,7 +162,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                       type="button"
                       className={`w-full px-2 py-1 text-sm text-start hover:bg-logo-primary/10 transition-colors duration-150 ${
                         selectedLanguage === language.value
-                          ? "bg-logo-primary/20 text-logo-primary font-semibold"
+                          ? "bg-logo-primary/20 text-[var(--accent)] font-semibold"
                           : ""
                       }`}
                       onClick={() => handleLanguageSelect(language.value)}

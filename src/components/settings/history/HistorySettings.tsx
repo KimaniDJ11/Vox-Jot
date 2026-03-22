@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
+import { Button } from "../../ui/Button";
 import {
   Copy,
   Star,
@@ -226,7 +227,17 @@ export const HistorySettings: React.FC = () => {
   const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {
       return (
-        <div className="px-4 py-3 text-center text-text/60">{emptyMessage}</div>
+        <div className="flat-card overflow-visible">
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm font-semibold text-[var(--text)]">
+              {emptyMessage}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              Recordings, pasted output, and observed field changes will appear
+              here after you dictate.
+            </p>
+          </div>
+        </div>
       );
     }
 
@@ -297,8 +308,14 @@ export const HistorySettings: React.FC = () => {
     return (
       <div className="w-full space-y-6">
         <div className="flat-card overflow-visible">
-          <div className="px-4 py-3 text-center text-text/60">
-            {t("settings.history.loading")}
+          <div className="px-5 py-8 text-center">
+            <div className="mx-auto mb-3 h-8 w-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+            <p className="text-sm font-semibold text-[var(--text)]">
+              {t("settings.history.loading")}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              Loading your recent recordings and pasted output.
+            </p>
           </div>
         </div>
       </div>
@@ -319,13 +336,17 @@ interface HistoryEntryProps {
 }
 
 const sectionLabelClassName =
-  "text-[11px] font-bold uppercase tracking-[0.16em] text-text/55";
+  "text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted)]";
 const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[color-mix(in_srgb,var(--background),white_2%)] px-3 py-3";
 
 /** Time + main transcript line: same font, size, and line-height for alignment. */
 const historyEntryPrimaryLineClass =
   "font-[var(--font-body)] text-base font-normal leading-6 text-black dark:text-[var(--text)]";
+const historyActionButtonClassName =
+  "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+const historyDangerActionButtonClassName =
+  "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 
 const HistoryDetailSection: React.FC<{
   title: string;
@@ -334,7 +355,7 @@ const HistoryDetailSection: React.FC<{
 }> = ({ title, icon, children }) => (
   <div className={sectionCardClassName}>
     <div className="mb-2 flex items-center gap-2">
-      <span className="text-text/55">{icon}</span>
+      <span className="text-[var(--muted)]">{icon}</span>
       <p className={sectionLabelClassName}>{title}</p>
     </div>
     {children}
@@ -343,7 +364,7 @@ const HistoryDetailSection: React.FC<{
 
 const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
   not_requested:
-    "border-mid-gray/20 bg-mid-gray/8 text-text/70 dark:bg-white/5 dark:text-text/75",
+    "border-mid-gray/20 bg-mid-gray/8 text-[var(--muted)] dark:bg-white/5 dark:text-[var(--muted)]",
   pending:
     "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   captured:
@@ -429,7 +450,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             });
 
   return (
-    <div className="grid grid-cols-[5.75rem_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2.5 px-4 py-4">
+    <div className="grid grid-cols-1 gap-y-3 px-4 py-4 md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
       <div className={`min-w-0 ${historyEntryPrimaryLineClass}`}>
         {formattedTime}
       </div>
@@ -440,7 +461,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         {displayText}
       </p>
 
-      <div className="col-start-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 md:col-start-2">
         <AudioPlayer
           onLoadRequest={handleLoadAudio}
           className="min-w-0 flex-1 sm:min-w-[220px]"
@@ -448,8 +469,9 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
 
         <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={handleCopyText}
-              className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
+              className={historyActionButtonClassName}
               title={t("settings.history.copyToClipboard")}
               aria-label={t("settings.history.copyToClipboard")}
             >
@@ -462,18 +484,19 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             <button
               type="button"
               onClick={onRevealInFolder}
-              className="text-text/50 hover:text-logo-primary transition-colors cursor-pointer p-1"
+              className={historyActionButtonClassName}
               title={t("settings.history.showRecordingInFolder")}
               aria-label={t("settings.history.showRecordingInFolder")}
             >
               <FolderOpen width={14} height={14} aria-hidden />
             </button>
             <button
+              type="button"
               onClick={onToggleSaved}
-              className={`p-1 transition-colors cursor-pointer ${
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
                 entry.saved
-                  ? "text-logo-primary hover:text-logo-primary/80"
-                  : "text-text/50 hover:text-logo-primary"
+                  ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
+                  : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
               }`}
               title={
                 entry.saved
@@ -493,29 +516,36 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
               />
             </button>
             {showDeleteConfirm ? (
-              <div className="flex items-center gap-1 rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-0.5">
-                <span className="text-xs text-[var(--danger)]">
+              <div className="flex items-center gap-1 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-1">
+                <span className="text-sm text-[var(--danger)]">
                   {t("common.delete")}?
                 </span>
-                <button
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger-ghost"
                   onClick={() => void handleDeleteEntry()}
-                  className="text-[var(--danger)] hover:text-red-700 transition-colors cursor-pointer p-0.5"
+                  className="h-8 w-8 rounded-full p-0"
                   aria-label={t("settings.history.delete")}
                 >
                   <Check width={14} height={14} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="text-text/50 hover:text-text transition-colors cursor-pointer p-0.5"
+                  className="h-8 w-8 rounded-full p-0 text-[var(--muted)]"
                   aria-label={t("common.cancel")}
                 >
                   <X width={14} height={14} />
-                </button>
+                </Button>
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-text/50 hover:text-[var(--danger)] transition-colors cursor-pointer p-1"
+                className={historyDangerActionButtonClassName}
                 title={t("settings.history.delete")}
                 aria-label={t("settings.history.delete")}
               >
@@ -525,8 +555,8 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           </div>
       </div>
 
-      <div className="col-start-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+      <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
+          <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
             {postProcessApplied
               ? t("settings.history.badges.postProcessOn", {
                   defaultValue: "Post process on",
@@ -536,14 +566,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 })}
           </span>
           {dictionaryApplied && (
-            <span className="rounded-full border border-mid-gray/20 px-2 py-0.5 text-[10px] text-text/60">
+            <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
               {t("settings.history.badges.dictionaryOn", {
                 defaultValue: "Dictionary applied",
               })}
             </span>
           )}
           <span
-            className={`rounded-full border px-2 py-0.5 text-[10px] ${snapshotToneClasses[fieldSnapshotStatus]}`}
+            className={`rounded-full border px-2.5 py-1 text-xs ${snapshotToneClasses[fieldSnapshotStatus]}`}
           >
             {fieldStatusLabel}
           </span>
@@ -552,7 +582,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       {(postProcessApplied ||
         dictionaryApplied ||
         (fieldCheckChanged && observedText)) && (
-        <div className="col-start-2 mt-1 grid gap-2 lg:grid-cols-2">
+        <div className="mt-1 grid gap-2 md:col-start-2 lg:grid-cols-2">
             {rawText !== displayText && (
               <HistoryDetailSection
                 title={t("settings.history.sections.text", {
@@ -560,7 +590,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 })}
                 icon={<Type className="h-3.5 w-3.5" />}
               >
-                <p className="text-xs text-text/80 italic select-text cursor-text">
+                <p className="text-sm leading-6 text-[var(--text)] italic select-text cursor-text">
                   {rawText}
                 </p>
               </HistoryDetailSection>
@@ -573,7 +603,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 })}
                 icon={<Sparkles className="h-3.5 w-3.5" />}
               >
-                <p className="text-xs text-text/80 select-text cursor-text">
+                <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
                   {polishedText}
                 </p>
               </HistoryDetailSection>
@@ -586,7 +616,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 })}
                 icon={<CheckCircle2 className="h-3.5 w-3.5" />}
               >
-                <p className="text-xs text-text/80 select-text cursor-text">
+                <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
                   {entry.dictionary_hits.join(", ")}
                 </p>
               </HistoryDetailSection>
@@ -599,14 +629,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
                 })}
                 icon={<Sparkles className="h-3.5 w-3.5" />}
               >
-                <div className="flex items-start gap-2 overflow-hidden text-xs text-text/80 select-text cursor-text">
+                <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
                   <span
                     className="min-w-0 max-w-[45%] break-words font-mono"
                     title={pastedText}
                   >
                     {pastedText}
                   </span>
-                  <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-text/50" />
+                  <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
                   <span
                     className="min-w-0 flex-1 break-words font-mono"
                     title={observedText}

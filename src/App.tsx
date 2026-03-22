@@ -188,7 +188,7 @@ const PrimaryModeSwitcher: React.FC<{
               }}
               className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
                 isActive
-                  ? "bg-[var(--accent)] text-white shadow-sm"
+                  ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
                   : "text-[var(--muted)] hover:text-[var(--text)]"
               }`}
             >
@@ -306,7 +306,7 @@ function App() {
           label: "Models",
           icon: Cpu,
           title: "Models",
-          content: <DictateModelsSection />,
+          content: <DictateModelsSection titleActionTargetId="models-section-actions" />,
         },
       ],
       refine: [

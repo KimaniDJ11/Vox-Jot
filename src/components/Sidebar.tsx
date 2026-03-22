@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       : "gap-3 px-4 py-3 text-left"
                   } ${
                     isActive
-                      ? "bg-[var(--accent)] text-white shadow-sm"
+                      ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
                       : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                   }`}
                   aria-current={isActive ? "page" : undefined}
@@ -74,15 +74,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     strokeWidth={isActive ? 2.6 : 2.35}
                     className={`shrink-0 ${
                       isActive
-                        ? "text-white"
+                        ? "text-[var(--inverse-text)]"
                         : "text-[var(--muted)] group-hover:text-[var(--text)]"
                     }`}
                   />
                   {!collapsed && (
                     <span
-                      className={`truncate text-[15px] font-bold leading-6 ${
+                      className={`truncate text-base font-bold leading-6 ${
                         isActive
-                          ? "text-white"
+                          ? "text-[var(--inverse-text)]"
                           : "text-black dark:text-[var(--text)]"
                       }`}
                     >
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : "gap-3 px-4 py-3 text-left"
             } ${
               settingsActive
-                ? "bg-[var(--accent)] text-white shadow-sm"
+                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
                 : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
             }`}
             aria-current={settingsActive ? "page" : undefined}
@@ -118,15 +118,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               strokeWidth={settingsActive ? 2.6 : 2.35}
               className={`shrink-0 ${
                 settingsActive
-                  ? "text-white"
+                  ? "text-[var(--inverse-text)]"
                   : "text-[var(--muted)] group-hover:text-[var(--text)]"
               }`}
             />
             {!collapsed && (
               <span
-                className={`truncate text-[15px] font-bold leading-6 ${
+                className={`truncate text-base font-bold leading-6 ${
                   settingsActive
-                    ? "text-white"
+                    ? "text-[var(--inverse-text)]"
                     : "text-black dark:text-[var(--text)]"
                 }`}
               >

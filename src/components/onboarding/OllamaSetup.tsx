@@ -82,7 +82,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           <h2 className="text-xl font-bold text-text">
             {t("onboarding.ollama.enableTitle")}
           </h2>
-          <p className="text-text/70 text-sm">
+          <p className="text-[var(--muted)] text-sm">
             <Trans
               i18nKey="onboarding.ollama.enableDescription"
               components={{
@@ -93,7 +93,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm bg-red-500/10 px-4 py-2 rounded-lg">
+          <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg">
             {error}
           </p>
         )}
@@ -102,7 +102,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
           <button
             onClick={handleInstall}
             disabled={isInstalling}
-            className="w-full bg-logo-primary text-white font-semibold py-3 px-6 rounded-xl
+            className="w-full bg-logo-primary text-[var(--inverse-text)] font-semibold py-3 px-6 rounded-xl
                        hover:bg-logo-primary/90 disabled:opacity-50 disabled:cursor-not-allowed
                        transition-colors"
           >
@@ -118,7 +118,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
 
           <button
             onClick={onSkip}
-            className="text-text/50 text-sm hover:text-text/80 transition-colors"
+            className="text-[var(--muted)] text-sm hover:text-[var(--text)] transition-colors"
           >
             {t("onboarding.ollama.skipCloud")}
           </button>
@@ -134,12 +134,12 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         <h2 className="text-xl font-bold text-text">
           {t("onboarding.ollama.installedTitle")}
         </h2>
-        <p className="text-text/70 text-sm">
+        <p className="text-[var(--muted)] text-sm">
           {t("onboarding.ollama.installedNotRunning")}
         </p>
 
         {error && (
-          <p className="text-red-500 text-sm bg-red-500/10 px-4 py-2 rounded-lg">
+          <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg">
             {error}
           </p>
         )}
@@ -147,7 +147,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         <button
           onClick={handleStartServe}
           disabled={isChecking}
-          className="w-full bg-logo-primary text-white font-semibold py-3 px-6 rounded-xl
+          className="w-full bg-logo-primary text-[var(--inverse-text)] font-semibold py-3 px-6 rounded-xl
                      hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
         >
           {t("onboarding.ollama.startOllama")}
@@ -155,7 +155,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
 
         <button
           onClick={onSkip}
-          className="text-text/50 text-sm hover:text-text/80 transition-colors"
+          className="text-[var(--muted)] text-sm hover:text-[var(--text)] transition-colors"
         >
           {t("onboarding.ollama.skip")}
         </button>
@@ -169,13 +169,13 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         <h2 className="text-xl font-bold text-text">
           {t("onboarding.ollama.chooseTitle")}
         </h2>
-        <p className="text-text/70 text-sm mt-1">
+        <p className="text-[var(--muted)] text-sm mt-1">
           {t("onboarding.ollama.chooseDescription")}
         </p>
       </div>
 
       {error && (
-        <p className="text-red-500 text-sm bg-red-500/10 px-4 py-2 rounded-lg text-center">
+        <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg text-center">
           {error}
         </p>
       )}
@@ -207,9 +207,9 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
             >
               <div className="flex flex-col">
                 <span className="font-semibold text-text">{model.label}</span>
-                <span className="text-text/60 text-xs">{model.description}</span>
+                <span className="text-[var(--muted)] text-xs">{model.description}</span>
                 {model.id === "llama3.2:1b" && (
-                  <span className="text-xs text-logo-primary mt-0.5 font-medium">
+                  <span className="text-xs text-[var(--accent)] mt-0.5 font-medium">
                     {t("onboarding.ollama.recommended")}
                   </span>
                 )}
@@ -224,7 +224,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-xs text-text/60">{progress}%</span>
+                    <span className="text-xs text-[var(--muted)]">{progress}%</span>
                   </div>
                 ) : isPulled ? (
                   <button
@@ -232,8 +232,8 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                       ${
                         isSelected
-                          ? "bg-logo-primary text-white"
-                          : "bg-logo-primary/20 text-logo-primary hover:bg-logo-primary/30"
+                          ? "bg-logo-primary text-[var(--inverse-text)]"
+                          : "bg-logo-primary/20 text-[var(--accent)] hover:bg-logo-primary/30"
                       }`}
                   >
                     {isSelected
@@ -244,7 +244,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                   <button
                     onClick={() => handlePullModel(model.id)}
                     className="px-3 py-1.5 rounded-lg text-sm font-medium bg-background
-                               border border-mid-gray/30 text-text/80 hover:bg-logo-primary/10
+                               border border-mid-gray/30 text-[var(--text)] hover:bg-logo-primary/10
                                transition-colors"
                   >
                     {t("onboarding.ollama.download")}
@@ -259,14 +259,14 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
       <div className="flex justify-between mt-2">
         <button
           onClick={onSkip}
-          className="text-text/50 text-sm hover:text-text/80 transition-colors"
+          className="text-[var(--muted)] text-sm hover:text-[var(--text)] transition-colors"
         >
           {t("onboarding.ollama.skipSettings")}
         </button>
         {installedModels.length > 0 && (
           <button
             onClick={onComplete}
-            className="text-logo-primary text-sm font-medium hover:text-logo-primary/80 transition-colors"
+            className="text-[var(--accent)] text-sm font-medium hover:text-[var(--accent)] transition-colors"
           >
             {t("onboarding.ollama.continue")}
           </button>

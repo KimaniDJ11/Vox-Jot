@@ -79,7 +79,7 @@ export const FileTranscriptionCard: React.FC = () => {
         </div>
 
         {selectedPath && (
-          <div className="text-xs text-mid-gray break-all">{selectedPath}</div>
+          <div className="text-xs text-[var(--muted)] break-all">{selectedPath}</div>
         )}
 
         <Textarea
@@ -89,7 +89,7 @@ export const FileTranscriptionCard: React.FC = () => {
           className="w-full min-h-[110px]"
         />
 
-        {error && <div className="text-xs text-red-400">{error}</div>}
+        {error && <div className="text-xs text-[var(--danger)]">{error}</div>}
       </div>
     </SettingsGroup>
   );

@@ -440,7 +440,7 @@ const ScratchpadApp: React.FC = () => {
                     type="button"
                     className={`group relative flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-left text-sm transition-all ${
                       isActive
-                        ? "bg-[var(--accent)] text-white"
+                        ? "bg-[var(--accent)] text-[var(--inverse-text)]"
                         : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                     }`}
                     onClick={() => {
@@ -452,7 +452,7 @@ const ScratchpadApp: React.FC = () => {
                   >
                     <FileText
                       className={`h-3.5 w-3.5 shrink-0 ${
-                        isActive ? "text-white/70" : "text-[var(--muted)]"
+                        isActive ? "text-[var(--inverse-text)]/70" : "text-[var(--muted)]"
                       }`}
                     />
                     <span className="truncate flex-1 min-w-0 leading-tight">
@@ -461,7 +461,7 @@ const ScratchpadApp: React.FC = () => {
                     {note.is_pinned && (
                       <Pin
                         className={`h-3 w-3 shrink-0 ${
-                          isActive ? "text-white/60" : "text-[var(--muted)]"
+                          isActive ? "text-[var(--inverse-text)]/60" : "text-[var(--muted)]"
                         }`}
                       />
                     )}
@@ -476,7 +476,7 @@ const ScratchpadApp: React.FC = () => {
                         type="button"
                         className={`p-0.5 rounded transition-colors ${
                           isActive
-                            ? "text-white/60 hover:text-white"
+                            ? "text-[var(--inverse-text)]/60 hover:text-[var(--inverse-text)]"
                             : "text-[var(--muted)] hover:text-[var(--text)]"
                         }`}
                         onClick={(e) => {
@@ -499,8 +499,8 @@ const ScratchpadApp: React.FC = () => {
                         type="button"
                         className={`p-0.5 rounded transition-colors ${
                           isActive
-                            ? "text-white/60 hover:text-red-300"
-                            : "text-[var(--muted)] hover:text-red-500"
+                            ? "text-[var(--inverse-text)]/60 hover:text-[var(--danger)]"
+                            : "text-[var(--muted)] hover:text-[var(--danger)]"
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();

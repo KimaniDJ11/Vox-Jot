@@ -180,7 +180,7 @@
   border: none;
   border-radius: var(--ob-radius);
   padding: 14px 32px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -214,7 +214,7 @@
   border: 1px solid var(--ob-border);
   border-radius: var(--ob-radius);
   padding: 14px 24px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   transition: color 0.2s;
@@ -241,14 +241,14 @@
 }
 
 .ob-perm-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--ob-text);
   margin: 0 0 6px;
 }
 
 .ob-perm-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ob-text-muted);
   margin: 0 0 14px;
   line-height: 1.5;
@@ -371,7 +371,7 @@
 
 .ob-permission-path-text {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: #2b457e;
   font-weight: 600;
 }
@@ -472,7 +472,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -496,7 +496,7 @@
 }
 
 .ob-stat-copy {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ob-text-muted);
   line-height: 1.5;
 }
@@ -530,14 +530,14 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ob-text);
 }
 
 .ob-footnote {
   margin: 20px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ob-text-muted);
   line-height: 1.6;
 }
@@ -600,7 +600,7 @@
 }
 
 .ob-permissions-flow .ob-heading {
-  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+  font-size: 20px;
   line-height: 1.2;
   margin: 0 0 10px;
   flex-shrink: 0;
@@ -624,7 +624,7 @@
 }
 
 .ob-permissions-flow .ob-perm-hint-line {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   margin: -2px 0 6px;
   opacity: 0.92;
@@ -632,7 +632,7 @@
 
 .ob-permissions-flow .ob-perm-card .ob-perm-allow-btn {
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .ob-permissions-flow .ob-bottom-actions {
@@ -705,7 +705,7 @@
   border: 1px solid var(--ob-border);
   border-radius: 20px;
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ob-text-muted);
   cursor: pointer;
   z-index: 10;

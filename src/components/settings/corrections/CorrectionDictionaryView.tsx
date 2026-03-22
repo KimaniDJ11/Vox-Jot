@@ -510,7 +510,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                       className={`inline-block w-7 h-3.5 rounded-full transition-colors ${
                         group.allActive
                           ? "bg-[var(--accent)]"
-                          : "bg-[var(--border)]"
+                          : "bg-[color-mix(in_srgb,var(--text),transparent_65%)] border border-[color-mix(in_srgb,var(--text),transparent_50%)]"
                       }`}
                       onClick={() => handleToggleGroup(group)}
                       title={
@@ -520,14 +520,14 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                       }
                     >
                       <span
-                        className={`block w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${
+                        className={`block w-2.5 h-2.5 rounded-full bg-[var(--card)] shadow transition-transform ${
                           group.allActive ? "translate-x-3.5" : "translate-x-0.5"
                         }`}
                       />
                     </button>
                     <button
                       type="button"
-                      className="text-[var(--muted)] hover:text-[var(--danger)] transition-colors p-0.5"
+                      className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
                       onClick={() => handleDeleteGroup(group)}
                       title={t("common.delete")}
                     >
@@ -580,7 +580,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/30 hover:border-[var(--accent)]/40"
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-[var(--text)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/50 hover:border-[var(--accent)]/40"
                       onClick={() => {
                         setAddingTo(group.corrected);
                         setNewOriginal("");

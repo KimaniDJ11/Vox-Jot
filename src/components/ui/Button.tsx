@@ -19,7 +19,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    "cursor-pointer rounded-lg border font-medium transition-[background-color,border-color,color,transform] duration-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]";
+    "cursor-pointer rounded-full border font-medium transition-[background-color,border-color,color,transform] duration-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]";
 
   const variantClasses = {
     primary:
@@ -31,9 +31,9 @@ export const Button: React.FC<ButtonProps> = ({
     danger:
       "border-[var(--danger)] bg-[var(--danger)] text-[var(--inverse-text)] hover:border-[color-mix(in_srgb,var(--danger),black_12%)] hover:bg-[color-mix(in_srgb,var(--danger),black_12%)]",
     "danger-ghost":
-      "border-transparent text-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
+      "border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
     ghost:
-      "border-transparent text-[var(--text)] hover:border-[var(--accent-soft)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
+      "border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
   };
 
   const sizeClasses = {

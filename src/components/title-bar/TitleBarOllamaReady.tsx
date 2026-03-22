@@ -41,27 +41,23 @@ const TitleBarOllamaReady: React.FC = () => {
   if (loading) {
     title = t("ollama.checking");
     iconClass =
-      "text-[var(--muted)] animate-spin dark:text-[var(--muted)]";
+      "text-[var(--muted)] animate-spin";
     Icon = Loader2;
   } else if (statusCheckFailed) {
     title = t("ollama.titleBarStatusCheckFailed");
-    iconClass =
-      "text-amber-600 hover:!text-amber-700 dark:text-amber-400 dark:hover:!text-amber-300";
+    iconClass = "text-[var(--warning)] hover:!text-[var(--warning)]";
     Icon = AlertTriangle;
   } else if (!status.installed) {
     title = t("ollama.notInstalled");
-    iconClass =
-      "text-[var(--danger)] hover:!text-[var(--danger)] dark:text-[var(--danger)] dark:hover:!text-[var(--danger)]";
+    iconClass = "text-[var(--danger)] hover:!text-[var(--danger)]";
     Icon = XCircle;
   } else if (!status.running) {
     title = t("ollama.notRunning");
-    iconClass =
-      "text-amber-600 hover:!text-amber-700 dark:text-amber-400 dark:hover:!text-amber-300";
+    iconClass = "text-[var(--warning)] hover:!text-[var(--warning)]";
     Icon = AlertCircle;
   } else {
     title = t("ollama.ready");
-    iconClass =
-      "text-emerald-600 hover:!text-emerald-700 dark:text-emerald-400 dark:hover:!text-emerald-300";
+    iconClass = "text-[var(--success)] hover:!text-[var(--success)]";
     Icon = CheckCircle2;
   }
 

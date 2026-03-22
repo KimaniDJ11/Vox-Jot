@@ -438,7 +438,7 @@ const ScratchpadApp: React.FC = () => {
                   <button
                     key={note.id}
                     type="button"
-                    className={`group relative flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-left text-sm transition-all ${
+                    className={`group relative flex items-center gap-2 w-full rounded-full px-2.5 py-2 text-left text-sm transition-all ${
                       isActive
                         ? "bg-[var(--accent)] text-[var(--inverse-text)]"
                         : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"

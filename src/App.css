@@ -44,6 +44,9 @@
   --info: #305f9f;
   --info-soft: rgba(48, 95, 159, 0.1);
 
+  --voice: #b07830;
+  --voice-soft: rgba(176, 120, 48, 0.1);
+
   --shadow-sm: 0 1px 3px rgba(44, 36, 24, 0.06);
   --shadow-md: 0 4px 16px rgba(44, 36, 24, 0.08);
   --shadow-lg: 0 12px 40px rgba(44, 36, 24, 0.12);
@@ -79,10 +82,10 @@
   --muted: #b7c0cd;
   --inverse-text: #ffffff;
 
-  --accent: #5b7dc9;
-  --accent-hover: #7b9ce8;
-  --accent-soft: rgba(91, 125, 201, 0.12);
-  --accent-glow: rgba(91, 125, 201, 0.25);
+  --accent: #7b9ce8;
+  --accent-hover: #93b1f0;
+  --accent-soft: rgba(123, 156, 232, 0.12);
+  --accent-glow: rgba(123, 156, 232, 0.25);
 
   --danger: #ef7b7b;
   --danger-soft: rgba(239, 123, 123, 0.14);
@@ -90,8 +93,11 @@
   --success-soft: rgba(107, 192, 140, 0.14);
   --warning: #d7af55;
   --warning-soft: rgba(215, 175, 85, 0.16);
-  --info: #8db2ff;
-  --info-soft: rgba(141, 178, 255, 0.16);
+  --info: #64b5d9;
+  --info-soft: rgba(100, 181, 217, 0.16);
+
+  --voice: #d89a5c;
+  --voice-soft: rgba(216, 154, 92, 0.14);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -110,10 +116,10 @@
     --muted: #b7c0cd;
     --inverse-text: #ffffff;
 
-    --accent: #5b7dc9;
-    --accent-hover: #7b9ce8;
-    --accent-soft: rgba(91, 125, 201, 0.12);
-    --accent-glow: rgba(91, 125, 201, 0.25);
+    --accent: #7b9ce8;
+    --accent-hover: #93b1f0;
+    --accent-soft: rgba(123, 156, 232, 0.12);
+    --accent-glow: rgba(123, 156, 232, 0.25);
 
     --danger: #ef7b7b;
     --danger-soft: rgba(239, 123, 123, 0.14);
@@ -121,8 +127,11 @@
     --success-soft: rgba(107, 192, 140, 0.14);
     --warning: #d7af55;
     --warning-soft: rgba(215, 175, 85, 0.16);
-    --info: #8db2ff;
-    --info-soft: rgba(141, 178, 255, 0.16);
+    --info: #64b5d9;
+    --info-soft: rgba(100, 181, 217, 0.16);
+
+    --voice: #d89a5c;
+    --voice-soft: rgba(216, 154, 92, 0.14);
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -189,6 +198,47 @@ body,
 *:hover::-webkit-scrollbar-thumb,
 *:focus-within::-webkit-scrollbar-thumb {
   opacity: 1;
+}
+
+/* ── Range Input (Slider) Thumb ────────────────────────────── */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  background: var(--accent);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+input[type="range"]::-moz-range-thumb:active {
+  transform: scale(1.05);
+  background: var(--accent);
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
@@ -338,15 +388,10 @@ body,
     app-region: no-drag;
   }
 
-  /* Title bar dictation stats & model labels: bold black in light, white in dark */
+  /* Title bar dictation stats & model labels */
   .title-bar-stats,
   .title-bar-models {
-    color: #000;
-  }
-
-  [data-theme="dark"] .title-bar-stats,
-  [data-theme="dark"] .title-bar-models {
-    color: #fff;
+    color: var(--text);
   }
 
   /* Top strip: sidebar toggle + draggable area (under native window controls) */

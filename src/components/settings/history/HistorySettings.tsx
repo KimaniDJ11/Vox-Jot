@@ -342,11 +342,11 @@ const sectionCardClassName =
 
 /** Time + main transcript line: same font, size, and line-height for alignment. */
 const historyEntryPrimaryLineClass =
-  "font-[var(--font-body)] text-base font-normal leading-6 text-black dark:text-[var(--text)]";
+  "font-[var(--font-body)] text-base font-normal leading-6 text-[var(--text)]";
 const historyActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+  "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyDangerActionButtonClassName =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+  "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] text-[var(--text)] transition-colors hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 
 const HistoryDetailSection: React.FC<{
   title: string;
@@ -364,13 +364,13 @@ const HistoryDetailSection: React.FC<{
 
 const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
   not_requested:
-    "border-mid-gray/20 bg-mid-gray/8 text-[var(--muted)] dark:bg-white/5 dark:text-[var(--muted)]",
+    "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
   pending:
-    "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    "border-[var(--warning)]/25 bg-[var(--warning-soft)] text-[var(--warning)]",
   captured:
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    "border-[var(--success)]/25 bg-[var(--success-soft)] text-[var(--success)]",
   skipped:
-    "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    "border-[var(--info)]/25 bg-[var(--info-soft)] text-[var(--info)]",
   failed:
     "border-[var(--danger)]/25 bg-[var(--danger-soft)] text-[var(--danger)]",
 };
@@ -451,7 +451,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
 
   return (
     <div className="grid grid-cols-1 gap-y-3 px-4 py-4 md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
-      <div className={`min-w-0 ${historyEntryPrimaryLineClass}`}>
+      <div className={`min-w-0 text-[var(--voice)] ${historyEntryPrimaryLineClass}`}>
         {formattedTime}
       </div>
 

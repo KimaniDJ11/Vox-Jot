@@ -93,7 +93,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         </div>
 
         {error && (
-          <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg">
+          <p className="text-[var(--danger)] text-sm bg-[var(--danger-soft)] px-4 py-2 rounded-full">
             {error}
           </p>
         )}
@@ -139,7 +139,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
         </p>
 
         {error && (
-          <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg">
+          <p className="text-[var(--danger)] text-sm bg-[var(--danger-soft)] px-4 py-2 rounded-full">
             {error}
           </p>
         )}
@@ -175,7 +175,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
       </div>
 
       {error && (
-        <p className="text-[var(--danger)] text-sm bg-red-500/10 px-4 py-2 rounded-lg text-center">
+        <p className="text-[var(--danger)] text-sm bg-[var(--danger-soft)] px-4 py-2 rounded-full text-center">
           {error}
         </p>
       )}
@@ -229,7 +229,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                 ) : isPulled ? (
                   <button
                     onClick={() => handleSelectModel(model.id)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors
                       ${
                         isSelected
                           ? "bg-logo-primary text-[var(--inverse-text)]"
@@ -243,7 +243,7 @@ const OllamaSetup: React.FC<OllamaSetupProps> = ({ onComplete, onSkip }) => {
                 ) : (
                   <button
                     onClick={() => handlePullModel(model.id)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-background
+                    className="px-3 py-1.5 rounded-full text-sm font-medium bg-background
                                border border-mid-gray/30 text-[var(--text)] hover:bg-logo-primary/10
                                transition-colors"
                   >

@@ -177,7 +177,9 @@ export const DictateTranslationSection: React.FC = () => {
 export const RefineTranslationSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <TranslationSettingsCard />
+      <SettingsGroup title="Translation">
+        <TranslationSettingsCard />
+      </SettingsGroup>
     </div>
   );
 };
@@ -211,50 +213,55 @@ export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
 export const RefineProfilesSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
-  const content = (
-    <div className="space-y-6">
-      <StylesSettings
-        showEnabledToggle={false}
-        titleActionTargetId="write-profiles-section-actions"
-      />
-    </div>
-  );
-
   if (!capped) {
-    return content;
+    return (
+      <div className="space-y-6">
+        <StylesSettings
+          showEnabledToggle={false}
+          titleActionTargetId="write-profiles-section-actions"
+        />
+      </div>
+    );
   }
 
   return (
-    <CappedSection
-      section="write-profiles"
-      showMoreLabel="Show all write profiles"
-      maxHeight={520}
-    >
-      {content}
-    </CappedSection>
+    <div className="space-y-6">
+      {/* Tone profile cards – always visible */}
+      <StylesSettings
+        showEnabledToggle={false}
+        visibleSections="profiles-only"
+      />
+      {/* App mappings – capped preview */}
+      <CappedSection
+        section="app-mappings"
+        showMoreLabel="Show all app mappings"
+        maxHeight={280}
+      >
+        <StylesSettings
+          showEnabledToggle={false}
+          visibleSections="mappings-only"
+        />
+      </CappedSection>
+    </div>
+  );
+};
+
+export const AppMappingsSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <StylesSettings
+        showEnabledToggle={false}
+        visibleSections="mappings-only"
+      />
+    </div>
   );
 };
 
 export const RefineModelsSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
-  const { getSetting } = useSettings();
-  const selectedProviderId = getSetting("post_process_provider_id") || "";
-  const selectedProvider = (getSetting("post_process_providers") || []).find(
-    (provider) => provider.id === selectedProviderId,
-  );
-
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-          Active Refine Engine
-        </p>
-        <p className="mt-2 text-lg font-bold text-[var(--text)]">
-          {selectedProvider?.label || "No refine provider selected"}
-        </p>
-      </div>
-
       {capped ? (
         <CappedSection
           section="llm-models"

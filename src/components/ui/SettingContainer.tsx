@@ -52,7 +52,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     <button
       ref={tooltipRef}
       type="button"
-      className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors duration-200 hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+      className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       onClick={toggleTooltip}
@@ -60,7 +60,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
       aria-expanded={showTooltip}
     >
       <svg
-        className="h-4 w-4 select-none"
+        className="h-3.5 w-3.5 select-none"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -69,7 +69,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth={2}
+          strokeWidth={2.5}
           d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
       </svg>
@@ -83,7 +83,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
 
   const containerClasses = grouped
     ? "px-4 py-3.5"
-    : "rounded-lg border border-mid-gray/20 px-4 py-3.5";
+    : "rounded-2xl border border-mid-gray/20 px-4 py-3.5";
 
   if (layout === "stacked") {
     if (descriptionMode === "tooltip") {

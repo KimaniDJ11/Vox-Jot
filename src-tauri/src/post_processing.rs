@@ -71,6 +71,13 @@ pub struct AppToneMapping {
     pub tone_id: String,
 }
 
+/// An application discovered on the user's system.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
+pub struct InstalledApp {
+    pub bundle_id: String,
+    pub name: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
 pub struct PostProcessPreviewPayload {
     pub request_id: String,

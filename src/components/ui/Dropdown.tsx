@@ -62,7 +62,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        className={`flex min-h-11 min-w-[220px] items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-start text-base font-semibold text-[var(--text)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+        className={`flex min-h-11 min-w-[220px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-2 text-start text-base font-semibold text-[var(--text)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] shadow-[var(--shadow-sm)] ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] cursor-pointer hover:border-[var(--accent)]"
@@ -86,7 +86,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         </svg>
       </button>
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-[80] max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow-lg)] z-[80] max-h-60 overflow-y-auto">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-[14px] text-[var(--muted)]">
               {t("common.noOptionsFound")}

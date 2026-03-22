@@ -55,11 +55,11 @@
 }
 
 .ob-step-upcoming {
-  color: #b0aca4;
+  color: var(--muted);
 }
 
 .ob-progress-chevron {
-  color: #b0aca4;
+  color: var(--muted);
   flex-shrink: 0;
 }
 
@@ -175,7 +175,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, var(--ob-primary), #355cba);
+  background: linear-gradient(135deg, var(--ob-primary), var(--accent));
   color: var(--ob-white);
   border: none;
   border-radius: var(--ob-radius);
@@ -325,8 +325,8 @@
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #101827;
-  color: #f8fafc;
+  background: var(--card);
+  color: var(--text);
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
@@ -372,7 +372,7 @@
 .ob-permission-path-text {
   margin: 0;
   font-size: 14px;
-  color: #2b457e;
+  color: var(--accent);
   font-weight: 600;
 }
 

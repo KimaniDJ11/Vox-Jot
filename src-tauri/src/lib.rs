@@ -378,6 +378,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_audio_feedback_setting,
         shortcut::change_audio_feedback_volume_setting,
         shortcut::change_sound_theme_setting,
+        shortcut::change_app_theme_setting,
         shortcut::change_start_hidden_setting,
         shortcut::change_autostart_setting,
         shortcut::change_translate_to_english_setting,
@@ -541,6 +542,7 @@ pub fn run(cli_args: CliArgs) {
         commands::stats::get_dictation_stats,
         commands::show_detail_view,
         commands::get_detail_target_section,
+        commands::list_installed_apps,
     ]);
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite

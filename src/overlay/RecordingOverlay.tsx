@@ -125,27 +125,27 @@ const RecordingOverlay: React.FC = () => {
 
 const MicIcon: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <rect x="7" y="2" width="6" height="10" rx="3" fill="#7b9ce8" />
+    <rect x="7" y="2" width="6" height="10" rx="3" fill="var(--ov-accent)" />
     <path
       d="M4.5 9.5a5.5 5.5 0 0 0 11 0"
-      stroke="#7b9ce8"
+      stroke="var(--ov-accent)"
       strokeWidth="1.5"
       strokeLinecap="round"
       fill="none"
     />
-    <line x1="10" y1="15" x2="10" y2="18" stroke="#7b9ce8" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="10" y1="15" x2="10" y2="18" stroke="var(--ov-accent)" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
 const WaveIcon: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M3 10h2l1.5-3 2 6 2-8 2 10 1.5-5H16" stroke="#7b9ce8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path d="M3 10h2l1.5-3 2 6 2-8 2 10 1.5-5H16" stroke="var(--ov-accent)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
   </svg>
 );
 
 const XIcon: React.FC = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="#e87b7b" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="var(--ov-cancel)" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 

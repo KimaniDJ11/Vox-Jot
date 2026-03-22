@@ -8,7 +8,7 @@ pub mod transcription;
 pub mod tts;
 
 use crate::actions::PostProcessRouteDebug;
-use crate::post_processing::{PostProcessResult, PreviewManager};
+use crate::post_processing::{InstalledApp, PostProcessResult, PreviewManager};
 use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
 use crate::utils::cancel_current_operation;
 use tauri::{AppHandle, Manager};
@@ -225,4 +225,100 @@ pub fn initialize_shortcuts(app: AppHandle) -> Result<(), String> {
 
     log::info!("Shortcuts initialized successfully");
     Ok(())
+}
+
+/// List GUI applications installed on the user's system.
+///
+/// On macOS this uses Spotlight (`mdfind`) to enumerate `.app` bundles and
+/// reads each bundle's `CFBundleIdentifier` + `CFBundleName` from its
+/// `Info.plist`.  On other platforms an empty list is returned.
+#[specta::specta]
+#[tauri::command]
+pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+
+        // Ask Spotlight for every .app bundle on the system.
+        let output = Command::new("mdfind")
+            .arg("kMDItemContentType == 'com.apple.application-bundle'")
+            .output()
+            .map_err(|e| format!("Failed to run mdfind: {}", e))?;
+
+        if !output.status.success() {
+            return Err("mdfind returned a non-zero exit code".to_string());
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut apps: Vec<InstalledApp> = Vec::new();
+        let mut seen_bundle_ids = std::collections::HashSet::new();
+
+        for line in stdout.lines() {
+            let app_path = line.trim();
+            if app_path.is_empty() {
+                continue;
+            }
+
+            let plist_path = format!("{}/Contents/Info.plist", app_path);
+            let plist_file = std::path::Path::new(&plist_path);
+            if !plist_file.exists() {
+                continue;
+            }
+
+            // Use `defaults read` to pull the two keys — it handles both
+            // binary and XML plists transparently.
+            let bundle_id = Command::new("defaults")
+                .args(["read", &plist_path, "CFBundleIdentifier"])
+                .output()
+                .ok()
+                .and_then(|o| {
+                    if o.status.success() {
+                        Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                    } else {
+                        None
+                    }
+                });
+
+            let bundle_name = Command::new("defaults")
+                .args(["read", &plist_path, "CFBundleName"])
+                .output()
+                .ok()
+                .and_then(|o| {
+                    if o.status.success() {
+                        Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                    } else {
+                        None
+                    }
+                });
+
+            if let Some(bid) = bundle_id {
+                if bid.is_empty() || !seen_bundle_ids.insert(bid.clone()) {
+                    continue;
+                }
+
+                let name = bundle_name
+                    .filter(|n| !n.is_empty())
+                    .unwrap_or_else(|| {
+                        // Fall back to the .app directory name
+                        std::path::Path::new(app_path)
+                            .file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_default()
+                    });
+
+                apps.push(InstalledApp {
+                    bundle_id: bid,
+                    name,
+                });
+            }
+        }
+
+        apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        Ok(apps)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(Vec::new())
+    }
 }

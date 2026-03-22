@@ -76,7 +76,7 @@ const AccessibilityPermissions: React.FC = () => {
   }
 
   const buttonClassName =
-    "rounded-lg border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-60";
+    "rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <div className="flat-card w-full rounded-2xl p-4 space-y-4">

@@ -522,6 +522,20 @@ pub fn change_sound_theme_setting(app: AppHandle, theme: String) -> Result<(), S
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_app_theme_setting(app: AppHandle, theme: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    if !["light", "dark", "system"].contains(&theme.as_str()) {
+        warn!("Invalid app theme '{}', defaulting to system", theme);
+        settings.app_theme = "system".to_string();
+    } else {
+        settings.app_theme = theme;
+    }
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_translate_to_english_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.translate_to_english = enabled;

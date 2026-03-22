@@ -234,7 +234,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       </button>
 
       {languageDropdownOpen && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-56 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
           <div className="border-b border-mid-gray/40 p-2">
             <input
               ref={languageSearchInputRef}

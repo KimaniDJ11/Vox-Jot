@@ -50,7 +50,7 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
                   borderRadius: 4,
                   fontSize: 13,
                   fontFamily: "monospace",
-                  background: "#f5f2ec",
+                  background: "var(--input)",
                 }}
               >
                 fn
@@ -116,8 +116,8 @@ const TutorialStep: React.FC<TutorialStepProps> = ({ onComplete, onBack }) => {
             <span
               style={{
                 display: "inline-block",
-                background: "#e6f7e9",
-                color: "#16a34a",
+                background: "var(--success-soft)",
+                color: "var(--success)",
                 fontSize: 13,
                 fontWeight: 500,
                 padding: "4px 12px",

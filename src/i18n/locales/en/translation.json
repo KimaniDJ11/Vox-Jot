@@ -456,6 +456,15 @@
         "label": "Show Tray Icon",
         "description": "Display the Vox Jot icon in the system tray."
       },
+      "theme": {
+        "title": "Theme",
+        "description": "Choose the app appearance.",
+        "options": {
+          "light": "Light",
+          "dark": "Dark",
+          "system": "System"
+        }
+      },
       "overlay": {
         "title": "Overlay Position",
         "description": "Display visual feedback overlay during recording and transcription. On Linux 'None' is recommended.",

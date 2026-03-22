@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Settings2 } from "lucide-react";
+import { Settings } from "lucide-react";
 
 type SidebarIcon = React.ComponentType<{
   className?: string;
@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className={`truncate text-base font-bold leading-6 ${
                         isActive
                           ? "text-[var(--inverse-text)]"
-                          : "text-black dark:text-[var(--text)]"
+                          : "text-[var(--text)]"
                       }`}
                     >
                       {item.label}
@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-label={collapsed ? "Settings" : undefined}
             title={collapsed ? "Settings" : undefined}
           >
-            <Settings2
+            <Settings
               width={collapsed ? 19 : 18}
               height={collapsed ? 19 : 18}
               strokeWidth={settingsActive ? 2.6 : 2.35}
@@ -127,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`truncate text-base font-bold leading-6 ${
                   settingsActive
                     ? "text-[var(--inverse-text)]"
-                    : "text-black dark:text-[var(--text)]"
+                    : "text-[var(--text)]"
                 }`}
               >
                 Settings

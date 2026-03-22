@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
@@ -6,11 +6,13 @@ import {
   ChevronUp,
   Pencil,
   Plus,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { AppToneMapping, ToneDefinition } from "@/bindings";
+import type { AppToneMapping, InstalledApp, ToneDefinition } from "@/bindings";
+import { commands } from "@/bindings";
 
 import { Button } from "../../ui/Button";
 import { Dropdown } from "../../ui/Dropdown";
@@ -23,6 +25,7 @@ import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
 interface StylesSettingsProps {
   showEnabledToggle?: boolean;
   titleActionTargetId?: string;
+  visibleSections?: "all" | "mappings-only" | "profiles-only";
 }
 
 const DEFAULT_STYLE_PRESETS: ToneDefinition[] = [
@@ -43,6 +46,12 @@ const DEFAULT_STYLE_PRESETS: ToneDefinition[] = [
     label: "Neutral",
     instruction:
       "Keep the tone neutral and close to the speaker's original wording.",
+  },
+  {
+    id: "coding",
+    label: "Coding",
+    instruction:
+      "Format the text as precise technical writing suited for code editors and terminals. Use exact technical terms, preserve variable and function names verbatim, format code snippets with proper syntax, and keep comments concise. Convert spoken code descriptions into valid code when the intent is clear (e.g., \"define a function called foo that takes a string\" → \"fn foo(s: &str)\"). Prefer lowercase and avoid unnecessary punctuation.",
   },
 ];
 
@@ -115,7 +124,7 @@ const ToneCard: React.FC<ToneCardProps> = ({
             type="button"
             onClick={onEdit}
             disabled={disabled}
-            className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-[var(--text)] disabled:opacity-40"
+            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-40"
             title={t("common.edit")}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -125,7 +134,7 @@ const ToneCard: React.FC<ToneCardProps> = ({
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-[var(--danger)] disabled:opacity-40"
+              className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] disabled:opacity-40"
               title={t("common.delete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -282,6 +291,102 @@ const ToneEditor: React.FC<ToneEditorProps> = ({
   );
 };
 
+/* ── Installed-app picker popover ─────────────────────────── */
+
+interface AppPickerProps {
+  installedApps: InstalledApp[];
+  existingBundleIds: Set<string>;
+  onSelect: (app: InstalledApp) => void;
+  onClose: () => void;
+}
+
+const AppPicker: React.FC<AppPickerProps> = ({
+  installedApps,
+  existingBundleIds,
+  onSelect,
+  onClose,
+}) => {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return installedApps.filter(
+      (app) =>
+        !existingBundleIds.has(app.bundle_id) &&
+        (app.name.toLowerCase().includes(q) ||
+          app.bundle_id.toLowerCase().includes(q)),
+    );
+  }, [installedApps, existingBundleIds, query]);
+
+  return (
+    <div className="rounded-xl border border-[var(--accent)] bg-[var(--bg)] shadow-lg">
+      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2">
+        <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("settings.styles.mappings.searchApps", {
+            defaultValue: "Search installed apps\u2026",
+          })}
+          className="w-full bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded p-0.5 text-[var(--muted)] hover:text-[var(--text)]"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <ul className="max-h-60 overflow-y-auto py-1">
+        {filtered.length === 0 ? (
+          <li className="px-3 py-4 text-center text-sm text-[var(--muted)]">
+            {t("settings.styles.mappings.noAppsFound", {
+              defaultValue: "No matching apps found",
+            })}
+          </li>
+        ) : (
+          filtered.slice(0, 60).map((app) => (
+            <li key={app.bundle_id}>
+              <button
+                type="button"
+                onClick={() => onSelect(app)}
+                className="flex w-full items-baseline gap-3 px-3 py-1.5 text-left text-sm transition-colors hover:bg-[var(--accent-soft)]"
+              >
+                <span className="font-medium text-[var(--text)]">
+                  {app.name}
+                </span>
+                <span className="truncate text-xs text-[var(--muted)]">
+                  {app.bundle_id}
+                </span>
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+};
+
+/* ── Mapping row ─────────────────────────────────────────── */
+
 interface MappingRowProps {
   mapping: AppToneMapping;
   toneOptions: { value: string; label: string }[];
@@ -326,7 +431,7 @@ const MappingRow: React.FC<MappingRowProps> = ({
           type="button"
           onClick={onDelete}
           disabled={disabled}
-          className="rounded-lg p-1.5 text-[var(--muted)] transition-colors hover:text-[var(--danger)] disabled:opacity-40"
+          className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] disabled:opacity-40"
           title={t("common.delete")}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -339,6 +444,7 @@ const MappingRow: React.FC<MappingRowProps> = ({
 export const StylesSettings: React.FC<StylesSettingsProps> = ({
   showEnabledToggle = true,
   titleActionTargetId,
+  visibleSections = "all",
 }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
@@ -350,8 +456,22 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
   const [editingToneId, setEditingToneId] = useState<string | null>(null);
   const [addingTone, setAddingTone] = useState(false);
   const [mappingsExpanded, setMappingsExpanded] = useState(
-    appToneMappings.length > 0,
+    visibleSections === "mappings-only" || appToneMappings.length > 0,
   );
+  const [showAppPicker, setShowAppPicker] = useState(false);
+  const [installedApps, setInstalledApps] = useState<InstalledApp[]>([]);
+  const showToneProfilesSection = visibleSections !== "mappings-only";
+  const showMappingsSection = visibleSections !== "profiles-only";
+  const showMappingsAccordion = visibleSections === "all";
+
+  // Load installed apps once
+  useEffect(() => {
+    commands.listInstalledApps().then((result) => {
+      if (result.status === "ok") {
+        setInstalledApps(result.data);
+      }
+    });
+  }, []);
 
   const toneControlsDisabled =
     !enabled ||
@@ -446,16 +566,42 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
   };
 
   const addMapping = () => {
-    persistMappings([
-      ...appToneMappings,
-      {
-        app_name: "",
-        bundle_id: "",
-        tone_id: sortedToneDefinitions[0]?.id ?? "",
-      },
-    ]);
-    setMappingsExpanded(true);
+    if (installedApps.length > 0) {
+      setShowAppPicker(true);
+      setMappingsExpanded(true);
+    } else {
+      // Fallback: empty row for manual entry
+      persistMappings([
+        ...appToneMappings,
+        {
+          app_name: "",
+          bundle_id: "",
+          tone_id: sortedToneDefinitions[0]?.id ?? "",
+        },
+      ]);
+      setMappingsExpanded(true);
+    }
   };
+
+  const addMappingFromPicker = useCallback(
+    (app: InstalledApp) => {
+      persistMappings([
+        ...appToneMappings,
+        {
+          app_name: app.name,
+          bundle_id: app.bundle_id,
+          tone_id: sortedToneDefinitions[0]?.id ?? "",
+        },
+      ]);
+      setShowAppPicker(false);
+    },
+    [appToneMappings, sortedToneDefinitions],
+  );
+
+  const existingBundleIds = useMemo(
+    () => new Set(appToneMappings.map((m) => m.bundle_id)),
+    [appToneMappings],
+  );
 
   const deleteMapping = (index: number) => {
     persistMappings(
@@ -496,7 +642,7 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
 
   return (
     <div className="w-full space-y-6">
-      {showEnabledToggle && (
+      {showEnabledToggle && showToneProfilesSection && (
         <SettingsGroup
           title={t("settings.styles.title")}
           titleAction={addCustomProfileTitleAction}
@@ -508,77 +654,81 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
         </SettingsGroup>
       )}
 
-      <section className="space-y-2">
-        {shouldPortalActions
-          ? createPortal(addCustomProfileTitleAction, portalTarget)
-          : null}
+      {showToneProfilesSection && (
+        <section className="space-y-2">
+          {shouldPortalActions
+            ? createPortal(addCustomProfileTitleAction, portalTarget)
+            : null}
 
-        {!showEnabledToggle && !shouldPortalActions ? (
-          <div className="mb-3 flex justify-end px-5">
-            {addCustomProfileTitleAction}
-          </div>
-        ) : null}
-
-        {showEnabledToggle ? (
-          <div className="px-5 mb-3 flex items-center justify-end gap-3 min-w-0">
-            <div className="flex gap-1 shrink-0">
+          {!showEnabledToggle && !shouldPortalActions ? (
+            <div className="mb-3 flex justify-end px-5">
               {addCustomProfileTitleAction}
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <div className="flat-card overflow-visible">
-          <div className="px-5 py-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {sortedToneDefinitions.map((tone) => (
-                <ToneCard
-                  key={tone.id}
-                  tone={tone}
-                  mappedApps={mappedAppsByToneId[tone.id] || []}
-                  disabled={toneControlsDisabled}
-                  canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
-                  onEdit={() => {
-                    setAddingTone(false);
-                    setEditingToneId(tone.id);
-                  }}
-                  onDelete={() => handleDeleteTone(tone.id)}
-                />
-              ))}
-            </div>
-
-            {(editingTone || addingTone) && (
-              <div className="mt-4">
-                <ToneEditor
-                  initial={editingTone}
-                  existingIds={toneDefinitions.map((tone) => tone.id)}
-                  onSave={handleSaveTone}
-                  onCancel={() => {
-                    setEditingToneId(null);
-                    setAddingTone(false);
-                  }}
-                />
+          {showEnabledToggle ? (
+            <div className="px-5 mb-3 flex items-center justify-end gap-3 min-w-0">
+              <div className="flex gap-1 shrink-0">
+                {addCustomProfileTitleAction}
               </div>
-            )}
-          </div>
-        </div>
-      </section>
+            </div>
+          ) : null}
 
-      <SettingsGroup
+          <div className="flat-card overflow-visible">
+            <div className="px-5 py-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {sortedToneDefinitions.map((tone) => (
+                  <ToneCard
+                    key={tone.id}
+                    tone={tone}
+                    mappedApps={mappedAppsByToneId[tone.id] || []}
+                    disabled={toneControlsDisabled}
+                    canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
+                    onEdit={() => {
+                      setAddingTone(false);
+                      setEditingToneId(tone.id);
+                    }}
+                    onDelete={() => handleDeleteTone(tone.id)}
+                  />
+                ))}
+              </div>
+
+              {(editingTone || addingTone) && (
+                <div className="mt-4">
+                  <ToneEditor
+                    initial={editingTone}
+                    existingIds={toneDefinitions.map((tone) => tone.id)}
+                    onSave={handleSaveTone}
+                    onCancel={() => {
+                      setEditingToneId(null);
+                      setAddingTone(false);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {showMappingsSection && <SettingsGroup
         title={t("settings.styles.mappings.title")}
         description={t("settings.styles.mappings.description")}
       >
-        <button
-          type="button"
-          onClick={() => setMappingsExpanded((current) => !current)}
-          className="flex w-full items-center justify-between px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
-        >
-          <span>{t("settings.styles.mappings.description")}</span>
-          {mappingsExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0" />
-          ) : (
-            <ChevronDown className="h-4 w-4 shrink-0" />
-          )}
-        </button>
+        {showMappingsAccordion && (
+          <button
+            type="button"
+            onClick={() => setMappingsExpanded((current) => !current)}
+            className="flex w-full items-center justify-between px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+          >
+            <span>{t("settings.styles.mappings.description")}</span>
+            {mappingsExpanded ? (
+              <ChevronUp className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            )}
+          </button>
+        )}
 
         {mappingsExpanded && (
           <div className="space-y-4 px-5 py-4">
@@ -610,18 +760,52 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
               ))}
             </div>
 
-            <Button
-              variant="primary-soft"
-              size="sm"
-              onClick={addMapping}
-              disabled={mappingControlsDisabled}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {t("settings.styles.mappings.add")}
-            </Button>
+            {showAppPicker && (
+              <AppPicker
+                installedApps={installedApps}
+                existingBundleIds={existingBundleIds}
+                onSelect={addMappingFromPicker}
+                onClose={() => setShowAppPicker(false)}
+              />
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="primary-soft"
+                size="sm"
+                onClick={addMapping}
+                disabled={mappingControlsDisabled}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t("settings.styles.mappings.add")}
+              </Button>
+              {installedApps.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    persistMappings([
+                      ...appToneMappings,
+                      {
+                        app_name: "",
+                        bundle_id: "",
+                        tone_id: sortedToneDefinitions[0]?.id ?? "",
+                      },
+                    ]);
+                    setMappingsExpanded(true);
+                  }}
+                  disabled={mappingControlsDisabled}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  {t("settings.styles.mappings.addManual", {
+                    defaultValue: "Add manually",
+                  })}
+                </Button>
+              )}
+            </div>
           </div>
         )}
-      </SettingsGroup>
+      </SettingsGroup>}
     </div>
   );
 };

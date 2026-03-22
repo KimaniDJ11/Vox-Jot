@@ -104,7 +104,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         color: "var(--text)",
         borderColor: "var(--border)",
       }}
-      className="px-3 py-2 border rounded-lg shadow-lg whitespace-normal transition-opacity duration-150"
+      className="px-3 py-2 border rounded-2xl shadow-lg whitespace-normal transition-opacity duration-150"
     >
       {children}
       <div

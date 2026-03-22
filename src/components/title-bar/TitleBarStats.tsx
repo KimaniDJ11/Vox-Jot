@@ -33,7 +33,7 @@ const TitleBarStats: React.FC = () => {
           title={t("titleBar.streak", { count: stats.streak_days })}
         >
           <Flame
-            className="h-[1.125rem] w-[1.125rem] shrink-0 fill-orange-500 stroke-orange-600 dark:fill-amber-400 dark:stroke-amber-300"
+            className="h-[1.125rem] w-[1.125rem] shrink-0 fill-[var(--voice)] stroke-[var(--voice)]"
             strokeWidth={1.25}
             aria-hidden
           />

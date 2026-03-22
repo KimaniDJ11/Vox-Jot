@@ -291,7 +291,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     setNewTrigger(e.target.value.slice(0, TRIGGER_MAX))
                   }
                   placeholder={t("settings.snippets.list.triggerPlaceholder")}
-                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-w-0"
+                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {
                       setAdding(false);
@@ -315,7 +315,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     "settings.snippets.list.expansionPlaceholder",
                   )}
                   rows={2}
-                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
+                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
                   onKeyDown={(e) => {
                     if (e.key === "Escape") {
                       setAdding(false);
@@ -377,7 +377,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                               e.target.value.slice(0, TRIGGER_MAX),
                             )
                           }
-                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-w-0"
+                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
                           onKeyDown={(e) => {
                             if (e.key === "Escape") setEditingId(null);
                             if (e.key === "Enter") void commitEdit();
@@ -396,7 +396,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                             )
                           }
                           rows={2}
-                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
+                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
                           onKeyDown={(e) => {
                             if (e.key === "Escape") setEditingId(null);
                           }}
@@ -434,7 +434,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
-                            className="text-[var(--muted)] hover:text-[var(--accent)] transition-colors p-0.5"
+                            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] transition-colors"
                             onClick={() => startEdit(snippet)}
                             title={t("common.edit", {
                               defaultValue: "Edit",
@@ -447,7 +447,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                             className={`inline-block w-7 h-3.5 rounded-full transition-colors ${
                               snippet.enabled
                                 ? "bg-[var(--accent)]"
-                                : "bg-[var(--border)]"
+                                : "bg-[color-mix(in_srgb,var(--text),transparent_65%)] border border-[color-mix(in_srgb,var(--text),transparent_50%)]"
                             }`}
                             onClick={() => void handleToggle(snippet.id)}
                             title={
@@ -461,7 +461,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                             }
                           >
                             <span
-                              className={`block w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${
+                              className={`block w-2.5 h-2.5 rounded-full bg-[var(--card)] shadow transition-transform ${
                                 snippet.enabled
                                   ? "translate-x-3.5"
                                   : "translate-x-0.5"
@@ -470,7 +470,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           </button>
                           <button
                             type="button"
-                            className="text-[var(--muted)] hover:text-[var(--danger)] transition-colors p-0.5"
+                            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
                             onClick={() => void handleDelete(snippet.id)}
                             title={t("common.delete")}
                           >

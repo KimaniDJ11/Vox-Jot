@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
 import {
+  AppMappingsSection,
   DictateHistorySection,
   DictateModelsSection,
   JotPadSection,
@@ -24,6 +25,10 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   "write-profiles": {
     title: "Write Profiles",
     component: () => <RefineProfilesSection capped={false} />,
+  },
+  "app-mappings": {
+    title: "App Mappings",
+    component: AppMappingsSection,
   },
   "stt-models": {
     title: "Speech Models",

@@ -91,7 +91,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const getInteractiveClasses = () => {
     if (!isClickable) return "";
     if (disabled) return "opacity-50 cursor-not-allowed";
-    return "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-lg group";
+    return "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group";
   };
 
   const handleClick = () => {

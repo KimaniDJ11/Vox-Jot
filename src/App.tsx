@@ -104,7 +104,7 @@ const AppContentSection = React.forwardRef<
   >
     <div className="px-1">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-black dark:text-[var(--text)]">
+        <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-[var(--text)]">
           {title}
         </h2>
         <div
@@ -475,8 +475,13 @@ function App() {
   }, [i18n.language]);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "light");
-  }, []);
+    const theme = settings?.app_theme ?? "system";
+    if (theme === "system") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }, [settings?.app_theme]);
 
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {

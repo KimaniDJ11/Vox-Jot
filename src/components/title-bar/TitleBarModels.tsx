@@ -87,7 +87,7 @@ const TitleBarModels: React.FC = () => {
 
           {showLlmDropdown && (
             <div
-              className="absolute top-full end-0 mt-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-mid-gray/20 rounded-lg shadow-lg py-2 z-50 text-text"
+              className="absolute top-full end-0 mt-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-mid-gray/20 rounded-2xl shadow-lg py-2 z-50 text-text"
               role="listbox"
               onKeyDown={handleLlmKeyDown}
             >

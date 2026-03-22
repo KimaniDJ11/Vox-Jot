@@ -135,7 +135,7 @@ const OllamaSettings: React.FC = () => {
               type="button"
               onClick={installOllama}
               disabled={isInstalling}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-full text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
               {isInstalling ? t("ollama.installing") : t("ollama.install")}
             </button>
@@ -147,7 +147,7 @@ const OllamaSettings: React.FC = () => {
               type="button"
               onClick={startServe}
               disabled={isChecking}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-full text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
             >
               {isChecking ? t("ollama.checking") : t("ollama.start")}
             </button>
@@ -158,7 +158,7 @@ const OllamaSettings: React.FC = () => {
               type="button"
               size="sm"
               variant="ghost"
-              className="p-1.5 text-emerald-600 hover:!text-emerald-700 dark:text-emerald-400 dark:hover:!text-emerald-300"
+              className="p-1.5 text-[var(--success)] hover:!text-[var(--success)]"
               title={t("ollama.ready")}
               aria-label={t("ollama.ready")}
             >
@@ -172,7 +172,7 @@ const OllamaSettings: React.FC = () => {
       {isInstalled && isRunning && (
         <div className="w-full space-y-6">
           {actionError && (
-            <div className="rounded-lg border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-[var(--danger)]">
+            <div className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
               {actionError}
             </div>
           )}
@@ -195,7 +195,7 @@ const OllamaSettings: React.FC = () => {
                 return (
                   <div
                     key={model.id}
-                    className={`group flex flex-col rounded-xl border-2 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] ${
+                    className={`group flex flex-col rounded-xl border-2 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md ${
                       isActive
                         ? "border-logo-primary/70 bg-logo-primary/5"
                         : "border-mid-gray/25"
@@ -309,7 +309,7 @@ const OllamaSettings: React.FC = () => {
               return (
                 <div
                   key={model.id}
-                  className="group flex flex-col rounded-xl border-2 border-mid-gray/25 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                  className="group flex flex-col rounded-xl border-2 border-mid-gray/25 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
                 >
                   <div className="flex justify-between items-center w-full">
                     <div className="flex flex-col items-start flex-1 min-w-0">

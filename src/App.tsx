@@ -103,9 +103,15 @@ const AppContentSection = React.forwardRef<
     className="scroll-mt-24 space-y-5 border-b border-[var(--border)]/80 pb-8 last:border-b-0 last:pb-0"
   >
     <div className="px-1">
-      <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-black dark:text-[var(--text)]">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-black dark:text-[var(--text)]">
+          {title}
+        </h2>
+        <div
+          id={`${id}-section-actions`}
+          className="app-no-drag flex shrink-0 items-center gap-1"
+        />
+      </div>
     </div>
     {children}
   </section>

@@ -1,18 +1,17 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   ChevronDown,
   ChevronUp,
   Pencil,
   Plus,
-  RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AppToneMapping, ToneDefinition } from "@/bindings";
 
-import { Alert } from "../../ui/Alert";
 import { Button } from "../../ui/Button";
 import { Dropdown } from "../../ui/Dropdown";
 import { Input } from "../../ui/Input";
@@ -23,6 +22,7 @@ import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
 
 interface StylesSettingsProps {
   showEnabledToggle?: boolean;
+  titleActionTargetId?: string;
 }
 
 const DEFAULT_STYLE_PRESETS: ToneDefinition[] = [
@@ -338,6 +338,7 @@ const MappingRow: React.FC<MappingRowProps> = ({
 
 export const StylesSettings: React.FC<StylesSettingsProps> = ({
   showEnabledToggle = true,
+  titleActionTargetId,
 }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
@@ -390,15 +391,6 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
     ? sortedToneDefinitions.find((tone) => tone.id === editingToneId)
     : undefined;
 
-  const starterStylesChanged = DEFAULT_STYLE_PRESETS.some((preset) => {
-    const existing = toneDefinitions.find((tone) => tone.id === preset.id);
-    return (
-      !existing ||
-      existing.label !== preset.label ||
-      existing.instruction !== preset.instruction
-    );
-  });
-
   const persistTones = (next: ToneDefinition[]) => {
     void updateSetting("tone_definitions", next);
   };
@@ -441,13 +433,6 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
     );
   };
 
-  const restoreStarterStyles = () => {
-    const customStyles = toneDefinitions.filter(
-      (tone) => !DEFAULT_STYLE_IDS.has(tone.id),
-    );
-    persistTones([...DEFAULT_STYLE_PRESETS, ...customStyles]);
-  };
-
   const updateMapping = (
     index: number,
     field: keyof AppToneMapping,
@@ -478,10 +463,44 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
     );
   };
 
+  const addCustomProfileTitleAction =
+    !editingTone && !addingTone ? (
+      <Button
+        variant="primary-soft"
+        size="sm"
+        onClick={() => {
+          setEditingToneId(null);
+          setAddingTone(true);
+        }}
+        disabled={toneControlsDisabled}
+        className="px-2"
+        aria-label={t("settings.styles.tones.add")}
+        title={t("settings.styles.tones.add")}
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+    ) : null;
+
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!titleActionTargetId) {
+      setPortalTarget(null);
+      return;
+    }
+
+    setPortalTarget(document.getElementById(titleActionTargetId));
+  }, [titleActionTargetId]);
+
+  const shouldPortalActions = !showEnabledToggle && !!portalTarget;
+
   return (
     <div className="w-full space-y-6">
       {showEnabledToggle && (
-        <SettingsGroup title={t("settings.styles.title")}>
+        <SettingsGroup
+          title={t("settings.styles.title")}
+          titleAction={addCustomProfileTitleAction}
+        >
           <AppAwareWriteProfilesToggle
             descriptionMode="tooltip"
             grouped={true}
@@ -489,81 +508,60 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
         </SettingsGroup>
       )}
 
-      <Alert variant="info" contained>
-        {enabled
-          ? t("settings.styles.description")
-          : t("settings.styles.disabledMessage")}
-      </Alert>
+      <section className="space-y-2">
+        {shouldPortalActions
+          ? createPortal(addCustomProfileTitleAction, portalTarget)
+          : null}
 
-      <SettingsGroup
-        title={t("settings.styles.tones.title")}
-        description={t("settings.styles.tones.description")}
-      >
-        <div className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-[var(--muted)]">
-            {t("settings.styles.tones.helper")}
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={restoreStarterStyles}
-            disabled={toneControlsDisabled || !starterStylesChanged}
-          >
-            <RotateCcw className="mr-1 h-3.5 w-3.5" />
-            {t("settings.styles.tones.restore")}
-          </Button>
-        </div>
-
-        <div className="px-5 py-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {sortedToneDefinitions.map((tone) => (
-              <ToneCard
-                key={tone.id}
-                tone={tone}
-                mappedApps={mappedAppsByToneId[tone.id] || []}
-                disabled={toneControlsDisabled}
-                canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
-                onEdit={() => {
-                  setAddingTone(false);
-                  setEditingToneId(tone.id);
-                }}
-                onDelete={() => handleDeleteTone(tone.id)}
-              />
-            ))}
+        {!showEnabledToggle && !shouldPortalActions ? (
+          <div className="mb-3 flex justify-end px-5">
+            {addCustomProfileTitleAction}
           </div>
+        ) : null}
 
-          {(editingTone || addingTone) && (
-            <div className="mt-4">
-              <ToneEditor
-                initial={editingTone}
-                existingIds={toneDefinitions.map((tone) => tone.id)}
-                onSave={handleSaveTone}
-                onCancel={() => {
-                  setEditingToneId(null);
-                  setAddingTone(false);
-                }}
-              />
+        {showEnabledToggle ? (
+          <div className="px-5 mb-3 flex items-center justify-end gap-3 min-w-0">
+            <div className="flex gap-1 shrink-0">
+              {addCustomProfileTitleAction}
             </div>
-          )}
+          </div>
+        ) : null}
 
-          {!editingTone && !addingTone && (
-            <div className="mt-4">
-              <Button
-                variant="primary-soft"
-                size="sm"
-                onClick={() => {
-                  setEditingToneId(null);
-                  setAddingTone(true);
-                }}
-                disabled={toneControlsDisabled}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {t("settings.styles.tones.add")}
-              </Button>
+        <div className="flat-card overflow-visible">
+          <div className="px-5 py-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {sortedToneDefinitions.map((tone) => (
+                <ToneCard
+                  key={tone.id}
+                  tone={tone}
+                  mappedApps={mappedAppsByToneId[tone.id] || []}
+                  disabled={toneControlsDisabled}
+                  canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
+                  onEdit={() => {
+                    setAddingTone(false);
+                    setEditingToneId(tone.id);
+                  }}
+                  onDelete={() => handleDeleteTone(tone.id)}
+                />
+              ))}
             </div>
-          )}
+
+            {(editingTone || addingTone) && (
+              <div className="mt-4">
+                <ToneEditor
+                  initial={editingTone}
+                  existingIds={toneDefinitions.map((tone) => tone.id)}
+                  onSave={handleSaveTone}
+                  onCancel={() => {
+                    setEditingToneId(null);
+                    setAddingTone(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
-      </SettingsGroup>
+      </section>
 
       <SettingsGroup
         title={t("settings.styles.mappings.title")}
@@ -600,7 +598,7 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
             <div className="space-y-3">
               {appToneMappings.map((mapping, index) => (
                 <MappingRow
-                  key={`${mapping.bundle_id}-${mapping.app_name}-${index}`}
+                  key={`mapping-row-${index}`}
                   mapping={mapping}
                   toneOptions={toneOptions}
                   disabled={mappingControlsDisabled}

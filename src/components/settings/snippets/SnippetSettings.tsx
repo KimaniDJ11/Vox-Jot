@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   Download,
   Plus,
@@ -25,10 +32,12 @@ function generateId(): string {
 
 interface SnippetSettingsProps {
   showEnabledToggle?: boolean;
+  titleActionTargetId?: string;
 }
 
 export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   showEnabledToggle = true,
+  titleActionTargetId,
 }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
@@ -171,6 +180,76 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   };
 
   const bulkDisabled = snippets.length === 0;
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!titleActionTargetId) {
+      setPortalTarget(null);
+      return;
+    }
+
+    setPortalTarget(document.getElementById(titleActionTargetId));
+  }, [titleActionTargetId]);
+
+  const actionButtons = useMemo(
+    () => (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="p-1.5"
+          onClick={() => {
+            setAdding(true);
+            setNewTrigger("");
+            setNewExpansion("");
+          }}
+          title={t("settings.snippets.list.add")}
+          aria-label={t("settings.snippets.list.add")}
+        >
+          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="p-1.5"
+          onClick={handleImport}
+          title={t("settings.snippets.list.import")}
+          aria-label={t("settings.snippets.list.import")}
+        >
+          <Upload className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="p-1.5"
+          onClick={handleExport}
+          disabled={bulkDisabled}
+          title={t("settings.snippets.list.export")}
+          aria-label={t("settings.snippets.list.export")}
+        >
+          <Download className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="danger-ghost"
+          className="p-1.5"
+          onClick={handleClearAll}
+          disabled={bulkDisabled}
+          title={t("settings.snippets.list.clearAll")}
+          aria-label={t("settings.snippets.list.clearAll")}
+        >
+          <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+        </Button>
+      </>
+    ),
+    [bulkDisabled, t],
+  );
+
+  const shouldPortalActions = !showEnabledToggle && !!portalTarget;
 
   return (
     <div className="w-full space-y-6">
@@ -181,63 +260,20 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
       )}
 
       <section className="space-y-2">
-        <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
-          <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
-            {t("settings.snippets.list.title")}
-          </h2>
-          <div className="flex gap-1 shrink-0">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="p-1.5"
-              onClick={() => {
-                setAdding(true);
-                setNewTrigger("");
-                setNewExpansion("");
-              }}
-              title={t("settings.snippets.list.add")}
-              aria-label={t("settings.snippets.list.add")}
-            >
-              <Plus className="h-4 w-4 shrink-0" aria-hidden />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="p-1.5"
-              onClick={handleImport}
-              title={t("settings.snippets.list.import")}
-              aria-label={t("settings.snippets.list.import")}
-            >
-              <Upload className="h-4 w-4 shrink-0" aria-hidden />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="p-1.5"
-              onClick={handleExport}
-              disabled={bulkDisabled}
-              title={t("settings.snippets.list.export")}
-              aria-label={t("settings.snippets.list.export")}
-            >
-              <Download className="h-4 w-4 shrink-0" aria-hidden />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="danger-ghost"
-              className="p-1.5"
-              onClick={handleClearAll}
-              disabled={bulkDisabled}
-              title={t("settings.snippets.list.clearAll")}
-              aria-label={t("settings.snippets.list.clearAll")}
-            >
-              <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
-            </Button>
+        {shouldPortalActions ? createPortal(actionButtons, portalTarget) : null}
+
+        {!showEnabledToggle && !shouldPortalActions ? (
+          <div className="mb-3 flex justify-end px-5">{actionButtons}</div>
+        ) : null}
+
+        {showEnabledToggle ? (
+          <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
+            <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+              {t("settings.snippets.list.title")}
+            </h2>
+            <div className="flex gap-1 shrink-0">{actionButtons}</div>
           </div>
-        </div>
+        ) : null}
 
         <div className="flat-card overflow-visible">
           {/* Add new snippet form */}

@@ -9,10 +9,11 @@ use tauri::WebviewWindowBuilder;
 use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
 
 const SCRATCHPAD_LABEL: &str = "scratchpad";
-const SCRATCHPAD_WIDTH: f64 = 480.0;
-const SCRATCHPAD_HEIGHT: f64 = 560.0;
-const SCRATCHPAD_MIN_WIDTH: f64 = 340.0;
-const SCRATCHPAD_MIN_HEIGHT: f64 = 300.0;
+/// Default Jot Pad window size (logical pixels).
+const SCRATCHPAD_WIDTH: f64 = 640.0;
+const SCRATCHPAD_HEIGHT: f64 = 720.0;
+const SCRATCHPAD_MIN_WIDTH: f64 = 480.0;
+const SCRATCHPAD_MIN_HEIGHT: f64 = 560.0;
 
 #[derive(Default)]
 pub struct ScratchpadRoutingState {

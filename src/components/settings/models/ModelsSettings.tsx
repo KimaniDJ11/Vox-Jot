@@ -216,10 +216,10 @@ export const ModelsSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold transition-colors shadow-[var(--shadow-sm)] ${
                     languageFilter !== "all"
-                      ? "bg-logo-primary text-white"
-                      : "bg-mid-gray/10 text-text/60 hover:bg-mid-gray/20"
+                      ? "rounded-full bg-logo-primary text-white"
+                      : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
                   }`}
                 >
                   <Globe className="w-3.5 h-3.5" />

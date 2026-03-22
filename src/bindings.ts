@@ -1342,9 +1342,9 @@ async importCorrections(json: string) : Promise<Result<number, string>> {
 /**
  * Manually add a new correction pair.
  */
-async addManualCorrection(original: string, corrected: string) : Promise<Result<null, string>> {
+async addManualCorrection(original: string, corrected: string, exactOnly: boolean) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("add_manual_correction", { original, corrected }) };
+    return { status: "ok", data: await TAURI_INVOKE("add_manual_correction", { original, corrected, exactOnly }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1459,7 +1459,7 @@ export type SoundTheme = "marimba" | "pop" | "custom"
 /**
  * A stored correction entry, as returned to the frontend.
  */
-export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
+export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
 export type ToneDefinition = { id: string; label: string; instruction: string }
 export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
 export type TranslationDestinationMode = "paste_in_place" | "preview_then_paste" | "open_in_jot_pad"

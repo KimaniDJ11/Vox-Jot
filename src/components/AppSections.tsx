@@ -119,10 +119,6 @@ export const DictateModelsSection: React.FC<ExpandableSectionProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <SettingsGroup>
-        <LanguageSelector descriptionMode="tooltip" grouped={true} />
-      </SettingsGroup>
-
       {capped ? (
         <CappedSection
           section="stt-models"
@@ -178,9 +174,7 @@ export const DictateTranslationSection: React.FC = () => {
 export const RefineTranslationSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Translation">
-        <TranslationSettingsCard />
-      </SettingsGroup>
+      <TranslationSettingsCard />
     </div>
   );
 };
@@ -189,7 +183,12 @@ export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
   capped = true,
 }) => {
   if (!capped) {
-    return <SnippetSettings showEnabledToggle={false} />;
+    return (
+      <SnippetSettings
+        showEnabledToggle={false}
+        titleActionTargetId="phrase-keys-section-actions"
+      />
+    );
   }
 
   return (
@@ -198,7 +197,10 @@ export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
       showMoreLabel="Show all phrase keys"
       maxHeight={520}
     >
-      <SnippetSettings showEnabledToggle={false} />
+      <SnippetSettings
+        showEnabledToggle={false}
+        titleActionTargetId="phrase-keys-section-actions"
+      />
     </CappedSection>
   );
 };
@@ -208,7 +210,10 @@ export const RefineProfilesSection: React.FC<ExpandableSectionProps> = ({
 }) => {
   const content = (
     <div className="space-y-6">
-      <StylesSettings showEnabledToggle={false} />
+      <StylesSettings
+        showEnabledToggle={false}
+        titleActionTargetId="write-profiles-section-actions"
+      />
     </div>
   );
 
@@ -232,9 +237,9 @@ export const RefineModelsSection: React.FC<ExpandableSectionProps> = ({
 }) => {
   const { getSetting } = useSettings();
   const selectedProviderId = getSetting("post_process_provider_id") || "";
-  const selectedProvider = (
-    getSetting("post_process_providers") || []
-  ).find((provider) => provider.id === selectedProviderId);
+  const selectedProvider = (getSetting("post_process_providers") || []).find(
+    (provider) => provider.id === selectedProviderId,
+  );
 
   return (
     <div className="space-y-6">
@@ -273,7 +278,7 @@ export const CorrectionsSection: React.FC<ExpandableSectionProps> = ({
     <CappedSection
       section="learned-corrections"
       showMoreLabel="Show all learned corrections"
-      maxHeight={520}
+      maxHeight={800}
     >
       <CorrectionSettings showTrackingToggle={false} />
     </CappedSection>
@@ -283,7 +288,10 @@ export const CorrectionsSection: React.FC<ExpandableSectionProps> = ({
 export const LearnedCorrectionsSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <CorrectionDictionaryView sectionTitle="Learned Corrections" />
+      <CorrectionDictionaryView
+        sectionTitle="Learned Corrections"
+        showHeaderTitle={false}
+      />
     </div>
   );
 };
@@ -293,7 +301,10 @@ export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <SpeechVoiceEngineSettingsCard showEnabledToggle={false} />
+      <SpeechVoiceEngineSettingsCard
+        showEnabledToggle={false}
+        showGroupTitle={false}
+      />
 
       <WorkflowLinkCard
         eyebrow="Need Past Sessions?"
@@ -309,7 +320,7 @@ export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
 export const ListenAutoReadbackSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechAutoReadbackSettingsCard />
+      <SpeechAutoReadbackSettingsCard showGroupTitle={false} />
     </div>
   );
 };
@@ -317,7 +328,7 @@ export const ListenAutoReadbackSection: React.FC = () => {
 export const ListenPlaybackDeviceSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechPlaybackDeviceSettingsCard />
+      <SpeechPlaybackDeviceSettingsCard showGroupTitle={false} />
     </div>
   );
 };
@@ -357,9 +368,7 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
             <Pin className="h-3 w-3 shrink-0 rotate-45 text-[var(--accent)]" />
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-          {preview}
-        </p>
+        <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{preview}</p>
       </div>
       <span className="shrink-0 text-xs text-[var(--muted)]">
         {formattedDate}
@@ -482,6 +491,10 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
 export const GeneralAppSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
+      <SettingsGroup title="Dictation">
+        <LanguageSelector descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
       <SettingsGroup title="App">
         <StartHidden descriptionMode="tooltip" grouped={true} />
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
@@ -494,10 +507,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
       <SettingsGroup title="Feature Toggles">
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
         <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
-        <AppAwareWriteProfilesToggle
-          descriptionMode="tooltip"
-          grouped={true}
-        />
+        <AppAwareWriteProfilesToggle descriptionMode="tooltip" grouped={true} />
         <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
     </div>
@@ -509,7 +519,10 @@ export const ShortcutsSettingsSection: React.FC = () => {
     <div className="space-y-6">
       <SettingsGroup title="Dictation Shortcuts">
         <ShortcutInput shortcutId="transcribe" grouped={true} />
-        <ShortcutInput shortcutId="transcribe_with_post_process" grouped={true} />
+        <ShortcutInput
+          shortcutId="transcribe_with_post_process"
+          grouped={true}
+        />
         <PushToTalk descriptionMode="tooltip" grouped={true} />
         <ShortcutInput shortcutId="cancel" grouped={true} />
       </SettingsGroup>
@@ -588,7 +601,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Recording & Devices">
+      <SettingsGroup>
         <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
@@ -620,7 +633,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
 export const OutputPasteSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Output & Paste">
+      <SettingsGroup>
         <PasteMethodSetting descriptionMode="tooltip" grouped={true} />
         <TypingToolSetting descriptionMode="tooltip" grouped={true} />
         <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
@@ -761,7 +774,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Privacy & Storage">
+      <SettingsGroup>
         <ToggleSwitch
           checked={localPrivacyMode}
           onChange={(enabled) =>
@@ -806,7 +819,7 @@ export const DiagnosticsSettingsSection: React.FC = () => {
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Diagnostics">
+      <SettingsGroup>
         <LogLevelSelector grouped={true} />
         <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
@@ -827,9 +840,10 @@ const DebugDiagnosticsPanel: React.FC = () => {
   const [routeInput, setRouteInput] = useState("");
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [routeResult, setRouteResult] = useState<Record<string, unknown> | null>(
-    null,
-  );
+  const [routeResult, setRouteResult] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
   const analyzeRoute = async () => {
     if (!routeInput.trim()) {
@@ -849,7 +863,9 @@ const DebugDiagnosticsPanel: React.FC = () => {
         setRouteError(result.error);
       }
     } catch (error) {
-      setRouteError(error instanceof Error ? error.message : "Analysis failed.");
+      setRouteError(
+        error instanceof Error ? error.message : "Analysis failed.",
+      );
     } finally {
       setRouteLoading(false);
     }
@@ -891,7 +907,7 @@ export const AboutSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="About">
+      <SettingsGroup>
         <SettingContainer
           title="Version"
           description="Current installed app version."

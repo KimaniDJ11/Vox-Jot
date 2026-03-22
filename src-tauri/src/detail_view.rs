@@ -10,10 +10,11 @@ use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel, S
 
 const DETAIL_LABEL: &str = "detail-view";
 const DETAIL_PATH: &str = "src/detail/index.html";
-const DETAIL_WIDTH: f64 = 560.0;
-const DETAIL_HEIGHT: f64 = 640.0;
-const DETAIL_MIN_WIDTH: f64 = 400.0;
-const DETAIL_MIN_HEIGHT: f64 = 400.0;
+/// Default detail / “show all” window size (logical pixels).
+const DETAIL_WIDTH: f64 = 800.0;
+const DETAIL_HEIGHT: f64 = 900.0;
+const DETAIL_MIN_WIDTH: f64 = 560.0;
+const DETAIL_MIN_HEIGHT: f64 = 640.0;
 
 #[derive(Default)]
 pub struct DetailViewRoutingState {

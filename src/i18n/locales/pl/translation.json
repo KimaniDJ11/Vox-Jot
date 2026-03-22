@@ -251,7 +251,7 @@
         "description": "Expand short spoken triggers into full text while you dictate. Say your trigger and Vox Jot inserts the saved text."
       },
       "list": {
-        "title": "Your phrase keys",
+        "title": "Phrase keys",
         "empty": "No phrase keys yet. Add a trigger and the text it should expand to.",
         "add": "Add phrase key",
         "import": "Import",

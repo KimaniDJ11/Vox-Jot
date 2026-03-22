@@ -25,6 +25,8 @@ static MIGRATIONS: &[M] = &[M::up(
         user_approved BOOLEAN NOT NULL DEFAULT 0,
         UNIQUE(original, corrected) ON CONFLICT REPLACE
     );",
+), M::up(
+    "ALTER TABLE auto_corrections ADD COLUMN exact_only BOOLEAN NOT NULL DEFAULT 0;",
 )];
 
 /// A stored correction entry, as returned to the frontend.
@@ -35,6 +37,8 @@ pub struct StoredCorrection {
     pub corrected: String,
     pub frequency: u32,
     pub confidence: f64,
+    #[serde(default)]
+    pub exact_only: bool,
     pub source_app: Option<String>,
     pub first_seen: i64,
     pub last_seen: i64,
@@ -105,18 +109,30 @@ impl CorrectionStore {
         let conn = self.get_connection()?;
 
         // Check if correction already exists
-        let existing: Option<(i64, u32, f64, i64)> = conn
+        let existing: Option<(i64, u32, f64, i64, bool)> = conn
             .query_row(
-                "SELECT id, frequency, confidence, first_seen FROM auto_corrections WHERE original = ?1 AND corrected = ?2",
+                "SELECT id, frequency, confidence, first_seen, user_approved FROM auto_corrections WHERE original = ?1 AND corrected = ?2",
                 params![pair.original, pair.corrected],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
             )
             .ok();
 
-        if let Some((id, freq, existing_conf, _first_seen)) = existing {
+        if let Some((id, freq, existing_conf, _first_seen, user_approved)) = existing {
             let new_freq = freq + 1;
             // Rolling average for confidence
-            let new_conf = (existing_conf * freq as f64 + pair.confidence) / (new_freq as f64);
+            let new_conf = if user_approved {
+                1.0
+            } else {
+                (existing_conf * freq as f64 + pair.confidence) / (new_freq as f64)
+            };
             conn.execute(
                 "UPDATE auto_corrections SET frequency = ?1, confidence = ?2, last_seen = ?3, source_app = COALESCE(?4, source_app) WHERE id = ?5",
                 params![new_freq, new_conf, pair.last_seen, pair.source_app, id],
@@ -183,11 +199,73 @@ impl CorrectionStore {
         Ok(entries)
     }
 
+    /// Get corrections that should be applied during dictionary normalization.
+    /// User-approved entries are always included, while auto-learned entries
+    /// still respect the configured thresholds.
+    pub fn get_dictionary_entries(
+        &self,
+        include_auto_learned: bool,
+        min_frequency: u32,
+        min_confidence: f64,
+    ) -> Result<Vec<DictionaryEntry>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare(
+            "SELECT original, corrected, frequency, confidence, exact_only, user_approved
+             FROM auto_corrections
+             WHERE is_active = 1
+             ORDER BY user_approved DESC, frequency DESC, confidence DESC, last_seen DESC",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>("original")?,
+                row.get::<_, String>("corrected")?,
+                row.get::<_, u32>("frequency")?,
+                row.get::<_, f64>("confidence")?,
+                row.get::<_, bool>("exact_only")?,
+                row.get::<_, bool>("user_approved")?,
+            ))
+        })?;
+
+        let mut entries = Vec::new();
+        for row in rows {
+            let (original, corrected, frequency, confidence, exact_only, user_approved) = row?;
+
+            let should_include = if user_approved {
+                true
+            } else if include_auto_learned {
+                frequency >= min_frequency && confidence >= min_confidence
+            } else {
+                false
+            };
+
+            if !should_include {
+                continue;
+            }
+
+            let priority = if user_approved {
+                u8::MAX
+            } else {
+                compute_priority(frequency, confidence)
+            };
+
+            entries.push(DictionaryEntry {
+                spoken: original,
+                written: corrected,
+                priority,
+                case_sensitive: false,
+                exact_only,
+            });
+        }
+
+        Ok(entries)
+    }
+
     /// List all corrections (active and inactive).
     pub fn list_all(&self) -> Result<Vec<StoredCorrection>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, original, corrected, frequency, confidence, source_app, first_seen, last_seen, is_active, user_approved
+            "SELECT id, original, corrected, frequency, confidence, exact_only, source_app, first_seen, last_seen, is_active, user_approved
              FROM auto_corrections
              ORDER BY last_seen DESC",
         )?;
@@ -199,6 +277,7 @@ impl CorrectionStore {
                 corrected: row.get("corrected")?,
                 frequency: row.get("frequency")?,
                 confidence: row.get("confidence")?,
+                exact_only: row.get("exact_only")?,
                 source_app: row.get("source_app")?,
                 first_seen: row.get("first_seen")?,
                 last_seen: row.get("last_seen")?,
@@ -244,6 +323,59 @@ impl CorrectionStore {
         Ok(())
     }
 
+    /// Add or update a user-approved correction.
+    pub fn add_manual_correction(
+        &self,
+        original: &str,
+        corrected: &str,
+        exact_only: bool,
+        timestamp: i64,
+    ) -> Result<()> {
+        let normalized_original = original.trim();
+        let normalized_corrected = corrected.trim();
+
+        if normalized_original.is_empty() || normalized_corrected.is_empty() {
+            anyhow::bail!("Original and corrected text must not be empty");
+        }
+
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO auto_corrections (
+                original,
+                corrected,
+                frequency,
+                confidence,
+                exact_only,
+                source_app,
+                first_seen,
+                last_seen,
+                is_active,
+                user_approved
+             )
+             VALUES (?1, ?2, 0, 1.0, ?3, ?4, ?5, ?5, 1, 1)
+             ON CONFLICT(original, corrected) DO UPDATE SET
+                confidence = 1.0,
+                exact_only = excluded.exact_only,
+                source_app = excluded.source_app,
+                last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
+                is_active = 1,
+                user_approved = 1",
+            params![
+                normalized_original,
+                normalized_corrected,
+                exact_only,
+                "manual",
+                timestamp,
+            ],
+        )?;
+
+        debug!(
+            "Added or approved manual correction '{}' → '{}' (exact_only: {})",
+            normalized_original, normalized_corrected, exact_only
+        );
+        Ok(())
+    }
+
     /// Toggle the is_active flag for a correction.
     pub fn set_active(&self, id: i64, active: bool) -> Result<()> {
         let conn = self.get_connection()?;
@@ -281,8 +413,8 @@ impl CorrectionStore {
 
         for correction in &corrections {
             conn.execute(
-                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, source_app, first_seen, last_seen, is_active, user_approved)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, exact_only, source_app, first_seen, last_seen, is_active, user_approved)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
                  ON CONFLICT(original, corrected) DO UPDATE SET
                     frequency = MAX(auto_corrections.frequency, excluded.frequency),
                     confidence = MAX(auto_corrections.confidence, excluded.confidence),
@@ -292,6 +424,7 @@ impl CorrectionStore {
                     correction.corrected,
                     correction.frequency,
                     correction.confidence,
+                    correction.exact_only,
                     correction.source_app,
                     correction.first_seen,
                     correction.last_seen,

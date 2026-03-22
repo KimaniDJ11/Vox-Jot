@@ -83,9 +83,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   const getVariantClasses = () => {
     if (isFeatured) {
-      return "border-2 border-logo-primary/25 bg-logo-primary/5";
+      return "border-2 border-logo-primary/25 bg-logo-primary/5 shadow-[var(--shadow-sm)]";
     }
-    return "border-2 border-mid-gray/20";
+    return "border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]";
   };
 
   const getInteractiveClasses = () => {

@@ -18,6 +18,13 @@ interface CorrectionGroup {
   allActive: boolean;
 }
 
+const getCorrectionGroupKey = (group: CorrectionGroup): string => {
+  return group.entries
+    .map((entry) => entry.id)
+    .sort((left, right) => left - right)
+    .join("-");
+};
+
 function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
   const map = new Map<string, StoredCorrection[]>();
 
@@ -60,16 +67,34 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
 interface CorrectionDictionaryViewProps {
   /** Shown in the row above the card, with import/export/clear icons trailing right. */
   sectionTitle: string;
+  showHeaderTitle?: boolean;
 }
+
+type ManualCorrectionDraft = {
+  original: string;
+  corrected: string;
+  exactOnly: boolean;
+};
+
+const emptyManualCorrectionDraft = (): ManualCorrectionDraft => ({
+  original: "",
+  corrected: "",
+  exactOnly: false,
+});
 
 export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> = ({
   sectionTitle,
+  showHeaderTitle = true,
 }) => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [newOriginal, setNewOriginal] = useState("");
+  const [showManualEditor, setShowManualEditor] = useState(false);
+  const [manualDraft, setManualDraft] = useState<ManualCorrectionDraft>(
+    emptyManualCorrectionDraft,
+  );
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const loadCorrections = useCallback(async () => {
@@ -183,7 +208,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
     if (!trimmed) return;
 
     try {
-      const result = await commands.addManualCorrection(trimmed, corrected);
+      const result = await commands.addManualCorrection(trimmed, corrected, false);
       if (result.status === "ok") {
         setNewOriginal("");
         setAddingTo(null);
@@ -191,6 +216,34 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
       }
     } catch (error) {
       console.error("Failed to add correction:", error);
+    }
+  };
+
+  const resetManualEditor = () => {
+    setShowManualEditor(false);
+    setManualDraft(emptyManualCorrectionDraft());
+  };
+
+  const handleAddManualCorrection = async () => {
+    const original = manualDraft.original.trim();
+    const corrected = manualDraft.corrected.trim();
+
+    if (!original || !corrected) {
+      return;
+    }
+
+    try {
+      const result = await commands.addManualCorrection(
+        original,
+        corrected,
+        manualDraft.exactOnly,
+      );
+      if (result.status === "ok") {
+        resetManualEditor();
+        await loadCorrections();
+      }
+    } catch (error) {
+      console.error("Failed to add manual correction:", error);
     }
   };
 
@@ -249,10 +302,32 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
   return (
     <section className="space-y-2">
       <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
-          {sectionTitle}
-        </h2>
+        {showHeaderTitle ? (
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+            {sectionTitle}
+          </h2>
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
         <div className="flex gap-1 shrink-0">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="p-1.5"
+            onClick={() => {
+              setShowManualEditor(true);
+              setManualDraft(emptyManualCorrectionDraft());
+            }}
+            title={t("settings.postProcessing.dictionary.add", {
+              defaultValue: "Add entry",
+            })}
+            aria-label={t("settings.postProcessing.dictionary.add", {
+              defaultValue: "Add entry",
+            })}
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -292,6 +367,81 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
       </div>
 
       <div className="flat-card overflow-visible">
+        {showManualEditor && (
+          <div className="space-y-3 border-b border-[var(--border)] px-5 py-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-mid-gray">
+                  {t("settings.postProcessing.dictionary.columns.spoken")}
+                </label>
+                <Input
+                  value={manualDraft.original}
+                  onChange={(event) =>
+                    setManualDraft((current) => ({
+                      ...current,
+                      original: event.target.value,
+                    }))
+                  }
+                  placeholder={t(
+                    "settings.postProcessing.dictionary.placeholders.spoken",
+                  )}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-mid-gray">
+                  {t("settings.postProcessing.dictionary.columns.written")}
+                </label>
+                <Input
+                  value={manualDraft.corrected}
+                  onChange={(event) =>
+                    setManualDraft((current) => ({
+                      ...current,
+                      corrected: event.target.value,
+                    }))
+                  }
+                  placeholder={t(
+                    "settings.postProcessing.dictionary.placeholders.written",
+                  )}
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={manualDraft.exactOnly}
+                onChange={(event) =>
+                  setManualDraft((current) => ({
+                    ...current,
+                    exactOnly: event.target.checked,
+                  }))
+                }
+              />
+              <span>
+                {t("settings.postProcessing.dictionary.columns.exactOnly")}
+              </span>
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={resetManualEditor}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handleAddManualCorrection()}
+                disabled={
+                  !manualDraft.original.trim() || !manualDraft.corrected.trim()
+                }
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="px-5 py-4 text-sm text-[var(--muted)]">
             {t("common.loading")}
@@ -304,7 +454,7 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
           <div className="divide-y divide-[var(--border)]">
             {groups.map((group) => (
               <div
-                key={group.corrected}
+                key={getCorrectionGroupKey(group)}
                 className={`px-5 py-3 space-y-2.5 transition-opacity ${
                   !group.allActive ? "opacity-50" : ""
                 }`}

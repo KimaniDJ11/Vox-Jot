@@ -251,7 +251,7 @@
         "description": "Kurze gesprochene Auslöser während der Diktat in vollen Text expandieren. Sage den Auslöser und Vox Jot fügt den gespeicherten Text ein."
       },
       "list": {
-        "title": "Deine Phrase-Tasten",
+        "title": "Auslöserphrasen",
         "empty": "Noch keine Phrase-Tasten. Füge einen Auslöser und den Zieltext hinzu.",
         "add": "Phrase-Taste hinzufügen",
         "import": "Importieren",

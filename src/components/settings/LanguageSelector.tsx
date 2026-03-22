@@ -109,10 +109,10 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            className={`flex min-w-[200px] items-center justify-between rounded-lg border border-mid-gray/80 bg-mid-gray/10 px-2 py-1 text-start text-sm font-semibold transition-all duration-150 ${
+            className={`flex min-w-[200px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-start text-sm font-semibold shadow-[var(--shadow-sm)] transition-all duration-150 ${
               isUpdating("selected_language")
                 ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-logo-primary/10 cursor-pointer hover:border-logo-primary"
+                : "cursor-pointer hover:border-[var(--accent-soft)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_15%)]"
             }`}
             onClick={handleToggle}
             disabled={isUpdating("selected_language")}

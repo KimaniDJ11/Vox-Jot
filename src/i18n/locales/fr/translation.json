@@ -251,7 +251,7 @@
         "description": "Développez de courts déclencheurs parlés en texte complet pendant la dictée. Dites votre déclencheur et Vox Jot insère le texte enregistré."
       },
       "list": {
-        "title": "Vos clés de phrase",
+        "title": "Phrases déclencheuses",
         "empty": "Aucune clé de phrase. Ajoutez un déclencheur et le texte cible.",
         "add": "Ajouter une clé de phrase",
         "import": "Importer",

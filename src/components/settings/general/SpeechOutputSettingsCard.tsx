@@ -155,11 +155,12 @@ function useSpeechOutputState() {
 
 interface SpeechVoiceEngineSettingsCardProps {
   showEnabledToggle?: boolean;
+  showGroupTitle?: boolean;
 }
 
 export const SpeechVoiceEngineSettingsCard: React.FC<
   SpeechVoiceEngineSettingsCardProps
-> = ({ showEnabledToggle = true }) => {
+> = ({ showEnabledToggle = true, showGroupTitle = true }) => {
   const speech = useSpeechOutputState();
 
   if (!speech.settings) {
@@ -167,7 +168,7 @@ export const SpeechVoiceEngineSettingsCard: React.FC<
   }
 
   return (
-    <SettingsGroup title="Voice & Engine">
+    <SettingsGroup title={showGroupTitle ? "Voice & Engine" : undefined}>
       {showEnabledToggle && (
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
       )}
@@ -355,7 +356,9 @@ export const SpeechVoiceEngineSettingsCard: React.FC<
   );
 };
 
-export const SpeechAutoReadbackSettingsCard: React.FC = () => {
+export const SpeechAutoReadbackSettingsCard: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
   const { settings, updateSetting, isUpdating } = useSettings();
 
   if (!settings) {
@@ -365,7 +368,7 @@ export const SpeechAutoReadbackSettingsCard: React.FC = () => {
   const ttsEnabled = settings.tts_enabled ?? false;
 
   return (
-    <SettingsGroup title="Auto Readback">
+    <SettingsGroup title={showGroupTitle ? "Auto Readback" : undefined}>
       <SettingContainer
         title="Auto Readback"
         description="Choose when Vox Jot automatically speaks the final output."
@@ -475,11 +478,13 @@ export const SpeechAutoReadbackSettingsCard: React.FC = () => {
   );
 };
 
-export const SpeechPlaybackDeviceSettingsCard: React.FC = () => {
+export const SpeechPlaybackDeviceSettingsCard: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
   const { settings } = useSettings();
 
   return (
-    <SettingsGroup title="Playback Device">
+    <SettingsGroup title={showGroupTitle ? "Playback Device" : undefined}>
       <OutputDeviceSelector
         descriptionMode="tooltip"
         grouped={true}

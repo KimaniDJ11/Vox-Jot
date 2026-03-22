@@ -2523,32 +2523,32 @@ impl ShortcutAction for TranscribeAction {
                             }
 
                             // Merge auto-learned corrections into the personal dictionary
-                            // (always active when correction tracking is enabled)
+                            // and always include user-approved manual corrections
+                            // from the corrections store.
                             let mut effective_settings = settings.clone();
-                            if settings.correction_tracking_enabled {
-                                if let Some(correction_store) =
-                                    ah.try_state::<Arc<CorrectionStore>>()
-                                {
-                                    use crate::settings::correction_defaults;
-                                    match correction_store.get_active_corrections(
-                                        correction_defaults::MIN_FREQUENCY,
-                                        correction_defaults::MIN_CONFIDENCE,
-                                    ) {
-                                        Ok(auto_entries) if !auto_entries.is_empty() => {
-                                            debug!(
-                                                "Merging {} auto-corrections into personal dictionary",
-                                                auto_entries.len()
+                            if let Some(correction_store) =
+                                ah.try_state::<Arc<CorrectionStore>>()
+                            {
+                                use crate::settings::correction_defaults;
+                                match correction_store.get_dictionary_entries(
+                                    settings.correction_tracking_enabled,
+                                    correction_defaults::MIN_FREQUENCY,
+                                    correction_defaults::MIN_CONFIDENCE,
+                                ) {
+                                    Ok(store_entries) if !store_entries.is_empty() => {
+                                        debug!(
+                                            "Merging {} correction-store entries into personal dictionary",
+                                            store_entries.len()
+                                        );
+                                        effective_settings.personal_dictionary =
+                                            get_merged_dictionary(
+                                                &settings.personal_dictionary,
+                                                &store_entries,
                                             );
-                                            effective_settings.personal_dictionary =
-                                                get_merged_dictionary(
-                                                    &settings.personal_dictionary,
-                                                    &auto_entries,
-                                                );
-                                        }
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            warn!("Failed to load auto-corrections: {}", e);
-                                        }
+                                    }
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        warn!("Failed to load corrections from store: {}", e);
                                     }
                                 }
                             }

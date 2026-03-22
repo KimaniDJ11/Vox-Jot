@@ -1,4 +1,3 @@
-use crate::correction_tracker::diff::CorrectionPair;
 use crate::correction_tracker::store::{CorrectionStore, StoredCorrection};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
@@ -65,21 +64,16 @@ pub fn add_manual_correction(
     app: AppHandle,
     original: String,
     corrected: String,
+    exact_only: bool,
 ) -> Result<(), String> {
     let store = app.state::<Arc<CorrectionStore>>();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64;
-    let pair = CorrectionPair {
-        original,
-        corrected,
-        confidence: 1.0,
-        source_app: Some("manual".to_string()),
-        first_seen: now,
-        last_seen: now,
-    };
-    store.add_correction(&pair).map_err(|e| e.to_string())
+    store
+        .add_manual_correction(&original, &corrected, exact_only, now)
+        .map_err(|e| e.to_string())
 }
 
 /// Import corrections from a JSON string.

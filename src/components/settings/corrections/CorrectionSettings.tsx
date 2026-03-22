@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
-import { PersonalDictionaryEditor } from "./PersonalDictionaryEditor";
 import { CustomWords } from "../CustomWords";
 import { CorrectionTrackingToggle } from "../CorrectionTrackingToggle";
 
@@ -26,11 +25,6 @@ export const CorrectionSettings: React.FC<CorrectionSettingsProps> = ({
           <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
         </SettingsGroup>
       )}
-
-      <SettingsGroup>
-        <PersonalDictionaryEditor />
-      </SettingsGroup>
-
       <SettingsGroup>
         <CustomWords
           descriptionMode="tooltip"

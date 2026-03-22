@@ -51,3 +51,6 @@ test-data/audio-regression/manifest.json
 
 # Post-process eval output
 output/eval/
+
+# TTS release assets (stored as GitHub release assets, not in repo)
+.codex-tmp/tts-release-assets/

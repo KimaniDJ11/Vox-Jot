@@ -1505,33 +1505,24 @@ fn speak_sherpa_chunk(
     let lib_dir = context.runtime_root.join("lib");
     let mut command = Command::new(&binary_path);
     command
-        .arg("--output-filename")
-        .arg(&temp_file)
-        .arg("--num-threads")
-        .arg("2");
+        .arg(format!("--output-filename={}", temp_file.display()))
+        .arg("--num-threads=2");
 
     match context.manifest.model_family {
         SherpaModelFamily::Vits => {
             command
-                .arg("--vits-model")
-                .arg(context.pack_root.join(&context.manifest.model_file))
-                .arg("--vits-tokens")
-                .arg(context.pack_root.join(&context.manifest.tokens_file))
-                .arg("--vits-length-scale")
+                .arg(format!("--vits-model={}", context.pack_root.join(&context.manifest.model_file).display()))
+                .arg(format!("--vits-tokens={}", context.pack_root.join(&context.manifest.tokens_file).display()))
                 .arg(format!(
-                    "{:.3}",
+                    "--vits-length-scale={:.3}",
                     (1.0 / rate.clamp(0.5, 2.0)).clamp(0.5, 2.0)
                 ));
 
             if let Some(data_dir) = context.manifest.data_dir.as_deref() {
-                command
-                    .arg("--vits-data-dir")
-                    .arg(context.pack_root.join(data_dir));
+                command.arg(format!("--vits-data-dir={}", context.pack_root.join(data_dir).display()));
             }
             if let Some(lexicon_file) = context.manifest.lexicon_file.as_deref() {
-                command
-                    .arg("--vits-lexicon")
-                    .arg(context.pack_root.join(lexicon_file));
+                command.arg(format!("--vits-lexicon={}", context.pack_root.join(lexicon_file).display()));
             }
         }
     }
@@ -1544,7 +1535,7 @@ fn speak_sherpa_chunk(
             .map(|file| context.pack_root.join(file).display().to_string())
             .collect::<Vec<_>>()
             .join(",");
-        command.arg("--tts-rule-fsts").arg(joined);
+        command.arg(format!("--tts-rule-fsts={}", joined));
     }
 
     #[cfg(target_os = "macos")]

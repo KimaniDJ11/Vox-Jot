@@ -85,6 +85,22 @@ def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
     return None, transcript
 
 
+def _unwrap_control_value(value: Any) -> Any:
+    if isinstance(value, dict) and "value" in value:
+        return value["value"]
+    return value
+
+
+def normalize_controls(extra_controls: dict[str, Any] | None) -> dict[str, Any]:
+    raw_controls = dict((extra_controls or {}).get("advanced_overrides") or {})
+    controls = {key: _unwrap_control_value(value) for key, value in raw_controls.items()}
+    controls.setdefault(
+        "expressiveness",
+        _unwrap_control_value((extra_controls or {}).get("expressiveness", 0.5)),
+    )
+    return controls
+
+
 def selection_payload(selection: RuntimeSelection) -> dict[str, Any]:
     return {
         "selected_provider_id": selection.provider_id,
@@ -259,8 +275,7 @@ async def audio_speech(body: SpeechRequest) -> Response:
     spec, model_dir, selection = resolve_target(body)
     profile_id = body.profile_id or selection.profile_id
     reference_audio_path, reference_transcript = load_profile(profile_id)
-    controls = dict((body.extra_controls or {}).get("advanced_overrides") or {})
-    controls.setdefault("expressiveness", (body.extra_controls or {}).get("expressiveness", 0.5))
+    controls = normalize_controls(body.extra_controls)
 
     try:
         if spec.provider_id == "fish_speech":

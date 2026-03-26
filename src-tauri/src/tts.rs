@@ -37,6 +37,10 @@ static SAY_VOICE_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|
 
 const DEFAULT_SIDECAR_URL: &str = "http://127.0.0.1:8008/v1/audio/speech";
 const PREVIEW_SAMPLE_TEXT: &str = "Vox Jot is ready.";
+/// Fish Speech 1.5 produces empty audio for very short inputs.
+/// A longer preview sentence ensures reliable generation.
+const FISH_SPEECH_PREVIEW_TEXT: &str =
+    "Vox Jot is ready. You can start speaking now and your words will appear on screen.";
 const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
 const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
@@ -2202,9 +2206,19 @@ impl TtsManager {
         }
 
         let locale = normalize_locale(request.locale.as_deref());
-        let chunks = chunk_text(trimmed);
         let engine = self.resolve_engine_kind(&effective_settings, locale.as_deref())?;
         let selected_provider_id = self.selected_provider_id(&effective_settings);
+
+        // Fish Speech 1.5 produces empty audio for very short inputs.
+        // Swap in a longer preview sentence so the preview actually speaks.
+        let effective_text = if trimmed == PREVIEW_SAMPLE_TEXT
+            && selected_provider_id == TTS_PROVIDER_FISH_SPEECH_ID
+        {
+            FISH_SPEECH_PREVIEW_TEXT
+        } else {
+            trimmed
+        };
+        let chunks = chunk_text(effective_text);
         if engine == TtsEngineKind::Sidecar {
             self.ensure_managed_speech_runtime_available(&selected_provider_id)
                 .await?;

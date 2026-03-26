@@ -14,6 +14,15 @@ impl EnigoState {
     }
 }
 
+pub fn ensure_enigo_initialized(app_handle: &AppHandle) -> Result<(), String> {
+    if app_handle.try_state::<EnigoState>().is_some() {
+        return Ok(());
+    }
+
+    app_handle.manage(EnigoState::new()?);
+    Ok(())
+}
+
 /// Get the current mouse cursor position using the managed Enigo instance.
 /// Returns None if the state is not available or if getting the location fails.
 pub fn get_cursor_position(app_handle: &AppHandle) -> Option<(i32, i32)> {

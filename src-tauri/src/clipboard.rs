@@ -629,6 +629,7 @@ pub fn capture_selected_text(app_handle: &AppHandle) -> Result<Option<String>, S
     let clipboard = app_handle.clipboard();
     let previous_content = clipboard.read_text().unwrap_or_default();
 
+    input::ensure_enigo_initialized(app_handle)?;
     let enigo_state = app_handle
         .try_state::<EnigoState>()
         .ok_or("Enigo state not initialized")?;
@@ -687,6 +688,7 @@ pub fn paste_with_submit_override(
     );
 
     // Get the managed Enigo instance
+    input::ensure_enigo_initialized(&app_handle)?;
     let enigo_state = app_handle
         .try_state::<EnigoState>()
         .ok_or("Enigo state not initialized")?;

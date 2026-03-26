@@ -796,6 +796,17 @@ impl TtsManager {
         provider_id: &str,
     ) -> Result<(), String> {
         if provider_uses_managed_speech_runtime(provider_id) {
+            // If the sidecar is already running (e.g. from iCloud or a custom path),
+            // skip the managed installation check to avoid download failures for
+            // private repos or when the runtime is provided externally.
+            if let Some(sidecar) = self
+                .app_handle
+                .try_state::<std::sync::Arc<crate::sidecar::SidecarManager>>()
+            {
+                if sidecar.is_running() {
+                    return Ok(());
+                }
+            }
             let _ = self.ensure_managed_speech_runtime_installed().await?;
         }
         Ok(())
@@ -2479,6 +2490,13 @@ impl TtsManager {
             .join(platform_id)
     }
 
+    fn qwen3_runtime_install_dir(&self, platform_id: &str) -> PathBuf {
+        portable::app_data_dir(&self.app_handle)
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join("tts-runtime")
+            .join(format!("qwen3-{platform_id}"))
+    }
+
     #[cfg(target_os = "linux")]
     fn has_installed_pack_for_locale(&self, locale: Option<&str>) -> bool {
         let Some(locale) = locale else {
@@ -2598,7 +2616,7 @@ impl TtsManager {
                 "Qwen3 TTS runtime is not supported on this platform yet.".to_string()
             })?;
 
-        let install_dir = self.runtime_install_dir(platform_id);
+        let install_dir = self.qwen3_runtime_install_dir(platform_id);
         if let Some(root) = resolve_extracted_root(&install_dir) {
             if qwen3_runtime_binary_path(&root).exists() {
                 return Ok(root);

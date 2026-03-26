@@ -1,16 +1,26 @@
 use crate::managers::model::{EngineType, ModelInfo, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::model_platform::{
-    CapabilityFlags, CatalogModelDescriptor, DomainCatalog, ModelDomain, ModelPlatformOverview,
-    ModelPlatformSelectionState, ProviderDescriptor, RuntimeRequirement,
+    CapabilityFlags, CatalogModelDescriptor, CatalogSourceKind, DomainCatalog, ModelDomain,
+    ModelPlatformOverview, ModelPlatformSelectionState, ProviderDescriptor, RuntimeRequirement,
+    TtsDeliverySupport, TtsExpressivenessMode,
 };
 use crate::settings::{
-    get_settings, write_settings, AppSettings, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
-    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    get_settings, write_settings, AppSettings, TTS_PROVIDER_CHATTERBOX_ID,
+    TTS_PROVIDER_FISH_SPEECH_ID, TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
+    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::tts::TtsManager;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State};
+
+fn unsupported_delivery_support() -> TtsDeliverySupport {
+    TtsDeliverySupport {
+        expressiveness_mode: TtsExpressivenessMode::Unsupported,
+        advanced_controls: Vec::new(),
+    }
+}
 
 fn stt_provider_meta(
     engine_type: &EngineType,
@@ -52,6 +62,7 @@ fn stt_provider_meta(
             "Vox Jot curated assets",
             "GigaAM engine",
         ),
+        EngineType::QwenAudio => ("stt_qwen", "Qwen", "Alibaba Cloud", "Qwen Audio Engine"),
     }
 }
 
@@ -92,6 +103,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         "stt_moonshine_streaming",
         "stt_sensevoice",
         "stt_gigaam",
+        "stt_qwen",
     ];
 
     let providers = provider_order
@@ -102,6 +114,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
             Some(ProviderDescriptor {
                 id: provider_id.to_string(),
                 domain: ModelDomain::Stt,
+                source_kind: CatalogSourceKind::Builtin,
                 label: label.to_string(),
                 description: format!("{label} models are downloaded through Vox Jot-managed assets and auto-routed to the correct transcription runtime."),
                 source_label: source_label.to_string(),
@@ -139,11 +152,16 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                 id: model.id.clone(),
                 provider_id: provider_id.to_string(),
                 domain: ModelDomain::Stt,
+                source_kind: CatalogSourceKind::Builtin,
                 label: model.name.clone(),
                 description: model.description.clone(),
                 installed: model.is_downloaded,
                 selected: selected_provider_id.as_deref() == Some(provider_id)
                     && selected_model_id.as_deref() == Some(model.id.as_str()),
+                active: selected_provider_id.as_deref() == Some(provider_id)
+                    && selected_model_id.as_deref() == Some(model.id.as_str())
+                    && model.is_downloaded,
+                runnable: model.is_downloaded,
                 downloadable: true,
                 source_label: source_label.to_string(),
                 runtime: RuntimeRequirement {
@@ -165,6 +183,20 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
                     coming_soon: false,
+                },
+                delivery_support: unsupported_delivery_support(),
+                readiness_status: Some(if model.is_downloaded {
+                    "ready".to_string()
+                } else {
+                    "missing".to_string()
+                }),
+                readiness_issues: if model.is_downloaded {
+                    Vec::new()
+                } else {
+                    vec![format!(
+                        "{} is listed in Vox Jot but not downloaded yet.",
+                        model.name
+                    )]
                 },
             }
         })
@@ -195,6 +227,7 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
         .map(|provider| ProviderDescriptor {
             id: provider.id.clone(),
             domain: ModelDomain::Llm,
+            source_kind: CatalogSourceKind::Builtin,
             label: provider.label.clone(),
             description: "Configured local or API-backed LLM provider used by Vox Jot for language cleanup and related workflows.".to_string(),
             source_label: if provider.base_url.trim().is_empty() {
@@ -239,6 +272,7 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                 id: format!("{}::{}", provider.id, model_id),
                 provider_id: provider.id.clone(),
                 domain: ModelDomain::Llm,
+                source_kind: CatalogSourceKind::Builtin,
                 label: if model_id.is_empty() {
                     format!("{} Default", provider.label)
                 } else {
@@ -247,6 +281,8 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                 description: "Current default model for this provider.".to_string(),
                 installed: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
                 selected: selected_provider_id == provider.id && selected_model_id == model_id,
+                active: selected_provider_id == provider.id && selected_model_id == model_id,
+                runnable: true,
                 downloadable: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
                 source_label: if provider.base_url.trim().is_empty() {
                     "Managed provider".to_string()
@@ -273,11 +309,21 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     supports_inline_tags: false,
                     coming_soon: false,
                 },
+                delivery_support: unsupported_delivery_support(),
+                readiness_status: Some("ready".to_string()),
+                readiness_issues: Vec::new(),
             }
         })
         .collect();
 
     DomainCatalog { providers, models }
+}
+
+fn tts_model_supports_voice_profile(model: &CatalogModelDescriptor) -> bool {
+    model.capabilities.supports_voice_cloning
+        && model.runnable
+        && (model.source_kind == CatalogSourceKind::Runtime
+            || (model.provider_id == TTS_PROVIDER_QWEN3_NATIVE_ID && model.id == "qwen3-0.6b-base"))
 }
 
 #[tauri::command]
@@ -306,10 +352,17 @@ pub async fn get_model_platform_overview(
     let model_manager = app_handle.state::<Arc<ModelManager>>();
     let tts_manager = app_handle.state::<Arc<TtsManager>>();
 
+    let tts_catalog = tts_manager.domain_catalog(&settings).await;
+    let active_tts_model = tts_catalog
+        .models
+        .iter()
+        .find(|model| model.active)
+        .cloned();
+
     Ok(ModelPlatformOverview {
         stt: build_stt_catalog(&*model_manager, &settings),
         llm: build_llm_catalog(&settings),
-        tts: tts_manager.domain_catalog(&settings),
+        tts: tts_catalog,
         selection: ModelPlatformSelectionState {
             selected_stt_provider_id: stt_selection_provider_id(&settings, &*model_manager),
             selected_stt_model_id: (!settings.selected_stt_model_id.trim().is_empty())
@@ -333,6 +386,10 @@ pub async fn get_model_platform_overview(
                 .clone()
                 .or_else(|| settings.tts_default_voice_id.clone()),
             selected_tts_profile_id: settings.selected_tts_profile_id.clone(),
+            active_tts_provider_id: active_tts_model
+                .as_ref()
+                .map(|model| model.provider_id.clone()),
+            active_tts_model_id: active_tts_model.as_ref().map(|model| model.id.clone()),
         },
     })
 }
@@ -453,7 +510,7 @@ pub async fn set_tts_platform_selection(
 ) -> Result<(), String> {
     let settings = get_settings(&app_handle);
     let tts_manager = app_handle.state::<Arc<TtsManager>>();
-    let catalog = tts_manager.domain_catalog(&settings);
+    let catalog = tts_manager.domain_catalog(&settings).await;
 
     let provider = catalog
         .providers
@@ -495,20 +552,72 @@ pub async fn set_tts_platform_selection(
             model.label
         ));
     }
+    if model.source_kind == CatalogSourceKind::Builtin && !model.installed && model.downloadable {
+        tts_manager.download_pack(&resolved_model_id).await?;
+    }
 
     let mut settings = get_settings(&app_handle);
-    settings.selected_tts_provider_id = provider_id.clone();
-    settings.selected_tts_model_id = Some(resolved_model_id.clone());
     settings.tts_engine_preference = match provider_id.as_str() {
         TTS_PROVIDER_SYSTEM_BUILTIN_ID => crate::settings::TtsEnginePreference::System,
         TTS_PROVIDER_SHERPA_PACK_ID => crate::settings::TtsEnginePreference::SherpaOnnx,
-        TTS_PROVIDER_LOCAL_SIDECAR_API_ID => crate::settings::TtsEnginePreference::Sidecar,
-        _ => settings.tts_engine_preference,
+        TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+        | TTS_PROVIDER_OPENVOICE_ID
+        | TTS_PROVIDER_CHATTERBOX_ID
+        | TTS_PROVIDER_KOKORO_ID
+        | TTS_PROVIDER_XTTS_ID
+        | TTS_PROVIDER_FISH_SPEECH_ID => crate::settings::TtsEnginePreference::Sidecar,
+        _ => {
+            if model.source_kind == CatalogSourceKind::Runtime {
+                crate::settings::TtsEnginePreference::Sidecar
+            } else {
+                settings.tts_engine_preference
+            }
+        }
     };
-    if provider_id == TTS_PROVIDER_SHERPA_PACK_ID {
-        settings.tts_default_voice_id = Some(resolved_model_id.clone());
-        settings.selected_tts_voice_id = Some(resolved_model_id);
+
+    let next_profile_id = if tts_model_supports_voice_profile(model) {
+        settings
+            .active_tts_preset()
+            .and_then(|preset| preset.voice_profile_id.clone())
+            .or_else(|| settings.selected_tts_profile_id.clone())
+    } else {
+        None
+    };
+
+    if let Some(active_preset) = settings.active_tts_preset_mut() {
+        active_preset.provider_id = provider_id.clone();
+        active_preset.model_id = resolved_model_id.clone();
+        match provider_id.as_str() {
+            TTS_PROVIDER_SHERPA_PACK_ID | TTS_PROVIDER_QWEN3_NATIVE_ID => {
+                active_preset.voice_id = Some(resolved_model_id.clone());
+                active_preset.voice_label_snapshot = Some(model.label.clone());
+            }
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID => {}
+            _ => {
+                if active_preset.voice_profile_id.is_none() {
+                    active_preset.voice_label_snapshot = active_preset
+                        .voice_label_snapshot
+                        .clone()
+                        .or_else(|| active_preset.voice_id.clone());
+                }
+            }
+        }
+        active_preset.voice_profile_id = next_profile_id.clone();
     }
+
+    settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone());
+    settings.sync_legacy_tts_state_from_active_preset();
+
+    if model.source_kind == CatalogSourceKind::Runtime {
+        tts_manager
+            .sync_runtime_selection(
+                &provider_id,
+                &resolved_model_id,
+                settings.selected_tts_profile_id.as_deref(),
+            )
+            .await?;
+    }
+
     write_settings(&app_handle, settings);
     Ok(())
 }

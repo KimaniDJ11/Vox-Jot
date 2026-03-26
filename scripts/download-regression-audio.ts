@@ -44,7 +44,8 @@ for (let i = 2; i < process.argv.length; i += 1) {
 }
 
 const requestedLimit = Number(args.get("--limit") ?? 120);
-const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : 120;
+const limit =
+  Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : 120;
 
 async function ensureDirs() {
   await mkdir(DOWNLOAD_DIR, { recursive: true });
@@ -86,19 +87,26 @@ async function extractArchive(archivePath: string) {
   }
 
   console.log(`Extracting ${archivePath}`);
-  const extractResult = Bun.spawnSync(["tar", "-xzf", archivePath, "-C", EXTRACT_DIR], {
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  const extractResult = Bun.spawnSync(
+    ["tar", "-xzf", archivePath, "-C", EXTRACT_DIR],
+    {
+      stdout: "inherit",
+      stderr: "inherit",
+    },
+  );
   if (extractResult.exitCode !== 0) {
-    throw new Error(`tar extraction failed with exit code ${extractResult.exitCode}`);
+    throw new Error(
+      `tar extraction failed with exit code ${extractResult.exitCode}`,
+    );
   }
 
   return corpusRoot;
 }
 
 async function collectTranscriptMap(rootDir: string) {
-  const transcriptFiles = await walk(rootDir, (entryPath) => entryPath.endsWith(".trans.txt"));
+  const transcriptFiles = await walk(rootDir, (entryPath) =>
+    entryPath.endsWith(".trans.txt"),
+  );
   const transcriptMap = new Map<string, string>();
 
   for (const file of transcriptFiles) {
@@ -107,7 +115,10 @@ async function collectTranscriptMap(rootDir: string) {
       if (!line.trim()) continue;
       const firstSpace = line.indexOf(" ");
       if (firstSpace === -1) continue;
-      transcriptMap.set(line.slice(0, firstSpace), line.slice(firstSpace + 1).trim());
+      transcriptMap.set(
+        line.slice(0, firstSpace),
+        line.slice(firstSpace + 1).trim(),
+      );
     }
   }
 
@@ -188,7 +199,9 @@ async function resetGeneratedClips() {
   await mkdir(CLIPS_DIR, { recursive: true });
 }
 
-async function convertPlanToWav(plan: Awaited<ReturnType<typeof buildClipPlan>>) {
+async function convertPlanToWav(
+  plan: Awaited<ReturnType<typeof buildClipPlan>>,
+) {
   const entries: ClipRecord[] = [];
 
   for (const item of plan) {

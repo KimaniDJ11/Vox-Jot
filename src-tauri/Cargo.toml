@@ -58,7 +58,8 @@ tokio = { version = "1.43.0", features = ["process"] }
 vad-rs = { git = "https://github.com/cjpais/vad-rs", default-features = false }
 enigo = "0.6.1"
 rodio = { git = "https://github.com/cjpais/rodio.git" }
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
+dirs = "6"
 futures-util = "0.3"
 rustfft = "6.4.0"
 similar = "2"
@@ -71,6 +72,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 tar = "0.4.44"
 flate2 = "1.0"
 bzip2 = "0.5"
+zip = "0.6"
 transcribe-rs = { version = "0.2.8", features = ["whisper", "parakeet", "moonshine", "sense_voice", "gigaam"] }
 handy-keys = "0.2.2"
 ferrous-opencc = "0.2.3"

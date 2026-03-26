@@ -454,7 +454,9 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
                   {t("onboarding.permissions.inputMonitoring.description")}
                 </p>
                 <p className="text-xs text-[var(--muted)] mb-3">
-                  {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
+                  {t(
+                    "onboarding.permissions.inputMonitoring.manualCleanupHint",
+                  )}
                 </p>
                 {permissions.inputMonitoring === "granted" ? (
                   <div className="flex items-center gap-2 text-[var(--success)] text-sm">

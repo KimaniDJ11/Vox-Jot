@@ -3,7 +3,15 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { toast, Toaster } from "sonner";
-import { Plus, Trash2, Pin, PinOff, FileText, Play, Square } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Pin,
+  PinOff,
+  FileText,
+  Play,
+  Square,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { commands } from "@/bindings";
 import { useNotesStore } from "./notesStore";
@@ -58,7 +66,10 @@ const ScratchpadApp: React.FC = () => {
   const setEditorArmed = useCallback(async (armed: boolean) => {
     const result = await commands.setScratchpadEditorArmed(armed);
     if (result.status !== "ok") {
-      console.error("Failed to update Jot Pad editor target state:", result.error);
+      console.error(
+        "Failed to update Jot Pad editor target state:",
+        result.error,
+      );
     }
   }, []);
 
@@ -367,14 +378,14 @@ const ScratchpadApp: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg)] text-[var(--text)] font-body" style={{ paddingTop: "max(36px, env(titlebar-area-height, 36px))" }}>
+    <div
+      className="flex flex-col h-screen bg-[var(--bg)] text-[var(--text)] font-body"
+      style={{ paddingTop: "max(36px, env(titlebar-area-height, 36px))" }}
+    >
       <Toaster />
       {/* Title bar — same pattern as main app */}
       <header className="app-macos-titlebar-overlay" dir="ltr">
-        <div
-          className="app-macos-titlebar-overlay__traffic-shim"
-          aria-hidden
-        />
+        <div className="app-macos-titlebar-overlay__traffic-shim" aria-hidden />
         <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
           <Button
             type="button"
@@ -419,147 +430,151 @@ const ScratchpadApp: React.FC = () => {
       </header>
 
       <div className="flex flex-1 min-h-0">
-      {/* Note list sidebar */}
-      <div className="flex min-h-0 w-52 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)]">
-        {/* Notes list */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {notes.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
-              {t("jotPad.empty")}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-0.5 p-1.5">
-              {notes.map((note) => {
-                const isActive = note.id === activeNoteId;
-                const displayTitle =
-                  note.title || note.content.slice(0, 30) || t("jotPad.untitled");
+        {/* Note list sidebar */}
+        <div className="flex min-h-0 w-52 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)]">
+          {/* Notes list */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {notes.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
+                {t("jotPad.empty")}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-0.5 p-1.5">
+                {notes.map((note) => {
+                  const isActive = note.id === activeNoteId;
+                  const displayTitle =
+                    note.title ||
+                    note.content.slice(0, 30) ||
+                    t("jotPad.untitled");
 
-                return (
-                  <button
-                    key={note.id}
-                    type="button"
-                    className={`group relative flex items-center gap-2 w-full rounded-full px-2.5 py-2 text-left text-sm transition-all ${
-                      isActive
-                        ? "bg-[var(--accent)] text-[var(--inverse-text)]"
-                        : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-                    }`}
-                    onClick={() => {
-                      // Flush save before switching
-                      saveNow();
-                      void setEditorArmed(false);
-                      setActiveNote(note.id);
-                    }}
-                  >
-                    <FileText
-                      className={`h-3.5 w-3.5 shrink-0 ${
-                        isActive ? "text-[var(--inverse-text)]/70" : "text-[var(--muted)]"
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      className={`group relative flex items-center gap-2 w-full rounded-full px-2.5 py-2 text-left text-sm transition-all ${
+                        isActive
+                          ? "bg-[var(--accent)] text-[var(--inverse-text)]"
+                          : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                       }`}
-                    />
-                    <span className="truncate flex-1 min-w-0 leading-tight">
-                      {displayTitle}
-                    </span>
-                    {note.is_pinned && (
-                      <Pin
-                        className={`h-3 w-3 shrink-0 ${
-                          isActive ? "text-[var(--inverse-text)]/60" : "text-[var(--muted)]"
+                      onClick={() => {
+                        // Flush save before switching
+                        saveNow();
+                        void setEditorArmed(false);
+                        setActiveNote(note.id);
+                      }}
+                    >
+                      <FileText
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          isActive
+                            ? "text-[var(--inverse-text)]/70"
+                            : "text-[var(--muted)]"
                         }`}
                       />
-                    )}
+                      <span className="truncate flex-1 min-w-0 leading-tight">
+                        {displayTitle}
+                      </span>
+                      {note.is_pinned && (
+                        <Pin
+                          className={`h-3 w-3 shrink-0 ${
+                            isActive
+                              ? "text-[var(--inverse-text)]/60"
+                              : "text-[var(--muted)]"
+                          }`}
+                        />
+                      )}
 
-                    {/* Hover actions */}
-                    <div
-                      className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${
-                        isActive ? "" : "bg-[var(--sidebar-bg)]"
-                      } rounded`}
-                    >
-                      <button
-                        type="button"
-                        className={`p-0.5 rounded transition-colors ${
-                          isActive
-                            ? "text-[var(--inverse-text)]/60 hover:text-[var(--inverse-text)]"
-                            : "text-[var(--muted)] hover:text-[var(--text)]"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void togglePin(note.id, !note.is_pinned);
-                        }}
-                        title={
-                          note.is_pinned
-                            ? t("jotPad.unpin")
-                            : t("jotPad.pin")
-                        }
+                      {/* Hover actions */}
+                      <div
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${
+                          isActive ? "" : "bg-[var(--sidebar-bg)]"
+                        } rounded`}
                       >
-                        {note.is_pinned ? (
-                          <PinOff className="h-3 w-3" />
-                        ) : (
-                          <Pin className="h-3 w-3" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className={`p-0.5 rounded transition-colors ${
-                          isActive
-                            ? "text-[var(--inverse-text)]/60 hover:text-[var(--danger)]"
-                            : "text-[var(--muted)] hover:text-[var(--danger)]"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleDeleteNote(note.id);
-                        }}
-                        title={t("common.delete")}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </button>
-                );
-              })}
+                        <button
+                          type="button"
+                          className={`p-0.5 rounded transition-colors ${
+                            isActive
+                              ? "text-[var(--inverse-text)]/60 hover:text-[var(--inverse-text)]"
+                              : "text-[var(--muted)] hover:text-[var(--text)]"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void togglePin(note.id, !note.is_pinned);
+                          }}
+                          title={
+                            note.is_pinned ? t("jotPad.unpin") : t("jotPad.pin")
+                          }
+                        >
+                          {note.is_pinned ? (
+                            <PinOff className="h-3 w-3" />
+                          ) : (
+                            <Pin className="h-3 w-3" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={`p-0.5 rounded transition-colors ${
+                            isActive
+                              ? "text-[var(--inverse-text)]/60 hover:text-[var(--danger)]"
+                              : "text-[var(--muted)] hover:text-[var(--danger)]"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDeleteNote(note.id);
+                          }}
+                          title={t("common.delete")}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Editor area */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {activeNote ? (
+            <div className="flex-1 flex flex-col px-5 pb-4 min-h-0">
+              {/* Title input */}
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={title}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                onFocus={() => void setEditorArmed(true)}
+                placeholder={t("jotPad.titlePlaceholder")}
+                className="w-full text-xl font-display font-bold bg-transparent border-none outline-none placeholder:text-[var(--muted)]/40 mb-2"
+              />
+
+              {/* Content textarea */}
+              <textarea
+                ref={contentRef}
+                value={content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                onFocus={() => void setEditorArmed(true)}
+                placeholder={t("jotPad.contentPlaceholder")}
+                className="flex-1 w-full bg-transparent border-none outline-none resize-none text-sm leading-relaxed font-body placeholder:text-[var(--muted)]/40"
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-[var(--muted)]">
+                <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
+                <button
+                  type="button"
+                  onClick={() => void handleCreateNote()}
+                  className="mt-3 text-sm text-[var(--accent)] hover:underline"
+                >
+                  {t("jotPad.createFirst")}
+                </button>
+              </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Editor area */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {activeNote ? (
-          <div className="flex-1 flex flex-col px-5 pb-4 min-h-0">
-            {/* Title input */}
-            <input
-              ref={titleInputRef}
-              type="text"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              onFocus={() => void setEditorArmed(true)}
-              placeholder={t("jotPad.titlePlaceholder")}
-              className="w-full text-xl font-display font-bold bg-transparent border-none outline-none placeholder:text-[var(--muted)]/40 mb-2"
-            />
-
-            {/* Content textarea */}
-            <textarea
-              ref={contentRef}
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              onFocus={() => void setEditorArmed(true)}
-              placeholder={t("jotPad.contentPlaceholder")}
-              className="flex-1 w-full bg-transparent border-none outline-none resize-none text-sm leading-relaxed font-body placeholder:text-[var(--muted)]/40"
-            />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-[var(--muted)]">
-              <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
-              <button
-                type="button"
-                onClick={() => void handleCreateNote()}
-                className="mt-3 text-sm text-[var(--accent)] hover:underline"
-              >
-                {t("jotPad.createFirst")}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
       </div>
     </div>
   );

@@ -130,7 +130,9 @@ const OllamaSettings: React.FC = () => {
       <div className="px-5">
         {!isInstalled ? (
           <div className="flex flex-wrap items-center justify-between gap-3 py-1">
-            <p className="text-sm text-[var(--text)]">{t("ollama.notInstalled")}</p>
+            <p className="text-sm text-[var(--text)]">
+              {t("ollama.notInstalled")}
+            </p>
             <button
               type="button"
               onClick={installOllama}
@@ -142,7 +144,9 @@ const OllamaSettings: React.FC = () => {
           </div>
         ) : !isRunning ? (
           <div className="flex flex-wrap items-center justify-between gap-3 py-1">
-            <p className="text-sm text-[var(--text)]">{t("ollama.notRunning")}</p>
+            <p className="text-sm text-[var(--text)]">
+              {t("ollama.notRunning")}
+            </p>
             <button
               type="button"
               onClick={startServe}
@@ -351,7 +355,9 @@ const OllamaSettings: React.FC = () => {
                   <hr className="w-full border-mid-gray/20" />
 
                   <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                    <span className="text-xs text-[var(--muted)]">{details.size}</span>
+                    <span className="text-xs text-[var(--muted)]">
+                      {details.size}
+                    </span>
                     {isPulling ? (
                       <span className="ml-auto text-xs text-[var(--muted)]">
                         {t("ollama.pulling", {

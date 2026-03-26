@@ -62,13 +62,23 @@ cd Vox Jot
 bun install
 ```
 
-### 3. Start Dev Server
+### 3. Validate Changes
+
+On macOS, the standard validation workflow is to rebuild and update the installed app in `/Applications` so the same approved app bundle keeps its Accessibility-related permissions:
+
+```bash
+bun run mac:update-installed-app
+```
+
+Use `bun run tauri dev` only for quick iteration when you do not need to validate through the installed app bundle.
+
+### 4. Start Dev Server
 
 ```bash
 bun tauri dev
 ```
 
-### 4. Build for Production
+### 5. Build for Production
 
 ```bash
 bun run tauri build

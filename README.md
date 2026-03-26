@@ -48,6 +48,14 @@ The process is entirely local:
 
 For detailed build instructions including platform-specific requirements, see [BUILD.md](BUILD.md).
 
+On macOS, the standard way to validate a solid app change is to update the installed app in place:
+
+```bash
+bun run mac:update-installed-app
+```
+
+This rebuilds and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. `bun run tauri dev` is still available for quick iteration, but it is not the default path for solid macOS testing.
+
 ## Architecture
 
 Vox Jot is built as a Tauri application combining:

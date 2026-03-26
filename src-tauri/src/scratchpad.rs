@@ -29,14 +29,14 @@ impl ScratchpadRoutingState {
         }
     }
 
-    fn snapshot_pending_insert(&self) {
+    fn snapshot_pending_insert(&self, scratchpad_window_focused: bool) {
         let armed = self
             .editor_armed
             .lock()
             .map(|state| *state)
             .unwrap_or(false);
         if let Ok(mut pending) = self.pending_insert.lock() {
-            *pending = armed;
+            *pending = armed || scratchpad_window_focused;
         }
     }
 
@@ -249,7 +249,15 @@ pub fn set_scratchpad_editor_armed(app: &AppHandle, armed: bool) {
 
 pub fn snapshot_pending_insert_target(app: &AppHandle) {
     let state = app.state::<ScratchpadRoutingState>();
-    state.snapshot_pending_insert();
+    let scratchpad_window_focused = app
+        .get_webview_window(SCRATCHPAD_LABEL)
+        .and_then(|window| window.is_focused().ok())
+        .unwrap_or(false);
+    state.snapshot_pending_insert(scratchpad_window_focused);
+    debug!(
+        "Snapshot Jot Pad insert target with window_focused={}",
+        scratchpad_window_focused
+    );
 }
 
 pub fn consume_pending_insert_target(app: &AppHandle) -> bool {
@@ -260,6 +268,41 @@ pub fn consume_pending_insert_target(app: &AppHandle) -> bool {
 pub fn clear_pending_insert_target(app: &AppHandle) {
     let state = app.state::<ScratchpadRoutingState>();
     state.clear_pending_insert();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScratchpadRoutingState;
+
+    #[test]
+    fn snapshot_pending_insert_uses_editor_armed_state() {
+        let state = ScratchpadRoutingState::default();
+        state.set_editor_armed(true);
+
+        state.snapshot_pending_insert(false);
+
+        assert!(state.consume_pending_insert());
+    }
+
+    #[test]
+    fn snapshot_pending_insert_uses_focused_window_as_fallback() {
+        let state = ScratchpadRoutingState::default();
+        state.set_editor_armed(false);
+
+        state.snapshot_pending_insert(true);
+
+        assert!(state.consume_pending_insert());
+    }
+
+    #[test]
+    fn snapshot_pending_insert_stays_false_without_editor_or_window_focus() {
+        let state = ScratchpadRoutingState::default();
+        state.set_editor_armed(false);
+
+        state.snapshot_pending_insert(false);
+
+        assert!(!state.consume_pending_insert());
+    }
 }
 
 pub fn set_pending_note_target(app: &AppHandle, note_id: i64) {

@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : "text-[var(--text)]"
                 }`}
               >
-                Settings
+                {t("sidebar.settingsButton", { defaultValue: "Settings" })}
               </span>
             )}
           </button>

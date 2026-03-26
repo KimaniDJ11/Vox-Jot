@@ -9,9 +9,9 @@ import { AudioFeedback } from "../AudioFeedback";
 import { useSettings } from "../../../hooks/useSettings";
 import { VolumeSlider } from "../VolumeSlider";
 import { MuteWhileRecording } from "../MuteWhileRecording";
-import { ModelSettingsCard } from "./ModelSettingsCard";
+import { SttModelSettingsCard } from "./SttModelSettingsCard";
 import { FileTranscriptionCard } from "./FileTranscriptionCard";
-import { SpeechOutputSettingsCard } from "./SpeechOutputSettingsCard";
+import { SpeechOutputSettingsCard } from "./ListenVoiceSettings";
 
 export const GeneralSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -28,7 +28,7 @@ export const GeneralSettings: React.FC = () => {
         <ShortcutInput shortcutId="stop_speaking" grouped={true} />
         <PushToTalk descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
-      <ModelSettingsCard />
+      <SttModelSettingsCard />
       <SpeechOutputSettingsCard />
       <FileTranscriptionCard />
       <SettingsGroup title={t("settings.sound.title")}>

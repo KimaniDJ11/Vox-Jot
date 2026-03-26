@@ -43,9 +43,12 @@ const RecordingOverlay: React.FC = () => {
         setLevels(smoothed.slice(0, BAR_COUNT));
       });
 
-      const unPartial = await listen<string>("partial-transcription", (event) => {
-        setPartialText((event.payload as string) || "");
-      });
+      const unPartial = await listen<string>(
+        "partial-transcription",
+        (event) => {
+          setPartialText((event.payload as string) || "");
+        },
+      );
 
       return () => {
         unShow();
@@ -64,12 +67,10 @@ const RecordingOverlay: React.FC = () => {
       className={`recording-overlay ${isVisible ? "fade-in" : ""}`}
     >
       {/* Left: state icon */}
-      <div className={`overlay-left ${state === "recording" ? "is-recording" : ""}`}>
-        {state === "recording" ? (
-          <MicIcon />
-        ) : (
-          <WaveIcon />
-        )}
+      <div
+        className={`overlay-left ${state === "recording" ? "is-recording" : ""}`}
+      >
+        {state === "recording" ? <MicIcon /> : <WaveIcon />}
       </div>
 
       {/* Middle: content */}
@@ -133,19 +134,39 @@ const MicIcon: React.FC = () => (
       strokeLinecap="round"
       fill="none"
     />
-    <line x1="10" y1="15" x2="10" y2="18" stroke="var(--ov-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line
+      x1="10"
+      y1="15"
+      x2="10"
+      y2="18"
+      stroke="var(--ov-accent)"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
 const WaveIcon: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-    <path d="M3 10h2l1.5-3 2 6 2-8 2 10 1.5-5H16" stroke="var(--ov-accent)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path
+      d="M3 10h2l1.5-3 2 6 2-8 2 10 1.5-5H16"
+      stroke="var(--ov-accent)"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
   </svg>
 );
 
 const XIcon: React.FC = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="var(--ov-cancel)" strokeWidth="1.6" strokeLinecap="round" />
+    <path
+      d="M3.5 3.5l7 7M10.5 3.5l-7 7"
+      stroke="var(--ov-cancel)"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
   </svg>
 );
 

@@ -79,7 +79,9 @@ export const FileTranscriptionCard: React.FC = () => {
         </div>
 
         {selectedPath && (
-          <div className="text-xs text-[var(--muted)] break-all">{selectedPath}</div>
+          <div className="text-xs text-[var(--muted)] break-all">
+            {selectedPath}
+          </div>
         )}
 
         <Textarea

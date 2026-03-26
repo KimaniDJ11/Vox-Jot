@@ -165,7 +165,8 @@ impl CorrectionStore {
     }
 
     /// Get active corrections as DictionaryEntry values for merging with the personal dictionary.
-    pub fn get_active_corrections(
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn get_active_corrections(
         &self,
         min_frequency: u32,
         min_confidence: f64,

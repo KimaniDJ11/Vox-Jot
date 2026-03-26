@@ -125,7 +125,7 @@ function parseArgs(): {
       ? "http://localhost:11434/v1"
       : provider === "openrouter"
         ? "https://openrouter.ai/api/v1"
-        : "https://api.openai.com/v1"
+        : "https://api.openai.com/v1",
   );
 
   const apiKey =
@@ -138,10 +138,7 @@ function parseArgs(): {
   return {
     casesPath: get(
       "--cases",
-      resolve(
-        __dirname,
-        "../test-data/dictation-corpus/cases.json"
-      )
+      resolve(__dirname, "../test-data/dictation-corpus/cases.json"),
     ),
     provider,
     model,
@@ -262,7 +259,7 @@ function hasTechnicalTokens(text: string): boolean {
   ];
   if (strong.some((t) => lower.includes(t))) return true;
   return [...text].some((c) =>
-    ["/", "\\", "_", "{", "}", "[", "]", "<", ">", "`"].includes(c)
+    ["/", "\\", "_", "{", "}", "[", "]", "<", ">", "`"].includes(c),
   );
 }
 
@@ -354,9 +351,7 @@ function analyzeRoute(text: string, maxStrength: number): RouteAnalysis {
     const prefersStronger =
       features.has_list_cue &&
       (features.has_correction_cue || features.word_count >= 10);
-    rewrite_strength = prefersStronger
-      ? Math.max(maxStrength, 2)
-      : maxStrength;
+    rewrite_strength = prefersStronger ? Math.max(maxStrength, 2) : maxStrength;
   } else {
     rewrite_strength = 2;
   }
@@ -370,7 +365,7 @@ function analyzeRoute(text: string, maxStrength: number): RouteAnalysis {
 
 function buildSystemPrompt(
   mode: "literal" | "intent",
-  rewriteStrength: number
+  rewriteStrength: number,
 ): string {
   const toneRule =
     "- Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording.";
@@ -442,7 +437,7 @@ Active app guidance:
 function buildUserContent(
   mode: "literal" | "intent",
   text: string,
-  rewriteStrength: number
+  rewriteStrength: number,
 ): string {
   return `Mode: ${mode}
 Rewrite strength: ${rewriteStrength}
@@ -474,7 +469,7 @@ interface LLMConfig {
 async function callLLM(
   config: LLMConfig,
   systemPrompt: string,
-  userContent: string
+  userContent: string,
 ): Promise<string> {
   const url = `${config.baseUrl}/chat/completions`;
 
@@ -502,7 +497,7 @@ async function callLLM(
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `LLM API error ${response.status}: ${errorText.slice(0, 200)}`
+      `LLM API error ${response.status}: ${errorText.slice(0, 200)}`,
     );
   }
 
@@ -533,7 +528,7 @@ function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0)
+    Array(n + 1).fill(0),
   );
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -555,7 +550,7 @@ function levenshtein(a: string, b: string): number {
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
@@ -569,7 +564,7 @@ async function mapWithConcurrency<T, R>(
 
   const workers = Array.from(
     { length: Math.min(concurrency, items.length) },
-    () => worker()
+    () => worker(),
   );
   await Promise.all(workers);
   return results;
@@ -625,14 +620,14 @@ async function main() {
       console.log(
         `[${tc.id}] route=${route.route} score=${route.score} strength=${route.rewrite_strength} ` +
           `corr=${route.features.has_correction_cue} list=${route.features.has_list_cue} ` +
-          `para=${route.features.has_paragraph_cue} tech=${route.features.has_technical_tokens}`
+          `para=${route.features.has_paragraph_cue} tech=${route.features.has_technical_tokens}`,
       );
     }
   } else {
     // Full evaluation with LLM calls
     if (!config.apiKey && config.provider !== "ollama") {
       console.error(
-        `ERROR: No API key set. Use --api-key, LLM_API_KEY, or ${config.provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY"} env var.`
+        `ERROR: No API key set. Use --api-key, LLM_API_KEY, or ${config.provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY"} env var.`,
       );
       process.exit(1);
     }
@@ -644,12 +639,12 @@ async function main() {
         const route = analyzeRoute(tc.raw_stt, config.maxRewriteStrength);
         const systemPrompt = buildSystemPrompt(
           config.mode,
-          route.rewrite_strength
+          route.rewrite_strength,
         );
         const userContent = buildUserContent(
           config.mode,
           tc.raw_stt,
-          route.rewrite_strength
+          route.rewrite_strength,
         );
 
         let actual: string | null = null;
@@ -661,13 +656,14 @@ async function main() {
           error = e instanceof Error ? e.message : String(e);
         }
 
-        const sim = actual !== null ? similarity(actual, tc.expected_output) : 0;
+        const sim =
+          actual !== null ? similarity(actual, tc.expected_output) : 0;
         const isMatch = sim >= 0.85;
 
         completed++;
         const statusIcon = error ? "ERR" : isMatch ? "OK " : "LOW";
         console.log(
-          `[${completed}/${cases.length}] ${statusIcon} ${tc.id} (${tc.category}) sim=${sim.toFixed(2)} route=${route.route}`
+          `[${completed}/${cases.length}] ${statusIcon} ${tc.id} (${tc.category}) sim=${sim.toFixed(2)} route=${route.route}`,
         );
         if (actual !== null && !isMatch && !error) {
           console.log(`  expected: ${tc.expected_output.slice(0, 80)}`);
@@ -689,7 +685,7 @@ async function main() {
           notes: tc.notes,
           error,
         } satisfies EvalResult;
-      }
+      },
     );
 
     results.push(...evalResults);
@@ -718,7 +714,7 @@ async function main() {
   }
   for (const cat of Object.keys(byCategory)) {
     const catResults = results.filter(
-      (r) => r.category === cat && r.actual_output !== null && !r.error
+      (r) => r.category === cat && r.actual_output !== null && !r.error,
     );
     byCategory[cat].avg_similarity =
       catResults.length > 0
@@ -785,11 +781,9 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     lines.push(`| Passed | ${summary.passed} |`);
     lines.push(`| Failed | ${summary.failed} |`);
     lines.push(`| Errors | ${summary.errors} |`);
+    lines.push(`| Pass rate | ${(summary.pass_rate * 100).toFixed(1)}% |`);
     lines.push(
-      `| Pass rate | ${(summary.pass_rate * 100).toFixed(1)}% |`
-    );
-    lines.push(
-      `| Avg similarity | ${(summary.avg_similarity * 100).toFixed(1)}% |`
+      `| Avg similarity | ${(summary.avg_similarity * 100).toFixed(1)}% |`,
     );
   }
 
@@ -800,7 +794,7 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
   lines.push(`|----------|-------|--------|----------------|`);
   for (const [cat, stats] of Object.entries(summary.by_category)) {
     lines.push(
-      `| ${cat} | ${stats.total} | ${stats.passed} | ${(stats.avg_similarity * 100).toFixed(1)}% |`
+      `| ${cat} | ${stats.total} | ${stats.passed} | ${(stats.avg_similarity * 100).toFixed(1)}% |`,
     );
   }
 
@@ -813,7 +807,7 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     lines.push(`### ${r.id} [${status}] (${r.category})`);
     lines.push(``);
     lines.push(
-      `**Route:** ${r.route.route} | **Score:** ${r.route.score} | **Strength:** ${r.route.rewrite_strength}`
+      `**Route:** ${r.route.route} | **Score:** ${r.route.score} | **Strength:** ${r.route.rewrite_strength}`,
     );
     lines.push(``);
     lines.push(`**Raw STT:**`);
@@ -827,7 +821,7 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     if (r.actual_output !== null) {
       lines.push(``);
       lines.push(
-        `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%):`
+        `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%):`,
       );
       lines.push("```");
       lines.push(r.actual_output);

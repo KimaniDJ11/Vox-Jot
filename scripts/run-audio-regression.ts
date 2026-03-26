@@ -2,7 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
-const manifestPath = path.join(ROOT, "test-data", "audio-regression", "manifest.json");
+const manifestPath = path.join(
+  ROOT,
+  "test-data",
+  "audio-regression",
+  "manifest.json",
+);
 const outputPath = path.join(
   ROOT,
   "test-data",
@@ -135,7 +140,9 @@ function buildMarkdownSummary(report: RegressionReport): string {
   lines.push("| Route | Count | % |");
   lines.push("|-------|------:|--:|");
   const total = report.entries.length || 1;
-  for (const [route, count] of Object.entries(routeCounts).sort((a, b) => b[1] - a[1])) {
+  for (const [route, count] of Object.entries(routeCounts).sort(
+    (a, b) => b[1] - a[1],
+  )) {
     const pct = ((count / total) * 100).toFixed(1);
     lines.push(`| ${route} | ${count} | ${pct}% |`);
   }
@@ -143,14 +150,19 @@ function buildMarkdownSummary(report: RegressionReport): string {
 
   // --- Regressions (worsened) ---
   const worsened = report.entries.filter(
-    (e) => e.raw_wer !== null && e.final_wer !== null && e.final_wer > e.raw_wer + 0.0001,
+    (e) =>
+      e.raw_wer !== null &&
+      e.final_wer !== null &&
+      e.final_wer > e.raw_wer + 0.0001,
   );
   if (worsened.length > 0) {
     lines.push("## Regressions");
     lines.push("");
     lines.push("| ID | Route | Raw WER | Final WER | Delta |");
     lines.push("|----|-------|--------:|----------:|------:|");
-    for (const e of worsened.sort((a, b) => (b.final_wer! - b.raw_wer!) - (a.final_wer! - a.raw_wer!))) {
+    for (const e of worsened.sort(
+      (a, b) => b.final_wer! - b.raw_wer! - (a.final_wer! - a.raw_wer!),
+    )) {
       const delta = (e.final_wer! - e.raw_wer!).toFixed(4);
       lines.push(
         `| ${e.id} | ${e.post_process_route ?? "—"} | ${e.raw_wer!.toFixed(4)} | ${e.final_wer!.toFixed(4)} | +${delta} |`,
@@ -161,14 +173,19 @@ function buildMarkdownSummary(report: RegressionReport): string {
 
   // --- Improvements ---
   const improved = report.entries.filter(
-    (e) => e.raw_wer !== null && e.final_wer !== null && e.final_wer + 0.0001 < e.raw_wer,
+    (e) =>
+      e.raw_wer !== null &&
+      e.final_wer !== null &&
+      e.final_wer + 0.0001 < e.raw_wer,
   );
   if (improved.length > 0) {
     lines.push("## Improvements");
     lines.push("");
     lines.push("| ID | Route | Raw WER | Final WER | Delta |");
     lines.push("|----|-------|--------:|----------:|------:|");
-    for (const e of improved.sort((a, b) => (a.final_wer! - a.raw_wer!) - (b.final_wer! - b.raw_wer!))) {
+    for (const e of improved.sort(
+      (a, b) => a.final_wer! - a.raw_wer! - (b.final_wer! - b.raw_wer!),
+    )) {
       const delta = (e.final_wer! - e.raw_wer!).toFixed(4);
       lines.push(
         `| ${e.id} | ${e.post_process_route ?? "—"} | ${e.raw_wer!.toFixed(4)} | ${e.final_wer!.toFixed(4)} | ${delta} |`,

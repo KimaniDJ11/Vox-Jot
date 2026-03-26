@@ -6,15 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
-import {
-  Download,
-  Plus,
-  Trash2,
-  Upload,
-  X,
-  Pencil,
-  Check,
-} from "lucide-react";
+import { Download, Plus, Trash2, Upload, X, Pencil, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
@@ -101,9 +93,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
 
   const handleToggle = async (id: string) => {
     await saveSnippets(
-      snippets.map((s) =>
-        s.id === id ? { ...s, enabled: !s.enabled } : s,
-      ),
+      snippets.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
     );
   };
 
@@ -311,9 +301,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                   onChange={(e) =>
                     setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
                   }
-                  placeholder={t(
-                    "settings.snippets.list.expansionPlaceholder",
-                  )}
+                  placeholder={t("settings.snippets.list.expansionPlaceholder")}
                   rows={2}
                   className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
                   onKeyDown={(e) => {
@@ -373,9 +361,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           type="text"
                           value={editTrigger}
                           onChange={(e) =>
-                            setEditTrigger(
-                              e.target.value.slice(0, TRIGGER_MAX),
-                            )
+                            setEditTrigger(e.target.value.slice(0, TRIGGER_MAX))
                           }
                           className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
                           onKeyDown={(e) => {

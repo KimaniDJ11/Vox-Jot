@@ -5,6 +5,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## macOS Installed-App Workflow
+
+On macOS, the default path for validating any solid app change is to rebuild and update the existing `/Applications/Vox Jot.app` bundle in place.
+
+- Use `bun run mac:update-installed-app` (alias: `bun run mac:build-install`) when a change is ready to test as the real app.
+- This preserves the app path that already has Accessibility and related approvals, so we do not keep re-authorizing new app instances.
+- Use `bun run tauri dev` only for fast iteration when installed-app validation is not required.
+- Treat this as the standard workflow for all future sessions and agents in this repo.
+
 ## Development Commands
 
 **Prerequisites:** [Rust](https://rustup.rs/) (latest stable), [Bun](https://bun.sh/)
@@ -13,7 +22,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 bun install
 
-# Run in development mode
+# Standard macOS validation flow for solid changes
+bun run mac:update-installed-app
+
+# Run in development mode for quick iteration only
 bun run tauri dev
 # If cmake error on macOS:
 CMAKE_POLICY_VERSION_MINIMUM=3.5 bun run tauri dev

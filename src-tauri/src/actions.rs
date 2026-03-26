@@ -1948,6 +1948,7 @@ async fn run_translate_selection(app: AppHandle) {
                             text: auto_speak_plan.text.clone(),
                             locale: auto_speak_plan.locale.clone(),
                             preferred_voice_id: None,
+                            preset_id: None,
                             trigger: Some(auto_speak_plan.trigger.clone()),
                             remember_last_output: false,
                         },
@@ -1964,6 +1965,7 @@ async fn run_translate_selection(app: AppHandle) {
                             text: auto_speak_plan.text,
                             locale: auto_speak_plan.locale,
                             preferred_voice_id: None,
+                            preset_id: None,
                             trigger: Some(auto_speak_plan.trigger),
                             remember_last_output: false,
                         },
@@ -1979,6 +1981,7 @@ async fn run_translate_selection(app: AppHandle) {
                 text: auto_speak_plan.text,
                 locale: auto_speak_plan.locale,
                 preferred_voice_id: None,
+                preset_id: None,
                 trigger: Some(auto_speak_plan.trigger),
                 remember_last_output: false,
             },
@@ -2204,6 +2207,7 @@ async fn run_speak_selection(app: AppHandle) {
         text: selected_text,
         locale,
         preferred_voice_id: None,
+        preset_id: None,
         trigger: Some("speak_selection".to_string()),
         remember_last_output: false,
     };
@@ -2918,6 +2922,7 @@ impl ShortcutAction for TranscribeAction {
                                         text: auto_speak_plan.text.clone(),
                                         locale: auto_speak_plan.locale.clone(),
                                         preferred_voice_id: None,
+                                        preset_id: None,
                                         trigger: Some(auto_speak_plan.trigger.clone()),
                                         remember_last_output: false,
                                     },
@@ -2980,6 +2985,7 @@ impl ShortcutAction for TranscribeAction {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
+                                let scratchpad_guard = _scratchpad_guard;
                                 let active_app_id_for_snapshot =
                                     active_app_context.as_ref().map(|ctx| ctx.bundle_id.clone());
                                 let auto_speak_request = if auto_speak_plan.should_speak {
@@ -2987,6 +2993,7 @@ impl ShortcutAction for TranscribeAction {
                                         text: auto_speak_plan.text.clone(),
                                         locale: auto_speak_plan.locale.clone(),
                                         preferred_voice_id: None,
+                                        preset_id: None,
                                         trigger: Some(auto_speak_plan.trigger.clone()),
                                         remember_last_output: false,
                                     })
@@ -2994,6 +3001,7 @@ impl ShortcutAction for TranscribeAction {
                                     None
                                 };
                                 ah.run_on_main_thread(move || {
+                                    let _scratchpad_guard = scratchpad_guard;
                                     let paste_result = if let Some(submit_key) = submit_override {
                                         utils::paste_with_submit_override(
                                             text_for_paste,

@@ -125,7 +125,8 @@ export const HistorySettings: React.FC = () => {
           console.error("Field snapshot failed:", event.payload);
           toast.error(
             t("settings.history.fieldObservation.failed", {
-              defaultValue: "Could not read field text for observation: {{error}}",
+              defaultValue:
+                "Could not read field text for observation: {{error}}",
               error: event.payload,
             }),
           );
@@ -233,8 +234,10 @@ export const HistorySettings: React.FC = () => {
               {emptyMessage}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Recordings, pasted output, and observed field changes will appear
-              here after you dictate.
+              {t("settings.history.emptyDescription", {
+                defaultValue:
+                  "Recordings, pasted output, and observed field changes will appear here after you dictate.",
+              })}
             </p>
           </div>
         </div>
@@ -260,7 +263,11 @@ export const HistorySettings: React.FC = () => {
 
       groups.push({
         key,
-        label: formatHistoryGroupLabel(entry.timestamp, i18n.language, todayLabel),
+        label: formatHistoryGroupLabel(
+          entry.timestamp,
+          i18n.language,
+          todayLabel,
+        ),
         entries: [entry],
       });
 
@@ -314,7 +321,10 @@ export const HistorySettings: React.FC = () => {
               {t("settings.history.loading")}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Loading your recent recordings and pasted output.
+              {t("settings.history.loadingDescription", {
+                defaultValue:
+                  "Loading your recent recordings and pasted output.",
+              })}
             </p>
           </div>
         </div>
@@ -322,7 +332,11 @@ export const HistorySettings: React.FC = () => {
     );
   }
 
-  return <div className="w-full">{renderEntries(historyEntries, t("settings.history.empty"))}</div>;
+  return (
+    <div className="w-full">
+      {renderEntries(historyEntries, t("settings.history.empty"))}
+    </div>
+  );
 };
 
 interface HistoryEntryProps {
@@ -363,14 +377,12 @@ const HistoryDetailSection: React.FC<{
 );
 
 const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
-  not_requested:
-    "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
+  not_requested: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
   pending:
     "border-[var(--warning)]/25 bg-[var(--warning-soft)] text-[var(--warning)]",
   captured:
     "border-[var(--success)]/25 bg-[var(--success-soft)] text-[var(--success)]",
-  skipped:
-    "border-[var(--info)]/25 bg-[var(--info-soft)] text-[var(--info)]",
+  skipped: "border-[var(--info)]/25 bg-[var(--info-soft)] text-[var(--info)]",
   failed:
     "border-[var(--danger)]/25 bg-[var(--danger-soft)] text-[var(--danger)]",
 };
@@ -414,7 +426,8 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const rawText = entry.transcription_text.trim();
   const polishedText = entry.post_processed_text?.trim() || "";
   const insertedText = entry.pasted_text?.trim() || "";
-  const pastedText = insertedText || polishedText || rawText || displayText.trim();
+  const pastedText =
+    insertedText || polishedText || rawText || displayText.trim();
   const observedText = entry.field_snapshot_text?.trim() || "";
   const dictionaryApplied = entry.dictionary_hits.length > 0;
   const postProcessApplied = polishedText.length > 0;
@@ -441,17 +454,19 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           ? t("settings.history.fieldObservation.skipped", {
               defaultValue: "Stopped when focus changed",
             })
-        : fieldSnapshotStatus === "failed"
-          ? t("settings.history.fieldObservation.failedStatus", {
-              defaultValue: "Text field check failed",
-            })
-          : t("settings.history.fieldObservation.notRequested", {
-              defaultValue: "No text field check recorded",
-            });
+          : fieldSnapshotStatus === "failed"
+            ? t("settings.history.fieldObservation.failedStatus", {
+                defaultValue: "Text field check failed",
+              })
+            : t("settings.history.fieldObservation.notRequested", {
+                defaultValue: "No text field check recorded",
+              });
 
   return (
     <div className="grid grid-cols-1 gap-y-3 px-4 py-4 md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
-      <div className={`min-w-0 text-[var(--voice)] ${historyEntryPrimaryLineClass}`}>
+      <div
+        className={`min-w-0 text-[var(--voice)] ${historyEntryPrimaryLineClass}`}
+      >
         {formattedTime}
       </div>
 
@@ -468,184 +483,184 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         />
 
         <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleCopyText}
-              className={historyActionButtonClassName}
-              title={t("settings.history.copyToClipboard")}
-              aria-label={t("settings.history.copyToClipboard")}
-            >
-              {showCopied ? (
-                <Check width={14} height={14} />
-              ) : (
-                <Copy width={14} height={14} />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onRevealInFolder}
-              className={historyActionButtonClassName}
-              title={t("settings.history.showRecordingInFolder")}
-              aria-label={t("settings.history.showRecordingInFolder")}
-            >
-              <FolderOpen width={14} height={14} aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={onToggleSaved}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-                entry.saved
-                  ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
-                  : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-              }`}
-              title={
-                entry.saved
-                  ? t("settings.history.unsave")
-                  : t("settings.history.save")
-              }
-              aria-label={
-                entry.saved
-                  ? t("settings.history.unsave")
-                  : t("settings.history.save")
-              }
-            >
-              <Star
-                width={14}
-                height={14}
-                fill={entry.saved ? "currentColor" : "none"}
-              />
-            </button>
-            {showDeleteConfirm ? (
-              <div className="flex items-center gap-1 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-1">
-                <span className="text-sm text-[var(--danger)]">
-                  {t("common.delete")}?
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="danger-ghost"
-                  onClick={() => void handleDeleteEntry()}
-                  className="h-8 w-8 rounded-full p-0"
-                  aria-label={t("settings.history.delete")}
-                >
-                  <Check width={14} height={14} />
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="h-8 w-8 rounded-full p-0 text-[var(--muted)]"
-                  aria-label={t("common.cancel")}
-                >
-                  <X width={14} height={14} />
-                </Button>
-              </div>
+          <button
+            type="button"
+            onClick={handleCopyText}
+            className={historyActionButtonClassName}
+            title={t("settings.history.copyToClipboard")}
+            aria-label={t("settings.history.copyToClipboard")}
+          >
+            {showCopied ? (
+              <Check width={14} height={14} />
             ) : (
-              <button
+              <Copy width={14} height={14} />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onRevealInFolder}
+            className={historyActionButtonClassName}
+            title={t("settings.history.showRecordingInFolder")}
+            aria-label={t("settings.history.showRecordingInFolder")}
+          >
+            <FolderOpen width={14} height={14} aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleSaved}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+              entry.saved
+                ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
+                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+            }`}
+            title={
+              entry.saved
+                ? t("settings.history.unsave")
+                : t("settings.history.save")
+            }
+            aria-label={
+              entry.saved
+                ? t("settings.history.unsave")
+                : t("settings.history.save")
+            }
+          >
+            <Star
+              width={14}
+              height={14}
+              fill={entry.saved ? "currentColor" : "none"}
+            />
+          </button>
+          {showDeleteConfirm ? (
+            <div className="flex items-center gap-1 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-1">
+              <span className="text-sm text-[var(--danger)]">
+                {t("common.delete")}?
+              </span>
+              <Button
                 type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className={historyDangerActionButtonClassName}
-                title={t("settings.history.delete")}
+                size="sm"
+                variant="danger-ghost"
+                onClick={() => void handleDeleteEntry()}
+                className="h-8 w-8 rounded-full p-0"
                 aria-label={t("settings.history.delete")}
               >
-                <Trash2 width={14} height={14} />
-              </button>
-            )}
-          </div>
+                <Check width={14} height={14} />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="h-8 w-8 rounded-full p-0 text-[var(--muted)]"
+                aria-label={t("common.cancel")}
+              >
+                <X width={14} height={14} />
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className={historyDangerActionButtonClassName}
+              title={t("settings.history.delete")}
+              aria-label={t("settings.history.delete")}
+            >
+              <Trash2 width={14} height={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
-          <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
-            {postProcessApplied
-              ? t("settings.history.badges.postProcessOn", {
-                  defaultValue: "Post process on",
-                })
-              : t("settings.history.badges.postProcessOff", {
-                  defaultValue: "Raw transcript",
-                })}
-          </span>
-          {dictionaryApplied && (
-            <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
-              {t("settings.history.badges.dictionaryOn", {
-                defaultValue: "Dictionary applied",
+        <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
+          {postProcessApplied
+            ? t("settings.history.badges.postProcessOn", {
+                defaultValue: "Post process on",
+              })
+            : t("settings.history.badges.postProcessOff", {
+                defaultValue: "Raw transcript",
               })}
-            </span>
-          )}
-          <span
-            className={`rounded-full border px-2.5 py-1 text-xs ${snapshotToneClasses[fieldSnapshotStatus]}`}
-          >
-            {fieldStatusLabel}
+        </span>
+        {dictionaryApplied && (
+          <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
+            {t("settings.history.badges.dictionaryOn", {
+              defaultValue: "Dictionary applied",
+            })}
           </span>
+        )}
+        <span
+          className={`rounded-full border px-2.5 py-1 text-xs ${snapshotToneClasses[fieldSnapshotStatus]}`}
+        >
+          {fieldStatusLabel}
+        </span>
       </div>
 
       {(postProcessApplied ||
         dictionaryApplied ||
         (fieldCheckChanged && observedText)) && (
         <div className="mt-1 grid gap-2 md:col-start-2 lg:grid-cols-2">
-            {rawText !== displayText && (
-              <HistoryDetailSection
-                title={t("settings.history.sections.text", {
-                  defaultValue: "Transcribed text",
-                })}
-                icon={<Type className="h-3.5 w-3.5" />}
-              >
-                <p className="text-sm leading-6 text-[var(--text)] italic select-text cursor-text">
-                  {rawText}
-                </p>
-              </HistoryDetailSection>
-            )}
+          {rawText !== displayText && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.text", {
+                defaultValue: "Transcribed text",
+              })}
+              icon={<Type className="h-3.5 w-3.5" />}
+            >
+              <p className="text-sm leading-6 text-[var(--text)] italic select-text cursor-text">
+                {rawText}
+              </p>
+            </HistoryDetailSection>
+          )}
 
-            {postProcessApplied && polishedText !== displayText && (
-              <HistoryDetailSection
-                title={t("settings.history.sections.postProcess", {
-                  defaultValue: "Post process",
-                })}
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-              >
-                <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                  {polishedText}
-                </p>
-              </HistoryDetailSection>
-            )}
+          {postProcessApplied && polishedText !== displayText && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.postProcess", {
+                defaultValue: "Post process",
+              })}
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+            >
+              <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
+                {polishedText}
+              </p>
+            </HistoryDetailSection>
+          )}
 
-            {dictionaryApplied && (
-              <HistoryDetailSection
-                title={t("settings.history.sections.dictionary", {
-                  defaultValue: "Dictionary",
-                })}
-                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-              >
-                <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                  {entry.dictionary_hits.join(", ")}
-                </p>
-              </HistoryDetailSection>
-            )}
+          {dictionaryApplied && (
+            <HistoryDetailSection
+              title={t("settings.history.sections.dictionary", {
+                defaultValue: "Dictionary",
+              })}
+              icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            >
+              <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
+                {entry.dictionary_hits.join(", ")}
+              </p>
+            </HistoryDetailSection>
+          )}
 
-            {fieldCheckChanged && observedText && (
-              <HistoryDetailSection
-                title={t("settings.history.fieldObservation.title", {
-                  defaultValue: "Text field check",
-                })}
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-              >
-                <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                  <span
-                    className="min-w-0 max-w-[45%] break-words font-mono"
-                    title={pastedText}
-                  >
-                    {pastedText}
-                  </span>
-                  <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
-                  <span
-                    className="min-w-0 flex-1 break-words font-mono"
-                    title={observedText}
-                  >
-                    {observedText}
-                  </span>
-                </div>
-              </HistoryDetailSection>
-            )}
+          {fieldCheckChanged && observedText && (
+            <HistoryDetailSection
+              title={t("settings.history.fieldObservation.title", {
+                defaultValue: "Text field check",
+              })}
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+            >
+              <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
+                <span
+                  className="min-w-0 max-w-[45%] break-words font-mono"
+                  title={pastedText}
+                >
+                  {pastedText}
+                </span>
+                <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
+                <span
+                  className="min-w-0 flex-1 break-words font-mono"
+                  title={observedText}
+                >
+                  {observedText}
+                </span>
+              </div>
+            </HistoryDetailSection>
+          )}
         </div>
       )}
     </div>

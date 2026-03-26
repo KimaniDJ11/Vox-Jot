@@ -54,7 +54,9 @@ export const DebugSettings: React.FC = () => {
       setRouteResult(result);
     } catch (error) {
       setRouteError(
-        error instanceof Error ? error.message : t("settings.debug.routeDebugger.analysisFailed"),
+        error instanceof Error
+          ? error.message
+          : t("settings.debug.routeDebugger.analysisFailed"),
       );
       setRouteResult(null);
     } finally {
@@ -106,16 +108,25 @@ export const DebugSettings: React.FC = () => {
               disabled={routeLoading}
               data-testid="route-debugger-analyze"
             >
-              {routeLoading ? t("settings.debug.routeDebugger.analyzing") : t("settings.debug.routeDebugger.analyzeRoute")}
+              {routeLoading
+                ? t("settings.debug.routeDebugger.analyzing")
+                : t("settings.debug.routeDebugger.analyzeRoute")}
             </Button>
             {routeResult && (
-              <span className="text-sm text-[var(--muted)]" data-testid="route-debugger-result">
+              <span
+                className="text-sm text-[var(--muted)]"
+                data-testid="route-debugger-result"
+              >
                 {t("settings.debug.routeDebugger.routeLabel")}{" "}
-                <strong className="text-[var(--accent)]">{routeResult.route}</strong>
+                <strong className="text-[var(--accent)]">
+                  {routeResult.route}
+                </strong>
               </span>
             )}
           </div>
-          {routeError && <p className="text-sm text-[var(--danger)]">{routeError}</p>}
+          {routeError && (
+            <p className="text-sm text-[var(--danger)]">{routeError}</p>
+          )}
           {routeResult && (
             <div
               className="rounded-md border border-mid-gray/25 bg-background px-3 py-3 text-xs text-[var(--text)]"
@@ -123,31 +134,65 @@ export const DebugSettings: React.FC = () => {
             >
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.words")}</p>
-                  <p className="text-sm font-semibold text-text">{routeResult.word_count}</p>
-                </div>
-                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.score")}</p>
-                  <p className="text-sm font-semibold text-text">{routeResult.score}</p>
-                </div>
-                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.route")}</p>
-                  <p className="text-sm font-semibold text-[var(--accent)]">{routeResult.route}</p>
-                </div>
-                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
-                  <p className="text-xs uppercase text-[var(--muted)]">{t("settings.debug.routeDebugger.incomplete")}</p>
+                  <p className="text-xs uppercase text-[var(--muted)]">
+                    {t("settings.debug.routeDebugger.words")}
+                  </p>
                   <p className="text-sm font-semibold text-text">
-                    {routeResult.looks_incomplete ? t("common.yes") : t("common.no")}
+                    {routeResult.word_count}
+                  </p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-xs uppercase text-[var(--muted)]">
+                    {t("settings.debug.routeDebugger.score")}
+                  </p>
+                  <p className="text-sm font-semibold text-text">
+                    {routeResult.score}
+                  </p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-xs uppercase text-[var(--muted)]">
+                    {t("settings.debug.routeDebugger.route")}
+                  </p>
+                  <p className="text-sm font-semibold text-[var(--accent)]">
+                    {routeResult.route}
+                  </p>
+                </div>
+                <div className="rounded-md border border-mid-gray/25 px-2 py-1">
+                  <p className="text-xs uppercase text-[var(--muted)]">
+                    {t("settings.debug.routeDebugger.incomplete")}
+                  </p>
+                  <p className="text-sm font-semibold text-text">
+                    {routeResult.looks_incomplete
+                      ? t("common.yes")
+                      : t("common.no")}
                   </p>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                <p>{t("settings.debug.routeDebugger.hasCorrectionCue")} {String(routeResult.has_correction_cue)}</p>
-                <p>{t("settings.debug.routeDebugger.hasListCue")} {String(routeResult.has_list_cue)}</p>
-                <p>{t("settings.debug.routeDebugger.hasParagraphCue")} {String(routeResult.has_paragraph_cue)}</p>
-                <p>{t("settings.debug.routeDebugger.hasTransformCue")} {String(routeResult.has_transform_cue)}</p>
-                <p>{t("settings.debug.routeDebugger.hasTechnicalTokens")} {String(routeResult.has_technical_tokens)}</p>
-                <p>{t("settings.debug.routeDebugger.looksIncomplete")} {String(routeResult.looks_incomplete)}</p>
+                <p>
+                  {t("settings.debug.routeDebugger.hasCorrectionCue")}{" "}
+                  {String(routeResult.has_correction_cue)}
+                </p>
+                <p>
+                  {t("settings.debug.routeDebugger.hasListCue")}{" "}
+                  {String(routeResult.has_list_cue)}
+                </p>
+                <p>
+                  {t("settings.debug.routeDebugger.hasParagraphCue")}{" "}
+                  {String(routeResult.has_paragraph_cue)}
+                </p>
+                <p>
+                  {t("settings.debug.routeDebugger.hasTransformCue")}{" "}
+                  {String(routeResult.has_transform_cue)}
+                </p>
+                <p>
+                  {t("settings.debug.routeDebugger.hasTechnicalTokens")}{" "}
+                  {String(routeResult.has_technical_tokens)}
+                </p>
+                <p>
+                  {t("settings.debug.routeDebugger.looksIncomplete")}{" "}
+                  {String(routeResult.looks_incomplete)}
+                </p>
               </div>
             </div>
           )}

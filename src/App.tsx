@@ -1,5 +1,4 @@
 import React, {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -57,8 +56,11 @@ import {
   GeneralAppSettingsSection,
   JotPadSection,
   ListenAutoReadbackSection,
-  ListenPlaybackDeviceSection,
-  ListenVoiceEngineSection,
+  ListenEngineLibrarySection,
+  ListenMyVoicesSection,
+  ListenOutputSection,
+  ListenVoiceCloningSection,
+  ListenSoundTuningSection,
   OutputPasteSettingsSection,
   PrivacyStorageSettingsSection,
   RefineProfilesSection,
@@ -89,67 +91,22 @@ type ViewSection = SidebarItem & {
 
 const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
 
-const AppContentSection = React.forwardRef<
-  HTMLElement,
-  {
-    id: string;
-    title: string;
-    children: React.ReactNode;
-  }
->(({ id, title, children }, ref) => (
-  <section
-    id={id}
-    ref={ref}
-    className="scroll-mt-24 space-y-5 border-b border-[var(--border)]/80 pb-8 last:border-b-0 last:pb-0"
-  >
-    <div className="px-1">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-[var(--text)]">
-          {title}
-        </h2>
-        <div
-          id={`${id}-section-actions`}
-          className="app-no-drag flex shrink-0 items-center gap-1"
-        />
-      </div>
+const SectionHeader: React.FC<{ id: string; title: string }> = ({
+  id,
+  title,
+}) => (
+  <div className="px-1">
+    <div className="flex items-center justify-between gap-4">
+      <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-[var(--text)]">
+        {title}
+      </h2>
+      <div
+        id={`${id}-section-actions`}
+        className="app-no-drag flex shrink-0 items-center gap-1"
+      />
     </div>
-    {children}
-  </section>
-));
-
-AppContentSection.displayName = "AppContentSection";
-
-const DeferredSectionBody: React.FC<{
-  immediate?: boolean;
-  children: React.ReactNode;
-}> = ({ immediate = false, children }) => {
-  const [ready, setReady] = useState(immediate);
-
-  useEffect(() => {
-    if (ready) return;
-
-    if (immediate) {
-      setReady(true);
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setReady(true);
-    }, 40);
-
-    return () => window.clearTimeout(timer);
-  }, [immediate, ready]);
-
-  if (ready) {
-    return <>{children}</>;
-  }
-
-  return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-6 text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
-      Loading section...
-    </div>
-  );
-};
+  </div>
+);
 
 const PrimaryModeSwitcher: React.FC<{
   activeMode: PrimaryMode;
@@ -209,10 +166,14 @@ function App() {
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [activeMode, setActiveMode] = useState<PrimaryMode>("dictate");
   const [activeRootView, setActiveRootView] = useState<RootView>("dictate");
-  const [activeSectionId, setActiveSectionId] = useState("");
-  const [pendingSectionJump, setPendingSectionJump] = useState<string | null>(
-    null,
-  );
+  const [activeSectionId, setActiveSectionId] = useState("history");
+  const lastSectionByView = useRef<Partial<Record<RootView, string>>>({
+    dictate: "history",
+  });
+  const activeRootViewRef = useRef<RootView>(activeRootView);
+  activeRootViewRef.current = activeRootView;
+  const activeSectionIdRef = useRef(activeSectionId);
+  activeSectionIdRef.current = activeSectionId;
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
@@ -228,9 +189,6 @@ function App() {
   const { settings, updateSetting } = useSettings();
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
-  const contentScrollRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
-  const lastAlignedRootViewRef = useRef<RootView | null>(null);
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
   );
@@ -247,34 +205,21 @@ function App() {
     }
   }, []);
 
-  const handleSectionJump = useCallback(
-    (sectionId: string, behavior: ScrollBehavior = "smooth") => {
-      setActiveSectionId(sectionId);
-      const container = contentScrollRef.current;
-      const node = sectionRefs.current[sectionId];
-      if (!container || !node) {
-        return;
-      }
-      const top = Math.max(node.offsetTop - 20, 0);
-      container.scrollTo({ top, behavior });
-    },
-    [],
-  );
+  const handleSectionJump = useCallback((sectionId: string) => {
+    setActiveSectionId(sectionId);
+    lastSectionByView.current[activeRootViewRef.current] = sectionId;
+  }, []);
 
   const handleWorkflowSectionNavigate = useCallback(
     (mode: PrimaryMode, sectionId: string) => {
-      if (activeRootView === mode) {
-        handleSectionJump(sectionId);
-        return;
-      }
-
+      lastSectionByView.current[activeRootViewRef.current] =
+        activeSectionIdRef.current;
       setActiveMode(mode);
-      setPendingSectionJump(sectionId);
-      startTransition(() => {
-        setActiveRootView(mode);
-      });
+      setActiveRootView(mode);
+      setActiveSectionId(sectionId);
+      lastSectionByView.current[mode] = sectionId;
     },
-    [activeRootView, handleSectionJump],
+    [],
   );
 
   const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
@@ -282,16 +227,16 @@ function App() {
       dictate: [
         {
           id: "history",
-          label: "History",
+          label: "Recent History",
           icon: History,
-          title: "History",
+          title: "Recent History",
           content: <DictateHistorySection />,
         },
         {
           id: "corrections",
-          label: "Dictionary",
+          label: "Corrections",
           icon: SpellCheck,
-          title: "Dictionary",
+          title: "Corrections",
           content: <CorrectionsSection />,
         },
         {
@@ -303,10 +248,12 @@ function App() {
         },
         {
           id: "models",
-          label: "Models",
+          label: "Speech Models",
           icon: Cpu,
-          title: "Models",
-          content: <DictateModelsSection titleActionTargetId="models-section-actions" />,
+          title: "Speech Models",
+          content: (
+            <DictateModelsSection titleActionTargetId="models-section-actions" />
+          ),
         },
       ],
       refine: [
@@ -333,45 +280,66 @@ function App() {
         },
         {
           id: "models",
-          label: "Models",
+          label: "Refine Models",
           icon: Cpu,
-          title: "Models",
+          title: "Refine Models",
           content: <RefineModelsSection />,
         },
       ],
       listen: [
         {
-          id: "voice-engine",
-          label: "Voice & Engine",
+          id: "my-voices",
+          label: "My Voices",
           icon: Volume2,
-          title: "Voice & Engine",
+          title: "My Voices",
+          content: <ListenMyVoicesSection />,
+        },
+        {
+          id: "sound-tuning",
+          label: "Sound & Tuning",
+          icon: SlidersHorizontal,
+          title: "Sound & Tuning",
+          content: <ListenSoundTuningSection />,
+        },
+        {
+          id: "engine-library",
+          label: "Engine Library",
+          icon: Cpu,
+          title: "Engine Library",
           content: (
-            <ListenVoiceEngineSection
+            <ListenEngineLibrarySection
               onNavigateToSection={handleWorkflowSectionNavigate}
             />
           ),
         },
         {
+          id: "voice-cloning",
+          label: "Voice Cloning",
+          icon: WandSparkles,
+          title: "Voice Cloning",
+          content: <ListenVoiceCloningSection />,
+        },
+        {
           id: "auto-readback",
-          label: "Auto Readback",
+          label: "Auto-Readback",
           icon: Play,
-          title: "Auto Readback",
+          title: "Auto-Readback",
           content: <ListenAutoReadbackSection />,
         },
         {
-          id: "playback-device",
-          label: "Playback Device",
-          icon: SlidersHorizontal,
-          title: "Playback Device",
-          content: <ListenPlaybackDeviceSection />,
+          id: "output",
+          label: "Output",
+          icon: Volume2,
+          title: "Output",
+          content: <ListenOutputSection />,
         },
       ],
       settings: [
         {
           id: "general",
-          label: "General",
+          label: "App & Dictation",
           icon: AppWindow,
-          title: "General",
+          title: "App & Dictation",
           content: <GeneralAppSettingsSection />,
         },
         {
@@ -397,16 +365,16 @@ function App() {
         },
         {
           id: "ai-setup",
-          label: "AI Setup",
+          label: "Models & AI",
           icon: Cpu,
-          title: "AI Setup",
+          title: "Models & AI",
           content: <AISetupSettingsSection />,
         },
         {
           id: "corrections",
-          label: "Dictionary",
+          label: "Corrections",
           icon: SpellCheck,
-          title: "Dictionary",
+          title: "Corrections",
           content: <CorrectionsSection />,
         },
         {
@@ -425,9 +393,9 @@ function App() {
         },
         {
           id: "about",
-          label: "About",
+          label: "About Vox Jot",
           icon: Info,
-          title: "About",
+          title: "About Vox Jot",
           content: <AboutSection />,
         },
       ],
@@ -577,66 +545,6 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const firstSectionId = activeSections[0]?.id || "";
-    const hasPendingSectionJump = Boolean(
-      pendingSectionJump &&
-        activeSections.some((section) => section.id === pendingSectionJump),
-    );
-    const rootViewChanged = lastAlignedRootViewRef.current !== activeRootView;
-
-    if (!hasPendingSectionJump && !rootViewChanged) {
-      return;
-    }
-
-    const nextSectionId = hasPendingSectionJump
-      ? (pendingSectionJump as string)
-      : firstSectionId;
-
-    setActiveSectionId(nextSectionId);
-
-    requestAnimationFrame(() => {
-      const container = contentScrollRef.current;
-      const node = sectionRefs.current[nextSectionId];
-      if (container && node) {
-        const top = Math.max(node.offsetTop - 20, 0);
-        container.scrollTo({ top, behavior: "auto" });
-      } else {
-        container?.scrollTo({ top: 0, behavior: "auto" });
-      }
-    });
-
-    lastAlignedRootViewRef.current = activeRootView;
-    if (pendingSectionJump !== null) {
-      setPendingSectionJump(null);
-    }
-  }, [activeRootView, activeSections, pendingSectionJump]);
-
-  useEffect(() => {
-    const container = contentScrollRef.current;
-    if (!container) {
-      return;
-    }
-
-    const syncActiveSection = () => {
-      const threshold = container.scrollTop + 120;
-      let current = activeSections[0]?.id || "";
-
-      for (const section of activeSections) {
-        const node = sectionRefs.current[section.id];
-        if (node && node.offsetTop <= threshold) {
-          current = section.id;
-        }
-      }
-
-      setActiveSectionId((prev) => (prev === current ? prev : current));
-    };
-
-    syncActiveSection();
-    container.addEventListener("scroll", syncActiveSection);
-    return () => container.removeEventListener("scroll", syncActiveSection);
-  }, [activeSections]);
-
   const handleModalKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === "Escape") {
       void resolvePreview(false);
@@ -722,14 +630,14 @@ function App() {
     const result = await commands.ttsSpeak(
       previewDraft,
       previewSpeakLocale,
-      settings?.tts_default_voice_id ?? null,
+      null,
       "preview_modal",
       false,
     );
     if (result.status !== "ok") {
       toast.error(result.error);
     }
-  }, [previewDraft, previewSpeakLocale, settings?.tts_default_voice_id]);
+  }, [previewDraft, previewSpeakLocale]);
 
   const handlePreviewStop = useCallback(async () => {
     const result = await commands.ttsStop();
@@ -742,7 +650,10 @@ function App() {
     try {
       await commands.showMainWindowCommand();
     } catch (error) {
-      console.warn("Failed to show main window for permission onboarding:", error);
+      console.warn(
+        "Failed to show main window for permission onboarding:",
+        error,
+      );
     }
   };
 
@@ -786,7 +697,10 @@ function App() {
               return;
             }
           } catch (error) {
-            console.warn("Failed to check Windows microphone permissions:", error);
+            console.warn(
+              "Failed to check Windows microphone permissions:",
+              error,
+            );
           }
         }
 
@@ -805,27 +719,44 @@ function App() {
     setOnboardingStep("done");
   };
 
+  const sectionsByViewRef = useRef(sectionsByView);
+  sectionsByViewRef.current = sectionsByView;
+
   const handleModeSelect = useCallback((mode: PrimaryMode) => {
+    lastSectionByView.current[activeRootViewRef.current] =
+      activeSectionIdRef.current;
     setActiveMode(mode);
-    setPendingSectionJump(null);
-    startTransition(() => {
-      setActiveRootView(mode);
-    });
+    setActiveRootView(mode);
+    setActiveSectionId(
+      lastSectionByView.current[mode] ||
+        sectionsByViewRef.current[mode][0]?.id ||
+        "",
+    );
   }, []);
 
   const handleSettingsOpen = useCallback(() => {
-    setPendingSectionJump(null);
-    startTransition(() => {
-      setActiveRootView("settings");
-    });
+    lastSectionByView.current[activeRootViewRef.current] =
+      activeSectionIdRef.current;
+    setActiveRootView("settings");
+    setActiveSectionId(
+      lastSectionByView.current.settings ||
+        sectionsByViewRef.current.settings[0]?.id ||
+        "",
+    );
   }, []);
 
-  const setSectionRef = useCallback(
-    (sectionId: string) => (node: HTMLElement | null) => {
-      sectionRefs.current[sectionId] = node;
-    },
-    [],
-  );
+  // Resolve the currently active section to render
+  const activeSection = useMemo(() => {
+    const match = activeSections.find((s) => s.id === activeSectionId);
+    return match ?? activeSections[0];
+  }, [activeSections, activeSectionId]);
+
+  // Keep activeSectionId in sync if it drifts (e.g. section removed)
+  useEffect(() => {
+    if (activeSection && activeSection.id !== activeSectionId) {
+      setActiveSectionId(activeSection.id);
+    }
+  }, [activeSection, activeSectionId]);
 
   if (onboardingStep === null) {
     return (
@@ -961,24 +892,23 @@ function App() {
       />
 
       <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
-        <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 md:p-8">
             <AccessibilityPermissions />
 
-            {activeSections.map((section, index) => (
-              <AppContentSection
-                key={section.id}
-                id={section.id}
-                ref={setSectionRef(section.id)}
-                title={section.title}
+            {activeSection && (
+              <section
+                key={activeSection.id}
+                id={activeSection.id}
+                className="space-y-5"
               >
-                <DeferredSectionBody
-                  immediate={index === 0 || activeSectionId === section.id}
-                >
-                  {section.content}
-                </DeferredSectionBody>
-              </AppContentSection>
-            ))}
+                <SectionHeader
+                  id={activeSection.id}
+                  title={activeSection.title}
+                />
+                {activeSection.content}
+              </section>
+            )}
           </div>
         </div>
 
@@ -1001,12 +931,23 @@ function App() {
               <div>
                 <h2 className="text-lg font-bold">
                   {pendingPreview.origin?.startsWith("translation")
-                    ? "Review Translation"
+                    ? t(
+                        "settings.postProcessing.preview.modal.translationTitle",
+                        {
+                          defaultValue: "Review Translation",
+                        },
+                      )
                     : t("settings.postProcessing.preview.modal.title")}
                 </h2>
                 <p className="text-sm text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {pendingPreview.origin?.startsWith("translation")
-                    ? "Confirm the translated text before Vox Jot pastes or routes it."
+                    ? t(
+                        "settings.postProcessing.preview.modal.translationDescription",
+                        {
+                          defaultValue:
+                            "Confirm the translated text before Vox Jot pastes or routes it.",
+                        },
+                      )
                     : t("settings.postProcessing.preview.modal.description")}
                 </p>
               </div>
@@ -1019,7 +960,7 @@ function App() {
                   className="inline-flex items-center gap-1"
                 >
                   <Play className="h-3.5 w-3.5" />
-                  Play
+                  {t("common.play", { defaultValue: "Play" })}
                 </Button>
                 <Button
                   type="button"
@@ -1029,7 +970,7 @@ function App() {
                   className="inline-flex items-center gap-1"
                 >
                   <Square className="h-3.5 w-3.5" />
-                  Stop
+                  {t("common.stop", { defaultValue: "Stop" })}
                 </Button>
               </div>
             </div>
@@ -1045,7 +986,10 @@ function App() {
               {pendingPreview.translated_text && (
                 <div className="space-y-1">
                   <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
-                    Translated
+                    {t(
+                      "settings.postProcessing.preview.modal.translatedLabel",
+                      { defaultValue: "Translated" },
+                    )}
                   </div>
                   <Textarea value={pendingPreview.translated_text} readOnly />
                 </div>
@@ -1054,7 +998,10 @@ function App() {
               <div className="space-y-1">
                 <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
                   {pendingPreview.origin?.startsWith("translation")
-                    ? "Final output"
+                    ? t(
+                        "settings.postProcessing.preview.modal.finalOutputLabel",
+                        { defaultValue: "Final output" },
+                      )
                     : t("settings.postProcessing.preview.modal.editedLabel")}
                 </div>
                 <Textarea
@@ -1065,8 +1012,10 @@ function App() {
 
               {pendingPreview.destination_label && (
                 <div className="text-xs font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--color-text),transparent_45%)]">
-                  Destination:{" "}
-                  {pendingPreview.destination_label.replace(/_/g, " ")}
+                  {`${t(
+                    "settings.postProcessing.preview.modal.destinationPrefix",
+                    { defaultValue: "Destination" },
+                  )}: ${pendingPreview.destination_label.replace(/_/g, " ")}`}
                 </div>
               )}
             </div>

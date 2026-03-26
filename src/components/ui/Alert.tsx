@@ -16,22 +16,26 @@ const variantStyles: Record<
   { container: string; icon: string; text: string }
 > = {
   error: {
-    container: "border border-[color-mix(in_srgb,var(--danger),transparent_75%)] bg-[var(--danger-soft)]",
+    container:
+      "border border-[color-mix(in_srgb,var(--danger),transparent_75%)] bg-[var(--danger-soft)]",
     icon: "text-[var(--danger)]",
     text: "text-[var(--danger)]",
   },
   warning: {
-    container: "border border-[color-mix(in_srgb,var(--warning),transparent_72%)] bg-[var(--warning-soft)]",
+    container:
+      "border border-[color-mix(in_srgb,var(--warning),transparent_72%)] bg-[var(--warning-soft)]",
     icon: "text-[var(--warning)]",
     text: "text-[var(--warning)]",
   },
   info: {
-    container: "border border-[color-mix(in_srgb,var(--info),transparent_74%)] bg-[var(--info-soft)]",
+    container:
+      "border border-[color-mix(in_srgb,var(--info),transparent_74%)] bg-[var(--info-soft)]",
     icon: "text-[var(--info)]",
     text: "text-[var(--info)]",
   },
   success: {
-    container: "border border-[color-mix(in_srgb,var(--success),transparent_74%)] bg-[var(--success-soft)]",
+    container:
+      "border border-[color-mix(in_srgb,var(--success),transparent_74%)] bg-[var(--success-soft)]",
     icon: "text-[var(--success)]",
     text: "text-[var(--success)]",
   },

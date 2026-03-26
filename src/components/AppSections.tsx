@@ -4,8 +4,6 @@ import { listen } from "@tauri-apps/api/event";
 import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
 
 import { commands, type Note } from "@/bindings";
-import { CappedSection } from "@/components/ui/CappedSection";
-import { ShowMoreFooter } from "@/components/ui/ShowMoreFooter";
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -59,10 +57,13 @@ import { CorrectionSettings } from "@/components/settings/corrections/Correction
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
 import {
-  SpeechAutoReadbackSettingsCard,
+  SpeechAutomationSettingsCard,
+  SpeechVoicePresetsSection,
+  SpeechVoiceStyleSection,
+  SpeechModelLibrarySection,
   SpeechPlaybackDeviceSettingsCard,
-  SpeechVoiceEngineSettingsCard,
-} from "@/components/settings/general/SpeechOutputSettingsCard";
+  SpeechVoiceCloningSection,
+} from "@/components/settings/general/ListenVoiceSettings";
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
 import OllamaSettings from "@/components/settings/ollama/OllamaSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
@@ -73,15 +74,32 @@ import UpdateChecker from "@/components/update-checker";
 
 const subtleCardClassName =
   "rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-4 shadow-[var(--shadow-sm)]";
+const jotPadEmptyTitle = "Start your first note";
+const jotPadEmptyDescription =
+  "Dictate or type into the Jot Pad to keep thoughts handy.";
+const createNoteLabel = "Create note";
+const saveLabel = "Save";
+const useDefaultsLabel = "Use Defaults";
+const appleIntelligenceModelNotice =
+  "Apple Intelligence does not need a separate model override here.";
+const saveModelLabel = "Save Model";
+const localPrivacyModeNotice =
+  "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.";
+const debugRevealNotice =
+  "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.";
+const routeDebuggerEmptyInput = "Enter some text to inspect.";
+const routeDebuggerFailed = "Analysis failed.";
+const analyzeRouteLabel = "Analyze Route";
+const analyzingRouteLabel = "Analyzing...";
+const aboutSummaryPrimary =
+  "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
+const aboutSummarySecondary =
+  "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.";
 
 type WorkflowMode = "dictate" | "refine" | "listen";
 
 type WorkflowSectionProps = {
   onNavigateToSection: (mode: WorkflowMode, sectionId: string) => void;
-};
-
-type ExpandableSectionProps = {
-  capped?: boolean;
 };
 
 const WorkflowLinkCard: React.FC<{
@@ -114,50 +132,21 @@ const WorkflowLinkCard: React.FC<{
   );
 };
 
-export const DictateModelsSection: React.FC<
-  ExpandableSectionProps & { titleActionTargetId?: string }
-> = ({
-  capped = true,
-  titleActionTargetId,
-}) => {
+export const DictateModelsSection: React.FC<{
+  titleActionTargetId?: string;
+}> = ({ titleActionTargetId }) => {
   return (
     <div className="space-y-6">
-      {capped ? (
-        <CappedSection
-          section="stt-models"
-          showMoreLabel="Show all models"
-          maxHeight={520}
-        >
-          <ModelsSettings titleActionTargetId={titleActionTargetId} />
-        </CappedSection>
-      ) : (
-        <ModelsSettings titleActionTargetId={titleActionTargetId} />
-      )}
+      <ModelsSettings titleActionTargetId={titleActionTargetId} />
     </div>
   );
 };
 
-export const DictateHistorySection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
-  const content = (
+export const DictateHistorySection: React.FC = () => {
+  return (
     <div className="space-y-6">
       <HistorySettings />
     </div>
-  );
-
-  if (!capped) {
-    return content;
-  }
-
-  return (
-    <CappedSection
-      section="history"
-      showMoreLabel="Show all history"
-      maxHeight={520}
-    >
-      {content}
-    </CappedSection>
   );
 };
 
@@ -184,64 +173,22 @@ export const RefineTranslationSection: React.FC = () => {
   );
 };
 
-export const RefinePhraseKeysSection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
-  if (!capped) {
-    return (
-      <SnippetSettings
-        showEnabledToggle={false}
-        titleActionTargetId="phrase-keys-section-actions"
-      />
-    );
-  }
-
+export const RefinePhraseKeysSection: React.FC = () => {
   return (
-    <CappedSection
-      section="phrase-keys"
-      showMoreLabel="Show all phrase keys"
-      maxHeight={520}
-    >
-      <SnippetSettings
-        showEnabledToggle={false}
-        titleActionTargetId="phrase-keys-section-actions"
-      />
-    </CappedSection>
+    <SnippetSettings
+      showEnabledToggle={false}
+      titleActionTargetId="phrase-keys-section-actions"
+    />
   );
 };
 
-export const RefineProfilesSection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
-  if (!capped) {
-    return (
-      <div className="space-y-6">
-        <StylesSettings
-          showEnabledToggle={false}
-          titleActionTargetId="write-profiles-section-actions"
-        />
-      </div>
-    );
-  }
-
+export const RefineProfilesSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      {/* Tone profile cards – always visible */}
       <StylesSettings
         showEnabledToggle={false}
-        visibleSections="profiles-only"
+        titleActionTargetId="write-profiles-section-actions"
       />
-      {/* App mappings – capped preview */}
-      <CappedSection
-        section="app-mappings"
-        showMoreLabel="Show all app mappings"
-        maxHeight={280}
-      >
-        <StylesSettings
-          showEnabledToggle={false}
-          visibleSections="mappings-only"
-        />
-      </CappedSection>
     </div>
   );
 };
@@ -257,42 +204,16 @@ export const AppMappingsSection: React.FC = () => {
   );
 };
 
-export const RefineModelsSection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
+export const RefineModelsSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      {capped ? (
-        <CappedSection
-          section="llm-models"
-          showMoreLabel="Show all refine models"
-          maxHeight={520}
-        >
-          <OllamaSettings />
-        </CappedSection>
-      ) : (
-        <OllamaSettings />
-      )}
+      <OllamaSettings />
     </div>
   );
 };
 
-export const CorrectionsSection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
-  if (!capped) {
-    return <CorrectionSettings showTrackingToggle={false} />;
-  }
-
-  return (
-    <CappedSection
-      section="learned-corrections"
-      showMoreLabel="Show all learned corrections"
-      maxHeight={800}
-    >
-      <CorrectionSettings showTrackingToggle={false} />
-    </CappedSection>
-  );
+export const CorrectionsSection: React.FC = () => {
+  return <CorrectionSettings showTrackingToggle={false} />;
 };
 
 export const LearnedCorrectionsSection: React.FC<{
@@ -309,15 +230,28 @@ export const LearnedCorrectionsSection: React.FC<{
   );
 };
 
-export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
+export const ListenMyVoicesSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <SpeechVoicePresetsSection showGroupTitle={false} />
+    </div>
+  );
+};
+
+export const ListenSoundTuningSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <SpeechVoiceStyleSection showGroupTitle={false} />
+    </div>
+  );
+};
+
+export const ListenEngineLibrarySection: React.FC<WorkflowSectionProps> = ({
   onNavigateToSection,
 }) => {
   return (
     <div className="space-y-6">
-      <SpeechVoiceEngineSettingsCard
-        showEnabledToggle={false}
-        showGroupTitle={false}
-      />
+      <SpeechModelLibrarySection showGroupTitle={false} />
 
       <WorkflowLinkCard
         eyebrow="Need Past Sessions?"
@@ -330,24 +264,29 @@ export const ListenVoiceEngineSection: React.FC<WorkflowSectionProps> = ({
   );
 };
 
-export const ListenAutoReadbackSection: React.FC = () => {
+export const ListenVoiceCloningSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechAutoReadbackSettingsCard showGroupTitle={false} />
+      <SpeechVoiceCloningSection showGroupTitle={false} />
     </div>
   );
 };
 
-export const ListenPlaybackDeviceSection: React.FC = () => {
+export const ListenAutoReadbackSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <SpeechAutomationSettingsCard showGroupTitle={false} />
+    </div>
+  );
+};
+
+export const ListenOutputSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <SpeechPlaybackDeviceSettingsCard showGroupTitle={false} />
     </div>
   );
 };
-
-/** Max notes shown inline before "Show more" appears. */
-const JOTPAD_INLINE_CAP = 5;
 
 const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
   note,
@@ -390,9 +329,7 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
   );
 };
 
-export const JotPadSection: React.FC<ExpandableSectionProps> = ({
-  capped = true,
-}) => {
+export const JotPadSection: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -449,13 +386,8 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
     });
   }, [notes]);
 
-  const visibleNoteCount = capped ? JOTPAD_INLINE_CAP : sortedNotes.length;
-  const visibleNotes = sortedNotes.slice(0, visibleNoteCount);
-  const showAllJotPad = capped && notes.length > 0;
-
   return (
     <div className="space-y-4">
-      {/* Notes list */}
       {isLoading ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
           Loading notes...
@@ -464,10 +396,10 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center shadow-[var(--shadow-sm)]">
           <NotebookPen className="mx-auto h-8 w-8 text-[var(--muted)] opacity-50" />
           <p className="mt-3 text-sm font-medium text-[var(--text)]">
-            Start your first note
+            {jotPadEmptyTitle}
           </p>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Dictate or type into the Jot Pad to keep thoughts handy.
+            {jotPadEmptyDescription}
           </p>
           <Button
             size="sm"
@@ -476,12 +408,12 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
             onClick={() => void createNote()}
           >
             <Plus className="mr-1 h-4 w-4" />
-            Create note
+            {createNoteLabel}
           </Button>
         </div>
       ) : (
         <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
-          {visibleNotes.map((note) => (
+          {sortedNotes.map((note) => (
             <NoteRow
               key={note.id}
               note={note}
@@ -489,13 +421,6 @@ export const JotPadSection: React.FC<ExpandableSectionProps> = ({
             />
           ))}
         </div>
-      )}
-
-      {showAllJotPad && (
-        <ShowMoreFooter
-          label="Show all Jot Pad"
-          onClick={() => void openNoteInJotPad()}
-        />
       )}
     </div>
   );
@@ -593,7 +518,7 @@ const CustomFillerWordsSetting: React.FC = () => {
             onClick={() => void saveDraft()}
             disabled={isUpdating("custom_filler_words")}
           >
-            Save
+            {saveLabel}
           </Button>
           <Button
             size="sm"
@@ -601,7 +526,7 @@ const CustomFillerWordsSetting: React.FC = () => {
             onClick={() => void updateSetting("custom_filler_words", null)}
             disabled={isUpdating("custom_filler_words")}
           >
-            Use Defaults
+            {useDefaultsLabel}
           </Button>
         </div>
       </div>
@@ -723,7 +648,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
         >
           {providerId === "apple_intelligence" ? (
             <p className="text-sm text-[var(--muted)]">
-              Apple Intelligence does not need a separate model override here.
+              {appleIntelligenceModelNotice}
             </p>
           ) : (
             <div className="space-y-3">
@@ -748,7 +673,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
                   placeholder="Type a custom translation model id"
                 />
                 <Button size="sm" onClick={() => void saveModel()}>
-                  Save Model
+                  {saveModelLabel}
                 </Button>
               </div>
             </div>
@@ -809,10 +734,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       {localPrivacyMode && (
-        <Alert variant="info">
-          Local Privacy Mode is active. Vox Jot will prefer local cleanup and
-          translation providers.
-        </Alert>
+        <Alert variant="info">{localPrivacyModeNotice}</Alert>
       )}
     </div>
   );
@@ -840,10 +762,7 @@ export const DiagnosticsSettingsSection: React.FC = () => {
       {debugMode ? (
         <DebugDiagnosticsPanel />
       ) : (
-        <Alert variant="info">
-          Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you
-          need them.
-        </Alert>
+        <Alert variant="info">{debugRevealNotice}</Alert>
       )}
     </div>
   );
@@ -860,7 +779,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
 
   const analyzeRoute = async () => {
     if (!routeInput.trim()) {
-      setRouteError("Enter some text to inspect.");
+      setRouteError(routeDebuggerEmptyInput);
       setRouteResult(null);
       return;
     }
@@ -877,7 +796,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
       }
     } catch (error) {
       setRouteError(
-        error instanceof Error ? error.message : "Analysis failed.",
+        error instanceof Error ? error.message : routeDebuggerFailed,
       );
     } finally {
       setRouteLoading(false);
@@ -895,7 +814,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
         />
         <div className="flex gap-2">
           <Button onClick={() => void analyzeRoute()} disabled={routeLoading}>
-            {routeLoading ? "Analyzing..." : "Analyze Route"}
+            {routeLoading ? analyzingRouteLabel : analyzeRouteLabel}
           </Button>
         </div>
         {routeError && <Alert variant="error">{routeError}</Alert>}
@@ -926,7 +845,7 @@ export const AboutSection: React.FC = () => {
           description="Current installed app version."
           grouped={true}
         >
-          <span className="font-mono text-sm">v{version}</span>
+          <span className="font-mono text-sm">{`v${version}`}</span>
         </SettingContainer>
         <SettingContainer
           title="Updates"
@@ -939,15 +858,8 @@ export const AboutSection: React.FC = () => {
 
       <SettingsGroup title="Acknowledgments">
         <div className="space-y-3 px-5 py-4 text-sm leading-6 text-[var(--muted)]">
-          <p>
-            Vox Jot is built around local speech recognition, translation, and
-            playback tooling including Whisper-family models, TTS engines, and
-            system typing integrations.
-          </p>
-          <p>
-            The app combines local audio capture, AI cleanup, history, and Jot
-            Pad into one desktop workflow.
-          </p>
+          <p>{aboutSummaryPrimary}</p>
+          <p>{aboutSummarySecondary}</p>
         </div>
       </SettingsGroup>
     </div>

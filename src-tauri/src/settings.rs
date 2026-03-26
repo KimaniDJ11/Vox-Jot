@@ -1,3 +1,4 @@
+use crate::portable;
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
 use crate::snippets::Snippet;
 use log::{debug, warn};
@@ -5,8 +6,10 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use specta::Type;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
+use uuid::Uuid;
 
 pub const APPLE_INTELLIGENCE_PROVIDER_ID: &str = "apple_intelligence";
 pub const APPLE_INTELLIGENCE_DEFAULT_MODEL_ID: &str = "Apple Intelligence";
@@ -15,14 +18,38 @@ pub const TTS_PROVIDER_SYSTEM_BUILTIN_ID: &str = "system_builtin";
 pub const TTS_PROVIDER_SHERPA_PACK_ID: &str = "sherpa_pack";
 pub const TTS_PROVIDER_LOCAL_SIDECAR_API_ID: &str = "local_sidecar_api";
 pub const TTS_PROVIDER_QWEN3_NATIVE_ID: &str = "qwen3_native";
+pub const TTS_PROVIDER_OPENVOICE_ID: &str = "openvoice";
+pub const TTS_PROVIDER_CHATTERBOX_ID: &str = "chatterbox";
+pub const TTS_PROVIDER_KOKORO_ID: &str = "kokoro";
+pub const TTS_PROVIDER_XTTS_ID: &str = "xtts";
+pub const TTS_PROVIDER_FISH_SPEECH_ID: &str = "fish_speech";
 pub const TTS_PROVIDER_FISH_SPEECH_LOCAL_ID: &str = "fish_speech_local";
 pub const TTS_PROVIDER_TADA_LOCAL_ID: &str = "tada_local";
 pub const TTS_PROVIDER_HF_S2S_LOCAL_ID: &str = "hf_s2s_local";
+pub const DEFAULT_TTS_MODEL_STORE_PATH: &str = "/Users/dinamikjames/Apps/Models/TTS";
 pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
 pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
 const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 5;
 const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
+
+pub fn default_tts_model_store_dir(app: &AppHandle) -> PathBuf {
+    let preferred_path = PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH);
+    if preferred_path.exists() {
+        return preferred_path;
+    }
+
+    portable::app_data_dir(app)
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("tts-model-store")
+}
+
+pub fn default_speech_runtime_install_dir(app: &AppHandle, platform_id: &str) -> PathBuf {
+    portable::app_data_dir(app)
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("tts-runtime")
+        .join(platform_id)
+}
 
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
@@ -414,6 +441,58 @@ impl Default for TtsReadbackTextMode {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+pub enum TtsStyleControlValue {
+    Number(f32),
+    Boolean(bool),
+    Text(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+pub struct TtsVoiceStyleSettings {
+    #[serde(default = "default_tts_expressiveness")]
+    pub expressiveness: f32,
+    #[serde(default = "default_tts_rate")]
+    pub rate: f32,
+    #[serde(default)]
+    pub advanced_overrides: HashMap<String, TtsStyleControlValue>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+pub struct TtsVoicePreset {
+    pub id: String,
+    pub label: String,
+    pub provider_id: String,
+    pub model_id: String,
+    #[serde(default)]
+    pub voice_id: Option<String>,
+    #[serde(default)]
+    pub voice_profile_id: Option<String>,
+    #[serde(default)]
+    pub voice_label_snapshot: Option<String>,
+    #[serde(default)]
+    pub locale_snapshot: Option<String>,
+    pub style: TtsVoiceStyleSettings,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+pub struct TtsVoicePresetInput {
+    #[serde(default)]
+    pub label: Option<String>,
+    pub provider_id: String,
+    pub model_id: String,
+    #[serde(default)]
+    pub voice_id: Option<String>,
+    #[serde(default)]
+    pub voice_profile_id: Option<String>,
+    #[serde(default)]
+    pub voice_label_snapshot: Option<String>,
+    #[serde(default)]
+    pub locale_snapshot: Option<String>,
+    pub style: TtsVoiceStyleSettings,
+}
+
 /* still handy for composing the initial JSON in the store ------------- */
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct AppSettings {
@@ -486,12 +565,20 @@ pub struct AppSettings {
     pub selected_tts_voice_id: Option<String>,
     #[serde(default)]
     pub selected_tts_profile_id: Option<String>,
+    #[serde(default)]
+    pub tts_active_preset_id: Option<String>,
+    #[serde(default)]
+    pub tts_voice_presets: Vec<TtsVoicePreset>,
     #[serde(default = "default_tts_rate")]
     pub tts_rate: f32,
     #[serde(default = "default_tts_volume")]
     pub tts_volume: f32,
     #[serde(default = "default_tts_stop_on_record")]
     pub tts_stop_on_record: bool,
+    #[serde(default)]
+    pub speech_runtime_path: Option<String>,
+    #[serde(default)]
+    pub tts_model_store_path: Option<String>,
     #[serde(default = "default_overlay_position")]
     pub overlay_position: OverlayPosition,
     #[serde(default = "default_debug_mode")]
@@ -581,6 +668,8 @@ pub struct AppSettings {
     pub snippets: Vec<Snippet>,
     #[serde(default = "default_app_theme")]
     pub app_theme: String,
+    #[serde(default)]
+    pub continuous_improvement_hq_capture: bool,
 }
 
 fn default_app_theme() -> String {
@@ -621,6 +710,10 @@ fn default_translation_target_language() -> String {
 
 fn default_tts_rate() -> f32 {
     1.0
+}
+
+fn default_tts_expressiveness() -> f32 {
+    0.5
 }
 
 fn default_tts_volume() -> f32 {
@@ -1360,6 +1453,80 @@ fn ensure_tts_defaults(settings: &mut AppSettings) -> bool {
         changed = true;
     }
 
+    if settings.tts_voice_presets.is_empty() {
+        let preset = build_tts_preset_from_legacy(settings, Some("tts-preset-default".to_string()));
+        settings.tts_voice_presets.push(preset);
+        changed = true;
+    }
+
+    for preset in &mut settings.tts_voice_presets {
+        let next_label = fallback_tts_preset_label(
+            &preset.provider_id,
+            &preset.model_id,
+            preset.voice_id.as_deref(),
+            preset.voice_profile_id.as_deref(),
+            preset.voice_label_snapshot.as_deref(),
+        );
+        if preset.label.trim().is_empty() {
+            preset.label = next_label;
+            changed = true;
+        }
+
+        let next_provider_id = if preset.provider_id.trim().is_empty() {
+            default_selected_tts_provider_id_from_legacy(settings.tts_engine_preference).to_string()
+        } else {
+            preset.provider_id.trim().to_string()
+        };
+        if preset.provider_id != next_provider_id {
+            preset.provider_id = next_provider_id;
+            changed = true;
+        }
+
+        let next_model_id = if preset.model_id.trim().is_empty() {
+            default_selected_tts_model_id_for_provider(&preset.provider_id)
+                .unwrap_or_else(|| preset.provider_id.clone())
+        } else {
+            preset.model_id.trim().to_string()
+        };
+        if preset.model_id != next_model_id {
+            preset.model_id = next_model_id;
+            changed = true;
+        }
+
+        let normalized_voice_id = normalize_optional_string(preset.voice_id.clone());
+        if preset.voice_id != normalized_voice_id {
+            preset.voice_id = normalized_voice_id;
+            changed = true;
+        }
+        let normalized_profile_id = normalize_optional_string(preset.voice_profile_id.clone());
+        if preset.voice_profile_id != normalized_profile_id {
+            preset.voice_profile_id = normalized_profile_id;
+            changed = true;
+        }
+        let normalized_voice_label = normalize_optional_string(preset.voice_label_snapshot.clone());
+        if preset.voice_label_snapshot != normalized_voice_label {
+            preset.voice_label_snapshot = normalized_voice_label;
+            changed = true;
+        }
+        let normalized_locale = normalize_optional_string(preset.locale_snapshot.clone());
+        if preset.locale_snapshot != normalized_locale {
+            preset.locale_snapshot = normalized_locale;
+            changed = true;
+        }
+
+        if sanitize_tts_voice_style(&mut preset.style) {
+            changed = true;
+        }
+    }
+
+    if settings.set_active_tts_preset_id(settings.tts_active_preset_id.clone()) {
+        changed = true;
+    }
+
+    if settings.sync_legacy_tts_state_from_active_preset() {
+        changed = true;
+    }
+
     changed
 }
 
@@ -1396,15 +1563,25 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
         changed = true;
     }
 
-    if settings.selected_tts_voice_id != settings.tts_default_voice_id {
-        settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
-        changed = true;
+    match settings.selected_tts_provider_id.as_str() {
+        TTS_PROVIDER_SYSTEM_BUILTIN_ID | TTS_PROVIDER_SHERPA_PACK_ID => {
+            if settings.selected_tts_voice_id != settings.tts_default_voice_id {
+                settings.selected_tts_voice_id = settings.tts_default_voice_id.clone();
+                changed = true;
+            }
+        }
+        _ => {}
     }
 
     if settings.selected_tts_model_id.is_none() {
-        settings.selected_tts_model_id = settings.selected_tts_voice_id.clone().or_else(|| {
-            default_selected_tts_model_id_for_provider(&settings.selected_tts_provider_id)
-        });
+        settings.selected_tts_model_id = match settings.selected_tts_provider_id.as_str() {
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID | TTS_PROVIDER_SHERPA_PACK_ID => {
+                settings.selected_tts_voice_id.clone().or_else(|| {
+                    default_selected_tts_model_id_for_provider(&settings.selected_tts_provider_id)
+                })
+            }
+            _ => default_selected_tts_model_id_for_provider(&settings.selected_tts_provider_id),
+        };
         changed = true;
     }
 
@@ -1773,9 +1950,13 @@ pub fn get_default_settings() -> AppSettings {
         selected_tts_model_id: None,
         selected_tts_voice_id: None,
         selected_tts_profile_id: None,
+        tts_active_preset_id: None,
+        tts_voice_presets: Vec::new(),
         tts_rate: default_tts_rate(),
         tts_volume: default_tts_volume(),
         tts_stop_on_record: default_tts_stop_on_record(),
+        speech_runtime_path: None,
+        tts_model_store_path: None,
         overlay_position: default_overlay_position(),
         debug_mode: false,
         log_level: default_log_level(),
@@ -1823,10 +2004,108 @@ pub fn get_default_settings() -> AppSettings {
         snippets_enabled: default_snippets_enabled(),
         snippets: Vec::new(),
         app_theme: default_app_theme(),
+        continuous_improvement_hq_capture: false,
     }
 }
 
 impl AppSettings {
+    pub fn tts_preset(&self, preset_id: &str) -> Option<&TtsVoicePreset> {
+        self.tts_voice_presets
+            .iter()
+            .find(|preset| preset.id == preset_id)
+    }
+
+    pub fn tts_preset_mut(&mut self, preset_id: &str) -> Option<&mut TtsVoicePreset> {
+        self.tts_voice_presets
+            .iter_mut()
+            .find(|preset| preset.id == preset_id)
+    }
+
+    pub fn active_tts_preset(&self) -> Option<&TtsVoicePreset> {
+        self.tts_active_preset_id
+            .as_deref()
+            .and_then(|preset_id| self.tts_preset(preset_id))
+            .or_else(|| self.tts_voice_presets.first())
+    }
+
+    pub fn active_tts_preset_mut(&mut self) -> Option<&mut TtsVoicePreset> {
+        let preset_id = self.tts_active_preset_id.clone().or_else(|| {
+            self.tts_voice_presets
+                .first()
+                .map(|preset| preset.id.clone())
+        })?;
+        self.tts_preset_mut(&preset_id)
+    }
+
+    pub fn set_active_tts_preset_id(&mut self, preset_id: Option<String>) -> bool {
+        let next_id = preset_id
+            .and_then(|value| self.tts_preset(&value).map(|preset| preset.id.clone()))
+            .or_else(|| {
+                self.tts_voice_presets
+                    .first()
+                    .map(|preset| preset.id.clone())
+            });
+        if self.tts_active_preset_id == next_id {
+            return false;
+        }
+        self.tts_active_preset_id = next_id;
+        true
+    }
+
+    pub fn upsert_tts_preset(&mut self, preset: TtsVoicePreset) -> bool {
+        if let Some(existing) = self.tts_preset_mut(&preset.id) {
+            *existing = preset;
+            true
+        } else {
+            self.tts_voice_presets.push(preset);
+            true
+        }
+    }
+
+    pub fn delete_tts_preset(&mut self, preset_id: &str) -> bool {
+        let original_len = self.tts_voice_presets.len();
+        self.tts_voice_presets
+            .retain(|preset| preset.id != preset_id);
+        original_len != self.tts_voice_presets.len()
+    }
+
+    pub fn sync_legacy_tts_state_from_active_preset(&mut self) -> bool {
+        let Some(preset) = self.active_tts_preset().cloned() else {
+            return false;
+        };
+
+        let mut changed = false;
+        if self.selected_tts_provider_id != preset.provider_id {
+            self.selected_tts_provider_id = preset.provider_id.clone();
+            changed = true;
+        }
+        let next_model_id = Some(preset.model_id.clone());
+        if self.selected_tts_model_id != next_model_id {
+            self.selected_tts_model_id = next_model_id;
+            changed = true;
+        }
+        if self.selected_tts_profile_id != preset.voice_profile_id {
+            self.selected_tts_profile_id = preset.voice_profile_id.clone();
+            changed = true;
+        }
+        if self.selected_tts_voice_id != preset.voice_id {
+            self.selected_tts_voice_id = preset.voice_id.clone();
+            changed = true;
+        }
+        if self.tts_default_voice_id != preset.voice_id {
+            self.tts_default_voice_id = preset.voice_id.clone();
+            changed = true;
+        }
+
+        let next_rate = preset.style.rate.clamp(0.5, 2.0);
+        if (self.tts_rate - next_rate).abs() > f32::EPSILON {
+            self.tts_rate = next_rate;
+            changed = true;
+        }
+
+        changed
+    }
+
     pub fn translation_enabled(&self) -> bool {
         self.translation_output_mode != TranslationOutputMode::Source
     }
@@ -1957,6 +2236,128 @@ impl AppSettings {
     }
 }
 
+fn normalize_optional_string(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn fallback_tts_preset_label(
+    provider_id: &str,
+    model_id: &str,
+    voice_id: Option<&str>,
+    voice_profile_id: Option<&str>,
+    snapshot: Option<&str>,
+) -> String {
+    if let Some(snapshot) = snapshot.filter(|value| !value.trim().is_empty()) {
+        return snapshot.trim().to_string();
+    }
+    if voice_profile_id.is_some() {
+        return "Cloned Voice".to_string();
+    }
+    if let Some(voice_id) = voice_id.filter(|value| !value.trim().is_empty()) {
+        return voice_id.to_string();
+    }
+    if provider_id == TTS_PROVIDER_SYSTEM_BUILTIN_ID {
+        return "System Voice".to_string();
+    }
+    if !model_id.trim().is_empty() {
+        return model_id.to_string();
+    }
+    "Voice Preset".to_string()
+}
+
+fn sanitize_tts_voice_style(style: &mut TtsVoiceStyleSettings) -> bool {
+    let mut changed = false;
+    let next_expressiveness = style.expressiveness.clamp(0.0, 1.0);
+    if (style.expressiveness - next_expressiveness).abs() > f32::EPSILON {
+        style.expressiveness = next_expressiveness;
+        changed = true;
+    }
+    let next_rate = style.rate.clamp(0.5, 2.0);
+    if (style.rate - next_rate).abs() > f32::EPSILON {
+        style.rate = next_rate;
+        changed = true;
+    }
+    changed
+}
+
+fn build_tts_preset_from_legacy(
+    settings: &AppSettings,
+    preset_id: Option<String>,
+) -> TtsVoicePreset {
+    let provider_id = if settings.selected_tts_provider_id.trim().is_empty() {
+        default_selected_tts_provider_id_from_legacy(settings.tts_engine_preference).to_string()
+    } else {
+        settings.selected_tts_provider_id.clone()
+    };
+    let model_id = settings
+        .selected_tts_model_id
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| match provider_id.as_str() {
+            TTS_PROVIDER_SHERPA_PACK_ID => settings
+                .selected_tts_voice_id
+                .clone()
+                .or_else(|| settings.tts_default_voice_id.clone()),
+            _ => default_selected_tts_model_id_for_provider(&provider_id),
+        })
+        .unwrap_or_else(|| provider_id.clone());
+    let voice_id = normalize_optional_string(
+        settings
+            .selected_tts_voice_id
+            .clone()
+            .or_else(|| settings.tts_default_voice_id.clone())
+            .or_else(|| {
+                if provider_id == TTS_PROVIDER_SHERPA_PACK_ID {
+                    Some(model_id.clone())
+                } else {
+                    None
+                }
+            }),
+    );
+    let voice_profile_id = normalize_optional_string(settings.selected_tts_profile_id.clone());
+    let voice_label_snapshot = voice_profile_id
+        .clone()
+        .or_else(|| voice_id.clone())
+        .or_else(|| {
+            Some(fallback_tts_preset_label(
+                &provider_id,
+                &model_id,
+                None,
+                None,
+                None,
+            ))
+        });
+
+    TtsVoicePreset {
+        id: preset_id.unwrap_or_else(|| format!("tts-preset-{}", Uuid::new_v4())),
+        label: fallback_tts_preset_label(
+            &provider_id,
+            &model_id,
+            voice_id.as_deref(),
+            voice_profile_id.as_deref(),
+            voice_label_snapshot.as_deref(),
+        ),
+        provider_id,
+        model_id,
+        voice_id,
+        voice_profile_id,
+        voice_label_snapshot,
+        locale_snapshot: None,
+        style: TtsVoiceStyleSettings {
+            expressiveness: default_tts_expressiveness(),
+            rate: settings.tts_rate.clamp(0.5, 2.0),
+            advanced_overrides: HashMap::new(),
+        },
+    }
+}
+
 pub fn is_local_base_url(base_url: &str) -> bool {
     let lower = base_url.trim().to_ascii_lowercase();
     if lower.is_empty() {
@@ -2024,9 +2425,9 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     };
 
     let translation_changed = ensure_translation_defaults(&mut settings);
-    let tts_changed = ensure_tts_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
+    let tts_changed = ensure_tts_defaults(&mut settings);
 
     if translation_changed || tts_changed || post_process_changed || model_platform_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());
@@ -2053,9 +2454,9 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     };
 
     let translation_changed = ensure_translation_defaults(&mut settings);
-    let tts_changed = ensure_tts_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
+    let tts_changed = ensure_tts_defaults(&mut settings);
 
     if translation_changed || tts_changed || post_process_changed || model_platform_changed {
         store.set("settings", serde_json::to_value(&settings).unwrap());

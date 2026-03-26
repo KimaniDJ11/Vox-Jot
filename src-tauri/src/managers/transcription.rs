@@ -1,4 +1,5 @@
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
+use crate::managers::continuous_cloning::ContinuousCloningManager;
 use crate::managers::model::{EngineType, ModelManager};
 use crate::settings::{get_settings, ModelUnloadTimeout};
 use anyhow::Result;
@@ -368,6 +369,13 @@ impl TranscriptionManager {
                 })?;
                 LoadedEngine::GigaAM(engine)
             }
+            EngineType::QwenAudio => {
+                // For now, QwenAudio is a placeholder.
+                // Once we have a Qwen engine (e.g. sidecar or native), we implement it here.
+                return Err(anyhow::anyhow!(
+                    "QwenAudio engine implementation is coming soon."
+                ));
+            }
         };
 
         // Update the current engine and model ID
@@ -452,6 +460,9 @@ impl TranscriptionManager {
             self.maybe_unload_immediately("empty audio");
             return Ok(String::new());
         }
+
+        // Keep a copy of the audio for continuous voice cloning (before it's consumed by the engine)
+        let audio_for_cloning = audio.clone();
 
         // Check if model is loaded, if not try to load it
         {
@@ -677,6 +688,18 @@ impl TranscriptionManager {
         }
 
         self.maybe_unload_immediately("transcription");
+
+        // Feed audio to continuous voice cloning (async, non-blocking)
+        if !final_result.is_empty() {
+            let app = self.app_handle.clone();
+            let transcript_for_cloning = final_result.clone();
+            thread::spawn(move || {
+                use tauri::Manager;
+                if let Some(cloning_manager) = app.try_state::<Arc<ContinuousCloningManager>>() {
+                    cloning_manager.process_stt_result(audio_for_cloning, &transcript_for_cloning);
+                }
+            });
+        }
 
         Ok(final_result)
     }

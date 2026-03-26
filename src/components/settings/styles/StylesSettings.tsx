@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
@@ -51,7 +57,7 @@ const DEFAULT_STYLE_PRESETS: ToneDefinition[] = [
     id: "coding",
     label: "Coding",
     instruction:
-      "Format the text as precise technical writing suited for code editors and terminals. Use exact technical terms, preserve variable and function names verbatim, format code snippets with proper syntax, and keep comments concise. Convert spoken code descriptions into valid code when the intent is clear (e.g., \"define a function called foo that takes a string\" → \"fn foo(s: &str)\"). Prefer lowercase and avoid unnecessary punctuation.",
+      'Format the text as precise technical writing suited for code editors and terminals. Use exact technical terms, preserve variable and function names verbatim, format code snippets with proper syntax, and keep comments concise. Convert spoken code descriptions into valid code when the intent is clear (e.g., "define a function called foo that takes a string" → "fn foo(s: &str)"). Prefer lowercase and avoid unnecessary punctuation.',
   },
 ];
 
@@ -711,101 +717,103 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
         </section>
       )}
 
-      {showMappingsSection && <SettingsGroup
-        title={t("settings.styles.mappings.title")}
-        description={t("settings.styles.mappings.description")}
-      >
-        {showMappingsAccordion && (
-          <button
-            type="button"
-            onClick={() => setMappingsExpanded((current) => !current)}
-            className="flex w-full items-center justify-between px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
-          >
-            <span>{t("settings.styles.mappings.description")}</span>
-            {mappingsExpanded ? (
-              <ChevronUp className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            )}
-          </button>
-        )}
+      {showMappingsSection && (
+        <SettingsGroup
+          title={t("settings.styles.mappings.title")}
+          description={t("settings.styles.mappings.description")}
+        >
+          {showMappingsAccordion && (
+            <button
+              type="button"
+              onClick={() => setMappingsExpanded((current) => !current)}
+              className="flex w-full items-center justify-between px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+            >
+              <span>{t("settings.styles.mappings.description")}</span>
+              {mappingsExpanded ? (
+                <ChevronUp className="h-4 w-4 shrink-0" />
+              ) : (
+                <ChevronDown className="h-4 w-4 shrink-0" />
+              )}
+            </button>
+          )}
 
-        {mappingsExpanded && (
-          <div className="space-y-4 px-5 py-4">
-            {appToneMappings.length > 0 ? (
-              <div className="hidden text-xs font-medium text-[var(--muted)] md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px_auto] md:items-center md:gap-2">
-                <div>{t("settings.styles.mappings.columns.appName")}</div>
-                <div>{t("settings.styles.mappings.columns.bundleId")}</div>
-                <div>{t("settings.styles.mappings.columns.tone")}</div>
-                <div />
+          {mappingsExpanded && (
+            <div className="space-y-4 px-5 py-4">
+              {appToneMappings.length > 0 ? (
+                <div className="hidden text-xs font-medium text-[var(--muted)] md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px_auto] md:items-center md:gap-2">
+                  <div>{t("settings.styles.mappings.columns.appName")}</div>
+                  <div>{t("settings.styles.mappings.columns.bundleId")}</div>
+                  <div>{t("settings.styles.mappings.columns.tone")}</div>
+                  <div />
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--muted)]">
+                  {t("settings.styles.mappings.empty")}
+                </p>
+              )}
+
+              <div className="space-y-3">
+                {appToneMappings.map((mapping, index) => (
+                  <MappingRow
+                    key={`mapping-row-${index}`}
+                    mapping={mapping}
+                    toneOptions={toneOptions}
+                    disabled={mappingControlsDisabled}
+                    onUpdate={(field, value) =>
+                      updateMapping(index, field, value)
+                    }
+                    onDelete={() => deleteMapping(index)}
+                  />
+                ))}
               </div>
-            ) : (
-              <p className="text-sm text-[var(--muted)]">
-                {t("settings.styles.mappings.empty")}
-              </p>
-            )}
 
-            <div className="space-y-3">
-              {appToneMappings.map((mapping, index) => (
-                <MappingRow
-                  key={`mapping-row-${index}`}
-                  mapping={mapping}
-                  toneOptions={toneOptions}
-                  disabled={mappingControlsDisabled}
-                  onUpdate={(field, value) =>
-                    updateMapping(index, field, value)
-                  }
-                  onDelete={() => deleteMapping(index)}
+              {showAppPicker && (
+                <AppPicker
+                  installedApps={installedApps}
+                  existingBundleIds={existingBundleIds}
+                  onSelect={addMappingFromPicker}
+                  onClose={() => setShowAppPicker(false)}
                 />
-              ))}
-            </div>
+              )}
 
-            {showAppPicker && (
-              <AppPicker
-                installedApps={installedApps}
-                existingBundleIds={existingBundleIds}
-                onSelect={addMappingFromPicker}
-                onClose={() => setShowAppPicker(false)}
-              />
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                variant="primary-soft"
-                size="sm"
-                onClick={addMapping}
-                disabled={mappingControlsDisabled}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {t("settings.styles.mappings.add")}
-              </Button>
-              {installedApps.length > 0 && (
+              <div className="flex gap-2">
                 <Button
-                  variant="ghost"
+                  variant="primary-soft"
                   size="sm"
-                  onClick={() => {
-                    persistMappings([
-                      ...appToneMappings,
-                      {
-                        app_name: "",
-                        bundle_id: "",
-                        tone_id: sortedToneDefinitions[0]?.id ?? "",
-                      },
-                    ]);
-                    setMappingsExpanded(true);
-                  }}
+                  onClick={addMapping}
                   disabled={mappingControlsDisabled}
                 >
                   <Plus className="mr-1 h-3.5 w-3.5" />
-                  {t("settings.styles.mappings.addManual", {
-                    defaultValue: "Add manually",
-                  })}
+                  {t("settings.styles.mappings.add")}
                 </Button>
-              )}
+                {installedApps.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      persistMappings([
+                        ...appToneMappings,
+                        {
+                          app_name: "",
+                          bundle_id: "",
+                          tone_id: sortedToneDefinitions[0]?.id ?? "",
+                        },
+                      ]);
+                      setMappingsExpanded(true);
+                    }}
+                    disabled={mappingControlsDisabled}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    {t("settings.styles.mappings.addManual", {
+                      defaultValue: "Add manually",
+                    })}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </SettingsGroup>}
+          )}
+        </SettingsGroup>
+      )}
     </div>
   );
 };

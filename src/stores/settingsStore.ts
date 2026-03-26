@@ -149,6 +149,10 @@ const settingUpdaters: {
   tts_volume: (value) => commands.changeTtsVolumeSetting(value as number),
   tts_stop_on_record: (value) =>
     commands.changeTtsStopOnRecordSetting(value as boolean),
+  speech_runtime_path: (value) =>
+    commands.changeSpeechRuntimePathSetting((value as string | null) ?? null),
+  tts_model_store_path: (value) =>
+    commands.changeTtsModelStorePathSetting((value as string | null) ?? null),
   overlay_position: (value) =>
     commands.changeOverlayPositionSetting(value as string),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),

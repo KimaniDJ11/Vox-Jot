@@ -18,7 +18,9 @@ export const AppAwareWriteProfilesToggle: React.FC<AppAwareWriteProfilesTogglePr
     return (
       <ToggleSwitch
         checked={enabled}
-        onChange={(value) => void updateSetting("app_aware_tone_enabled", value)}
+        onChange={(value) =>
+          void updateSetting("app_aware_tone_enabled", value)
+        }
         isUpdating={isUpdating("app_aware_tone_enabled")}
         label={t("settings.styles.toggle.label")}
         description={t("settings.styles.toggle.description")}

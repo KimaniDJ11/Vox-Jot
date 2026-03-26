@@ -90,11 +90,9 @@ const emptyManualCorrectionDraft = (): ManualCorrectionDraft => ({
   exactOnly: false,
 });
 
-export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> = ({
-  sectionTitle,
-  showHeaderTitle = true,
-  titleActionTargetId,
-}) => {
+export const CorrectionDictionaryView: React.FC<
+  CorrectionDictionaryViewProps
+> = ({ sectionTitle, showHeaderTitle = true, titleActionTargetId }) => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,7 +225,11 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
     if (!trimmed) return;
 
     try {
-      const result = await commands.addManualCorrection(trimmed, corrected, false);
+      const result = await commands.addManualCorrection(
+        trimmed,
+        corrected,
+        false,
+      );
       if (result.status === "ok") {
         setNewOriginal("");
         setAddingTo(null);
@@ -454,7 +456,12 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
             </label>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={resetManualEditor}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={resetManualEditor}
+              >
                 {t("common.cancel")}
               </Button>
               <Button
@@ -521,7 +528,9 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                     >
                       <span
                         className={`block w-2.5 h-2.5 rounded-full bg-[var(--card)] shadow transition-transform ${
-                          group.allActive ? "translate-x-3.5" : "translate-x-0.5"
+                          group.allActive
+                            ? "translate-x-3.5"
+                            : "translate-x-0.5"
                         }`}
                       />
                     </button>
@@ -574,7 +583,9 @@ export const CorrectionDictionaryView: React.FC<CorrectionDictionaryViewProps> =
                           }
                         }}
                         className="px-2 py-0.5 text-xs bg-mid-gray/10 border border-mid-gray/60 rounded-full w-24 focus:outline-none focus:border-[var(--accent)] focus:bg-[var(--accent)]/10"
-                        placeholder={t("common.add", { defaultValue: "Add..." })}
+                        placeholder={t("common.add", {
+                          defaultValue: "Add...",
+                        })}
                       />
                     </form>
                   ) : (

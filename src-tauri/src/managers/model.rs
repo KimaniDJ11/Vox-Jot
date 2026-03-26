@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tar::Archive;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub enum EngineType {
@@ -25,6 +25,7 @@ pub enum EngineType {
     MoonshineStreaming,
     SenseVoice,
     GigaAM,
+    QwenAudio,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -73,6 +74,7 @@ impl ModelManager {
             EngineType::MoonshineStreaming => "stt_moonshine_streaming",
             EngineType::SenseVoice => "stt_sensevoice",
             EngineType::GigaAM => "stt_gigaam",
+            EngineType::QwenAudio => "stt_qwen",
         }
     }
 
@@ -521,6 +523,31 @@ impl ModelManager {
             },
         );
 
+        available_models.insert(
+            "qwen2-audio-7b".to_string(),
+            ModelInfo {
+                id: "qwen2-audio-7b".to_string(),
+                name: "Qwen2 Audio 7B".to_string(),
+                description:
+                    "Advanced Audio-LLM for transcription and understanding. (Coming Soon)"
+                        .to_string(),
+                filename: "qwen2-audio-7b".to_string(),
+                url: None, // Placeholder for now
+                size_mb: 14000,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: true,
+                engine_type: EngineType::QwenAudio,
+                accuracy_score: 0.95,
+                speed_score: 0.20,
+                supports_translation: true,
+                is_recommended: false,
+                supported_languages: vec!["en".to_string(), "zh".to_string()],
+                is_custom: false,
+            },
+        );
+
         // Auto-discover custom Whisper models (.bin files) in the models directory
         if let Err(e) = Self::discover_custom_whisper_models(&models_dir, &mut available_models) {
             warn!("Failed to discover custom models: {}", e);
@@ -561,9 +588,9 @@ impl ModelManager {
         let bundled_models = ["ggml-small.bin"]; // Add other bundled models here if any
 
         for filename in &bundled_models {
-            let bundled_path = self.app_handle.path().resolve(
+            let bundled_path = crate::portable::resolve_resource(
+                &self.app_handle,
                 &format!("resources/models/{}", filename),
-                tauri::path::BaseDirectory::Resource,
             );
 
             if let Ok(bundled_path) = bundled_path {

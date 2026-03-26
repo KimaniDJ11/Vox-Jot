@@ -610,6 +610,9 @@ fn transcribe_audio(
                 .map_err(|err| anyhow!("GigaAM transcription failed: {}", err))?;
             result.text
         }
+        EngineType::QwenAudio => {
+            return Err(anyhow!("QwenAudio regression is not yet implemented."));
+        }
     };
 
     if !settings.custom_words.is_empty() {

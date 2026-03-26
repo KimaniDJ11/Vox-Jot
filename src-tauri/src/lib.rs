@@ -23,6 +23,7 @@ mod regression;
 mod scratchpad;
 mod settings;
 mod shortcut;
+mod sidecar;
 mod signal_handle;
 pub mod snippets;
 mod transcription_coordinator;
@@ -30,6 +31,7 @@ mod translation;
 mod tray;
 mod tray_i18n;
 mod tts;
+mod tts_profiles;
 mod utils;
 
 /// Main settings window default / minimum size (logical pixels).
@@ -48,6 +50,7 @@ use correction_tracker::store::CorrectionStore;
 use correction_tracker::InsertedSpanTracker;
 use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
+use managers::continuous_cloning::ContinuousCloningManager;
 use managers::history::HistoryManager;
 use managers::model::ModelManager;
 use managers::notes::NotesManager;
@@ -70,6 +73,7 @@ use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKi
 use crate::detail_view::DetailViewRoutingState;
 use crate::scratchpad::ScratchpadRoutingState;
 use crate::settings::get_settings;
+use crate::sidecar::SidecarManager;
 use crate::tts::TtsManager;
 
 // Global atomic to store the file log level filter
@@ -186,6 +190,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     let notes_manager =
         Arc::new(NotesManager::new(app_handle).expect("Failed to initialize notes manager"));
     let tts_manager = Arc::new(TtsManager::new(app_handle));
+    let continuous_cloning_manager = Arc::new(ContinuousCloningManager::new(app_handle));
+    let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
 
     // Pre-warm the system voice cache in a background thread so the first
     // UI request returns instantly instead of spawning a subprocess.
@@ -196,6 +202,19 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         });
     }
 
+    // Start the Speech runtime sidecar in the background whenever the runtime
+    // is installed so runtime-backed engines are visible in Listen immediately.
+    {
+        let sidecar = sidecar_manager.clone();
+        if sidecar.can_auto_start() {
+            std::thread::spawn(move || {
+                if let Err(err) = sidecar.ensure_running_if_available() {
+                    log::warn!("Speech runtime sidecar auto-start failed: {err}");
+                }
+            });
+        }
+    }
+
     // Add managers to Tauri's managed state
     app_handle.manage(recording_manager.clone());
     app_handle.manage(model_manager.clone());
@@ -203,6 +222,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(history_manager.clone());
     app_handle.manage(notes_manager.clone());
     app_handle.manage(tts_manager.clone());
+    app_handle.manage(continuous_cloning_manager.clone());
+    app_handle.manage(sidecar_manager.clone());
     app_handle.manage(ScratchpadRoutingState::default());
     app_handle.manage(DetailViewRoutingState::default());
 
@@ -234,13 +255,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     let tray = TrayIconBuilder::new()
         .icon(
-            Image::from_path(
-                app_handle
-                    .path()
-                    .resolve(initial_icon_path, tauri::path::BaseDirectory::Resource)
-                    .unwrap(),
-            )
-            .unwrap(),
+            Image::from_path(portable::resolve_resource(app_handle, initial_icon_path).unwrap())
+                .unwrap(),
         )
         .show_menu_on_left_click(true)
         .icon_as_template(true)
@@ -400,6 +416,8 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_tts_rate_setting,
         shortcut::change_tts_volume_setting,
         shortcut::change_tts_stop_on_record_setting,
+        shortcut::change_tts_model_store_path_setting,
+        shortcut::change_speech_runtime_path_setting,
         shortcut::change_overlay_position_setting,
         shortcut::change_debug_mode_setting,
         shortcut::change_word_correction_threshold_setting,
@@ -469,9 +487,23 @@ pub fn run(cli_args: CliArgs) {
         commands::tts::get_available_tts_voices,
         commands::tts::refresh_tts_voices,
         commands::tts::preview_tts_voice,
+        commands::tts::preview_tts_voice_preset,
+        commands::tts::prepare_sidecar_engine,
         commands::tts::get_available_tts_packs,
         commands::tts::download_tts_pack,
         commands::tts::remove_tts_pack,
+        commands::tts::list_tts_voice_presets,
+        commands::tts::create_tts_voice_preset,
+        commands::tts::update_tts_voice_preset,
+        commands::tts::delete_tts_voice_preset,
+        commands::tts::set_active_tts_voice_preset,
+        commands::tts::list_tts_voice_profiles,
+        commands::tts::create_tts_voice_profile,
+        commands::tts::import_tts_voice_profile_sample,
+        commands::tts::delete_tts_voice_profile,
+        commands::tts::set_active_improvement_profile,
+        commands::tts::clear_profile_collected_data,
+        commands::tts::get_voice_profile_progress,
         commands::initialize_enigo,
         commands::initialize_shortcuts,
         commands::models::get_available_models,

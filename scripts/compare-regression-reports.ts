@@ -196,9 +196,7 @@ function generateMarkdown(
   lines.push("");
   lines.push("| | Baseline | Candidate |");
   lines.push("|---|---|---|");
-  lines.push(
-    `| Model | ${baseline.model_id} | ${candidate.model_id} |`,
-  );
+  lines.push(`| Model | ${baseline.model_id} | ${candidate.model_id} |`);
   lines.push(
     `| Post-process | ${baseline.post_process_enabled ? `${baseline.post_process_provider_id}/${baseline.post_process_model}` : "disabled"} | ${candidate.post_process_enabled ? `${candidate.post_process_provider_id}/${candidate.post_process_model}` : "disabled"} |`,
   );
@@ -221,9 +219,7 @@ function generateMarkdown(
   }
 
   lines.push("");
-  lines.push(
-    `*Common entries compared: ${comparison.commonIds.length}*`,
-  );
+  lines.push(`*Common entries compared: ${comparison.commonIds.length}*`);
 
   // Improved entries
   if (comparison.improved.length > 0) {
@@ -332,13 +328,13 @@ function printSummary(
     const delta = cVal - bVal;
     const bStr = formatMetricValue(key, bVal).padStart(colW);
     const cStr = formatMetricValue(key, cVal).padStart(colW);
-    const dStr = (FLOAT_KEYS.has(key) ? fmtDelta(delta) : fmtDelta(delta, 0)).padStart(colW);
+    const dStr = (
+      FLOAT_KEYS.has(key) ? fmtDelta(delta) : fmtDelta(delta, 0)
+    ).padStart(colW);
     console.log(`${label.padEnd(28)} ${bStr} ${cStr} ${dStr}`);
   }
 
-  console.log(
-    `\nCommon entries compared: ${comparison.commonIds.length}`,
-  );
+  console.log(`\nCommon entries compared: ${comparison.commonIds.length}`);
 
   if (comparison.improved.length > 0) {
     console.log(
@@ -369,9 +365,7 @@ function printSummary(
   }
 
   if (comparison.routeChanged.length > 0) {
-    console.log(
-      `\n--- Route Changes (${comparison.routeChanged.length}) ---`,
-    );
+    console.log(`\n--- Route Changes (${comparison.routeChanged.length}) ---`);
     for (const e of comparison.routeChanged) {
       console.log(
         `  ${e.id}  ${e.baselineRoute ?? "n/a"} -> ${e.candidateRoute ?? "n/a"}  WER ${fmtDelta(e.delta)}`,

@@ -65,6 +65,36 @@ pub fn resolve_app_data(app: &tauri::AppHandle, relative: &str) -> Result<PathBu
     Ok(app_data_dir(app)?.join(relative))
 }
 
+/// Resolve a bundled resource path with a dev-friendly fallback.
+///
+/// In packaged builds Tauri resolves resources through `BaseDirectory::Resource`.
+/// During local `cargo run` flows, that base directory may be unavailable, so we
+/// fall back to the checked-out `src-tauri/` tree.
+pub fn resolve_resource(app: &tauri::AppHandle, relative: &str) -> Result<PathBuf, tauri::Error> {
+    match app
+        .path()
+        .resolve(relative, tauri::path::BaseDirectory::Resource)
+    {
+        Ok(path) if path.exists() => Ok(path),
+        Ok(path) => {
+            let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(relative);
+            if dev_path.exists() {
+                Ok(dev_path)
+            } else {
+                Ok(path)
+            }
+        }
+        Err(error) => {
+            let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(relative);
+            if dev_path.exists() {
+                Ok(dev_path)
+            } else {
+                Err(error)
+            }
+        }
+    }
+}
+
 /// Get the path to use with `tauri-plugin-store`.
 /// Returns an absolute path in portable mode (so the store plugin writes to
 /// the portable Data dir) or the original relative path otherwise.

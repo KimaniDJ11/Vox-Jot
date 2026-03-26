@@ -1,12 +1,19 @@
+import babelParser from "@babel/eslint-parser";
 import i18next from "eslint-plugin-i18next";
-import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["src/**/*.tsx"],
     languageOptions: {
-      parser: tsParser,
+      parser: babelParser,
       parserOptions: {
+        requireConfigFile: false,
+        babelOptions: {
+          presets: [
+            ["@babel/preset-typescript", { isTSX: true, allExtensions: true }],
+            ["@babel/preset-react", { runtime: "automatic" }],
+          ],
+        },
         ecmaFeatures: {
           jsx: true,
         },

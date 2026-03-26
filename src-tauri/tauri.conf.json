@@ -40,7 +40,7 @@
       "files": {},
       "hardenedRuntime": true,
       "minimumSystemVersion": "10.13",
-      "signingIdentity": "-",
+      "signingIdentity": "Apple Development: Kimani James (6B77K7V4Z9)",
       "entitlements": "Entitlements.plist"
     },
     "linux": {

@@ -5,7 +5,6 @@ use crate::utils;
 use log::{debug, error, info};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::Manager;
 
 fn set_mute(mute: bool) {
     // Expected behavior:
@@ -247,14 +246,10 @@ impl AudioRecordingManager {
         let mut did_mute_guard = self.did_mute.lock().unwrap();
         *did_mute_guard = false;
 
-        let vad_path = self
-            .app_handle
-            .path()
-            .resolve(
-                "resources/models/silero_vad_v4.onnx",
-                tauri::path::BaseDirectory::Resource,
-            )
-            .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {}", e))?;
+        let vad_path = &self.app_handle;
+        let vad_path =
+            crate::portable::resolve_resource(vad_path, "resources/models/silero_vad_v4.onnx")
+                .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {}", e))?;
         let mut recorder_opt = self.recorder.lock().unwrap();
 
         if recorder_opt.is_none() {

@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type CatalogSourceKind = "builtin" | "runtime";
+
 export interface CapabilityFlags {
   downloadable: boolean;
   loadable: boolean;
@@ -19,9 +21,41 @@ export interface RuntimeRequirement {
   auto_routed: boolean;
 }
 
+export type TtsExpressivenessMode = "native" | "mapped" | "unsupported";
+
+export type TtsAdvancedControlKind = "slider" | "toggle" | "select" | "text";
+
+export interface TtsAdvancedControlOption {
+  value: string;
+  label: string;
+}
+
+export interface TtsAdvancedControlDescriptor {
+  id: string;
+  label: string;
+  description?: string | null;
+  kind: TtsAdvancedControlKind;
+  min?: number | null;
+  max?: number | null;
+  step?: number | null;
+  unit?: string | null;
+  options: TtsAdvancedControlOption[];
+  default_value?:
+    | { kind: "number"; value: number }
+    | { kind: "boolean"; value: boolean }
+    | { kind: "text"; value: string }
+    | null;
+}
+
+export interface TtsDeliverySupport {
+  expressiveness_mode: TtsExpressivenessMode;
+  advanced_controls: TtsAdvancedControlDescriptor[];
+}
+
 export interface ProviderDescriptor {
   id: string;
   domain: "stt" | "tts" | "llm";
+  source_kind: CatalogSourceKind;
   label: string;
   description: string;
   source_label: string;
@@ -37,17 +71,23 @@ export interface CatalogModelDescriptor {
   id: string;
   provider_id: string;
   domain: "stt" | "tts" | "llm";
+  source_kind: CatalogSourceKind;
   label: string;
   description: string;
   installed: boolean;
   selected: boolean;
+  active: boolean;
+  runnable: boolean;
   downloadable: boolean;
   source_label: string;
   runtime: RuntimeRequirement;
   license_label?: string | null;
   locale?: string | null;
   supported_languages: string[];
+  readiness_status?: string | null;
+  readiness_issues: string[];
   capabilities: CapabilityFlags;
+  delivery_support: TtsDeliverySupport;
 }
 
 export interface DomainCatalog {
@@ -64,6 +104,8 @@ export interface ModelPlatformSelectionState {
   selected_tts_model_id?: string | null;
   selected_tts_voice_id?: string | null;
   selected_tts_profile_id?: string | null;
+  active_tts_provider_id?: string | null;
+  active_tts_model_id?: string | null;
 }
 
 export interface ModelPlatformOverview {

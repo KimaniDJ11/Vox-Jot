@@ -96,8 +96,6 @@ const compareResult = Bun.spawnSync(
 );
 
 if (compareResult.exitCode !== 0) {
-  console.error(
-    `Comparison failed (exit ${compareResult.exitCode})`,
-  );
+  console.error(`Comparison failed (exit ${compareResult.exitCode})`);
   process.exit(compareResult.exitCode);
 }

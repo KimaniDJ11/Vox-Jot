@@ -21,6 +21,9 @@ fn resolve_sound_path(
         tauri::path::BaseDirectory::AppData => {
             crate::portable::resolve_app_data(app, &sound_file).ok()
         }
+        tauri::path::BaseDirectory::Resource => {
+            crate::portable::resolve_resource(app, &sound_file).ok()
+        }
         _ => app.path().resolve(&sound_file, base_dir).ok(),
     }
 }

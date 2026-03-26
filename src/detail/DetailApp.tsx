@@ -16,15 +16,15 @@ import {
 const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   history: {
     title: "History",
-    component: () => <DictateHistorySection capped={false} />,
+    component: DictateHistorySection,
   },
   "phrase-keys": {
     title: "Phrase Keys",
-    component: () => <RefinePhraseKeysSection capped={false} />,
+    component: RefinePhraseKeysSection,
   },
   "write-profiles": {
     title: "Write Profiles",
-    component: () => <RefineProfilesSection capped={false} />,
+    component: RefineProfilesSection,
   },
   "app-mappings": {
     title: "App Mappings",
@@ -34,14 +34,13 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
     title: "Speech Models",
     component: () => (
       <DictateModelsSection
-        capped={false}
         titleActionTargetId="stt-models-section-actions"
       />
     ),
   },
   "llm-models": {
     title: "Refine Models",
-    component: () => <RefineModelsSection capped={false} />,
+    component: RefineModelsSection,
   },
   corrections: {
     title: "Learned Corrections",
@@ -57,7 +56,7 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   },
   "jot-pad": {
     title: "Jot Pad",
-    component: () => <JotPadSection capped={false} />,
+    component: JotPadSection,
   },
 };
 
@@ -97,7 +96,11 @@ const DetailApp: React.FC = () => {
 
   useEffect(() => {
     // Listen for backend-driven section changes
-    window.history.replaceState(null, "", `?section=${encodeURIComponent(sectionId)}`);
+    window.history.replaceState(
+      null,
+      "",
+      `?section=${encodeURIComponent(sectionId)}`,
+    );
   }, [sectionId]);
 
   const entry = SECTION_MAP[sectionId];
@@ -105,7 +108,7 @@ const DetailApp: React.FC = () => {
   if (!entry) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-[var(--muted)]">
-        <p>Unknown section: {sectionId}</p>
+        <p>{`Unknown section: ${sectionId}`}</p>
       </div>
     );
   }

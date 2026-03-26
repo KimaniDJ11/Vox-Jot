@@ -1,0 +1,362 @@
+{
+  "settings": {
+    "always_on_microphone": false,
+    "app_aware_tone_enabled": true,
+    "app_language": "en",
+    "app_theme": "system",
+    "app_tone_mappings": [
+      {
+        "app_name": "Messages",
+        "bundle_id": "com.apple.MobileSMS",
+        "tone_id": "casual"
+      },
+      {
+        "app_name": "Mail",
+        "bundle_id": "com.apple.mail",
+        "tone_id": "professional"
+      },
+      {
+        "app_name": "Microsoft Word",
+        "bundle_id": "com.microsoft.Word",
+        "tone_id": "professional"
+      },
+      {
+        "app_name": "Microsoft Outlook",
+        "bundle_id": "com.microsoft.Outlook",
+        "tone_id": "professional"
+      },
+      {
+        "app_name": "Google Chrome",
+        "bundle_id": "com.google.Chrome",
+        "tone_id": "neutral"
+      },
+      {
+        "app_name": "Safari",
+        "bundle_id": "com.apple.Safari",
+        "tone_id": "neutral"
+      },
+      {
+        "app_name": "Notes",
+        "bundle_id": "com.apple.Notes",
+        "tone_id": "neutral"
+      },
+      {
+        "app_name": "VS Code",
+        "bundle_id": "com.microsoft.VSCode",
+        "tone_id": "coding"
+      },
+      {
+        "app_name": "Xcode",
+        "bundle_id": "com.apple.dt.Xcode",
+        "tone_id": "coding"
+      },
+      {
+        "app_name": "Terminal",
+        "bundle_id": "com.apple.Terminal",
+        "tone_id": "coding"
+      },
+      {
+        "app_name": "Warp",
+        "bundle_id": "dev.warp.Warp-Stable",
+        "tone_id": "coding"
+      },
+      {
+        "app_name": "Cursor",
+        "bundle_id": "com.todesktop.230313mzl4w4u92",
+        "tone_id": "coding"
+      }
+    ],
+    "append_trailing_space": false,
+    "audio_feedback": false,
+    "audio_feedback_volume": 1.0,
+    "auto_submit": false,
+    "auto_submit_key": "enter",
+    "autostart_enabled": true,
+    "bindings": {
+      "cancel": {
+        "current_binding": "escape",
+        "default_binding": "escape",
+        "description": "Cancels the current recording.",
+        "id": "cancel",
+        "name": "Cancel"
+      },
+      "rewrite_selection": {
+        "current_binding": "option+command+r",
+        "default_binding": "option+command+r",
+        "description": "Rewrites currently selected text based on your spoken instructions.",
+        "id": "rewrite_selection",
+        "name": "Rewrite Selection"
+      },
+      "speak_last_output": {
+        "current_binding": "option+command+l",
+        "default_binding": "option+command+l",
+        "description": "Reads the last text Vox Jot produced aloud.",
+        "id": "speak_last_output",
+        "name": "Speak Last Output"
+      },
+      "speak_selection": {
+        "current_binding": "option+command+s",
+        "default_binding": "option+command+s",
+        "description": "Reads the currently selected text aloud.",
+        "id": "speak_selection",
+        "name": "Speak Selection"
+      },
+      "stop_speaking": {
+        "current_binding": "option+command+x",
+        "default_binding": "option+command+x",
+        "description": "Stops current speech playback.",
+        "id": "stop_speaking",
+        "name": "Stop Speaking"
+      },
+      "transcribe": {
+        "current_binding": "option+space",
+        "default_binding": "option+space",
+        "description": "Converts your speech into text.",
+        "id": "transcribe",
+        "name": "Transcribe"
+      },
+      "transcribe_with_post_process": {
+        "current_binding": "option_right",
+        "default_binding": "option+shift+space",
+        "description": "Converts your speech into text and applies AI post-processing.",
+        "id": "transcribe_with_post_process",
+        "name": "Transcribe with Post-Processing"
+      },
+      "translate_selection": {
+        "current_binding": "option+command+t",
+        "default_binding": "option+command+t",
+        "description": "Translates the currently selected text.",
+        "id": "translate_selection",
+        "name": "Translate Selection"
+      }
+    },
+    "clamshell_microphone": null,
+    "clipboard_handling": "dont_modify",
+    "correction_tracking_enabled": true,
+    "custom_filler_words": null,
+    "custom_words": [],
+    "debug_mode": false,
+    "experimental_enabled": true,
+    "external_script_path": null,
+    "fallback_to_raw_on_failure": true,
+    "history_limit": 11,
+    "keyboard_implementation": "handy_keys",
+    "local_privacy_mode": false,
+    "log_level": "debug",
+    "max_rewrite_strength": 1,
+    "model_unload_timeout": "never",
+    "mute_while_recording": false,
+    "overlay_position": "bottom",
+    "paste_delay_ms": 60,
+    "paste_method": "ctrl_v",
+    "personal_dictionary": [
+      {
+        "case_sensitive": false,
+        "exact_only": false,
+        "priority": 0,
+        "spoken": "Hhjjjjj",
+        "written": "Jn"
+      }
+    ],
+    "post_process_api_keys": {
+      "anthropic": "",
+      "apple_intelligence": "",
+      "cerebras": "",
+      "custom": "",
+      "groq": "",
+      "lmstudio": "",
+      "ollama": "",
+      "openai": "",
+      "openrouter": "",
+      "zai": ""
+    },
+    "post_process_enabled": true,
+    "post_process_mode": "intent",
+    "post_process_models": {
+      "anthropic": "",
+      "apple_intelligence": "Apple Intelligence",
+      "cerebras": "",
+      "custom": "",
+      "groq": "",
+      "lmstudio": "mistralai/ministral-3-3b",
+      "ollama": "ministral-3:3b",
+      "openai": "",
+      "openrouter": "",
+      "zai": ""
+    },
+    "post_process_prompt_policy_version": 5,
+    "post_process_prompts": [
+      {
+        "id": "default_improve_transcriptions_v2",
+        "name": "Improve Transcriptions",
+        "prompt": "You are a local dictation post-processor.\n\n**Task**: Clean speech-to-text output while preserving the speaker's exact meaning and intent.\n\n**Current settings**:\n- Mode: ${mode} (literal = minimal changes, intent = readable cleanup)\n- Rewrite strength: ${strength} (0=conservative, 1=balanced, 2=aggressive)\n- App context: ${app} (${appToneGuidance})\n\n**Output format**: Return only the final processed text. No explanations, no commentary, no surrounding quotes.\n\n---\n\n## Core Principles (Priority Order)\n\n1. **Preserve meaning exactly** — Never invent facts, add detail, or change the speaker's intent\n2. **Respect corrections** — When the speaker self-corrects, keep only the final intended wording\n3. **Preserve technical content** — Keep names, acronyms, URLs, emails, code terms, jargon, and specialized punctuation unless clearly corrected\n4. **Conservative by default** — When uncertain, make minimal changes\n\n---\n\n## Text Cleaning Rules\n\n### What to Fix\n- Capitalization, punctuation, spacing, paragraph breaks\n- Filler words and false starts (only when meaning is preserved)\n- Obvious transcription errors in common words\n\n### What to Preserve\n- Personal dictionary spellings (apply exactly when present)\n- Names, proper nouns, product names, technical jargon\n- Technical punctuation: / \\ _ - . : ( ) [ ] \" ' @ + - and file extensions\n- Uncommon but correct words (don't replace with \"simpler\" alternatives)\n- Original wording when multiple interpretations are possible\n\n---\n\n## Correction Interpretation\n\nThe speaker may revise their dictation mid-sentence. Detect and apply these corrections:\n\n**Correction cues**: \"scratch that\", \"actually\", \"I mean\", \"correction\", \"wait no\", \"rather\", natural restarts, \"no\" used as negation\n\n**Replacement patterns**:\n- \"X? No, Y\" → keep Y, remove X\n- \"X, no, Y\" → keep Y, remove X  \n- Mid-sentence restart → keep final phrasing\n\n**Examples**:\n- \"Hi Greg, are you available Friday at three? No, four o'clock.\" → \"Hi Greg, are you available Friday at four o'clock?\"\n- \"Personnel reference previous reference I meant previous landlord reference\" → \"Personnel reference previous landlord reference\"\n\n**When corrections are unclear**: Keep original wording rather than guessing.\n\n---\n\n## Formatting & Structure\n\n### Paragraph Breaks\n- Insert breaks when the speaker clearly shifts topics\n- Respect explicit cues: \"new paragraph\", \"new line\", \"skip a line\"\n\n### Lists (unordered)\nCreate bullet lists when:\n- An intro sentence implies a list (e.g., \"I need to buy...\"), AND\n- 2+ short parallel items follow (groceries, tasks, names, features)\n\nFormat: Keep intro sentence with colon, use * for items\n\n**Example**:\nInput: \"I want to pick up bread, chips, ice cream from the store\"\nOutput: \"I want to pick up from the store:\n* Bread\n* Chips  \n* Ice cream\"\n\n### Lists (ordered)\nUse numbered lists when sequence words appear: \"first\", \"second\", \"one\", \"two\", \"next\", \"finally\", \"step one\", etc.\n\n### Spoken Punctuation\nIf the speaker explicitly says \"period\", \"comma\", \"question mark\", \"colon\", etc., honor it when intentional (ignore if clearly accidental)\n\n### Default behavior\nIf content is ordinary prose, **keep it as prose**. Don't force list formatting.\n\n---\n\n## Mode-Specific Behavior\n\n**Literal mode** (strength 0-1):\n- Preserve original wording as much as possible\n- Fix only obvious errors and basic punctuation\n- Avoid stylistic rewriting\n\n**Intent mode** (strength 1-2):\n- Clean rambling speech into readable written text when meaning is clear\n- Maintain the speaker's tone and specificity\n- Don't summarize, formalize, or shorten unless clearly intended\n\n**Incomplete utterances**: If the transcript seems cut off, ambiguous, or mid-thought, stay conservative regardless of mode.\n\n---\n\n## What NOT to Do\n\n- Don't add markdown headings, labels, or structure not present in speech\n- Don't invent facts, examples, or explanations\n- Don't guess unknown jargon or technical terms\n- Don't replace correct uncommon words with \"simpler\" alternatives\n- Don't convert technical text to plain English without clear intent\n- Don't over-format short fragments\n\n---\n\n**Transcript**:\n${output}\n\n// Add to the very end of build_apple_system_prompt():\n\"\\n\\n⚠️ CRITICAL: Output the corrected text ONLY. \\\nNo explanations, no apologies, no meta-commentary. \\\nIf the transcript is a single word or fragment, output that word/fragment directly.\""
+      }
+    ],
+    "post_process_provider_id": "ollama",
+    "post_process_providers": [
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://api.openai.com/v1",
+        "id": "openai",
+        "label": "OpenAI",
+        "models_endpoint": "/models",
+        "supports_structured_output": true
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "id": "zai",
+        "label": "Z.AI",
+        "models_endpoint": "/models",
+        "supports_structured_output": true
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://openrouter.ai/api/v1",
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "models_endpoint": "/models",
+        "supports_structured_output": true
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://api.anthropic.com/v1",
+        "id": "anthropic",
+        "label": "Anthropic",
+        "models_endpoint": "/models",
+        "supports_structured_output": false
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://api.groq.com/openai/v1",
+        "id": "groq",
+        "label": "Groq",
+        "models_endpoint": "/models",
+        "supports_structured_output": false
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "https://api.cerebras.ai/v1",
+        "id": "cerebras",
+        "label": "Cerebras",
+        "models_endpoint": "/models",
+        "supports_structured_output": true
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "apple-intelligence://local",
+        "id": "apple_intelligence",
+        "label": "Apple Intelligence",
+        "models_endpoint": null,
+        "supports_structured_output": true
+      },
+      {
+        "allow_base_url_edit": true,
+        "base_url": "http://localhost:11434/v1",
+        "id": "custom",
+        "label": "Custom",
+        "models_endpoint": "/models",
+        "supports_structured_output": false
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "http://localhost:1234/v1",
+        "id": "lmstudio",
+        "label": "LM Studio",
+        "models_endpoint": "/models",
+        "supports_structured_output": false
+      },
+      {
+        "allow_base_url_edit": false,
+        "base_url": "http://127.0.0.1:11434/v1",
+        "id": "ollama",
+        "label": "Ollama (Local LLMs)",
+        "models_endpoint": "/models",
+        "supports_structured_output": false
+      }
+    ],
+    "post_process_selected_prompt_id": "default_improve_transcriptions_v2",
+    "push_to_talk": true,
+    "recording_retention_period": "preserve_limit",
+    "selected_language": "auto",
+    "selected_llm_model_id": "ministral-3:3b",
+    "selected_llm_provider_id": "ollama",
+    "selected_microphone": null,
+    "selected_model": "sense-voice-int8",
+    "selected_output_device": null,
+    "selected_stt_model_id": "sense-voice-int8",
+    "selected_stt_provider_id": "",
+    "selected_tts_model_id": "qwen3-design",
+    "selected_tts_profile_id": null,
+    "selected_tts_provider_id": "qwen3",
+    "selected_tts_voice_id": null,
+    "selection_translation_destination_mode": "replace_selection",
+    "show_preview_before_paste": false,
+    "show_tray_icon": true,
+    "snippets": [
+      {
+        "enabled": true,
+        "expansion": "kimani@iriedinamik.com",
+        "id": "snippet_1774013459312_n3belq",
+        "trigger": "My email"
+      }
+    ],
+    "snippets_enabled": true,
+    "sound_theme": "marimba",
+    "start_hidden": false,
+    "tone_definitions": [
+      {
+        "id": "neutral",
+        "instruction": "Keep the tone neutral and close to the speaker's original wording.",
+        "label": "Neutral"
+      },
+      {
+        "id": "casual",
+        "instruction": "Use a casual, conversational tone suitable for quick chat messages while preserving meaning.",
+        "label": "Casual"
+      },
+      {
+        "id": "professional",
+        "instruction": "Use a polished, professional tone suitable for email or documents while preserving meaning.",
+        "label": "Professional"
+      },
+      {
+        "id": "coding",
+        "instruction": "Format the text as precise technical writing suited for code editors and terminals. Use exact technical terms, preserve variable and function names verbatim, format code snippets with proper syntax, and keep comments concise. Convert spoken code descriptions into valid code when the intent is clear (e.g., \"define a function called foo that takes a string\" → \"fn foo(s: &str)\"). Prefer lowercase and avoid unnecessary punctuation.",
+        "label": "Coding"
+      }
+    ],
+    "translate_to_english": false,
+    "translation_bilingual_layout": "translation_then_source",
+    "translation_destination_mode": "paste_in_place",
+    "translation_model_ids": {
+      "anthropic": "",
+      "apple_intelligence": "Apple Intelligence",
+      "cerebras": "",
+      "custom": "",
+      "groq": "",
+      "lmstudio": "",
+      "ollama": "",
+      "openai": "",
+      "openrouter": "",
+      "zai": ""
+    },
+    "translation_output_mode": "source",
+    "translation_provider_id": "apple_intelligence",
+    "translation_route_preference": "auto",
+    "translation_target_language": "en",
+    "translation_translate_snippets": false,
+    "tts_auto_readback_mode": "off",
+    "tts_auto_readback_scope": "dictation_only",
+    "tts_default_voice_id": null,
+    "tts_enabled": true,
+    "tts_engine_preference": "sidecar",
+    "tts_rate": 1.0,
+    "tts_readback_text_mode": "final_output",
+    "tts_stop_on_record": true,
+    "tts_volume": 0.8500000238418579,
+    "typing_tool": "auto",
+    "update_checks_enabled": true,
+    "word_correction_threshold": 0.17
+  }
+}

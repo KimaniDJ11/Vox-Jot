@@ -14,7 +14,8 @@ use super::handler::handle_shortcut_event;
 /// Initialize shortcuts using Tauri's global-shortcut plugin
 pub fn init_shortcuts(app: &AppHandle) {
     let default_bindings = settings::get_default_settings().bindings;
-    let user_settings = settings::load_or_create_app_settings(app);
+    let mut user_settings = settings::load_or_create_app_settings(app);
+    let mut reset_bindings = Vec::new();
 
     // Register all default shortcuts, applying user customizations
     for (id, default_binding) in default_bindings {
@@ -31,11 +32,32 @@ pub fn init_shortcuts(app: &AppHandle) {
             .bindings
             .get(&id)
             .cloned()
-            .unwrap_or(default_binding);
+            .unwrap_or_else(|| default_binding.clone());
+
+        let binding = match validate_shortcut(&binding.current_binding) {
+            Ok(()) => binding,
+            Err(error) => {
+                warn!(
+                    "Resetting invalid Tauri shortcut '{}' ({}): {}",
+                    id, binding.current_binding, error
+                );
+                let mut reset_binding = binding;
+                reset_binding.current_binding = default_binding.current_binding.clone();
+                user_settings
+                    .bindings
+                    .insert(id.clone(), reset_binding.clone());
+                reset_bindings.push(id.clone());
+                reset_binding
+            }
+        };
 
         if let Err(e) = register_shortcut(app, binding) {
             error!("Failed to register shortcut {} during init: {}", id, e);
         }
+    }
+
+    if !reset_bindings.is_empty() {
+        settings::write_settings(app, user_settings);
     }
 }
 
@@ -63,7 +85,9 @@ pub fn validate_shortcut(raw: &str) -> Result<(), String> {
     let has_non_modifier = parts.iter().any(|part| !modifiers.contains(&part.as_str()));
 
     if has_non_modifier {
-        Ok(())
+        raw.parse::<Shortcut>().map(|_| ()).map_err(|e| {
+            format!("Failed to parse shortcut '{}': {}", raw, e)
+        })
     } else {
         Err("Tauri shortcuts must include a main key (letter, number, F-key, etc.) in addition to modifiers".into())
     }

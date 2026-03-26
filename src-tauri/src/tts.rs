@@ -440,6 +440,17 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
     },
 ];
 
+fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
+    matches!(
+        provider_id,
+        TTS_PROVIDER_OPENVOICE_ID
+            | TTS_PROVIDER_CHATTERBOX_ID
+            | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_XTTS_ID
+            | TTS_PROVIDER_FISH_SPEECH_ID
+    )
+}
+
 pub struct TtsManager {
     app_handle: AppHandle,
     current_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
@@ -774,6 +785,16 @@ impl TtsManager {
         }
 
         Ok(root)
+    }
+
+    pub async fn ensure_managed_speech_runtime_available(
+        &self,
+        provider_id: &str,
+    ) -> Result<(), String> {
+        if provider_uses_managed_speech_runtime(provider_id) {
+            let _ = self.ensure_managed_speech_runtime_installed().await?;
+        }
+        Ok(())
     }
 
     fn managed_speech_runtime_candidate_paths(
@@ -2183,7 +2204,10 @@ impl TtsManager {
         let locale = normalize_locale(request.locale.as_deref());
         let chunks = chunk_text(trimmed);
         let engine = self.resolve_engine_kind(&effective_settings, locale.as_deref())?;
+        let selected_provider_id = self.selected_provider_id(&effective_settings);
         if engine == TtsEngineKind::Sidecar {
+            self.ensure_managed_speech_runtime_available(&selected_provider_id)
+                .await?;
             if let Some(sidecar) = self
                 .app_handle
                 .try_state::<Arc<crate::sidecar::SidecarManager>>()

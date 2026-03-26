@@ -45,6 +45,7 @@ import { Textarea } from "./components/ui/Textarea";
 import { useSettings } from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
+import { initializeInputServices } from "@/lib/appInitialization";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import {
   AboutSection,
@@ -186,7 +187,7 @@ function App() {
       return false;
     }
   });
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, refreshSettings } = useSettings();
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
   const refreshAudioDevices = useSettingsStore(
@@ -454,16 +455,20 @@ function App() {
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {
       hasCompletedPostOnboardingInit.current = true;
-      Promise.all([
-        commands.initializeEnigo(),
-        commands.initializeShortcuts(),
-      ]).catch((error) => {
-        console.warn("Failed to initialize:", error);
-      });
-      refreshAudioDevices();
-      refreshOutputDevices();
+      void (async () => {
+        await initializeInputServices((message) => {
+          console.warn(message);
+        });
+        await refreshSettings();
+        await Promise.all([refreshAudioDevices(), refreshOutputDevices()]);
+      })();
     }
-  }, [onboardingStep, refreshAudioDevices, refreshOutputDevices]);
+  }, [
+    onboardingStep,
+    refreshAudioDevices,
+    refreshOutputDevices,
+    refreshSettings,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

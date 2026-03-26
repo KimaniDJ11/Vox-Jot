@@ -11,6 +11,7 @@ import {
 } from "tauri-plugin-macos-permissions-api";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
+import { initializeInputServices } from "@/lib/appInitialization";
 import { useSettingsStore } from "@/stores/settingsStore";
 import VoxJotTextLogo from "../icons/VoxJotTextLogo";
 import { Keyboard, Mic, Check, Loader2 } from "lucide-react";
@@ -113,14 +114,11 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
 
           // If accessibility is granted, initialize Enigo and shortcuts
           if (accessibilityGranted) {
-            try {
-              await Promise.all([
-                commands.initializeEnigo(),
-                commands.initializeShortcuts(),
-              ]);
-            } catch (e) {
-              console.warn("Failed to initialize after permission grant:", e);
-            }
+            await initializeInputServices((message) => {
+              console.warn(
+                `Failed to initialize after permission grant: ${message}`,
+              );
+            });
           }
 
           const newState: PermissionsState = {
@@ -217,11 +215,10 @@ const AccessibilityOnboarding: React.FC<AccessibilityOnboardingProps> = ({
           if (accessibilityGranted && prev.accessibility !== "granted") {
             newState.accessibility = "granted";
             // Initialize Enigo and shortcuts when accessibility is granted
-            Promise.all([
-              commands.initializeEnigo(),
-              commands.initializeShortcuts(),
-            ]).catch((e) => {
-              console.warn("Failed to initialize after permission grant:", e);
+            void initializeInputServices((message) => {
+              console.warn(
+                `Failed to initialize after permission grant: ${message}`,
+              );
             });
           }
 

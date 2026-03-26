@@ -11,6 +11,7 @@ import {
 } from "tauri-plugin-macos-permissions-api";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
+import { initializeInputServices } from "@/lib/appInitialization";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { Check, Loader2, Info } from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
@@ -111,14 +112,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           ]);
 
           if (accessibilityGranted) {
-            try {
-              await Promise.all([
-                commands.initializeEnigo(),
-                commands.initializeShortcuts(),
-              ]);
-            } catch (e) {
-              console.warn("Failed to initialize after permission grant:", e);
-            }
+            await initializeInputServices((message) => {
+              console.warn(
+                `Failed to initialize after permission grant: ${message}`,
+              );
+            });
           }
 
           const newState: PermissionsState = {
@@ -204,11 +202,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           const newState = { ...prev };
           if (accessibilityGranted && prev.accessibility !== "granted") {
             newState.accessibility = "granted";
-            Promise.all([
-              commands.initializeEnigo(),
-              commands.initializeShortcuts(),
-            ]).catch((e) => {
-              console.warn("Failed to initialize after permission grant:", e);
+            void initializeInputServices((message) => {
+              console.warn(
+                `Failed to initialize after permission grant: ${message}`,
+              );
             });
           }
           if (microphoneGranted && prev.microphone !== "granted") {

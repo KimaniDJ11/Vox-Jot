@@ -165,6 +165,11 @@ pub async fn prepare_sidecar_engine(
     app: AppHandle,
     provider_id: String,
 ) -> Result<(), String> {
+    let manager = app.state::<Arc<TtsManager>>();
+    manager
+        .ensure_managed_speech_runtime_available(&provider_id)
+        .await?;
+
     // Ensure the sidecar is running first.
     if let Some(sidecar) = app
         .try_state::<Arc<crate::sidecar::SidecarManager>>()

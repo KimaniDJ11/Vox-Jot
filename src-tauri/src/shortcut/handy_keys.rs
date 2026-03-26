@@ -89,12 +89,25 @@ impl HandyKeysState {
     /// Create a new HandyKeysState
     pub fn new(app: AppHandle) -> Result<Self, String> {
         let (cmd_tx, cmd_rx) = mpsc::channel::<ManagerCommand>();
+        let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
 
         // Start the manager thread
         let app_clone = app.clone();
         let thread_handle = thread::spawn(move || {
-            Self::manager_thread(cmd_rx, app_clone);
+            Self::manager_thread(cmd_rx, ready_tx, app_clone);
         });
+
+        match ready_rx.recv() {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                let _ = thread_handle.join();
+                return Err(error);
+            }
+            Err(_) => {
+                let _ = thread_handle.join();
+                return Err("HandyKeys manager thread failed to initialize".into());
+            }
+        }
 
         Ok(Self {
             command_sender: Mutex::new(cmd_tx),
@@ -107,14 +120,23 @@ impl HandyKeysState {
     }
 
     /// The main manager thread - owns the HotkeyManager and processes commands
-    fn manager_thread(cmd_rx: Receiver<ManagerCommand>, app: AppHandle) {
+    fn manager_thread(
+        cmd_rx: Receiver<ManagerCommand>,
+        ready_tx: Sender<Result<(), String>>,
+        app: AppHandle,
+    ) {
         info!("handy-keys manager thread started");
 
         // Create the HotkeyManager in this thread
         let manager = match HotkeyManager::new_with_blocking() {
-            Ok(m) => m,
+            Ok(m) => {
+                let _ = ready_tx.send(Ok(()));
+                m
+            }
             Err(e) => {
-                error!("Failed to create HotkeyManager: {}", e);
+                let error = format!("Failed to create HotkeyManager: {}", e);
+                error!("{}", error);
+                let _ = ready_tx.send(Err(error));
                 return;
             }
         };

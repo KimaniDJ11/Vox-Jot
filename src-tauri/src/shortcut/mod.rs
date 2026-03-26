@@ -54,7 +54,14 @@ pub fn init_shortcuts(app: &AppHandle) {
                 settings.keyboard_implementation = KeyboardImplementation::Tauri;
                 settings::write_settings(app, settings);
 
-                tauri_impl::init_shortcuts(app);
+                let reset_bindings =
+                    register_all_shortcuts_for_implementation(app, KeyboardImplementation::Tauri);
+                if !reset_bindings.is_empty() {
+                    warn!(
+                        "Reset incompatible shortcuts after falling back to Tauri: {:?}",
+                        reset_bindings
+                    );
+                }
             }
         }
     }
@@ -462,7 +469,16 @@ fn initialize_handy_keys_with_rollback(app: &AppHandle) -> Result<bool, String> 
         let mut settings = settings::get_settings(app);
         settings.keyboard_implementation = KeyboardImplementation::Tauri;
         settings::write_settings(app, settings);
-        tauri_impl::init_shortcuts(app);
+
+        let reset_bindings =
+            register_all_shortcuts_for_implementation(app, KeyboardImplementation::Tauri);
+        if !reset_bindings.is_empty() {
+            warn!(
+                "Reset incompatible shortcuts after reverting to Tauri: {:?}",
+                reset_bindings
+            );
+        }
+
         return Err(format!(
             "Failed to initialize HandyKeys: {}. Reverted to Tauri.",
             e

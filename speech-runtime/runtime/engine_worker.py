@@ -203,7 +203,9 @@ class EngineWorker:
             temperature=float(controls.get("temperature", 0.8)),
             repetition_penalty=float(controls.get("repetition_penalty", 1.2)),
             top_p=float(controls.get("top_p", 0.95)),
-            exaggeration=float(controls.get("expressiveness", 0.5)),
+            exaggeration=float(
+                controls.get("exaggeration", controls.get("expressiveness", 0.5))
+            ),
         )
         if hasattr(wav, "detach"):
             wav = wav.detach().cpu().numpy()

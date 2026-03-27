@@ -2,17 +2,17 @@ use crate::github_release;
 use crate::model_platform::{
     CapabilityFlags, CatalogModelDescriptor, CatalogSourceKind, DomainCatalog, ModelDomain,
     ProviderDescriptor, RuntimeRequirement, TtsAdvancedControlDescriptor, TtsAdvancedControlKind,
-    TtsDeliverySupport, TtsExpressivenessMode,
+    TtsControlGroup, TtsDeliverySupport, TtsExpressivenessMode,
 };
 use crate::settings::{
     default_tts_model_store_dir, get_settings, is_local_base_url, AppSettings, TtsAutoReadbackMode,
     TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue,
-    TtsVoicePreset, DEFAULT_TTS_MODEL_STORE_PATH, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
-    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_FISH_SPEECH_ID,
-    TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID, TTS_PROVIDER_KOKORO_ID,
-    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
-    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
-    TTS_PROVIDER_XTTS_ID,
+    TtsVoicePreset, TtsVoiceTuningSettings, DEFAULT_TTS_MODEL_STORE_PATH,
+    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID,
+    TTS_PROVIDER_FISH_SPEECH_ID, TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
+    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID,
+    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::translation::TranslationOrigin;
 use crate::tts_profiles::{self, ResolvedTtsVoiceProfile};
@@ -21,7 +21,6 @@ use log::{info, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -104,6 +103,8 @@ struct RuntimeStyleControlOption {
 #[derive(Debug, Clone, Deserialize)]
 struct RuntimeStyleControl {
     id: String,
+    #[serde(default)]
+    group: Option<String>,
     label: String,
     description: Option<String>,
     kind: String,
@@ -1002,6 +1003,7 @@ impl TtsManager {
 
         Some(TtsAdvancedControlDescriptor {
             id: control.id.clone(),
+            group: Self::runtime_control_group(control.group.as_deref(), control.id.as_str()),
             label: control.label.clone(),
             description: control.description.clone(),
             kind,
@@ -1026,6 +1028,7 @@ impl TtsManager {
     fn instruction_prompt_control(description: &str) -> TtsAdvancedControlDescriptor {
         TtsAdvancedControlDescriptor {
             id: "style_instructions".to_string(),
+            group: TtsControlGroup::Steering,
             label: "Style Instructions".to_string(),
             description: Some(description.to_string()),
             kind: TtsAdvancedControlKind::Text,
@@ -1040,6 +1043,7 @@ impl TtsManager {
 
     fn slider_advanced_control(
         id: &str,
+        group: TtsControlGroup,
         label: &str,
         description: &str,
         min: f32,
@@ -1050,6 +1054,7 @@ impl TtsManager {
     ) -> TtsAdvancedControlDescriptor {
         TtsAdvancedControlDescriptor {
             id: id.to_string(),
+            group,
             label: label.to_string(),
             description: Some(description.to_string()),
             kind: TtsAdvancedControlKind::Slider,
@@ -1071,27 +1076,19 @@ impl TtsManager {
         if provider_id.contains("fish") {
             return vec![
                 Self::slider_advanced_control(
-                    "temperature",
-                    "Temperature",
+                    "randomness",
+                    TtsControlGroup::Sampler,
+                    "Randomness",
                     "Controls how stable or adventurous Fish Speech sounds.",
-                    0.1,
+                    0.0,
                     1.0,
                     0.05,
                     0.7,
                     None,
                 ),
                 Self::slider_advanced_control(
-                    "top_p",
-                    "Top P",
-                    "Limits sampling to the most likely next-token mass.",
-                    0.5,
-                    1.0,
-                    0.05,
-                    0.8,
-                    None,
-                ),
-                Self::slider_advanced_control(
                     "repetition_penalty",
+                    TtsControlGroup::Guidance,
                     "Repetition Penalty",
                     "Helps reduce repeated words or loops in longer reads.",
                     1.0,
@@ -1105,9 +1102,10 @@ impl TtsManager {
 
         if provider_id.contains("kokoro") {
             return vec![Self::slider_advanced_control(
-                "speed",
-                "Speed",
-                "Adjusts Kokoro playback speed without changing the preset-wide speech rate.",
+                "tempo_rate",
+                TtsControlGroup::Tempo,
+                "Tempo",
+                "Adjusts Kokoro delivery speed for this preset.",
                 0.5,
                 2.0,
                 0.05,
@@ -1119,8 +1117,9 @@ impl TtsManager {
         if provider_id.contains("chatterbox") {
             return vec![
                 Self::slider_advanced_control(
-                    "cfg_weight",
-                    "CFG Weight",
+                    "guidance",
+                    TtsControlGroup::Guidance,
+                    "Guidance",
                     "Controls how strongly Chatterbox follows its conditioning signal.",
                     0.0,
                     1.0,
@@ -1129,13 +1128,36 @@ impl TtsManager {
                     None,
                 ),
                 Self::slider_advanced_control(
-                    "temperature",
-                    "Temperature",
+                    "randomness",
+                    TtsControlGroup::Sampler,
+                    "Randomness",
                     "Balances predictable versus more varied delivery.",
-                    0.1,
+                    0.0,
                     1.0,
                     0.05,
                     0.8,
+                    None,
+                ),
+                Self::slider_advanced_control(
+                    "exaggeration",
+                    TtsControlGroup::Style,
+                    "Exaggeration",
+                    "Pushes Chatterbox toward a more pronounced style.",
+                    0.0,
+                    1.0,
+                    0.05,
+                    0.5,
+                    None,
+                ),
+                Self::slider_advanced_control(
+                    "repetition_penalty",
+                    TtsControlGroup::Guidance,
+                    "Repetition Penalty",
+                    "Discourages repeated words in longer reads.",
+                    1.0,
+                    3.0,
+                    0.1,
+                    1.2,
                     None,
                 ),
             ];
@@ -1144,10 +1166,11 @@ impl TtsManager {
         if provider_id.contains("xtts") || provider_id.contains("coqui") {
             return vec![
                 Self::slider_advanced_control(
-                    "temperature",
-                    "Temperature",
+                    "randomness",
+                    TtsControlGroup::Sampler,
+                    "Randomness",
                     "Balances stable reads with more expressive sampling.",
-                    0.1,
+                    0.0,
                     1.0,
                     0.05,
                     0.65,
@@ -1155,6 +1178,7 @@ impl TtsManager {
                 ),
                 Self::slider_advanced_control(
                     "repetition_penalty",
+                    TtsControlGroup::Guidance,
                     "Repetition Penalty",
                     "Discourages repeated tokens in longer generations.",
                     1.0,
@@ -1163,33 +1187,14 @@ impl TtsManager {
                     2.0,
                     None,
                 ),
-                Self::slider_advanced_control(
-                    "top_k",
-                    "Top K",
-                    "Restricts sampling to the most likely token candidates.",
-                    10.0,
-                    100.0,
-                    1.0,
-                    50.0,
-                    None,
-                ),
-                Self::slider_advanced_control(
-                    "top_p",
-                    "Top P",
-                    "Restricts sampling to the most likely cumulative token mass.",
-                    0.5,
-                    1.0,
-                    0.05,
-                    0.8,
-                    None,
-                ),
             ];
         }
 
         if provider_id.contains("openvoice") {
             return vec![Self::slider_advanced_control(
-                "speed",
-                "Speed",
+                "tempo_rate",
+                TtsControlGroup::Tempo,
+                "Tempo",
                 "Speeds OpenVoice up or down for a tighter delivery fit.",
                 0.5,
                 2.0,
@@ -1214,6 +1219,7 @@ impl TtsManager {
             advanced_controls: if provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
                 vec![TtsAdvancedControlDescriptor {
                     id: "style_instructions".to_string(),
+                    group: TtsControlGroup::Steering,
                     label: "Style Instructions".to_string(),
                     description: Some(
                         "Optional sidecar-specific instructions passed through with speech generation."
@@ -1230,6 +1236,24 @@ impl TtsManager {
             } else {
                 Vec::new()
             },
+        }
+    }
+
+    fn runtime_control_group(raw_group: Option<&str>, control_id: &str) -> TtsControlGroup {
+        match raw_group.unwrap_or(control_id).trim().to_ascii_lowercase().as_str() {
+            "identity" => TtsControlGroup::Identity,
+            "tempo" => TtsControlGroup::Tempo,
+            "style" => TtsControlGroup::Style,
+            "sampler" => TtsControlGroup::Sampler,
+            "steering" => TtsControlGroup::Steering,
+            "tempo_rate" | "speed" => TtsControlGroup::Tempo,
+            "expressiveness" | "exaggeration" => TtsControlGroup::Style,
+            "randomness" | "temperature" | "top_p" | "top_k" => TtsControlGroup::Sampler,
+            "guidance" | "cfg_weight" | "stability" | "repetition_penalty" => {
+                TtsControlGroup::Guidance
+            }
+            "style_instructions" => TtsControlGroup::Steering,
+            _ => TtsControlGroup::Style,
         }
     }
 
@@ -2219,6 +2243,14 @@ impl TtsManager {
         let locale = normalize_locale(request.locale.as_deref());
         let engine = self.resolve_engine_kind(&effective_settings, locale.as_deref())?;
         let selected_provider_id = self.selected_provider_id(&effective_settings);
+        let selected_model_id = selected_preset
+            .as_ref()
+            .map(|preset| preset.model_id.clone())
+            .or_else(|| self.selected_model_id(&effective_settings));
+        let selected_profile_id = selected_preset
+            .as_ref()
+            .and_then(|preset| preset.voice_profile_id.clone())
+            .or_else(|| effective_settings.selected_tts_profile_id.clone());
 
         // Fish Speech 1.5 produces empty audio for very short inputs.
         // Swap in a longer preview sentence so the preview actually speaks.
@@ -2283,20 +2315,19 @@ impl TtsManager {
                     .as_ref()
                     .and_then(|preset| preset.voice_id.clone())
             });
-        let speech_rate = selected_preset
+        let tuning = selected_preset
             .as_ref()
-            .map(|preset| preset.style.rate)
-            .unwrap_or(effective_settings.tts_rate)
-            .clamp(0.5, 2.0);
-        let expressiveness = selected_preset
-            .as_ref()
-            .map(|preset| preset.style.expressiveness)
-            .unwrap_or(0.5)
-            .clamp(0.0, 1.0);
-        let advanced_overrides = selected_preset
-            .as_ref()
-            .map(|preset| preset.style.advanced_overrides.clone())
-            .unwrap_or_default();
+            .map(|preset| preset.tuning.clone())
+            .unwrap_or(TtsVoiceTuningSettings {
+                tempo_rate: effective_settings.tts_rate.clamp(0.5, 2.0),
+                expressiveness: 0.5,
+                exaggeration: 0.5,
+                randomness: 0.7,
+                guidance: 0.5,
+                stability: 0.5,
+                repetition_penalty: 1.2,
+                style_instructions: None,
+            });
         let trigger = request.trigger.clone();
 
         info!(
@@ -2321,7 +2352,7 @@ impl TtsManager {
                             &chunk,
                             locale.as_deref(),
                             voice.as_ref(),
-                            speech_rate,
+                            tuning.tempo_rate,
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -2334,7 +2365,7 @@ impl TtsManager {
                         speak_sherpa_chunk(
                             &chunk,
                             sherpa_context,
-                            speech_rate,
+                            tuning.tempo_rate,
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -2354,13 +2385,14 @@ impl TtsManager {
                     }
                     TtsEngineKind::Sidecar => {
                         speak_sidecar_chunk(
-                            &effective_settings,
                             &chunk,
+                            &selected_provider_id,
+                            selected_model_id.as_deref(),
+                            selected_profile_id.as_deref(),
                             locale.as_deref(),
                             preferred_voice_id.as_deref(),
                             voice.as_ref(),
-                            expressiveness,
-                            &advanced_overrides,
+                            &tuning,
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -3760,13 +3792,14 @@ fn speak_system_chunk_windows(
 }
 
 fn speak_sidecar_chunk(
-    settings: &AppSettings,
     text: &str,
+    provider_id: &str,
+    model_id: Option<&str>,
+    profile_id: Option<&str>,
     locale: Option<&str>,
     preferred_voice_id: Option<&str>,
     voice: Option<&VoiceInfo>,
-    expressiveness: f32,
-    advanced_overrides: &HashMap<String, TtsStyleControlValue>,
+    tuning: &TtsVoiceTuningSettings,
     volume: f32,
     output_device: Option<String>,
     stop_flag: &AtomicBool,
@@ -3778,14 +3811,7 @@ fn speak_sidecar_chunk(
     let runtime = tokio::runtime::Handle::current();
     let sidecar_url = std::env::var("VOX_JOT_TTS_SIDECAR_URL")
         .unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string());
-    let model_id = settings
-        .selected_tts_model_id
-        .as_ref()
-        .filter(|model_id| !model_id.trim().is_empty())
-        .cloned();
-    let provider_id = settings.selected_tts_provider_id.trim().to_string();
-    let profile_id = settings.selected_tts_profile_id.clone();
-    let runtime_target = match (provider_id.trim(), model_id.as_deref()) {
+    let runtime_target = match (provider_id.trim(), model_id) {
         ("", Some(model_id)) => format!("Speech model '{model_id}'"),
         ("", None) => "The selected speech runtime".to_string(),
         (provider_id, Some(model_id)) => {
@@ -3794,30 +3820,16 @@ fn speak_sidecar_chunk(
         (provider_id, None) => format!("Speech runtime '{provider_id}'"),
     };
 
-    let payload = serde_json::json!({
-        "input": text,
-        "text": text,
-        "model": model_id,
-        "voice": preferred_voice_id
-            .map(|voice_id| voice_id.to_string())
-            .or_else(|| voice.map(|voice| voice.id.clone())),
-        "locale": locale,
-        "language": locale,
-        "format": "wav",
-        "profile_id": profile_id,
-        "extra_controls": if provider_id.is_empty() || provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
-            serde_json::json!({
-                "expressiveness": expressiveness,
-                "advanced_overrides": advanced_overrides,
-            })
-        } else {
-            serde_json::json!({
-                "provider_id": provider_id,
-                "expressiveness": expressiveness,
-                "advanced_overrides": advanced_overrides,
-            })
-        }
-    });
+    let payload = build_sidecar_request_payload(
+        text,
+        provider_id,
+        model_id,
+        profile_id,
+        locale,
+        preferred_voice_id,
+        voice,
+        tuning,
+    );
 
     let bytes = runtime.block_on(async {
         let client = reqwest::Client::builder()
@@ -3872,6 +3884,41 @@ fn speak_sidecar_chunk(
             .map_err(|err| format!("Failed to play sidecar speech audio: {err}"));
     let _ = fs::remove_file(&temp_file);
     play_result
+}
+
+fn build_sidecar_request_payload(
+    text: &str,
+    provider_id: &str,
+    model_id: Option<&str>,
+    profile_id: Option<&str>,
+    locale: Option<&str>,
+    preferred_voice_id: Option<&str>,
+    voice: Option<&VoiceInfo>,
+    tuning: &TtsVoiceTuningSettings,
+) -> serde_json::Value {
+    serde_json::json!({
+        "input": text,
+        "text": text,
+        "model": model_id,
+        "voice": preferred_voice_id
+            .map(|voice_id| voice_id.to_string())
+            .or_else(|| voice.map(|voice| voice.id.clone())),
+        "locale": locale,
+        "language": locale,
+        "format": "wav",
+        "profile_id": profile_id,
+        "extra_controls": if provider_id.is_empty() || provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
+            serde_json::json!({
+                "tuning": tuning,
+            })
+        } else {
+            serde_json::json!({
+                "provider_id": provider_id,
+                "model_id": model_id,
+                "tuning": tuning,
+            })
+        }
+    })
 }
 
 fn tts_temp_file(app_handle: &AppHandle, extension: &str) -> Result<PathBuf, String> {
@@ -4196,5 +4243,56 @@ mod tests {
 
         assert_eq!(base_pack.label, "Qwen3 0.6B Base");
         assert_eq!(base_pack.locale, "mul");
+    }
+
+    #[test]
+    fn sidecar_payload_uses_preset_owned_identity_and_tuning() {
+        let tuning = TtsVoiceTuningSettings {
+            tempo_rate: 1.25,
+            expressiveness: 0.6,
+            exaggeration: 0.7,
+            randomness: 0.3,
+            guidance: 0.8,
+            stability: 0.5,
+            repetition_penalty: 1.6,
+            style_instructions: Some("warm and steady".to_string()),
+        };
+
+        let payload = build_sidecar_request_payload(
+            "Hello world",
+            "chatterbox",
+            Some("chatterbox"),
+            Some("profile-1"),
+            Some("en-US"),
+            Some("voice-123"),
+            None,
+            &tuning,
+        );
+
+        assert_eq!(payload["model"], "chatterbox");
+        assert_eq!(payload["voice"], "voice-123");
+        assert_eq!(payload["profile_id"], "profile-1");
+        assert_eq!(payload["extra_controls"]["provider_id"], "chatterbox");
+        assert_eq!(payload["extra_controls"]["model_id"], "chatterbox");
+        assert_eq!(
+            payload["extra_controls"]["tuning"]["tempo_rate"]
+                .as_f64()
+                .expect("tempo rate should serialize"),
+            1.25
+        );
+        assert!(
+            (
+                payload["extra_controls"]["tuning"]["guidance"]
+                    .as_f64()
+                    .expect("guidance should serialize")
+                    - 0.8
+            )
+                .abs()
+                < 0.0001
+        );
+        assert_eq!(
+            payload["extra_controls"]["tuning"]["style_instructions"],
+            "warm and steady"
+        );
     }
 }

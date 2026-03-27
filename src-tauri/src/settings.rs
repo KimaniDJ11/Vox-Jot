@@ -449,14 +449,101 @@ pub enum TtsStyleControlValue {
     Text(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Type)]
-pub struct TtsVoiceStyleSettings {
+#[derive(Serialize, Debug, Clone, PartialEq, Type)]
+pub struct TtsVoiceTuningSettings {
+    #[serde(default = "default_tts_rate")]
+    pub tempo_rate: f32,
     #[serde(default = "default_tts_expressiveness")]
     pub expressiveness: f32,
-    #[serde(default = "default_tts_rate")]
-    pub rate: f32,
+    #[serde(default = "default_tts_exaggeration")]
+    pub exaggeration: f32,
+    #[serde(default = "default_tts_randomness")]
+    pub randomness: f32,
+    #[serde(default = "default_tts_guidance")]
+    pub guidance: f32,
+    #[serde(default = "default_tts_stability")]
+    pub stability: f32,
+    #[serde(default = "default_tts_repetition_penalty")]
+    pub repetition_penalty: f32,
     #[serde(default)]
-    pub advanced_overrides: HashMap<String, TtsStyleControlValue>,
+    pub style_instructions: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+struct TtsVoiceTuningSettingsCompat {
+    #[serde(default)]
+    tempo_rate: Option<f32>,
+    #[serde(default)]
+    expressiveness: Option<f32>,
+    #[serde(default)]
+    exaggeration: Option<f32>,
+    #[serde(default)]
+    randomness: Option<f32>,
+    #[serde(default)]
+    guidance: Option<f32>,
+    #[serde(default)]
+    stability: Option<f32>,
+    #[serde(default)]
+    repetition_penalty: Option<f32>,
+    #[serde(default)]
+    style_instructions: Option<String>,
+    #[serde(default)]
+    rate: Option<f32>,
+    #[serde(default)]
+    advanced_overrides: HashMap<String, TtsStyleControlValue>,
+}
+
+impl<'de> Deserialize<'de> for TtsVoiceTuningSettings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let compat = TtsVoiceTuningSettingsCompat::deserialize(deserializer)?;
+        let legacy_number = |key: &str| -> Option<f32> {
+            match compat.advanced_overrides.get(key) {
+                Some(TtsStyleControlValue::Number(value)) => Some(*value),
+                _ => None,
+            }
+        };
+        let legacy_text = |key: &str| -> Option<String> {
+            match compat.advanced_overrides.get(key) {
+                Some(TtsStyleControlValue::Text(value)) => Some(value.clone()),
+                _ => None,
+            }
+        };
+
+        Ok(Self {
+            tempo_rate: compat
+                .tempo_rate
+                .or(compat.rate)
+                .or_else(|| legacy_number("speed"))
+                .unwrap_or_else(default_tts_rate),
+            expressiveness: compat
+                .expressiveness
+                .unwrap_or_else(default_tts_expressiveness),
+            exaggeration: compat
+                .exaggeration
+                .unwrap_or_else(|| legacy_number("exaggeration").unwrap_or_else(default_tts_exaggeration)),
+            randomness: compat
+                .randomness
+                .or_else(|| legacy_number("temperature"))
+                .unwrap_or_else(default_tts_randomness),
+            guidance: compat
+                .guidance
+                .or_else(|| legacy_number("cfg_weight"))
+                .unwrap_or_else(default_tts_guidance),
+            stability: compat.stability.unwrap_or_else(default_tts_stability),
+            repetition_penalty: compat
+                .repetition_penalty
+                .or_else(|| legacy_number("repetition_penalty"))
+                .unwrap_or_else(default_tts_repetition_penalty),
+            style_instructions: normalize_optional_string(
+                compat
+                    .style_instructions
+                    .or_else(|| legacy_text("style_instructions")),
+            ),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
@@ -473,7 +560,8 @@ pub struct TtsVoicePreset {
     pub voice_label_snapshot: Option<String>,
     #[serde(default)]
     pub locale_snapshot: Option<String>,
-    pub style: TtsVoiceStyleSettings,
+    #[serde(rename = "tuning", alias = "style")]
+    pub tuning: TtsVoiceTuningSettings,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
@@ -490,7 +578,8 @@ pub struct TtsVoicePresetInput {
     pub voice_label_snapshot: Option<String>,
     #[serde(default)]
     pub locale_snapshot: Option<String>,
-    pub style: TtsVoiceStyleSettings,
+    #[serde(rename = "tuning", alias = "style")]
+    pub tuning: TtsVoiceTuningSettings,
 }
 
 /* still handy for composing the initial JSON in the store ------------- */
@@ -714,6 +803,26 @@ fn default_tts_rate() -> f32 {
 
 fn default_tts_expressiveness() -> f32 {
     0.5
+}
+
+fn default_tts_exaggeration() -> f32 {
+    0.5
+}
+
+fn default_tts_randomness() -> f32 {
+    0.7
+}
+
+fn default_tts_guidance() -> f32 {
+    0.5
+}
+
+fn default_tts_stability() -> f32 {
+    0.5
+}
+
+fn default_tts_repetition_penalty() -> f32 {
+    1.2
 }
 
 fn default_tts_volume() -> f32 {
@@ -1514,7 +1623,7 @@ fn ensure_tts_defaults(settings: &mut AppSettings) -> bool {
             changed = true;
         }
 
-        if sanitize_tts_voice_style(&mut preset.style) {
+        if sanitize_tts_voice_tuning(&mut preset.tuning) {
             changed = true;
         }
     }
@@ -2097,7 +2206,7 @@ impl AppSettings {
             changed = true;
         }
 
-        let next_rate = preset.style.rate.clamp(0.5, 2.0);
+        let next_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
         if (self.tts_rate - next_rate).abs() > f32::EPSILON {
             self.tts_rate = next_rate;
             changed = true;
@@ -2272,16 +2381,46 @@ fn fallback_tts_preset_label(
     "Voice Preset".to_string()
 }
 
-fn sanitize_tts_voice_style(style: &mut TtsVoiceStyleSettings) -> bool {
+fn sanitize_tts_voice_tuning(tuning: &mut TtsVoiceTuningSettings) -> bool {
     let mut changed = false;
-    let next_expressiveness = style.expressiveness.clamp(0.0, 1.0);
-    if (style.expressiveness - next_expressiveness).abs() > f32::EPSILON {
-        style.expressiveness = next_expressiveness;
+    let next_tempo_rate = tuning.tempo_rate.clamp(0.5, 2.0);
+    if (tuning.tempo_rate - next_tempo_rate).abs() > f32::EPSILON {
+        tuning.tempo_rate = next_tempo_rate;
         changed = true;
     }
-    let next_rate = style.rate.clamp(0.5, 2.0);
-    if (style.rate - next_rate).abs() > f32::EPSILON {
-        style.rate = next_rate;
+    let next_expressiveness = tuning.expressiveness.clamp(0.0, 1.0);
+    if (tuning.expressiveness - next_expressiveness).abs() > f32::EPSILON {
+        tuning.expressiveness = next_expressiveness;
+        changed = true;
+    }
+    let next_exaggeration = tuning.exaggeration.clamp(0.0, 1.0);
+    if (tuning.exaggeration - next_exaggeration).abs() > f32::EPSILON {
+        tuning.exaggeration = next_exaggeration;
+        changed = true;
+    }
+    let next_randomness = tuning.randomness.clamp(0.0, 1.0);
+    if (tuning.randomness - next_randomness).abs() > f32::EPSILON {
+        tuning.randomness = next_randomness;
+        changed = true;
+    }
+    let next_guidance = tuning.guidance.clamp(0.0, 1.0);
+    if (tuning.guidance - next_guidance).abs() > f32::EPSILON {
+        tuning.guidance = next_guidance;
+        changed = true;
+    }
+    let next_stability = tuning.stability.clamp(0.0, 1.0);
+    if (tuning.stability - next_stability).abs() > f32::EPSILON {
+        tuning.stability = next_stability;
+        changed = true;
+    }
+    let next_repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
+    if (tuning.repetition_penalty - next_repetition_penalty).abs() > f32::EPSILON {
+        tuning.repetition_penalty = next_repetition_penalty;
+        changed = true;
+    }
+    let normalized_instructions = normalize_optional_string(tuning.style_instructions.clone());
+    if tuning.style_instructions != normalized_instructions {
+        tuning.style_instructions = normalized_instructions;
         changed = true;
     }
     changed
@@ -2350,10 +2489,15 @@ fn build_tts_preset_from_legacy(
         voice_profile_id,
         voice_label_snapshot,
         locale_snapshot: None,
-        style: TtsVoiceStyleSettings {
+        tuning: TtsVoiceTuningSettings {
+            tempo_rate: settings.tts_rate.clamp(0.5, 2.0),
             expressiveness: default_tts_expressiveness(),
-            rate: settings.tts_rate.clamp(0.5, 2.0),
-            advanced_overrides: HashMap::new(),
+            exaggeration: default_tts_exaggeration(),
+            randomness: default_tts_randomness(),
+            guidance: default_tts_guidance(),
+            stability: default_tts_stability(),
+            repetition_penalty: default_tts_repetition_penalty(),
+            style_instructions: None,
         },
     }
 }
@@ -2734,5 +2878,36 @@ mod tests {
         assert!(settings.bindings.contains_key("speak_selection"));
         assert!(settings.bindings.contains_key("speak_last_output"));
         assert!(settings.bindings.contains_key("stop_speaking"));
+    }
+
+    #[test]
+    fn legacy_tts_preset_style_deserializes_into_normalized_tuning() {
+        let preset: TtsVoicePreset = serde_json::from_value(serde_json::json!({
+            "id": "preset-1",
+            "label": "Legacy Preset",
+            "provider_id": "chatterbox",
+            "model_id": "chatterbox",
+            "style": {
+                "expressiveness": 0.62,
+                "rate": 1.35,
+                "advanced_overrides": {
+                    "cfg_weight": { "kind": "number", "value": 0.81 },
+                    "temperature": { "kind": "number", "value": 0.44 },
+                    "repetition_penalty": { "kind": "number", "value": 1.9 },
+                    "style_instructions": { "kind": "text", "value": "  cinematic  " }
+                }
+            }
+        }))
+        .expect("legacy preset should deserialize");
+
+        assert_eq!(preset.tuning.tempo_rate, 1.35);
+        assert_eq!(preset.tuning.expressiveness, 0.62);
+        assert_eq!(preset.tuning.guidance, 0.81);
+        assert_eq!(preset.tuning.randomness, 0.44);
+        assert_eq!(preset.tuning.repetition_penalty, 1.9);
+        assert_eq!(
+            preset.tuning.style_instructions.as_deref(),
+            Some("cinematic")
+        );
     }
 }

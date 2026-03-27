@@ -47,6 +47,17 @@ pub enum TtsAdvancedControlKind {
     Text,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TtsControlGroup {
+    Identity,
+    Tempo,
+    Style,
+    Sampler,
+    Guidance,
+    Steering,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TtsAdvancedControlOption {
     pub value: String,
@@ -56,6 +67,7 @@ pub struct TtsAdvancedControlOption {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TtsAdvancedControlDescriptor {
     pub id: String,
+    pub group: TtsControlGroup,
     pub label: String,
     pub description: Option<String>,
     pub kind: TtsAdvancedControlKind,

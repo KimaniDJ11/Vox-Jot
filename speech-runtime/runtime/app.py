@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from .config import ENGINE_SPECS, EngineSpec, current_platform, load_runtime_config
+from .control_mapping import map_controls_for_engine, normalize_controls
 from .selection import RuntimeSelection, load_selection, save_selection
 from .worker_host import WorkerHost
 
@@ -83,22 +84,6 @@ def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
     if reference_audio.exists():
         return str(reference_audio), transcript
     return None, transcript
-
-
-def _unwrap_control_value(value: Any) -> Any:
-    if isinstance(value, dict) and "value" in value:
-        return value["value"]
-    return value
-
-
-def normalize_controls(extra_controls: dict[str, Any] | None) -> dict[str, Any]:
-    raw_controls = dict((extra_controls or {}).get("advanced_overrides") or {})
-    controls = {key: _unwrap_control_value(value) for key, value in raw_controls.items()}
-    controls.setdefault(
-        "expressiveness",
-        _unwrap_control_value((extra_controls or {}).get("expressiveness", 0.5)),
-    )
-    return controls
 
 
 def selection_payload(selection: RuntimeSelection) -> dict[str, Any]:
@@ -276,6 +261,7 @@ async def audio_speech(body: SpeechRequest) -> Response:
     profile_id = body.profile_id or selection.profile_id
     reference_audio_path, reference_transcript = load_profile(profile_id)
     controls = normalize_controls(body.extra_controls)
+    engine_controls = map_controls_for_engine(spec.provider_id, controls)
 
     try:
         if spec.provider_id == "fish_speech":
@@ -289,7 +275,9 @@ async def audio_speech(body: SpeechRequest) -> Response:
                 "text": text,
                 "voice": body.voice or spec.default_voice,
                 "locale": body.locale or body.language,
-                "controls": controls,
+                "speed": float(controls.get("tempo_rate", 1.0)),
+                "controls": engine_controls,
+                "normalized_controls": controls,
                 "reference_audio_path": reference_audio_path,
                 "reference_transcript": reference_transcript,
             },

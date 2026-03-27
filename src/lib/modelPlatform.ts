@@ -24,6 +24,13 @@ export interface RuntimeRequirement {
 export type TtsExpressivenessMode = "native" | "mapped" | "unsupported";
 
 export type TtsAdvancedControlKind = "slider" | "toggle" | "select" | "text";
+export type TtsControlGroup =
+  | "identity"
+  | "tempo"
+  | "style"
+  | "sampler"
+  | "guidance"
+  | "steering";
 
 export interface TtsAdvancedControlOption {
   value: string;
@@ -32,6 +39,7 @@ export interface TtsAdvancedControlOption {
 
 export interface TtsAdvancedControlDescriptor {
   id: string;
+  group: TtsControlGroup;
   label: string;
   description?: string | null;
   kind: TtsAdvancedControlKind;

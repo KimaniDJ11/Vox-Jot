@@ -7,7 +7,6 @@ import {
   Sparkles,
   Square,
   Star,
-  RotateCcw,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
@@ -46,9 +45,9 @@ import {
   previewTtsVoicePreset,
   setActiveTtsVoicePreset,
   updateTtsVoicePreset,
-  type TtsStyleControlValue,
   type TtsVoicePreset,
   type TtsVoicePresetInput,
+  type TtsVoiceTuningSettings,
 } from "@/lib/ttsVoicePresets";
 
 function SelectField({
@@ -146,11 +145,20 @@ function defaultPresetInput(): TtsVoicePresetInput {
     voice_profile_id: null,
     voice_label_snapshot: "System Voice",
     locale_snapshot: null,
-    style: {
-      expressiveness: 0.5,
-      rate: 1,
-      advanced_overrides: {},
-    },
+    tuning: defaultVoiceTuning(),
+  };
+}
+
+function defaultVoiceTuning(): TtsVoiceTuningSettings {
+  return {
+    tempo_rate: 1,
+    expressiveness: 0.5,
+    exaggeration: 0.5,
+    randomness: 0.7,
+    guidance: 0.5,
+    stability: 0.5,
+    repetition_penalty: 1.2,
+    style_instructions: null,
   };
 }
 
@@ -163,37 +171,13 @@ function buildPresetInput(preset: TtsVoicePreset): TtsVoicePresetInput {
     voice_profile_id: preset.voice_profile_id ?? null,
     voice_label_snapshot: preset.voice_label_snapshot ?? null,
     locale_snapshot: preset.locale_snapshot ?? null,
-    style: {
-      expressiveness: preset.style.expressiveness,
-      rate: preset.style.rate,
-      advanced_overrides: preset.style.advanced_overrides,
-    },
+    tuning: { ...preset.tuning },
   };
 }
 
-type TtsVoicePresetPatch = Omit<Partial<TtsVoicePresetInput>, "style"> & {
-  style?: Partial<TtsVoicePresetInput["style"]>;
+type TtsVoicePresetPatch = Omit<Partial<TtsVoicePresetInput>, "tuning"> & {
+  tuning?: Partial<TtsVoicePresetInput["tuning"]>;
 };
-
-function controlValueToText(value: TtsStyleControlValue | undefined) {
-  if (!value) return "";
-  if (value.kind === "text") return value.value;
-  if (value.kind === "boolean") return value.value ? "true" : "false";
-  return String(value.value);
-}
-
-function defaultControlValue(
-  control: TtsAdvancedControlDescriptor,
-): TtsStyleControlValue | undefined {
-  return control.default_value ?? undefined;
-}
-
-function controlValueOrDefault(
-  control: TtsAdvancedControlDescriptor,
-  current: TtsStyleControlValue | undefined,
-): TtsStyleControlValue | undefined {
-  return current ?? defaultControlValue(control);
-}
 
 function formatEngineFamilyLabel(engineFamily: string | null | undefined) {
   if (!engineFamily) return "Unknown engine";
@@ -479,26 +463,15 @@ function useListenSpeechState() {
       const nextInput: TtsVoicePresetInput = {
         ...current,
         ...patch,
-        style: {
-          ...current.style,
-          ...(patch.style ?? {}),
-          advanced_overrides: {
-            ...current.style.advanced_overrides,
-            ...(patch.style?.advanced_overrides ?? {}),
-          },
+        tuning: {
+          ...current.tuning,
+          ...(patch.tuning ?? {}),
         },
       };
       await savePreset(activePreset, nextInput);
     },
     [activePreset, savePreset],
   );
-
-  const resetActivePresetAdvancedOverrides = useCallback(async () => {
-    if (!activePreset) return;
-    const nextInput = buildPresetInput(activePreset);
-    nextInput.style.advanced_overrides = {};
-    await savePreset(activePreset, nextInput);
-  }, [activePreset, savePreset]);
 
   const createFromActivePreset = useCallback(async () => {
     const source = activePreset
@@ -624,11 +597,9 @@ function useListenSpeechState() {
         voice_profile_id: profile.id,
         voice_label_snapshot: profile.label,
         locale_snapshot: null,
-        style: {
-          expressiveness: activePreset?.style.expressiveness ?? 0.5,
-          rate: activePreset?.style.rate ?? 1,
-          advanced_overrides: {},
-        },
+        tuning: activePreset?.tuning
+          ? { ...activePreset.tuning }
+          : defaultVoiceTuning(),
       });
       await setTtsPlatformSelection("qwen3_native", "qwen3-0.6b-base");
       await refreshAll();
@@ -689,7 +660,6 @@ function useListenSpeechState() {
     savePreset,
     setActivePreset,
     updateActivePreset,
-    resetActivePresetAdvancedOverrides,
     createFromActivePreset,
     createNewPreset,
     removePreset,
@@ -703,7 +673,28 @@ function useListenSpeechState() {
 
 type ListenSpeechState = ReturnType<typeof useListenSpeechState>;
 
-const VoicePresetLibrarySection: React.FC<{
+const tuningSectionClassName =
+  "space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4";
+
+function tuningDescriptorMap(controls: TtsAdvancedControlDescriptor[]) {
+  return new Map(controls.map((control) => [control.id, control]));
+}
+
+function tuningNumberLabel(
+  control: TtsAdvancedControlDescriptor | undefined,
+  fallbackLabel: string,
+) {
+  return control?.label ?? fallbackLabel;
+}
+
+function tuningDescription(
+  control: TtsAdvancedControlDescriptor | undefined,
+  fallbackDescription: string,
+) {
+  return control?.description ?? fallbackDescription;
+}
+
+const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
@@ -713,572 +704,567 @@ const VoicePresetLibrarySection: React.FC<{
     setLabelDraft(speech.activePreset?.label ?? "");
   }, [speech.activePreset?.id, speech.activePreset?.label]);
 
-  if (!speech.settings) return null;
-
-  return (
-    <SettingsGroup title={showTitle ? "My Voices" : undefined}>
-      <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
-
-      <SettingContainer
-        title="Preset Library"
-        description="Save tuned voices so users can compare, preview, and switch between them quickly."
-        descriptionMode="tooltip"
-        grouped={true}
-        layout="stacked"
-        disabled={!speech.ttsEnabled}
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => void speech.createNewPreset()}
-              disabled={!speech.ttsEnabled}
-            >
-              New preset
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => void speech.createFromActivePreset()}
-              disabled={!speech.ttsEnabled || !speech.activePreset}
-            >
-              Duplicate active
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => void speech.refreshPresets()}
-              disabled={speech.loadingPresets}
-              className="inline-flex items-center gap-1"
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${speech.loadingPresets ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            {speech.presets.map((preset) => {
-              const isActive = preset.id === speech.activePreset?.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => void speech.setActivePreset(preset.id)}
-                  className={`${speechLibraryCardClassName} text-left ${
-                    isActive
-                      ? "border-[var(--accent)] shadow-[var(--shadow-md)]"
-                      : "hover:border-logo-primary/50 hover:bg-logo-primary/5"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-[var(--text)]">
-                          {preset.label}
-                        </span>
-                        {isActive ? (
-                          <span className={speechLibraryActiveBadgeClassName}>
-                            <Star className="h-3.5 w-3.5" />
-                            Active
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                        <span className={speechLibraryBadgeClassName}>
-                          {preset.voice_label_snapshot ||
-                            preset.voice_id ||
-                            "Automatic"}
-                        </span>
-                        <span className={speechLibraryBadgeClassName}>
-                          {preset.model_id}
-                        </span>
-                        {preset.voice_profile_id ? (
-                          <span className={speechLibraryBadgeClassName}>
-                            Clone profile
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void speech.previewPreset(preset.id);
-                        }}
-                        disabled={
-                          !speech.ttsEnabled ||
-                          speech.previewingPresetId === preset.id
-                        }
-                      >
-                        <Play className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void speech.removePreset(preset.id);
-                        }}
-                        disabled={
-                          !speech.ttsEnabled || speech.presets.length <= 1
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </SettingContainer>
-
-      {speech.activePreset ? (
-        <SettingContainer
-          title="Active Preset"
-          description="The active preset drives preview, readback, and speech output until another preset is selected."
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="stacked"
-          disabled={!speech.ttsEnabled}
-        >
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                value={labelDraft}
-                onChange={(event) => setLabelDraft(event.target.value)}
-                onBlur={() => {
-                  if (
-                    labelDraft.trim() &&
-                    labelDraft !== speech.activePreset?.label
-                  ) {
-                    void speech.updateActivePreset({
-                      label: labelDraft.trim(),
-                    });
-                  }
-                }}
-                disabled={!speech.ttsEnabled}
-                className="max-w-sm"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  void speech.previewPreset(speech.activePreset!.id)
-                }
-                disabled={
-                  !speech.ttsEnabled ||
-                  speech.previewingPresetId === speech.activePreset.id
-                }
-                className="inline-flex items-center gap-1"
-              >
-                <Play className="h-3.5 w-3.5" />
-                Preview
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => void commands.ttsStop()}
-                disabled={!speech.ttsEnabled}
-                className="inline-flex items-center gap-1"
-              >
-                <Square className="h-3.5 w-3.5" />
-                Stop
-              </Button>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  Source
-                </p>
-                <SelectField
-                  value={speech.providerIdForControls}
-                  onChange={(value) => void speech.selectProvider(value)}
-                  disabled={!speech.ttsEnabled || speech.loadingPlatform}
-                  options={speech.providerOptions}
-                />
-                <SelectField
-                  value={speech.modelIdForControls}
-                  onChange={(value) => void speech.selectModel(value)}
-                  disabled={
-                    !speech.ttsEnabled ||
-                    speech.loadingPlatform ||
-                    speech.modelOptions.length === 0
-                  }
-                  options={speech.modelOptions}
-                />
-                {!isVoiceFixedToModel(speech.activePreset.provider_id) &&
-                speech.voices.length > 0 ? (
-                  <SelectField
-                    value={speech.activePreset.voice_id ?? "__auto__"}
-                    onChange={(value) => {
-                      const selectedVoice =
-                        speech.voices.find((voice) => voice.id === value) ??
-                        null;
-                      void speech.updateActivePreset({
-                        voice_id: value === "__auto__" ? null : value,
-                        voice_label_snapshot:
-                          value === "__auto__"
-                            ? "Automatic voice"
-                            : (selectedVoice?.label ?? value),
-                        locale_snapshot:
-                          value === "__auto__"
-                            ? null
-                            : (selectedVoice?.locale ?? null),
-                      });
-                    }}
-                    disabled={!speech.ttsEnabled || speech.loadingVoices}
-                    options={speech.voiceOptions}
-                  />
-                ) : null}
-                {speech.activePreset.provider_id === "local_sidecar_api" ||
-                speech.activeModel?.source_kind === "runtime" ? (
-                  <Input
-                    value={speech.activePreset.voice_id ?? ""}
-                    onChange={(event) =>
-                      void speech.updateActivePreset({
-                        voice_id: event.target.value || null,
-                        voice_label_snapshot: event.target.value || null,
-                      })
-                    }
-                    placeholder="Optional speaker / voice ID"
-                    disabled={!speech.ttsEnabled}
-                    className="max-w-sm"
-                  />
-                ) : null}
-                {speech.activeModel?.capabilities.supports_voice_cloning ? (
-                  <SelectField
-                    value={speech.activePreset.voice_profile_id ?? "__none__"}
-                    onChange={(value) => {
-                      const profile =
-                        speech.compatibleProfiles.find(
-                          (item) => item.id === value,
-                        ) ?? null;
-                      void speech.updateActivePreset({
-                        voice_profile_id: value === "__none__" ? null : value,
-                        voice_label_snapshot:
-                          value === "__none__"
-                            ? (speech.activePreset?.voice_label_snapshot ??
-                              null)
-                            : (profile?.label ?? value),
-                      });
-                    }}
-                    disabled={!speech.ttsEnabled || speech.loadingProfiles}
-                    options={speech.profileOptions}
-                  />
-                ) : null}
-              </div>
-
-              <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  Active Routing
-                </p>
-                <div className="space-y-2 text-sm text-[var(--muted)]">
-                  <p>
-                    {speech.statusMessage ??
-                      "Vox Jot routes playback from the selected preset."}
-                  </p>
-                  <p>{`Provider: ${speech.activeProvider?.label ?? speech.activePreset.provider_id}`}</p>
-                  <p>{`Model: ${speech.activeModel?.label ?? speech.activePreset.model_id}`}</p>
-                  <p>{`Voice: ${speech.activePreset.voice_label_snapshot ?? speech.activePreset.voice_id ?? "Automatic"}`}</p>
-                  {speech.activePreset.voice_profile_id ? (
-                    <p>{`Clone: ${speech.activePreset.voice_profile_id}`}</p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
-        </SettingContainer>
-      ) : null}
-    </SettingsGroup>
-  );
-};
-
-const VoiceStyleSection: React.FC<{
-  speech: ListenSpeechState;
-  showTitle?: boolean;
-}> = ({ speech, showTitle = true }) => {
   if (!speech.settings || !speech.activePreset) return null;
 
-  const deliverySupport = speech.activeModel?.delivery_support;
-  const expressivenessMode =
-    deliverySupport?.expressiveness_mode ?? "unsupported";
-  const advancedControls = deliverySupport?.advanced_controls ?? [];
-  const tuningControls = advancedControls.filter(
-    (control) => control.kind !== "text",
-  );
-  const instructionControls = advancedControls.filter(
-    (control) => control.kind === "text",
-  );
-  const expressivenessDisabled =
-    !speech.ttsEnabled || expressivenessMode === "unsupported";
   const activeEngineFamily = formatEngineFamilyLabel(
     speech.activeModel?.runtime.engine_family ??
       speech.activeProvider?.runtime.engine_family ??
       null,
   );
+  const controls = speech.activeModel?.delivery_support.advanced_controls ?? [];
+  const descriptors = tuningDescriptorMap(controls);
+  const controlIds = new Set(controls.map((control) => control.id));
+  const supportsExpressiveness =
+    (speech.activeModel?.delivery_support.expressiveness_mode ?? "unsupported") !==
+    "unsupported";
+  const supportsManualVoiceId =
+    speech.activePreset.provider_id === "local_sidecar_api" ||
+    speech.activeModel?.source_kind === "runtime";
 
   return (
-    <SettingsGroup title={showTitle ? "Sound & Tuning" : undefined}>
-      <SettingContainer
-        title="Active Model"
-        description="Tune the currently active preset against the model and engine that will actually render it."
-        descriptionMode="tooltip"
-        grouped={true}
-        disabled={!speech.ttsEnabled}
-      >
-        <div className="min-w-[260px] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-sm">
-          <p className="font-semibold text-[var(--text)]">
-            {speech.activeModel?.label ?? speech.activePreset.model_id}
-          </p>
-          <p className="mt-1 text-[var(--muted)]">{activeEngineFamily}</p>
-        </div>
-      </SettingContainer>
+    <SettingsGroup title={showTitle ? "Voice Architect" : undefined}>
+      <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
 
       <SettingContainer
-        title="Core"
-        description="These baseline controls stay available across presets so you can set the overall energy and pacing first."
+        title="Voice Architect"
+        description="Design the active voice, preview it instantly, then save the whole identity and tuning setup as a preset."
         descriptionMode="tooltip"
         grouped={true}
         layout="stacked"
         disabled={!speech.ttsEnabled}
       >
-        <div className="space-y-4">
-          <Slider
-            value={speech.activePreset.style.expressiveness}
-            onChange={(value) =>
-              void speech.updateActivePreset({
-                style: { expressiveness: value },
-              })
-            }
-            min={0}
-            max={1}
-            step={0.05}
-            label="Expressiveness"
-            description={
-              expressivenessMode === "unsupported"
-                ? "This model does not expose a native expressiveness control yet."
-                : expressivenessMode === "mapped"
-                  ? "Normalized expressiveness is mapped into this model's available controls."
-                  : "Normalized expressiveness is passed directly to the current runtime."
-            }
-            descriptionMode="tooltip"
-            grouped={false}
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={expressivenessDisabled}
-          />
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-[color-mix(in_srgb,var(--accent),transparent_72%)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent),transparent_90%)_0%,var(--card)_48%,color-mix(in_srgb,var(--accent),transparent_96%)_100%)] p-6 shadow-[var(--shadow-md)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={speechLibraryActiveBadgeClassName}>
+                    <Star className="h-3.5 w-3.5" />
+                    Active Preset
+                  </span>
+                  <span className={speechLibraryBadgeClassName}>
+                    {activeEngineFamily}
+                  </span>
+                </div>
+                <Input
+                  value={labelDraft}
+                  onChange={(event) => setLabelDraft(event.target.value)}
+                  onBlur={() => {
+                    if (
+                      labelDraft.trim() &&
+                      labelDraft.trim() !== speech.activePreset?.label
+                    ) {
+                      void speech.updateActivePreset({
+                        label: labelDraft.trim(),
+                      });
+                    }
+                  }}
+                  disabled={!speech.ttsEnabled}
+                  className="max-w-md"
+                />
+                <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                  {speech.statusMessage ??
+                    "Tweak this preset, preview the result, and save the full voice identity as part of the preset."}
+                </p>
+              </div>
 
-          <Slider
-            value={speech.activePreset.style.rate}
-            onChange={(value) =>
-              void speech.updateActivePreset({
-                style: { rate: value },
-              })
-            }
-            min={0.5}
-            max={2}
-            step={0.05}
-            label="Speech Rate"
-            description="Saved per preset so each voice can feel fast, deliberate, or somewhere in between."
-            descriptionMode="tooltip"
-            grouped={false}
-            formatValue={(value) => `${value.toFixed(2)}x`}
-            disabled={!speech.ttsEnabled}
-          />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void speech.previewPreset(speech.activePreset.id)}
+                  disabled={
+                    !speech.ttsEnabled ||
+                    speech.previewingPresetId === speech.activePreset.id
+                  }
+                  className="inline-flex min-h-11 items-center gap-1"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Preview
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void commands.ttsStop()}
+                  disabled={!speech.ttsEnabled}
+                  className="inline-flex min-h-11 items-center gap-1"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  Stop
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void speech.createFromActivePreset()}
+                  disabled={!speech.ttsEnabled}
+                  className="inline-flex min-h-11 items-center gap-1"
+                >
+                  Save as New Preset
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)]">
+              <div className="space-y-4">
+                <div className={tuningSectionClassName}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Identity
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <SelectField
+                      value={speech.providerIdForControls}
+                      onChange={(value) => void speech.selectProvider(value)}
+                      disabled={!speech.ttsEnabled || speech.loadingPlatform}
+                      options={speech.providerOptions}
+                    />
+                    <SelectField
+                      value={speech.modelIdForControls}
+                      onChange={(value) => void speech.selectModel(value)}
+                      disabled={
+                        !speech.ttsEnabled ||
+                        speech.loadingPlatform ||
+                        speech.modelOptions.length === 0
+                      }
+                      options={speech.modelOptions}
+                    />
+                  </div>
+
+                  {!isVoiceFixedToModel(speech.activePreset.provider_id) &&
+                  speech.voices.length > 0 ? (
+                    <SelectField
+                      value={speech.activePreset.voice_id ?? "__auto__"}
+                      onChange={(value) => {
+                        const selectedVoice =
+                          speech.voices.find((voice) => voice.id === value) ??
+                          null;
+                        void speech.updateActivePreset({
+                          voice_id: value === "__auto__" ? null : value,
+                          voice_label_snapshot:
+                            value === "__auto__"
+                              ? "Automatic voice"
+                              : (selectedVoice?.label ?? value),
+                          locale_snapshot:
+                            value === "__auto__"
+                              ? null
+                              : (selectedVoice?.locale ?? null),
+                        });
+                      }}
+                      disabled={!speech.ttsEnabled || speech.loadingVoices}
+                      options={speech.voiceOptions}
+                    />
+                  ) : null}
+
+                  {supportsManualVoiceId ? (
+                    <Input
+                      value={speech.activePreset.voice_id ?? ""}
+                      onChange={(event) =>
+                        void speech.updateActivePreset({
+                          voice_id: event.target.value || null,
+                          voice_label_snapshot: event.target.value || null,
+                        })
+                      }
+                      placeholder="Optional speaker / voice ID"
+                      disabled={!speech.ttsEnabled}
+                      className="max-w-md"
+                    />
+                  ) : null}
+
+                  {speech.activeModel?.capabilities.supports_voice_cloning ? (
+                    <SelectField
+                      value={speech.activePreset.voice_profile_id ?? "__none__"}
+                      onChange={(value) => {
+                        const profile =
+                          speech.compatibleProfiles.find(
+                            (item) => item.id === value,
+                          ) ?? null;
+                        void speech.updateActivePreset({
+                          voice_profile_id: value === "__none__" ? null : value,
+                          voice_label_snapshot:
+                            value === "__none__"
+                              ? (speech.activePreset.voice_label_snapshot ?? null)
+                              : (profile?.label ?? value),
+                        });
+                      }}
+                      disabled={!speech.ttsEnabled || speech.loadingProfiles}
+                      options={speech.profileOptions}
+                    />
+                  ) : null}
+                </div>
+
+                <div className={tuningSectionClassName}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Tempo
+                  </p>
+                  <Slider
+                    value={speech.activePreset.tuning.tempo_rate}
+                    onChange={(value) =>
+                      void speech.updateActivePreset({
+                        tuning: { tempo_rate: value },
+                      })
+                    }
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    label="Tempo"
+                    description="Saved per preset so every voice can be brisk, measured, or cinematic."
+                    descriptionMode="tooltip"
+                    grouped={false}
+                    formatValue={(value) => `${value.toFixed(2)}x`}
+                    disabled={!speech.ttsEnabled}
+                  />
+                </div>
+
+                <div className={tuningSectionClassName}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Style
+                  </p>
+                  <Slider
+                    value={speech.activePreset.tuning.expressiveness}
+                    onChange={(value) =>
+                      void speech.updateActivePreset({
+                        tuning: { expressiveness: value },
+                      })
+                    }
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    label="Expressiveness"
+                    description="Overall energy and liveliness for the preset."
+                    descriptionMode="tooltip"
+                    grouped={false}
+                    formatValue={(value) => `${Math.round(value * 100)}%`}
+                    disabled={!speech.ttsEnabled || !supportsExpressiveness}
+                  />
+                  {controlIds.has("exaggeration") ? (
+                    <Slider
+                      value={speech.activePreset.tuning.exaggeration}
+                      onChange={(value) =>
+                        void speech.updateActivePreset({
+                          tuning: { exaggeration: value },
+                        })
+                      }
+                      min={descriptors.get("exaggeration")?.min ?? 0}
+                      max={descriptors.get("exaggeration")?.max ?? 1}
+                      step={descriptors.get("exaggeration")?.step ?? 0.05}
+                      label={tuningNumberLabel(
+                        descriptors.get("exaggeration"),
+                        "Exaggeration",
+                      )}
+                      description={tuningDescription(
+                        descriptors.get("exaggeration"),
+                        "Pushes the style further when the model supports it.",
+                      )}
+                      descriptionMode="tooltip"
+                      grouped={false}
+                      formatValue={(value) => `${Math.round(value * 100)}%`}
+                      disabled={!speech.ttsEnabled}
+                    />
+                  ) : null}
+                </div>
+
+                {controlIds.has("randomness") ? (
+                  <div className={tuningSectionClassName}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Sampler
+                    </p>
+                    <Slider
+                      value={speech.activePreset.tuning.randomness}
+                      onChange={(value) =>
+                        void speech.updateActivePreset({
+                          tuning: { randomness: value },
+                        })
+                      }
+                      min={descriptors.get("randomness")?.min ?? 0}
+                      max={descriptors.get("randomness")?.max ?? 1}
+                      step={descriptors.get("randomness")?.step ?? 0.05}
+                      label={tuningNumberLabel(
+                        descriptors.get("randomness"),
+                        "Randomness",
+                      )}
+                      description={tuningDescription(
+                        descriptors.get("randomness"),
+                        "Higher values make the read less predictable and more varied.",
+                      )}
+                      descriptionMode="tooltip"
+                      grouped={false}
+                      formatValue={(value) => `${Math.round(value * 100)}%`}
+                      disabled={!speech.ttsEnabled}
+                    />
+                  </div>
+                ) : null}
+
+                {(controlIds.has("guidance") ||
+                  controlIds.has("stability") ||
+                  controlIds.has("repetition_penalty")) ? (
+                  <div className={tuningSectionClassName}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Guidance
+                    </p>
+                    {controlIds.has("guidance") ? (
+                      <Slider
+                        value={speech.activePreset.tuning.guidance}
+                        onChange={(value) =>
+                          void speech.updateActivePreset({
+                            tuning: { guidance: value },
+                          })
+                        }
+                        min={descriptors.get("guidance")?.min ?? 0}
+                        max={descriptors.get("guidance")?.max ?? 1}
+                        step={descriptors.get("guidance")?.step ?? 0.05}
+                        label={tuningNumberLabel(
+                          descriptors.get("guidance"),
+                          "Guidance",
+                        )}
+                        description={tuningDescription(
+                          descriptors.get("guidance"),
+                          "Higher values make the engine adhere more tightly to the intended delivery.",
+                        )}
+                        descriptionMode="tooltip"
+                        grouped={false}
+                        formatValue={(value) => `${Math.round(value * 100)}%`}
+                        disabled={!speech.ttsEnabled}
+                      />
+                    ) : null}
+                    {controlIds.has("stability") ? (
+                      <Slider
+                        value={speech.activePreset.tuning.stability}
+                        onChange={(value) =>
+                          void speech.updateActivePreset({
+                            tuning: { stability: value },
+                          })
+                        }
+                        min={descriptors.get("stability")?.min ?? 0}
+                        max={descriptors.get("stability")?.max ?? 1}
+                        step={descriptors.get("stability")?.step ?? 0.05}
+                        label={tuningNumberLabel(
+                          descriptors.get("stability"),
+                          "Stability",
+                        )}
+                        description={tuningDescription(
+                          descriptors.get("stability"),
+                          "Use this only for engines that expose a real stability control.",
+                        )}
+                        descriptionMode="tooltip"
+                        grouped={false}
+                        formatValue={(value) => `${Math.round(value * 100)}%`}
+                        disabled={!speech.ttsEnabled}
+                      />
+                    ) : null}
+                    {controlIds.has("repetition_penalty") ? (
+                      <Slider
+                        value={speech.activePreset.tuning.repetition_penalty}
+                        onChange={(value) =>
+                          void speech.updateActivePreset({
+                            tuning: { repetition_penalty: value },
+                          })
+                        }
+                        min={descriptors.get("repetition_penalty")?.min ?? 1}
+                        max={descriptors.get("repetition_penalty")?.max ?? 3}
+                        step={descriptors.get("repetition_penalty")?.step ?? 0.1}
+                        label={tuningNumberLabel(
+                          descriptors.get("repetition_penalty"),
+                          "Repetition Penalty",
+                        )}
+                        description={tuningDescription(
+                          descriptors.get("repetition_penalty"),
+                          "Helps reduce repeated words or loops in longer reads.",
+                        )}
+                        descriptionMode="tooltip"
+                        grouped={false}
+                        formatValue={(value) => value.toFixed(2)}
+                        disabled={!speech.ttsEnabled}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {controlIds.has("style_instructions") ? (
+                  <div className={tuningSectionClassName}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Steering
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-[var(--text)]">
+                        {descriptors.get("style_instructions")?.label ??
+                          "Style Instructions"}
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {descriptors.get("style_instructions")?.description ??
+                          "Optional speaking directions for instruction-capable voices."}
+                      </p>
+                      <Textarea
+                        value={
+                          speech.activePreset.tuning.style_instructions ?? ""
+                        }
+                        onChange={(event) =>
+                          void speech.updateActivePreset({
+                            tuning: {
+                              style_instructions:
+                                event.target.value.trim() || null,
+                            },
+                          })
+                        }
+                        disabled={!speech.ttsEnabled}
+                        className="min-h-[108px]"
+                        placeholder="Warm, calm, confident, closer to a product demo than a podcast host."
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Active Routing
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className={speechLibraryBadgeClassName}>
+                      {speech.activeProvider?.label ??
+                        speech.activePreset.provider_id}
+                    </span>
+                    <span className={speechLibraryBadgeClassName}>
+                      {speech.activeModel?.label ?? speech.activePreset.model_id}
+                    </span>
+                    <span className={speechLibraryBadgeClassName}>
+                      {speech.activePreset.voice_label_snapshot ??
+                        speech.activePreset.voice_id ??
+                        "Automatic"}
+                    </span>
+                    {speech.activePreset.voice_profile_id ? (
+                      <span className={speechLibraryBadgeClassName}>
+                        Clone attached
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm leading-6 text-[var(--muted)]">
+                    <p>{`Provider: ${speech.activeProvider?.label ?? speech.activePreset.provider_id}`}</p>
+                    <p>{`Model: ${speech.activeModel?.label ?? speech.activePreset.model_id}`}</p>
+                    <p>{`Voice: ${speech.activePreset.voice_label_snapshot ?? speech.activePreset.voice_id ?? "Automatic"}`}</p>
+                    {speech.activePreset.voice_profile_id ? (
+                      <p>{`Clone: ${speech.activePreset.voice_profile_id}`}</p>
+                    ) : null}
+                    {speech.activePreset.tuning.style_instructions ? (
+                      <p className="rounded-2xl bg-[var(--panel-bg)] px-3 py-2 text-xs leading-5 text-[var(--text)]">
+                        {speech.activePreset.tuning.style_instructions}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-sm)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Saved Presets
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void speech.createNewPreset()}
+                      disabled={!speech.ttsEnabled}
+                    >
+                      New blank preset
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void speech.refreshPresets()}
+                      disabled={speech.loadingPresets}
+                      className="inline-flex items-center gap-1"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${speech.loadingPresets ? "animate-spin" : ""}`}
+                      />
+                      Refresh
+                    </Button>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {speech.presets.map((preset) => {
+                      const isActive = preset.id === speech.activePreset?.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => void speech.setActivePreset(preset.id)}
+                          className={`${speechLibraryCardClassName} text-left ${
+                            isActive
+                              ? "border-[var(--accent)] shadow-[var(--shadow-md)]"
+                              : "hover:border-logo-primary/50 hover:bg-logo-primary/5"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-[var(--text)]">
+                                  {preset.label}
+                                </span>
+                                {isActive ? (
+                                  <span className={speechLibraryActiveBadgeClassName}>
+                                    <Star className="h-3.5 w-3.5" />
+                                    Active
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+                                <span className={speechLibraryBadgeClassName}>
+                                  {preset.voice_label_snapshot ??
+                                    preset.voice_id ??
+                                    "Automatic"}
+                                </span>
+                                <span className={speechLibraryBadgeClassName}>
+                                  {preset.model_id}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void speech.previewPreset(preset.id);
+                                }}
+                                disabled={
+                                  !speech.ttsEnabled ||
+                                  speech.previewingPresetId === preset.id
+                                }
+                              >
+                                <Play className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void speech.removePreset(preset.id);
+                                }}
+                                disabled={
+                                  !speech.ttsEnabled ||
+                                  speech.presets.length <= 1
+                                }
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </SettingContainer>
-
-      {tuningControls.length > 0 ? (
-        <SettingContainer
-          title="Model Tuning"
-          description="Model-specific controls appear here when the current engine exposes them or Vox Jot provides a tuned fallback."
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="stacked"
-          disabled={!speech.ttsEnabled}
-        >
-          <div className="space-y-4">
-            <div className="flex flex-wrap justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="inline-flex items-center gap-1"
-                onClick={() => void speech.resetActivePresetAdvancedOverrides()}
-                disabled={
-                  !speech.ttsEnabled ||
-                  Object.keys(speech.activePreset.style.advanced_overrides)
-                    .length === 0
-                }
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset to Defaults
-              </Button>
-            </div>
-            {tuningControls.map((control) => (
-              <AdvancedControlField
-                key={control.id}
-                control={control}
-                preset={speech.activePreset!}
-                disabled={!speech.ttsEnabled}
-                onChange={(value) =>
-                  void speech.updateActivePreset({
-                    style: {
-                      advanced_overrides: {
-                        [control.id]: value,
-                      },
-                    },
-                  })
-                }
-              />
-            ))}
-          </div>
-        </SettingContainer>
-      ) : (
-        <SettingContainer
-          title="Model Tuning"
-          description="No model-specific tuning controls are available for the current preset."
-          descriptionMode="tooltip"
-          grouped={true}
-          disabled={!speech.ttsEnabled}
-        >
-          <p className="text-sm leading-6 text-[var(--muted)]">
-            Vox Jot will surface engine-specific tuning controls here as soon as
-            the active model exposes them.
-          </p>
-        </SettingContainer>
-      )}
-
-      {instructionControls.length > 0 ? (
-        <SettingContainer
-          title="Instructions"
-          description="Use natural-language directions when the active model supports instruction-style conditioning."
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="stacked"
-          disabled={!speech.ttsEnabled}
-        >
-          <div className="space-y-4">
-            {instructionControls.map((control) => (
-              <AdvancedControlField
-                key={control.id}
-                control={control}
-                preset={speech.activePreset}
-                disabled={!speech.ttsEnabled}
-                onChange={(value) =>
-                  void speech.updateActivePreset({
-                    style: {
-                      advanced_overrides: {
-                        [control.id]: value,
-                      },
-                    },
-                  })
-                }
-              />
-            ))}
-          </div>
-        </SettingContainer>
-      ) : null}
     </SettingsGroup>
-  );
-};
-
-const AdvancedControlField: React.FC<{
-  control: TtsAdvancedControlDescriptor;
-  preset: TtsVoicePreset;
-  disabled: boolean;
-  onChange: (value: TtsStyleControlValue) => void;
-}> = ({ control, preset, disabled, onChange }) => {
-  const current = preset.style.advanced_overrides[control.id];
-  const resolved = controlValueOrDefault(control, current);
-
-  if (control.kind === "text") {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm font-semibold text-[var(--text)]">
-          {control.label}
-        </p>
-        {control.description ? (
-          <p className="text-xs text-[var(--muted)]">{control.description}</p>
-        ) : null}
-        <Textarea
-          value={controlValueToText(resolved)}
-          onChange={(event) =>
-            onChange({ kind: "text", value: event.target.value })
-          }
-          disabled={disabled}
-          className="min-h-[92px]"
-          placeholder="Optional speaking instructions"
-        />
-      </div>
-    );
-  }
-
-  if (control.kind === "toggle") {
-    return (
-      <ToggleSwitch
-        checked={resolved?.kind === "boolean" ? resolved.value : false}
-        onChange={(enabled) => onChange({ kind: "boolean", value: enabled })}
-        label={control.label}
-        description={control.description ?? ""}
-        descriptionMode="tooltip"
-        grouped={false}
-        disabled={disabled}
-      />
-    );
-  }
-
-  if (control.kind === "select") {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm font-semibold text-[var(--text)]">
-          {control.label}
-        </p>
-        {control.description ? (
-          <p className="text-xs text-[var(--muted)]">{control.description}</p>
-        ) : null}
-        <SelectField
-          value={
-            resolved?.kind === "text"
-              ? resolved.value
-              : (control.options[0]?.value ?? "")
-          }
-          onChange={(value) => onChange({ kind: "text", value })}
-          disabled={disabled}
-          options={control.options}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <Slider
-      value={resolved?.kind === "number" ? resolved.value : (control.min ?? 0)}
-      onChange={(value) => onChange({ kind: "number", value })}
-      min={control.min ?? 0}
-      max={control.max ?? 1}
-      step={control.step ?? 0.05}
-      label={control.label}
-      description={control.description ?? ""}
-      descriptionMode="tooltip"
-      grouped={false}
-      disabled={disabled}
-      formatValue={(value) => `${value}${control.unit ?? ""}`}
-    />
   );
 };
 
@@ -2063,16 +2049,14 @@ export const SpeechVoicePresetsSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return (
-    <VoicePresetLibrarySection speech={speech} showTitle={showGroupTitle} />
-  );
+  return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
 export const SpeechVoiceStyleSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return <VoiceStyleSection speech={speech} showTitle={showGroupTitle} />;
+  return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
 export const SpeechModelLibrarySection: React.FC<{
@@ -2107,8 +2091,7 @@ export const SpeechOutputSettingsCard: React.FC = () => {
   const speech = useListenSpeechState();
   return (
     <div className="space-y-6">
-      <VoicePresetLibrarySection speech={speech} />
-      <VoiceStyleSection speech={speech} />
+      <VoiceArchitectSection speech={speech} />
       <ModelsSection speech={speech} />
       <VoiceCloningSection speech={speech} />
       <AutomationSection speech={speech} />

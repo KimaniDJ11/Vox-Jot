@@ -1,6 +1,5 @@
 use crate::settings::{
-    get_settings, write_settings, TtsStyleControlValue, TtsVoicePreset, TtsVoicePresetInput,
-    TtsVoiceStyleSettings,
+    get_settings, write_settings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -23,14 +22,15 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
     })
 }
 
-fn sanitize_style(style: &mut TtsVoiceStyleSettings) {
-    style.expressiveness = style.expressiveness.clamp(0.0, 1.0);
-    style.rate = style.rate.clamp(0.5, 2.0);
-    style.advanced_overrides.retain(|_, value| match value {
-        TtsStyleControlValue::Number(_) => true,
-        TtsStyleControlValue::Boolean(_) => true,
-        TtsStyleControlValue::Text(text) => !text.trim().is_empty(),
-    });
+fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings) {
+    tuning.tempo_rate = tuning.tempo_rate.clamp(0.5, 2.0);
+    tuning.expressiveness = tuning.expressiveness.clamp(0.0, 1.0);
+    tuning.exaggeration = tuning.exaggeration.clamp(0.0, 1.0);
+    tuning.randomness = tuning.randomness.clamp(0.0, 1.0);
+    tuning.guidance = tuning.guidance.clamp(0.0, 1.0);
+    tuning.stability = tuning.stability.clamp(0.0, 1.0);
+    tuning.repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
+    tuning.style_instructions = normalize_optional_string(tuning.style_instructions.clone());
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -80,8 +80,8 @@ fn preset_from_input(
     }
 
     let label = fallback_preset_label(&input);
-    let mut style = input.style;
-    sanitize_style(&mut style);
+    let mut tuning = input.tuning;
+    sanitize_tuning(&mut tuning);
 
     Ok(TtsVoicePreset {
         id: preset_id.unwrap_or_else(|| format!("tts-preset-{}", Uuid::new_v4())),
@@ -92,7 +92,7 @@ fn preset_from_input(
         voice_profile_id: normalize_optional_string(input.voice_profile_id),
         voice_label_snapshot: normalize_optional_string(input.voice_label_snapshot),
         locale_snapshot: normalize_optional_string(input.locale_snapshot),
-        style,
+        tuning,
     })
 }
 

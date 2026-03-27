@@ -5,10 +5,15 @@ export type TtsStyleControlValue =
   | { kind: "boolean"; value: boolean }
   | { kind: "text"; value: string };
 
-export interface TtsVoiceStyleSettings {
+export interface TtsVoiceTuningSettings {
+  tempo_rate: number;
   expressiveness: number;
-  rate: number;
-  advanced_overrides: Record<string, TtsStyleControlValue>;
+  exaggeration: number;
+  randomness: number;
+  guidance: number;
+  stability: number;
+  repetition_penalty: number;
+  style_instructions?: string | null;
 }
 
 export interface TtsVoicePreset {
@@ -20,7 +25,7 @@ export interface TtsVoicePreset {
   voice_profile_id?: string | null;
   voice_label_snapshot?: string | null;
   locale_snapshot?: string | null;
-  style: TtsVoiceStyleSettings;
+  tuning: TtsVoiceTuningSettings;
 }
 
 export interface TtsVoicePresetInput {
@@ -31,7 +36,7 @@ export interface TtsVoicePresetInput {
   voice_profile_id?: string | null;
   voice_label_snapshot?: string | null;
   locale_snapshot?: string | null;
-  style: TtsVoiceStyleSettings;
+  tuning: TtsVoiceTuningSettings;
 }
 
 export async function listTtsVoicePresets(): Promise<TtsVoicePreset[]> {

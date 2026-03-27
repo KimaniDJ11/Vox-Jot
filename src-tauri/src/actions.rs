@@ -2185,7 +2185,7 @@ fn spawn_tts_playback(app: &AppHandle, request: SpeakRequest, history_entry_id: 
     });
 }
 
-async fn run_speak_selection(app: AppHandle) {
+pub(crate) async fn run_speak_selection(app: AppHandle) {
     let selected_text = match utils::capture_selected_text(&app) {
         Ok(Some(text)) => text,
         Ok(None) => {

@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "设置...",
-    "checkUpdates": "检查更新...",
+    "settings": "设置",
     "copyLastTranscript": "复制最新转录",
-    "unloadModel": "卸载模型",
     "quit": "退出",
     "cancel": "取消",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "隐藏设置边栏",

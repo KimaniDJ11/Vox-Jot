@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Paramètres...",
-    "checkUpdates": "Rechercher des mises à jour...",
+    "settings": "Paramètres",
     "copyLastTranscript": "Copier la dernière transcription",
-    "unloadModel": "Décharger le modèle",
     "quit": "Quitter",
     "cancel": "Annuler",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Masquer le panneau latéral des réglages",

@@ -83,7 +83,7 @@ impl InsertedSpanTracker {
 
         // Store the span
         {
-            let mut active = self.active_span.lock().unwrap();
+            let mut active = self.active_span.lock().unwrap_or_else(|e| e.into_inner());
             *active = Some(span.clone());
         }
 
@@ -100,13 +100,13 @@ impl InsertedSpanTracker {
     /// Get a clone of the currently active span, if any.
     #[allow(dead_code)]
     pub fn get_active_span(&self) -> Option<InsertedSpan> {
-        self.active_span.lock().unwrap().clone()
+        self.active_span.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Clear the active span.
     #[allow(dead_code)]
     pub fn clear_active_span(&self) {
-        let mut active = self.active_span.lock().unwrap();
+        let mut active = self.active_span.lock().unwrap_or_else(|e| e.into_inner());
         if active.is_some() {
             debug!("Clearing active inserted span");
         }
@@ -302,7 +302,7 @@ mod tests {
         );
 
         {
-            let mut active = tracker.active_span.lock().unwrap();
+            let mut active = tracker.active_span.lock().unwrap_or_else(|e| e.into_inner());
             *active = Some(span.clone());
         }
 
@@ -325,7 +325,7 @@ mod tests {
             InsertionMethod::DirectType,
         );
         {
-            let mut active = tracker.active_span.lock().unwrap();
+            let mut active = tracker.active_span.lock().unwrap_or_else(|e| e.into_inner());
             *active = Some(span);
         }
 
@@ -367,7 +367,7 @@ mod tests {
             InsertionMethod::Clipboard,
         );
         {
-            let mut active = tracker.active_span.lock().unwrap();
+            let mut active = tracker.active_span.lock().unwrap_or_else(|e| e.into_inner());
             *active = Some(span1);
         }
 
@@ -379,7 +379,7 @@ mod tests {
             InsertionMethod::DirectType,
         );
         {
-            let mut active = tracker.active_span.lock().unwrap();
+            let mut active = tracker.active_span.lock().unwrap_or_else(|e| e.into_inner());
             *active = Some(span2);
         }
 

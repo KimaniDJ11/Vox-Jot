@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Настройки...",
-    "checkUpdates": "Проверить обновления...",
+    "settings": "Настройки",
     "copyLastTranscript": "Скопировать последнюю транскрипцию",
-    "unloadModel": "Выгрузить модель",
     "quit": "Выход",
     "cancel": "Отмена",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Скрыть боковую панель настроек",

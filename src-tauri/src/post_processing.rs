@@ -114,7 +114,7 @@ impl PreviewManager {
     pub fn create_request(&self) -> (String, oneshot::Receiver<PreviewResolution>) {
         let id = format!("preview-{}", self.counter.fetch_add(1, Ordering::Relaxed));
         let (tx, rx) = oneshot::channel();
-        self.pending.lock().unwrap().insert(id.clone(), tx);
+        self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id.clone(), tx);
         (id, rx)
     }
 
@@ -127,7 +127,7 @@ impl PreviewManager {
         let sender = self
             .pending
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .remove(request_id)
             .ok_or_else(|| format!("Preview request '{}' not found", request_id))?;
 
@@ -140,7 +140,7 @@ impl PreviewManager {
     }
 
     pub fn clear_request(&self, request_id: &str) {
-        self.pending.lock().unwrap().remove(request_id);
+        self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(request_id);
     }
 }
 

@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "...الإعدادات",
-    "checkUpdates": "...التحقق من وجود تحديثات",
+    "settings": "الإعدادات",
     "copyLastTranscript": "نسخ آخر نص تم تفريغه",
-    "unloadModel": "تفريغ النموذج",
     "quit": "إنهاء",
     "cancel": "إلغاء",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "إخفاء الشريط الجانبي للإعدادات",

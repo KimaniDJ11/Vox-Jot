@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Cài đặt...",
-    "checkUpdates": "Kiểm tra cập nhật...",
+    "settings": "Cài đặt",
     "copyLastTranscript": "Sao chép bản chép lời mới nhất",
-    "unloadModel": "Dỡ mô hình",
     "quit": "Thoát",
     "cancel": "Hủy",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Ẩn thanh cài đặt bên",

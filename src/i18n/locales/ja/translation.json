@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "設定...",
-    "checkUpdates": "アップデートを確認...",
+    "settings": "設定",
     "copyLastTranscript": "最新の文字起こしをコピー",
-    "unloadModel": "モデルをアンロード",
     "quit": "終了",
     "cancel": "キャンセル",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "設定サイドバーを隠す",

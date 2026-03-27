@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "설정...",
-    "checkUpdates": "업데이트 확인...",
+    "settings": "설정",
     "copyLastTranscript": "마지막 녹음 내용 복사",
-    "unloadModel": "모델 언로드",
     "quit": "종료",
     "cancel": "취소",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "설정 사이드바 숨기기",

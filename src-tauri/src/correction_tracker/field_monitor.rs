@@ -382,7 +382,7 @@ mod tests {
 
     impl FieldTextReader for MockFieldReader {
         fn read_focused_field_text(&self) -> Result<Option<String>> {
-            Ok(self.text.lock().unwrap().clone())
+            Ok(self.text.lock().unwrap_or_else(|e| e.into_inner()).clone())
         }
 
         fn is_same_field_focused(&self) -> Result<bool> {

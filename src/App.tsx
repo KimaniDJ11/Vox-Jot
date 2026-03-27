@@ -750,6 +750,25 @@ function App() {
     );
   }, []);
 
+  useEffect(() => {
+    const unlisten = listen<string>("navigate", (event) => {
+      const view = event.payload;
+
+      if (view === "settings") {
+        handleSettingsOpen();
+        return;
+      }
+
+      if (view === "dictate" || view === "refine" || view === "listen") {
+        handleModeSelect(view);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [handleModeSelect, handleSettingsOpen]);
+
   // Resolve the currently active section to render
   const activeSection = useMemo(() => {
     const match = activeSections.find((s) => s.id === activeSectionId);

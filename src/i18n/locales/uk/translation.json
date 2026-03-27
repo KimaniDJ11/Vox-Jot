@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Налаштування...",
-    "checkUpdates": "Перевірити оновлення...",
+    "settings": "Налаштування",
     "copyLastTranscript": "Скопіювати останню транскрипцію",
-    "unloadModel": "Вивантажити модель",
     "quit": "Вийти",
     "cancel": "Скасувати",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Сховати бічну панель налаштувань",

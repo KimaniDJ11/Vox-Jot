@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Ayarlar...",
-    "checkUpdates": "Güncellemeleri Kontrol Et...",
+    "settings": "Ayarlar",
     "copyLastTranscript": "Son transkripti kopyala",
-    "unloadModel": "Modeli boşalt",
     "quit": "Çıkış",
     "cancel": "İptal",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Ayarlar kenar çubuğunu gizle",

@@ -141,6 +141,14 @@ pub(crate) fn show_main_window(app: &AppHandle) {
     );
 }
 
+fn navigate_main_window(app: &AppHandle, view: &str) {
+    show_main_window(app);
+
+    if let Err(err) = app.emit("navigate", view.to_string()) {
+        log::error!("Failed to emit navigate event for '{view}': {err}");
+    }
+}
+
 fn should_force_show_permissions_window(app: &AppHandle) -> bool {
     #[cfg(target_os = "windows")]
     {
@@ -262,7 +270,10 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         .icon_as_template(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
-                show_main_window(app);
+                navigate_main_window(app, "settings");
+            }
+            "navigate_settings" => {
+                navigate_main_window(app, "settings");
             }
             "check_updates" => {
                 let settings = settings::get_settings(app);
@@ -273,6 +284,9 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             }
             "copy_last_transcript" => {
                 tray::copy_last_transcript(app);
+            }
+            "speak_selected" => {
+                tauri::async_runtime::spawn(crate::actions::run_speak_selection(app.clone()));
             }
             "unload_model" => {
                 let transcription_manager = app.state::<Arc<TranscriptionManager>>();
@@ -287,6 +301,15 @@ fn initialize_core_logic(app_handle: &AppHandle) {
             }
             "scratchpad" => {
                 crate::scratchpad::toggle_scratchpad(app);
+            }
+            "navigate_dictate" => {
+                navigate_main_window(app, "dictate");
+            }
+            "navigate_refine" => {
+                navigate_main_window(app, "refine");
+            }
+            "navigate_listen" => {
+                navigate_main_window(app, "listen");
             }
             "start_recording" => {
                 signal_handle::send_transcription_input(app, "transcribe", "Tray");

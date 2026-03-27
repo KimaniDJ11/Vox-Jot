@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "Nastavení...",
-    "checkUpdates": "Zkontrolovat aktualizace...",
+    "settings": "Nastavení",
     "copyLastTranscript": "Zkopírovat poslední přepis",
-    "unloadModel": "Uvolnit model",
     "quit": "Ukončit",
     "cancel": "Zrušit",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "Skrýt postranní panel nastavení",

@@ -1,13 +1,15 @@
 {
   "tray": {
     "startRecording": "Start Recording",
-    "settings": "設定...",
-    "checkUpdates": "檢查更新...",
+    "settings": "設定",
     "copyLastTranscript": "複製最新轉錄",
-    "unloadModel": "卸載模型",
     "quit": "結束",
     "cancel": "取消",
-    "jotPad": "Jot Pad"
+    "jotPad": "Jot Pad",
+    "speakSelected": "Speak Selected",
+    "dictateMode": "Dictate",
+    "refineMode": "Refine",
+    "listenMode": "Listen"
   },
   "sidebar": {
     "collapsePanel": "隱藏設定側欄",

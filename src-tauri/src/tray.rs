@@ -1,5 +1,4 @@
 use crate::managers::history::{HistoryEntry, HistoryManager};
-use crate::managers::transcription::TranscriptionManager;
 use crate::settings;
 use crate::tray_i18n::get_tray_translations;
 use log::{error, info, warn};
@@ -91,22 +90,14 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
     let (settings_accelerator, quit_accelerator) = (Some("Ctrl+,"), Some("Ctrl+Q"));
 
     // Create common menu items
-    let settings_i = MenuItem::with_id(
+    let navigate_settings_i = MenuItem::with_id(
         app,
-        "settings",
+        "navigate_settings",
         &strings.settings,
         true,
         settings_accelerator,
     )
     .expect("failed to create settings item");
-    let check_updates_i = MenuItem::with_id(
-        app,
-        "check_updates",
-        &strings.check_updates,
-        settings.update_checks_enabled,
-        None::<&str>,
-    )
-    .expect("failed to create check updates item");
     let copy_last_transcript_i = MenuItem::with_id(
         app,
         "copy_last_transcript",
@@ -115,15 +106,38 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
         None::<&str>,
     )
     .expect("failed to create copy last transcript item");
-    let model_loaded = app.state::<Arc<TranscriptionManager>>().is_model_loaded();
-    let unload_model_i = MenuItem::with_id(
+    let speak_selected_i = MenuItem::with_id(
         app,
-        "unload_model",
-        &strings.unload_model,
-        model_loaded,
+        "speak_selected",
+        &strings.speak_selected,
+        true,
         None::<&str>,
     )
-    .expect("failed to create unload model item");
+    .expect("failed to create speak selected item");
+    let navigate_dictate_i = MenuItem::with_id(
+        app,
+        "navigate_dictate",
+        &strings.dictate_mode,
+        true,
+        None::<&str>,
+    )
+    .expect("failed to create dictate item");
+    let navigate_refine_i = MenuItem::with_id(
+        app,
+        "navigate_refine",
+        &strings.refine_mode,
+        true,
+        None::<&str>,
+    )
+    .expect("failed to create refine item");
+    let navigate_listen_i = MenuItem::with_id(
+        app,
+        "navigate_listen",
+        &strings.listen_mode,
+        true,
+        None::<&str>,
+    )
+    .expect("failed to create listen item");
     let quit_i = MenuItem::with_id(app, "quit", &strings.quit, true, quit_accelerator)
         .expect("failed to create quit item");
     let separator = || PredefinedMenuItem::separator(app).expect("failed to create separator");
@@ -149,38 +163,26 @@ pub fn update_tray_menu(app: &AppHandle, state: &TrayIconState, locale: Option<&
                     &cancel_i,
                     &separator(),
                     &copy_last_transcript_i,
-                    &settings_i,
+                    &navigate_settings_i,
                     &separator(),
                     &quit_i,
                 ],
             )
             .expect("failed to create menu")
         }
-        TrayIconState::Idle if model_loaded => Menu::with_items(
-            app,
-            &[
-                &start_recording_i,
-                &copy_last_transcript_i,
-                &scratchpad_i,
-                &separator(),
-                &settings_i,
-                &check_updates_i,
-                &separator(),
-                &unload_model_i,
-                &separator(),
-                &quit_i,
-            ],
-        )
-        .expect("failed to create menu"),
         TrayIconState::Idle => Menu::with_items(
             app,
             &[
                 &start_recording_i,
                 &copy_last_transcript_i,
-                &scratchpad_i,
+                &speak_selected_i,
                 &separator(),
-                &settings_i,
-                &check_updates_i,
+                &scratchpad_i,
+                &navigate_dictate_i,
+                &navigate_refine_i,
+                &navigate_listen_i,
+                &separator(),
+                &navigate_settings_i,
                 &separator(),
                 &quit_i,
             ],

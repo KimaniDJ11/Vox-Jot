@@ -166,6 +166,15 @@ struct RuntimeListenCatalogResponse {
     selection: RuntimeListenSelection,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct RuntimeListenVoiceEntry {
+    id: String,
+    label: String,
+    locale: Option<String>,
+    installed: bool,
+    available: bool,
+}
+
 #[derive(Debug, Clone)]
 struct RuntimeListenState {
     providers: Vec<RuntimeListenProviderCatalogEntry>,
@@ -379,7 +388,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         engine_family: "openvoice",
         license_label: Some("MIT"),
         locale: Some("mul"),
-        supported_languages: &["mul"],
+        supported_languages: &["en", "es", "fr", "zh", "ja", "ko"],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
@@ -409,7 +418,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         engine_family: "kokoro",
         license_label: Some("Apache-2.0"),
         locale: Some("mul"),
-        supported_languages: &["mul"],
+        supported_languages: &["en", "es", "fr", "hi", "it", "pt", "ja", "zh"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
     },
@@ -424,7 +433,25 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         engine_family: "xtts",
         license_label: Some("Coqui Public Model License"),
         locale: Some("mul"),
-        supported_languages: &["mul"],
+        supported_languages: &[
+            "en",
+            "es",
+            "fr",
+            "de",
+            "it",
+            "pt",
+            "pl",
+            "tr",
+            "ru",
+            "nl",
+            "cs",
+            "ar",
+            "zh-cn",
+            "hu",
+            "ko",
+            "ja",
+            "hi",
+        ],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
@@ -925,7 +952,7 @@ impl TtsManager {
             TtsEngineKind::System => self.system_voices(),
             TtsEngineKind::SherpaOnnx => Ok(self.installed_pack_voices()),
             TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
-            TtsEngineKind::Sidecar => Ok(Vec::new()),
+            TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
         }
     }
 
@@ -2149,6 +2176,83 @@ impl TtsManager {
         url.set_query(None);
         url.set_fragment(None);
         Some(url)
+    }
+
+    fn ensure_sidecar_running_blocking(&self) -> Result<(), String> {
+        if let Some(sidecar) = self
+            .app_handle
+            .try_state::<Arc<crate::sidecar::SidecarManager>>()
+        {
+            sidecar.ensure_running_if_available()?;
+        }
+        Ok(())
+    }
+
+    fn fetch_runtime_listen_voices(
+        &self,
+        provider_id: &str,
+        model_id: Option<&str>,
+    ) -> Result<Vec<VoiceInfo>, String> {
+        self.ensure_sidecar_running_blocking()?;
+
+        let root_url = self
+            .sidecar_root_url()
+            .ok_or_else(|| "Failed to resolve the local speech runtime URL.".to_string())?;
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|err| format!("Failed to create runtime client: {err}"))?;
+        let url = root_url
+            .join("listen/voices")
+            .map_err(|err| format!("Failed to build runtime voice URL: {err}"))?;
+
+        let response = client
+            .get(url)
+            .query(&[
+                ("provider_id", provider_id),
+                ("model_id", model_id.unwrap_or("")),
+            ])
+            .send()
+            .map_err(|err| format!("Failed to fetch runtime voice inventory: {err}"))?;
+
+        if !response.status().is_success() {
+            let body = response.text().unwrap_or_default();
+            let detail = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("detail")
+                        .and_then(|detail| detail.as_str().map(str::to_string))
+                })
+                .unwrap_or(body);
+            return Err(format!("Failed to fetch runtime voices: {detail}"));
+        }
+
+        let runtime_voices = response
+            .json::<Vec<RuntimeListenVoiceEntry>>()
+            .map_err(|err| format!("Failed to decode runtime voice inventory: {err}"))?;
+
+        Ok(runtime_voices
+            .into_iter()
+            .map(|voice| VoiceInfo {
+                id: voice.id,
+                label: voice.label,
+                locale: voice.locale,
+                engine: TtsEngineKind::Sidecar,
+                installed: voice.installed,
+                available: voice.available,
+            })
+            .collect())
+    }
+
+    fn runtime_managed_voices(&self, settings: &AppSettings) -> Result<Vec<VoiceInfo>, String> {
+        let provider_id = self.selected_provider_id(settings);
+        if !provider_uses_managed_speech_runtime(&provider_id) {
+            return Ok(Vec::new());
+        }
+
+        let model_id = self.selected_model_id(settings);
+        self.fetch_runtime_listen_voices(&provider_id, model_id.as_deref())
     }
 
     pub async fn download_pack(&self, pack_id: &str) -> Result<(), String> {

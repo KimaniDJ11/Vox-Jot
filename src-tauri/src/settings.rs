@@ -722,6 +722,8 @@ pub struct AppSettings {
     pub append_trailing_space: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
+    #[serde(default = "default_global_language_sync_enabled")]
+    pub global_language_sync_enabled: bool,
     #[serde(default)]
     pub experimental_enabled: bool,
     #[serde(default)]
@@ -1253,6 +1255,10 @@ fn default_app_language() -> String {
     tauri_plugin_os::locale()
         .map(|l| l.replace('_', "-"))
         .unwrap_or_else(|| "en".to_string())
+}
+
+fn default_global_language_sync_enabled() -> bool {
+    true
 }
 
 fn default_show_tray_icon() -> bool {
@@ -2095,6 +2101,7 @@ pub fn get_default_settings() -> AppSettings {
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
+        global_language_sync_enabled: default_global_language_sync_enabled(),
         experimental_enabled: false,
         keyboard_implementation: KeyboardImplementation::default(),
         show_tray_icon: default_show_tray_icon(),
@@ -2650,6 +2657,12 @@ mod tests {
         let settings = get_default_settings();
         assert!(!settings.auto_submit);
         assert_eq!(settings.auto_submit_key, AutoSubmitKey::Enter);
+    }
+
+    #[test]
+    fn default_settings_enable_global_language_sync() {
+        let settings = get_default_settings();
+        assert!(settings.global_language_sync_enabled);
     }
 
     #[test]

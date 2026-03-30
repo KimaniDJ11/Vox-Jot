@@ -349,6 +349,16 @@ except Exception:
         finally:
             output_path.unlink(missing_ok=True)
 
+    def list_voices(
+        self,
+        spec: EngineSpec,
+        model_dir: Path,
+    ) -> list[dict[str, Any]]:
+        worker = self.ensure_worker(spec, model_dir)
+        with worker.lock:
+            response = self._send(worker, {"action": "list_voices"})
+        return list(response.get("voices") or [])
+
     def _send(self, worker: WorkerProcess, message: dict[str, Any]) -> dict[str, Any]:
         if worker.process.stdin is None or worker.process.stdout is None:
             raise RuntimeError("Speech worker pipes are not available.")

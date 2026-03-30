@@ -1,6 +1,4 @@
 // Settings section components
-export { GeneralSettings } from "./general/GeneralSettings";
-export { SystemSettings } from "./system/SystemSettings";
 export { DataPrivacySettings } from "./data-privacy/DataPrivacySettings";
 export { ExperimentalSettings } from "./experimental/ExperimentalSettings";
 export { DebugSettings } from "./debug/DebugSettings";
@@ -12,6 +10,17 @@ export { default as OllamaSettings } from "./ollama/OllamaSettings";
 export { CorrectionSettings } from "./corrections/CorrectionSettings";
 export { SnippetSettings } from "./snippets/SnippetSettings";
 export { StylesSettings } from "./styles/StylesSettings";
+
+// Listen tab section components (match UI sidebar labels)
+export {
+  MyVoicesSection,
+  SoundAndTuningSection,
+  EngineLibrarySection,
+  ListenVoiceCloningSection,
+  AutoReadbackSection,
+  ListenOutputSection,
+  ListenAllSections,
+} from "./general/ListenSections";
 
 // Individual setting components
 export { MicrophoneSelector } from "./MicrophoneSelector";

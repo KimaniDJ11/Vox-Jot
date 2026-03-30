@@ -7,9 +7,34 @@ import type {
   DictionaryEntry,
   PostProcessResult,
   Snippet,
+  TtsVoicePreset,
+  TtsVoicePresetInput,
   ToneDefinition,
+  VoiceInfo,
 } from "@/bindings";
 import { commands } from "@/bindings";
+import {
+  getModelPlatformOverview,
+  setTtsPlatformSelection,
+} from "@/lib/modelPlatform";
+import {
+  appLanguageToSttLanguage,
+  appLanguageToTtsTarget,
+  getActiveTtsPreset,
+  getCurrentTtsVoiceId,
+  modelSupportsLanguage,
+  pickTtsModelForLanguage,
+  pickTtsVoiceForLanguage,
+  type LanguageSyncTrigger,
+} from "@/lib/languageSync";
+
+type CommandResult<T> =
+  | { status: "ok"; data: T }
+  | { status: "error"; error: string };
+
+export interface LanguageSyncResult {
+  message: string;
+}
 
 interface SettingsStore {
   settings: Settings | null;
@@ -58,6 +83,15 @@ interface SettingsStore {
     text: string,
     appBundleIdOverride?: string | null,
   ) => Promise<PostProcessResult>;
+  setAppLanguageWithSync: (appLanguage: string) => Promise<LanguageSyncResult>;
+  applyGlobalLanguageSync: (
+    appLanguage: string,
+    trigger: LanguageSyncTrigger,
+  ) => Promise<LanguageSyncResult>;
+  setTtsVoiceSelection: (
+    voiceId: string | null,
+    voice?: VoiceInfo | null,
+  ) => Promise<void>;
   setPostProcessModelOptions: (providerId: string, models: string[]) => void;
 
   // Internal state setters
@@ -78,6 +112,35 @@ const DEFAULT_AUDIO_DEVICE: AudioDevice = {
   name: "Default",
   is_default: true,
 };
+
+async function unwrapCommandResult<T>(promise: Promise<CommandResult<T>>) {
+  const result = await promise;
+  if (result.status === "error") {
+    throw new Error(result.error);
+  }
+  return result.data;
+}
+
+function buildTtsPresetInput(
+  preset: TtsVoicePreset,
+  overrides: Partial<TtsVoicePresetInput> = {},
+): TtsVoicePresetInput {
+  const { tuning, ...restOverrides } = overrides;
+  return {
+    label: preset.label,
+    provider_id: preset.provider_id,
+    model_id: preset.model_id,
+    voice_id: preset.voice_id ?? null,
+    voice_profile_id: preset.voice_profile_id ?? null,
+    voice_label_snapshot: preset.voice_label_snapshot ?? null,
+    locale_snapshot: preset.locale_snapshot ?? null,
+    ...restOverrides,
+    tuning: {
+      ...preset.tuning,
+      ...(tuning ?? {}),
+    },
+  };
+}
 
 const settingUpdaters: {
   [K in keyof Settings]?: (value: Settings[K]) => Promise<unknown>;
@@ -197,6 +260,8 @@ const settingUpdaters: {
     commands.changeAppendTrailingSpaceSetting(value as boolean),
   log_level: (value) => commands.setLogLevel(value as any),
   app_language: (value) => commands.changeAppLanguageSetting(value as string),
+  global_language_sync_enabled: (value) =>
+    commands.changeGlobalLanguageSyncEnabledSetting(value as boolean),
   experimental_enabled: (value) =>
     commands.changeExperimentalEnabledSetting(value as boolean),
   show_tray_icon: (value) =>
@@ -347,6 +412,243 @@ export const useSettingsStore = create<SettingsStore>()(
         if (settings) {
           set({ settings: { ...settings, [key]: originalValue } });
         }
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
+
+    setTtsVoiceSelection: async (voiceId, voice = null) => {
+      const { settings, setUpdating, refreshSettings } = get();
+      const updateKey = "tts_default_voice_id";
+      const originalSettings = settings;
+      const normalizedVoiceId = voiceId?.trim() ? voiceId.trim() : null;
+      const activePreset = getActiveTtsPreset(settings);
+      const nextVoiceLabel = normalizedVoiceId
+        ? (voice?.label ?? normalizedVoiceId)
+        : "Automatic voice";
+      const nextLocale = normalizedVoiceId ? (voice?.locale ?? null) : null;
+
+      setUpdating(updateKey, true);
+
+      try {
+        set((state) => ({
+          settings: state.settings
+            ? {
+                ...state.settings,
+                tts_default_voice_id: normalizedVoiceId,
+                selected_tts_voice_id: normalizedVoiceId,
+                tts_voice_presets: (state.settings.tts_voice_presets ?? []).map(
+                  (preset) =>
+                    activePreset && preset.id === activePreset.id
+                      ? {
+                          ...preset,
+                          voice_id: normalizedVoiceId,
+                          voice_label_snapshot: nextVoiceLabel,
+                          locale_snapshot: nextLocale,
+                        }
+                      : preset,
+                ),
+              }
+            : null,
+        }));
+
+        if (activePreset) {
+          await unwrapCommandResult(
+            commands.updateTtsVoicePreset(
+              activePreset.id,
+              buildTtsPresetInput(activePreset, {
+                voice_id: normalizedVoiceId,
+                voice_label_snapshot: nextVoiceLabel,
+                locale_snapshot: nextLocale,
+              }),
+            ),
+          );
+        } else {
+          await unwrapCommandResult(
+            commands.changeTtsDefaultVoiceIdSetting(normalizedVoiceId),
+          );
+        }
+
+        await refreshSettings();
+      } catch (error) {
+        console.error("Failed to update TTS voice selection:", error);
+        if (originalSettings) {
+          set({ settings: originalSettings });
+        }
+        throw error;
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
+
+    applyGlobalLanguageSync: async (appLanguage, trigger) => {
+      const { settings, refreshSettings, setUpdating } = get();
+      if (!settings) {
+        return {
+          message: "Settings are still loading, so language sync could not run yet.",
+        };
+      }
+
+      const updateKey = "global_language_sync";
+      setUpdating(updateKey, true);
+
+      const targetSttLanguage = appLanguageToSttLanguage(appLanguage);
+      const targetTtsLanguage = appLanguageToTtsTarget(appLanguage);
+      let sttMessage = "Speech recognition stayed as-is.";
+      let ttsMessage = "Speech output stayed as-is.";
+
+      try {
+        const overview = await getModelPlatformOverview();
+        const selectedSttModel =
+          overview.stt.models.find(
+            (model) => model.id === overview.selection.selected_stt_model_id,
+          ) ?? null;
+        const nextSttLanguage =
+          selectedSttModel &&
+          modelSupportsLanguage(selectedSttModel, targetSttLanguage)
+            ? targetSttLanguage
+            : "auto";
+
+        if ((settings.selected_language ?? "auto") !== nextSttLanguage) {
+          const previousSttLanguage = settings.selected_language ?? "auto";
+          set((state) => ({
+            settings: state.settings
+              ? { ...state.settings, selected_language: nextSttLanguage }
+              : null,
+          }));
+
+          try {
+            await unwrapCommandResult(
+              commands.changeSelectedLanguageSetting(nextSttLanguage),
+            );
+            sttMessage =
+              nextSttLanguage === "auto"
+                ? "Speech recognition switched to Auto."
+                : `Speech recognition switched to ${nextSttLanguage}.`;
+          } catch (error) {
+            set((state) => ({
+              settings: state.settings
+                ? { ...state.settings, selected_language: previousSttLanguage }
+                : null,
+            }));
+            sttMessage =
+              error instanceof Error
+                ? `Speech recognition could not sync: ${error.message}`
+                : "Speech recognition could not sync.";
+          }
+        } else {
+          sttMessage =
+            nextSttLanguage === "auto"
+              ? "Speech recognition stayed on Auto."
+              : `Speech recognition stayed on ${nextSttLanguage}.`;
+        }
+
+        if (!settings.tts_enabled) {
+          ttsMessage =
+            "Speech output stayed as-is because Speak Output is turned off.";
+          return { message: `${sttMessage} ${ttsMessage}` };
+        }
+
+        const selectedModel = pickTtsModelForLanguage(
+          overview,
+          settings,
+          targetTtsLanguage,
+          trigger,
+        );
+        if (!selectedModel) {
+          return {
+            message: `${sttMessage} No compatible speech output model is ready for ${targetTtsLanguage}, so the current voice was kept.`,
+          };
+        }
+
+        const currentProviderId = overview.selection.selected_tts_provider_id;
+        const currentModelId = overview.selection.selected_tts_model_id;
+        const keepCurrentModel =
+          trigger === "auto" &&
+          currentProviderId === selectedModel.provider_id &&
+          currentModelId === selectedModel.id;
+
+        try {
+          if (!keepCurrentModel) {
+            await setTtsPlatformSelection(
+              selectedModel.provider_id,
+              selectedModel.id,
+            );
+            await refreshSettings();
+          }
+
+          const voiceInventory = await commands.getAvailableTtsVoices();
+          const availableVoices =
+            voiceInventory.status === "ok" ? voiceInventory.data : [];
+          const refreshedSettings = get().settings ?? settings;
+          const recommendedVoice = pickTtsVoiceForLanguage({
+            voices: availableVoices,
+            providerId: selectedModel.provider_id,
+            targetLanguage: targetTtsLanguage,
+            currentVoiceId: getCurrentTtsVoiceId(refreshedSettings),
+            preserveCurrentVoice: keepCurrentModel,
+          });
+
+          if (recommendedVoice || !keepCurrentModel) {
+            await get().setTtsVoiceSelection(
+              recommendedVoice?.id ?? null,
+              recommendedVoice,
+            );
+          }
+
+          ttsMessage = recommendedVoice
+            ? `Speech output is using ${selectedModel.label} with ${recommendedVoice.label}.`
+            : keepCurrentModel
+              ? `Speech output kept ${selectedModel.label}.`
+              : `Speech output switched to ${selectedModel.label}.`;
+        } catch (error) {
+          ttsMessage =
+            error instanceof Error
+              ? `Speech output could not fully sync: ${error.message}`
+              : "Speech output could not fully sync.";
+        }
+
+        return { message: `${sttMessage} ${ttsMessage}` };
+      } finally {
+        setUpdating(updateKey, false);
+      }
+    },
+
+    setAppLanguageWithSync: async (appLanguage) => {
+      const { settings, setUpdating } = get();
+      const updateKey = "app_language";
+      const previousLanguage = settings?.app_language ?? null;
+      const syncEnabled = settings?.global_language_sync_enabled ?? true;
+
+      setUpdating(updateKey, true);
+
+      try {
+        set((state) => ({
+          settings: state.settings
+            ? { ...state.settings, app_language: appLanguage }
+            : null,
+        }));
+        await unwrapCommandResult(commands.changeAppLanguageSetting(appLanguage));
+
+        if (!syncEnabled) {
+          return {
+            message:
+              "App language updated. Global Language Sync is off, so speech settings were left alone.",
+          };
+        }
+
+        return await get().applyGlobalLanguageSync(appLanguage, "auto");
+      } catch (error) {
+        console.error("Failed to update app language:", error);
+        if (previousLanguage && settings) {
+          set({
+            settings: {
+              ...settings,
+              app_language: previousLanguage,
+            },
+          });
+        }
+        throw error;
       } finally {
         setUpdating(updateKey, false);
       }

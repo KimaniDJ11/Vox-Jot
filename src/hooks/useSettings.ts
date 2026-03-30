@@ -4,7 +4,10 @@ import type {
   AppSettings as Settings,
   AudioDevice,
   PostProcessResult,
+  VoiceInfo,
 } from "@/bindings";
+import type { LanguageSyncResult } from "@/stores/settingsStore";
+import type { LanguageSyncTrigger } from "@/lib/languageSync";
 
 interface UseSettingsReturn {
   // State
@@ -49,6 +52,15 @@ interface UseSettingsReturn {
     text: string,
     appBundleIdOverride?: string | null,
   ) => Promise<PostProcessResult>;
+  setAppLanguageWithSync: (appLanguage: string) => Promise<LanguageSyncResult>;
+  applyGlobalLanguageSync: (
+    appLanguage: string,
+    trigger: LanguageSyncTrigger,
+  ) => Promise<LanguageSyncResult>;
+  setTtsVoiceSelection: (
+    voiceId: string | null,
+    voice?: VoiceInfo | null,
+  ) => Promise<void>;
 }
 
 export const useSettings = (): UseSettingsReturn => {
@@ -83,5 +95,8 @@ export const useSettings = (): UseSettingsReturn => {
     updatePostProcessModel: store.updatePostProcessModel,
     fetchPostProcessModels: store.fetchPostProcessModels,
     previewPostProcessText: store.previewPostProcessText,
+    setAppLanguageWithSync: store.setAppLanguageWithSync,
+    applyGlobalLanguageSync: store.applyGlobalLanguageSync,
+    setTtsVoiceSelection: store.setTtsVoiceSelection,
   };
 };

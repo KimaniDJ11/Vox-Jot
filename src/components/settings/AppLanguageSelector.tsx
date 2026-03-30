@@ -13,7 +13,7 @@ interface AppLanguageSelectorProps {
 export const AppLanguageSelector: React.FC<AppLanguageSelectorProps> =
   React.memo(({ descriptionMode = "tooltip", grouped = false }) => {
     const { t, i18n } = useTranslation();
-    const { settings, updateSetting } = useSettings();
+    const { settings, setAppLanguageWithSync } = useSettings();
 
     const currentLanguage = (settings?.app_language ||
       i18n.language) as SupportedLanguageCode;
@@ -23,9 +23,13 @@ export const AppLanguageSelector: React.FC<AppLanguageSelectorProps> =
       label: `${lang.nativeName} (${lang.name})`,
     }));
 
-    const handleLanguageChange = (langCode: string) => {
-      i18n.changeLanguage(langCode);
-      updateSetting("app_language", langCode);
+    const handleLanguageChange = async (langCode: string) => {
+      await i18n.changeLanguage(langCode);
+      try {
+        await setAppLanguageWithSync(langCode);
+      } catch (error) {
+        console.error("Failed to apply app language change:", error);
+      }
     };
 
     return (

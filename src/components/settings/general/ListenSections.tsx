@@ -718,8 +718,7 @@ const VoiceArchitectSection: React.FC<{
     (speech.activeModel?.delivery_support.expressiveness_mode ?? "unsupported") !==
     "unsupported";
   const supportsManualVoiceId =
-    speech.activePreset.provider_id === "local_sidecar_api" ||
-    speech.activeModel?.source_kind === "runtime";
+    speech.activePreset.provider_id === "local_sidecar_api";
 
   return (
     <SettingsGroup title={showTitle ? "Voice Architect" : undefined}>
@@ -1403,7 +1402,7 @@ const SpeechModelList: React.FC<{
   </div>
 );
 
-const ModelsSection: React.FC<{
+const EngineLibraryPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
@@ -1919,7 +1918,7 @@ const VoiceCloningSection: React.FC<{
   );
 };
 
-const AutomationSection: React.FC<{
+const AutoReadbackPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
@@ -2014,7 +2013,7 @@ const AutomationSection: React.FC<{
   );
 };
 
-const PlaybackSection: React.FC<{
+const OutputPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
@@ -2045,57 +2044,57 @@ const PlaybackSection: React.FC<{
   );
 };
 
-export const SpeechVoicePresetsSection: React.FC<{
+export const MyVoicesSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
   return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechVoiceStyleSection: React.FC<{
+export const SoundAndTuningSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
   return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechModelLibrarySection: React.FC<{
+export const EngineLibrarySection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return <ModelsSection speech={speech} showTitle={showGroupTitle} />;
+  return <EngineLibraryPanel speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechVoiceCloningSection: React.FC<{
+export const ListenVoiceCloningSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
   return <VoiceCloningSection speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechAutomationSettingsCard: React.FC<{
+export const AutoReadbackSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return <AutomationSection speech={speech} showTitle={showGroupTitle} />;
+  return <AutoReadbackPanel speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechPlaybackDeviceSettingsCard: React.FC<{
+export const ListenOutputSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
-  return <PlaybackSection speech={speech} showTitle={showGroupTitle} />;
+  return <OutputPanel speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const SpeechOutputSettingsCard: React.FC = () => {
+export const ListenAllSections: React.FC = () => {
   const speech = useListenSpeechState();
   return (
     <div className="space-y-6">
       <VoiceArchitectSection speech={speech} />
-      <ModelsSection speech={speech} />
+      <EngineLibraryPanel speech={speech} />
       <VoiceCloningSection speech={speech} />
-      <AutomationSection speech={speech} />
-      <PlaybackSection speech={speech} />
+      <AutoReadbackPanel speech={speech} />
+      <OutputPanel speech={speech} />
     </div>
   );
 };

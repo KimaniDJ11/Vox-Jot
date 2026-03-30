@@ -39,6 +39,7 @@ import { HistoryLimit } from "@/components/settings/HistoryLimit";
 import { RecordingRetentionPeriodSelector } from "@/components/settings/RecordingRetentionPeriod";
 import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
+import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
 import { CorrectionTrackingToggle } from "@/components/settings/CorrectionTrackingToggle";
 import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
@@ -57,13 +58,13 @@ import { CorrectionSettings } from "@/components/settings/corrections/Correction
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
 import {
-  SpeechAutomationSettingsCard,
-  SpeechVoicePresetsSection,
-  SpeechVoiceStyleSection,
-  SpeechModelLibrarySection,
-  SpeechPlaybackDeviceSettingsCard,
-  SpeechVoiceCloningSection,
-} from "@/components/settings/general/ListenVoiceSettings";
+  AutoReadbackSection as AutoReadbackPanel,
+  MyVoicesSection as MyVoicesPanel,
+  SoundAndTuningSection as SoundAndTuningPanel,
+  EngineLibrarySection as EngineLibraryPanel,
+  ListenOutputSection as OutputPanel,
+  ListenVoiceCloningSection as VoiceCloningPanel,
+} from "@/components/settings/general/ListenSections";
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
 import OllamaSettings from "@/components/settings/ollama/OllamaSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
@@ -233,7 +234,7 @@ export const LearnedCorrectionsSection: React.FC<{
 export const ListenMyVoicesSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechVoicePresetsSection showGroupTitle={false} />
+      <MyVoicesPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -241,7 +242,7 @@ export const ListenMyVoicesSection: React.FC = () => {
 export const ListenSoundTuningSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechVoiceStyleSection showGroupTitle={false} />
+      <SoundAndTuningPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -251,7 +252,7 @@ export const ListenEngineLibrarySection: React.FC<WorkflowSectionProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <SpeechModelLibrarySection showGroupTitle={false} />
+      <EngineLibraryPanel showGroupTitle={false} />
 
       <WorkflowLinkCard
         eyebrow="Need Past Sessions?"
@@ -267,7 +268,7 @@ export const ListenEngineLibrarySection: React.FC<WorkflowSectionProps> = ({
 export const ListenVoiceCloningSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechVoiceCloningSection showGroupTitle={false} />
+      <VoiceCloningPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -275,7 +276,7 @@ export const ListenVoiceCloningSection: React.FC = () => {
 export const ListenAutoReadbackSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechAutomationSettingsCard showGroupTitle={false} />
+      <AutoReadbackPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -283,7 +284,7 @@ export const ListenAutoReadbackSection: React.FC = () => {
 export const ListenOutputSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SpeechPlaybackDeviceSettingsCard showGroupTitle={false} />
+      <OutputPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -438,6 +439,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
         <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
         <AppLanguageSelector descriptionMode="tooltip" grouped={true} />
+        <GlobalLanguageSync descriptionMode="tooltip" grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>

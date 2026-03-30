@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
@@ -146,7 +146,8 @@ def catalog_payload() -> dict[str, Any]:
                     "supports_instruction_prompt": spec.supports_instruction_prompt,
                     "supports_preset_speakers": bool(spec.default_voice),
                     "supports_voice_design": False,
-                    "supports_multilingual": "mul" in spec.supported_languages,
+                    "supports_multilingual": len(spec.supported_languages) > 1
+                    or "mul" in spec.supported_languages,
                     "supports_multi_speaker": True,
                     "supports_streaming": False,
                     "supports_audio_editing": False,
@@ -200,6 +201,29 @@ async def health() -> dict[str, Any]:
 @app.get("/listen/catalog")
 async def listen_catalog() -> JSONResponse:
     return JSONResponse(catalog_payload())
+
+
+@app.get("/listen/voices")
+async def listen_voices(
+    provider_id: str = Query(...),
+    model_id: str | None = Query(default=None),
+) -> JSONResponse:
+    spec = engine_for_provider(provider_id)
+    if spec is None and model_id:
+        spec = engine_for_model(model_id)
+    if spec is None:
+        raise HTTPException(status_code=400, detail="Unknown provider or model.")
+
+    model_dir = discover_model(spec)
+    if model_dir is None:
+        raise HTTPException(status_code=404, detail=f"{spec.label} is not installed in the model store.")
+
+    try:
+        voices = await asyncio.to_thread(host.list_voices, spec, model_dir)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return JSONResponse(voices)
 
 
 @app.post("/listen/prepare")

@@ -1562,6 +1562,18 @@ pub fn change_app_language_setting(app: AppHandle, language: String) -> Result<(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_global_language_sync_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.global_language_sync_enabled = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_show_tray_icon_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.show_tray_icon = enabled;

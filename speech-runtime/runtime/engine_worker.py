@@ -11,6 +11,46 @@ from pathlib import Path
 from typing import Any
 from urllib import request
 
+KOKORO_VOICE_PREFIX_LOCALES = {
+    "af": "en-US",
+    "am": "en-US",
+    "bf": "en-GB",
+    "bm": "en-GB",
+    "jf": "ja",
+    "jm": "ja",
+    "zf": "zh",
+    "zm": "zh",
+    "ef": "es",
+    "em": "es",
+    "ff": "fr",
+    "hf": "hi",
+    "hm": "hi",
+    "if": "it",
+    "im": "it",
+    "pf": "pt-BR",
+    "pm": "pt-BR",
+}
+
+OPENVOICE_LANGUAGE_LOCALES = {
+    "EN": "en-US",
+    "ES": "es",
+    "FR": "fr",
+    "ZH": "zh",
+    "JP": "ja",
+    "KR": "ko",
+}
+
+XTTS_SAMPLE_VOICES = (
+    ("sample:en", "English Sample", "en", "en_sample.wav"),
+    ("sample:es", "Spanish Sample", "es", "es_sample.wav"),
+    ("sample:fr", "French Sample", "fr", "fr_sample.wav"),
+    ("sample:de", "German Sample", "de", "de_sample.wav"),
+    ("sample:pt", "Portuguese Sample", "pt", "pt_sample.wav"),
+    ("sample:zh-cn", "Chinese Sample", "zh-CN", "zh-cn-sample.wav"),
+    ("sample:ja", "Japanese Sample", "ja", "ja-sample.wav"),
+    ("sample:tr", "Turkish Sample", "tr", "tr_sample.wav"),
+)
+
 
 def write_response(ok: bool, **payload: Any) -> None:
     print(json.dumps({"ok": ok, **payload}), flush=True)
@@ -70,6 +110,16 @@ class EngineWorker:
         else:
             raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
         return output_path
+
+    def list_voices(self) -> list[dict[str, Any]]:
+        if self.provider_id == "kokoro":
+            return self._list_kokoro_voices()
+        if self.provider_id == "openvoice":
+            self._ensure_engine()
+            return self._list_openvoice_voices()
+        if self.provider_id == "xtts":
+            return self._list_xtts_voices()
+        return []
 
     def _ensure_engine(self):
         if self.engine is not None or self.provider_id == "fish_speech":
@@ -175,6 +225,42 @@ class EngineWorker:
             return str(candidate)
         return str(self.model_dir / "checkpoints" / "voices" / "af_heart.pt")
 
+    def _voice_entry(self, voice_id: str, label: str, locale: str | None) -> dict[str, Any]:
+        return {
+            "id": voice_id,
+            "label": label,
+            "locale": locale,
+            "installed": True,
+            "available": True,
+        }
+
+    def _humanize_voice_label(self, voice_name: str) -> str:
+        return voice_name.replace("-", " ").replace("_", " ").title()
+
+    def _kokoro_voice_locale(self, voice_name: str) -> str | None:
+        normalized = voice_name.strip().lower()
+        for prefix, locale in KOKORO_VOICE_PREFIX_LOCALES.items():
+            if normalized == prefix or normalized.startswith(f"{prefix}_"):
+                return locale
+        return None
+
+    def _list_kokoro_voices(self) -> list[dict[str, Any]]:
+        voices_dir = self.model_dir / "checkpoints" / "voices"
+        if not voices_dir.exists():
+            return []
+
+        voices = []
+        for candidate in sorted(voices_dir.glob("*.pt")):
+            voice_name = candidate.stem
+            voices.append(
+                self._voice_entry(
+                    voice_name,
+                    self._humanize_voice_label(voice_name),
+                    self._kokoro_voice_locale(voice_name),
+                )
+            )
+        return voices
+
     def _synthesize_kokoro(self, payload: dict[str, Any], output_path: Path) -> None:
         import numpy as np
 
@@ -222,26 +308,56 @@ class EngineWorker:
         raise RuntimeError("XTTS checkpoints are missing.")
 
     def _default_xtts_reference(self, locale: str | None) -> str:
+        return self._xtts_reference_for_voice(None, locale)
+
+    def _xtts_sample_reference_paths(self) -> dict[str, Path]:
         checkpoints = self._xtts_checkpoint_dir()
         samples = checkpoints / "samples"
-        language = (locale or "en").lower().split("-")[0]
-        by_language = {
-            "en": samples / "en_sample.wav",
-            "es": samples / "es_sample.wav",
-            "fr": samples / "fr_sample.wav",
-            "de": samples / "de_sample.wav",
-            "pt": samples / "pt_sample.wav",
-            "zh": samples / "zh-cn-sample.wav",
-            "ja": samples / "ja-sample.wav",
-            "tr": samples / "tr_sample.wav",
-        }
-        chosen = by_language.get(language, samples / "en_sample.wav")
-        return str(chosen if chosen.exists() else samples / "en_sample.wav")
+        references: dict[str, Path] = {}
+        for voice_id, _label, _locale, filename in XTTS_SAMPLE_VOICES:
+            candidate = samples / filename
+            if candidate.exists():
+                references[voice_id] = candidate
+        return references
+
+    def _xtts_default_sample_voice_id(self, locale: str | None) -> str:
+        language = (locale or "en").strip().lower().replace("_", "-")
+        if language in ("zh", "zh-hans", "zh-hant"):
+            return "sample:zh-cn"
+        base = language.split("-")[0]
+        candidate = f"sample:{base}"
+        references = self._xtts_sample_reference_paths()
+        if candidate in references:
+            return candidate
+        return "sample:en"
+
+    def _xtts_reference_for_voice(self, voice: str | None, locale: str | None) -> str:
+        references = self._xtts_sample_reference_paths()
+        if voice and voice in references:
+            return str(references[voice])
+
+        default_voice_id = self._xtts_default_sample_voice_id(locale)
+        chosen = references.get(default_voice_id) or references.get("sample:en")
+        if chosen is None:
+            raise RuntimeError("XTTS sample references are missing.")
+        return str(chosen)
+
+    def _list_xtts_voices(self) -> list[dict[str, Any]]:
+        references = self._xtts_sample_reference_paths()
+        voices = []
+        for voice_id, label, locale, _filename in XTTS_SAMPLE_VOICES:
+            if voice_id not in references:
+                continue
+            voices.append(self._voice_entry(voice_id, label, locale))
+        return voices
 
     def _synthesize_xtts(self, payload: dict[str, Any], output_path: Path) -> None:
         controls = payload.get("controls", {})
         locale = (payload.get("locale") or "en").lower().split("-")[0]
-        speaker_wav = payload.get("reference_audio_path") or self._default_xtts_reference(locale)
+        speaker_wav = payload.get("reference_audio_path") or self._xtts_reference_for_voice(
+            payload.get("voice"),
+            locale,
+        )
         wav = self.engine.tts(
             text=payload["text"],
             speaker_name=None,
@@ -310,6 +426,40 @@ class EngineWorker:
         if not source_path.exists():
             raise RuntimeError(f"OpenVoice speaker embedding is missing for '{speaker_key}'.")
         return self.engine["torch"].load(str(source_path), map_location=self.device)
+
+    def _openvoice_label(self, voice_id: str) -> str:
+        return voice_id.replace("-", " ").replace("_", " ").title()
+
+    def _openvoice_voice_locale(self, voice_id: str, language: str) -> str | None:
+        normalized = voice_id.lower()
+        if normalized.startswith("en-gb") or normalized.startswith("en-uk"):
+            return "en-GB"
+        if normalized.startswith("en"):
+            return "en-US"
+        return OPENVOICE_LANGUAGE_LOCALES.get(language)
+
+    def _list_openvoice_voices(self) -> list[dict[str, Any]]:
+        voices: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for language in ("EN", "ES", "FR", "ZH", "JP", "KR"):
+            model = self._openvoice_melo(language)
+            speaker_keys = sorted(model.hps.data.spk2id.keys())
+            for speaker_key in speaker_keys:
+                voice_id = self._normalize_openvoice_voice(speaker_key)
+                if not voice_id or voice_id in seen:
+                    continue
+                seen.add(voice_id)
+                voices.append(
+                    self._voice_entry(
+                        voice_id,
+                        self._openvoice_label(voice_id),
+                        self._openvoice_voice_locale(voice_id, language),
+                    )
+                )
+
+        voices.sort(key=lambda item: ((item.get("locale") or ""), item["label"], item["id"]))
+        return voices
 
     def _synthesize_openvoice(self, payload: dict[str, Any], output_path: Path) -> None:
         locale = payload.get("locale")
@@ -426,6 +576,9 @@ def main() -> None:
             if action == "warm":
                 worker.warm()
                 write_response(True)
+                continue
+            if action == "list_voices":
+                write_response(True, voices=worker.list_voices())
                 continue
             if action == "synthesize":
                 output_path = worker.synthesize(request_payload["payload"])

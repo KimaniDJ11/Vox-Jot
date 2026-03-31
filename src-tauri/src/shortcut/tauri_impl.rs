@@ -85,9 +85,9 @@ pub fn validate_shortcut(raw: &str) -> Result<(), String> {
     let has_non_modifier = parts.iter().any(|part| !modifiers.contains(&part.as_str()));
 
     if has_non_modifier {
-        raw.parse::<Shortcut>().map(|_| ()).map_err(|e| {
-            format!("Failed to parse shortcut '{}': {}", raw, e)
-        })
+        raw.parse::<Shortcut>()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to parse shortcut '{}': {}", raw, e))
     } else {
         Err("Tauri shortcuts must include a main key (letter, number, F-key, etc.) in addition to modifiers".into())
     }

@@ -10,10 +10,14 @@ use crate::settings::{
     TtsVoicePreset, TtsVoiceTuningSettings, DEFAULT_TTS_MODEL_STORE_PATH,
     TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID,
     TTS_PROVIDER_FISH_SPEECH_ID, TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
-    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID,
-    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
-    TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
+    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_OUTE_ID,
+    TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_XTTS_ID,
 };
+use crate::sidecar::SidecarBackend;
 use crate::translation::TranslationOrigin;
 use crate::tts_profiles::{self, ResolvedTtsVoiceProfile};
 use crate::{audio_playback, portable};
@@ -52,6 +56,7 @@ pub enum TtsEngineKind {
     System,
     SherpaOnnx,
     Sidecar,
+    MlxNative,
     Qwen3Native,
 }
 
@@ -266,8 +271,23 @@ struct Qwen3Context {
     language: String,
 }
 
+struct MlxAudioContext {
+    python_path: PathBuf,
+    bridge_script_path: PathBuf,
+    model_source: String,
+    clone_profile: Option<MlxAudioCloneProfile>,
+    language: String,
+    supports_instruction_prompt: bool,
+}
+
 #[derive(Debug, Clone)]
 struct Qwen3CloneProfile {
+    reference_audio_path: PathBuf,
+    transcript: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct MlxAudioCloneProfile {
     reference_audio_path: PathBuf,
     transcript: Option<String>,
 }
@@ -434,23 +454,8 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         license_label: Some("Coqui Public Model License"),
         locale: Some("mul"),
         supported_languages: &[
-            "en",
-            "es",
-            "fr",
-            "de",
-            "it",
-            "pt",
-            "pl",
-            "tr",
-            "ru",
-            "nl",
-            "cs",
-            "ar",
-            "zh-cn",
-            "hu",
-            "ko",
-            "ja",
-            "hi",
+            "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh-cn", "hu",
+            "ko", "ja", "hi",
         ],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
@@ -472,6 +477,209 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
     },
 ];
 
+#[derive(Debug, Clone)]
+struct MlxAudioTtsModelDefinition {
+    provider_id: &'static str,
+    provider_label: &'static str,
+    provider_description: &'static str,
+    model_id: &'static str,
+    hf_model_id: &'static str,
+    local_dir_names: &'static [&'static str],
+    label: &'static str,
+    description: &'static str,
+    engine_family: &'static str,
+    license_label: Option<&'static str>,
+    locale: Option<&'static str>,
+    supported_languages: &'static [&'static str],
+    supports_voice_cloning: bool,
+    supports_instruction_prompt: bool,
+}
+
+const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_KOKORO_ID,
+        provider_label: "MLX Kokoro",
+        provider_description: "Metal-accelerated Kokoro synthesis through mlx-audio.",
+        model_id: "kokoro-82m",
+        hf_model_id: "mlx-community/Kokoro-82M-bf16",
+        local_dir_names: &["Kokoro-82M-bf16"],
+        label: "Kokoro 82M",
+        description: "Fast, lightweight multilingual TTS on Apple Silicon.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["en", "ja", "zh", "fr", "es", "it", "pt", "hi"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_CHATTERBOX_ID,
+        provider_label: "MLX Chatterbox",
+        provider_description: "Expressive Chatterbox voices routed through mlx-audio.",
+        model_id: "chatterbox",
+        hf_model_id: "mlx-community/chatterbox-fp16",
+        local_dir_names: &["Chatterbox-fp16"],
+        label: "Chatterbox",
+        description: "Expressive multilingual TTS with preset voice styles.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &[
+            "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh", "ja",
+            "hu", "ko",
+        ],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
+        provider_label: "MLX Qwen3 TTS",
+        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
+        model_id: "qwen3-tts-0.6b",
+        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
+        local_dir_names: &["Qwen3-TTS-0.6B-Base-bf16"],
+        label: "Qwen3 TTS 0.6B",
+        description: "Smaller Qwen3 TTS model for multilingual synthesis and cloning.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["zh", "en", "ja", "ko", "mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
+        provider_label: "MLX Qwen3 TTS",
+        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
+        model_id: "qwen3-tts-1.7b",
+        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16",
+        local_dir_names: &["Qwen3-TTS-1.7B-VoiceDesign-bf16"],
+        label: "Qwen3 TTS 1.7B",
+        description: "Larger Qwen3 TTS model with richer voice design controls.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["zh", "en", "ja", "ko", "mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_DIA_ID,
+        provider_label: "MLX Dia",
+        provider_description: "Dialogue-focused Dia voices running through mlx-audio.",
+        model_id: "dia-1.6b",
+        hf_model_id: "mlx-community/Dia-1.6B-fp16",
+        local_dir_names: &["Dia-1.6B-fp16"],
+        label: "Dia 1.6B",
+        description: "Dialogue-focused English TTS with multi-speaker support.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("en"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_CSM_ID,
+        provider_label: "MLX CSM",
+        provider_description: "Sesame CSM voice cloning through mlx-audio.",
+        model_id: "csm-1b",
+        hf_model_id: "mlx-community/csm-1b",
+        local_dir_names: &["CSM-1B"],
+        label: "CSM 1B",
+        description: "Conversational speech model with reference-audio cloning.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("en"),
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_SPARK_ID,
+        provider_label: "MLX Spark",
+        provider_description: "Spark-TTS served from the shared mlx-audio runtime.",
+        model_id: "spark-tts-0.5b",
+        hf_model_id: "mlx-community/Spark-TTS-0.5B-bf16",
+        local_dir_names: &["Spark-TTS-0.5B-bf16"],
+        label: "Spark TTS 0.5B",
+        description: "Efficient bilingual Spark TTS model for English and Chinese.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["en", "zh"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_OUTE_ID,
+        provider_label: "MLX OuteTTS",
+        provider_description: "Compact OuteTTS synthesis via mlx-audio.",
+        model_id: "outetts-0.6b",
+        hf_model_id: "mlx-community/OuteTTS-1.0-0.6B-fp16",
+        local_dir_names: &["OuteTTS-1.0-0.6B-fp16"],
+        label: "OuteTTS 0.6B",
+        description: "Compact English TTS model with fast inference.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("en"),
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_MING_OMNI_ID,
+        provider_label: "MLX Ming Omni",
+        provider_description: "Ming Omni synthesis with style controls via mlx-audio.",
+        model_id: "ming-omni-0.5b",
+        hf_model_id: "mlx-community/Ming-omni-tts-0.5B-bf16",
+        local_dir_names: &["Ming-omni-tts-0.5B-4bit", "Ming-omni-tts-0.5B-bf16"],
+        label: "Ming Omni 0.5B",
+        description: "Dense Ming Omni TTS with voice cloning and style control.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["en", "zh"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_KUGEL_ID,
+        provider_label: "MLX KugelAudio",
+        provider_description: "European-language KugelAudio voices through mlx-audio.",
+        model_id: "kugel-audio-7b",
+        hf_model_id: "kugelaudio/kugelaudio-0-open",
+        local_dir_names: &["kugelaudio-0-open"],
+        label: "KugelAudio 7B",
+        description: "High-quality European-language TTS with a default voice.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &[
+            "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "uk", "cs", "ro", "hu", "sv",
+            "da", "fi", "no", "el", "bg", "sk", "hr", "sr", "tr",
+        ],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+        provider_label: "MLX Voxtral TTS",
+        provider_description: "Voxtral multilingual TTS exposed through mlx-audio.",
+        model_id: "voxtral-tts-4b",
+        hf_model_id: "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16",
+        local_dir_names: &["Voxtral-TTS-4B-MLX-6bit", "Voxtral-4B-TTS-2603-mlx-bf16"],
+        label: "Voxtral TTS 4B",
+        description: "Multilingual Mistral TTS with preset voices across nine languages.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        locale: Some("mul"),
+        supported_languages: &["en", "fr", "es", "de", "it", "pt", "nl", "ar", "hi"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+];
+
 fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
     matches!(
         provider_id,
@@ -481,6 +689,47 @@ fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
             | TTS_PROVIDER_XTTS_ID
             | TTS_PROVIDER_FISH_SPEECH_ID
     )
+}
+
+fn provider_is_mlx_audio(provider_id: &str) -> bool {
+    matches!(
+        provider_id,
+        TTS_PROVIDER_MLX_KOKORO_ID
+            | TTS_PROVIDER_MLX_CHATTERBOX_ID
+            | TTS_PROVIDER_MLX_QWEN3TTS_ID
+            | TTS_PROVIDER_MLX_DIA_ID
+            | TTS_PROVIDER_MLX_CSM_ID
+            | TTS_PROVIDER_MLX_SPARK_ID
+            | TTS_PROVIDER_MLX_OUTE_ID
+            | TTS_PROVIDER_MLX_MING_OMNI_ID
+            | TTS_PROVIDER_MLX_KUGEL_ID
+            | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+    )
+}
+
+fn mlx_audio_runtime_supported() -> bool {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        true
+    }
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    {
+        false
+    }
+}
+
+fn mlx_audio_tts_model_definition(model_id: &str) -> Option<&'static MlxAudioTtsModelDefinition> {
+    MLX_AUDIO_TTS_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| definition.model_id == model_id)
+}
+
+fn first_mlx_audio_model_for_provider(
+    provider_id: &str,
+) -> Option<&'static MlxAudioTtsModelDefinition> {
+    MLX_AUDIO_TTS_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| definition.provider_id == provider_id)
 }
 
 pub struct TtsManager {
@@ -537,6 +786,60 @@ impl TtsManager {
             .filter(|path| !path.is_empty())
             .map(PathBuf::from)
             .unwrap_or_else(|| default_tts_model_store_dir(&self.app_handle))
+    }
+
+    fn mlx_audio_model_candidate_paths(
+        &self,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Vec<PathBuf> {
+        let mut candidates = Vec::new();
+        let configured_store = self.tts_model_store_root();
+        let default_store = PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH);
+        let hf_repo_basename = definition
+            .hf_model_id
+            .rsplit('/')
+            .next()
+            .unwrap_or(definition.model_id);
+
+        for store in [
+            configured_store.clone(),
+            configured_store.join("MLX"),
+            configured_store
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| configured_store.clone()),
+            configured_store
+                .parent()
+                .map(|parent| parent.join("MLX"))
+                .unwrap_or_else(|| configured_store.join("MLX")),
+            default_store.clone(),
+            default_store.join("MLX"),
+            default_store
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| default_store.clone()),
+            default_store
+                .parent()
+                .map(|parent| parent.join("MLX"))
+                .unwrap_or_else(|| default_store.join("MLX")),
+        ] {
+            candidates.push(store.join(definition.model_id));
+            candidates.push(store.join(hf_repo_basename));
+            for dir_name in definition.local_dir_names {
+                candidates.push(store.join(dir_name));
+            }
+        }
+
+        candidates
+    }
+
+    fn resolve_mlx_audio_model_source(&self, definition: &MlxAudioTtsModelDefinition) -> String {
+        self.mlx_audio_model_candidate_paths(definition)
+            .into_iter()
+            .find(|candidate| candidate.exists())
+            .unwrap_or_else(|| PathBuf::from(definition.hf_model_id))
+            .to_string_lossy()
+            .to_string()
     }
 
     fn managed_runtime_model_definition(
@@ -951,9 +1254,15 @@ impl TtsManager {
         match self.resolve_engine_kind(&settings, None)? {
             TtsEngineKind::System => self.system_voices(),
             TtsEngineKind::SherpaOnnx => Ok(self.installed_pack_voices()),
+            TtsEngineKind::MlxNative => Ok(Vec::new()),
             TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
             TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
         }
+    }
+
+    pub fn warm_system_voice_cache(&self) -> Result<(), String> {
+        let _ = self.system_voices()?;
+        Ok(())
     }
 
     fn get_available_sherpa_packs(&self) -> Vec<TtsPackInfo> {
@@ -1267,7 +1576,12 @@ impl TtsManager {
     }
 
     fn runtime_control_group(raw_group: Option<&str>, control_id: &str) -> TtsControlGroup {
-        match raw_group.unwrap_or(control_id).trim().to_ascii_lowercase().as_str() {
+        match raw_group
+            .unwrap_or(control_id)
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
             "identity" => TtsControlGroup::Identity,
             "tempo" => TtsControlGroup::Tempo,
             "style" => TtsControlGroup::Style,
@@ -1291,6 +1605,86 @@ impl TtsManager {
         TtsDeliverySupport {
             expressiveness_mode: TtsExpressivenessMode::Native,
             advanced_controls: self.runtime_advanced_controls(model),
+        }
+    }
+
+    fn sidecar_backend(&self) -> Option<SidecarBackend> {
+        self.app_handle
+            .try_state::<Arc<crate::sidecar::SidecarManager>>()
+            .map(|sidecar| sidecar.backend())
+    }
+
+    fn mlx_audio_runtime_state(&self) -> RuntimeListenState {
+        let providers =
+            MLX_AUDIO_TTS_MODEL_DEFINITIONS
+                .iter()
+                .fold(Vec::new(), |mut entries, definition| {
+                    if entries
+                        .iter()
+                        .any(|entry: &RuntimeListenProviderCatalogEntry| {
+                            entry.id == definition.provider_id
+                        })
+                    {
+                        return entries;
+                    }
+
+                    entries.push(RuntimeListenProviderCatalogEntry {
+                        id: definition.provider_id.to_string(),
+                        label: definition.provider_label.to_string(),
+                        description: definition.provider_description.to_string(),
+                        source_label: "mlx-audio runtime".to_string(),
+                        provider: RuntimeListenProviderDefinition {
+                            id: definition.provider_id.to_string(),
+                            label: definition.provider_label.to_string(),
+                            engine_family: definition.engine_family.to_string(),
+                            runtime_kind: "mlx_audio".to_string(),
+                            supported_platforms: vec!["darwin".to_string()],
+                            license_label: definition.license_label.map(str::to_string),
+                        },
+                    });
+                    entries
+                });
+
+        let models = MLX_AUDIO_TTS_MODEL_DEFINITIONS
+            .iter()
+            .map(|definition| RuntimeListenModelCatalogEntry {
+                id: definition.model_id.to_string(),
+                provider_id: definition.provider_id.to_string(),
+                label: definition.label.to_string(),
+                description: definition.description.to_string(),
+                source_label: "mlx-audio runtime".to_string(),
+                local_path: None,
+                capabilities: RuntimeListenCapabilities {
+                    supports_basic_tts: true,
+                    supports_voice_cloning: definition.supports_voice_cloning,
+                    supports_reference_transcript: false,
+                    supports_instruction_prompt: definition.supports_instruction_prompt,
+                    supports_preset_speakers: false,
+                    supports_voice_design: definition.supports_instruction_prompt,
+                    supports_multilingual: definition.supported_languages.len() > 1,
+                    supports_multi_speaker: definition.provider_id == TTS_PROVIDER_MLX_DIA_ID,
+                    supports_streaming: false,
+                    supports_audio_editing: false,
+                },
+                readiness: RuntimeListenReadiness {
+                    status: "ready".to_string(),
+                    runtime_label: "mlx-audio runtime".to_string(),
+                    issues: Vec::new(),
+                    local_path: None,
+                },
+                supported_languages: definition
+                    .supported_languages
+                    .iter()
+                    .map(|value| value.to_string())
+                    .collect(),
+                style_controls: Vec::new(),
+            })
+            .collect();
+
+        RuntimeListenState {
+            providers,
+            models,
+            selection: None,
         }
     }
 
@@ -2063,12 +2457,12 @@ impl TtsManager {
                 })
             }));
 
-            let mut deduped_models: Vec<CatalogModelDescriptor> =
-                Vec::with_capacity(models.len());
+            let mut deduped_models: Vec<CatalogModelDescriptor> = Vec::with_capacity(models.len());
             for model in models.into_iter() {
-                if let Some(existing) = deduped_models.iter_mut().find(|item| {
-                    item.id == model.id && item.provider_id == model.provider_id
-                }) {
+                if let Some(existing) = deduped_models
+                    .iter_mut()
+                    .find(|item| item.id == model.id && item.provider_id == model.provider_id)
+                {
                     let prefer_runtime = model.source_kind == CatalogSourceKind::Runtime
                         || (!existing.installed && model.installed);
                     if prefer_runtime {
@@ -2085,6 +2479,10 @@ impl TtsManager {
     }
 
     async fn fetch_runtime_listen_state(&self) -> Option<RuntimeListenState> {
+        if self.sidecar_backend() == Some(SidecarBackend::MlxAudio) {
+            return Some(self.mlx_audio_runtime_state());
+        }
+
         if let Some(sidecar) = self
             .app_handle
             .try_state::<Arc<crate::sidecar::SidecarManager>>()
@@ -2130,6 +2528,12 @@ impl TtsManager {
         model_id: &str,
         profile_id: Option<&str>,
     ) -> Result<(), String> {
+        if provider_is_mlx_audio(provider_id)
+            && self.sidecar_backend() == Some(SidecarBackend::MlxAudio)
+        {
+            return Ok(());
+        }
+
         let root_url = self
             .sidecar_root_url()
             .ok_or_else(|| "Failed to resolve the local speech runtime URL.".to_string())?;
@@ -2183,7 +2587,11 @@ impl TtsManager {
             .app_handle
             .try_state::<Arc<crate::sidecar::SidecarManager>>()
         {
-            sidecar.ensure_running_if_available()?;
+            if sidecar.backend() == SidecarBackend::MlxAudio {
+                sidecar.ensure_running()?;
+            } else {
+                sidecar.ensure_running_if_available()?;
+            }
         }
         Ok(())
     }
@@ -2193,6 +2601,12 @@ impl TtsManager {
         provider_id: &str,
         model_id: Option<&str>,
     ) -> Result<Vec<VoiceInfo>, String> {
+        if provider_is_mlx_audio(provider_id)
+            && self.sidecar_backend() == Some(SidecarBackend::MlxAudio)
+        {
+            return Ok(Vec::new());
+        }
+
         self.ensure_sidecar_running_blocking()?;
 
         let root_url = self
@@ -2407,6 +2821,13 @@ impl TtsManager {
             ),
             _ => None,
         };
+        let mlx_audio_context = match engine {
+            TtsEngineKind::MlxNative => Some(
+                self.prepare_mlx_audio_context(&effective_settings, locale.as_deref())
+                    .await?,
+            ),
+            _ => None,
+        };
         let tts_volume = settings.tts_volume.clamp(0.0, 1.0);
         let output_device = settings.selected_output_device.clone();
         let app_handle = self.app_handle.clone();
@@ -2419,6 +2840,16 @@ impl TtsManager {
                     .as_ref()
                     .and_then(|preset| preset.voice_id.clone())
             });
+        // For MLX models the voice_id is model-specific (e.g. Kokoro voice
+        // names like "af_heart"). Drop any stale voice_id that looks like a
+        // model identifier from another provider (e.g. "qwen3-0.6b-base").
+        let preferred_voice_id = if engine == TtsEngineKind::MlxNative {
+            preferred_voice_id.filter(|voice_id| {
+                !is_known_tts_model_id(voice_id)
+            })
+        } else {
+            preferred_voice_id
+        };
         let tuning = selected_preset
             .as_ref()
             .map(|preset| preset.tuning.clone())
@@ -2487,6 +2918,21 @@ impl TtsManager {
                             &stop_flag,
                         )?;
                     }
+                    TtsEngineKind::MlxNative => {
+                        let mlx_audio_context = mlx_audio_context
+                            .as_ref()
+                            .ok_or_else(|| "No MLX speech models are available.".to_string())?;
+                        speak_mlx_audio_chunk(
+                            &chunk,
+                            mlx_audio_context,
+                            preferred_voice_id.as_deref(),
+                            voice.as_ref(),
+                            &tuning,
+                            tts_volume,
+                            output_device.clone(),
+                            &stop_flag,
+                        )?;
+                    }
                     TtsEngineKind::Sidecar => {
                         speak_sidecar_chunk(
                             &chunk,
@@ -2536,6 +2982,9 @@ impl TtsManager {
             TTS_PROVIDER_SHERPA_PACK_ID => return Ok(TtsEngineKind::SherpaOnnx),
             TTS_PROVIDER_LOCAL_SIDECAR_API_ID => return self.ensure_sidecar_supported(settings),
             TTS_PROVIDER_QWEN3_NATIVE_ID => return Ok(TtsEngineKind::Qwen3Native),
+            provider_id if provider_is_mlx_audio(provider_id) => {
+                return self.ensure_mlx_audio_supported()
+            }
             TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
@@ -2582,6 +3031,14 @@ impl TtsManager {
                     }
                 }
             }
+        }
+    }
+
+    fn ensure_mlx_audio_supported(&self) -> Result<TtsEngineKind, String> {
+        if mlx_audio_runtime_supported() {
+            Ok(TtsEngineKind::MlxNative)
+        } else {
+            Err("MLX speech models currently require macOS on Apple Silicon.".to_string())
         }
     }
 
@@ -2832,6 +3289,53 @@ impl TtsManager {
         })
     }
 
+    async fn prepare_mlx_audio_context(
+        &self,
+        settings: &AppSettings,
+        locale: Option<&str>,
+    ) -> Result<MlxAudioContext, String> {
+        let provider_id = self.selected_provider_id(settings);
+        let definition = settings
+            .active_tts_preset()
+            .and_then(|preset| mlx_audio_tts_model_definition(&preset.model_id))
+            .or_else(|| {
+                settings
+                    .selected_tts_model_id
+                    .as_deref()
+                    .and_then(mlx_audio_tts_model_definition)
+            })
+            .or_else(|| first_mlx_audio_model_for_provider(&provider_id))
+            .ok_or_else(|| format!("No MLX model is configured for provider '{provider_id}'."))?;
+
+        let sidecar = self
+            .app_handle
+            .try_state::<Arc<crate::sidecar::SidecarManager>>()
+            .map(|state| Arc::clone(&*state))
+            .ok_or_else(|| "MLX speech runtime manager is not available.".to_string())?;
+        let python_path =
+            tokio::task::spawn_blocking(move || sidecar.ensure_mlx_audio_environment())
+                .await
+                .map_err(|err| format!("Failed to prepare mlx-audio environment: {err}"))??;
+        let bridge_script_path =
+            portable::resolve_resource(&self.app_handle, "resources/python/mlx_audio_generate.py")
+                .map_err(|err| format!("Failed to resolve MLX audio bridge script: {err}"))?;
+        if !bridge_script_path.exists() {
+            return Err(format!(
+                "MLX audio bridge script is missing: {}",
+                bridge_script_path.display()
+            ));
+        }
+
+        Ok(MlxAudioContext {
+            python_path,
+            bridge_script_path,
+            model_source: self.resolve_mlx_audio_model_source(definition),
+            clone_profile: self.resolve_mlx_audio_clone_profile(settings, definition)?,
+            language: mlx_audio_language_for_locale(locale),
+            supports_instruction_prompt: definition.supports_instruction_prompt,
+        })
+    }
+
     fn resolve_qwen3_clone_profile(
         &self,
         settings: &AppSettings,
@@ -2856,6 +3360,45 @@ impl TtsManager {
         ensure_profile_supports_qwen3_base(&profile)?;
 
         Ok(Some(Qwen3CloneProfile {
+            reference_audio_path: profile.reference_audio_path,
+            transcript: profile.transcript,
+        }))
+    }
+
+    fn resolve_mlx_audio_clone_profile(
+        &self,
+        settings: &AppSettings,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Result<Option<MlxAudioCloneProfile>, String> {
+        let Some(profile_id) = settings
+            .selected_tts_profile_id
+            .as_deref()
+            .filter(|profile_id| !profile_id.trim().is_empty())
+        else {
+            return Ok(None);
+        };
+
+        if !definition.supports_voice_cloning {
+            return Ok(None);
+        }
+
+        let profile = tts_profiles::resolve_voice_profile(&self.app_handle, profile_id)?;
+        let provider_compatible = profile.compatible_provider_ids.is_empty()
+            || profile
+                .compatible_provider_ids
+                .iter()
+                .any(|provider_id| provider_id == definition.provider_id);
+        let model_compatible = profile.compatible_model_ids.is_empty()
+            || profile
+                .compatible_model_ids
+                .iter()
+                .any(|model_id| model_id == definition.model_id);
+
+        if !(provider_compatible && model_compatible) {
+            return Ok(None);
+        }
+
+        Ok(Some(MlxAudioCloneProfile {
             reference_audio_path: profile.reference_audio_path,
             transcript: profile.transcript,
         }))
@@ -3017,6 +3560,7 @@ impl TtsManager {
         let voices = match engine {
             TtsEngineKind::System => self.system_voices()?,
             TtsEngineKind::SherpaOnnx => self.installed_pack_voices(),
+            TtsEngineKind::MlxNative => Vec::new(),
             TtsEngineKind::Qwen3Native => self.installed_qwen3_voices(),
             TtsEngineKind::Sidecar => Vec::new(),
         };
@@ -3349,6 +3893,13 @@ fn qwen3_language_for_locale(locale: Option<&str>) -> String {
         Some("zh") => "chinese".to_string(),
         _ => "english".to_string(),
     }
+}
+
+fn mlx_audio_language_for_locale(locale: Option<&str>) -> String {
+    locale
+        .map(locale_language)
+        .filter(|language| !language.trim().is_empty())
+        .unwrap_or_else(|| "en".to_string())
 }
 
 fn ensure_profile_supports_qwen3_base(profile: &ResolvedTtsVoiceProfile) -> Result<(), String> {
@@ -3698,6 +4249,170 @@ fn speak_qwen3_chunk(
     play_result
 }
 
+/// Returns true when `id` matches a known TTS model/pack identifier from any
+/// provider. Used to detect stale voice_id values that were actually model IDs
+/// carried over from a previous provider selection.
+fn is_known_tts_model_id(id: &str) -> bool {
+    PACK_DEFINITIONS.iter().any(|p| p.id == id)
+        || QWEN3_PACK_DEFINITIONS.iter().any(|p| p.id == id)
+        || MLX_AUDIO_TTS_MODEL_DEFINITIONS
+            .iter()
+            .any(|d| d.model_id == id)
+        || MANAGED_RUNTIME_MODEL_DEFINITIONS
+            .iter()
+            .any(|d| d.model_id == id)
+}
+
+/// Repair a WAV file whose RIFF header size doesn't match the actual file size.
+/// mlx-audio can produce files where the RIFF size field is short by a few bytes,
+/// causing symphonia/rodio to truncate or silently skip audio data.
+fn repair_wav_riff_header(path: &Path) {
+    use std::io::{Read, Seek, SeekFrom, Write};
+    let Ok(mut file) = fs::OpenOptions::new().read(true).write(true).open(path) else {
+        return;
+    };
+    let Ok(file_size) = file.seek(SeekFrom::End(0)) else {
+        return;
+    };
+    if file_size < 8 {
+        return;
+    }
+    let mut header = [0u8; 4];
+    let _ = file.seek(SeekFrom::Start(0));
+    if file.read_exact(&mut header).is_err() || &header != b"RIFF" {
+        return;
+    }
+    let mut size_buf = [0u8; 4];
+    if file.read_exact(&mut size_buf).is_err() {
+        return;
+    }
+    let declared = u32::from_le_bytes(size_buf);
+    let expected = (file_size - 8) as u32;
+    if declared != expected {
+        let _ = file.seek(SeekFrom::Start(4));
+        let _ = file.write_all(&expected.to_le_bytes());
+    }
+}
+
+fn speak_mlx_audio_chunk(
+    text: &str,
+    context: &MlxAudioContext,
+    preferred_voice_id: Option<&str>,
+    voice: Option<&VoiceInfo>,
+    tuning: &TtsVoiceTuningSettings,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
+    let temp_dir = std::env::temp_dir();
+    let file_uuid = Uuid::new_v4().to_string();
+    let temp_cwd = temp_dir.join(format!("mlx-audio-{}", file_uuid));
+    std::fs::create_dir_all(&temp_cwd)
+        .map_err(|err| format!("Failed to create temp MLX audio dir: {err}"))?;
+    let output_path = temp_cwd.join("output.wav");
+
+    let mut command = Command::new(&context.python_path);
+    command
+        .arg("-W")
+        .arg("ignore")
+        .arg(&context.bridge_script_path)
+        .arg("--model")
+        .arg(&context.model_source)
+        .arg("--text")
+        .arg(text)
+        .arg("--output")
+        .arg(&output_path)
+        .arg("--lang-code")
+        .arg(&context.language)
+        .arg("--speed")
+        .arg(tuning.tempo_rate.clamp(0.5, 2.0).to_string())
+        .arg("--temperature")
+        .arg(tuning.randomness.clamp(0.0, 2.0).to_string())
+        .arg("--repetition-penalty")
+        .arg(tuning.repetition_penalty.max(1.0).to_string())
+        .current_dir(&temp_cwd)
+        .env("PYTHONUNBUFFERED", "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let Some(voice_id) = preferred_voice_id
+        .map(str::trim)
+        .filter(|voice_id| !voice_id.is_empty())
+        .or_else(|| {
+            voice
+                .map(|voice| voice.id.as_str())
+                .filter(|voice_id| !voice_id.trim().is_empty())
+        })
+    {
+        command.arg("--voice").arg(voice_id);
+    }
+
+    if let Some(instruct) = tuning
+        .style_instructions
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && context.supports_instruction_prompt)
+    {
+        command.arg("--instruct").arg(instruct);
+    }
+
+    if let Some(profile) = context.clone_profile.as_ref() {
+        command
+            .arg("--ref-audio")
+            .arg(&profile.reference_audio_path);
+        if let Some(transcript) = profile
+            .transcript
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            command.arg("--ref-text").arg(transcript);
+        }
+    }
+
+    let output = command
+        .output()
+        .map_err(|err| format!("Failed to run MLX speech generation: {err}"))?;
+
+    if !output.status.success() {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return Err(if !stderr.is_empty() {
+            format!("MLX speech generation failed: {stderr}")
+        } else if !stdout.is_empty() {
+            format!("MLX speech generation failed: {stdout}")
+        } else {
+            "MLX speech generation failed without a detailed error.".to_string()
+        });
+    }
+
+    if !output_path.exists() {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Err("MLX speech generation completed but no audio file was produced.".to_string());
+    }
+
+    // mlx-audio can produce WAV files with an incorrect RIFF size header.
+    // Fix it in place so rodio/symphonia decodes the full audio.
+    repair_wav_riff_header(&output_path);
+
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Ok(());
+    }
+
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&output_path, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play MLX speech audio: {err}"));
+
+    let _ = std::fs::remove_dir_all(&temp_cwd);
+    play_result
+}
+
 fn speak_system_chunk(
     app_handle: &AppHandle,
     text: &str,
@@ -3935,7 +4650,7 @@ fn speak_sidecar_chunk(
         tuning,
     );
 
-    let bytes = runtime.block_on(async {
+    let (bytes, content_type) = runtime.block_on(async {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(RUNTIME_TTS_REQUEST_TIMEOUT_SECS))
             .build()
@@ -3975,19 +4690,49 @@ fn speak_sidecar_chunk(
                 format!("{runtime_target} failed: {detail}")
             });
         }
-        response
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(|value| value.to_string());
+        let bytes = response
             .bytes()
             .await
-            .map_err(|err| format!("Failed to read audio from {runtime_target}: {err}"))
+            .map_err(|err| format!("Failed to read audio from {runtime_target}: {err}"))?;
+        Ok((bytes, content_type))
     })?;
 
-    let temp_file = std::env::temp_dir().join(format!("vox-jot-sidecar-{}.wav", Uuid::new_v4()));
+    let extension = sidecar_audio_extension(content_type.as_deref(), &bytes);
+    let temp_file =
+        std::env::temp_dir().join(format!("vox-jot-sidecar-{}.{}", Uuid::new_v4(), extension));
     fs::write(&temp_file, &bytes).map_err(|err| format!("Failed to save sidecar audio: {err}"))?;
     let play_result =
         audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play sidecar speech audio: {err}"));
     let _ = fs::remove_file(&temp_file);
     play_result
+}
+
+fn sidecar_audio_extension(content_type: Option<&str>, bytes: &[u8]) -> &'static str {
+    let normalized = content_type
+        .unwrap_or_default()
+        .split(';')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+
+    match normalized.as_str() {
+        "audio/mp3" | "audio/mpeg" => "mp3",
+        "audio/wav" | "audio/x-wav" | "audio/wave" => "wav",
+        "audio/mp4" | "audio/m4a" | "audio/x-m4a" => "m4a",
+        "audio/flac" | "audio/x-flac" => "flac",
+        "audio/ogg" => "ogg",
+        _ if bytes.starts_with(b"ID3") => "mp3",
+        _ if bytes.starts_with(b"RIFF") => "wav",
+        _ if bytes.len() > 8 && &bytes[4..8] == b"ftyp" => "m4a",
+        _ => "bin",
+    }
 }
 
 fn build_sidecar_request_payload(
@@ -4000,10 +4745,19 @@ fn build_sidecar_request_payload(
     voice: Option<&VoiceInfo>,
     tuning: &TtsVoiceTuningSettings,
 ) -> serde_json::Value {
+    let effective_model = if provider_is_mlx_audio(provider_id) {
+        model_id
+            .and_then(mlx_audio_tts_model_definition)
+            .map(|definition| definition.hf_model_id)
+            .or(model_id)
+    } else {
+        model_id
+    };
+
     serde_json::json!({
         "input": text,
         "text": text,
-        "model": model_id,
+        "model": effective_model,
         "voice": preferred_voice_id
             .map(|voice_id| voice_id.to_string())
             .or_else(|| voice.map(|voice| voice.id.clone())),
@@ -4018,7 +4772,7 @@ fn build_sidecar_request_payload(
         } else {
             serde_json::json!({
                 "provider_id": provider_id,
-                "model_id": model_id,
+                "model_id": effective_model,
                 "tuning": tuning,
             })
         }
@@ -4266,9 +5020,12 @@ pub fn choose_readback_locale(
     }
 }
 
-pub fn default_preview_request(voice_id: Option<String>) -> SpeakRequest {
+pub fn default_preview_request(
+    voice_id: Option<String>,
+    preview_text: Option<String>,
+) -> SpeakRequest {
     SpeakRequest {
-        text: PREVIEW_SAMPLE_TEXT.to_string(),
+        text: preview_text.unwrap_or_else(|| PREVIEW_SAMPLE_TEXT.to_string()),
         locale: None,
         preferred_voice_id: voice_id,
         preset_id: None,
@@ -4385,18 +5142,47 @@ mod tests {
             1.25
         );
         assert!(
-            (
-                payload["extra_controls"]["tuning"]["guidance"]
-                    .as_f64()
-                    .expect("guidance should serialize")
-                    - 0.8
-            )
+            (payload["extra_controls"]["tuning"]["guidance"]
+                .as_f64()
+                .expect("guidance should serialize")
+                - 0.8)
                 .abs()
                 < 0.0001
         );
         assert_eq!(
             payload["extra_controls"]["tuning"]["style_instructions"],
             "warm and steady"
+        );
+    }
+
+    #[test]
+    fn sidecar_payload_maps_mlx_model_ids_to_huggingface_ids() {
+        let tuning = TtsVoiceTuningSettings {
+            tempo_rate: 1.0,
+            expressiveness: 0.5,
+            exaggeration: 0.5,
+            randomness: 0.2,
+            guidance: 1.0,
+            stability: 0.5,
+            repetition_penalty: 1.2,
+            style_instructions: None,
+        };
+
+        let payload = build_sidecar_request_payload(
+            "Hello world",
+            TTS_PROVIDER_MLX_KOKORO_ID,
+            Some("kokoro-82m"),
+            None,
+            Some("en-US"),
+            None,
+            None,
+            &tuning,
+        );
+
+        assert_eq!(payload["model"], "mlx-community/Kokoro-82M-bf16");
+        assert_eq!(
+            payload["extra_controls"]["model_id"],
+            "mlx-community/Kokoro-82M-bf16"
         );
     }
 }

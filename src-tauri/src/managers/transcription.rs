@@ -1,16 +1,17 @@
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
 use crate::managers::continuous_cloning::ContinuousCloningManager;
-use crate::managers::model::{EngineType, ModelManager};
+use crate::managers::model::{model_is_available, EngineType, ModelManager};
 use crate::settings::{get_settings, ModelUnloadTimeout};
 use anyhow::Result;
 use log::{debug, error, info, warn};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use transcribe_rs::{
     engines::{
         gigaam::GigaAMEngine,
@@ -38,6 +39,16 @@ pub struct ModelStateEvent {
     pub error: Option<String>,
 }
 
+struct MlxAudioSttEngine {
+    base_url: String,
+    hf_model_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MlxAudioTranscriptionResponse {
+    text: String,
+}
+
 enum LoadedEngine {
     Whisper(WhisperEngine),
     Parakeet(ParakeetEngine),
@@ -45,6 +56,87 @@ enum LoadedEngine {
     MoonshineStreaming(MoonshineStreamingEngine),
     SenseVoice(SenseVoiceEngine),
     GigaAM(GigaAMEngine),
+    MlxAudioStt(MlxAudioSttEngine),
+}
+
+impl MlxAudioSttEngine {
+    fn transcribe(
+        &self,
+        audio: Vec<f32>,
+        sample_rate: u32,
+    ) -> Result<transcribe_rs::TranscriptionResult> {
+        let wav_bytes = self.encode_wav(audio, sample_rate)?;
+        let file_part = reqwest::blocking::multipart::Part::bytes(wav_bytes)
+            .file_name("vox-jot.wav")
+            .mime_str("audio/wav")
+            .map_err(|err| anyhow::anyhow!("Failed to prepare mlx-audio upload: {}", err))?;
+        let form = reqwest::blocking::multipart::Form::new()
+            .part("file", file_part)
+            .text("model", self.hf_model_id.clone());
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(300))
+            .build()
+            .map_err(|err| anyhow::anyhow!("Failed to create mlx-audio client: {}", err))?;
+        let response = client
+            .post(format!(
+                "{}/v1/audio/transcriptions",
+                self.base_url.trim_end_matches('/')
+            ))
+            .multipart(form)
+            .send()
+            .map_err(|err| anyhow::anyhow!("mlx-audio transcription request failed: {}", err))?;
+
+        let response = response
+            .error_for_status()
+            .map_err(|err| anyhow::anyhow!("mlx-audio transcription failed: {}", err))?;
+        let payload = response
+            .json::<MlxAudioTranscriptionResponse>()
+            .map_err(|err| anyhow::anyhow!("Failed to decode mlx-audio response: {}", err))?;
+
+        Ok(transcribe_rs::TranscriptionResult {
+            text: payload.text,
+            segments: None,
+        })
+    }
+
+    fn encode_wav(&self, audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut cursor = Cursor::new(Vec::new());
+        {
+            let mut writer = hound::WavWriter::new(&mut cursor, spec)
+                .map_err(|err| anyhow::anyhow!("Failed to create WAV encoder: {}", err))?;
+            for sample in audio {
+                let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+                writer
+                    .write_sample(value)
+                    .map_err(|err| anyhow::anyhow!("Failed to encode WAV sample: {}", err))?;
+            }
+            writer
+                .finalize()
+                .map_err(|err| anyhow::anyhow!("Failed to finalize WAV output: {}", err))?;
+        }
+        Ok(cursor.into_inner())
+    }
+}
+
+fn mlx_audio_stt_hf_model_id(model_id: &str) -> Option<&'static str> {
+    match model_id {
+        "mlx-whisper-large-v3-turbo" => Some("mlx-community/whisper-large-v3-turbo-asr-fp16"),
+        "mlx-distil-whisper-large-v3" => Some("distil-whisper/distil-large-v3"),
+        "mlx-qwen3-asr" => Some("mlx-community/Qwen3-ASR-1.7B-8bit"),
+        "mlx-parakeet-v3" => Some("mlx-community/parakeet-tdt-0.6b-v3"),
+        _ => None,
+    }
+}
+
+fn mlx_audio_base_url() -> String {
+    "http://127.0.0.1:8008".to_string()
 }
 
 #[derive(Clone)]
@@ -138,7 +230,10 @@ impl TranscriptionManager {
                 }
                 debug!("Idle watcher thread shutting down gracefully");
             });
-            *manager.watcher_handle.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
+            *manager
+                .watcher_handle
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = Some(handle);
         }
 
         Ok(manager)
@@ -171,12 +266,16 @@ impl TranscriptionManager {
                     LoadedEngine::MoonshineStreaming(ref mut e) => e.unload_model(),
                     LoadedEngine::SenseVoice(ref mut e) => e.unload_model(),
                     LoadedEngine::GigaAM(ref mut e) => e.unload_model(),
+                    LoadedEngine::MlxAudioStt(_) => {}
                 }
             }
             *engine = None; // Drop the engine to free memory
         }
         {
-            let mut current_model = self.current_model_id.lock().unwrap_or_else(|e| e.into_inner());
+            let mut current_model = self
+                .current_model_id
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             *current_model = None;
         }
 
@@ -232,7 +331,7 @@ impl TranscriptionManager {
             .get_model_info(model_id)
             .ok_or_else(|| anyhow::anyhow!("Model not found: {}", model_id))?;
 
-        if !model_info.is_downloaded {
+        if !model_is_available(&model_info) {
             let error_msg = "Model not downloaded";
             let _ = self.app_handle.emit(
                 "model-state-changed",
@@ -246,11 +345,10 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
-        let model_path = self.model_manager.get_model_path(model_id)?;
-
         // Create appropriate engine based on model type
         let loaded_engine = match model_info.engine_type {
             EngineType::Whisper => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = WhisperEngine::new();
                 engine.load_model(&model_path).map_err(|e| {
                     let error_msg = format!("Failed to load whisper model {}: {}", model_id, e);
@@ -268,6 +366,7 @@ impl TranscriptionManager {
                 LoadedEngine::Whisper(engine)
             }
             EngineType::Parakeet => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = ParakeetEngine::new();
                 engine
                     .load_model_with_params(&model_path, ParakeetModelParams::int8())
@@ -288,6 +387,7 @@ impl TranscriptionManager {
                 LoadedEngine::Parakeet(engine)
             }
             EngineType::Moonshine => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = MoonshineEngine::new();
                 engine
                     .load_model_with_params(
@@ -311,6 +411,7 @@ impl TranscriptionManager {
                 LoadedEngine::Moonshine(engine)
             }
             EngineType::MoonshineStreaming => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = MoonshineStreamingEngine::new();
                 engine
                     .load_model_with_params(&model_path, StreamingModelParams::default())
@@ -333,6 +434,7 @@ impl TranscriptionManager {
                 LoadedEngine::MoonshineStreaming(engine)
             }
             EngineType::SenseVoice => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = SenseVoiceEngine::new();
                 engine
                     .load_model_with_params(&model_path, SenseVoiceModelParams::int8())
@@ -353,6 +455,7 @@ impl TranscriptionManager {
                 LoadedEngine::SenseVoice(engine)
             }
             EngineType::GigaAM => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
                 let mut engine = GigaAMEngine::new();
                 engine.load_model(&model_path).map_err(|e| {
                     let error_msg = format!("Failed to load gigaam model {}: {}", model_id, e);
@@ -376,6 +479,22 @@ impl TranscriptionManager {
                     "QwenAudio engine implementation is coming soon."
                 ));
             }
+            EngineType::MlxAudioStt => {
+                let sidecar = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                    .ok_or_else(|| anyhow::anyhow!("SidecarManager is not available."))?;
+                sidecar
+                    .ensure_running()
+                    .map_err(|err| anyhow::anyhow!(err))?;
+                let hf_model_id = mlx_audio_stt_hf_model_id(model_id).ok_or_else(|| {
+                    anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
+                })?;
+                LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
+                    base_url: mlx_audio_base_url(),
+                    hf_model_id: hf_model_id.to_string(),
+                })
+            }
         };
 
         // Update the current engine and model ID
@@ -384,7 +503,10 @@ impl TranscriptionManager {
             *engine = Some(loaded_engine);
         }
         {
-            let mut current_model = self.current_model_id.lock().unwrap_or_else(|e| e.into_inner());
+            let mut current_model = self
+                .current_model_id
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             *current_model = Some(model_id.to_string());
         }
 
@@ -422,14 +544,20 @@ impl TranscriptionManager {
             if let Err(e) = self_clone.load_model(&settings.selected_model) {
                 error!("Failed to load model: {}", e);
             }
-            let mut is_loading = self_clone.is_loading.lock().unwrap_or_else(|e| e.into_inner());
+            let mut is_loading = self_clone
+                .is_loading
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             *is_loading = false;
             self_clone.loading_condvar.notify_all();
         });
     }
 
     pub fn get_current_model(&self) -> Option<String> {
-        let current_model = self.current_model_id.lock().unwrap_or_else(|e| e.into_inner());
+        let current_model = self
+            .current_model_id
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         current_model.clone()
     }
 
@@ -580,6 +708,9 @@ impl TranscriptionManager {
                         LoadedEngine::GigaAM(gigaam_engine) => gigaam_engine
                             .transcribe_samples(audio, None)
                             .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e)),
+                        LoadedEngine::MlxAudioStt(mlx_engine) => mlx_engine
+                            .transcribe(audio, 16_000)
+                            .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e)),
                     }
                 },
             ));
@@ -713,7 +844,12 @@ impl Drop for TranscriptionManager {
         self.shutdown_signal.store(true, Ordering::Relaxed);
 
         // Wait for the thread to finish gracefully
-        if let Some(handle) = self.watcher_handle.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        if let Some(handle) = self
+            .watcher_handle
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+        {
             if let Err(e) = handle.join() {
                 warn!("Failed to join idle watcher thread: {:?}", e);
             } else {

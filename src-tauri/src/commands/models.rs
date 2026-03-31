@@ -1,4 +1,4 @@
-use crate::managers::model::{EngineType, ModelInfo, ModelManager};
+use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::model_platform::{
     CapabilityFlags, CatalogModelDescriptor, CatalogSourceKind, DomainCatalog, ModelDomain,
@@ -63,6 +63,12 @@ fn stt_provider_meta(
             "GigaAM engine",
         ),
         EngineType::QwenAudio => ("stt_qwen", "Qwen", "Alibaba Cloud", "Qwen Audio Engine"),
+        EngineType::MlxAudioStt => (
+            "stt_mlx_audio",
+            "MLX Audio",
+            "mlx-audio",
+            "Shared mlx-audio sidecar",
+        ),
     }
 }
 
@@ -97,6 +103,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
     };
 
     let provider_order = [
+        "stt_mlx_audio",
         "stt_whisper",
         "stt_parakeet",
         "stt_moonshine",
@@ -111,6 +118,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         .filter_map(|provider_id| {
             let model = models.iter().find(|model| stt_provider_meta(&model.engine_type).0 == *provider_id)?;
             let (provider_id, label, source_label, runtime_label) = stt_provider_meta(&model.engine_type);
+            let downloadable = model.url.is_some();
             Some(ProviderDescriptor {
                 id: provider_id.to_string(),
                 domain: ModelDomain::Stt,
@@ -129,7 +137,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                 coming_soon: false,
                 license_label: None,
                 capabilities: CapabilityFlags {
-                    downloadable: true,
+                    downloadable,
                     loadable: true,
                     local_only: true,
                     supports_translation: model.supports_translation,
@@ -148,6 +156,8 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         .map(|model| {
             let (provider_id, _, source_label, runtime_label) =
                 stt_provider_meta(&model.engine_type);
+            let available = model_is_available(&model);
+            let downloadable = model.url.is_some();
             CatalogModelDescriptor {
                 id: model.id.clone(),
                 provider_id: provider_id.to_string(),
@@ -155,14 +165,14 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                 source_kind: CatalogSourceKind::Builtin,
                 label: model.name.clone(),
                 description: model.description.clone(),
-                installed: model.is_downloaded,
+                installed: available,
                 selected: selected_provider_id.as_deref() == Some(provider_id)
                     && selected_model_id.as_deref() == Some(model.id.as_str()),
                 active: selected_provider_id.as_deref() == Some(provider_id)
                     && selected_model_id.as_deref() == Some(model.id.as_str())
-                    && model.is_downloaded,
-                runnable: model.is_downloaded,
-                downloadable: true,
+                    && available,
+                runnable: available,
+                downloadable,
                 source_label: source_label.to_string(),
                 runtime: RuntimeRequirement {
                     id: provider_id.to_string(),
@@ -174,7 +184,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                 locale: None,
                 supported_languages: model.supported_languages.clone(),
                 capabilities: CapabilityFlags {
-                    downloadable: true,
+                    downloadable,
                     loadable: true,
                     local_only: true,
                     supports_translation: model.supports_translation,
@@ -185,12 +195,12 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
                     coming_soon: false,
                 },
                 delivery_support: unsupported_delivery_support(),
-                readiness_status: Some(if model.is_downloaded {
+                readiness_status: Some(if available {
                     "ready".to_string()
                 } else {
                     "missing".to_string()
                 }),
-                readiness_issues: if model.is_downloaded {
+                readiness_issues: if available {
                     Vec::new()
                 } else {
                     vec![format!(
@@ -453,7 +463,7 @@ pub async fn set_stt_platform_selection(
         ));
     }
 
-    if !model_info.is_downloaded {
+    if !model_is_available(&model_info) {
         return Err(format!("Model not downloaded: {}", model_id));
     }
 
@@ -483,7 +493,7 @@ pub async fn set_active_model(
         .get_model_info(&model_id)
         .ok_or_else(|| format!("Model not found: {}", model_id))?;
 
-    if !model_info.is_downloaded {
+    if !model_is_available(&model_info) {
         return Err(format!("Model not downloaded: {}", model_id));
     }
 
@@ -585,6 +595,7 @@ pub async fn set_tts_platform_selection(
     };
 
     if let Some(active_preset) = settings.active_tts_preset_mut() {
+        let previous_provider_id = active_preset.provider_id.clone();
         active_preset.provider_id = provider_id.clone();
         active_preset.model_id = resolved_model_id.clone();
         match provider_id.as_str() {
@@ -594,6 +605,12 @@ pub async fn set_tts_platform_selection(
             }
             TTS_PROVIDER_SYSTEM_BUILTIN_ID => {}
             _ => {
+                // Clear stale voice_id when switching between providers so a
+                // voice identifier from one engine isn't misinterpreted by
+                // another (e.g. a Qwen3 model ID treated as a Kokoro voice).
+                if previous_provider_id != provider_id {
+                    active_preset.voice_id = None;
+                }
                 if active_preset.voice_profile_id.is_none() {
                     active_preset.voice_label_snapshot = active_preset
                         .voice_label_snapshot
@@ -652,7 +669,7 @@ pub async fn has_any_models_available(
     model_manager: State<'_, Arc<ModelManager>>,
 ) -> Result<bool, String> {
     let models = model_manager.get_available_models();
-    Ok(models.iter().any(|m| m.is_downloaded))
+    Ok(models.iter().any(model_is_available))
 }
 
 #[tauri::command]
@@ -661,7 +678,7 @@ pub async fn has_any_models_or_downloads(
     model_manager: State<'_, Arc<ModelManager>>,
 ) -> Result<bool, String> {
     let models = model_manager.get_available_models();
-    Ok(models.iter().any(|m| m.is_downloaded))
+    Ok(models.iter().any(model_is_available))
 }
 
 #[tauri::command]

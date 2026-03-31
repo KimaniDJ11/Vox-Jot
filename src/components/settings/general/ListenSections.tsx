@@ -105,6 +105,7 @@ const speechLibraryActiveBadgeClassName =
 const speechLibraryCountBadgeClassName =
   "inline-flex min-w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]";
 const HIDDEN_TTS_PROVIDER_IDS = new Set(["local_sidecar_api"]);
+const DEFAULT_TTS_PREVIEW_TEXT = "Vox Jot is ready.";
 
 function localeLabel(locale: string | null | undefined) {
   return locale ? ` (${locale})` : "";
@@ -498,29 +499,26 @@ function useListenSpeechState() {
   );
 
   const previewPreset = useCallback(
-    async (presetId: string) => {
+    async (presetId: string, previewText?: string | null) => {
       setPreviewingPresetId(presetId);
       try {
         const preset = presets.find((p) => p.id === presetId);
         if (preset) {
           const model = allModels.find(
             (m) =>
-              m.provider_id === preset.provider_id &&
-              m.id === preset.model_id,
+              m.provider_id === preset.provider_id && m.id === preset.model_id,
           );
           if (
             model &&
             model.source_kind === "runtime" &&
             model.readiness_status === "downloaded"
           ) {
-            setStatusMessage(
-              `Preparing ${model.label} for first use\u2026`,
-            );
+            setStatusMessage(`Preparing ${model.label} for first use\u2026`);
             await prepareSidecarEngine(preset.provider_id);
             await refreshPlatform();
           }
         }
-        await previewTtsVoicePreset(presetId);
+        await previewTtsVoicePreset(presetId, previewText ?? null);
         setStatusMessage(null);
       } catch (error) {
         setStatusMessage(
@@ -699,6 +697,9 @@ const VoiceArchitectSection: React.FC<{
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
   const [labelDraft, setLabelDraft] = useState("");
+  const [previewTextDraft, setPreviewTextDraft] = useState(
+    DEFAULT_TTS_PREVIEW_TEXT,
+  );
 
   useEffect(() => {
     setLabelDraft(speech.activePreset?.label ?? "");
@@ -715,8 +716,8 @@ const VoiceArchitectSection: React.FC<{
   const descriptors = tuningDescriptorMap(controls);
   const controlIds = new Set(controls.map((control) => control.id));
   const supportsExpressiveness =
-    (speech.activeModel?.delivery_support.expressiveness_mode ?? "unsupported") !==
-    "unsupported";
+    (speech.activeModel?.delivery_support.expressiveness_mode ??
+      "unsupported") !== "unsupported";
   const supportsManualVoiceId =
     speech.activePreset.provider_id === "local_sidecar_api";
 
@@ -765,6 +766,23 @@ const VoiceArchitectSection: React.FC<{
                   {speech.statusMessage ??
                     "Tweak this preset, preview the result, and save the full voice identity as part of the preset."}
                 </p>
+                <div className="max-w-2xl space-y-2 pt-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    Preview Message
+                  </p>
+                  <Textarea
+                    value={previewTextDraft}
+                    onChange={(event) =>
+                      setPreviewTextDraft(event.target.value)
+                    }
+                    className="min-h-[92px]"
+                    placeholder={DEFAULT_TTS_PREVIEW_TEXT}
+                  />
+                  <p className="text-xs text-[var(--muted)]">
+                    Type the exact message you want the voice to read when you
+                    press Preview.
+                  </p>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -772,9 +790,13 @@ const VoiceArchitectSection: React.FC<{
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() => void speech.previewPreset(speech.activePreset.id)}
+                  onClick={() =>
+                    void speech.previewPreset(
+                      speech.activePreset.id,
+                      previewTextDraft,
+                    )
+                  }
                   disabled={
-                    !speech.ttsEnabled ||
                     speech.previewingPresetId === speech.activePreset.id
                   }
                   className="inline-flex min-h-11 items-center gap-1"
@@ -787,7 +809,6 @@ const VoiceArchitectSection: React.FC<{
                   variant="ghost"
                   size="sm"
                   onClick={() => void commands.ttsStop()}
-                  disabled={!speech.ttsEnabled}
                   className="inline-flex min-h-11 items-center gap-1"
                 >
                   <Square className="h-3.5 w-3.5" />
@@ -883,7 +904,8 @@ const VoiceArchitectSection: React.FC<{
                           voice_profile_id: value === "__none__" ? null : value,
                           voice_label_snapshot:
                             value === "__none__"
-                              ? (speech.activePreset.voice_label_snapshot ?? null)
+                              ? (speech.activePreset.voice_label_snapshot ??
+                                null)
                               : (profile?.label ?? value),
                         });
                       }}
@@ -995,9 +1017,9 @@ const VoiceArchitectSection: React.FC<{
                   </div>
                 ) : null}
 
-                {(controlIds.has("guidance") ||
-                  controlIds.has("stability") ||
-                  controlIds.has("repetition_penalty")) ? (
+                {controlIds.has("guidance") ||
+                controlIds.has("stability") ||
+                controlIds.has("repetition_penalty") ? (
                   <div className={tuningSectionClassName}>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                       Guidance
@@ -1062,7 +1084,9 @@ const VoiceArchitectSection: React.FC<{
                         }
                         min={descriptors.get("repetition_penalty")?.min ?? 1}
                         max={descriptors.get("repetition_penalty")?.max ?? 3}
-                        step={descriptors.get("repetition_penalty")?.step ?? 0.1}
+                        step={
+                          descriptors.get("repetition_penalty")?.step ?? 0.1
+                        }
                         label={tuningNumberLabel(
                           descriptors.get("repetition_penalty"),
                           "Repetition Penalty",
@@ -1126,7 +1150,8 @@ const VoiceArchitectSection: React.FC<{
                         speech.activePreset.provider_id}
                     </span>
                     <span className={speechLibraryBadgeClassName}>
-                      {speech.activeModel?.label ?? speech.activePreset.model_id}
+                      {speech.activeModel?.label ??
+                        speech.activePreset.model_id}
                     </span>
                     <span className={speechLibraryBadgeClassName}>
                       {speech.activePreset.voice_label_snapshot ??
@@ -1203,7 +1228,11 @@ const VoiceArchitectSection: React.FC<{
                                   {preset.label}
                                 </span>
                                 {isActive ? (
-                                  <span className={speechLibraryActiveBadgeClassName}>
+                                  <span
+                                    className={
+                                      speechLibraryActiveBadgeClassName
+                                    }
+                                  >
                                     <Star className="h-3.5 w-3.5" />
                                     Active
                                   </span>
@@ -1227,10 +1256,12 @@ const VoiceArchitectSection: React.FC<{
                                 size="sm"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  void speech.previewPreset(preset.id);
+                                  void speech.previewPreset(
+                                    preset.id,
+                                    previewTextDraft,
+                                  );
                                 }}
                                 disabled={
-                                  !speech.ttsEnabled ||
                                   speech.previewingPresetId === preset.id
                                 }
                               >

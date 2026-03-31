@@ -1,5 +1,9 @@
 use crate::settings::{
     get_settings, write_settings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
+    TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID,
+    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_MING_OMNI_ID,
+    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID,
+    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -31,6 +35,22 @@ fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings) {
     tuning.stability = tuning.stability.clamp(0.0, 1.0);
     tuning.repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
     tuning.style_instructions = normalize_optional_string(tuning.style_instructions.clone());
+}
+
+fn provider_uses_mlx_audio_runtime(provider_id: &str) -> bool {
+    matches!(
+        provider_id,
+        TTS_PROVIDER_MLX_KOKORO_ID
+            | TTS_PROVIDER_MLX_CHATTERBOX_ID
+            | TTS_PROVIDER_MLX_QWEN3TTS_ID
+            | TTS_PROVIDER_MLX_DIA_ID
+            | TTS_PROVIDER_MLX_CSM_ID
+            | TTS_PROVIDER_MLX_SPARK_ID
+            | TTS_PROVIDER_MLX_OUTE_ID
+            | TTS_PROVIDER_MLX_MING_OMNI_ID
+            | TTS_PROVIDER_MLX_KUGEL_ID
+            | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+    )
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -129,31 +149,50 @@ pub fn tts_stop(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager.get_available_voices()
+pub async fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    tokio::task::spawn_blocking(move || manager.get_available_voices())
+        .await
+        .map_err(|err| format!("Failed to load TTS voices: {err}"))?
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager.invalidate_voice_cache();
-    manager.get_available_voices()
+pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    tokio::task::spawn_blocking(move || {
+        manager.invalidate_voice_cache();
+        manager.get_available_voices()
+    })
+    .await
+    .map_err(|err| format!("Failed to refresh TTS voices: {err}"))?
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn preview_tts_voice(app: AppHandle, voice_id: Option<String>) -> Result<(), String> {
+pub async fn preview_tts_voice(
+    app: AppHandle,
+    voice_id: Option<String>,
+    preview_text: Option<String>,
+) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
-    manager.speak(default_preview_request(voice_id)).await
+    manager
+        .speak(default_preview_request(
+            voice_id,
+            normalize_optional_string(preview_text),
+        ))
+        .await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn preview_tts_voice_preset(app: AppHandle, preset_id: String) -> Result<(), String> {
+pub async fn preview_tts_voice_preset(
+    app: AppHandle,
+    preset_id: String,
+    preview_text: Option<String>,
+) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
-    let mut request = default_preview_request(None);
+    let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset".to_string());
     request.preset_id = Some(preset_id);
     manager.speak(request).await
@@ -161,19 +200,24 @@ pub async fn preview_tts_voice_preset(app: AppHandle, preset_id: String) -> Resu
 
 #[tauri::command]
 #[specta::specta]
-pub async fn prepare_sidecar_engine(
-    app: AppHandle,
-    provider_id: String,
-) -> Result<(), String> {
+pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
+    if provider_uses_mlx_audio_runtime(&provider_id) {
+        if let Some(sidecar) = app.try_state::<Arc<crate::sidecar::SidecarManager>>() {
+            let sidecar = Arc::clone(&*sidecar);
+            tokio::task::spawn_blocking(move || sidecar.ensure_mlx_audio_environment())
+                .await
+                .map_err(|err| format!("Failed to prepare MLX speech runtime: {err}"))??;
+        }
+        return Ok(());
+    }
+
     manager
         .ensure_managed_speech_runtime_available(&provider_id)
         .await?;
 
     // Ensure the sidecar is running first.
-    if let Some(sidecar) = app
-        .try_state::<Arc<crate::sidecar::SidecarManager>>()
-    {
+    if let Some(sidecar) = app.try_state::<Arc<crate::sidecar::SidecarManager>>() {
         let sidecar = Arc::clone(&*sidecar);
         tokio::task::spawn_blocking(move || sidecar.ensure_running())
             .await

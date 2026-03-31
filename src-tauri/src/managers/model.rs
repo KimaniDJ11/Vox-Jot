@@ -26,6 +26,15 @@ pub enum EngineType {
     SenseVoice,
     GigaAM,
     QwenAudio,
+    MlxAudioStt,
+}
+
+pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
+    matches!(engine_type, EngineType::MlxAudioStt)
+}
+
+pub fn model_is_available(model: &ModelInfo) -> bool {
+    model.is_downloaded || engine_uses_remote_runtime(&model.engine_type)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -75,6 +84,7 @@ impl ModelManager {
             EngineType::SenseVoice => "stt_sensevoice",
             EngineType::GigaAM => "stt_gigaam",
             EngineType::QwenAudio => "stt_qwen",
+            EngineType::MlxAudioStt => "stt_mlx_audio",
         }
     }
 
@@ -280,7 +290,7 @@ impl ModelManager {
                 speed_score: 0.35,
                 supports_translation: false,
                 is_recommended: false,
-                supported_languages: whisper_languages,
+                supported_languages: whisper_languages.clone(),
                 is_custom: false,
             },
         );
@@ -548,6 +558,138 @@ impl ModelManager {
             },
         );
 
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        {
+            available_models.insert(
+                "mlx-whisper-large-v3-turbo".to_string(),
+                ModelInfo {
+                    id: "mlx-whisper-large-v3-turbo".to_string(),
+                    name: "Whisper Large V3 Turbo (MLX)".to_string(),
+                    description:
+                        "MLX-accelerated Whisper served through the shared mlx-audio sidecar."
+                            .to_string(),
+                    filename: "mlx-whisper-large-v3-turbo".to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: false,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.90,
+                    speed_score: 0.80,
+                    supports_translation: false,
+                    is_recommended: true,
+                    supported_languages: whisper_languages.clone(),
+                    is_custom: false,
+                },
+            );
+
+            available_models.insert(
+                "mlx-distil-whisper-large-v3".to_string(),
+                ModelInfo {
+                    id: "mlx-distil-whisper-large-v3".to_string(),
+                    name: "Distil-Whisper Large V3 (MLX)".to_string(),
+                    description: "Fast MLX Distil-Whisper transcription via mlx-audio.".to_string(),
+                    filename: "mlx-distil-whisper-large-v3".to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: false,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.84,
+                    speed_score: 0.92,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec!["en".to_string()],
+                    is_custom: false,
+                },
+            );
+
+            available_models.insert(
+                "mlx-qwen3-asr".to_string(),
+                ModelInfo {
+                    id: "mlx-qwen3-asr".to_string(),
+                    name: "Qwen3 ASR (MLX)".to_string(),
+                    description:
+                        "Qwen3 ASR running inside mlx-audio for multilingual Apple Silicon STT."
+                            .to_string(),
+                    filename: "mlx-qwen3-asr".to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: false,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.90,
+                    speed_score: 0.78,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec![
+                        "zh".to_string(),
+                        "en".to_string(),
+                        "ja".to_string(),
+                        "ko".to_string(),
+                        "mul".to_string(),
+                    ],
+                    is_custom: false,
+                },
+            );
+
+            available_models.insert(
+                "mlx-parakeet-v3".to_string(),
+                ModelInfo {
+                    id: "mlx-parakeet-v3".to_string(),
+                    name: "Parakeet V3 (MLX)".to_string(),
+                    description: "MLX Parakeet served over the shared mlx-audio transcription API."
+                        .to_string(),
+                    filename: "mlx-parakeet-v3".to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: false,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.88,
+                    speed_score: 0.82,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec![
+                        "bg".to_string(),
+                        "hr".to_string(),
+                        "cs".to_string(),
+                        "da".to_string(),
+                        "nl".to_string(),
+                        "en".to_string(),
+                        "et".to_string(),
+                        "fi".to_string(),
+                        "fr".to_string(),
+                        "de".to_string(),
+                        "el".to_string(),
+                        "hu".to_string(),
+                        "it".to_string(),
+                        "lv".to_string(),
+                        "lt".to_string(),
+                        "mt".to_string(),
+                        "pl".to_string(),
+                        "pt".to_string(),
+                        "ro".to_string(),
+                        "sk".to_string(),
+                        "sl".to_string(),
+                        "es".to_string(),
+                        "sv".to_string(),
+                        "ru".to_string(),
+                        "uk".to_string(),
+                    ],
+                    is_custom: false,
+                },
+            );
+        }
+
         // Auto-discover custom Whisper models (.bin files) in the models directory
         if let Err(e) = Self::discover_custom_whisper_models(&models_dir, &mut available_models) {
             warn!("Failed to discover custom models: {}", e);
@@ -574,12 +716,18 @@ impl ModelManager {
     }
 
     pub fn get_available_models(&self) -> Vec<ModelInfo> {
-        let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+        let models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         models.values().cloned().collect()
     }
 
     pub fn get_model_info(&self, model_id: &str) -> Option<ModelInfo> {
-        let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+        let models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         models.get(model_id).cloned()
     }
 
@@ -611,9 +759,18 @@ impl ModelManager {
     }
 
     fn update_download_status(&self) -> Result<()> {
-        let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+        let mut models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
 
         for model in models.values_mut() {
+            if engine_uses_remote_runtime(&model.engine_type) {
+                model.is_downloading = false;
+                model.partial_size = 0;
+                continue;
+            }
+
             if model.is_directory {
                 // For directory-based models, check if the directory exists
                 let model_path = self.models_dir.join(&model.filename);
@@ -625,7 +782,10 @@ impl ModelManager {
                 // Clean up any leftover .extracting directories from interrupted extractions
                 // But only if this model is NOT currently being extracted
                 let is_currently_extracting = {
-                    let extracting = self.extracting_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let extracting = self
+                        .extracting_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     extracting.contains(&model.id)
                 };
                 if extracting_path.exists() && !is_currently_extracting {
@@ -668,7 +828,10 @@ impl ModelManager {
         // Clear stale selection: selected model is set but doesn't exist
         // in available_models (e.g. deleted custom model file)
         if !settings.selected_model.is_empty() {
-            let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             let exists = models.contains_key(&settings.selected_model);
             drop(models);
 
@@ -684,11 +847,14 @@ impl ModelManager {
             }
         }
 
-        // If no model is selected, pick the first downloaded one
+        // If no model is selected, pick the first available one
         if settings.selected_model.is_empty() {
-            // Find the first available (downloaded) model
-            let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(available_model) = models.values().find(|model| model.is_downloaded) {
+            // Find the first available model
+            let models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if let Some(available_model) = models.values().find(|model| model_is_available(model)) {
                 info!(
                     "Auto-selecting model: {} ({})",
                     available_model.id, available_model.name
@@ -838,7 +1004,10 @@ impl ModelManager {
 
     pub async fn download_model(&self, model_id: &str) -> Result<()> {
         let model_info = {
-            let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             models.get(model_id).cloned()
         };
 
@@ -875,7 +1044,10 @@ impl ModelManager {
 
         // Mark as downloading
         {
-            let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(model) = models.get_mut(model_id) {
                 model.is_downloading = true;
             }
@@ -921,7 +1093,10 @@ impl ModelManager {
         {
             // Mark as not downloading on error
             {
-                let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+                let mut models = self
+                    .available_models
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
                 if let Some(model) = models.get_mut(model_id) {
                     model.is_downloading = false;
                 }
@@ -981,7 +1156,10 @@ impl ModelManager {
 
                 // Update state to mark as not downloading
                 {
-                    let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut models = self
+                        .available_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     if let Some(model) = models.get_mut(model_id) {
                         model.is_downloading = false;
                     }
@@ -1000,7 +1178,10 @@ impl ModelManager {
             let chunk = chunk.map_err(|e| {
                 // Mark as not downloading on error
                 {
-                    let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut models = self
+                        .available_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     if let Some(model) = models.get_mut(model_id) {
                         model.is_downloading = false;
                     }
@@ -1055,7 +1236,10 @@ impl ModelManager {
                 // Download is incomplete/corrupted - delete partial and return error
                 let _ = fs::remove_file(&partial_path);
                 {
-                    let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut models = self
+                        .available_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     if let Some(model) = models.get_mut(model_id) {
                         model.is_downloading = false;
                     }
@@ -1074,7 +1258,10 @@ impl ModelManager {
         if model_info.is_directory || is_archive_download {
             // Track that this model is being extracted
             {
-                let mut extracting = self.extracting_models.lock().unwrap_or_else(|e| e.into_inner());
+                let mut extracting = self
+                    .extracting_models
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
                 extracting.insert(model_id.to_string());
             }
 
@@ -1108,7 +1295,10 @@ impl ModelManager {
                 let _ = fs::remove_dir_all(&temp_extract_dir);
                 // Remove from extracting set
                 {
-                    let mut extracting = self.extracting_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut extracting = self
+                        .extracting_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     extracting.remove(model_id);
                 }
                 let _ = self.app_handle.emit(
@@ -1187,7 +1377,10 @@ impl ModelManager {
                 let error_msg = format!("Failed to finalize extracted model: {}", e);
                 let _ = fs::remove_dir_all(&temp_extract_dir);
                 {
-                    let mut extracting = self.extracting_models.lock().unwrap_or_else(|e| e.into_inner());
+                    let mut extracting = self
+                        .extracting_models
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     extracting.remove(model_id);
                 }
                 let _ = self.app_handle.emit(
@@ -1203,7 +1396,10 @@ impl ModelManager {
             info!("Successfully extracted archive for model: {}", model_id);
             // Remove from extracting set
             {
-                let mut extracting = self.extracting_models.lock().unwrap_or_else(|e| e.into_inner());
+                let mut extracting = self
+                    .extracting_models
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
                 extracting.remove(model_id);
             }
             // Emit extraction completed event
@@ -1218,7 +1414,10 @@ impl ModelManager {
 
         // Update download status
         {
-            let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(model) = models.get_mut(model_id) {
                 model.is_downloading = false;
                 model.is_downloaded = true;
@@ -1247,7 +1446,10 @@ impl ModelManager {
         debug!("ModelManager: delete_model called for: {}", model_id);
 
         let model_info = {
-            let models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             models.get(model_id).cloned()
         };
 
@@ -1298,7 +1500,10 @@ impl ModelManager {
         // Custom models should be removed from the list entirely since they
         // have no download URL and can't be re-downloaded
         if model_info.is_custom {
-            let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             models.remove(model_id);
             debug!("ModelManager: removed custom model from available models");
         } else {
@@ -1374,7 +1579,10 @@ impl ModelManager {
 
         // Update state immediately for UI responsiveness
         {
-            let mut models = self.available_models.lock().unwrap_or_else(|e| e.into_inner());
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(model) = models.get_mut(model_id) {
                 model.is_downloading = false;
             }

@@ -156,7 +156,7 @@ fn should_force_show_permissions_window(app: &AppHandle) -> bool {
         let has_downloaded_models = model_manager
             .get_available_models()
             .iter()
-            .any(|model| model.is_downloaded);
+            .any(managers::model::model_is_available);
 
         if !has_downloaded_models {
             return false;
@@ -206,21 +206,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     {
         let tts = tts_manager.clone();
         std::thread::spawn(move || {
-            let _ = tts.get_available_voices();
+            let _ = tts.warm_system_voice_cache();
         });
-    }
-
-    // Start the Speech runtime sidecar in the background whenever the runtime
-    // is installed so runtime-backed engines are visible in Listen immediately.
-    {
-        let sidecar = sidecar_manager.clone();
-        if sidecar.can_auto_start() {
-            std::thread::spawn(move || {
-                if let Err(err) = sidecar.ensure_running_if_available() {
-                    log::warn!("Speech runtime sidecar auto-start failed: {err}");
-                }
-            });
-        }
     }
 
     // Add managers to Tauri's managed state

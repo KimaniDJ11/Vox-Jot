@@ -26,6 +26,16 @@ pub const TTS_PROVIDER_FISH_SPEECH_ID: &str = "fish_speech";
 pub const TTS_PROVIDER_FISH_SPEECH_LOCAL_ID: &str = "fish_speech_local";
 pub const TTS_PROVIDER_TADA_LOCAL_ID: &str = "tada_local";
 pub const TTS_PROVIDER_HF_S2S_LOCAL_ID: &str = "hf_s2s_local";
+pub const TTS_PROVIDER_MLX_KOKORO_ID: &str = "mlx_kokoro";
+pub const TTS_PROVIDER_MLX_CHATTERBOX_ID: &str = "mlx_chatterbox";
+pub const TTS_PROVIDER_MLX_QWEN3TTS_ID: &str = "mlx_qwen3tts";
+pub const TTS_PROVIDER_MLX_DIA_ID: &str = "mlx_dia";
+pub const TTS_PROVIDER_MLX_CSM_ID: &str = "mlx_csm";
+pub const TTS_PROVIDER_MLX_SPARK_ID: &str = "mlx_spark";
+pub const TTS_PROVIDER_MLX_OUTE_ID: &str = "mlx_oute";
+pub const TTS_PROVIDER_MLX_MING_OMNI_ID: &str = "mlx_ming_omni";
+pub const TTS_PROVIDER_MLX_KUGEL_ID: &str = "mlx_kugel";
+pub const TTS_PROVIDER_MLX_VOXTRAL_TTS_ID: &str = "mlx_voxtral_tts";
 pub const DEFAULT_TTS_MODEL_STORE_PATH: &str = "/Users/dinamikjames/Apps/Models/TTS";
 pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
 pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
@@ -521,9 +531,9 @@ impl<'de> Deserialize<'de> for TtsVoiceTuningSettings {
             expressiveness: compat
                 .expressiveness
                 .unwrap_or_else(default_tts_expressiveness),
-            exaggeration: compat
-                .exaggeration
-                .unwrap_or_else(|| legacy_number("exaggeration").unwrap_or_else(default_tts_exaggeration)),
+            exaggeration: compat.exaggeration.unwrap_or_else(|| {
+                legacy_number("exaggeration").unwrap_or_else(default_tts_exaggeration)
+            }),
             randomness: compat
                 .randomness
                 .or_else(|| legacy_number("temperature"))
@@ -668,6 +678,12 @@ pub struct AppSettings {
     pub speech_runtime_path: Option<String>,
     #[serde(default)]
     pub tts_model_store_path: Option<String>,
+    #[serde(default)]
+    pub speech_backend_override: Option<String>,
+    #[serde(default)]
+    pub audio_enhancement_enabled: bool,
+    #[serde(default = "default_audio_enhancement_model")]
+    pub audio_enhancement_model: String,
     #[serde(default = "default_overlay_position")]
     pub overlay_position: OverlayPosition,
     #[serde(default = "default_debug_mode")]
@@ -833,6 +849,10 @@ fn default_tts_volume() -> f32 {
 
 fn default_tts_stop_on_record() -> bool {
     true
+}
+
+fn default_audio_enhancement_model() -> String {
+    "mossformer2".to_string()
 }
 
 fn default_selected_llm_provider_id() -> String {
@@ -2072,6 +2092,9 @@ pub fn get_default_settings() -> AppSettings {
         tts_stop_on_record: default_tts_stop_on_record(),
         speech_runtime_path: None,
         tts_model_store_path: None,
+        speech_backend_override: None,
+        audio_enhancement_enabled: false,
+        audio_enhancement_model: default_audio_enhancement_model(),
         overlay_position: default_overlay_position(),
         debug_mode: false,
         log_level: default_log_level(),

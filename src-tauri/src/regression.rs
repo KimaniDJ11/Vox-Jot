@@ -613,6 +613,11 @@ fn transcribe_audio(
         EngineType::QwenAudio => {
             return Err(anyhow!("QwenAudio regression is not yet implemented."));
         }
+        EngineType::MlxAudioStt => {
+            return Err(anyhow!(
+                "mlx-audio regression runs are not implemented for the CLI path yet."
+            ));
+        }
     };
 
     if !settings.custom_words.is_empty() {

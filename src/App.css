@@ -200,12 +200,20 @@ body,
   opacity: 1;
 }
 
+/* ── Range Input (Slider) Track ────────────────────────────── */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--slider-bg, rgba(128, 128, 128, 0.35));
+}
+
 /* ── Range Input (Slider) Thumb ────────────────────────────── */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
   height: 18px;
+  margin-top: -5px;
   border-radius: 50%;
   background: var(--card);
   border: 2px solid var(--accent);

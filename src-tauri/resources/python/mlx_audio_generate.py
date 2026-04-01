@@ -70,6 +70,19 @@ def normalize_generation_results(result):
     return result
 
 
+def repair_wav_riff_header(path: str) -> None:
+    with open(path, "r+b") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+        if file_size < 8:
+            return
+        handle.seek(0)
+        if handle.read(4) != b"RIFF":
+            return
+        expected_riff_size = file_size - 8
+        handle.write(expected_riff_size.to_bytes(4, "little"))
+
+
 def main() -> int:
     args = parse_args()
 
@@ -141,6 +154,7 @@ def main() -> int:
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
         audio_write(args.output, audio, sample_rate, format="wav")
+        repair_wav_riff_header(args.output)
         print(args.output)
         return 0
     except Exception as exc:

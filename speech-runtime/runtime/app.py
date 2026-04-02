@@ -248,7 +248,10 @@ async def listen_prepare(body: PrepareRequest) -> JSONResponse:
         else:
             await asyncio.to_thread(host.warm_model, spec, model_dir)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to prepare {spec.provider_id}/{spec.model_id}: {exc}",
+        ) from exc
 
     return JSONResponse({"status": "ready", "provider_id": spec.provider_id})
 
@@ -307,7 +310,10 @@ async def audio_speech(body: SpeechRequest) -> Response:
             },
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Synthesis failed for {spec.provider_id}/{spec.model_id}: {exc}",
+        ) from exc
 
     return Response(content=audio, media_type="audio/wav")
 

@@ -120,6 +120,13 @@ const speechLibraryActiveBadgeClassName =
 const speechLibraryCountBadgeClassName =
   "inline-flex min-w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]";
 const HIDDEN_TTS_PROVIDER_IDS = new Set(["local_sidecar_api"]);
+const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
+  "openvoice",
+  "chatterbox",
+  "kokoro",
+  "xtts",
+  "fish_speech",
+]);
 const DEFAULT_TTS_PREVIEW_TEXT = "Vox Jot is ready.";
 
 function localeLabel(locale: string | null | undefined) {
@@ -240,6 +247,65 @@ function formatEngineFamilyLabel(engineFamily: string | null | undefined) {
 
 function isVoiceFixedToModel(providerId: string) {
   return providerId === "sherpa_pack" || providerId === "qwen3_native";
+}
+
+function isMlxProvider(providerId: string) {
+  return providerId.startsWith("mlx_");
+}
+
+function providerOptionContext(provider: ProviderDescriptor) {
+  if (isMlxProvider(provider.id)) {
+    return "MLX Audio";
+  }
+  if (MANAGED_SPEECH_RUNTIME_PROVIDER_IDS.has(provider.id)) {
+    return "Speech Runtime";
+  }
+  return null;
+}
+
+function modelOptionContext(model: CatalogModelDescriptor) {
+  if (isMlxProvider(model.provider_id)) {
+    return "MLX Audio";
+  }
+  if (MANAGED_SPEECH_RUNTIME_PROVIDER_IDS.has(model.provider_id)) {
+    return "Speech Runtime";
+  }
+  return null;
+}
+
+function formatSelectableLabel(label: string, detail: string | null) {
+  if (!detail) return label;
+  return `${label} (${detail})`;
+}
+
+function previewPreparationMessage(model: CatalogModelDescriptor) {
+  if (model.source_kind === "runtime") {
+    return `Preparing ${model.label} runtime for first preview…`;
+  }
+  return `Preparing ${model.label} preview…`;
+}
+
+function previewErrorMessage(
+  error: unknown,
+  model?: CatalogModelDescriptor | null,
+  fallback = "Failed to preview voice preset",
+) {
+  const raw = error instanceof Error ? error.message : fallback;
+  if (
+    raw.startsWith("Speech runtime") ||
+    raw.startsWith("MLX speech") ||
+    raw.startsWith("MLX bridge")
+  ) {
+    return raw;
+  }
+
+  if (model?.source_kind === "runtime") {
+    return `Speech runtime preview failed: ${raw}`;
+  }
+  if (model && isMlxProvider(model.provider_id)) {
+    return `MLX preview failed: ${raw}`;
+  }
+  return `Preview failed: ${raw}`;
 }
 
 function useListenSpeechState() {
@@ -428,13 +494,16 @@ function useListenSpeechState() {
     "";
   const providerOptions = visibleProviders.map((provider) => ({
     value: provider.id,
-    label: provider.label,
+    label: formatSelectableLabel(
+      provider.label,
+      providerOptionContext(provider),
+    ),
   }));
   const modelOptions = visibleModels
     .filter((model) => model.provider_id === providerIdForControls)
     .map((model) => ({
       value: model.id,
-      label: `${model.label}${model.installed ? "" : " (Download required)"}`,
+      label: `${formatSelectableLabel(model.label, modelOptionContext(model))}${model.installed ? "" : " (Download required)"}`,
     }));
   const modelIdForControls =
     modelOptions.find((model) => model.value === activePreset?.model_id)
@@ -529,41 +598,6 @@ function useListenSpeechState() {
     [refreshAll],
   );
 
-  const previewPreset = useCallback(
-    async (presetId: string, previewText?: string | null) => {
-      setPreviewingPresetId(presetId);
-      try {
-        const preset = presets.find((p) => p.id === presetId);
-        if (preset) {
-          const model = allModels.find(
-            (m) =>
-              m.provider_id === preset.provider_id && m.id === preset.model_id,
-          );
-          if (
-            model &&
-            model.source_kind === "runtime" &&
-            model.readiness_status === "downloaded"
-          ) {
-            setStatusMessage(`Preparing ${model.label} for first use\u2026`);
-            await prepareSidecarEngine(preset.provider_id);
-            await refreshPlatform();
-          }
-        }
-        await previewTtsVoicePreset(presetId, previewText ?? null);
-        setStatusMessage(null);
-      } catch (error) {
-        setStatusMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to preview voice preset",
-        );
-      } finally {
-        setPreviewingPresetId(null);
-      }
-    },
-    [presets, allModels, refreshPlatform],
-  );
-
   const ensureModelInstalled = useCallback(
     async (model: CatalogModelDescriptor) => {
       if (!model.downloadable || model.installed) return;
@@ -573,6 +607,53 @@ function useListenSpeechState() {
       }
     },
     [],
+  );
+
+  const previewPreset = useCallback(
+    async (presetId: string, previewText?: string | null) => {
+      setPreviewingPresetId(presetId);
+      try {
+        const preset = presets.find((p) => p.id === presetId);
+        let model: CatalogModelDescriptor | null = null;
+        if (preset) {
+          model =
+            allModels.find(
+              (m) =>
+                m.provider_id === preset.provider_id &&
+                m.id === preset.model_id,
+            ) ?? null;
+          if (model) {
+            await ensureModelInstalled(model);
+          }
+          if (
+            model &&
+            model.source_kind === "runtime" &&
+            model.readiness_status === "downloaded"
+          ) {
+            setStatusMessage(previewPreparationMessage(model));
+            await prepareSidecarEngine(preset.provider_id);
+            await refreshPlatform();
+          }
+        }
+        await previewTtsVoicePreset(presetId, previewText ?? null);
+        setStatusMessage(null);
+      } catch (error) {
+        const preset = presets.find((p) => p.id === presetId);
+        const model = preset
+          ? (allModels.find(
+              (item) =>
+                item.provider_id === preset.provider_id &&
+                item.id === preset.model_id,
+            ) ?? null)
+          : null;
+        setStatusMessage(
+          previewErrorMessage(error, model, "Failed to preview voice preset"),
+        );
+      } finally {
+        setPreviewingPresetId(null);
+      }
+    },
+    [presets, allModels, ensureModelInstalled, refreshPlatform],
   );
 
   const previewPresetDraft = useCallback(
@@ -591,7 +672,7 @@ function useListenSpeechState() {
             model.source_kind === "runtime" &&
             model.readiness_status === "downloaded"
           ) {
-            setStatusMessage(`Preparing ${model.label} for first use…`);
+            setStatusMessage(previewPreparationMessage(model));
             await prepareSidecarEngine(input.provider_id);
             await refreshPlatform();
           }
@@ -600,9 +681,15 @@ function useListenSpeechState() {
         setStatusMessage(null);
       } catch (error) {
         setStatusMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to preview voice preset draft",
+          previewErrorMessage(
+            error,
+            allModels.find(
+              (item) =>
+                item.provider_id === input.provider_id &&
+                item.id === input.model_id,
+            ) ?? null,
+            "Failed to preview voice preset draft",
+          ),
         );
       } finally {
         setPreviewingPresetId(null);
@@ -814,7 +901,9 @@ const VoiceTuningCard: React.FC<{
       <div className="mt-3 grid gap-x-5 gap-y-2 md:grid-cols-2">
         <Slider
           value={preset.tuning.tempo_rate ?? 1}
-          onChange={(value) => onUpdatePreset({ tuning: { tempo_rate: value } })}
+          onChange={(value) =>
+            onUpdatePreset({ tuning: { tempo_rate: value } })
+          }
           min={0.5}
           max={2}
           step={0.05}
@@ -828,7 +917,9 @@ const VoiceTuningCard: React.FC<{
         />
         <Slider
           value={preset.tuning.expressiveness ?? 0.5}
-          onChange={(value) => onUpdatePreset({ tuning: { expressiveness: value } })}
+          onChange={(value) =>
+            onUpdatePreset({ tuning: { expressiveness: value } })
+          }
           min={0}
           max={1}
           step={0.05}
@@ -843,7 +934,9 @@ const VoiceTuningCard: React.FC<{
         {controlIds.has("exaggeration") ? (
           <Slider
             value={preset.tuning.exaggeration ?? 0.5}
-            onChange={(value) => onUpdatePreset({ tuning: { exaggeration: value } })}
+            onChange={(value) =>
+              onUpdatePreset({ tuning: { exaggeration: value } })
+            }
             min={descriptors.get("exaggeration")?.min ?? 0}
             max={descriptors.get("exaggeration")?.max ?? 1}
             step={descriptors.get("exaggeration")?.step ?? 0.05}
@@ -865,7 +958,9 @@ const VoiceTuningCard: React.FC<{
         {controlIds.has("randomness") ? (
           <Slider
             value={preset.tuning.randomness ?? 0.7}
-            onChange={(value) => onUpdatePreset({ tuning: { randomness: value } })}
+            onChange={(value) =>
+              onUpdatePreset({ tuning: { randomness: value } })
+            }
             min={descriptors.get("randomness")?.min ?? 0}
             max={descriptors.get("randomness")?.max ?? 1}
             step={descriptors.get("randomness")?.step ?? 0.05}
@@ -887,7 +982,9 @@ const VoiceTuningCard: React.FC<{
         {controlIds.has("guidance") ? (
           <Slider
             value={preset.tuning.guidance ?? 0.5}
-            onChange={(value) => onUpdatePreset({ tuning: { guidance: value } })}
+            onChange={(value) =>
+              onUpdatePreset({ tuning: { guidance: value } })
+            }
             min={descriptors.get("guidance")?.min ?? 0}
             max={descriptors.get("guidance")?.max ?? 1}
             step={descriptors.get("guidance")?.step ?? 0.05}
@@ -906,7 +1003,9 @@ const VoiceTuningCard: React.FC<{
         {controlIds.has("stability") ? (
           <Slider
             value={preset.tuning.stability ?? 0.5}
-            onChange={(value) => onUpdatePreset({ tuning: { stability: value } })}
+            onChange={(value) =>
+              onUpdatePreset({ tuning: { stability: value } })
+            }
             min={descriptors.get("stability")?.min ?? 0}
             max={descriptors.get("stability")?.max ?? 1}
             step={descriptors.get("stability")?.step ?? 0.05}
@@ -1034,7 +1133,7 @@ const VoiceArchitectSection: React.FC<{
     .filter((model) => model.provider_id === draftProviderIdForControls)
     .map((model) => ({
       value: model.id,
-      label: `${model.label}${model.installed ? "" : " (Download required)"}`,
+      label: `${formatSelectableLabel(model.label, modelOptionContext(model))}${model.installed ? "" : " (Download required)"}`,
     }));
   const draftModelIdForControls =
     draftModelOptions.find((model) => model.value === draftModelId)?.value ??

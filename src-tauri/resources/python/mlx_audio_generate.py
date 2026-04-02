@@ -70,6 +70,148 @@ def normalize_generation_results(result):
     return result
 
 
+def display_model_name(model_name: str) -> str:
+    if "outetts" in model_name:
+        return "OuteTTS"
+    if "spark" in model_name:
+        return "Spark TTS"
+    if "chatterbox" in model_name:
+        return "MLX Chatterbox"
+    if "qwen3-tts-1.7b" in model_name:
+        return "Qwen3 TTS 1.7B"
+    if "qwen3-tts-0.6b" in model_name:
+        return "Qwen3 TTS 0.6B"
+    return Path(model_name).name or "the selected MLX model"
+
+
+def load_reference_audio(model, model_type: str | None, ref_audio_path: str):
+    if not os.path.exists(ref_audio_path):
+        raise FileNotFoundError(f"Reference audio file not found: {ref_audio_path}")
+    return load_audio(
+        ref_audio_path,
+        sample_rate=model.sample_rate,
+        volume_normalize=model_type == "spark",
+    )
+
+
+def _model_wants_ref_audio_path(model) -> bool:
+    """Spark's generate() expects ref_audio as a file Path, not a loaded array."""
+    sig = inspect.signature(model.generate)
+    param = sig.parameters.get("ref_audio")
+    if param is None:
+        return False
+    ann = param.annotation
+    if ann is inspect.Parameter.empty:
+        return False
+    ann_str = str(ann) if not isinstance(ann, str) else ann
+    return "Path" in ann_str
+
+
+def build_generation_kwargs(
+    model,
+    args: argparse.Namespace,
+    ref_audio,
+    ref_text: str | None,
+    ref_audio_path: str | None = None,
+) -> dict[str, object]:
+    # Some models (e.g. Spark) expect ref_audio as a file path rather than a
+    # pre-loaded audio array.  Use the raw path when the signature type hint
+    # includes ``Path``.
+    effective_ref_audio = ref_audio
+    if ref_audio is not None and ref_audio_path and _model_wants_ref_audio_path(model):
+        effective_ref_audio = ref_audio_path
+
+    raw_kwargs = {
+        "voice": args.voice,
+        "speed": args.speed,
+        "lang_code": args.lang_code,
+        "instruct": args.instruct,
+        "ref_audio": effective_ref_audio,
+        "ref_text": ref_text,
+        "temperature": args.temperature,
+        "repetition_penalty": args.repetition_penalty,
+        "max_tokens": args.max_tokens,
+        "stream": False,
+        "verbose": False,
+    }
+    signature = inspect.signature(model.generate)
+    return {
+        key: value
+        for key, value in raw_kwargs.items()
+        if value is not None and key in signature.parameters
+    }
+
+
+def generate_audio(model, text: str, kwargs: dict[str, object]):
+    audio_chunks = []
+    sample_rate = None
+    for result in normalize_generation_results(model.generate(text, **kwargs)):
+        audio_chunks.append(np.array(result.audio))
+        if sample_rate is None:
+            sample_rate = result.sample_rate
+    if not audio_chunks:
+        raise ValueError("No audio generated")
+    return np.concatenate(audio_chunks, axis=0), sample_rate
+
+
+def is_empty_generation_error(exc: BaseException) -> bool:
+    text = str(exc)
+    return "No audio generated" in text or "[concatenate] No arrays provided" in text
+
+
+def supports_conditioning_retry(model_type: str | None, model_name: str) -> bool:
+    return model_type == "spark" or "spark" in model_name or "chatterbox" in model_name
+
+
+def conditioning_retry_message(model_name: str) -> str:
+    label = display_model_name(model_name)
+    return (
+        f"{label} still returned no audio after applying a bundled conditioning prompt. "
+        "Try selecting a voice clone reference, a different voice, or a different MLX model."
+    )
+
+
+def describe_bridge_error(
+    exc: BaseException,
+    model_name: str,
+    used_conditioning_retry: bool,
+) -> str:
+    lower = str(exc).lower()
+    label = display_model_name(model_name)
+
+    if "outetts" in model_name and is_empty_generation_error(exc):
+        return (
+            "OuteTTS generated no decodable audio tokens. "
+            "This is a known upstream mlx-audio compatibility issue for this checkpoint."
+        )
+
+    if "qwen3-tts-1.7b" in model_name:
+        if "out of memory" in lower or "insufficient memory" in lower:
+            return (
+                "Qwen3 TTS 1.7B likely ran out of memory while generating audio. "
+                "Close other apps, try a shorter preview, or switch to Qwen3 TTS 0.6B."
+            )
+        if is_empty_generation_error(exc):
+            return (
+                "Qwen3 TTS 1.7B returned no audio. "
+                "This VoiceDesign checkpoint is more demanding than 0.6B; "
+                "try a shorter preview or switch models."
+            )
+
+    if supports_conditioning_retry(None, model_name) and is_empty_generation_error(exc):
+        if used_conditioning_retry:
+            return conditioning_retry_message(model_name)
+        return (
+            f"{label} returned no audio. "
+            "This checkpoint may need conditioning audio or a different voice selection."
+        )
+
+    if is_empty_generation_error(exc):
+        return f"{label} returned no audio."
+
+    return str(exc)
+
+
 def repair_wav_riff_header(path: str) -> None:
     with open(path, "r+b") as handle:
         handle.seek(0, os.SEEK_END)
@@ -90,6 +232,7 @@ def main() -> int:
         model = load_model(args.model)
         model_type = detect_model_type(model, args.model)
         model_name = Path(args.model).name.lower()
+        used_conditioning_retry = False
 
         ref_audio = None
         ref_text = args.ref_text
@@ -108,48 +251,35 @@ def main() -> int:
                     f"Reference audio file not found: {args.ref_audio}"
                 )
         if ref_audio_path:
-            if not os.path.exists(ref_audio_path):
-                raise FileNotFoundError(
-                    f"Reference audio file not found: {ref_audio_path}"
-                )
-            normalize = model_type == "spark"
-            ref_audio = load_audio(
-                ref_audio_path,
-                sample_rate=model.sample_rate,
-                volume_normalize=normalize,
+            ref_audio = load_reference_audio(model, model_type, ref_audio_path)
+
+        kwargs = build_generation_kwargs(model, args, ref_audio, ref_text, ref_audio_path)
+        try:
+            audio, sample_rate = generate_audio(model, args.text, kwargs)
+        except Exception as exc:
+            should_retry = (
+                not ref_audio_path
+                and is_empty_generation_error(exc)
+                and supports_conditioning_retry(model_type, model_name)
             )
+            if not should_retry:
+                raise
 
-        raw_kwargs = {
-            "voice": args.voice,
-            "speed": args.speed,
-            "lang_code": args.lang_code,
-            "instruct": args.instruct,
-            "ref_audio": ref_audio,
-            "ref_text": ref_text,
-            "temperature": args.temperature,
-            "repetition_penalty": args.repetition_penalty,
-            "max_tokens": args.max_tokens,
-            "stream": False,
-            "verbose": False,
-        }
-        signature = inspect.signature(model.generate)
-        kwargs = {
-            key: value
-            for key, value in raw_kwargs.items()
-            if value is not None and key in signature.parameters
-        }
+            fallback_prompt = bundled_csm_prompt()
+            if fallback_prompt is None:
+                raise RuntimeError(
+                    f"{display_model_name(model_name)} needs conditioning audio, and the bundled fallback prompt is missing."
+                ) from exc
 
-        audio_chunks = []
-        sample_rate = None
-        for result in normalize_generation_results(model.generate(args.text, **kwargs)):
-            audio_chunks.append(np.array(result.audio))
-            if sample_rate is None:
-                sample_rate = result.sample_rate
+            used_conditioning_retry = True
+            retry_audio_path, retry_text = fallback_prompt
+            retry_audio = load_reference_audio(model, model_type, retry_audio_path)
+            retry_kwargs = build_generation_kwargs(model, args, retry_audio, retry_text, retry_audio_path)
+            try:
+                audio, sample_rate = generate_audio(model, args.text, retry_kwargs)
+            except Exception as retry_exc:
+                raise RuntimeError(conditioning_retry_message(model_name)) from retry_exc
 
-        if not audio_chunks:
-            raise ValueError("No audio generated")
-
-        audio = np.concatenate(audio_chunks, axis=0)
         output_dir = os.path.dirname(args.output)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
@@ -158,18 +288,11 @@ def main() -> int:
         print(args.output)
         return 0
     except Exception as exc:
-        if (
-            "[concatenate] No arrays provided for concatenation" in str(exc)
-            and "outetts" in model_name
-        ):
-            print(
-                "MLX bridge failed: OuteTTS generated no decodable audio tokens. "
-                "This appears to be an upstream mlx-audio/OuteTTS compatibility issue.",
-                file=sys.stderr,
-            )
-        else:
-            print(f"MLX bridge failed: {exc}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
+        model_name = Path(args.model).name.lower()
+        detail = describe_bridge_error(exc, model_name, locals().get("used_conditioning_retry", False))
+        print(f"MLX bridge failed: {detail}", file=sys.stderr)
+        if os.environ.get("VOX_JOT_DEBUG_MLX_AUDIO") == "1":
+            traceback.print_exc(file=sys.stderr)
         return 1
 
 

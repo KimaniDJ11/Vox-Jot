@@ -44,6 +44,7 @@ const PREVIEW_SAMPLE_TEXT: &str = "Vox Jot is ready.";
 /// A longer preview sentence ensures reliable generation.
 const FISH_SPEECH_PREVIEW_TEXT: &str =
     "Vox Jot is ready. You can start speaking now and your words will appear on screen.";
+const FISH_SPEECH_PREVIEW_MIN_CHARS: usize = 24;
 const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
 const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
@@ -273,6 +274,9 @@ struct Qwen3Context {
 }
 
 struct MlxAudioContext {
+    provider_id: String,
+    model_id: String,
+    model_label: String,
     python_path: PathBuf,
     bridge_script_path: PathBuf,
     model_source: String,
@@ -1128,19 +1132,104 @@ impl TtsManager {
         provider_id: &str,
     ) -> Result<(), String> {
         if provider_uses_managed_speech_runtime(provider_id) {
-            // If the sidecar is already running (e.g. from iCloud or a custom path),
-            // skip the managed installation check to avoid download failures for
-            // private repos or when the runtime is provided externally.
+            // Only skip installation if the *speech-runtime* specifically is
+            // already running (e.g. from iCloud or a custom path).  A generic
+            // `is_running()` check can be fooled by `mlx_audio.server` which
+            // does not serve these providers.
             if let Some(sidecar) = self
                 .app_handle
                 .try_state::<std::sync::Arc<crate::sidecar::SidecarManager>>()
             {
-                if sidecar.is_running() {
+                let sidecar = Arc::clone(&*sidecar);
+                let runtime_state =
+                    tokio::task::spawn_blocking(move || {
+                        (
+                            sidecar.is_speech_runtime_running(),
+                            sidecar.has_speech_runtime_source(),
+                        )
+                    })
+                        .await
+                        .map_err(|err| {
+                            format!("Failed to check speech runtime availability: {err}")
+                        })?;
+                let (runtime_running, runtime_available) = runtime_state;
+                if runtime_running || runtime_available {
                     return Ok(());
                 }
             }
             let _ = self.ensure_managed_speech_runtime_installed().await?;
         }
+        Ok(())
+    }
+
+    pub async fn prepare_sidecar_provider(
+        &self,
+        provider_id: &str,
+        model_id: Option<&str>,
+    ) -> Result<(), String> {
+        if provider_is_mlx_audio(provider_id) {
+            let sidecar = self
+                .app_handle
+                .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                .map(|state| Arc::clone(&*state))
+                .ok_or_else(|| "MLX speech runtime manager is not available.".to_string())?;
+            tokio::task::spawn_blocking(move || sidecar.ensure_mlx_audio_environment())
+                .await
+                .map_err(|err| format!("Failed to prepare MLX speech runtime: {err}"))??;
+            return Ok(());
+        }
+
+        self.ensure_managed_speech_runtime_available(provider_id)
+            .await?;
+
+        if let Some(sidecar) = self
+            .app_handle
+            .try_state::<Arc<crate::sidecar::SidecarManager>>()
+        {
+            let sidecar = Arc::clone(&*sidecar);
+            // Sidecar-managed providers (kokoro, chatterbox, xtts, etc.)
+            // require the speech-runtime, not mlx_audio.server.  Use
+            // `ensure_speech_runtime()` to stop the wrong backend if needed.
+            tokio::task::spawn_blocking(move || sidecar.ensure_speech_runtime())
+                .await
+                .map_err(|err| format!("Failed to start speech runtime: {err}"))??;
+        }
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|err| format!("Failed to create HTTP client: {err}"))?;
+        let response = client
+            .post("http://127.0.0.1:8008/listen/prepare")
+            .json(&serde_json::json!({
+                "provider_id": provider_id,
+                "model_id": model_id,
+            }))
+            .send()
+            .await
+            .map_err(|err| {
+                format!(
+                    "Failed to reach speech runtime while preparing {}: {err}",
+                    sidecar_runtime_target(provider_id, model_id)
+                )
+            })?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            let detail = sidecar_error_detail(&body);
+            return Err(if detail.is_empty() {
+                format!(
+                    "{} preparation failed with HTTP {status}",
+                    sidecar_runtime_target(provider_id, model_id)
+                )
+            } else {
+                format!(
+                    "{} preparation failed: {detail}",
+                    sidecar_runtime_target(provider_id, model_id)
+                )
+            });
+        }
+
         Ok(())
     }
 
@@ -2780,33 +2869,51 @@ impl TtsManager {
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
 
-        // Fish Speech 1.5 produces empty audio for very short inputs.
-        // Swap in a longer preview sentence so the preview actually speaks.
-        let effective_text = if trimmed == PREVIEW_SAMPLE_TEXT
-            && selected_provider_id == TTS_PROVIDER_FISH_SPEECH_ID
-        {
-            FISH_SPEECH_PREVIEW_TEXT
-        } else {
-            trimmed
-        };
+        let preview_effective_text = expanded_preview_text_for_sidecar(
+            request.trigger.as_deref(),
+            &selected_provider_id,
+            trimmed,
+        );
+        let effective_text = preview_effective_text.as_deref().unwrap_or_else(|| {
+            normalized_preview_text_for_provider(
+                request.trigger.as_deref(),
+                &selected_provider_id,
+                trimmed,
+            )
+        });
         let chunks = chunk_text(effective_text);
         if engine == TtsEngineKind::Sidecar {
-            self.ensure_managed_speech_runtime_available(&selected_provider_id)
-                .await?;
-            if let Some(sidecar) = self
-                .app_handle
-                .try_state::<Arc<crate::sidecar::SidecarManager>>()
+            if is_preview_trigger(request.trigger.as_deref())
+                && provider_uses_managed_speech_runtime(&selected_provider_id)
             {
-                let sidecar = Arc::clone(&*sidecar);
-                let ensure_result =
-                    tokio::task::spawn_blocking(move || sidecar.ensure_running()).await;
-                match ensure_result {
-                    Ok(Ok(())) => {}
-                    Ok(Err(err)) => return Err(err),
-                    Err(err) => {
-                        return Err(format!(
-                            "Failed to start the local Speech runtime before playback: {err}"
-                        ))
+                self.prepare_sidecar_provider(&selected_provider_id, selected_model_id.as_deref())
+                    .await?;
+            } else {
+                self.ensure_managed_speech_runtime_available(&selected_provider_id)
+                    .await?;
+                if let Some(sidecar) = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                {
+                    let sidecar = Arc::clone(&*sidecar);
+                    let uses_speech_runtime =
+                        provider_uses_managed_speech_runtime(&selected_provider_id);
+                    let ensure_result = tokio::task::spawn_blocking(move || {
+                        if uses_speech_runtime {
+                            sidecar.ensure_speech_runtime()
+                        } else {
+                            sidecar.ensure_running()
+                        }
+                    })
+                    .await;
+                    match ensure_result {
+                        Ok(Ok(())) => {}
+                        Ok(Err(err)) => return Err(err),
+                        Err(err) => {
+                            return Err(format!(
+                                "Failed to start the local Speech runtime before playback: {err}"
+                            ))
+                        }
                     }
                 }
             }
@@ -2854,7 +2961,7 @@ impl TtsManager {
         // names like "af_heart"). Drop any stale voice_id that looks like a
         // model identifier from another provider (e.g. "qwen3-0.6b-base").
         let preferred_voice_id = if engine == TtsEngineKind::MlxNative {
-            preferred_voice_id.filter(|voice_id| !is_known_tts_model_id(voice_id))
+            preferred_voice_id.filter(|voice_id| is_valid_mlx_voice_id(voice_id))
         } else {
             preferred_voice_id
         };
@@ -3335,6 +3442,9 @@ impl TtsManager {
         }
 
         Ok(MlxAudioContext {
+            provider_id: definition.provider_id.to_string(),
+            model_id: definition.model_id.to_string(),
+            model_label: definition.label.to_string(),
             python_path,
             bridge_script_path,
             model_source: self.resolve_mlx_audio_model_source(definition),
@@ -4316,6 +4426,11 @@ fn speak_mlx_audio_chunk(
         return Ok(());
     }
 
+    let mlx_target = format!(
+        "MLX speech provider '{}' model '{}' ({})",
+        context.provider_id, context.model_id, context.model_label
+    );
+
     let temp_dir = std::env::temp_dir();
     let file_uuid = Uuid::new_v4().to_string();
     let temp_cwd = temp_dir.join(format!("mlx-audio-{}", file_uuid));
@@ -4391,17 +4506,19 @@ fn speak_mlx_audio_chunk(
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         return Err(if !stderr.is_empty() {
-            format!("MLX speech generation failed: {stderr}")
+            format!("{mlx_target} failed: {stderr}")
         } else if !stdout.is_empty() {
-            format!("MLX speech generation failed: {stdout}")
+            format!("{mlx_target} failed: {stdout}")
         } else {
-            "MLX speech generation failed without a detailed error.".to_string()
+            format!("{mlx_target} failed without a detailed error.")
         });
     }
 
     if !output_path.exists() {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Err("MLX speech generation completed but no audio file was produced.".to_string());
+        return Err(format!(
+            "{mlx_target} completed without producing an audio file."
+        ));
     }
 
     // mlx-audio can produce WAV files with an incorrect RIFF size header.
@@ -4638,14 +4755,7 @@ fn speak_sidecar_chunk(
     let runtime = tokio::runtime::Handle::current();
     let sidecar_url = std::env::var("VOX_JOT_TTS_SIDECAR_URL")
         .unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string());
-    let runtime_target = match (provider_id.trim(), model_id) {
-        ("", Some(model_id)) => format!("Speech model '{model_id}'"),
-        ("", None) => "The selected speech runtime".to_string(),
-        (provider_id, Some(model_id)) => {
-            format!("Speech runtime '{provider_id}' with model '{model_id}'")
-        }
-        (provider_id, None) => format!("Speech runtime '{provider_id}'"),
-    };
+    let runtime_target = sidecar_runtime_target(provider_id, model_id);
 
     let payload = build_sidecar_request_payload(
         text,
@@ -4683,15 +4793,7 @@ fn speak_sidecar_chunk(
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            let detail = serde_json::from_str::<serde_json::Value>(&body)
-                .ok()
-                .and_then(|value| {
-                    value
-                        .get("detail")
-                        .and_then(|detail| detail.as_str())
-                        .map(|detail| detail.to_string())
-                })
-                .unwrap_or_else(|| body.trim().to_string());
+            let detail = sidecar_error_detail(&body);
             return Err(if detail.is_empty() {
                 format!("{runtime_target} returned HTTP {status}")
             } else {
@@ -4743,6 +4845,29 @@ fn sidecar_audio_extension(content_type: Option<&str>, bytes: &[u8]) -> &'static
     }
 }
 
+fn sidecar_runtime_target(provider_id: &str, model_id: Option<&str>) -> String {
+    match (provider_id.trim(), model_id) {
+        ("", Some(model_id)) => format!("Speech model '{model_id}'"),
+        ("", None) => "The selected speech runtime".to_string(),
+        (provider_id, Some(model_id)) => {
+            format!("Speech runtime '{provider_id}' with model '{model_id}'")
+        }
+        (provider_id, None) => format!("Speech runtime '{provider_id}'"),
+    }
+}
+
+fn sidecar_error_detail(body: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("detail")
+                .and_then(|detail| detail.as_str())
+                .map(|detail| detail.to_string())
+        })
+        .unwrap_or_else(|| body.trim().to_string())
+}
+
 fn build_sidecar_request_payload(
     text: &str,
     provider_id: &str,
@@ -4785,6 +4910,44 @@ fn build_sidecar_request_payload(
             })
         }
     })
+}
+
+fn is_valid_mlx_voice_id(voice_id: &str) -> bool {
+    let trimmed = voice_id.trim();
+    !(trimmed.is_empty()
+        || trimmed == "__auto__"
+        || trimmed.eq_ignore_ascii_case("automatic")
+        || trimmed.eq_ignore_ascii_case("default")
+        || is_known_tts_model_id(trimmed)
+        || is_known_tts_provider_id(trimmed))
+}
+
+fn is_known_tts_provider_id(id: &str) -> bool {
+    matches!(
+        id,
+        TTS_PROVIDER_SYSTEM_BUILTIN_ID
+            | TTS_PROVIDER_SHERPA_PACK_ID
+            | TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+            | TTS_PROVIDER_QWEN3_NATIVE_ID
+            | TTS_PROVIDER_OPENVOICE_ID
+            | TTS_PROVIDER_CHATTERBOX_ID
+            | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_XTTS_ID
+            | TTS_PROVIDER_FISH_SPEECH_ID
+            | TTS_PROVIDER_FISH_SPEECH_LOCAL_ID
+            | TTS_PROVIDER_TADA_LOCAL_ID
+            | TTS_PROVIDER_HF_S2S_LOCAL_ID
+            | TTS_PROVIDER_MLX_KOKORO_ID
+            | TTS_PROVIDER_MLX_CHATTERBOX_ID
+            | TTS_PROVIDER_MLX_CSM_ID
+            | TTS_PROVIDER_MLX_DIA_ID
+            | TTS_PROVIDER_MLX_KUGEL_ID
+            | TTS_PROVIDER_MLX_MING_OMNI_ID
+            | TTS_PROVIDER_MLX_OUTE_ID
+            | TTS_PROVIDER_MLX_QWEN3TTS_ID
+            | TTS_PROVIDER_MLX_SPARK_ID
+            | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+    )
 }
 
 fn tts_temp_file(app_handle: &AppHandle, extension: &str) -> Result<PathBuf, String> {
@@ -4857,6 +5020,51 @@ pub fn chunk_text(text: &str) -> Vec<String> {
     }
 
     chunks
+}
+
+fn is_preview_trigger(trigger: Option<&str>) -> bool {
+    matches!(trigger, Some(value) if value.starts_with("preview_tts_voice"))
+}
+
+fn normalized_preview_text_for_provider<'a>(
+    trigger: Option<&str>,
+    provider_id: &str,
+    trimmed_text: &'a str,
+) -> &'a str {
+    if provider_id == TTS_PROVIDER_FISH_SPEECH_ID
+        && is_preview_trigger(trigger)
+        && trimmed_text == PREVIEW_SAMPLE_TEXT
+    {
+        return FISH_SPEECH_PREVIEW_TEXT;
+    }
+
+    trimmed_text
+}
+
+fn expanded_preview_text_for_sidecar(
+    trigger: Option<&str>,
+    provider_id: &str,
+    trimmed_text: &str,
+) -> Option<String> {
+    if provider_id != TTS_PROVIDER_FISH_SPEECH_ID || !is_preview_trigger(trigger) {
+        return None;
+    }
+
+    if trimmed_text == PREVIEW_SAMPLE_TEXT {
+        return Some(FISH_SPEECH_PREVIEW_TEXT.to_string());
+    }
+
+    if trimmed_text.chars().count() >= FISH_SPEECH_PREVIEW_MIN_CHARS {
+        return None;
+    }
+
+    let sentence = trimmed_text
+        .trim_end_matches(|ch: char| ch.is_whitespace() || matches!(ch, '.' | '!' | '?'));
+    if sentence.is_empty() {
+        return Some(FISH_SPEECH_PREVIEW_TEXT.to_string());
+    }
+
+    Some(format!("{sentence}. {FISH_SPEECH_PREVIEW_TEXT}"))
 }
 
 fn split_sentences(text: &str) -> Vec<String> {
@@ -5193,5 +5401,26 @@ mod tests {
             payload["extra_controls"]["model_id"],
             "mlx-community/Kokoro-82M-bf16"
         );
+    }
+
+    #[test]
+    fn fish_speech_preview_text_expands_for_short_custom_preview() {
+        let expanded = expanded_preview_text_for_sidecar(
+            Some("preview_tts_voice_preset_draft"),
+            TTS_PROVIDER_FISH_SPEECH_ID,
+            "Hi there",
+        )
+        .expect("short fish speech preview should expand");
+
+        assert!(expanded.starts_with("Hi there."));
+        assert!(expanded.contains("Vox Jot is ready."));
+    }
+
+    #[test]
+    fn mlx_voice_sanitizer_rejects_placeholder_and_model_ids() {
+        assert!(!is_valid_mlx_voice_id("__auto__"));
+        assert!(!is_valid_mlx_voice_id("qwen3-tts-0.6b"));
+        assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_KOKORO_ID));
+        assert!(is_valid_mlx_voice_id("af_heart"));
     }
 }

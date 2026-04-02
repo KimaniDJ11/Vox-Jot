@@ -39,47 +39,80 @@ export interface TtsVoicePresetInput {
   tuning: TtsVoiceTuningSettings;
 }
 
+function normalizeInvokeError(error: unknown, fallback: string): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  if (typeof error === "string" && error.trim()) {
+    return new Error(error);
+  }
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return new Error((error as { message: string }).message);
+  }
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+async function invokeTts<T>(
+  command: string,
+  args: Record<string, unknown> = {},
+): Promise<T> {
+  try {
+    return await invoke<T>(command, args);
+  } catch (error) {
+    throw normalizeInvokeError(error, `TTS command '${command}' failed.`);
+  }
+}
+
 export async function listTtsVoicePresets(): Promise<TtsVoicePreset[]> {
-  return invoke("list_tts_voice_presets");
+  return invokeTts("list_tts_voice_presets");
 }
 
 export async function createTtsVoicePreset(
   input: TtsVoicePresetInput,
 ): Promise<TtsVoicePreset> {
-  return invoke("create_tts_voice_preset", { input });
+  return invokeTts("create_tts_voice_preset", { input });
 }
 
 export async function updateTtsVoicePreset(
   presetId: string,
   input: TtsVoicePresetInput,
 ): Promise<TtsVoicePreset> {
-  return invoke("update_tts_voice_preset", { presetId, input });
+  return invokeTts("update_tts_voice_preset", { presetId, input });
 }
 
 export async function deleteTtsVoicePreset(presetId: string): Promise<void> {
-  return invoke("delete_tts_voice_preset", { presetId });
+  return invokeTts("delete_tts_voice_preset", { presetId });
 }
 
 export async function setActiveTtsVoicePreset(
   presetId: string,
 ): Promise<TtsVoicePreset> {
-  return invoke("set_active_tts_voice_preset", { presetId });
+  return invokeTts("set_active_tts_voice_preset", { presetId });
 }
 
 export async function previewTtsVoicePreset(
   presetId: string,
   previewText?: string | null,
 ): Promise<void> {
-  return invoke("preview_tts_voice_preset", { presetId, previewText });
+  return invokeTts("preview_tts_voice_preset", { presetId, previewText });
 }
 
 export async function previewTtsVoicePresetDraft(
   input: TtsVoicePresetInput,
   previewText?: string | null,
 ): Promise<void> {
-  return invoke("preview_tts_voice_preset_draft", { input, previewText });
+  return invokeTts("preview_tts_voice_preset_draft", { input, previewText });
 }
 
 export async function prepareSidecarEngine(providerId: string): Promise<void> {
-  return invoke("prepare_sidecar_engine", { providerId });
+  return invokeTts("prepare_sidecar_engine", { providerId });
 }

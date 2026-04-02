@@ -1,9 +1,5 @@
 use crate::settings::{
     get_settings, write_settings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
-    TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID,
-    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_MING_OMNI_ID,
-    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID,
-    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -35,22 +31,6 @@ fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings) {
     tuning.stability = tuning.stability.clamp(0.0, 1.0);
     tuning.repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
     tuning.style_instructions = normalize_optional_string(tuning.style_instructions.clone());
-}
-
-fn provider_uses_mlx_audio_runtime(provider_id: &str) -> bool {
-    matches!(
-        provider_id,
-        TTS_PROVIDER_MLX_KOKORO_ID
-            | TTS_PROVIDER_MLX_CHATTERBOX_ID
-            | TTS_PROVIDER_MLX_QWEN3TTS_ID
-            | TTS_PROVIDER_MLX_DIA_ID
-            | TTS_PROVIDER_MLX_CSM_ID
-            | TTS_PROVIDER_MLX_SPARK_ID
-            | TTS_PROVIDER_MLX_OUTE_ID
-            | TTS_PROVIDER_MLX_MING_OMNI_ID
-            | TTS_PROVIDER_MLX_KUGEL_ID
-            | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
-    )
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -217,47 +197,7 @@ pub async fn preview_tts_voice_preset_draft(
 #[specta::specta]
 pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
-    if provider_uses_mlx_audio_runtime(&provider_id) {
-        if let Some(sidecar) = app.try_state::<Arc<crate::sidecar::SidecarManager>>() {
-            let sidecar = Arc::clone(&*sidecar);
-            tokio::task::spawn_blocking(move || sidecar.ensure_mlx_audio_environment())
-                .await
-                .map_err(|err| format!("Failed to prepare MLX speech runtime: {err}"))??;
-        }
-        return Ok(());
-    }
-
-    manager
-        .ensure_managed_speech_runtime_available(&provider_id)
-        .await?;
-
-    // Ensure the sidecar is running first.
-    if let Some(sidecar) = app.try_state::<Arc<crate::sidecar::SidecarManager>>() {
-        let sidecar = Arc::clone(&*sidecar);
-        tokio::task::spawn_blocking(move || sidecar.ensure_running())
-            .await
-            .map_err(|err| format!("Failed to start speech runtime: {err}"))??;
-    }
-
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(600))
-        .build()
-        .map_err(|err| format!("Failed to create HTTP client: {err}"))?;
-    let response = client
-        .post("http://127.0.0.1:8008/listen/prepare")
-        .json(&serde_json::json!({ "provider_id": provider_id }))
-        .send()
-        .await
-        .map_err(|err| format!("Failed to reach speech runtime: {err}"))?;
-    if !response.status().is_success() {
-        let body = response.text().await.unwrap_or_default();
-        let detail = serde_json::from_str::<serde_json::Value>(&body)
-            .ok()
-            .and_then(|v| v.get("detail").and_then(|d| d.as_str()).map(String::from))
-            .unwrap_or(body);
-        return Err(format!("Engine preparation failed: {detail}"));
-    }
-    Ok(())
+    manager.prepare_sidecar_provider(&provider_id, None).await
 }
 
 #[tauri::command]

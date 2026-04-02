@@ -127,6 +127,12 @@ impl SidecarManager {
         })
     }
 
+    fn repo_runtime_path(&self) -> Option<PathBuf> {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let repo_root = manifest_dir.parent()?;
+        Self::normalize_runtime_root(&repo_root.join("speech-runtime"))
+    }
+
     fn runtime_python_path(runtime_root: &Path) -> Option<PathBuf> {
         #[cfg(target_os = "windows")]
         let candidates = [
@@ -175,6 +181,10 @@ impl SidecarManager {
             return Some(runtime_root);
         }
 
+        if let Some(runtime_root) = self.repo_runtime_path() {
+            return Some(runtime_root);
+        }
+
         let home = dirs::home_dir()?;
         for relative_path in DEFAULT_SPEECH_RUNTIME_PATHS {
             let candidate = home.join(relative_path);
@@ -184,6 +194,10 @@ impl SidecarManager {
         }
 
         None
+    }
+
+    pub fn has_speech_runtime_source(&self) -> bool {
+        self.resolve_runtime_path().is_some()
     }
 
     pub fn can_auto_start(&self) -> bool {
@@ -209,9 +223,70 @@ impl SidecarManager {
         }
     }
 
-    pub fn ensure_running(&self) -> Result<(), String> {
-        if self.is_running() {
+    pub fn is_mlx_audio_running(&self) -> bool {
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
+            .build();
+        match client {
+            Ok(client) => client
+                .get(format!("http://127.0.0.1:{SIDECAR_PORT}/v1/models"))
+                .send()
+                .map(|resp| resp.status().is_success())
+                .unwrap_or(false),
+            Err(_) => false,
+        }
+    }
+
+    /// Check whether the **speech-runtime** (legacy Python runtime) is the
+    /// server currently listening on the sidecar port.  The speech-runtime
+    /// exposes `/listen/prepare` which `mlx_audio.server` does not.
+    pub fn is_speech_runtime_running(&self) -> bool {
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
+            .build();
+        match client {
+            Ok(client) => client
+                .post(format!("http://127.0.0.1:{SIDECAR_PORT}/listen/prepare"))
+                .header("content-type", "application/json")
+                .body("{}")
+                .send()
+                // Any non-404 response (even 400/422) means the endpoint
+                // exists, so the speech-runtime is the active server.
+                .map(|resp| resp.status().as_u16() != 404)
+                .unwrap_or(false),
+            Err(_) => false,
+        }
+    }
+
+    /// Ensure the speech-runtime (legacy Python runtime) is running on the
+    /// sidecar port.  If a different backend (e.g. `mlx_audio.server`) is
+    /// currently occupying the port it will be stopped first.
+    pub fn ensure_speech_runtime(&self) -> Result<(), String> {
+        if self.is_speech_runtime_running() {
             return Ok(());
+        }
+
+        // If *something* is listening but it's not the speech-runtime (e.g.
+        // mlx_audio.server), stop it so we can reclaim the port.
+        if self.is_running() {
+            info!("Stopping non-speech-runtime sidecar to make room for the speech-runtime");
+            self.reclaim_sidecar_port()?;
+        }
+
+        self.ensure_legacy_runtime_running()
+    }
+
+    pub fn ensure_running(&self) -> Result<(), String> {
+        let already_running = match self.backend {
+            SidecarBackend::LegacyPythonRuntime => self.is_speech_runtime_running(),
+            SidecarBackend::MlxAudio => self.is_mlx_audio_running(),
+        };
+        if already_running {
+            return Ok(());
+        }
+
+        if self.is_running() {
+            self.reclaim_sidecar_port()?;
         }
 
         match self.backend {
@@ -273,7 +348,9 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_sidecar_health("Speech runtime", 20)
+        self.wait_for_runtime_probe("Speech runtime", 20, |manager| {
+            manager.is_speech_runtime_running()
+        })
     }
 
     fn ensure_mlx_audio_running(&self) -> Result<(), String> {
@@ -304,13 +381,23 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_sidecar_health("mlx-audio sidecar", 60)
+        self.wait_for_runtime_probe("mlx-audio sidecar", 60, |manager| {
+            manager.is_mlx_audio_running()
+        })
     }
 
-    fn wait_for_sidecar_health(&self, runtime_label: &str, attempts: usize) -> Result<(), String> {
+    fn wait_for_runtime_probe<F>(
+        &self,
+        runtime_label: &str,
+        attempts: usize,
+        probe: F,
+    ) -> Result<(), String>
+    where
+        F: Fn(&Self) -> bool,
+    {
         for attempt in 0..attempts {
             std::thread::sleep(Duration::from_millis(500));
-            if self.is_running() {
+            if probe(self) {
                 info!("{runtime_label} is healthy (attempt {})", attempt + 1);
                 return Ok(());
             }
@@ -346,6 +433,125 @@ impl SidecarManager {
             "{runtime_label} started but did not become healthy within {} seconds.",
             attempts / 2
         ))
+    }
+
+    fn reclaim_sidecar_port(&self) -> Result<(), String> {
+        self.stop();
+        self.terminate_external_listeners()?;
+
+        for _ in 0..10 {
+            if self.listener_pids().is_empty() {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+
+        let remaining = self.listener_pids();
+        if remaining.is_empty() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Port {SIDECAR_PORT} is still in use by process(es): {}",
+                remaining
+                    .iter()
+                    .map(u32::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+        }
+    }
+
+    fn terminate_external_listeners(&self) -> Result<(), String> {
+        let tracked_pid = self
+            .child
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(|child| child.id());
+        let listener_pids = self.listener_pids();
+        for pid in listener_pids {
+            if Some(pid) == tracked_pid {
+                continue;
+            }
+            info!("Stopping external sidecar listener on port {SIDECAR_PORT} (pid {pid})");
+            self.terminate_pid(pid)?;
+        }
+        Ok(())
+    }
+
+    fn listener_pids(&self) -> Vec<u32> {
+        #[cfg(target_os = "windows")]
+        {
+            let output = Command::new("netstat").args(["-ano", "-p", "tcp"]).output();
+            if let Ok(output) = output {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return stdout
+                    .lines()
+                    .filter(|line| line.contains(&format!(":{SIDECAR_PORT}")))
+                    .filter(|line| line.contains("LISTENING"))
+                    .filter_map(|line| line.split_whitespace().last()?.parse::<u32>().ok())
+                    .collect();
+            }
+            return Vec::new();
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let output = Command::new("lsof")
+                .args([
+                    "-t",
+                    "-nP",
+                    &format!("-iTCP:{SIDECAR_PORT}"),
+                    "-sTCP:LISTEN",
+                ])
+                .output();
+            if let Ok(output) = output {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return stdout
+                    .lines()
+                    .filter_map(|line| line.trim().parse::<u32>().ok())
+                    .collect();
+            }
+            Vec::new()
+        }
+    }
+
+    fn terminate_pid(&self, pid: u32) -> Result<(), String> {
+        #[cfg(target_os = "windows")]
+        let terminate_status = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status()
+            .map_err(|err| format!("Failed to stop sidecar process {pid}: {err}"))?;
+
+        #[cfg(not(target_os = "windows"))]
+        let terminate_status = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status()
+            .map_err(|err| format!("Failed to stop sidecar process {pid}: {err}"))?;
+
+        if !terminate_status.success() {
+            return Err(format!("Failed to stop sidecar process {pid}."));
+        }
+
+        for _ in 0..10 {
+            if !self.listener_pids().contains(&pid) {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let kill_status = Command::new("kill")
+                .args(["-KILL", &pid.to_string()])
+                .status()
+                .map_err(|err| format!("Failed to force-stop sidecar process {pid}: {err}"))?;
+            if !kill_status.success() {
+                return Err(format!("Failed to force-stop sidecar process {pid}."));
+            }
+        }
+
+        Ok(())
     }
 
     fn emit_setup_progress(&self, stage: &str, detail: &str) {

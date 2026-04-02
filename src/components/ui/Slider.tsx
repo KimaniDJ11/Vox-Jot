@@ -37,9 +37,12 @@ export const Slider: React.FC<SliderProps> = ({
     onChange(parseFloat(e.target.value));
   };
 
-  const fillPercent = ((value - min) / (max - min)) * 100;
+  const fillPercent =
+    max === min
+      ? 0
+      : Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
   const trackStyle = {
-    "--slider-bg": `linear-gradient(to right, var(--color-background-ui) ${fillPercent}%, rgba(128, 128, 128, 0.35) ${fillPercent}%)`,
+    "--slider-bg": `linear-gradient(to right, var(--accent) 0%, var(--accent) ${fillPercent}%, color-mix(in srgb, var(--accent), white 78%) ${fillPercent}%, color-mix(in srgb, var(--text), transparent 82%) 100%)`,
   } as React.CSSProperties;
 
   if (layout === "compact") {
@@ -71,7 +74,7 @@ export const Slider: React.FC<SliderProps> = ({
       disabled={disabled}
     >
       <div className="w-full">
-        <div className="flex items-center space-x-1 h-6">
+        <div className="flex items-center gap-2 h-6">
           <input
             type="range"
             min={min}
@@ -80,11 +83,11 @@ export const Slider: React.FC<SliderProps> = ({
             value={value}
             onChange={handleChange}
             disabled={disabled}
-            className="flex-grow h-2 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-logo-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             style={trackStyle}
           />
           {showValue && (
-            <span className="text-sm font-semibold text-[var(--text)] min-w-10 text-end">
+            <span className="text-sm font-semibold text-[var(--text)] min-w-10 text-end tabular-nums">
               {formatValue(value)}
             </span>
           )}
@@ -126,10 +129,10 @@ const CompactSlider: React.FC<{
   const tooltipRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div className="py-1.5">
-      <div className="mb-1 flex items-center gap-1.5">
+    <div className="py-2 px-1">
+      <div className="mb-1.5 flex items-center gap-1.5">
         <span
-          className={`text-[13px] font-semibold leading-5 tracking-tight ${disabled ? "opacity-50" : ""}`}
+          className={`text-[13px] font-semibold leading-5 ${disabled ? "opacity-50" : ""}`}
         >
           {label}
         </span>
@@ -137,7 +140,7 @@ const CompactSlider: React.FC<{
           <button
             ref={tooltipRef}
             type="button"
-            className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            className="relative inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:text-[var(--accent)]"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
             onClick={() => setShowTooltip(!showTooltip)}
@@ -180,7 +183,7 @@ const CompactSlider: React.FC<{
         value={value}
         onChange={handleChange}
         disabled={disabled}
-        className="h-2 w-full rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-logo-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
         style={trackStyle}
       />
     </div>

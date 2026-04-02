@@ -281,7 +281,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
         <select
           value={providerFilter}
           onChange={(event) => setProviderFilter(event.target.value)}
-          className="min-h-11 rounded-full border border-[var(--border)] bg-[var(--card)] py-2 pe-9 ps-4 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          className="min-h-11 appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-2 pe-10 ps-4 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
         >
           {sttProviderOptions.map((provider) => (
             <option key={provider.value} value={provider.value}>
@@ -289,6 +289,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
             </option>
           ))}
         </select>
+        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
       </div>
       <div className="relative" ref={languageDropdownRef}>
         <button
@@ -399,7 +400,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       {portalTarget ? createPortal(filterAction, portalTarget) : null}
 
       {currentModelInfo ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-4 shadow-[var(--shadow-sm)]">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
             Active Speech Model
           </p>
@@ -465,29 +466,31 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 </p>
               </div>
             ) : (
-              downloadedModels.map((model: ModelInfo) => {
-                const catalog = sttCatalogById.get(model.id);
-                return (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    status={getModelStatus(model.id)}
-                    onSelect={handleModelSelect}
-                    onDownload={handleModelDownload}
-                    onDelete={handleModelDelete}
-                    onCancel={handleModelCancel}
-                    downloadProgress={getDownloadProgress(model.id)}
-                    downloadSpeed={getDownloadSpeed(model.id)}
-                    showRecommended={false}
-                    providerLabel={
-                      platformOverview?.stt.providers.find(
-                        (provider) => provider.id === catalog?.provider_id,
-                      )?.label
-                    }
-                    runtimeLabel={catalog?.runtime.label}
-                  />
-                );
-              })
+              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {downloadedModels.map((model: ModelInfo) => {
+                  const catalog = sttCatalogById.get(model.id);
+                  return (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      status={getModelStatus(model.id)}
+                      onSelect={handleModelSelect}
+                      onDownload={handleModelDownload}
+                      onDelete={handleModelDelete}
+                      onCancel={handleModelCancel}
+                      downloadProgress={getDownloadProgress(model.id)}
+                      downloadSpeed={getDownloadSpeed(model.id)}
+                      showRecommended={false}
+                      providerLabel={
+                        platformOverview?.stt.providers.find(
+                          (provider) => provider.id === catalog?.provider_id,
+                        )?.label
+                      }
+                      runtimeLabel={catalog?.runtime.label}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
 
@@ -515,29 +518,31 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 </p>
               </div>
             ) : (
-              availableModels.map((model: ModelInfo) => {
-                const catalog = sttCatalogById.get(model.id);
-                return (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    status={getModelStatus(model.id)}
-                    onSelect={handleModelSelect}
-                    onDownload={handleModelDownload}
-                    onDelete={handleModelDelete}
-                    onCancel={handleModelCancel}
-                    downloadProgress={getDownloadProgress(model.id)}
-                    downloadSpeed={getDownloadSpeed(model.id)}
-                    showRecommended={false}
-                    providerLabel={
-                      platformOverview?.stt.providers.find(
-                        (provider) => provider.id === catalog?.provider_id,
-                      )?.label
-                    }
-                    runtimeLabel={catalog?.runtime.label}
-                  />
-                );
-              })
+              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {availableModels.map((model: ModelInfo) => {
+                  const catalog = sttCatalogById.get(model.id);
+                  return (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      status={getModelStatus(model.id)}
+                      onSelect={handleModelSelect}
+                      onDownload={handleModelDownload}
+                      onDelete={handleModelDelete}
+                      onCancel={handleModelCancel}
+                      downloadProgress={getDownloadProgress(model.id)}
+                      downloadSpeed={getDownloadSpeed(model.id)}
+                      showRecommended={false}
+                      providerLabel={
+                        platformOverview?.stt.providers.find(
+                          (provider) => provider.id === catalog?.provider_id,
+                        )?.label
+                      }
+                      runtimeLabel={catalog?.runtime.label}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>

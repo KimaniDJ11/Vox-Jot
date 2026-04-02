@@ -962,6 +962,7 @@
   },
   "accessibility": {
     "permissionsRequired": "Accessibility Permissions Required",
+    "permissionNeeded": "Permission Needed",
     "permissionsTitle": "macOS permissions need attention",
     "permissionsDescription": "Vox Jot needs Accessibility to type text and Input Monitoring to better understand send-versus-delete behavior in text fields.",
     "openSettings": "Open System Settings",

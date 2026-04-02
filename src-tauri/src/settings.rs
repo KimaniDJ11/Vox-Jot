@@ -2167,6 +2167,12 @@ impl AppSettings {
             .or_else(|| self.tts_voice_presets.first())
     }
 
+    pub fn explicit_active_tts_preset(&self) -> Option<&TtsVoicePreset> {
+        self.tts_active_preset_id
+            .as_deref()
+            .and_then(|preset_id| self.tts_preset(preset_id))
+    }
+
     pub fn active_tts_preset_mut(&mut self) -> Option<&mut TtsVoicePreset> {
         let preset_id = self.tts_active_preset_id.clone().or_else(|| {
             self.tts_voice_presets
@@ -2944,6 +2950,64 @@ mod tests {
         assert_eq!(
             preset.tuning.style_instructions.as_deref(),
             Some("cinematic")
+        );
+    }
+
+    #[test]
+    fn explicit_active_tts_preset_does_not_fall_back_to_first_preset() {
+        let mut settings = get_default_settings();
+        let default_tuning = TtsVoiceTuningSettings {
+            tempo_rate: settings.tts_rate.clamp(0.5, 2.0),
+            expressiveness: default_tts_expressiveness(),
+            exaggeration: default_tts_exaggeration(),
+            randomness: default_tts_randomness(),
+            guidance: default_tts_guidance(),
+            stability: default_tts_stability(),
+            repetition_penalty: default_tts_repetition_penalty(),
+            style_instructions: None,
+        };
+        settings.tts_voice_presets = vec![
+            TtsVoicePreset {
+                id: "preset-1".to_string(),
+                label: "Preset One".to_string(),
+                provider_id: "mlx_ming_omni".to_string(),
+                model_id: "mlx-community/Ming-Omni-0.5B-bf16".to_string(),
+                voice_id: None,
+                voice_profile_id: None,
+                voice_label_snapshot: None,
+                locale_snapshot: None,
+                tuning: default_tuning.clone(),
+            },
+            TtsVoicePreset {
+                id: "preset-2".to_string(),
+                label: "Preset Two".to_string(),
+                provider_id: "mlx_kokoro".to_string(),
+                model_id: "kokoro-82m".to_string(),
+                voice_id: None,
+                voice_profile_id: None,
+                voice_label_snapshot: None,
+                locale_snapshot: None,
+                tuning: default_tuning,
+            },
+        ];
+
+        assert_eq!(
+            settings
+                .active_tts_preset()
+                .expect("fallback preset should exist")
+                .id,
+            "preset-1"
+        );
+        assert!(settings.explicit_active_tts_preset().is_none());
+
+        settings.tts_active_preset_id = Some("preset-2".to_string());
+
+        assert_eq!(
+            settings
+                .explicit_active_tts_preset()
+                .expect("explicit preset should resolve")
+                .id,
+            "preset-2"
         );
     }
 }

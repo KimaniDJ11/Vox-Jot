@@ -103,8 +103,10 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
 
 const TINY_MODELS_TARGET_COUNT: usize = 22;
 const OLLAMA_REGISTRY_TAGS_URL: &str = "https://ollama.com/api/tags";
-const HARD_MAX_PARAMS_B: f64 = 6.0;
-const HARD_MAX_SIZE_BYTES: u64 = 8_000_000_000;
+const SOFT_MAX_PARAMS_B: f64 = 11.0;
+const SOFT_MAX_SIZE_BYTES: u64 = 11_000_000_000;
+const HARD_MAX_PARAMS_B: f64 = 11.0;
+const HARD_MAX_SIZE_BYTES: u64 = 11_000_000_000;
 
 // Model families commonly present in Artificial Analysis tiny open-source, non-reasoning slice.
 const AA_TINY_FAMILY_HINTS: &[&str] = &[
@@ -189,7 +191,7 @@ fn looks_like_tiny_model(name: &str, size_bytes: u64) -> bool {
         return false;
     }
 
-    if size_bytes > 0 && size_bytes <= 4_000_000_000 {
+    if size_bytes > 0 && size_bytes <= SOFT_MAX_SIZE_BYTES {
         return true;
     }
 
@@ -200,13 +202,16 @@ fn looks_like_tiny_model(name: &str, size_bytes: u64) -> bool {
             .and_then(|m| m.as_str().parse::<f64>().ok())
             .unwrap_or(999.0);
         let unit = cap.get(2).map(|m| m.as_str()).unwrap_or("b");
-        if (unit == "m" && value <= 2200.0) || (unit == "b" && value <= 3.5) {
+        if (unit == "m" && value <= SOFT_MAX_PARAMS_B * 1000.0)
+            || (unit == "b" && value <= SOFT_MAX_PARAMS_B)
+        {
             return true;
         }
     }
 
     let tiny_keywords = [
-        "tiny", "mini", "small", "smol", "nano", "compact", "1b", "2b", "3b",
+        "tiny", "mini", "small", "smol", "nano", "compact", "1b", "2b", "3b", "4b", "7b", "8b",
+        "11b",
     ];
     tiny_keywords.iter().any(|k| lower.contains(k))
 }
@@ -279,7 +284,7 @@ async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
             id: m.name.clone(),
             label: m.name.clone(),
             description: format!(
-                "{} — tiny model (AA-style family + Ollama registry)",
+                "{} — recommended model (AA-style family + Ollama registry)",
                 format_bytes_gb(m.size)
             ),
             is_pulled: false,

@@ -73,6 +73,13 @@ export async function previewTtsVoicePreset(
   return invoke("preview_tts_voice_preset", { presetId, previewText });
 }
 
+export async function previewTtsVoicePresetDraft(
+  input: TtsVoicePresetInput,
+  previewText?: string | null,
+): Promise<void> {
+  return invoke("preview_tts_voice_preset_draft", { input, previewText });
+}
+
 export async function prepareSidecarEngine(providerId: string): Promise<void> {
   return invoke("prepare_sidecar_engine", { providerId });
 }

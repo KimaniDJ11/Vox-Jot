@@ -205,6 +205,20 @@ input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 9999px;
   background: var(--slider-bg, rgba(128, 128, 128, 0.35));
+  border: 1px solid color-mix(in srgb, var(--text), transparent 86%);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--text), transparent 84%);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 86%);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--accent);
 }
 
 /* ── Range Input (Slider) Thumb ────────────────────────────── */

@@ -499,6 +499,7 @@ pub fn run(cli_args: CliArgs) {
         commands::tts::refresh_tts_voices,
         commands::tts::preview_tts_voice,
         commands::tts::preview_tts_voice_preset,
+        commands::tts::preview_tts_voice_preset_draft,
         commands::tts::prepare_sidecar_engine,
         commands::tts::get_available_tts_packs,
         commands::tts::download_tts_pack,

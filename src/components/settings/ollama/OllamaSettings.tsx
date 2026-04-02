@@ -4,6 +4,10 @@ import { Check, CheckCircle2, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "../../ui/Button";
+import {
+  CompactBadgeRow,
+  type CompactBadgeItem,
+} from "../../ui/CompactOverflow";
 
 const splitDescription = (
   description: string,
@@ -17,8 +21,6 @@ const splitDescription = (
     summary: parts.slice(1).join(" — "),
   };
 };
-
-const baseModelId = (id: string) => id.split(":")[0];
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
@@ -82,18 +84,15 @@ const OllamaSettings: React.FC = () => {
   const selectedProviderId = getSetting("post_process_provider_id") || "";
   const selectedOllamaModel =
     getSetting("post_process_models")?.["ollama"] || "";
+  const isInstalledModel = (modelId: string) =>
+    installedModels.some((installed) => installed === modelId);
 
   const downloadedModels = recommendedModels.filter((model) =>
-    installedModels.some((installed) =>
-      installed.startsWith(baseModelId(model.id)),
-    ),
+    isInstalledModel(model.id),
   );
 
   const availableModels = recommendedModels.filter(
-    (model) =>
-      !installedModels.some((installed) =>
-        installed.startsWith(baseModelId(model.id)),
-      ),
+    (model) => !isInstalledModel(model.id),
   );
 
   const handlePullModel = async (modelId: string) => {
@@ -108,11 +107,10 @@ const OllamaSettings: React.FC = () => {
     if (selectedProviderId !== "ollama") {
       return false;
     }
-
-    const selectedBase = baseModelId(selectedOllamaModel);
-    const candidateBase = baseModelId(modelId);
-    return selectedOllamaModel === modelId || selectedBase === candidateBase;
+    return selectedOllamaModel === modelId;
   };
+  const activeRefineModel =
+    recommendedModels.find((model) => isModelActive(model.id)) ?? null;
 
   const handleActivateModel = async (modelId: string) => {
     setActionError(null);
@@ -175,6 +173,28 @@ const OllamaSettings: React.FC = () => {
       {/* Model Management */}
       {isInstalled && isRunning && (
         <div className="w-full space-y-6">
+          {activeRefineModel ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Active Refine Model
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <p className="text-lg font-bold text-[var(--text)]">
+                  {activeRefineModel.label}
+                </p>
+                <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
+                  Ollama
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                {splitDescription(activeRefineModel.description).summary}
+              </p>
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+                Local Ollama Model
+              </p>
+            </div>
+          ) : null}
+
           {actionError && (
             <div className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
               {actionError}
@@ -189,114 +209,129 @@ const OllamaSettings: React.FC = () => {
                 {t("ollama.noDownloaded")}
               </div>
             ) : (
-              downloadedModels.map((model) => {
-                const progress = pullProgress[model.id] ?? 0;
-                const isPulling = pullingModels.has(model.id);
-                const details = splitDescription(model.description);
-                const score = estimateScores(model.id, model.label);
-                const isActive = isModelActive(model.id);
+              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {downloadedModels.map((model) => {
+                  const progress = pullProgress[model.id] ?? 0;
+                  const isPulling = pullingModels.has(model.id);
+                  const details = splitDescription(model.description);
+                  const score = estimateScores(model.id, model.label);
+                  const isActive = isModelActive(model.id);
+                  const headerBadges: CompactBadgeItem[] = [
+                    {
+                      id: isActive ? "active" : "downloaded",
+                      label: isActive
+                        ? t("common.active")
+                        : t("common.downloaded"),
+                      variant: isActive ? "primary" : "secondary",
+                      icon: <Check className="h-3 w-3" />,
+                    },
+                  ];
 
-                return (
-                  <div
-                    key={model.id}
-                    className={`group flex flex-col rounded-xl border-2 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md ${
-                      isActive
-                        ? "border-logo-primary/70 bg-logo-primary/5"
-                        : "border-mid-gray/25"
-                    }`}
-                  >
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex flex-col items-start flex-1 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-base font-semibold text-text transition-colors group-hover:text-[var(--accent)]">
-                            {model.label}
-                          </h3>
-                          <span
-                            className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold ${
-                              isActive
-                                ? "bg-logo-primary text-[var(--inverse-text)]"
-                                : "bg-mid-gray/15 text-[var(--muted)]"
-                            }`}
+                  return (
+                    <div
+                      key={model.id}
+                      className={`flex h-full min-w-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left shadow-[var(--shadow-sm)] transition-all duration-200 ${
+                        !isActive
+                          ? "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <h3
+                              className="min-w-0 flex-1 truncate text-base font-semibold text-text transition-colors group-hover:text-[var(--accent)]"
+                              title={model.label}
+                            >
+                              {model.label}
+                            </h3>
+                            <CompactBadgeRow
+                              items={headerBadges}
+                              maxVisible={1}
+                              overflowLabel={`${model.label} badges`}
+                            />
+                          </div>
+                          <p
+                            className="mt-2 truncate text-sm text-[var(--muted)]"
+                            title={details.summary}
                           >
-                            <Check className="w-3 h-3 mr-1" />
-                            {isActive
-                              ? t("common.active")
-                              : t("common.downloaded")}
-                          </span>
+                            {details.summary}
+                          </p>
                         </div>
-                        <p className="text-[var(--muted)] text-sm leading-relaxed">
-                          {details.summary}
-                        </p>
-                      </div>
-                      <div className="hidden sm:flex items-center ml-4">
-                        <div className="space-y-1">
+                        <div className="grid shrink-0 gap-2 sm:w-32">
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-[var(--muted)] w-16 text-right">
-                              {t("ollama.qualityEst")}
+                            <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                              Quality
                             </p>
-                            <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                            <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
-                                className="h-full bg-logo-primary rounded-full"
+                                className="h-full rounded-full bg-logo-primary"
                                 style={{ width: `${score.quality * 100}%` }}
                               />
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-[var(--muted)] w-16 text-right">
-                              {t("ollama.speedEst")}
+                            <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                              Speed
                             </p>
-                            <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                            <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
-                                className="h-full bg-logo-primary rounded-full"
+                                className="h-full rounded-full bg-logo-primary"
                                 style={{ width: `${score.speed * 100}%` }}
                               />
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <hr className="w-full border-mid-gray/20" />
-
-                    <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                      <span className="text-xs text-[var(--muted)]">
-                        {t("ollama.localModel")}
-                      </span>
-                      {!isActive && (
-                        <button
-                          onClick={() => handleActivateModel(model.id)}
-                          className="flex items-center gap-1.5 text-[var(--text)] hover:text-[var(--accent)] hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"
-                        >
-                          <span>{t("ollama.setActive")}</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteModel(model.id)}
-                        className="flex items-center gap-1.5 ml-auto text-[var(--accent)] hover:text-[var(--accent)] hover:bg-logo-primary/10 rounded-md px-2 py-0.5 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>{t("common.delete")}</span>
-                      </button>
-                    </div>
-
-                    {isPulling && (
-                      <div className="w-full mt-2">
-                        <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-logo-primary rounded-full transition-all duration-300"
-                            style={{ width: `${progress}%` }}
-                          />
+                      <div className="w-full border-t border-mid-gray/20 pt-3">
+                        <div className="flex w-full flex-wrap items-center gap-2">
+                          <span className="text-xs text-[var(--muted)]">
+                            {t("ollama.localModel")}
+                          </span>
+                          {details.size ? (
+                            <span className="text-xs text-[var(--muted)]">
+                              {details.size}
+                            </span>
+                          ) : null}
+                          {!isActive && (
+                            <button
+                              onClick={() => handleActivateModel(model.id)}
+                              className="rounded-md px-2 py-0.5 text-[var(--text)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                            >
+                              <span>{t("ollama.setActive")}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteModel(model.id)}
+                            title={t("common.delete")}
+                            aria-label={t("common.delete")}
+                            className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--accent)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                        <p className="text-xs text-[var(--muted)] mt-1">
-                          {t("ollama.pulling", {
-                            progress: Math.round(progress),
-                          })}
-                        </p>
                       </div>
-                    )}
-                  </div>
-                );
-              })
+
+                      {isPulling && (
+                        <div className="w-full">
+                          <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-[var(--muted)] mt-1">
+                            {t("ollama.pulling", {
+                              progress: Math.round(progress),
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
@@ -304,91 +339,102 @@ const OllamaSettings: React.FC = () => {
             <h4 className="px-5 text-sm font-bold uppercase tracking-widest text-[var(--text)]">
               {t("ollama.availableModels")}
             </h4>
-            {availableModels.map((model) => {
-              const isPulling = pullingModels.has(model.id);
-              const progress = pullProgress[model.id] ?? 0;
-              const details = splitDescription(model.description);
-              const score = estimateScores(model.id, model.label);
+            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+              {availableModels.map((model) => {
+                const isPulling = pullingModels.has(model.id);
+                const progress = pullProgress[model.id] ?? 0;
+                const details = splitDescription(model.description);
+                const score = estimateScores(model.id, model.label);
 
-              return (
-                <div
-                  key={model.id}
-                  className="group flex flex-col rounded-xl border-2 border-mid-gray/25 px-4 py-3 gap-2 transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
-                >
-                  <div className="flex justify-between items-center w-full">
-                    <div className="flex flex-col items-start flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-text transition-colors group-hover:text-[var(--accent)]">
-                        {model.label}
-                      </h3>
-                      <p className="text-[var(--muted)] text-sm leading-relaxed">
-                        {details.summary}
-                      </p>
-                    </div>
-                    <div className="hidden sm:flex items-center ml-4">
-                      <div className="space-y-1">
+                return (
+                  <div
+                    key={model.id}
+                    className="flex h-full min-w-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left shadow-[var(--shadow-sm)] transition-all duration-200 cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group"
+                  >
+                    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <h3
+                            className="min-w-0 flex-1 truncate text-base font-semibold text-text transition-colors group-hover:text-[var(--accent)]"
+                            title={model.label}
+                          >
+                            {model.label}
+                          </h3>
+                        </div>
+                        <p
+                          className="mt-2 truncate text-sm text-[var(--muted)]"
+                          title={details.summary}
+                        >
+                          {details.summary}
+                        </p>
+                      </div>
+                      <div className="grid shrink-0 gap-2 sm:w-32">
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-[var(--muted)] w-16 text-right">
-                            {t("ollama.qualityEst")}
+                          <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                            Quality
                           </p>
-                          <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div
-                              className="h-full bg-logo-primary rounded-full"
+                              className="h-full rounded-full bg-logo-primary"
                               style={{ width: `${score.quality * 100}%` }}
                             />
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-[var(--muted)] w-16 text-right">
-                            {t("ollama.speedEst")}
+                          <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                            Speed
                           </p>
-                          <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div
-                              className="h-full bg-logo-primary rounded-full"
+                              className="h-full rounded-full bg-logo-primary"
                               style={{ width: `${score.speed * 100}%` }}
                             />
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <hr className="w-full border-mid-gray/20" />
-
-                  <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-                    <span className="text-xs text-[var(--muted)]">
-                      {details.size}
-                    </span>
-                    {isPulling ? (
-                      <span className="ml-auto text-xs text-[var(--muted)]">
-                        {t("ollama.pulling", {
-                          progress: Math.round(progress),
-                        })}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handlePullModel(model.id)}
-                        disabled={pullingModels.size > 0}
-                        className="flex items-center gap-1.5 ml-auto text-[var(--text)] hover:text-[var(--accent)] hover:bg-logo-primary/10 rounded-md px-2 py-0.5 disabled:opacity-50 transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{t("ollama.download")}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {isPulling && (
-                    <div className="w-full mt-2">
-                      <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-logo-primary rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
+                    <div className="w-full border-t border-mid-gray/20 pt-3">
+                      <div className="flex w-full flex-wrap items-center gap-2">
+                        {details.size ? (
+                          <span className="text-xs text-[var(--muted)]">
+                            {details.size}
+                          </span>
+                        ) : null}
+                        {isPulling ? (
+                          <span className="ml-auto text-xs text-[var(--muted)]">
+                            {t("ollama.pulling", {
+                              progress: Math.round(progress),
+                            })}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handlePullModel(model.id)}
+                            disabled={pullingModels.size > 0}
+                            title={t("ollama.download")}
+                            aria-label={t("ollama.download")}
+                            className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--text)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)] disabled:opacity-50"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {isPulling && (
+                      <div className="w-full">
+                        <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

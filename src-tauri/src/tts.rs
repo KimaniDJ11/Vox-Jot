@@ -214,6 +214,7 @@ pub struct SpeakRequest {
     pub locale: Option<String>,
     pub preferred_voice_id: Option<String>,
     pub preset_id: Option<String>,
+    pub inline_preset: Option<TtsVoicePreset>,
     pub trigger: Option<String>,
     pub remember_last_output: bool,
 }
@@ -1244,6 +1245,7 @@ impl TtsManager {
             locale: last_output.locale,
             preferred_voice_id: None,
             preset_id: None,
+            inline_preset: None,
             trigger: Some("speak_last_output".to_string()),
             remember_last_output: false,
         })
@@ -1799,20 +1801,25 @@ impl TtsManager {
             .collect()
     }
 
-    fn resolved_preset_for_request<'a>(
+    fn resolved_preset_for_request(
         &self,
-        settings: &'a AppSettings,
+        settings: &AppSettings,
         request: &SpeakRequest,
-    ) -> Option<&'a TtsVoicePreset> {
+    ) -> Option<TtsVoicePreset> {
         request
-            .preset_id
-            .as_deref()
-            .and_then(|preset_id| settings.tts_preset(preset_id))
-            .or_else(|| settings.active_tts_preset())
+            .inline_preset
+            .clone()
+            .or_else(|| {
+                request
+                    .preset_id
+                    .as_deref()
+                    .and_then(|preset_id| settings.tts_preset(preset_id).cloned())
+            })
+            .or_else(|| settings.active_tts_preset().cloned())
     }
 
     pub fn selected_provider_id(&self, settings: &AppSettings) -> String {
-        if let Some(preset) = settings.active_tts_preset() {
+        if let Some(preset) = settings.explicit_active_tts_preset() {
             if !preset.provider_id.trim().is_empty() {
                 return preset.provider_id.clone();
             }
@@ -1843,7 +1850,7 @@ impl TtsManager {
     }
 
     pub fn selected_model_id(&self, settings: &AppSettings) -> Option<String> {
-        if let Some(preset) = settings.active_tts_preset() {
+        if let Some(preset) = settings.explicit_active_tts_preset() {
             if !preset.model_id.trim().is_empty() {
                 return Some(preset.model_id.clone());
             }
@@ -2721,13 +2728,16 @@ impl TtsManager {
 
     pub async fn speak(&self, request: SpeakRequest) -> Result<(), String> {
         let settings = get_settings(&self.app_handle);
-        let selected_preset = self
-            .resolved_preset_for_request(&settings, &request)
-            .cloned();
+        let selected_preset = self.resolved_preset_for_request(&settings, &request);
         let mut effective_settings = settings.clone();
         if let Some(preset) = selected_preset.as_ref() {
-            effective_settings.set_active_tts_preset_id(Some(preset.id.clone()));
-            effective_settings.sync_legacy_tts_state_from_active_preset();
+            effective_settings.tts_active_preset_id = None;
+            effective_settings.selected_tts_provider_id = preset.provider_id.clone();
+            effective_settings.selected_tts_model_id = Some(preset.model_id.clone());
+            effective_settings.selected_tts_profile_id = preset.voice_profile_id.clone();
+            effective_settings.selected_tts_voice_id = preset.voice_id.clone();
+            effective_settings.tts_default_voice_id = preset.voice_id.clone();
+            effective_settings.tts_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
         }
         let trimmed = request.text.trim();
         if trimmed.is_empty() {
@@ -2844,9 +2854,7 @@ impl TtsManager {
         // names like "af_heart"). Drop any stale voice_id that looks like a
         // model identifier from another provider (e.g. "qwen3-0.6b-base").
         let preferred_voice_id = if engine == TtsEngineKind::MlxNative {
-            preferred_voice_id.filter(|voice_id| {
-                !is_known_tts_model_id(voice_id)
-            })
+            preferred_voice_id.filter(|voice_id| !is_known_tts_model_id(voice_id))
         } else {
             preferred_voice_id
         };
@@ -3296,7 +3304,7 @@ impl TtsManager {
     ) -> Result<MlxAudioContext, String> {
         let provider_id = self.selected_provider_id(settings);
         let definition = settings
-            .active_tts_preset()
+            .explicit_active_tts_preset()
             .and_then(|preset| mlx_audio_tts_model_definition(&preset.model_id))
             .or_else(|| {
                 settings
@@ -5029,6 +5037,7 @@ pub fn default_preview_request(
         locale: None,
         preferred_voice_id: voice_id,
         preset_id: None,
+        inline_preset: None,
         trigger: Some("preview_tts_voice".to_string()),
         remember_last_output: false,
     }

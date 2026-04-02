@@ -14,22 +14,17 @@ import {
   getTranslatedModelDescription,
   getTranslatedModelName,
 } from "../../lib/utils/modelTranslation";
-import { LANGUAGES } from "../../lib/constants/languages";
-import Badge from "../ui/Badge";
 import { Button } from "../ui/Button";
+import {
+  CompactBadgeRow,
+  CompactMetaRow,
+  type CompactBadgeItem,
+} from "../ui/CompactOverflow";
 
-// Get display text for model's language support
-const getLanguageDisplayText = (
-  supportedLanguages: string[],
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string => {
-  if (supportedLanguages.length === 1) {
-    const langCode = supportedLanguages[0];
-    const langName =
-      LANGUAGES.find((l) => l.value === langCode)?.label || langCode;
-    return t("modelSelector.capabilities.languageOnly", { language: langName });
-  }
-  return t("modelSelector.capabilities.multiLanguage");
+const formatLanguageAbbreviation = (language: string): string => {
+  const trimmed = language.trim();
+  if (!trimmed) return language;
+  return trimmed.split(/[-_]/)[0].slice(0, 3).toUpperCase();
 };
 
 export type ModelCardStatus =
@@ -81,9 +76,56 @@ const ModelCard: React.FC<ModelCardProps> = ({
   // Get translated model name and description
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
+  const showsScores = model.accuracy_score > 0 || model.speed_score > 0;
+  const headerBadges: CompactBadgeItem[] = [
+    showRecommended && model.is_recommended
+      ? {
+          id: "recommended",
+          label: t("onboarding.recommended"),
+          variant: "primary" as const,
+        }
+      : null,
+    status === "active"
+      ? {
+          id: "active",
+          label: t("modelSelector.active"),
+          variant: "primary" as const,
+          icon: <Check className="h-3 w-3" />,
+        }
+      : null,
+    model.is_custom
+      ? {
+          id: "custom",
+          label: t("modelSelector.custom"),
+          variant: "secondary" as const,
+        }
+      : null,
+    providerLabel
+      ? {
+          id: `provider-${providerLabel}`,
+          label: providerLabel,
+          variant: "secondary" as const,
+        }
+      : null,
+    status === "switching"
+      ? {
+          id: "switching",
+          label: t("modelSelector.switching"),
+          variant: "secondary" as const,
+          icon: <Loader2 className="h-3 w-3 animate-spin" />,
+        }
+      : null,
+  ].filter(Boolean) as CompactBadgeItem[];
+  const metadataItems = [
+    ...model.supported_languages.map(formatLanguageAbbreviation),
+    ...(model.supports_translation
+      ? [t("modelSelector.capabilities.translate")]
+      : []),
+    ...(runtimeLabel ? [runtimeLabel] : []),
+  ];
 
   const baseClasses =
-    "flex flex-col rounded-xl px-4 py-3 gap-2 text-left transition-all duration-200";
+    "flex h-full min-w-0 flex-col gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200";
 
   const getVariantClasses = () => {
     if (isFeatured) {
@@ -129,123 +171,92 @@ const ModelCard: React.FC<ModelCardProps> = ({
         .filter(Boolean)
         .join(" ")}
     >
-      {/* Top section: name/description + score bars */}
-      <div className="flex justify-between items-center w-full">
-        <div className="flex flex-col items-start flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
             <h3
-              className={`text-base font-semibold text-text ${isClickable ? "group-hover:text-[var(--accent)]" : ""} transition-colors`}
+              className={`min-w-0 flex-1 truncate text-base font-semibold text-text ${isClickable ? "group-hover:text-[var(--accent)]" : ""} transition-colors`}
+              title={displayName}
             >
               {displayName}
             </h3>
-            {showRecommended && model.is_recommended && (
-              <Badge variant="primary">{t("onboarding.recommended")}</Badge>
-            )}
-            {status === "active" && (
-              <Badge variant="primary">
-                <Check className="w-3 h-3 mr-1" />
-                {t("modelSelector.active")}
-              </Badge>
-            )}
-            {model.is_custom && (
-              <Badge variant="secondary">{t("modelSelector.custom")}</Badge>
-            )}
-            {providerLabel && (
-              <Badge variant="secondary">{providerLabel}</Badge>
-            )}
-            {status === "switching" && (
-              <Badge variant="secondary">
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                {t("modelSelector.switching")}
-              </Badge>
-            )}
+            <CompactBadgeRow
+              items={headerBadges}
+              maxVisible={2}
+              overflowLabel={`${displayName} badges`}
+            />
           </div>
-          <p className="text-[var(--muted)] text-sm leading-relaxed">
+          <p
+            className="mt-2 truncate text-sm text-[var(--muted)]"
+            title={displayDescription}
+          >
             {displayDescription}
           </p>
         </div>
-        {(model.accuracy_score > 0 || model.speed_score > 0) && (
-          <div className="hidden sm:flex items-center ml-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-[var(--muted)] w-14 text-right">
-                  {t("onboarding.modelCard.accuracy")}
-                </p>
-                <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-logo-primary rounded-full"
-                    style={{ width: `${model.accuracy_score * 100}%` }}
-                  />
-                </div>
+        {showsScores && (
+          <div className="grid shrink-0 gap-2 sm:w-32">
+            <div className="flex items-center gap-2">
+              <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                {t("onboarding.modelCard.accuracy")}
+              </p>
+              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
+                <div
+                  className="h-full rounded-full bg-logo-primary"
+                  style={{ width: `${model.accuracy_score * 100}%` }}
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-[var(--muted)] w-14 text-right">
-                  {t("onboarding.modelCard.speed")}
-                </p>
-                <div className="w-16 h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-logo-primary rounded-full"
-                    style={{ width: `${model.speed_score * 100}%` }}
-                  />
-                </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
+                {t("onboarding.modelCard.speed")}
+              </p>
+              <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
+                <div
+                  className="h-full rounded-full bg-logo-primary"
+                  style={{ width: `${model.speed_score * 100}%` }}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      <hr className="w-full border-mid-gray/20" />
-
-      {/* Bottom row: tags + action buttons (full width) */}
-      <div className="flex items-center gap-3 w-full -mb-0.5 mt-0.5 h-5">
-        {model.supported_languages.length > 0 && (
-          <div
-            className="flex items-center gap-1 text-xs text-[var(--muted)]"
-            title={
-              model.supported_languages.length === 1
-                ? t("modelSelector.capabilities.singleLanguage")
-                : t("modelSelector.capabilities.languageSelection")
+      <div className="w-full border-t border-mid-gray/20 pt-3">
+        <div className="flex w-full items-center gap-2">
+          <CompactMetaRow
+            items={metadataItems}
+            maxVisible={3}
+            icon={
+              model.supported_languages.length > 0 ? (
+                <Globe className="h-3.5 w-3.5" />
+              ) : model.supports_translation ? (
+                <Languages className="h-3.5 w-3.5" />
+              ) : null
             }
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>{getLanguageDisplayText(model.supported_languages, t)}</span>
-          </div>
-        )}
-        {model.supports_translation && (
-          <div
-            className="flex items-center gap-1 text-xs text-[var(--muted)]"
-            title={t("modelSelector.capabilities.translation")}
-          >
-            <Languages className="w-3.5 h-3.5" />
-            <span>{t("modelSelector.capabilities.translate")}</span>
-          </div>
-        )}
-        {runtimeLabel && (
-          <div
-            className="flex items-center gap-1 text-xs text-[var(--muted)]"
-            title="Runtime selected automatically by Vox Jot"
-          >
-            <span>{runtimeLabel}</span>
-          </div>
-        )}
-        {status === "downloadable" && (
-          <span className="flex items-center gap-1.5 ml-auto text-xs text-[var(--muted)]">
-            <Download className="w-3.5 h-3.5" />
-            <span>{formatModelSize(Number(model.size_mb))}</span>
-          </span>
-        )}
-        {onDelete && (status === "available" || status === "active") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            title={t("modelSelector.deleteModel", { modelName: displayName })}
-            className="flex items-center gap-1.5 ml-auto text-[var(--accent)] hover:text-[var(--accent)] hover:bg-logo-primary/10"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>{t("common.delete")}</span>
-          </Button>
-        )}
+            overflowLabel={`${displayName} model details`}
+            className="flex-1"
+          />
+          {status === "downloadable" && (
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-[var(--muted)]">
+              <Download className="w-3.5 h-3.5" />
+              <span>{formatModelSize(Number(model.size_mb))}</span>
+            </span>
+          )}
+          {onDelete && (status === "available" || status === "active") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              title={t("modelSelector.deleteModel", { modelName: displayName })}
+              aria-label={t("modelSelector.deleteModel", {
+                modelName: displayName,
+              })}
+              className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--accent)] hover:text-[var(--accent)] hover:bg-logo-primary/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Download/extract progress */}

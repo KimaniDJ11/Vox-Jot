@@ -60,9 +60,9 @@ import { FileTranscriptionCard } from "@/components/settings/general/FileTranscr
 import {
   AutoReadbackSection as AutoReadbackPanel,
   MyVoicesSection as MyVoicesPanel,
-  SoundAndTuningSection as SoundAndTuningPanel,
   EngineLibrarySection as EngineLibraryPanel,
   ListenOutputSection as OutputPanel,
+  SpeechPackManagerSection,
   ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
@@ -239,20 +239,15 @@ export const ListenMyVoicesSection: React.FC = () => {
   );
 };
 
-export const ListenSoundTuningSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <SoundAndTuningPanel showGroupTitle={false} />
-    </div>
-  );
-};
-
 export const ListenEngineLibrarySection: React.FC<WorkflowSectionProps> = ({
   onNavigateToSection,
 }) => {
   return (
     <div className="space-y-6">
-      <EngineLibraryPanel showGroupTitle={false} />
+      <EngineLibraryPanel
+        showGroupTitle={false}
+        titleActionTargetId="engine-library-section-actions"
+      />
 
       <WorkflowLinkCard
         eyebrow="Need Past Sessions?"
@@ -443,6 +438,8 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
+
+      <SpeechPackManagerSection />
 
       <SettingsGroup title="Feature Toggles">
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />

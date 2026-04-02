@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { type } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
@@ -9,19 +10,28 @@ import {
 } from "tauri-plugin-macos-permissions-api";
 
 type MissingPermission = "accessibility" | "inputMonitoring" | null;
+type AccessibilityPermissionsPresentation = "card" | "titleBar";
 
 interface MacPermissionsState {
   accessibility: boolean;
   inputMonitoring: boolean;
 }
 
-const AccessibilityPermissions: React.FC = () => {
+interface AccessibilityPermissionsProps {
+  presentation?: AccessibilityPermissionsPresentation;
+}
+
+const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
+  presentation = "card",
+}) => {
   const { t } = useTranslation();
   const [permissions, setPermissions] = useState<MacPermissionsState>({
     accessibility: false,
     inputMonitoring: false,
   });
   const [busyPermission, setBusyPermission] = useState<MissingPermission>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Accessibility permissions are only required on macOS
   const isMacOS = type() === "macos";
@@ -68,6 +78,35 @@ const AccessibilityPermissions: React.FC = () => {
     void initialSetup();
   }, [isMacOS]);
 
+  useEffect(() => {
+    if (presentation !== "titleBar" || !isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, presentation]);
+
   const hasAllPermissions =
     permissions.accessibility && permissions.inputMonitoring;
 
@@ -78,8 +117,8 @@ const AccessibilityPermissions: React.FC = () => {
   const buttonClassName =
     "rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-60";
 
-  return (
-    <div className="flat-card w-full rounded-2xl p-4 space-y-4">
+  const permissionContent = (
+    <>
       <div>
         <p className="text-sm font-semibold">
           {t("accessibility.permissionsTitle")}
@@ -100,6 +139,7 @@ const AccessibilityPermissions: React.FC = () => {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => void requestPermission("accessibility")}
             className={buttonClassName}
             disabled={busyPermission !== null}
@@ -123,6 +163,7 @@ const AccessibilityPermissions: React.FC = () => {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => void requestPermission("inputMonitoring")}
             className={buttonClassName}
             disabled={busyPermission !== null}
@@ -131,6 +172,58 @@ const AccessibilityPermissions: React.FC = () => {
           </button>
         </div>
       )}
+    </>
+  );
+
+  if (presentation === "titleBar") {
+    const titleBarLabel = t("accessibility.permissionNeeded", {
+      defaultValue: "Permission Needed",
+    });
+
+    return (
+      <div className="relative" ref={containerRef}>
+        <button
+          type="button"
+          className={`flex shrink-0 min-h-[1.9rem] items-center gap-2 rounded-full border px-3 py-1 text-sm font-bold leading-[1.1] text-[var(--warning)] transition-[background-color,border-color,color] duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] ${
+            isOpen
+              ? "border-[color-mix(in_srgb,var(--warning),transparent_68%)] bg-[var(--warning-soft)]"
+              : "border-transparent bg-transparent hover:border-[color-mix(in_srgb,var(--warning),transparent_78%)] hover:bg-[color-mix(in_srgb,var(--warning),transparent_90%)]"
+          }`}
+          onClick={() => setIsOpen((current) => !current)}
+          aria-label={t("accessibility.permissionsTitle")}
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          title={t("accessibility.permissionsTitle")}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="whitespace-nowrap">{titleBarLabel}</span>
+          <span className="sr-only">
+            : {t("accessibility.permissionsTitle")}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+            aria-hidden
+          />
+        </button>
+
+        {isOpen && (
+          <div
+            role="dialog"
+            aria-label={t("accessibility.permissionsTitle")}
+            className="absolute end-0 top-full z-[420] mt-2 w-[min(28rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow-lg)]"
+          >
+            <div className="space-y-4">{permissionContent}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flat-card w-full rounded-2xl p-4 space-y-4">
+      {permissionContent}
     </div>
   );
 };

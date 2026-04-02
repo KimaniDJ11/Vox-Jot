@@ -8,7 +8,7 @@ interface SettingContainerProps {
   children: React.ReactNode;
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
-  layout?: "horizontal" | "stacked";
+  layout?: "horizontal" | "stacked" | "compact";
   disabled?: boolean;
   tooltipPosition?: "top" | "bottom";
 }
@@ -85,7 +85,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     ? "px-4 py-3.5"
     : "rounded-2xl border border-mid-gray/20 px-4 py-3.5";
 
-  if (layout === "stacked") {
+  if (layout === "stacked" || layout === "compact") {
     if (descriptionMode === "tooltip") {
       return (
         <div className={containerClasses}>

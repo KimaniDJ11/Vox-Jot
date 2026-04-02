@@ -14,7 +14,6 @@ export { StylesSettings } from "./styles/StylesSettings";
 // Listen tab section components (match UI sidebar labels)
 export {
   MyVoicesSection,
-  SoundAndTuningSection,
   EngineLibrarySection,
   ListenVoiceCloningSection,
   AutoReadbackSection,

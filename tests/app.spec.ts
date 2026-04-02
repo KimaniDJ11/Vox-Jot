@@ -9,6 +9,11 @@ type Scenario = {
     inputMonitoring: boolean;
     microphone: boolean;
   };
+  postOnboardingPermissions?: {
+    accessibility?: boolean;
+    inputMonitoring?: boolean;
+    microphone?: boolean;
+  };
   platform: "macos" | "windows" | "linux";
   settings: Record<string, unknown>;
   models: Array<Record<string, unknown>>;
@@ -214,6 +219,9 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
     const callbacks: Record<number, (...args: unknown[]) => void> = {};
     let callbackId = 0;
     let eventListenerId = 0;
+    let accessibilityChecks = 0;
+    let inputMonitoringChecks = 0;
+    let microphoneChecks = 0;
 
     const state = {
       models: activeScenario.models,
@@ -263,12 +271,29 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return null;
           case "plugin:os|locale":
             return "en-US";
-          case "plugin:macos-permissions|check_accessibility_permission":
-            return activeScenario.permissions.accessibility;
-          case "plugin:macos-permissions|check_input_monitoring_permission":
-            return activeScenario.permissions.inputMonitoring;
-          case "plugin:macos-permissions|check_microphone_permission":
-            return activeScenario.permissions.microphone;
+          case "plugin:macos-permissions|check_accessibility_permission": {
+            accessibilityChecks += 1;
+            return accessibilityChecks > 2 &&
+              activeScenario.postOnboardingPermissions?.accessibility !==
+                undefined
+              ? activeScenario.postOnboardingPermissions.accessibility
+              : activeScenario.permissions.accessibility;
+          }
+          case "plugin:macos-permissions|check_input_monitoring_permission": {
+            inputMonitoringChecks += 1;
+            return inputMonitoringChecks > 2 &&
+              activeScenario.postOnboardingPermissions?.inputMonitoring !==
+                undefined
+              ? activeScenario.postOnboardingPermissions.inputMonitoring
+              : activeScenario.permissions.inputMonitoring;
+          }
+          case "plugin:macos-permissions|check_microphone_permission": {
+            microphoneChecks += 1;
+            return microphoneChecks > 2 &&
+              activeScenario.postOnboardingPermissions?.microphone !== undefined
+              ? activeScenario.postOnboardingPermissions.microphone
+              : activeScenario.permissions.microphone;
+          }
           case "plugin:macos-permissions|request_accessibility_permission":
           case "plugin:macos-permissions|request_input_monitoring_permission":
           case "plugin:macos-permissions|request_microphone_permission":
@@ -473,6 +498,37 @@ test.describe("Vox Jot app", () => {
     });
 
     expect(viewportOk).toBeTruthy();
+  });
+
+  test("shows macOS permission attention in the title bar instead of the view body", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      postOnboardingPermissions: {
+        accessibility: false,
+        inputMonitoring: false,
+      },
+    });
+
+    const titleBarNotice = page.getByRole("button", {
+      name: /macOS permissions need attention/i,
+    });
+
+    await expect(titleBarNotice).toBeVisible();
+    await expect(
+      page.getByText(
+        /Vox Jot needs Accessibility to type text and Input Monitoring/i,
+      ),
+    ).toHaveCount(0);
+
+    await titleBarNotice.click();
+
+    await expect(
+      page.getByText(
+        /Vox Jot needs Accessibility to type text and Input Monitoring/i,
+      ),
+    ).toBeVisible();
+    await expect(page.getByText(/Input Monitoring/i).first()).toBeVisible();
   });
 
   test("keeps Post Process visible in the sidebar even when it is off", async ({

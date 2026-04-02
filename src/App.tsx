@@ -61,7 +61,6 @@ import {
   ListenMyVoicesSection,
   ListenOutputSection,
   ListenVoiceCloningSection,
-  ListenSoundTuningSection,
   OutputPasteSettingsSection,
   PrivacyStorageSettingsSection,
   RefineProfilesSection,
@@ -294,13 +293,6 @@ function App() {
           icon: Volume2,
           title: "My Voices",
           content: <ListenMyVoicesSection />,
-        },
-        {
-          id: "sound-tuning",
-          label: "Sound & Tuning",
-          icon: SlidersHorizontal,
-          title: "Sound & Tuning",
-          content: <ListenSoundTuningSection />,
         },
         {
           id: "engine-library",
@@ -862,7 +854,9 @@ function App() {
             data-tauri-drag-region
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__trailing app-no-drag flex items-center gap-4" />
+          <div className="app-macos-titlebar-overlay__trailing app-no-drag flex items-center gap-4">
+            <AccessibilityPermissions presentation="titleBar" />
+          </div>
         </header>
       ) : (
         <header className="app-window-toolbar" dir="ltr">
@@ -902,7 +896,9 @@ function App() {
             data-tauri-drag-region
             aria-hidden
           />
-          <div className="app-no-drag flex items-center gap-4 pe-2" />
+          <div className="app-no-drag flex items-center gap-4 pe-2">
+            <AccessibilityPermissions presentation="titleBar" />
+          </div>
         </header>
       )}
 
@@ -918,8 +914,6 @@ function App() {
       <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 md:p-8">
-            <AccessibilityPermissions />
-
             {activeSection && (
               <section
                 key={activeSection.id}

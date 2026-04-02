@@ -133,6 +133,7 @@ pub async fn tts_speak(
             locale,
             preferred_voice_id,
             preset_id: None,
+            inline_preset: None,
             trigger,
             remember_last_output: remember_last_output.unwrap_or(false),
         })
@@ -195,6 +196,20 @@ pub async fn preview_tts_voice_preset(
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset".to_string());
     request.preset_id = Some(preset_id);
+    manager.speak(request).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_tts_voice_preset_draft(
+    app: AppHandle,
+    input: TtsVoicePresetInput,
+    preview_text: Option<String>,
+) -> Result<(), String> {
+    let manager = app.state::<Arc<TtsManager>>();
+    let mut request = default_preview_request(None, normalize_optional_string(preview_text));
+    request.trigger = Some("preview_tts_voice_preset_draft".to_string());
+    request.inline_preset = Some(preset_from_input(input, None)?);
     manager.speak(request).await
 }
 

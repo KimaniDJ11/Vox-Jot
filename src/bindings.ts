@@ -811,6 +811,14 @@ async previewTtsVoicePreset(presetId: string, previewText: string | null) : Prom
     else return { status: "error", error: e  as any };
 }
 },
+async previewTtsVoicePresetDraft(input: TtsVoicePresetInput, previewText: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("preview_tts_voice_preset_draft", { input, previewText }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async prepareSidecarEngine(providerId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("prepare_sidecar_engine", { providerId }) };

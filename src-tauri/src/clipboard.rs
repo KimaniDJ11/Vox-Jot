@@ -14,6 +14,7 @@ use crate::utils::{is_kde_wayland, is_wayland};
 
 const SCRATCHPAD_WINDOW_LABEL: &str = "scratchpad";
 const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
+const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
 
 fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Result<bool, String> {
     if !crate::scratchpad::consume_pending_insert_target(app_handle) {
@@ -41,6 +42,41 @@ fn clipboard_restore_delay_ms(app_handle: &AppHandle) -> u64 {
     }
 
     150
+}
+
+fn prefers_direct_paste_for_bundle_id(bundle_id: &str) -> bool {
+    DIRECT_PASTE_PREFERRED_BUNDLE_IDS
+        .iter()
+        .any(|candidate| candidate.eq_ignore_ascii_case(bundle_id))
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn effective_paste_method(requested: PasteMethod) -> PasteMethod {
+    if !matches!(
+        requested,
+        PasteMethod::CtrlV | PasteMethod::CtrlShiftV | PasteMethod::ShiftInsert
+    ) {
+        return requested;
+    }
+
+    let Ok(frontmost_app) = crate::apple_intelligence::get_frontmost_app_context() else {
+        return requested;
+    };
+
+    if prefers_direct_paste_for_bundle_id(&frontmost_app.bundle_id) {
+        info!(
+            "Overriding paste method {:?} to Direct for frontmost app '{}'",
+            requested, frontmost_app.bundle_id
+        );
+        PasteMethod::Direct
+    } else {
+        requested
+    }
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+fn effective_paste_method(requested: PasteMethod) -> PasteMethod {
+    requested
 }
 
 /// Pastes text using the clipboard: saves current content, writes text, sends paste keystroke, restores clipboard.
@@ -661,7 +697,8 @@ pub fn paste_with_submit_override(
     submit_override: Option<AutoSubmitKey>,
 ) -> Result<(), String> {
     let settings = get_settings(&app_handle);
-    let paste_method = settings.paste_method;
+    let requested_paste_method = settings.paste_method;
+    let paste_method = effective_paste_method(requested_paste_method);
     let paste_delay_ms = settings.paste_delay_ms;
 
     // Append trailing space if setting is enabled
@@ -683,8 +720,8 @@ pub fn paste_with_submit_override(
     }
 
     info!(
-        "Using paste method: {:?}, delay: {}ms",
-        paste_method, paste_delay_ms
+        "Using paste method: {:?} (requested: {:?}), delay: {}ms",
+        paste_method, requested_paste_method, paste_delay_ms
     );
 
     // Get the managed Enigo instance
@@ -771,5 +808,12 @@ mod tests {
         assert!(should_send_auto_submit(true, PasteMethod::Direct));
         assert!(should_send_auto_submit(true, PasteMethod::CtrlShiftV));
         assert!(should_send_auto_submit(true, PasteMethod::ShiftInsert));
+    }
+
+    #[test]
+    fn direct_paste_override_matches_bundle_id_case_insensitively() {
+        assert!(prefers_direct_paste_for_bundle_id("com.openai.codex"));
+        assert!(prefers_direct_paste_for_bundle_id("COM.OPENAI.CODEX"));
+        assert!(!prefers_direct_paste_for_bundle_id("com.apple.TextEdit"));
     }
 }

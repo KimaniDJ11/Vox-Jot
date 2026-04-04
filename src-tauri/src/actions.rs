@@ -3289,7 +3289,7 @@ mod tests {
         should_block_paste_candidate, should_fallback_to_plain_text_candidate,
         should_fallback_to_plain_text_drift, should_force_conservative_rewrite, PostProcessPass,
     };
-    use crate::post_processing::{ActiveAppContext, DictionaryEntry, PostProcessMode};
+    use crate::post_processing::{ActiveAppContext, AppToneMapping, DictionaryEntry, PostProcessMode};
     use crate::settings::{get_default_settings, AutoSubmitKey};
 
     #[test]
@@ -3505,6 +3505,14 @@ mod tests {
     fn app_aware_tone_prompt_includes_matching_instruction() {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
+        // Explicitly inject the Slack mapping so the test is machine-independent.
+        if !settings.app_tone_mappings.iter().any(|m| m.bundle_id == "com.tinyspeck.slackmacgap") {
+            settings.app_tone_mappings.push(AppToneMapping {
+                bundle_id: "com.tinyspeck.slackmacgap".to_string(),
+                app_name: "Slack".to_string(),
+                tone_id: "casual".to_string(),
+            });
+        }
         let context = ActiveAppContext {
             bundle_id: "com.tinyspeck.slackmacgap".to_string(),
             localized_name: "Slack".to_string(),
@@ -3578,6 +3586,14 @@ mod tests {
     fn non_apple_tone_instruction_contains_app_and_tone() {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
+        // Explicitly inject the Slack mapping so the test is machine-independent.
+        if !settings.app_tone_mappings.iter().any(|m| m.bundle_id == "com.tinyspeck.slackmacgap") {
+            settings.app_tone_mappings.push(AppToneMapping {
+                bundle_id: "com.tinyspeck.slackmacgap".to_string(),
+                app_name: "Slack".to_string(),
+                tone_id: "casual".to_string(),
+            });
+        }
         let context = ActiveAppContext {
             bundle_id: "com.tinyspeck.slackmacgap".to_string(),
             localized_name: "Slack".to_string(),

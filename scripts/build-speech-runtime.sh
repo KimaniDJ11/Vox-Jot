@@ -19,11 +19,30 @@ mkdir -p "$BUILD_DIR"
 cp -R "$RUNTIME_SRC"/. "$BUILD_DIR"/
 
 "$PYTHON_BIN" -m venv "$BUILD_DIR/.venv"
-"$BUILD_DIR/.venv/bin/python" -m pip install --upgrade pip setuptools wheel
-"$BUILD_DIR/.venv/bin/python" -m pip install -r "$BUILD_DIR/requirements.txt"
+
+# Resolve the venv python — Windows puts it under Scripts/, Unix under bin/
+if [ -f "$BUILD_DIR/.venv/bin/python" ]; then
+  VENV_PYTHON="$BUILD_DIR/.venv/bin/python"
+elif [ -f "$BUILD_DIR/.venv/Scripts/python.exe" ]; then
+  VENV_PYTHON="$BUILD_DIR/.venv/Scripts/python.exe"
+else
+  echo "Could not locate venv python" >&2
+  exit 1
+fi
+
+"$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
+"$VENV_PYTHON" -m pip install -r "$BUILD_DIR/requirements.txt"
 
 ARCH="$(uname -m)"
-PLATFORM="macos"
+case "$(uname -s)" in
+  Darwin)  PLATFORM="macos" ;;
+  Linux)   PLATFORM="linux" ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT) PLATFORM="windows" ;;
+  *)
+    echo "Unsupported OS: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
 case "$ARCH" in
   arm64|aarch64) ARCH_ID="aarch64" ;;
   x86_64) ARCH_ID="x64" ;;

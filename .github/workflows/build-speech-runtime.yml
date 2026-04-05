@@ -1,0 +1,91 @@
+name: Build Speech Runtimes
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "speech-runtime/**"
+      - "scripts/build-speech-runtime.sh"
+      - ".github/workflows/build-speech-runtime.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-13          # Intel runner
+            platform: macos
+            arch: x64
+            asset: speech-runtime-macos-x64.tar.gz
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            asset: speech-runtime-linux-x64.tar.gz
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            asset: speech-runtime-windows-x64.tar.gz
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.asset }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build speech runtime (Unix)
+        if: runner.os != 'Windows'
+        env:
+          SPEECH_RUNTIME_PYTHON: python3.11
+        run: bash scripts/build-speech-runtime.sh
+
+      - name: Build speech runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          SPEECH_RUNTIME_PYTHON: python
+        run: |
+          # On Windows GHA, python3.11 isn't on PATH as "python3.11"
+          # but setup-python puts the correct version as "python"
+          bash scripts/build-speech-runtime.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  upload-release:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Upload to v0.3.0-tts-models release
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for asset_dir in artifacts/speech-runtime-*; do
+            asset_name="$(basename "$asset_dir")"
+            asset_file="$asset_dir/$asset_name"
+            if [ -f "$asset_file" ]; then
+              echo "Uploading $asset_name..."
+              # Delete existing asset if present (idempotent re-runs)
+              gh release delete-asset v0.3.0-tts-models "$asset_name" \
+                -R "$GITHUB_REPOSITORY" --yes 2>/dev/null || true
+              gh release upload v0.3.0-tts-models "$asset_file" \
+                -R "$GITHUB_REPOSITORY"
+            fi
+          done

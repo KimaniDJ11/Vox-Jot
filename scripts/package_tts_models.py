@@ -16,7 +16,7 @@ MODELS = [
     ("Qwen/Qwen3-TTS-12Hz-0.6B-Base", "qwen3-0.6b-base", "qwen3-0.6b-base.tar.gz"),
     ("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", "qwen3-0.6b-customvoice", "qwen3-0.6b-customvoice.tar.gz"),
     ("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "qwen3-1.7b-customvoice", "qwen3-1.7b-customvoice.tar.gz"),
-    ("fishaudio/fish-speech-1.5", "fish-s2-pro", "fish-s2-pro.tar.gz")
+    ("fishaudio/fish-speech-1.5", "fish-speech", "tts-fish-speech-1.5.tar.gz")
 ]
 
 GH_RELEASE = "v0.3.0-tts-models"

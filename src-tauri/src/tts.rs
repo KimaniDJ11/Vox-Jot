@@ -302,6 +302,10 @@ struct Qwen3PackDefinition {
     id: &'static str,
     label: &'static str,
     locale: &'static str,
+    /// HuggingFace repo ID for models too large for GitHub release assets (>2 GB).
+    /// When set, the installer downloads individual files from HuggingFace as a
+    /// fallback when the GitHub release archive is unavailable.
+    hf_repo_id: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -316,16 +320,19 @@ const QWEN3_PACK_DEFINITIONS: &[Qwen3PackDefinition] = &[
         id: "qwen3-0.6b-base",
         label: "Qwen3 0.6B Base",
         locale: "mul",
+        hf_repo_id: None,
     },
     Qwen3PackDefinition {
         id: "qwen3-0.6b-customvoice",
         label: "Qwen3 0.6B CustomVoice",
         locale: "mul",
+        hf_repo_id: None,
     },
     Qwen3PackDefinition {
         id: "qwen3-1.7b-customvoice",
         label: "Qwen3 1.7B CustomVoice",
         locale: "mul",
+        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"),
     },
 ];
 
@@ -399,6 +406,8 @@ struct ManagedRuntimeModelDefinition {
     supported_languages: &'static [&'static str],
     supports_voice_cloning: bool,
     supports_instruction_prompt: bool,
+    /// HuggingFace repo ID for models too large for GitHub release assets (>2 GB).
+    hf_repo_id: Option<&'static str>,
 }
 
 const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
@@ -416,6 +425,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en", "es", "fr", "zh", "ja", "ko"],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
+        hf_repo_id: None,
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_CHATTERBOX_ID,
@@ -431,6 +441,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
+        hf_repo_id: Some("ResembleAI/chatterbox"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_KOKORO_ID,
@@ -446,6 +457,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en", "es", "fr", "hi", "it", "pt", "ja", "zh"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
+        hf_repo_id: None,
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_XTTS_ID,
@@ -464,6 +476,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         ],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
+        hf_repo_id: Some("coqui/XTTS-v2"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_FISH_SPEECH_ID,
@@ -479,6 +492,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["mul"],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
+        hf_repo_id: None,
     },
 ];
 
@@ -1055,32 +1069,35 @@ impl TtsManager {
             match self.install_local_pack_source(&source_path, &install_dir, &label) {
                 Ok(()) => return Ok(()),
                 Err(local_error) => {
-                    let archive_name = self.qwen3_pack_archive_name(definition);
-                    self.download_and_extract_archive(
-                        &[self.asset_download_url(&archive_name)],
-                        &install_dir,
-                        &label,
-                    )
-                    .await
-                    .map_err(|download_error| {
-                        format!(
-                            "Failed to install {label} from the local bundle ({local_error}) or Vox Jot model assets ({download_error})."
-                        )
-                    })?;
-                    return Ok(());
+                    info!("{label}: local source failed ({local_error}), trying remote download");
                 }
             }
         }
 
+        // Try GitHub release archive first, then fall back to HuggingFace if configured.
         let archive_name = self.qwen3_pack_archive_name(definition);
-        self.download_and_extract_archive(
-            &[self.asset_download_url(&archive_name)],
-            &install_dir,
-            &label,
-        )
-        .await?;
+        let github_result = self
+            .download_and_extract_archive(
+                &[self.asset_download_url(&archive_name)],
+                &install_dir,
+                &label,
+            )
+            .await;
 
-        Ok(())
+        match github_result {
+            Ok(()) => return Ok(()),
+            Err(github_error) => {
+                if let Some(hf_repo) = definition.hf_repo_id {
+                    info!(
+                        "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
+                    );
+                    return self
+                        .download_hf_snapshot(hf_repo, &install_dir, &label)
+                        .await;
+                }
+                return Err(github_error);
+            }
+        }
     }
 
     async fn ensure_managed_speech_runtime_installed(&self) -> Result<PathBuf, String> {
@@ -1276,31 +1293,38 @@ impl TtsManager {
                     return Ok(());
                 }
                 Err(local_error) => {
-                    self.download_and_extract_archive(
-                        &[self.asset_download_url(definition.archive_name)],
-                        &install_dir,
-                        &label,
-                    )
-                    .await
-                    .map_err(|download_error| {
-                        format!(
-                            "Failed to install {label} from the local bundle ({local_error}) or Vox Jot model assets ({download_error})."
-                        )
-                    })?;
-                    let _ = self.ensure_managed_speech_runtime_installed().await?;
-                    return Ok(());
+                    info!("{label}: local source failed ({local_error}), trying remote download");
                 }
             }
         }
 
-        self.download_and_extract_archive(
-            &[self.asset_download_url(definition.archive_name)],
-            &install_dir,
-            &label,
-        )
-        .await?;
-        let _ = self.ensure_managed_speech_runtime_installed().await?;
-        Ok(())
+        // Try GitHub release archive first.
+        let github_result = self
+            .download_and_extract_archive(
+                &[self.asset_download_url(definition.archive_name)],
+                &install_dir,
+                &label,
+            )
+            .await;
+
+        match github_result {
+            Ok(()) => {
+                let _ = self.ensure_managed_speech_runtime_installed().await?;
+                return Ok(());
+            }
+            Err(github_error) => {
+                if let Some(hf_repo) = definition.hf_repo_id {
+                    info!(
+                        "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
+                    );
+                    self.download_hf_snapshot(hf_repo, &install_dir, &label)
+                        .await?;
+                    let _ = self.ensure_managed_speech_runtime_installed().await?;
+                    return Ok(());
+                }
+                return Err(github_error);
+            }
+        }
     }
 
     pub fn stop(&self) {
@@ -3579,6 +3603,88 @@ impl TtsManager {
         let archive_path = download_dir.join(format!("{}-{}", Uuid::new_v4(), file_name));
         fs::write(&archive_path, bytes).map_err(|err| format!("Failed to save {label}: {err}"))?;
         Ok(archive_path)
+    }
+
+    /// Download all files from a HuggingFace model repository into `install_dir`.
+    /// Used as a fallback for models too large for GitHub release assets (>2 GB).
+    async fn download_hf_snapshot(
+        &self,
+        repo_id: &str,
+        install_dir: &Path,
+        label: &str,
+    ) -> Result<(), String> {
+        #[derive(Deserialize)]
+        struct HfSibling {
+            rfilename: String,
+        }
+        #[derive(Deserialize)]
+        struct HfModelInfo {
+            siblings: Vec<HfSibling>,
+        }
+
+        let client = reqwest::Client::new();
+        let api_url = format!("https://huggingface.co/api/models/{repo_id}");
+        info!("HF snapshot: listing files from {api_url}");
+
+        let model_info: HfModelInfo = client
+            .get(&api_url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
+
+        if install_dir.exists() {
+            fs::remove_dir_all(install_dir)
+                .map_err(|e| format!("Failed to clear install dir for {label}: {e}"))?;
+        }
+        // Create a subdirectory matching the repo basename so the extracted
+        // layout mirrors the GitHub-release tar structure (archive contains a
+        // single top-level directory named after the pack id).
+        let inner_dir = install_dir.join(
+            repo_id
+                .rsplit('/')
+                .next()
+                .unwrap_or(repo_id),
+        );
+        fs::create_dir_all(&inner_dir)
+            .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
+
+        for sibling in &model_info.siblings {
+            let file_url = format!(
+                "https://huggingface.co/{repo_id}/resolve/main/{}",
+                sibling.rfilename
+            );
+            let dest = inner_dir.join(&sibling.rfilename);
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).map_err(|e| {
+                    format!("Failed to create directory for {}: {e}", sibling.rfilename)
+                })?;
+            }
+            info!("HF snapshot: downloading {}", sibling.rfilename);
+            let response = client
+                .get(&file_url)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to download {}: {e}", sibling.rfilename))?;
+            if !response.status().is_success() {
+                return Err(format!(
+                    "Failed to download {}: HTTP {}",
+                    sibling.rfilename,
+                    response.status()
+                ));
+            }
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
+            fs::write(&dest, bytes)
+                .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+        }
+
+        info!("HF snapshot: completed {label} ({} files)", model_info.siblings.len());
+        Ok(())
     }
 
     fn default_pack_manifest(&self, definition: &PackDefinition) -> SherpaPackManifest {

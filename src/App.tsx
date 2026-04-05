@@ -12,11 +12,13 @@ import { platform } from "@tauri-apps/plugin-os";
 import {
   AppWindow,
   Cpu,
+  FileText,
   FlaskConical,
   History,
   Info,
   Keyboard,
   Languages,
+  MessageCircle,
   NotebookPen,
   PanelLeft,
   PanelLeftClose,
@@ -50,6 +52,10 @@ import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import {
   AboutSection,
   AISetupSettingsSection,
+  ConvoFilesContextSection,
+  ConvoJotpadSection,
+  ConvoSelectionSection,
+  ConvoSettingsCoachSection,
   CorrectionsSection,
   DictateHistorySection,
   DiagnosticsSettingsSection,
@@ -72,7 +78,7 @@ import {
 } from "@/components/AppSections";
 
 type OnboardingStep = "onboarding" | "done";
-type PrimaryMode = "dictate" | "refine" | "listen";
+type PrimaryMode = "dictate" | "refine" | "listen" | "convo";
 type RootView = PrimaryMode | "settings";
 
 type PostProcessPreviewRequest = {
@@ -116,6 +122,7 @@ const PrimaryModeSwitcher: React.FC<{
     { id: "dictate", label: "Dictate" },
     { id: "refine", label: "Refine" },
     { id: "listen", label: "Listen" },
+    { id: "convo", label: "Convo" },
   ];
 
   return (
@@ -325,6 +332,36 @@ function App() {
           icon: Volume2,
           title: "Output",
           content: <ListenOutputSection />,
+        },
+      ],
+      convo: [
+        {
+          id: "selection",
+          label: "Selection",
+          icon: MessageCircle,
+          title: "Selection",
+          content: <ConvoSelectionSection />,
+        },
+        {
+          id: "jotpad",
+          label: "Jot Pad",
+          icon: NotebookPen,
+          title: "Jot Pad",
+          content: <ConvoJotpadSection />,
+        },
+        {
+          id: "settings-coach",
+          label: "Settings Coach",
+          icon: Info,
+          title: "Settings Coach",
+          content: <ConvoSettingsCoachSection />,
+        },
+        {
+          id: "files-context",
+          label: "Files & Context",
+          icon: FileText,
+          title: "Files & Context",
+          content: <ConvoFilesContextSection />,
         },
       ],
       settings: [
@@ -751,7 +788,7 @@ function App() {
         return;
       }
 
-      if (view === "dictate" || view === "refine" || view === "listen") {
+      if (view === "dictate" || view === "refine" || view === "listen" || view === "convo") {
         handleModeSelect(view);
       }
     });

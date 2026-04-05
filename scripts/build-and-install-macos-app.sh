@@ -30,6 +30,17 @@ echo "Building frontend..."
 cd "${REPO_ROOT}"
 bun run build
 
+echo "Cleaning stale whisper-rs-sys build artifacts..."
+find "${TARGET_DIR}" \
+  -type d \
+  -path '*/whisper-rs-sys-*/out/whisper.cpp' \
+  ! -exec test -f "{}/CMakeLists.txt" \; \
+  -print0 2>/dev/null | while IFS= read -r -d '' stale_dir; do
+  build_dir="$(dirname "$(dirname "${stale_dir}")")"
+  echo "Removing stale build dir: ${build_dir}"
+  rm -rf "${build_dir}"
+done
+
 echo "Building signed macOS bundle..."
 export CARGO_TARGET_DIR="${TARGET_DIR}"
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"

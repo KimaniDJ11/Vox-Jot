@@ -1,4 +1,61 @@
 {
+  "convo": {
+    "title": "Convo",
+  "selection": {
+    "label": "Selection",
+    "title": "Selection",
+    "emptyState": "Highlight text in any app, then start a conversation about it.",
+    "pastePrompt": "Or paste text below to discuss:",
+    "refreshSelection": "Refresh Selection",
+    "copyLastReply": "Copy Last Reply",
+    "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
+    "copiedReply": "Copied the last reply."
+  },
+  "jotpad": {
+    "label": "Jot Pad",
+    "title": "Jot Pad",
+    "emptyState": "Start a conversation about your current note.",
+    "replaceNote": "Replace Note",
+    "appendToNote": "Append to Note",
+    "copyDraft": "Copy Draft",
+    "noteReplaced": "Replaced the current note.",
+    "noteReplaceFailed": "Couldn't replace the note.",
+    "noteAppended": "Appended the draft to the note.",
+    "noteAppendFailed": "Couldn't append to the note.",
+    "draftCopied": "Copied the draft."
+  },
+  "settingsCoach": {
+    "label": "Settings Coach",
+    "title": "Settings Coach",
+    "emptyState": "Ask me anything about Vox Jot's features and settings.",
+    "openFailed": "Couldn't open that settings section."
+  },
+  "filesContext": {
+    "label": "Files & Context",
+    "title": "Files & Context",
+    "emptyState": "Paste text, attach files, or select a folder to discuss.",
+    "attachFiles": "Attach Files",
+    "attachFolder": "Attach Folder",
+    "pasteText": "Paste Text",
+    "cancel": "Cancel"
+  },
+  "common": {
+    "speakReplies": "Speak Replies",
+    "resetConversation": "Reset Conversation",
+    "typeMessage": "Type a message...",
+    "send": "Send",
+    "holdToSpeak": "Hold to speak",
+    "recording": "Recording...",
+    "thinking": "Thinking...",
+    "unavailable": "PersonaPlex conversation requires Apple Silicon (M1 or later).",
+    "helperNotRunning": "PersonaPlex helper is not running. Start the audio-server on port 8765.",
+    "helperStarting": "Starting PersonaPlex helper...",
+    "helperStartFailed": "Couldn't start the PersonaPlex audio helper.",
+    "sendFailed": "The assistant couldn't respond to that message.",
+    "audioCaptureFailed": "Couldn't start audio capture. Check microphone permissions.",
+    "audioTurnFailed": "The audio turn failed. Try again or type instead."
+  }
+  },
   "tray": {
     "startRecording": "Start Recording",
     "settings": "Settings",

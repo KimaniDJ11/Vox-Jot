@@ -1,0 +1,37 @@
+# Project-local cargo-audit policy.
+#
+# We keep vulnerability findings enabled and only ignore the current set of
+# upstream warning-only advisories that are not locally fixable today.
+
+[advisories]
+ignore = [
+  # Linux GTK3 / WebKitGTK stack pulled in by Tauri/Wry and gtk-layer-shell.
+  "RUSTSEC-2024-0411", # gdkwayland-sys
+  "RUSTSEC-2024-0412", # gdk
+  "RUSTSEC-2024-0413", # atk
+  "RUSTSEC-2024-0414", # gdkx11-sys
+  "RUSTSEC-2024-0415", # gtk
+  "RUSTSEC-2024-0416", # atk-sys
+  "RUSTSEC-2024-0417", # gdkx11
+  "RUSTSEC-2024-0418", # gdk-sys
+  "RUSTSEC-2024-0419", # gtk3-macros
+  "RUSTSEC-2024-0420", # gtk-sys
+  "RUSTSEC-2024-0422", # gtk-layer-shell
+  "RUSTSEC-2024-0423", # gtk-layer-shell-sys
+  "RUSTSEC-2024-0429", # glib
+
+  # Build-time proc macro warnings from the GTK3 stack.
+  "RUSTSEC-2024-0370", # proc-macro-error
+  "RUSTSEC-2024-0436", # paste
+
+  # Tauri / tauri-utils transitives with no local drop-in replacement yet.
+  "RUSTSEC-2025-0057", # fxhash
+  "RUSTSEC-2025-0075", # unic-char-range
+  "RUSTSEC-2025-0080", # unic-common
+  "RUSTSEC-2025-0081", # unic-char-property
+  "RUSTSEC-2025-0098", # unic-ucd-version
+  "RUSTSEC-2025-0100", # unic-ucd-ident
+
+  # ferrous-opencc currently brings this in transitively.
+  "RUSTSEC-2025-0141", # bincode
+]

@@ -96,6 +96,24 @@ const availableModel = {
   partial_size: 0,
 };
 
+const largeAvailableModel = {
+  ...availableModel,
+  id: "large-v3",
+  name: "Large V3",
+  filename: "large-v3.bin",
+  size_mb: 1536,
+  is_recommended: false,
+};
+
+const moonshineAvailableModel = {
+  ...availableModel,
+  id: "moonshine-base",
+  name: "Moonshine Base",
+  filename: "moonshine-base.bin",
+  size_mb: 280,
+  is_recommended: false,
+};
+
 const baseSettings = {
   app_aware_tone_enabled: false,
   app_language: "en",
@@ -447,6 +465,28 @@ test.describe("Vox Jot app", () => {
         name: /Choose the transcription model you want to start with/i,
       }),
     ).toBeVisible();
+  });
+
+  test("reveals advanced model options on demand during onboarding", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      hasAnyModels: false,
+      models: [availableModel, largeAvailableModel, moonshineAvailableModel],
+    });
+
+    await page.getByRole("button", { name: /Set Up Vox Jot/i }).click();
+
+    await expect(page.getByText("Parakeet V3")).toBeVisible();
+    await expect(page.getByText("Large V3")).toHaveCount(0);
+    await expect(page.getByText("Moonshine Base")).toHaveCount(0);
+
+    await page
+      .getByRole("button", { name: /Show more model options/i })
+      .click();
+
+    await expect(page.getByText("Large V3")).toBeVisible();
+    await expect(page.getByText("Moonshine Base")).toBeVisible();
   });
 
   test("skips welcome for returning users who only need permissions", async ({

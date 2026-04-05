@@ -787,6 +787,14 @@ async getAvailableTtsVoices() : Promise<Result<VoiceInfo[], string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async getTtsVoicesForSelection(providerId: string, modelId: string | null) : Promise<Result<VoiceInfo[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_tts_voices_for_selection", { providerId, modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async refreshTtsVoices() : Promise<Result<VoiceInfo[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("refresh_tts_voices") };
@@ -1564,6 +1572,182 @@ async listInstalledApps() : Promise<Result<InstalledApp[], string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async convoCheckAvailability() : Promise<Result<ConvoAvailability, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_check_availability") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoPrepareSession(mode: ConvoMode, voiceId: string | null, context: string | null) : Promise<Result<ConvoSessionState, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_prepare_session", { mode, voiceId, context }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoSendTextTurn(sessionId: string, text: string, context: string | null) : Promise<Result<ConvoTurnResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_send_text_turn", { sessionId, text, context }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoResetSession(sessionId: string) : Promise<Result<ConvoSessionState, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_reset_session", { sessionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoGetSession(sessionId: string) : Promise<Result<ConvoSessionState, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_get_session", { sessionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoUpdateSpeakReplies(sessionId: string, enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_update_speak_replies", { sessionId, enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoCaptureSelection() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_capture_selection") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoGetClipboardText() : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_get_clipboard_text") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoAddContextItem(sessionId: string, label: string, sourceType: string, content: string) : Promise<Result<ConvoContextItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_add_context_item", { sessionId, label, sourceType, content }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoRemoveContextItem(sessionId: string, itemId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_remove_context_item", { sessionId, itemId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoListContextItems(sessionId: string) : Promise<Result<ConvoContextItem[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_list_context_items", { sessionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoReadFileText(sessionId: string, path: string) : Promise<Result<ConvoContextItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_read_file_text", { sessionId, path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoReadFolderText(sessionId: string, path: string) : Promise<Result<ConvoContextItem[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_read_folder_text", { sessionId, path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoGetSettingsCatalog() : Promise<Result<SettingsCatalogEntry[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_get_settings_catalog") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoGetCurrentNote(noteId: number) : Promise<Result<Note | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_get_current_note", { noteId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoApplyNoteEdit(noteId: number, action: string, content: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_apply_note_edit", { noteId, action, content }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoStartAudioCapture() : Promise<Result<ConvoAudioCaptureStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_start_audio_capture") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoStopAudioCapture() : Promise<Result<number[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_stop_audio_capture") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoSendAudioTurn(sessionId: string, wavBytes: number[], context: string | null) : Promise<Result<ConvoTurnResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_send_audio_turn", { sessionId, wavBytes, context }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoPlayAudioReply(audioBase64: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_play_audio_reply", { audioBase64 }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoEnsureHelperRunning() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_ensure_helper_running") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convoIsAudioCapturing() : Promise<Result<ConvoAudioCaptureStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_is_audio_capturing") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -1587,6 +1771,17 @@ export type CapabilityFlags = { downloadable: boolean; loadable: boolean; local_
 export type CatalogModelDescriptor = { id: string; provider_id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; installed: boolean; selected: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_label: string; runtime: RuntimeRequirement; license_label: string | null; locale: string | null; supported_languages: string[]; readiness_status: string | null; readiness_issues: string[]; capabilities: CapabilityFlags; delivery_support: TtsDeliverySupport }
 export type CatalogSourceKind = "builtin" | "runtime"
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
+export type ConvoActionSuggestion = { action_type: string; label: string; payload: string }
+/**
+ * Status of the convo audio capture.
+ */
+export type ConvoAudioCaptureStatus = { capturing: boolean }
+export type ConvoAvailability = { available: boolean; reason: string | null; helper_running: boolean }
+export type ConvoContextItem = { id: string; label: string; source_type: string; content: string; char_count: number }
+export type ConvoMode = "selection" | "jotpad" | "settings_coach" | "files_context"
+export type ConvoSessionState = { session_id: string; mode: ConvoMode; transcript: ConvoTranscriptItem[]; context_description: string; voice_id: string; speak_replies: boolean; context_items: ConvoContextItem[]; suggested_actions: ConvoActionSuggestion[] }
+export type ConvoTranscriptItem = { id: string; role: string; text: string; timestamp_ms: number; has_audio: boolean }
+export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
@@ -1653,6 +1848,7 @@ export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind:
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type RuntimeRequirement = { id: string; label: string; engine_family: string; auto_routed: boolean }
 export type SelectionTranslationDestinationMode = "replace_selection" | "preview_then_replace" | "open_in_jot_pad"
+export type SettingsCatalogEntry = { key: string; label: string; description: string; current_value: string; category: string; setting_section: string }
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }
 /**
  * A text expansion snippet: when the trigger phrase is spoken,

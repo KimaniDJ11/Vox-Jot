@@ -7,6 +7,7 @@ pub mod audio_toolkit;
 pub mod cli;
 mod clipboard;
 mod commands;
+mod convo;
 mod correction_tracker;
 mod detail_view;
 mod github_release;
@@ -51,6 +52,7 @@ use correction_tracker::InsertedSpanTracker;
 use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
 use managers::continuous_cloning::ContinuousCloningManager;
+use managers::convo::ConvoController;
 use managers::history::HistoryManager;
 use managers::model::ModelManager;
 use managers::notes::NotesManager;
@@ -200,6 +202,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     let tts_manager = Arc::new(TtsManager::new(app_handle));
     let continuous_cloning_manager = Arc::new(ContinuousCloningManager::new(app_handle));
     let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
+    let convo_controller = Arc::new(ConvoController::new(app_handle));
 
     // Pre-warm the system voice cache in a background thread so the first
     // UI request returns instantly instead of spawning a subprocess.
@@ -219,6 +222,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(tts_manager.clone());
     app_handle.manage(continuous_cloning_manager.clone());
     app_handle.manage(sidecar_manager.clone());
+    app_handle.manage(convo_controller.clone());
     app_handle.manage(ScratchpadRoutingState::default());
     app_handle.manage(DetailViewRoutingState::default());
 
@@ -592,6 +596,28 @@ pub fn run(cli_args: CliArgs) {
         commands::show_detail_view,
         commands::get_detail_target_section,
         commands::list_installed_apps,
+        commands::convo::convo_check_availability,
+        commands::convo::convo_prepare_session,
+        commands::convo::convo_send_text_turn,
+        commands::convo::convo_reset_session,
+        commands::convo::convo_get_session,
+        commands::convo::convo_update_speak_replies,
+        commands::convo::convo_capture_selection,
+        commands::convo::convo_get_clipboard_text,
+        commands::convo::convo_add_context_item,
+        commands::convo::convo_remove_context_item,
+        commands::convo::convo_list_context_items,
+        commands::convo::convo_read_file_text,
+        commands::convo::convo_read_folder_text,
+        commands::convo::convo_get_settings_catalog,
+        commands::convo::convo_get_current_note,
+        commands::convo::convo_apply_note_edit,
+        commands::convo::convo_start_audio_capture,
+        commands::convo::convo_stop_audio_capture,
+        commands::convo::convo_send_audio_turn,
+        commands::convo::convo_play_audio_reply,
+        commands::convo::convo_ensure_helper_running,
+        commands::convo::convo_is_audio_capturing,
     ]);
 
     // Dev-only: refresh TS bindings for the frontend. Skip writing when unchanged so Vite

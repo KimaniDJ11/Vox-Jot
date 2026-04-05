@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
+import { ConvoModeView } from "@/components/convo";
 
 import { commands, type Note } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
@@ -861,6 +862,38 @@ export const AboutSection: React.FC = () => {
           <p>{aboutSummarySecondary}</p>
         </div>
       </SettingsGroup>
+    </div>
+  );
+};
+
+export const ConvoSelectionSection: React.FC = () => {
+  return (
+    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
+      <ConvoModeView mode="selection" />
+    </div>
+  );
+};
+
+export const ConvoJotpadSection: React.FC = () => {
+  return (
+    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
+      <ConvoModeView mode="jotpad" />
+    </div>
+  );
+};
+
+export const ConvoSettingsCoachSection: React.FC = () => {
+  return (
+    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
+      <ConvoModeView mode="settings_coach" />
+    </div>
+  );
+};
+
+export const ConvoFilesContextSection: React.FC = () => {
+  return (
+    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
+      <ConvoModeView mode="files_context" />
     </div>
   );
 };

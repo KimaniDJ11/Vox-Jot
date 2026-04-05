@@ -33,7 +33,8 @@ fi
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
 "$VENV_PYTHON" -m pip install -r "$BUILD_DIR/requirements.txt"
 
-ARCH="$(uname -m)"
+ARCH="${SPEECH_RUNTIME_ARCH:-}"
+[ -z "$ARCH" ] && ARCH="$(uname -m)"
 case "$(uname -s)" in
   Darwin)  PLATFORM="macos" ;;
   Linux)   PLATFORM="linux" ;;

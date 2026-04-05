@@ -16,17 +16,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-13          # Intel runner
+          - os: macos-latest
             platform: macos
-            arch: x64
+            arch_override: x86_64
             asset: speech-runtime-macos-x64.tar.gz
           - os: ubuntu-latest
             platform: linux
-            arch: x64
+            arch_override: ""
             asset: speech-runtime-linux-x64.tar.gz
           - os: windows-latest
             platform: windows
-            arch: x64
+            arch_override: ""
             asset: speech-runtime-windows-x64.tar.gz
 
     runs-on: ${{ matrix.os }}
@@ -44,6 +44,7 @@ jobs:
         if: runner.os != 'Windows'
         env:
           SPEECH_RUNTIME_PYTHON: python3.11
+          SPEECH_RUNTIME_ARCH: ${{ matrix.arch_override }}
         run: bash scripts/build-speech-runtime.sh
 
       - name: Build speech runtime (Windows)
@@ -51,10 +52,8 @@ jobs:
         shell: bash
         env:
           SPEECH_RUNTIME_PYTHON: python
-        run: |
-          # On Windows GHA, python3.11 isn't on PATH as "python3.11"
-          # but setup-python puts the correct version as "python"
-          bash scripts/build-speech-runtime.sh
+          SPEECH_RUNTIME_ARCH: ${{ matrix.arch_override }}
+        run: bash scripts/build-speech-runtime.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -496,6 +496,7 @@ pub fn run(cli_args: CliArgs) {
         commands::tts::tts_speak,
         commands::tts::tts_stop,
         commands::tts::get_available_tts_voices,
+        commands::tts::get_tts_voices_for_selection,
         commands::tts::refresh_tts_voices,
         commands::tts::preview_tts_voice,
         commands::tts::preview_tts_voice_preset,

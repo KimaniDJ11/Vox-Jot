@@ -139,6 +139,21 @@ pub async fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, 
 
 #[tauri::command]
 #[specta::specta]
+pub async fn get_tts_voices_for_selection(
+    app: AppHandle,
+    provider_id: String,
+    model_id: Option<String>,
+) -> Result<Vec<VoiceInfo>, String> {
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    tokio::task::spawn_blocking(move || {
+        manager.get_available_voices_for_selection(&provider_id, model_id.as_deref())
+    })
+    .await
+    .map_err(|err| format!("Failed to load TTS voices for selection: {err}"))?
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     tokio::task::spawn_blocking(move || {

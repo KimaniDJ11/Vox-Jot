@@ -17,6 +17,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
@@ -128,6 +129,16 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "fish_speech",
 ]);
 const DEFAULT_TTS_PREVIEW_TEXT = "Vox Jot is ready.";
+
+async function getTtsVoicesForSelection(
+  providerId: string,
+  modelId: string | null,
+) {
+  return invoke<VoiceInfo[]>("get_tts_voices_for_selection", {
+    providerId,
+    modelId,
+  });
+}
 
 function localeLabel(locale: string | null | undefined) {
   return locale ? ` (${locale})` : "";
@@ -1076,10 +1087,14 @@ const VoiceArchitectSection: React.FC<{
   const [saveProfileNameDraft, setSaveProfileNameDraft] = useState("");
   const [draftProviderId, setDraftProviderId] = useState("");
   const [draftModelId, setDraftModelId] = useState("");
+  const [draftVoiceId, setDraftVoiceId] = useState("__auto__");
+  const [draftVoices, setDraftVoices] = useState<VoiceInfo[]>([]);
+  const [loadingDraftVoices, setLoadingDraftVoices] = useState(false);
   const [draftTuning, setDraftTuning] = useState(defaultVoiceTuning());
   const [previewTextDraft, setPreviewTextDraft] = useState(
     DEFAULT_TTS_PREVIEW_TEXT,
   );
+  const lastDraftSelectionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSaveProfileNameDraft("");
@@ -1088,6 +1103,8 @@ const VoiceArchitectSection: React.FC<{
   useEffect(() => {
     setDraftProviderId(speech.activePreset?.provider_id ?? "");
     setDraftModelId(speech.activePreset?.model_id ?? "");
+    setDraftVoiceId(speech.activePreset?.voice_id ?? "__auto__");
+    lastDraftSelectionKeyRef.current = null;
     setDraftTuning({
       ...(speech.activePreset?.tuning ?? defaultVoiceTuning()),
     });
@@ -1095,7 +1112,121 @@ const VoiceArchitectSection: React.FC<{
     speech.activePreset?.id,
     speech.activePreset?.model_id,
     speech.activePreset?.provider_id,
+    speech.activePreset?.voice_id,
     speech.activePreset?.tuning,
+  ]);
+
+  useEffect(() => {
+    if (!speech.settings || !speech.activePreset) return;
+
+    const providerIdForControls =
+      speech.providerOptions.find((provider) => provider.value === draftProviderId)
+        ?.value ??
+      speech.providerOptions[0]?.value ??
+      "";
+    const modelOptionsForProvider = speech.visibleModels.filter(
+      (model) => model.provider_id === providerIdForControls,
+    );
+    const modelIdForControls =
+      modelOptionsForProvider.find((model) => model.id === draftModelId)?.id ??
+      modelOptionsForProvider[0]?.id ??
+      "";
+    const matchesActiveModel =
+      providerIdForControls === speech.activePreset.provider_id &&
+      modelIdForControls === speech.activePreset.model_id;
+    const selectionKey = `${providerIdForControls}::${modelIdForControls}`;
+
+    if (lastDraftSelectionKeyRef.current === selectionKey) {
+      return;
+    }
+    lastDraftSelectionKeyRef.current = selectionKey;
+
+    if (matchesActiveModel) {
+      setDraftVoiceId(speech.activePreset.voice_id ?? "__auto__");
+    } else {
+      setDraftVoiceId("__auto__");
+    }
+  }, [
+    draftModelId,
+    draftProviderId,
+    speech.activePreset,
+    speech.providerOptions,
+    speech.settings,
+    speech.visibleModels,
+  ]);
+
+  useEffect(() => {
+    if (!speech.settings || !speech.activePreset) return;
+
+    const providerIdForControls =
+      speech.providerOptions.find((provider) => provider.value === draftProviderId)
+        ?.value ??
+      speech.providerOptions[0]?.value ??
+      "";
+    const modelOptionsForProvider = speech.visibleModels.filter(
+      (model) => model.provider_id === providerIdForControls,
+    );
+    const modelIdForControls =
+      modelOptionsForProvider.find((model) => model.id === draftModelId)?.id ??
+      modelOptionsForProvider[0]?.id ??
+      "";
+    const matchesActiveModel =
+      providerIdForControls === speech.activePreset.provider_id &&
+      modelIdForControls === speech.activePreset.model_id;
+
+    if (!providerIdForControls || !modelIdForControls) {
+      setDraftVoices([]);
+      setLoadingDraftVoices(false);
+      return;
+    }
+
+    if (isVoiceFixedToModel(providerIdForControls)) {
+      setDraftVoices([]);
+      setLoadingDraftVoices(false);
+      return;
+    }
+
+    if (matchesActiveModel) {
+      setDraftVoices(speech.voices);
+      setLoadingDraftVoices(speech.loadingVoices);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingDraftVoices(true);
+
+    void getTtsVoicesForSelection(providerIdForControls, modelIdForControls)
+      .then((voices) => {
+        if (cancelled) return;
+        setDraftVoices(voices);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setDraftVoices([]);
+        speech.setStatusMessage(
+          error instanceof Error
+            ? error.message
+            : "Failed to load voices for the selected model",
+        );
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingDraftVoices(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draftModelId,
+    draftProviderId,
+    speech.activePreset,
+    speech.loadingVoices,
+    speech.providerOptions,
+    speech.settings,
+    speech.setStatusMessage,
+    speech.visibleModels,
+    speech.voices,
   ]);
 
   if (!speech.settings || !speech.activePreset) return null;
@@ -1105,17 +1236,10 @@ const VoiceArchitectSection: React.FC<{
       speech.activeProvider?.runtime.engine_family ??
       null,
   );
-  const supportsManualVoiceId =
-    speech.activePreset.provider_id === "local_sidecar_api";
   const activeCloneProfile =
     speech.compatibleProfiles.find(
       (profile) => profile.id === speech.activePreset?.voice_profile_id,
     ) ?? null;
-  const activeVoiceLabel =
-    activeCloneProfile?.label ??
-    speech.activePreset.voice_label_snapshot ??
-    speech.activePreset.voice_id ??
-    "Automatic voice";
   const activeModelLabel =
     speech.activeModel?.label ?? speech.activePreset.model_id;
   const activeProviderLabel =
@@ -1129,6 +1253,8 @@ const VoiceArchitectSection: React.FC<{
     )?.value ??
     speech.providerOptions[0]?.value ??
     "";
+  const supportsDraftManualVoiceId =
+    draftProviderIdForControls === "local_sidecar_api";
   const draftModelOptions = speech.visibleModels
     .filter((model) => model.provider_id === draftProviderIdForControls)
     .map((model) => ({
@@ -1165,11 +1291,32 @@ const VoiceArchitectSection: React.FC<{
   const draftLocaleLabel = draftMatchesActiveModel
     ? activeLocaleLabel
     : (draftSelectedModel?.locale ?? "Auto");
-  const draftVoiceLabel = draftMatchesActiveModel
-    ? activeVoiceLabel
-    : isVoiceFixedToModel(draftProviderIdForControls)
-      ? (draftSelectedModel?.label ?? draftModelIdForControls)
-      : "Default voice";
+  const draftVoiceInventory = draftMatchesActiveModel ? speech.voices : draftVoices;
+  const draftSelectedVoice =
+    draftVoiceInventory.find((voice) => voice.id === draftVoiceId) ?? null;
+  const draftVoiceLabel = isVoiceFixedToModel(draftProviderIdForControls)
+    ? (draftSelectedModel?.label ?? draftModelIdForControls)
+    : draftVoiceId !== "__auto__" && draftSelectedVoice
+      ? draftSelectedVoice.label
+      : loadingDraftVoices
+        ? "Loading voices..."
+        : draftVoiceInventory.length > 1
+          ? `${draftVoiceInventory.length} voices`
+          : draftVoiceInventory.length === 1
+            ? "1 voice"
+            : "No preset voices";
+  const draftVoiceOptions = [
+    {
+      value: "__auto__",
+      label:
+        draftVoiceInventory.length > 0 ? "Automatic voice" : "No preset voices",
+      disabled: draftVoiceInventory.length === 0,
+    },
+    ...draftVoiceInventory.map((voice) => ({
+      value: voice.id,
+      label: `${voice.label}${localeLabel(voice.locale)}`,
+    })),
+  ];
   const draftModelLabel = draftSelectedModel?.label ?? activeModelLabel;
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
@@ -1177,28 +1324,30 @@ const VoiceArchitectSection: React.FC<{
       source.provider_id !== draftProviderIdForControls ||
       source.model_id !== draftModelIdForControls;
     const voiceIsFixedToModel = isVoiceFixedToModel(draftProviderIdForControls);
+    const draftVoiceSelectionId =
+      voiceIsFixedToModel || draftVoiceId === "__auto__" ? null : draftVoiceId;
+    const draftVoiceSelection =
+      draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ?? null;
 
     return {
       ...source,
       provider_id: draftProviderIdForControls,
       model_id: draftModelIdForControls,
       tuning: { ...draftTuning },
-      voice_id: providerOrModelChanged
-        ? voiceIsFixedToModel
-          ? draftModelIdForControls
-          : null
-        : (source.voice_id ?? null),
+      voice_id: voiceIsFixedToModel
+        ? draftModelIdForControls
+        : (draftVoiceSelectionId ?? null),
       voice_profile_id: providerOrModelChanged
         ? null
         : (source.voice_profile_id ?? null),
-      voice_label_snapshot: providerOrModelChanged
-        ? voiceIsFixedToModel
-          ? (draftSelectedModel?.label ?? draftModelIdForControls)
-          : null
-        : (source.voice_label_snapshot ?? null),
-      locale_snapshot: providerOrModelChanged
-        ? (draftSelectedModel?.locale ?? null)
-        : (source.locale_snapshot ?? null),
+      voice_label_snapshot: voiceIsFixedToModel
+        ? (draftSelectedModel?.label ?? draftModelIdForControls)
+        : (draftVoiceSelection?.label ?? null),
+      locale_snapshot: draftVoiceSelection
+        ? (draftVoiceSelection.locale ?? null)
+        : providerOrModelChanged
+          ? (draftSelectedModel?.locale ?? null)
+          : (source.locale_snapshot ?? null),
     };
   };
   const updateDraftPreset = (patch: TtsVoicePresetPatch) => {
@@ -1352,6 +1501,7 @@ const VoiceArchitectSection: React.FC<{
                       speech.visibleModels.find(
                         (model) => model.provider_id === value,
                       )?.id ?? "";
+                    lastDraftSelectionKeyRef.current = null;
                     setDraftProviderId(value);
                     setDraftModelId(nextModelId);
                   }}
@@ -1363,7 +1513,10 @@ const VoiceArchitectSection: React.FC<{
               <WorkflowField label="Model">
                 <SelectField
                   value={draftModelIdForControls}
-                  onChange={(value) => setDraftModelId(value)}
+                  onChange={(value) => {
+                    lastDraftSelectionKeyRef.current = null;
+                    setDraftModelId(value);
+                  }}
                   disabled={
                     !speech.ttsEnabled ||
                     speech.loadingPlatform ||
@@ -1382,21 +1535,24 @@ const VoiceArchitectSection: React.FC<{
                 </div>
               ) : null}
 
-              {draftMatchesActiveModel &&
-              !isVoiceFixedToModel(speech.activePreset.provider_id) &&
-              speech.voices.length > 0 ? (
+              {!isVoiceFixedToModel(draftProviderIdForControls) &&
+              !supportsDraftManualVoiceId ? (
                 <WorkflowField label="Voice">
                   <SelectField
-                    value={speech.activePreset.voice_id ?? "__auto__"}
+                    value={draftVoiceId}
                     onChange={(value) => {
+                      setDraftVoiceId(value);
+                      if (!draftMatchesActiveModel) {
+                        return;
+                      }
                       const selectedVoice =
-                        speech.voices.find((voice) => voice.id === value) ??
+                        draftVoiceInventory.find((voice) => voice.id === value) ??
                         null;
                       void speech.updateActivePreset({
                         voice_id: value === "__auto__" ? null : value,
                         voice_label_snapshot:
                           value === "__auto__"
-                            ? "Automatic voice"
+                            ? null
                             : (selectedVoice?.label ?? value),
                         locale_snapshot:
                           value === "__auto__"
@@ -1404,8 +1560,12 @@ const VoiceArchitectSection: React.FC<{
                             : (selectedVoice?.locale ?? null),
                       });
                     }}
-                    disabled={!speech.ttsEnabled || speech.loadingVoices}
-                    options={speech.voiceOptions}
+                    disabled={!speech.ttsEnabled || loadingDraftVoices}
+                    options={
+                      loadingDraftVoices
+                        ? [{ value: "__auto__", label: "Loading voices..." }]
+                        : draftVoiceOptions
+                    }
                   />
                 </WorkflowField>
               ) : null}
@@ -1434,7 +1594,7 @@ const VoiceArchitectSection: React.FC<{
                 </WorkflowField>
               ) : null}
 
-              {draftMatchesActiveModel && supportsManualVoiceId ? (
+              {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
                 <WorkflowField label="Manual Voice ID">
                   <Input
                     value={speech.activePreset.voice_id ?? ""}

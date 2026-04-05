@@ -751,6 +751,65 @@ fn first_mlx_audio_model_for_provider(
         .find(|definition| definition.provider_id == provider_id)
 }
 
+fn mlx_voice_locale(voice_id: &str) -> Option<&'static str> {
+    match voice_id.split('_').next().unwrap_or_default() {
+        "af" | "am" => Some("en-US"),
+        "bf" | "bm" => Some("en-GB"),
+        "ef" | "em" => Some("es"),
+        "ff" | "fm" => Some("fr-FR"),
+        "hf" | "hm" => Some("hi"),
+        "if" | "im" => Some("it"),
+        "jf" | "jm" => Some("ja-JP"),
+        "pf" | "pm" => Some("pt-BR"),
+        "zf" | "zm" => Some("zh-CN"),
+        _ => None,
+    }
+}
+
+fn mlx_voice_label(voice_id: &str) -> String {
+    voice_id
+        .split_once('_')
+        .map(|(_, name)| name)
+        .unwrap_or(voice_id)
+        .split('_')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn mlx_voice_locale_for_provider(provider_id: &str, voice_id: &str) -> Option<String> {
+    if provider_id == TTS_PROVIDER_MLX_KOKORO_ID {
+        return mlx_voice_locale(voice_id).map(str::to_string);
+    }
+
+    if provider_id == TTS_PROVIDER_MLX_VOXTRAL_TTS_ID {
+        let prefix = voice_id.split('_').next().unwrap_or_default();
+        let locale = match prefix {
+            "fr" => Some("fr-FR"),
+            "es" => Some("es"),
+            "de" => Some("de"),
+            "it" => Some("it"),
+            "pt" => Some("pt-BR"),
+            "nl" => Some("nl"),
+            "ar" => Some("ar"),
+            "hi" => Some("hi"),
+            // Style voices in Voxtral's embedding set are English presets.
+            "casual" | "cheerful" | "neutral" => Some("en"),
+            _ => None,
+        };
+        return locale.map(str::to_string);
+    }
+
+    None
+}
+
 pub struct TtsManager {
     app_handle: AppHandle,
     current_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
@@ -859,6 +918,203 @@ impl TtsManager {
             .unwrap_or_else(|| PathBuf::from(definition.hf_model_id))
             .to_string_lossy()
             .to_string()
+    }
+
+    fn settings_for_voice_selection(
+        &self,
+        provider_id: &str,
+        model_id: Option<&str>,
+    ) -> AppSettings {
+        let mut settings = get_settings(&self.app_handle);
+        settings.tts_active_preset_id = None;
+        settings.selected_tts_provider_id = provider_id.to_string();
+        settings.selected_tts_model_id = model_id.map(str::to_string);
+        settings.selected_tts_voice_id = None;
+        settings.selected_tts_profile_id = None;
+        settings
+    }
+
+    fn mlx_audio_voice_inventory(&self, settings: &AppSettings) -> Vec<VoiceInfo> {
+        let provider_id = self.selected_provider_id(settings);
+        let definition = settings
+            .explicit_active_tts_preset()
+            .and_then(|preset| mlx_audio_tts_model_definition(&preset.model_id))
+            .or_else(|| {
+                settings
+                    .selected_tts_model_id
+                    .as_deref()
+                    .and_then(mlx_audio_tts_model_definition)
+            })
+            .or_else(|| first_mlx_audio_model_for_provider(&provider_id));
+
+        definition
+            .map(|definition| self.mlx_audio_voice_inventory_for_definition(definition))
+            .unwrap_or_default()
+    }
+
+    fn mlx_audio_voice_inventory_for_definition(
+        &self,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Vec<VoiceInfo> {
+        let provider_id = definition.provider_id;
+        let model_source = PathBuf::from(self.resolve_mlx_audio_model_source(definition));
+
+        let voices = if provider_id == TTS_PROVIDER_MLX_KOKORO_ID {
+            self.kokoro_voice_inventory(&model_source)
+        } else {
+            self.mlx_embedded_voice_inventory(&model_source)
+        };
+
+        if !voices.is_empty() {
+            return voices
+                .into_iter()
+                .map(|mut voice| {
+                    voice.locale = mlx_voice_locale_for_provider(provider_id, &voice.id);
+                    voice
+                })
+                .collect();
+        }
+
+        self.mlx_config_voice_inventory(&model_source, provider_id)
+    }
+
+    fn kokoro_voice_inventory(&self, model_source: &Path) -> Vec<VoiceInfo> {
+        let voices_dir = [
+            model_source.join("checkpoints").join("voices"),
+            model_source.join("voices"),
+        ]
+        .into_iter()
+        .find(|candidate| candidate.is_dir());
+
+        let Some(voices_dir) = voices_dir else {
+            return Vec::new();
+        };
+
+        let Ok(entries) = fs::read_dir(&voices_dir) else {
+            warn!(
+                "Failed to enumerate Kokoro voices from {}",
+                voices_dir.display()
+            );
+            return Vec::new();
+        };
+
+        let mut voices = entries
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
+                let path = entry.path();
+                let is_voice_file = path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("pt"))
+                    .unwrap_or(false);
+                if !is_voice_file {
+                    return None;
+                }
+
+                let voice_id = path.file_stem()?.to_str()?.to_string();
+                Some(VoiceInfo {
+                    label: mlx_voice_label(&voice_id),
+                    locale: mlx_voice_locale(&voice_id).map(str::to_string),
+                    id: voice_id,
+                    engine: TtsEngineKind::MlxNative,
+                    installed: true,
+                    available: true,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        voices.sort_by(|left, right| left.label.cmp(&right.label).then(left.id.cmp(&right.id)));
+        voices
+    }
+
+    fn mlx_embedded_voice_inventory(&self, model_source: &Path) -> Vec<VoiceInfo> {
+        let voices_dir = model_source.join("voice_embedding");
+        if !voices_dir.is_dir() {
+            return Vec::new();
+        }
+
+        let Ok(entries) = fs::read_dir(&voices_dir) else {
+            warn!(
+                "Failed to enumerate MLX embedded voices from {}",
+                voices_dir.display()
+            );
+            return Vec::new();
+        };
+
+        let mut voices = entries
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
+                let path = entry.path();
+                let is_embedding_file = path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("safetensors"))
+                    .unwrap_or(false);
+                if !is_embedding_file {
+                    return None;
+                }
+
+                let voice_id = path.file_stem()?.to_str()?.to_string();
+                Some(VoiceInfo {
+                    label: mlx_voice_label(&voice_id),
+                    locale: None,
+                    id: voice_id,
+                    engine: TtsEngineKind::MlxNative,
+                    installed: true,
+                    available: true,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        voices.sort_by(|left, right| left.label.cmp(&right.label).then(left.id.cmp(&right.id)));
+        voices
+    }
+
+    fn mlx_config_voice_inventory(
+        &self,
+        model_source: &Path,
+        provider_id: &str,
+    ) -> Vec<VoiceInfo> {
+        let voice_ids = ["config.json", "params.json"]
+            .into_iter()
+            .filter_map(|filename| {
+                let path = model_source.join(filename);
+                let raw = fs::read_to_string(path).ok()?;
+                let value = serde_json::from_str::<serde_json::Value>(&raw).ok()?;
+                value
+                    .pointer("/multimodal/audio_tokenizer_args/voice")
+                    .and_then(|voice_map| voice_map.as_object())
+                    .map(|voice_map| voice_map.keys().cloned().collect::<Vec<_>>())
+            })
+            .flatten()
+            .collect::<std::collections::BTreeSet<_>>();
+
+        voice_ids
+            .into_iter()
+            .map(|voice_id| VoiceInfo {
+                label: mlx_voice_label(&voice_id),
+                locale: mlx_voice_locale_for_provider(provider_id, &voice_id),
+                id: voice_id,
+                engine: TtsEngineKind::MlxNative,
+                installed: true,
+                available: true,
+            })
+            .collect()
+    }
+
+    pub fn get_available_voices_for_selection(
+        &self,
+        provider_id: &str,
+        model_id: Option<&str>,
+    ) -> Result<Vec<VoiceInfo>, String> {
+        let settings = self.settings_for_voice_selection(provider_id, model_id);
+        match self.resolve_engine_kind(&settings, None)? {
+            TtsEngineKind::System => self.system_voices(),
+            TtsEngineKind::SherpaOnnx => Ok(self.installed_pack_voices()),
+            TtsEngineKind::MlxNative => Ok(self.mlx_audio_voice_inventory(&settings)),
+            TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
+            TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
+        }
     }
 
     fn managed_runtime_model_definition(
@@ -1369,7 +1625,7 @@ impl TtsManager {
         match self.resolve_engine_kind(&settings, None)? {
             TtsEngineKind::System => self.system_voices(),
             TtsEngineKind::SherpaOnnx => Ok(self.installed_pack_voices()),
-            TtsEngineKind::MlxNative => Ok(Vec::new()),
+            TtsEngineKind::MlxNative => Ok(self.mlx_audio_voice_inventory(&settings)),
             TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
             TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
         }
@@ -3784,7 +4040,7 @@ impl TtsManager {
         let voices = match engine {
             TtsEngineKind::System => self.system_voices()?,
             TtsEngineKind::SherpaOnnx => self.installed_pack_voices(),
-            TtsEngineKind::MlxNative => Vec::new(),
+            TtsEngineKind::MlxNative => self.mlx_audio_voice_inventory(settings),
             TtsEngineKind::Qwen3Native => self.installed_qwen3_voices(),
             TtsEngineKind::Sidecar => Vec::new(),
         };
@@ -5528,5 +5784,14 @@ mod tests {
         assert!(!is_valid_mlx_voice_id("qwen3-tts-0.6b"));
         assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_KOKORO_ID));
         assert!(is_valid_mlx_voice_id("af_heart"));
+    }
+
+    #[test]
+    fn mlx_voice_helpers_format_kokoro_voice_metadata() {
+        assert_eq!(mlx_voice_label("af_heart"), "Heart");
+        assert_eq!(mlx_voice_label("jf_gongitsune"), "Gongitsune");
+        assert_eq!(mlx_voice_locale("af_heart"), Some("en-US"));
+        assert_eq!(mlx_voice_locale("bf_isabella"), Some("en-GB"));
+        assert_eq!(mlx_voice_locale("zf_xiaobei"), Some("zh-CN"));
     }
 }

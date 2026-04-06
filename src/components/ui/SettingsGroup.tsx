@@ -17,20 +17,20 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   return (
     <section className="space-y-2">
       {title && (
-        <div className="px-5 mb-3">
-          <div className="flex items-start justify-between gap-3">
+        <div className="px-1 mb-2">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-extrabold uppercase tracking-[0.14em] text-[var(--text)]">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                 {title}
-              </h2>
+              </h3>
               {description && (
-                <p className="mt-2 text-[14px] leading-6 text-[var(--muted)]">
+                <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">
                   {description}
                 </p>
               )}
             </div>
             {titleAction ? (
-              <div className="shrink-0 pt-0.5">{titleAction}</div>
+              <div className="shrink-0">{titleAction}</div>
             ) : null}
           </div>
         </div>

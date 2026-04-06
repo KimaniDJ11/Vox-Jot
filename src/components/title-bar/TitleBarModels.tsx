@@ -87,7 +87,7 @@ const TitleBarModels: React.FC = () => {
 
           {showLlmDropdown && (
             <div
-              className="absolute top-full end-0 mt-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-mid-gray/20 rounded-2xl shadow-lg py-2 z-50 text-text"
+              className="absolute top-full end-0 mt-2 w-64 max-h-[60vh] overflow-y-auto bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-lg py-2 z-50 text-[var(--text)]"
               role="listbox"
               onKeyDown={handleLlmKeyDown}
             >
@@ -100,8 +100,8 @@ const TitleBarModels: React.FC = () => {
                     aria-selected={selectedLlmModel === model}
                     className={`w-full px-3 py-2 text-start text-sm transition-colors ${
                       selectedLlmModel === model
-                        ? "bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary hover:brightness-110"
-                        : "hover:bg-mid-gray/10"
+                        ? "bg-[var(--accent)] text-[var(--inverse-text)] hover:bg-[var(--accent)] hover:brightness-110"
+                        : "hover:bg-[var(--accent-soft)]"
                     }`}
                     onClick={() => {
                       void updatePostProcessModel(selectedProvider.id, model);

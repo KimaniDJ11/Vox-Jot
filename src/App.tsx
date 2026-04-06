@@ -14,6 +14,7 @@ import {
   Cpu,
   FileText,
   FlaskConical,
+  Headphones,
   History,
   Info,
   Keyboard,
@@ -103,7 +104,9 @@ const SectionHeader: React.FC<{ id: string; title: string }> = ({
 }) => (
   <div className="px-1">
     <div className="flex items-center justify-between gap-4">
-      <h2 className="text-xl font-extrabold uppercase tracking-[0.18em] text-[var(--text)]">
+      <h2
+        className="heading-display text-2xl font-semibold tracking-tight text-[var(--text)]"
+      >
         {title}
       </h2>
       <div
@@ -127,7 +130,7 @@ const PrimaryModeSwitcher: React.FC<{
 
   return (
     <div className="app-mode-switcher app-no-drag">
-      <div className="flex items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-0.5 shadow-[var(--shadow-sm)]">
         {items.map((item) => {
           const isActive = activeMode === item.id;
           const activate = () => onSelect(item.id);
@@ -150,7 +153,7 @@ const PrimaryModeSwitcher: React.FC<{
                   activate();
                 }
               }}
-              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
+              className={`rounded-[9px] px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-150 ${
                 isActive
                   ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
                   : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -329,7 +332,7 @@ function App() {
         {
           id: "output",
           label: "Output",
-          icon: Volume2,
+          icon: Headphones,
           title: "Output",
           content: <ListenOutputSection />,
         },
@@ -844,7 +847,7 @@ function App() {
               "flat-card rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
             title: "font-semibold",
             description:
-              "text-[color-mix(in_srgb,var(--color-text),transparent_35%)]",
+              "text-[color-mix(in_srgb,var(--text),transparent_35%)]",
           },
         }}
       />
@@ -950,12 +953,12 @@ function App() {
 
       <main className="main-content relative flex min-w-0 flex-col overflow-hidden bg-[var(--bg)]">
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 md:p-8">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (
               <section
                 key={activeSection.id}
                 id={activeSection.id}
-                className="space-y-5"
+                className="space-y-4 section-enter"
               >
                 <SectionHeader
                   id={activeSection.id}
@@ -982,7 +985,7 @@ function App() {
           ref={modalRef}
         >
           <div className="flat-card w-full max-w-3xl rounded-2xl">
-            <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--text),transparent_86%)] px-5 py-4">
               <div>
                 <h2 className="text-lg font-bold">
                   {pendingPreview.origin?.startsWith("translation")
@@ -994,7 +997,7 @@ function App() {
                       )
                     : t("settings.postProcessing.preview.modal.title")}
                 </h2>
-                <p className="text-sm text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                <p className="text-sm text-[color-mix(in_srgb,var(--text),transparent_35%)]">
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.translationDescription",
@@ -1032,7 +1035,7 @@ function App() {
 
             <div className="space-y-4 p-5">
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
                   {t("settings.postProcessing.preview.modal.originalLabel")}
                 </div>
                 <Textarea value={pendingPreview.source_text} readOnly />
@@ -1040,7 +1043,7 @@ function App() {
 
               {pendingPreview.translated_text && (
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                  <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
                     {t(
                       "settings.postProcessing.preview.modal.translatedLabel",
                       { defaultValue: "Translated" },
@@ -1051,7 +1054,7 @@ function App() {
               )}
 
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--color-text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.finalOutputLabel",
@@ -1066,7 +1069,7 @@ function App() {
               </div>
 
               {pendingPreview.destination_label && (
-                <div className="text-xs font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--color-text),transparent_45%)]">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--text),transparent_45%)]">
                   {`${t(
                     "settings.postProcessing.preview.modal.destinationPrefix",
                     { defaultValue: "Destination" },
@@ -1075,7 +1078,7 @@ function App() {
               )}
             </div>
 
-            <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--color-text),transparent_86%)] px-5 py-4 sm:flex-row">
+            <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--text),transparent_86%)] px-5 py-4 sm:flex-row">
               <Button
                 variant="secondary"
                 onClick={() => void resolvePreview(false)}

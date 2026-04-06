@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
       <div
-        className={`flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-4" : "px-4 py-5"}`}
+        className={`flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-3" : "px-3 py-4"}`}
       >
         <nav
           aria-label={t("sidebar.settingsLabel", {
@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-0.5">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = activeSectionId === item.id;
@@ -55,10 +55,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   type="button"
                   onClick={() => onSectionChange(item.id)}
-                  className={`group relative flex w-full items-center rounded-2xl transition-all duration-200 ${
+                  className={`group relative flex w-full items-center rounded-xl transition-all duration-200 ${
                     collapsed
-                      ? "justify-center px-0 py-3"
-                      : "gap-3 px-4 py-3 text-left"
+                      ? "justify-center px-0 py-2.5"
+                      : "gap-2.5 px-3 py-2 text-left"
                   } ${
                     isActive
                       ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
@@ -80,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                   {!collapsed && (
                     <span
-                      className={`truncate text-base font-bold leading-6 ${
+                      className={`truncate text-sm font-semibold leading-5 ${
                         isActive
                           ? "text-[var(--inverse-text)]"
                           : "text-[var(--text)]"
@@ -99,10 +99,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onSettingsClick}
-            className={`group relative flex w-full items-center rounded-2xl transition-all duration-200 ${
+            className={`group relative flex w-full items-center rounded-xl transition-all duration-200 ${
               collapsed
-                ? "justify-center px-0 py-3"
-                : "gap-3 px-4 py-3 text-left"
+                ? "justify-center px-0 py-2.5"
+                : "gap-2.5 px-3 py-2 text-left"
             } ${
               settingsActive
                 ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
@@ -124,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
             {!collapsed && (
               <span
-                className={`truncate text-base font-bold leading-6 ${
+                className={`truncate text-sm font-semibold leading-5 ${
                   settingsActive
                     ? "text-[var(--inverse-text)]"
                     : "text-[var(--text)]"

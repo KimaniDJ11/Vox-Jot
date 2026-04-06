@@ -121,7 +121,7 @@ export const FilesContextCard: React.FC<FilesContextCardProps> = ({
               {sourceIcon(item.source_type)}
               <span className="max-w-[150px] truncate">{item.label}</span>
               <span className="text-[var(--muted)]">
-                ({Math.round(item.char_count / 1000)}k)
+                {t("convo.filesContext.charCount", { count: Math.round(item.char_count / 1000) })}
               </span>
               <button
                 type="button"

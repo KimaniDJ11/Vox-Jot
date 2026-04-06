@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "../ui/Button";
 import { SettingContainer } from "../ui/SettingContainer";
@@ -10,6 +11,7 @@ interface GlobalLanguageSyncProps {
 
 export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
   ({ descriptionMode = "tooltip", grouped = false }) => {
+    const { t } = useTranslation();
     const {
       settings,
       updateSetting,
@@ -66,7 +68,7 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
               onChange={(event) => void handleToggleChange(event.target.checked)}
             />
             <span className="text-sm font-medium text-[var(--text)]">
-              Sync future app-language changes automatically
+              {t("settings.globalLanguageSync.syncAutomatically")}
             </span>
           </label>
 

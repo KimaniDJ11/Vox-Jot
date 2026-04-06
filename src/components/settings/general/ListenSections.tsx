@@ -34,6 +34,7 @@ import {
   CompactMetaRow,
   type CompactBadgeItem,
 } from "@/components/ui/CompactOverflow";
+import { Trans, useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/lib/constants/languages";
 import {
   getModelPlatformOverview,
@@ -900,6 +901,7 @@ const VoiceTuningCard: React.FC<{
   embedded = false,
   surfaceClassName = workflowCardClassName,
 }) => {
+  const { t } = useTranslation();
   const descriptors = tuningDescriptorMap(controls);
   const controlIds = new Set(controls.map((control) => control.id));
 
@@ -1060,7 +1062,7 @@ const VoiceTuningCard: React.FC<{
 
       {controlIds.has("style_instructions") ? (
         <div className="mt-3 space-y-2">
-          <p className={workflowFieldLabelClassName}>Style Instructions</p>
+          <p className={workflowFieldLabelClassName}>{t('listen.tuning.styleInstructions')}</p>
           <Textarea
             value={preset.tuning.style_instructions ?? ""}
             onChange={(event) =>
@@ -1084,6 +1086,7 @@ const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
+  const { t } = useTranslation();
   const [saveProfileNameDraft, setSaveProfileNameDraft] = useState("");
   const [draftProviderId, setDraftProviderId] = useState("");
   const [draftModelId, setDraftModelId] = useState("");
@@ -1392,21 +1395,22 @@ const VoiceArchitectSection: React.FC<{
               <div className="flex flex-wrap items-center gap-2">
                 <span className={speechLibraryActiveBadgeClassName}>
                   <Star className="h-3.5 w-3.5" />
-                  Active
+                  {t('listen.myVoices.active')}
                 </span>
                 <span className={speechLibraryBadgeClassName}>
                   {activeEngineFamily}
                 </span>
               </div>
               <p className="text-sm text-[var(--muted)]">
-                Active preset:{" "}
-                <span className="font-semibold text-[var(--text)]">
-                  {speech.activePreset.label}
-                </span>
+                <Trans
+                  i18nKey="listen.myVoices.activePreset"
+                  values={{ name: speech.activePreset.label }}
+                  components={{ bold: <span className="font-semibold text-[var(--text)]" /> }}
+                />
               </p>
               <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
                 <div className="space-y-1">
-                  <p className={workflowFieldLabelClassName}>Save As</p>
+                  <p className={workflowFieldLabelClassName}>{t('listen.myVoices.saveAs')}</p>
                   <Input
                     value={saveProfileNameDraft}
                     onChange={(event) =>
@@ -1448,7 +1452,7 @@ const VoiceArchitectSection: React.FC<{
           <div className={whiteWorkflowCardClassName}>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <div className="space-y-2">
-                <p className={workflowFieldLabelClassName}>Preview Text</p>
+                <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
                 <Textarea
                   value={previewTextDraft}
                   onChange={(event) => setPreviewTextDraft(event.target.value)}
@@ -1472,7 +1476,7 @@ const VoiceArchitectSection: React.FC<{
                   className="inline-flex items-center justify-center gap-1.5"
                 >
                   <Play className="h-3.5 w-3.5" />
-                  Preview
+                  {t('listen.myVoices.preview')}
                 </Button>
                 <Button
                   type="button"
@@ -1482,7 +1486,7 @@ const VoiceArchitectSection: React.FC<{
                   className="inline-flex items-center justify-center gap-1.5"
                 >
                   <Square className="h-3.5 w-3.5" />
-                  Stop
+                  {t('listen.myVoices.stop')}
                 </Button>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--muted)]">
                   {draftProviderLabel} · {draftLocaleLabel}
@@ -1529,8 +1533,7 @@ const VoiceArchitectSection: React.FC<{
               {!draftMatchesActiveModel ? (
                 <div className="md:col-span-2">
                   <p className="text-xs leading-5 text-[var(--muted)]">
-                    Provider and model changes stay in draft mode until you save
-                    them as a new voice profile.
+                    {t('listen.myVoices.draftModeHint')}
                   </p>
                 </div>
               ) : null}
@@ -1627,7 +1630,7 @@ const VoiceArchitectSection: React.FC<{
         <div className={whiteWorkflowCardClassName}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-[var(--text)]">
-              Saved Profiles
+              {t('listen.myVoices.savedProfiles')}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -1642,7 +1645,7 @@ const VoiceArchitectSection: React.FC<{
                   !draftModelIdForControls
                 }
               >
-                Save Current
+                {t('listen.myVoices.saveCurrent')}
               </Button>
               <Button
                 type="button"
@@ -1651,7 +1654,7 @@ const VoiceArchitectSection: React.FC<{
                 onClick={() => void speech.createNewPreset()}
                 disabled={!speech.ttsEnabled}
               >
-                New
+                {t('listen.myVoices.new')}
               </Button>
               <Button
                 type="button"
@@ -1666,7 +1669,7 @@ const VoiceArchitectSection: React.FC<{
                     speech.loadingPresets ? "animate-spin" : ""
                   }`}
                 />
-                Refresh
+                {t('listen.myVoices.refresh')}
               </Button>
             </div>
           </div>
@@ -1695,7 +1698,7 @@ const VoiceArchitectSection: React.FC<{
                         {isActive ? (
                           <span className={speechLibraryActiveBadgeClassName}>
                             <Check className="h-3.5 w-3.5" />
-                            Active
+                            {t('listen.myVoices.active')}
                           </span>
                         ) : null}
                       </div>
@@ -1708,7 +1711,7 @@ const VoiceArchitectSection: React.FC<{
                         </span>
                         {preset.voice_profile_id ? (
                           <span className={speechLibraryBadgeClassName}>
-                            Clone
+                            {t('listen.myVoices.clone')}
                           </span>
                         ) : null}
                       </div>
@@ -1723,7 +1726,7 @@ const VoiceArchitectSection: React.FC<{
                           onClick={() => void speech.setActivePreset(preset.id)}
                           disabled={!speech.ttsEnabled}
                         >
-                          Use This Voice
+                          {t('listen.myVoices.useThisVoice')}
                         </Button>
                       ) : null}
                       <Button
@@ -1737,7 +1740,7 @@ const VoiceArchitectSection: React.FC<{
                         className="inline-flex items-center gap-1.5"
                       >
                         <Play className="h-3.5 w-3.5" />
-                        Preview
+                        {t('listen.myVoices.preview')}
                       </Button>
                       <Button
                         type="button"
@@ -1775,6 +1778,7 @@ const SoundDesignSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
+  const { t } = useTranslation();
   const [previewTextDraft, setPreviewTextDraft] = useState(
     DEFAULT_TTS_PREVIEW_TEXT,
   );
@@ -1804,14 +1808,14 @@ const SoundDesignSection: React.FC<{
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-[var(--text)]">
-                Tune the active profile and listen immediately
+                {t('listen.soundTuning.tuneTitle')}
               </h3>
               <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                The active profile is{" "}
+                {t('listen.soundTuning.activeProfileIs')}{" "}
                 <span className="font-semibold text-[var(--text)]">
                   {speech.activePreset.label}
                 </span>
-                . Preview from here while you adjust the delivery sliders below.
+                {t('listen.soundTuning.previewFromHere')}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1829,7 +1833,7 @@ const SoundDesignSection: React.FC<{
                 className="inline-flex items-center gap-1.5"
               >
                 <Play className="h-3.5 w-3.5" />
-                Preview
+                {t('listen.soundTuning.preview')}
               </Button>
               <Button
                 type="button"
@@ -1839,13 +1843,13 @@ const SoundDesignSection: React.FC<{
                 className="inline-flex items-center gap-1.5"
               >
                 <Square className="h-3.5 w-3.5" />
-                Stop
+                {t('listen.soundTuning.stop')}
               </Button>
             </div>
           </div>
 
           <div className="mt-5 space-y-2">
-            <p className={workflowFieldLabelClassName}>Preview Text</p>
+            <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
             <Textarea
               value={previewTextDraft}
               onChange={(event) => setPreviewTextDraft(event.target.value)}
@@ -2041,15 +2045,17 @@ const SpeechModelList: React.FC<{
 
 const SpeechPackManagerCard: React.FC<{
   speech: ListenSpeechState;
-}> = ({ speech }) => (
+}> = ({ speech }) => {
+  const { t } = useTranslation();
+  return (
   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
     <div className="space-y-3">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold text-[var(--text)]">
-          Pack Manager
+          {t('listen.packManager.title')}
         </h3>
         <p className="text-sm text-[var(--muted)]">
-          Download or remove offline speech packs without leaving Settings.
+          {t('listen.packManager.description')}
         </p>
       </div>
       <div className="space-y-2">
@@ -2087,7 +2093,7 @@ const SpeechPackManagerCard: React.FC<{
                     speech.setBusyPackId(null);
                   }}
                 >
-                  Remove
+                  {t('listen.packManager.remove')}
                 </Button>
               ) : (
                 <Button
@@ -2106,7 +2112,7 @@ const SpeechPackManagerCard: React.FC<{
                     speech.setBusyPackId(null);
                   }}
                 >
-                  Download
+                  {t('listen.packManager.download')}
                 </Button>
               )}
             </div>
@@ -2115,13 +2121,15 @@ const SpeechPackManagerCard: React.FC<{
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const EngineLibraryPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
   titleActionTargetId?: string;
 }> = ({ speech, showTitle = true, titleActionTargetId }) => {
+  const { t } = useTranslation();
   const [providerFilter, setProviderFilter] = useState("all");
   const [languageFilter, setLanguageFilter] = useState("all");
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
@@ -2289,7 +2297,7 @@ const EngineLibraryPanel: React.FC<{
                     : "hover:bg-mid-gray/10"
                 }`}
               >
-                All Languages
+                {t('listen.engineLibrary.allLanguages')}
               </button>
               {filteredLanguages.map((language) => (
                 <button
@@ -2323,7 +2331,7 @@ const EngineLibraryPanel: React.FC<{
       {speech.activeModel ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Active Listen Model
+            {t('listen.engineLibrary.activeListenModel')}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <p className="text-lg font-bold text-[var(--text)]">
@@ -2344,11 +2352,10 @@ const EngineLibraryPanel: React.FC<{
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Active Listen Model
+            {t('listen.engineLibrary.activeListenModel')}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Choose a provider and model to define how the active preset is
-            rendered.
+            {t('listen.engineLibrary.chooseProviderModel')}
           </p>
         </div>
       )}
@@ -2397,6 +2404,7 @@ const VoiceCloningSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
+  const { t } = useTranslation();
   const selectedProfile =
     speech.compatibleProfiles.find(
       (profile) => profile.id === speech.activePreset?.voice_profile_id,
@@ -2409,11 +2417,10 @@ const VoiceCloningSection: React.FC<{
       <div className="space-y-3 p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-[var(--text)]">
-            Clone Profiles
+            {t('listen.voiceCloning.cloneProfiles')}
           </h3>
           <p className="text-sm text-[var(--muted)]">
-            Create reusable voice-clone source profiles, then turn any ready
-            profile into a saved voice preset.
+            {t('listen.voiceCloning.cloneProfilesDescription')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -2443,7 +2450,7 @@ const VoiceCloningSection: React.FC<{
             <RefreshCw
               className={`h-3.5 w-3.5 ${speech.loadingProfiles ? "animate-spin" : ""}`}
             />
-            Refresh
+            {t('listen.voiceCloning.refresh')}
           </Button>
           {selectedProfile ? (
             <Button
@@ -2455,7 +2462,7 @@ const VoiceCloningSection: React.FC<{
               }
               disabled={!speech.ttsEnabled || !selectedProfile.ready}
             >
-              Create preset
+              {t('listen.voiceCloning.createPreset')}
             </Button>
           ) : null}
           {selectedProfile ? (
@@ -2487,7 +2494,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              Import WAV
+              {t('listen.voiceCloning.importWav')}
             </Button>
           ) : null}
           {selectedProfile ? (
@@ -2508,7 +2515,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              Delete profile
+              {t('listen.voiceCloning.deleteProfile')}
             </Button>
           ) : null}
         </div>
@@ -2528,17 +2535,16 @@ const VoiceCloningSection: React.FC<{
             {selectedProfile.transcript ? (
               <p>{`Transcript: ${selectedProfile.transcript}`}</p>
             ) : (
-              <p>Transcript: Optional, but helpful for clone quality.</p>
+              <p>{t('listen.voiceCloning.transcriptHint')}</p>
             )}
             <div className="mt-2 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--fg)]">
-                    Improve from my dictations
+                    {t('listen.voiceCloning.improveFromDictations')}
                   </p>
                   <p className="text-[10px] text-[var(--muted)]">
-                    Uses your speech-to-text dictations to refine this clone
-                    locally.
+                    {t('listen.voiceCloning.improveFromDictationsDescription')}
                   </p>
                 </div>
                 <label
@@ -2611,15 +2617,14 @@ const VoiceCloningSection: React.FC<{
                   disabled={!speech.ttsEnabled}
                   className="text-red-500 hover:text-red-600"
                 >
-                  Clear collected data
+                  {t('listen.voiceCloning.clearCollectedData')}
                 </Button>
               ) : null}
             </div>
           </div>
         ) : (
           <p className="text-sm leading-6 text-[var(--muted)]">
-            Voice cloning becomes active when a preset or model uses `Qwen3 0.6B
-            Base`.
+            {t('listen.voiceCloning.cloningInactiveHint')}
           </p>
         )}
       </div>
@@ -2628,11 +2633,10 @@ const VoiceCloningSection: React.FC<{
         <div className="space-y-3">
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-[var(--text)]">
-              Create Profile
+              {t('listen.voiceCloning.createProfile')}
             </h3>
             <p className="text-sm text-[var(--muted)]">
-              Start with a profile name, then import one clear WAV reference
-              clip.
+              {t('listen.voiceCloning.createProfileDescription')}
             </p>
           </div>
           <Input
@@ -2685,7 +2689,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              Create profile
+              {t('listen.voiceCloning.createProfileButton')}
             </Button>
             <Button
               type="button"
@@ -2717,7 +2721,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              Import WAV into latest
+              {t('listen.voiceCloning.importWavIntoLatest')}
             </Button>
           </div>
         </div>

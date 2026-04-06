@@ -402,7 +402,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       {currentModelInfo ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Active Speech Model
+            {t("settings.models.activeSpeechModel")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <p className="text-lg font-bold text-[var(--text)]">
@@ -552,7 +552,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
             {t("settings.models.noModelsMatch")}
           </p>
           <p className="mt-1 text-sm leading-6">
-            Clear the language filter to browse the full model list again.
+            {t("settings.models.clearFilterHint")}
           </p>
         </div>
       )}

@@ -37,7 +37,8 @@
     "attachFiles": "Attach Files",
     "attachFolder": "Attach Folder",
     "pasteText": "Paste Text",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "charCount": "({{count}}k)"
   },
   "common": {
     "speakReplies": "Speak Replies",
@@ -465,7 +466,12 @@
         "translation": "Translation",
         "allLanguages": "All Languages"
       },
-      "noModelsMatch": "No models match this filter."
+      "noModelsMatch": "No models match this filter.",
+      "activeSpeechModel": "Active Speech Model",
+      "clearFilterHint": "Clear the language filter to browse the full model list again."
+    },
+    "globalLanguageSync": {
+      "syncAutomatically": "Sync future app-language changes automatically"
     },
     "sound": {
       "title": "Sound",
@@ -1052,7 +1058,12 @@
     "qualityEst": "quality est",
     "speedEst": "speed est",
     "pullError": "Could not start model download. Ensure Ollama is running and try again.",
-    "activateError": "Could not activate this model. Please try again."
+    "activateError": "Could not activate this model. Please try again.",
+    "activeRefineModel": "Active Refine Model",
+    "ollamaBadge": "Ollama",
+    "localOllamaModel": "Local Ollama Model",
+    "quality": "Quality",
+    "speed": "Speed"
   },
   "appLanguage": {
     "title": "Application Language",
@@ -1072,5 +1083,61 @@
     "createFirst": "Create a note",
     "pin": "Pin",
     "unpin": "Unpin"
+  },
+  "listen": {
+    "tuning": {
+      "styleInstructions": "Style Instructions"
+    },
+    "myVoices": {
+      "active": "Active",
+      "activePreset": "Active preset: <bold>{{name}}</bold>",
+      "saveAs": "Save As",
+      "previewText": "Preview Text",
+      "preview": "Preview",
+      "stop": "Stop",
+      "draftModeHint": "Provider and model changes stay in draft mode until you save them as a new voice profile.",
+      "savedProfiles": "Saved Profiles",
+      "saveCurrent": "Save Current",
+      "new": "New",
+      "refresh": "Refresh",
+      "clone": "Clone",
+      "useThisVoice": "Use This Voice"
+    },
+    "soundTuning": {
+      "tuneTitle": "Tune the active profile and listen immediately",
+      "activeProfileIs": "The active profile is",
+      "previewFromHere": ". Preview from here while you adjust the delivery sliders below.",
+      "preview": "Preview",
+      "stop": "Stop",
+      "previewText": "Preview Text"
+    },
+    "packManager": {
+      "title": "Pack Manager",
+      "description": "Download or remove offline speech packs without leaving Settings.",
+      "remove": "Remove",
+      "download": "Download"
+    },
+    "engineLibrary": {
+      "allLanguages": "All Languages",
+      "activeListenModel": "Active Listen Model",
+      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+    },
+    "voiceCloning": {
+      "cloneProfiles": "Clone Profiles",
+      "cloneProfilesDescription": "Create reusable voice-clone source profiles, then turn any ready profile into a saved voice preset.",
+      "refresh": "Refresh",
+      "createPreset": "Create preset",
+      "importWav": "Import WAV",
+      "deleteProfile": "Delete profile",
+      "transcriptHint": "Transcript: Optional, but helpful for clone quality.",
+      "improveFromDictations": "Improve from my dictations",
+      "improveFromDictationsDescription": "Uses your speech-to-text dictations to refine this clone locally.",
+      "clearCollectedData": "Clear collected data",
+      "cloningInactiveHint": "Voice cloning becomes active when a preset or model uses `Qwen3 0.6B Base`.",
+      "createProfile": "Create Profile",
+      "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
+      "createProfileButton": "Create profile",
+      "importWavIntoLatest": "Import WAV into latest"
+    }
   }
 }

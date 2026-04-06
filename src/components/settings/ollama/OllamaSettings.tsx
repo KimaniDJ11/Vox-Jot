@@ -176,21 +176,21 @@ const OllamaSettings: React.FC = () => {
           {activeRefineModel ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-                Active Refine Model
+                {t("ollama.activeRefineModel")}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <p className="text-lg font-bold text-[var(--text)]">
                   {activeRefineModel.label}
                 </p>
                 <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
-                  Ollama
+                  {t("ollama.ollamaBadge")}
                 </span>
               </div>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                 {splitDescription(activeRefineModel.description).summary}
               </p>
               <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
-                Local Ollama Model
+                {t("ollama.localOllamaModel")}
               </p>
             </div>
           ) : null}
@@ -261,7 +261,7 @@ const OllamaSettings: React.FC = () => {
                         <div className="grid shrink-0 gap-2 sm:w-32">
                           <div className="flex items-center gap-2">
                             <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-                              Quality
+                              {t("ollama.quality")}
                             </p>
                             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
@@ -272,7 +272,7 @@ const OllamaSettings: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-                              Speed
+                              {t("ollama.speed")}
                             </p>
                             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
@@ -371,7 +371,7 @@ const OllamaSettings: React.FC = () => {
                       <div className="grid shrink-0 gap-2 sm:w-32">
                         <div className="flex items-center gap-2">
                           <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-                            Quality
+                            {t("ollama.quality")}
                           </p>
                           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div
@@ -382,7 +382,7 @@ const OllamaSettings: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-                            Speed
+                            {t("ollama.speed")}
                           </p>
                           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div

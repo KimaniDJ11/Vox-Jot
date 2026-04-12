@@ -57,3 +57,19 @@ output/eval/
 
 # Generated eval output
 output/
+
+# Python virtual environments (never commit)
+.venv/
+speech-runtime/.venv/
+
+# Temp runtime state
+tmp/
+
+# Model weights (stored on HuggingFace, not in git)
+*.safetensors
+*.tar.gz
+*.onnx
+!src-tauri/resources/models/silero_vad_v4.onnx
+
+# Onboarding screenshots (reference only, not in repo)
+onboarding/

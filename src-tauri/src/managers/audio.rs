@@ -1,4 +1,6 @@
-use crate::audio_toolkit::{list_input_devices, vad::SmoothedVad, AudioRecorder, SileroVad};
+use crate::audio_toolkit::{
+    list_input_devices, vad::SmoothedVad, AudioEnhancementConfig, AudioRecorder, SileroVad,
+};
 use crate::helpers::clamshell;
 use crate::settings::{get_settings, AppSettings};
 use crate::utils;
@@ -117,6 +119,7 @@ fn create_audio_recorder(
     vad_path: &str,
     app_handle: &tauri::AppHandle,
 ) -> Result<AudioRecorder, anyhow::Error> {
+    let settings = get_settings(app_handle);
     let silero = SileroVad::new(vad_path, 0.3)
         .map_err(|e| anyhow::anyhow!("Failed to create SileroVad: {}", e))?;
     let smoothed_vad = SmoothedVad::new(Box::new(silero), 15, 15, 2);
@@ -132,6 +135,15 @@ fn create_audio_recorder(
                 utils::emit_levels(&app_handle, &levels);
             }
         });
+
+    let recorder = if let Some(config) = AudioEnhancementConfig::from_settings(
+        settings.audio_enhancement_enabled,
+        &settings.audio_enhancement_model,
+    ) {
+        recorder.with_enhancement(config)
+    } else {
+        recorder
+    };
 
     Ok(recorder)
 }
@@ -379,6 +391,23 @@ impl AudioRecordingManager {
         // If currently open, restart the microphone stream to use the new device
         if *self.is_open.lock().unwrap_or_else(|e| e.into_inner()) {
             self.stop_microphone_stream();
+            self.start_microphone_stream()?;
+        } else {
+            *self.recorder.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        }
+        Ok(())
+    }
+
+    pub fn update_audio_enhancement(&self) -> Result<(), anyhow::Error> {
+        let was_open = *self.is_open.lock().unwrap_or_else(|e| e.into_inner());
+
+        if was_open {
+            self.stop_microphone_stream();
+        }
+
+        *self.recorder.lock().unwrap_or_else(|e| e.into_inner()) = None;
+
+        if was_open {
             self.start_microphone_stream()?;
         }
         Ok(())

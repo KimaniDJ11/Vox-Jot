@@ -16,16 +16,18 @@ mod tauri_impl;
 use log::{error, info, warn};
 use serde::Serialize;
 use specta::Type;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
+use crate::managers::audio::AudioRecordingManager;
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
-    KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, ShortcutBinding, SoundTheme,
-    TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
-    TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference,
-    TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
+    KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, RecordingOverlayStyle,
+    ShortcutBinding, SoundTheme, TranslationBilingualLayout, TranslationDestinationMode,
+    TranslationOutputMode, TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope,
+    TtsEnginePreference, TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
     APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
     TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID,
     TTS_PROVIDER_SYSTEM_BUILTIN_ID,
@@ -838,6 +840,43 @@ pub fn change_tts_stop_on_record_setting(app: AppHandle, enabled: bool) -> Resul
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_audio_enhancement_enabled_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    if audio_manager.is_recording() {
+        return Err("Stop recording before changing noise reduction.".to_string());
+    }
+
+    let mut settings = settings::get_settings(&app);
+    settings.audio_enhancement_enabled = enabled;
+    settings::write_settings(&app, settings);
+    audio_manager
+        .update_audio_enhancement()
+        .map_err(|err| format!("Failed to refresh audio enhancement: {err}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_audio_enhancement_model_setting(app: AppHandle, model: String) -> Result<(), String> {
+    let audio_manager = app.state::<Arc<AudioRecordingManager>>();
+    if audio_manager.is_recording() {
+        return Err("Stop recording before changing noise reduction.".to_string());
+    }
+
+    let mut settings = settings::get_settings(&app);
+    settings.audio_enhancement_model = model;
+    settings::write_settings(&app, settings);
+    audio_manager
+        .update_audio_enhancement()
+        .map_err(|err| format!("Failed to refresh audio enhancement: {err}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_tts_model_store_path_setting(
     app: AppHandle,
     path: Option<String>,
@@ -892,6 +931,29 @@ pub fn change_overlay_position_setting(app: AppHandle, position: String) -> Resu
 
     // Update overlay position without recreating window
     crate::utils::update_overlay_position(&app);
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_recording_overlay_style_setting(app: AppHandle, style: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    let parsed = match style.as_str() {
+        "compact" => RecordingOverlayStyle::Compact,
+        "detailed" => RecordingOverlayStyle::Detailed,
+        other => {
+            warn!(
+                "Invalid recording overlay style '{}', defaulting to compact",
+                other
+            );
+            RecordingOverlayStyle::Compact
+        }
+    };
+    settings.recording_overlay_style = parsed;
+    settings::write_settings(&app, settings);
+
+    crate::overlay::apply_recording_overlay_metrics(&app);
 
     Ok(())
 }

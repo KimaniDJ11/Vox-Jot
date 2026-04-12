@@ -129,6 +129,21 @@ fn build_correction_pair(
         return None;
     }
 
+    // ── Semantic-change filter ──────────────────────────────────────────
+    // When the original is a very common English word and the correction is
+    // a different word (not sharing a stem/root), the user is almost certainly
+    // changing *meaning* rather than fixing a transcription error.
+    // Examples blocked:  "skip" → "ran", "called" → "texted", "going" → "running"
+    // Examples allowed:  "teh" → "the", "recieve" → "receive", "Cheyene" → "Cheyenne"
+    if word_count(original) == 1 && word_count(corrected) == 1 {
+        let orig_lower = original.to_lowercase();
+        let corr_lower = corrected.to_lowercase();
+
+        if is_common_english_word(&orig_lower) && !shares_stem(&orig_lower, &corr_lower) {
+            return None;
+        }
+    }
+
     // Confidence based on similarity — closer words = higher confidence
     let confidence = similarity;
 
@@ -140,6 +155,122 @@ fn build_correction_pair(
         first_seen: timestamp,
         last_seen: timestamp,
     })
+}
+
+/// Check whether a word is a common English word unlikely to be a transcription error.
+/// This is a compact blocklist of high-frequency words that users are more likely
+/// to change for *meaning* than because the STT misspelled them.
+fn is_common_english_word(word: &str) -> bool {
+    const COMMON_WORDS: &[&str] = &[
+        // Verbs commonly swapped for meaning
+        "go",
+        "going",
+        "went",
+        "gone",
+        "run",
+        "running",
+        "ran",
+        "walk",
+        "walked",
+        "walking",
+        "skip",
+        "skipped",
+        "skipping",
+        "jump",
+        "jumped",
+        "sit",
+        "stand",
+        "call",
+        "called",
+        "calling",
+        "text",
+        "texted",
+        "send",
+        "sent",
+        "buy",
+        "sell",
+        "read",
+        "write",
+        "take",
+        "took",
+        "taken",
+        "make",
+        "made",
+        "give",
+        "gave",
+        "get",
+        "got",
+        "put",
+        "say",
+        "said",
+        "tell",
+        "told",
+        // Adjectives commonly swapped for meaning
+        "good",
+        "great",
+        "nice",
+        "kind",
+        "big",
+        "large",
+        "small",
+        "little",
+        "fast",
+        "slow",
+        "happy",
+        "glad",
+        "sad",
+        "bad",
+        "old",
+        "new",
+        "young",
+        "long",
+        "short",
+        "high",
+        "low",
+        // Nouns commonly swapped for meaning
+        "dog",
+        "cat",
+        "car",
+        "bus",
+        "day",
+        "week",
+        "month",
+        "year",
+        "man",
+        "woman",
+        "boy",
+        "girl",
+        "house",
+        "home",
+        "room",
+        // Time/place words
+        "today",
+        "tomorrow",
+        "yesterday",
+        "morning",
+        "evening",
+        "night",
+        "here",
+        "there",
+    ];
+    COMMON_WORDS.contains(&word)
+}
+
+/// Check whether two words likely share a stem (crude prefix check).
+/// This lets through cases like "recieve" → "receive" where the typo
+/// preserves most of the word structure.
+fn shares_stem(a: &str, b: &str) -> bool {
+    if a.len() < 3 || b.len() < 3 {
+        return false;
+    }
+    let min_len = a.len().min(b.len());
+    let prefix_len = a
+        .chars()
+        .zip(b.chars())
+        .take_while(|(ca, cb)| ca == cb)
+        .count();
+    // At least 60% shared prefix means they likely share a root
+    prefix_len * 100 / min_len >= 60
 }
 
 fn is_punctuation_only(s: &str) -> bool {
@@ -246,6 +377,106 @@ mod tests {
         assert_eq!(
             corrections[0].source_app.as_deref(),
             Some("com.apple.TextEdit")
+        );
+    }
+
+    // ── Semantic vs. spelling change tests ──────────────────────────────
+
+    #[test]
+    fn test_skip_to_ran_is_not_saved() {
+        // "i skip down the road" → "i ran down the road"
+        // This is a meaning change, not a transcription error.
+        let corrections = extract_corrections(
+            "I skip down the road yesterday",
+            "I ran down the road yesterday",
+            None,
+        );
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'skip' → 'ran', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_walk_to_run_is_not_saved() {
+        let corrections = extract_corrections("I walk to the store", "I run to the store", None);
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'walk' → 'run', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_called_to_texted_is_not_saved() {
+        let corrections =
+            extract_corrections("I called her yesterday", "I texted her yesterday", None);
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'called' → 'texted', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_going_to_running_is_not_saved() {
+        let corrections = extract_corrections(
+            "We are going to the park",
+            "We are running to the park",
+            None,
+        );
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'going' → 'running', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_good_to_great_is_not_saved() {
+        let corrections =
+            extract_corrections("That was a good meeting", "That was a great meeting", None);
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'good' → 'great', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_happy_to_glad_is_not_saved() {
+        let corrections = extract_corrections("I'm happy about it", "I'm glad about it", None);
+        assert!(
+            corrections.is_empty(),
+            "Expected no corrections for semantic change 'happy' → 'glad', got: {:?}",
+            corrections
+        );
+    }
+
+    #[test]
+    fn test_real_typo_still_saved() {
+        // Typos should still get through — high similarity, same root word.
+        let corrections =
+            extract_corrections("I recieve the package", "I receive the package", None);
+        assert_eq!(
+            corrections.len(),
+            1,
+            "Expected typo correction 'recieve' → 'receive' to be saved"
+        );
+        assert_eq!(corrections[0].original, "recieve");
+        assert_eq!(corrections[0].corrected, "receive");
+    }
+
+    #[test]
+    fn test_name_spelling_still_saved() {
+        // Name corrections should still get through.
+        let corrections =
+            extract_corrections("Ask Cheyene about it", "Ask Cheyenne about it", None);
+        assert_eq!(
+            corrections.len(),
+            1,
+            "Expected name correction 'Cheyene' → 'Cheyenne' to be saved"
         );
     }
 

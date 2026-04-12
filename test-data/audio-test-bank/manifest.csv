@@ -1,0 +1,35 @@
+id,name,primary_category,secondary_tags,access,license_hint,link,size_hint,why_it_matters,notes
+common_voice,Mozilla Common Voice,accent_multilingual,"multilingual,crowd,accent,variable_mics",free,mixed (see dataset card),https://datacollective.mozillafoundation.org/datasets?q=Common+Voice+Corpus,huge,Real-world mic variance + accents + many languages,Prefer downloading a few languages + a few hours each instead of “all English”
+fleurs,FLEURS,accent_multilingual,"multilingual,benchmark,clean",free,see dataset card,https://huggingface.co/datasets/google/fleurs,medium,Consistent benchmark across 100+ languages,Great for language-detection + post-process text normalization behavior
+mls,Multilingual LibriSpeech (MLS),accent_multilingual,"multilingual,audiobooks,clean,longform",free,public domain derived,https://huggingface.co/datasets/facebook/multilingual_librispeech,huge,Lots of long-form speech across 8 languages,Good for chunking + punctuation + capitalization consistency
+aishell1,AISHELL-1,accent_multilingual,"mandarin,clean,accent_regions",free,Apache-2.0,https://opendata.aishelltech.com/,large,Non-English stress + different phonotactics,Use for “post-process shouldn’t over-normalize names/terms”
+
+librispeech,LibriSpeech,clean_speech,"english,read,clean_vs_other",free,CC-BY-4.0,https://www.openslr.org/12/,large,Stable baseline with clean vs challenging subsets,Use dev/test-clean as “golden sanity”
+mini_librispeech,Mini LibriSpeech (SLR31),clean_speech,"english,short_clips,regression",free,CC-BY-4.0,https://www.openslr.org/31/,small,Already used by repo regression workflow,Good for quick post-process regression sweeps
+libritts,LibriTTS,clean_speech,"english,tts_research,24khz",free,CC-BY-4.0,https://www.openslr.org/60/,large,Sentence-level cuts + cleaner text pairs,Useful for post-process punctuation + casing evaluation
+tedlium3,TED-LIUM 3,talks,"english,public_talks,stage_mics",mixed,CC-BY-NC-ND (verify per release),https://huggingface.co/datasets/LIUM/tedlium,large,Public speaking cadence + applause/room tone,Check license if you plan any redistribution
+
+vctk,VCTK,accent_multilingual,"english,accents,multi_speaker,studioish",free,CC-BY-4.0,https://datashare.ed.ac.uk/handle/10283/3443,medium,Accent variety with consistent prompts,Great for “same text, different voice” comparisons
+voxforge,VoxForge,mixed_speech,"community,variable_quality,multilingual",free,see site,https://www.voxforge.org/home/Downloads,medium,Messy real-world audio quality distributions,Expect clipping, noise, odd mics
+
+ami,AMI Meeting Corpus,meetings,"multi_speaker,overlap,far_field,close_mic",free,CC-BY-4.0,http://groups.inf.ed.ac.uk/ami/download/,large,Overlapping meeting speech + turn-taking,Use headset mix vs array to compare far-field failure modes
+chime4,CHiME-4,noisy_speech,"real_noise,simulated_noise,far_field",mixed,see dataset page,https://chimechallenge.org/challenges/chime4/index,large,Speech in cafes/streets/bus,Great for VAD + enhancement + post-process stability
+
+dns5,Microsoft DNS Challenge (datasets),noisy_speech,"denoise,noise,rirs,paired_synthesis",free,see repo,https://github.com/microsoft/DNS-Challenge/,huge,Paired clean/noisy + impulse responses,Ideal for systematic “noise sensitivity” sweeps
+musan,MUSAN,noise_beds,"noise,music,background,speech_babble",free,CC-BY-4.0,http://www.openslr.org/17,medium,Noise/music beds for synthetic mixing,Use to create controlled SNR ladders
+wham,WHAM!/WHAMR!,noisy_speech,"mixtures,real_ambient_noise,separation",free,see site,https://wham.whisper.ai/,large,Realistic ambient noise mixtures,Good for “bar/cafe” conditions similar to real users
+
+urbansound8k,UrbanSound8K,non_speech,"urban_sounds,false_positives",free,CC-BY-4.0,https://urbansounddataset.weebly.com/urbansound8k.html,small,Non-speech event clips (sirens, drilling),Great for testing “don’t hallucinate words”
+esc50,ESC-50,non_speech,"environmental_sounds,false_positives",mixed,CC-BY-NC (verify),https://github.com/karoldvl/ESC-50/,small,Balanced set of common sounds,Useful to evaluate post-process triggers on non-speech
+fsd50k,FSD50K,non_speech,"sound_events,diverse_sources",free,CC (varies),https://zenodo.org/records/4060432,large,Huge variety of sound events,Use to harden against garbage inputs
+
+ravdess,RAVDESS,emotion,"acted_emotion,clean_recordings",free,CC (see Zenodo),https://zenodo.org/records/1188976,medium,Emotional prosody changes (anger/sadness/etc.),Post-process should avoid weird punctuation overreactions
+iemocap,IEMOCAP,emotion,"dyadic,improv,overlap",gated,academic (request),https://sail.usc.edu/iemocap/,medium,Hard conversational emotion + overlap,Access requires agreeing to terms
+
+switchboard,Switchboard (telephone),telephony,"telephone,conversational,low_bandwidth",paid,LDC license,https://catalog.ldc.upenn.edu/LDC97S62,large,Classic telephony artifacts + disfluency,Great for real conversational filler words
+fisher,Fisher English (telephone),telephony,"telephone,conversational,topic_prompted",paid,LDC license,https://catalog.ldc.upenn.edu/LDC2004S13,huge,Massive telephony conversational diversity,Best if you want truly “phone call” realism
+callhome,CALLHOME American English,telephony,"telephone,intimate_conversation",paid,LDC license,https://catalog.ldc.upenn.edu/LDC97S42,small,Family/friends conversational style,More casual + overlapping sometimes
+
+torgo,TORGO (dysarthric + control),speech_disorders,"dysarthria,assistive,hard_mode",mixed,see site,http://www.cs.toronto.edu/~complingweb/data/TORGO/torgo.html,small,Challenging articulation,Post-process should be robust and not “over-correct” into nonsense
+uaspeech,UASpeech (dysarthric),speech_disorders,"dysarthria,isolated_words",gated,academic request,https://speechtechnology.web.illinois.edu/uaspeech/,small,Hard-mode intelligibility + pronunciation variance,Requires email request + institutional affiliation
+

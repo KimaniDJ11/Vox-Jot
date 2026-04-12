@@ -11,7 +11,6 @@ import {
   Check,
   Globe,
   Play,
-  RefreshCw,
   Sparkles,
   Square,
   Star,
@@ -35,6 +34,7 @@ import {
   type CompactBadgeItem,
 } from "@/components/ui/CompactOverflow";
 import { Trans, useTranslation } from "react-i18next";
+import { ProviderIcon } from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
 import {
   getModelPlatformOverview,
@@ -129,7 +129,8 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "xtts",
   "fish_speech",
 ]);
-const DEFAULT_TTS_PREVIEW_TEXT = "Vox Jot is ready.";
+const DEFAULT_TTS_PREVIEW_TEXT =
+  "The morning light fell softly across the old stone bridge. She paused, took a breath, and said — quite simply — that she'd never felt more alive. Was it the crisp air? The silence? Perhaps both. Either way, something had shifted, quietly and for good.";
 
 async function getTtsVoicesForSelection(
   providerId: string,
@@ -210,6 +211,28 @@ function defaultVoiceTuning(): TtsVoiceTuningSettings {
   };
 }
 
+function profileSupportsModel(
+  profile: TtsVoiceProfileDescriptor,
+  model: CatalogModelDescriptor | null | undefined,
+) {
+  if (!profile || !model) return false;
+
+  const providerCompatible =
+    profile.compatible_provider_ids.length === 0 ||
+    profile.compatible_provider_ids.includes(model.provider_id);
+  const modelCompatible =
+    profile.compatible_model_ids.length === 0 ||
+    profile.compatible_model_ids.includes(model.id);
+
+  return providerCompatible && modelCompatible;
+}
+
+function cloneModelSelectionValue(
+  model: CatalogModelDescriptor | null | undefined,
+) {
+  return model ? `${model.provider_id}::${model.id}` : "__none__";
+}
+
 function buildPresetInput(preset: TtsVoicePreset): TtsVoicePresetInput {
   return {
     label: preset.label,
@@ -226,6 +249,37 @@ function buildPresetInput(preset: TtsVoicePreset): TtsVoicePresetInput {
 type TtsVoicePresetPatch = Omit<Partial<TtsVoicePresetInput>, "tuning"> & {
   tuning?: Partial<TtsVoicePresetInput["tuning"]>;
 };
+
+type VoiceArchitectDraftState = {
+  presetId: string | null;
+  providerId: string;
+  modelId: string;
+  voiceId: string;
+  voiceProfileId: string;
+  tuning: TtsVoiceTuningSettings;
+};
+
+let cachedVoiceArchitectDraft: VoiceArchitectDraftState | null = null;
+
+function buildVoiceArchitectDraftFromPreset(
+  preset: TtsVoicePreset | null | undefined,
+): VoiceArchitectDraftState {
+  return {
+    presetId: preset?.id ?? null,
+    providerId: preset?.provider_id ?? "",
+    modelId: preset?.model_id ?? "",
+    voiceId: preset?.voice_id ?? "__auto__",
+    voiceProfileId: preset?.voice_profile_id ?? "__none__",
+    tuning: { ...(preset?.tuning ?? defaultVoiceTuning()) },
+  };
+}
+
+function saveVoiceArchitectDraft(draft: VoiceArchitectDraftState) {
+  cachedVoiceArchitectDraft = {
+    ...draft,
+    tuning: { ...draft.tuning },
+  };
+}
 
 function formatEngineFamilyLabel(engineFamily: string | null | undefined) {
   if (!engineFamily) return "Unknown engine";
@@ -265,23 +319,11 @@ function isMlxProvider(providerId: string) {
   return providerId.startsWith("mlx_");
 }
 
-function providerOptionContext(provider: ProviderDescriptor) {
-  if (isMlxProvider(provider.id)) {
-    return "MLX Audio";
-  }
-  if (MANAGED_SPEECH_RUNTIME_PROVIDER_IDS.has(provider.id)) {
-    return "Speech Runtime";
-  }
+function providerOptionContext(_provider: ProviderDescriptor) {
   return null;
 }
 
-function modelOptionContext(model: CatalogModelDescriptor) {
-  if (isMlxProvider(model.provider_id)) {
-    return "MLX Audio";
-  }
-  if (MANAGED_SPEECH_RUNTIME_PROVIDER_IDS.has(model.provider_id)) {
-    return "Speech Runtime";
-  }
+function modelOptionContext(_model: CatalogModelDescriptor) {
   return null;
 }
 
@@ -448,6 +490,27 @@ function useListenSpeechState() {
     void refreshAll();
   }, [settings?.tts_enabled, refreshAll]);
 
+  useEffect(() => {
+    if (!settings) return;
+
+    const syncOnFocus = () => {
+      void refreshAll();
+    };
+    const syncOnVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshAll();
+      }
+    };
+
+    window.addEventListener("focus", syncOnFocus);
+    document.addEventListener("visibilitychange", syncOnVisibility);
+
+    return () => {
+      window.removeEventListener("focus", syncOnFocus);
+      document.removeEventListener("visibilitychange", syncOnVisibility);
+    };
+  }, [settings, refreshAll]);
+
   const activePresetId =
     ((settings as any)?.tts_active_preset_id as string | null | undefined) ??
     presets[0]?.id ??
@@ -529,6 +592,9 @@ function useListenSpeechState() {
     (model) => model.source_kind === "runtime",
   );
   const speechRuntimeConnected = runtimeProviders.length > 0;
+  const cloneCapableModels = allModels.filter(
+    (model) => model.capabilities.supports_voice_cloning,
+  );
 
   const voiceOptions = [
     { value: "__auto__", label: "Automatic voice" },
@@ -537,10 +603,10 @@ function useListenSpeechState() {
       label: `${voice.label}${localeLabel(voice.locale)}`,
     })),
   ];
+  const activeCloneModel =
+    activeModel?.capabilities.supports_voice_cloning ? activeModel : null;
   const compatibleProfiles = profiles.filter(
-    (profile) =>
-      profile.compatible_provider_ids.includes("qwen3_native") &&
-      profile.compatible_model_ids.includes("qwen3-0.6b-base"),
+    (profile) => profileSupportsModel(profile, activeCloneModel),
   );
   const profileOptions = [
     { value: "__none__", label: "No clone profile" },
@@ -596,11 +662,6 @@ function useListenSpeechState() {
     },
     [activePreset, refreshAll],
   );
-
-  const createNewPreset = useCallback(async () => {
-    await createTtsVoicePreset(defaultPresetInput());
-    await refreshAll();
-  }, [refreshAll]);
 
   const removePreset = useCallback(
     async (presetId: string) => {
@@ -752,11 +813,20 @@ function useListenSpeechState() {
   );
 
   const createPresetFromProfile = useCallback(
-    async (profile: TtsVoiceProfileDescriptor) => {
+    async (
+      profile: TtsVoiceProfileDescriptor,
+      model: CatalogModelDescriptor | null | undefined,
+    ) => {
+      if (!model || !profileSupportsModel(profile, model)) {
+        setStatusMessage(
+          "Choose a clone-capable target model before creating a clone preset.",
+        );
+        return;
+      }
       await createTtsVoicePreset({
         label: profile.label,
-        provider_id: "qwen3_native",
-        model_id: "qwen3-0.6b-base",
+        provider_id: model.provider_id,
+        model_id: model.id,
         voice_id: null,
         voice_profile_id: profile.id,
         voice_label_snapshot: profile.label,
@@ -765,7 +835,6 @@ function useListenSpeechState() {
           ? { ...activePreset.tuning }
           : defaultVoiceTuning(),
       });
-      await setTtsPlatformSelection("qwen3_native", "qwen3-0.6b-base");
       await refreshAll();
     },
     [activePreset, refreshAll],
@@ -799,6 +868,7 @@ function useListenSpeechState() {
     runtimeProviders,
     runtimeModels,
     speechRuntimeConnected,
+    cloneCapableModels,
     voiceOptions,
     profileOptions,
     compatibleProfiles,
@@ -825,7 +895,6 @@ function useListenSpeechState() {
     setActivePreset,
     updateActivePreset,
     createFromActivePreset,
-    createNewPreset,
     removePreset,
     previewPreset,
     previewPresetDraft,
@@ -839,15 +908,15 @@ function useListenSpeechState() {
 type ListenSpeechState = ReturnType<typeof useListenSpeechState>;
 
 const workflowCardClassName =
-  "rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 shadow-[var(--shadow-sm)]";
+  "rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow-sm)]";
 const whiteWorkflowCardClassName =
-  "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)]";
+  "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]";
 const flatSectionSurfaceClassName =
   "overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]";
 const whiteFlatSectionSurfaceClassName =
-  "overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]";
+  "overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]";
 const workflowFieldLabelClassName =
-  "text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]";
+  "text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]";
 const workflowHintClassName = "text-xs leading-5 text-[var(--muted)]";
 
 function tuningDescriptorMap(controls: TtsAdvancedControlDescriptor[]) {
@@ -1087,13 +1156,27 @@ const VoiceArchitectSection: React.FC<{
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
+  const initialDraft = useMemo(() => {
+    if (
+      cachedVoiceArchitectDraft &&
+      cachedVoiceArchitectDraft.presetId === (speech.activePreset?.id ?? null)
+    ) {
+      return cachedVoiceArchitectDraft;
+    }
+    return buildVoiceArchitectDraftFromPreset(speech.activePreset);
+  }, [speech.activePreset]);
   const [saveProfileNameDraft, setSaveProfileNameDraft] = useState("");
-  const [draftProviderId, setDraftProviderId] = useState("");
-  const [draftModelId, setDraftModelId] = useState("");
-  const [draftVoiceId, setDraftVoiceId] = useState("__auto__");
+  const [draftProviderId, setDraftProviderId] = useState(initialDraft.providerId);
+  const [draftModelId, setDraftModelId] = useState(initialDraft.modelId);
+  const [draftVoiceId, setDraftVoiceId] = useState(initialDraft.voiceId);
+  const [draftVoiceProfileId, setDraftVoiceProfileId] = useState(
+    initialDraft.voiceProfileId,
+  );
   const [draftVoices, setDraftVoices] = useState<VoiceInfo[]>([]);
   const [loadingDraftVoices, setLoadingDraftVoices] = useState(false);
-  const [draftTuning, setDraftTuning] = useState(defaultVoiceTuning());
+  const [draftVoiceErrorMessage, setDraftVoiceErrorMessage] =
+    useState<string | null>(null);
+  const [draftTuning, setDraftTuning] = useState(initialDraft.tuning);
   const [previewTextDraft, setPreviewTextDraft] = useState(
     DEFAULT_TTS_PREVIEW_TEXT,
   );
@@ -1104,19 +1187,40 @@ const VoiceArchitectSection: React.FC<{
   }, [speech.activePreset?.id]);
 
   useEffect(() => {
-    setDraftProviderId(speech.activePreset?.provider_id ?? "");
-    setDraftModelId(speech.activePreset?.model_id ?? "");
-    setDraftVoiceId(speech.activePreset?.voice_id ?? "__auto__");
+    if (!speech.activePreset) return;
+
+    const nextDraft =
+      cachedVoiceArchitectDraft?.presetId === speech.activePreset.id
+        ? cachedVoiceArchitectDraft
+        : buildVoiceArchitectDraftFromPreset(speech.activePreset);
+
+    setDraftProviderId(nextDraft.providerId);
+    setDraftModelId(nextDraft.modelId);
+    setDraftVoiceId(nextDraft.voiceId);
+    setDraftVoiceProfileId(nextDraft.voiceProfileId);
     lastDraftSelectionKeyRef.current = null;
-    setDraftTuning({
-      ...(speech.activePreset?.tuning ?? defaultVoiceTuning()),
+    setDraftTuning({ ...nextDraft.tuning });
+    saveVoiceArchitectDraft(nextDraft);
+  }, [speech.activePreset?.id]);
+
+  useEffect(() => {
+    if (!speech.activePreset) return;
+
+    saveVoiceArchitectDraft({
+      presetId: speech.activePreset.id,
+      providerId: draftProviderId,
+      modelId: draftModelId,
+      voiceId: draftVoiceId,
+      voiceProfileId: draftVoiceProfileId,
+      tuning: draftTuning,
     });
   }, [
+    draftModelId,
+    draftProviderId,
+    draftTuning,
+    draftVoiceId,
+    draftVoiceProfileId,
     speech.activePreset?.id,
-    speech.activePreset?.model_id,
-    speech.activePreset?.provider_id,
-    speech.activePreset?.voice_id,
-    speech.activePreset?.tuning,
   ]);
 
   useEffect(() => {
@@ -1180,33 +1284,38 @@ const VoiceArchitectSection: React.FC<{
     if (!providerIdForControls || !modelIdForControls) {
       setDraftVoices([]);
       setLoadingDraftVoices(false);
+      setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (isVoiceFixedToModel(providerIdForControls)) {
       setDraftVoices([]);
       setLoadingDraftVoices(false);
+      setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (matchesActiveModel) {
       setDraftVoices(speech.voices);
       setLoadingDraftVoices(speech.loadingVoices);
+      setDraftVoiceErrorMessage(null);
       return;
     }
 
     let cancelled = false;
     setLoadingDraftVoices(true);
+    setDraftVoiceErrorMessage(null);
 
     void getTtsVoicesForSelection(providerIdForControls, modelIdForControls)
       .then((voices) => {
         if (cancelled) return;
         setDraftVoices(voices);
+        setDraftVoiceErrorMessage(null);
       })
       .catch((error) => {
         if (cancelled) return;
         setDraftVoices([]);
-        speech.setStatusMessage(
+        setDraftVoiceErrorMessage(
           error instanceof Error
             ? error.message
             : "Failed to load voices for the selected model",
@@ -1232,8 +1341,6 @@ const VoiceArchitectSection: React.FC<{
     speech.voices,
   ]);
 
-  if (!speech.settings || !speech.activePreset) return null;
-
   const activeEngineFamily = formatEngineFamilyLabel(
     speech.activeModel?.runtime.engine_family ??
       speech.activeProvider?.runtime.engine_family ??
@@ -1244,12 +1351,13 @@ const VoiceArchitectSection: React.FC<{
       (profile) => profile.id === speech.activePreset?.voice_profile_id,
     ) ?? null;
   const activeModelLabel =
-    speech.activeModel?.label ?? speech.activePreset.model_id;
+    speech.activeModel?.label ?? speech.activePreset?.model_id ?? "";
   const activeProviderLabel =
-    speech.activeProvider?.label ?? speech.activePreset.provider_id;
+    speech.activeProvider?.label ?? speech.activePreset?.provider_id ?? "";
   const activeLocaleLabel =
-    speech.activePreset.locale_snapshot ?? speech.activeModel?.locale ?? "Auto";
+    speech.activePreset?.locale_snapshot ?? speech.activeModel?.locale ?? "Auto";
   const saveProfileName = saveProfileNameDraft.trim();
+  const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
   const draftProviderIdForControls =
     speech.providerOptions.find(
       (provider) => provider.value === draftProviderId,
@@ -1278,6 +1386,20 @@ const VoiceArchitectSection: React.FC<{
     speech.allProviders.find(
       (provider) => provider.id === draftProviderIdForControls,
     ) ?? null;
+  const draftSupportsVoiceCloning =
+    draftSelectedModel?.capabilities.supports_voice_cloning ?? false;
+  const draftCompatibleProfiles = draftSelectedModel
+    ? speech.profiles.filter((profile) =>
+        profileSupportsModel(profile, draftSelectedModel),
+      )
+    : [];
+  const draftProfileOptions = [
+    { value: "__none__", label: "No clone profile" },
+    ...draftCompatibleProfiles.map((profile) => ({
+      value: profile.id,
+      label: profile.ready ? profile.label : `${profile.label} (Needs audio)`,
+    })),
+  ];
   const controls =
     draftSelectedModel?.delivery_support.advanced_controls ??
     speech.activeModel?.delivery_support.advanced_controls ??
@@ -1287,8 +1409,8 @@ const VoiceArchitectSection: React.FC<{
       speech.activeModel?.delivery_support.expressiveness_mode ??
       "unsupported") !== "unsupported";
   const draftMatchesActiveModel =
-    draftProviderIdForControls === speech.activePreset.provider_id &&
-    draftModelIdForControls === speech.activePreset.model_id;
+    draftProviderIdForControls === (speech.activePreset?.provider_id ?? "") &&
+    draftModelIdForControls === (speech.activePreset?.model_id ?? "");
   const draftProviderLabel =
     draftSelectedProvider?.label ?? activeProviderLabel;
   const draftLocaleLabel = draftMatchesActiveModel
@@ -1297,6 +1419,45 @@ const VoiceArchitectSection: React.FC<{
   const draftVoiceInventory = draftMatchesActiveModel ? speech.voices : draftVoices;
   const draftSelectedVoice =
     draftVoiceInventory.find((voice) => voice.id === draftVoiceId) ?? null;
+  const draftSelectedProfile =
+    draftCompatibleProfiles.find((profile) => profile.id === draftVoiceProfileId) ??
+    null;
+  useEffect(() => {
+    if (!draftSupportsVoiceCloning) {
+      if (draftVoiceProfileId !== "__none__") {
+        setDraftVoiceProfileId("__none__");
+      }
+      return;
+    }
+
+    if (draftSelectedProfile) {
+      return;
+    }
+
+    if (
+      draftMatchesActiveModel &&
+      speech.activePreset?.voice_profile_id &&
+      draftCompatibleProfiles.some(
+        (profile) => profile.id === speech.activePreset?.voice_profile_id,
+      )
+    ) {
+      setDraftVoiceProfileId(speech.activePreset.voice_profile_id);
+      return;
+    }
+
+    if (draftVoiceProfileId !== "__none__") {
+      setDraftVoiceProfileId("__none__");
+    }
+  }, [
+    draftCompatibleProfiles,
+    draftMatchesActiveModel,
+    draftSelectedProfile,
+    draftSupportsVoiceCloning,
+    draftVoiceProfileId,
+    speech.activePreset?.voice_profile_id,
+  ]);
+  if (!speech.settings || !speech.activePreset) return null;
+
   const draftVoiceLabel = isVoiceFixedToModel(draftProviderIdForControls)
     ? (draftSelectedModel?.label ?? draftModelIdForControls)
     : draftVoiceId !== "__auto__" && draftSelectedVoice
@@ -1331,6 +1492,10 @@ const VoiceArchitectSection: React.FC<{
       voiceIsFixedToModel || draftVoiceId === "__auto__" ? null : draftVoiceId;
     const draftVoiceSelection =
       draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ?? null;
+    const draftProfileSelectionId =
+      draftSupportsVoiceCloning && draftVoiceProfileId !== "__none__"
+        ? draftVoiceProfileId
+        : null;
 
     return {
       ...source,
@@ -1340,12 +1505,11 @@ const VoiceArchitectSection: React.FC<{
       voice_id: voiceIsFixedToModel
         ? draftModelIdForControls
         : (draftVoiceSelectionId ?? null),
-      voice_profile_id: providerOrModelChanged
-        ? null
-        : (source.voice_profile_id ?? null),
+      voice_profile_id: draftProfileSelectionId,
       voice_label_snapshot: voiceIsFixedToModel
         ? (draftSelectedModel?.label ?? draftModelIdForControls)
-        : (draftVoiceSelection?.label ?? null),
+        : draftSelectedProfile?.label ??
+          (draftVoiceSelection?.label ?? null),
       locale_snapshot: draftVoiceSelection
         ? (draftVoiceSelection.locale ?? null)
         : providerOrModelChanged
@@ -1389,112 +1553,116 @@ const VoiceArchitectSection: React.FC<{
           !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
         }`}
       >
+        {/* Preview card — full width at top for a larger textarea */}
         <div className={whiteWorkflowCardClassName}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={speechLibraryActiveBadgeClassName}>
-                  <Star className="h-3.5 w-3.5" />
-                  {t('listen.myVoices.active')}
-                </span>
-                <span className={speechLibraryBadgeClassName}>
-                  {activeEngineFamily}
-                </span>
-              </div>
-              <p className="text-sm text-[var(--muted)]">
-                <Trans
-                  i18nKey="listen.myVoices.activePreset"
-                  values={{ name: speech.activePreset.label }}
-                  components={{ bold: <span className="font-semibold text-[var(--text)]" /> }}
-                />
-              </p>
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
-                <div className="space-y-1">
-                  <p className={workflowFieldLabelClassName}>{t('listen.myVoices.saveAs')}</p>
-                  <Input
-                    value={saveProfileNameDraft}
-                    onChange={(event) =>
-                      setSaveProfileNameDraft(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void handleSaveCurrent();
-                      }
-                    }}
-                    disabled={!speech.ttsEnabled}
-                    placeholder="Name this saved voice"
-                    className="w-full max-w-none"
-                  />
-                </div>
-                <span className={speechLibraryBadgeClassName}>
-                  {draftModelLabel}
-                </span>
-                <span className={speechLibraryBadgeClassName}>
-                  {draftVoiceLabel}
-                </span>
-                {draftMatchesActiveModel && activeCloneProfile ? (
-                  <span className={speechLibraryBadgeClassName}>
-                    {activeCloneProfile.label}
-                  </span>
-                ) : null}
-              </div>
+          <div className="flex items-start gap-4">
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
+              <Textarea
+                value={previewTextDraft}
+                onChange={(event) => setPreviewTextDraft(event.target.value)}
+                placeholder={DEFAULT_TTS_PREVIEW_TEXT}
+                disabled={!speech.ttsEnabled}
+                className="w-full min-h-[120px] !rounded-2xl"
+              />
             </div>
-            {speech.statusMessage ? (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
-                {speech.statusMessage}
-              </div>
-            ) : null}
+            <div className="flex shrink-0 flex-col items-stretch gap-2 pt-6">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  void speech.previewPresetDraft(
+                    buildDraftPresetInput(),
+                    previewTextDraft,
+                  )
+                }
+                disabled={speech.previewingPresetId === "__draft__"}
+                className="inline-flex items-center justify-center gap-1.5"
+              >
+                <Play className="h-3.5 w-3.5" />
+                {t('listen.myVoices.preview')}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void commands.ttsStop()}
+                className="inline-flex items-center justify-center gap-1.5"
+              >
+                <Square className="h-3.5 w-3.5" />
+                {t('listen.myVoices.stop')}
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          {/* Left: Active preset info + Save As */}
           <div className={whiteWorkflowCardClassName}>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="space-y-2">
-                <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
-                <Textarea
-                  value={previewTextDraft}
-                  onChange={(event) => setPreviewTextDraft(event.target.value)}
-                  placeholder={DEFAULT_TTS_PREVIEW_TEXT}
-                  disabled={!speech.ttsEnabled}
-                  className="min-h-[92px] max-h-[132px] !rounded-2xl"
-                />
-              </div>
-              <div className="flex min-w-[156px] flex-col items-stretch gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    void speech.previewPresetDraft(
-                      buildDraftPresetInput(),
-                      previewTextDraft,
-                    )
-                  }
-                  disabled={speech.previewingPresetId === "__draft__"}
-                  className="inline-flex items-center justify-center gap-1.5"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  {t('listen.myVoices.preview')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void commands.ttsStop()}
-                  className="inline-flex items-center justify-center gap-1.5"
-                >
-                  <Square className="h-3.5 w-3.5" />
-                  {t('listen.myVoices.stop')}
-                </Button>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--muted)]">
-                  {draftProviderLabel} · {draftLocaleLabel}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={speechLibraryActiveBadgeClassName}>
+                    <Star className="h-3.5 w-3.5" />
+                    {t('listen.myVoices.active')}
+                  </span>
+                  <span className={speechLibraryBadgeClassName}>
+                    {activeEngineFamily}
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--muted)]">
+                  <Trans
+                    i18nKey="listen.myVoices.activePreset"
+                    values={{ name: speech.activePreset.label }}
+                    components={{ bold: <span className="font-semibold text-[var(--text)]" /> }}
+                  />
+                </p>
+                <div className="space-y-1">
+                  <p className={workflowFieldLabelClassName}>{t('listen.myVoices.saveAs')}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={saveProfileNameDraft}
+                      onChange={(event) =>
+                        setSaveProfileNameDraft(event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleSaveCurrent();
+                        }
+                      }}
+                      disabled={!speech.ttsEnabled}
+                      placeholder="Name this saved voice"
+                      className="min-w-0 flex-1 max-w-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void handleSaveCurrent()}
+                      disabled={
+                        !speech.ttsEnabled ||
+                        !saveProfileName ||
+                        !draftProviderIdForControls ||
+                        !draftModelIdForControls
+                      }
+                      className="shrink-0"
+                    >
+                      {t('listen.myVoices.saveCurrent')}
+                    </Button>
+                  </div>
                 </div>
               </div>
+              {statusMessage ? (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
+                  {statusMessage}
+                </div>
+              ) : null}
             </div>
           </div>
 
+          {/* Right: Provider / Model / Voice selects */}
           <div className={whiteWorkflowCardClassName}>
             <div className="grid content-start gap-2 md:grid-cols-2">
               <WorkflowField label="Provider">
@@ -1529,14 +1697,6 @@ const VoiceArchitectSection: React.FC<{
                   options={draftModelOptions}
                 />
               </WorkflowField>
-
-              {!draftMatchesActiveModel ? (
-                <div className="md:col-span-2">
-                  <p className="text-xs leading-5 text-[var(--muted)]">
-                    {t('listen.myVoices.draftModeHint')}
-                  </p>
-                </div>
-              ) : null}
 
               {!isVoiceFixedToModel(draftProviderIdForControls) &&
               !supportsDraftManualVoiceId ? (
@@ -1573,14 +1733,17 @@ const VoiceArchitectSection: React.FC<{
                 </WorkflowField>
               ) : null}
 
-              {draftMatchesActiveModel &&
-              speech.activeModel?.capabilities.supports_voice_cloning ? (
+              {draftSupportsVoiceCloning ? (
                 <WorkflowField label="Clone Profile">
                   <SelectField
-                    value={speech.activePreset.voice_profile_id ?? "__none__"}
+                    value={draftVoiceProfileId}
                     onChange={(value) => {
+                      setDraftVoiceProfileId(value);
+                      if (!draftMatchesActiveModel) {
+                        return;
+                      }
                       const profile =
-                        speech.compatibleProfiles.find(
+                        draftCompatibleProfiles.find(
                           (item) => item.id === value,
                         ) ?? null;
                       void speech.updateActivePreset({
@@ -1592,7 +1755,7 @@ const VoiceArchitectSection: React.FC<{
                       });
                     }}
                     disabled={!speech.ttsEnabled || speech.loadingProfiles}
-                    options={speech.profileOptions}
+                    options={draftProfileOptions}
                   />
                 </WorkflowField>
               ) : null}
@@ -1628,50 +1791,10 @@ const VoiceArchitectSection: React.FC<{
         />
 
         <div className={whiteWorkflowCardClassName}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-2">
             <p className="text-sm font-semibold text-[var(--text)]">
               {t('listen.myVoices.savedProfiles')}
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleSaveCurrent()}
-                disabled={
-                  !speech.ttsEnabled ||
-                  !saveProfileName ||
-                  !draftProviderIdForControls ||
-                  !draftModelIdForControls
-                }
-              >
-                {t('listen.myVoices.saveCurrent')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => void speech.createNewPreset()}
-                disabled={!speech.ttsEnabled}
-              >
-                {t('listen.myVoices.new')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => void speech.refreshPresets()}
-                disabled={speech.loadingPresets}
-                className="inline-flex items-center gap-1.5"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${
-                    speech.loadingPresets ? "animate-spin" : ""
-                  }`}
-                />
-                {t('listen.myVoices.refresh')}
-              </Button>
-            </div>
           </div>
 
           <div className="grid max-h-[320px] gap-2 overflow-y-auto pe-1 lg:grid-cols-2">
@@ -1683,10 +1806,10 @@ const VoiceArchitectSection: React.FC<{
               return (
                 <div
                   key={preset.id}
-                  className={`rounded-2xl border px-3 py-2.5 transition-colors ${
+                  className={`rounded-xl border px-3 py-2.5 transition-all duration-150 ${
                     isActive
-                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent),transparent_92%)]"
-                      : "border-[var(--border)] bg-[var(--bg)]"
+                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent),transparent_91%)] shadow-[0_0_0_1px_var(--accent-glow)]"
+                      : "border-[var(--border)] bg-[var(--bg)] hover:border-[color-mix(in_srgb,var(--accent),transparent_55%)] hover:bg-[var(--panel-bg)]"
                   }`}
                 >
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
@@ -1944,6 +2067,7 @@ const SpeechModelLibraryCard: React.FC<{
       <div className="flex h-full flex-col gap-3">
         <div className="min-w-0 space-y-3">
           <div className="flex min-w-0 items-center gap-2">
+            <ProviderIcon providerId={model.provider_id} size="sm" />
             <h3
               className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text)]"
               title={model.label}
@@ -2405,67 +2529,180 @@ const VoiceCloningSection: React.FC<{
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
-  const selectedProfile =
-    speech.compatibleProfiles.find(
-      (profile) => profile.id === speech.activePreset?.voice_profile_id,
+  const [selectedCloneModelValue, setSelectedCloneModelValue] =
+    useState("__none__");
+  const selectedCloneModel =
+    speech.cloneCapableModels.find(
+      (model) => cloneModelSelectionValue(model) === selectedCloneModelValue,
     ) ?? null;
+  const visibleProfiles = selectedCloneModel
+    ? speech.profiles.filter((profile) =>
+        profileSupportsModel(profile, selectedCloneModel),
+      )
+    : speech.profiles;
+  const [selectedProfileId, setSelectedProfileId] = useState("__none__");
+  const selectedProfile =
+    visibleProfiles.find((profile) => profile.id === selectedProfileId) ?? null;
 
+  useEffect(() => {
+    const activeCloneModel =
+      speech.activeModel?.capabilities.supports_voice_cloning
+        ? speech.activeModel
+        : null;
+    const fallbackCloneModel = activeCloneModel ?? speech.cloneCapableModels[0] ?? null;
+
+    setSelectedCloneModelValue((current) => {
+      if (
+        current !== "__none__" &&
+        speech.cloneCapableModels.some(
+          (model) => cloneModelSelectionValue(model) === current,
+        )
+      ) {
+        return current;
+      }
+      return cloneModelSelectionValue(fallbackCloneModel);
+    });
+  }, [speech.activeModel, speech.cloneCapableModels]);
+
+  useEffect(() => {
+    setSelectedProfileId((current) => {
+      if (current === "__none__") {
+        return "__none__";
+      }
+      if (
+        current !== "__none__" &&
+        visibleProfiles.some((profile) => profile.id === current)
+      ) {
+        return current;
+      }
+      return visibleProfiles[0]?.id ?? "__none__";
+    });
+  }, [visibleProfiles]);
   if (!speech.settings) return null;
+
+  const profilePickerOptions = [
+    {
+      value: "__none__",
+      label:
+        visibleProfiles.length > 0
+          ? selectedCloneModel
+            ? "No clone profile"
+            : "Browse profiles"
+          : "No clone profiles yet",
+    },
+    ...visibleProfiles.map((profile) => ({
+      value: profile.id,
+      label: profile.ready ? profile.label : `${profile.label} (Needs audio)`,
+    })),
+  ];
+  const cloneModelOptions = [
+    {
+      value: "__none__",
+      label:
+        speech.cloneCapableModels.length > 0
+          ? "Choose clone model"
+          : "No clone-capable models available",
+    },
+    ...speech.cloneCapableModels.map((model) => ({
+      value: cloneModelSelectionValue(model),
+      label: `${formatSelectableLabel(model.label, modelOptionContext(model))}${model.installed ? "" : " (Download required)"}`,
+    })),
+  ];
+  const cloneTargetSummary = selectedCloneModel
+    ? `${selectedCloneModel.label} will be used when you create a new clone voice preset here. Your current My Voices selection stays unchanged until then.`
+    : "Choose a clone-capable model here to build a cloned voice without changing the current My Voices preset.";
+  const profileActionHint = !selectedProfile
+    ? "Pick a profile or create one below."
+    : !selectedProfile.ready
+      ? "Import one clear WAV sample to make this profile usable for cloning."
+      : selectedCloneModel
+        ? "This profile is ready to turn into a saved voice preset using the selected clone model."
+        : "Choose a clone model above to create a saved voice preset from this profile.";
+  const createPresetDisabled =
+    !speech.ttsEnabled ||
+    !selectedProfile?.ready ||
+    !selectedCloneModel ||
+    !profileSupportsModel(selectedProfile, selectedCloneModel);
 
   const content = (
     <div className={whiteFlatSectionSurfaceClassName}>
       <div className="space-y-3 p-4">
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <h3 className="text-sm font-semibold text-[var(--text)]">
             {t('listen.voiceCloning.cloneProfiles')}
           </h3>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-xs text-[var(--muted)]">
             {t('listen.voiceCloning.cloneProfilesDescription')}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SelectField
-            value={speech.activePreset?.voice_profile_id ?? "__none__"}
-            onChange={(value) => {
-              const profile =
-                speech.compatibleProfiles.find((item) => item.id === value) ??
-                null;
-              void speech.updateActivePreset({
-                voice_profile_id: value === "__none__" ? null : value,
-                voice_label_snapshot:
-                  value === "__none__" ? null : (profile?.label ?? value),
-              });
-            }}
-            disabled={!speech.ttsEnabled || speech.loadingProfiles}
-            options={speech.profileOptions}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void speech.refreshProfiles()}
-            disabled={speech.loadingProfiles}
-            className="inline-flex items-center gap-1"
+        <div className="grid gap-3 md:grid-cols-2">
+          <WorkflowField
+            label="Clone Model"
+            hint="This target is used only when you create a clone preset from this section."
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${speech.loadingProfiles ? "animate-spin" : ""}`}
+            <SelectField
+              value={cloneModelSelectionValue(selectedCloneModel)}
+              onChange={(value) => {
+                setSelectedCloneModelValue(value);
+              }}
+              disabled={
+                !speech.ttsEnabled ||
+                speech.loadingPlatform ||
+                speech.cloneCapableModels.length === 0
+              }
+              options={cloneModelOptions}
             />
-            {t('listen.voiceCloning.refresh')}
-          </Button>
-          {selectedProfile ? (
+          </WorkflowField>
+          <WorkflowField
+            label="Clone Profile"
+            hint={
+              selectedCloneModel
+                ? "Only profiles that work with the selected clone model are shown."
+                : "Pick a model first to filter the profile library to compatible voices."
+            }
+          >
+            <SelectField
+              value={selectedProfileId}
+              onChange={(value) => {
+                setSelectedProfileId(value);
+              }}
+              disabled={!speech.ttsEnabled || speech.loadingProfiles}
+              options={profilePickerOptions}
+            />
+          </WorkflowField>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+              Clone Target
+            </p>
+            <p className="mt-1 text-sm text-[var(--text)]">{cloneTargetSummary}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+              Next Step
+            </p>
+            <p className="mt-1 text-sm text-[var(--text)]">{profileActionHint}</p>
+          </div>
+        </div>
+
+        {selectedProfile ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={() =>
-                void speech.createPresetFromProfile(selectedProfile)
+                void speech.createPresetFromProfile(
+                  selectedProfile,
+                  selectedCloneModel,
+                )
               }
-              disabled={!speech.ttsEnabled || !selectedProfile.ready}
+              disabled={createPresetDisabled}
             >
               {t('listen.voiceCloning.createPreset')}
             </Button>
-          ) : null}
-          {selectedProfile ? (
             <Button
               type="button"
               variant="secondary"
@@ -2496,51 +2733,68 @@ const VoiceCloningSection: React.FC<{
             >
               {t('listen.voiceCloning.importWav')}
             </Button>
-          ) : null}
-          {selectedProfile ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={
-                !speech.ttsEnabled || speech.busyProfileAction === "delete"
-              }
-              onClick={async () => {
-                speech.setBusyProfileAction("delete");
-                try {
-                  await deleteTtsVoiceProfile(selectedProfile.id);
-                  await speech.refreshProfiles();
-                } finally {
-                  speech.setBusyProfileAction(null);
+            <div className="ms-auto">
+              <Button
+                type="button"
+                variant="danger-ghost"
+                size="sm"
+                disabled={
+                  !speech.ttsEnabled || speech.busyProfileAction === "delete"
                 }
-              }}
-            >
-              {t('listen.voiceCloning.deleteProfile')}
-            </Button>
-          ) : null}
-        </div>
+                onClick={async () => {
+                  speech.setBusyProfileAction("delete");
+                  try {
+                    await deleteTtsVoiceProfile(selectedProfile.id);
+                    await speech.refreshProfiles();
+                  } finally {
+                    speech.setBusyProfileAction(null);
+                  }
+                }}
+              >
+                {t('listen.voiceCloning.deleteProfile')}
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {selectedProfile ? (
-          <div className="space-y-2 text-xs text-[var(--muted)]">
-            <p>{`Status: ${
-              selectedProfile.fully_optimized
-                ? "Fully optimized"
-                : selectedProfile.ready
-                  ? "Ready for cloning"
-                  : "Needs reference audio"
-            }`}</p>
+          <div className="space-y-3 text-xs text-[var(--muted)]">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedProfile.fully_optimized ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--success)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
+                  Fully optimized
+                </span>
+              ) : selectedProfile.ready ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  Ready for cloning
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warning-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--warning)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)]" />
+                  Needs reference audio
+                </span>
+              )}
+            </div>
             {selectedProfile.reference_audio_path ? (
-              <p className="break-all">{`Audio: ${selectedProfile.reference_audio_path}`}</p>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Audio file</p>
+                <p className="break-all font-mono text-[11px] text-[var(--text)]">{selectedProfile.reference_audio_path}</p>
+              </div>
             ) : null}
             {selectedProfile.transcript ? (
-              <p>{`Transcript: ${selectedProfile.transcript}`}</p>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Transcript</p>
+                <p className="text-[11px] text-[var(--text)]">{selectedProfile.transcript}</p>
+              </div>
             ) : (
-              <p>{t('listen.voiceCloning.transcriptHint')}</p>
+              <p className="italic text-[var(--muted)]">{t('listen.voiceCloning.transcriptHint')}</p>
             )}
             <div className="mt-2 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-[var(--fg)]">
+                  <p className="text-xs font-medium text-[var(--text)]">
                     {t('listen.voiceCloning.improveFromDictations')}
                   </p>
                   <p className="text-[10px] text-[var(--muted)]">
@@ -2573,24 +2827,24 @@ const VoiceCloningSection: React.FC<{
               </div>
               {(selectedProfile.collected_audio_duration_secs > 0 ||
                 selectedProfile.continuous_improvement_enabled) && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-[var(--muted)]">
                       {selectedProfile.fully_optimized
                         ? "Fully optimized"
                         : selectedProfile.continuous_improvement_enabled
                           ? "Currently learning"
                           : "Collection paused"}
                     </span>
-                    <span>
+                    <span className="font-mono text-[10px] text-[var(--muted)]">
                       {`${Math.round(selectedProfile.collected_audio_duration_secs)}s / ${Math.round(selectedProfile.satisfactory_threshold_secs)}s`}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--input)]">
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--input)]">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
+                      className={`h-full rounded-full transition-all duration-500 ${
                         selectedProfile.fully_optimized
-                          ? "bg-green-500"
+                          ? "bg-[var(--success)]"
                           : "bg-[var(--accent)]"
                       }`}
                       style={{
@@ -2624,18 +2878,20 @@ const VoiceCloningSection: React.FC<{
           </div>
         ) : (
           <p className="text-sm leading-6 text-[var(--muted)]">
-            {t('listen.voiceCloning.cloningInactiveHint')}
+            {selectedCloneModel
+              ? "Choose or create a clone profile to start using reference audio with this model."
+              : "Choose a clone model above, then pick or create a profile to start building a cloned voice here."}
           </p>
         )}
       </div>
 
-      <div className="border-t border-[var(--border)] p-4">
+      <div className="border-t border-[var(--border)] bg-[var(--panel-bg)] p-4">
         <div className="space-y-3">
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {t('listen.voiceCloning.createProfile')}
             </h3>
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-xs text-[var(--muted)]">
               {t('listen.voiceCloning.createProfileDescription')}
             </p>
           </div>
@@ -2644,6 +2900,7 @@ const VoiceCloningSection: React.FC<{
             onChange={(event) => speech.setProfileNameDraft(event.target.value)}
             placeholder="New voice profile name"
             disabled={!speech.ttsEnabled}
+            className="w-full"
           />
           <Input
             value={speech.profileDescriptionDraft}
@@ -2652,6 +2909,7 @@ const VoiceCloningSection: React.FC<{
             }
             placeholder="Optional note about this speaker"
             disabled={!speech.ttsEnabled}
+            className="w-full"
           />
           <Textarea
             value={speech.profileTranscriptDraft}
@@ -2675,7 +2933,7 @@ const VoiceCloningSection: React.FC<{
               onClick={async () => {
                 speech.setBusyProfileAction("create");
                 try {
-                  await createTtsVoiceProfile(
+                  const createdProfile = await createTtsVoiceProfile(
                     speech.profileNameDraft,
                     speech.profileDescriptionDraft || null,
                     speech.profileTranscriptDraft || null,
@@ -2684,44 +2942,13 @@ const VoiceCloningSection: React.FC<{
                   speech.setProfileDescriptionDraft("");
                   speech.setProfileTranscriptDraft("");
                   await speech.refreshProfiles();
+                  setSelectedProfileId(createdProfile.id);
                 } finally {
                   speech.setBusyProfileAction(null);
                 }
               }}
             >
               {t('listen.voiceCloning.createProfileButton')}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={
-                !speech.ttsEnabled || speech.compatibleProfiles.length === 0
-              }
-              onClick={async () => {
-                const targetProfile =
-                  speech.compatibleProfiles[
-                    speech.compatibleProfiles.length - 1
-                  ];
-                const filePath = await open({
-                  multiple: false,
-                  filters: [{ name: "WAV", extensions: ["wav"] }],
-                });
-                if (!filePath || Array.isArray(filePath)) return;
-                speech.setBusyProfileAction("import");
-                try {
-                  await importTtsVoiceProfileSample(
-                    targetProfile.id,
-                    filePath,
-                    speech.profileTranscriptDraft || null,
-                  );
-                  await speech.refreshProfiles();
-                } finally {
-                  speech.setBusyProfileAction(null);
-                }
-              }}
-            >
-              {t('listen.voiceCloning.importWavIntoLatest')}
             </Button>
           </div>
         </div>
@@ -2890,13 +3117,6 @@ export const MyVoicesSection: React.FC<{
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();
   return <VoiceArchitectSection speech={speech} showTitle={showGroupTitle} />;
-};
-
-export const SoundAndTuningSection: React.FC<{
-  showGroupTitle?: boolean;
-}> = ({ showGroupTitle = true }) => {
-  const speech = useListenSpeechState();
-  return <SoundDesignSection speech={speech} showTitle={showGroupTitle} />;
 };
 
 export const EngineLibrarySection: React.FC<{

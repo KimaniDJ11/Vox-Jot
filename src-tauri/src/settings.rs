@@ -166,6 +166,13 @@ pub enum OverlayPosition {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum RecordingOverlayStyle {
+    Compact,
+    Detailed,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelUnloadTimeout {
     Never,
@@ -686,6 +693,8 @@ pub struct AppSettings {
     pub audio_enhancement_model: String,
     #[serde(default = "default_overlay_position")]
     pub overlay_position: OverlayPosition,
+    #[serde(default = "default_recording_overlay_style")]
+    pub recording_overlay_style: RecordingOverlayStyle,
     #[serde(default = "default_debug_mode")]
     pub debug_mode: bool,
     #[serde(default = "default_log_level")]
@@ -852,7 +861,7 @@ fn default_tts_stop_on_record() -> bool {
 }
 
 fn default_audio_enhancement_model() -> String {
-    "mossformer2".to_string()
+    "rnnoise".to_string()
 }
 
 fn default_selected_llm_provider_id() -> String {
@@ -898,6 +907,10 @@ fn default_overlay_position() -> OverlayPosition {
     return OverlayPosition::None;
     #[cfg(not(target_os = "linux"))]
     return OverlayPosition::Bottom;
+}
+
+fn default_recording_overlay_style() -> RecordingOverlayStyle {
+    RecordingOverlayStyle::Compact
 }
 
 fn default_debug_mode() -> bool {
@@ -1443,7 +1456,7 @@ Rules:
 - Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.
 - Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.
 - Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.
-- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "rather", and natural restarts, and keep only the corrected intent.
+- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "no wait", "rather", "no sorry", and natural restarts, and keep only the corrected intent.
 - Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.
 - If the transcript is already clear, make the smallest possible changes.
 - Use stronger rewrites only when clear structure, correction, or formatting cues are present.
@@ -2093,9 +2106,10 @@ pub fn get_default_settings() -> AppSettings {
         speech_runtime_path: None,
         tts_model_store_path: None,
         speech_backend_override: None,
-        audio_enhancement_enabled: false,
+        audio_enhancement_enabled: true,
         audio_enhancement_model: default_audio_enhancement_model(),
         overlay_position: default_overlay_position(),
+        recording_overlay_style: default_recording_overlay_style(),
         debug_mode: false,
         log_level: default_log_level(),
         custom_words: Vec::new(),
@@ -2202,7 +2216,7 @@ impl AppSettings {
             *existing = preset;
             true
         } else {
-            self.tts_voice_presets.push(preset);
+            self.tts_voice_presets.insert(0, preset);
             true
         }
     }
@@ -2692,6 +2706,13 @@ mod tests {
     fn default_settings_enable_global_language_sync() {
         let settings = get_default_settings();
         assert!(settings.global_language_sync_enabled);
+    }
+
+    #[test]
+    fn default_settings_enable_audio_enhancement() {
+        let settings = get_default_settings();
+        assert!(settings.audio_enhancement_enabled);
+        assert_eq!(settings.audio_enhancement_model, "rnnoise");
     }
 
     #[test]

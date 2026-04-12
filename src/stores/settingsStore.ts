@@ -212,12 +212,18 @@ const settingUpdaters: {
   tts_volume: (value) => commands.changeTtsVolumeSetting(value as number),
   tts_stop_on_record: (value) =>
     commands.changeTtsStopOnRecordSetting(value as boolean),
+  audio_enhancement_enabled: (value) =>
+    commands.changeAudioEnhancementEnabledSetting(value as boolean),
+  audio_enhancement_model: (value) =>
+    commands.changeAudioEnhancementModelSetting(value as string),
   speech_runtime_path: (value) =>
     commands.changeSpeechRuntimePathSetting((value as string | null) ?? null),
   tts_model_store_path: (value) =>
     commands.changeTtsModelStorePathSetting((value as string | null) ?? null),
   overlay_position: (value) =>
     commands.changeOverlayPositionSetting(value as string),
+  recording_overlay_style: (value) =>
+    commands.changeRecordingOverlayStyleSetting(value as string),
   debug_mode: (value) => commands.changeDebugModeSetting(value as boolean),
   custom_words: (value) => commands.updateCustomWords(value as string[]),
   word_correction_threshold: (value) =>
@@ -485,7 +491,8 @@ export const useSettingsStore = create<SettingsStore>()(
       const { settings, refreshSettings, setUpdating } = get();
       if (!settings) {
         return {
-          message: "Settings are still loading, so language sync could not run yet.",
+          message:
+            "Settings are still loading, so language sync could not run yet.",
         };
       }
 
@@ -628,7 +635,9 @@ export const useSettingsStore = create<SettingsStore>()(
             ? { ...state.settings, app_language: appLanguage }
             : null,
         }));
-        await unwrapCommandResult(commands.changeAppLanguageSetting(appLanguage));
+        await unwrapCommandResult(
+          commands.changeAppLanguageSetting(appLanguage),
+        );
 
         if (!syncEnabled) {
           return {

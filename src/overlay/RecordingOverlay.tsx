@@ -7,26 +7,44 @@ import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 
 type OverlayState = "recording" | "transcribing" | "processing";
+type OverlayStyle = "compact" | "detailed";
 
-const BAR_COUNT = 12;
+interface ShowOverlayPayload {
+  state: OverlayState;
+  style: OverlayStyle;
+}
+
+const BAR_COUNT_DETAILED = 12;
+const BAR_COUNT_COMPACT = 5;
 const SMOOTHING = 0.65;
 
 const RecordingOverlay: React.FC = () => {
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
-  const [levels, setLevels] = useState<number[]>(Array(BAR_COUNT).fill(0));
+  const [style, setStyle] = useState<OverlayStyle>("compact");
+  const [levels, setLevels] = useState<number[]>(
+    Array(BAR_COUNT_DETAILED).fill(0),
+  );
   const [partialText, setPartialText] = useState("");
-  const smoothedRef = useRef<number[]>(Array(BAR_COUNT).fill(0));
+  const smoothedRef = useRef<number[]>(Array(BAR_COUNT_DETAILED).fill(0));
   const direction = getLanguageDirection(i18n.language);
+
+  const barCount =
+    style === "compact" ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED;
 
   useEffect(() => {
     const setup = async () => {
-      const unShow = await listen("show-overlay", async (event) => {
-        await syncLanguageFromSettings();
-        setState(event.payload as OverlayState);
-        setIsVisible(true);
-      });
+      const unShow = await listen<ShowOverlayPayload>(
+        "show-overlay",
+        async (event) => {
+          await syncLanguageFromSettings();
+          const payload = event.payload;
+          setState(payload.state);
+          setStyle(payload.style);
+          setIsVisible(true);
+        },
+      );
 
       const unHide = await listen("hide-overlay", () => {
         setIsVisible(false);
@@ -40,7 +58,7 @@ const RecordingOverlay: React.FC = () => {
           return prev * SMOOTHING + target * (1 - SMOOTHING);
         });
         smoothedRef.current = smoothed;
-        setLevels(smoothed.slice(0, BAR_COUNT));
+        setLevels(smoothed);
       });
 
       const unPartial = await listen<string>(
@@ -61,11 +79,44 @@ const RecordingOverlay: React.FC = () => {
     setup();
   }, []);
 
+  const isCompact = style === "compact";
+  const overlayClass = [
+    "recording-overlay",
+    isCompact ? "recording-overlay--compact" : "",
+    isVisible ? "fade-in" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const visibleLevels = levels.slice(0, barCount);
+
+  if (isCompact) {
+    return (
+      <div dir={direction} className={overlayClass}>
+        {/* Compact: bars only while recording, pulsing dot while processing */}
+        {state === "recording" ? (
+          <div className="bars-container">
+            {visibleLevels.map((v, i) => (
+              <div
+                key={i}
+                className="bar"
+                style={{
+                  height: `${Math.min(16, 3 + Math.pow(v, 0.65) * 13)}px`,
+                  opacity: Math.max(0.3, Math.min(1, v * 2)),
+                  transition: "height 70ms ease-out, opacity 100ms ease-out",
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <span className="status-dot" />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div
-      dir={direction}
-      className={`recording-overlay ${isVisible ? "fade-in" : ""}`}
-    >
+    <div dir={direction} className={overlayClass}>
       {/* Left: state icon */}
       <div
         className={`overlay-left ${state === "recording" ? "is-recording" : ""}`}
@@ -78,7 +129,7 @@ const RecordingOverlay: React.FC = () => {
         {state === "recording" ? (
           <div className="recording-content">
             <div className="bars-container">
-              {levels.map((v, i) => (
+              {visibleLevels.map((v, i) => (
                 <div
                   key={i}
                   className="bar"

@@ -55,10 +55,7 @@ pub fn convo_reset_session(
 
 #[tauri::command]
 #[specta::specta]
-pub fn convo_get_session(
-    app: AppHandle,
-    session_id: String,
-) -> Result<ConvoSessionState, String> {
+pub fn convo_get_session(app: AppHandle, session_id: String) -> Result<ConvoSessionState, String> {
     let controller = app.state::<Arc<ConvoController>>();
     controller.get_session(&session_id)
 }

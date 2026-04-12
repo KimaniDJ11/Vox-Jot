@@ -39,7 +39,7 @@ find "${TARGET_DIR}" \
   build_dir="$(dirname "$(dirname "${stale_dir}")")"
   echo "Removing stale build dir: ${build_dir}"
   rm -rf "${build_dir}"
-done
+done || true
 
 echo "Building signed macOS bundle..."
 export CARGO_TARGET_DIR="${TARGET_DIR}"

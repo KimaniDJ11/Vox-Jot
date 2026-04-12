@@ -122,11 +122,9 @@ impl ConvoController {
         let raw_response = self.call_llm(messages).await?;
 
         // Parse response for special markers
-        let suggested_actions =
-            self.parse_actions(&raw_response, &session_snapshot.mode);
+        let suggested_actions = self.parse_actions(&raw_response, &session_snapshot.mode);
 
-        let assistant_text =
-            self.clean_response_for_display(&raw_response, &session_snapshot.mode);
+        let assistant_text = self.clean_response_for_display(&raw_response, &session_snapshot.mode);
 
         let assistant_item = ConvoTranscriptItem {
             id: Uuid::new_v4().to_string(),
@@ -294,11 +292,7 @@ impl ConvoController {
         Ok(item)
     }
 
-    pub fn remove_context_item(
-        &self,
-        session_id: &str,
-        item_id: &str,
-    ) -> Result<(), String> {
+    pub fn remove_context_item(&self, session_id: &str, item_id: &str) -> Result<(), String> {
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         let session = sessions
             .get_mut(session_id)
@@ -311,10 +305,7 @@ impl ConvoController {
         Ok(())
     }
 
-    pub fn list_context_items(
-        &self,
-        session_id: &str,
-    ) -> Result<Vec<ConvoContextItem>, String> {
+    pub fn list_context_items(&self, session_id: &str) -> Result<Vec<ConvoContextItem>, String> {
         let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         let session = sessions
             .get(session_id)
@@ -385,9 +376,37 @@ impl ConvoController {
                 .map(|e| e.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
             let binary_exts = [
-                "png", "jpg", "jpeg", "gif", "bmp", "ico", "webp", "mp3", "mp4", "wav", "ogg",
-                "avi", "mov", "zip", "tar", "gz", "rar", "7z", "exe", "dll", "so", "dylib",
-                "bin", "o", "a", "wasm", "pdf", "onnx", "pt", "pth", "safetensors",
+                "png",
+                "jpg",
+                "jpeg",
+                "gif",
+                "bmp",
+                "ico",
+                "webp",
+                "mp3",
+                "mp4",
+                "wav",
+                "ogg",
+                "avi",
+                "mov",
+                "zip",
+                "tar",
+                "gz",
+                "rar",
+                "7z",
+                "exe",
+                "dll",
+                "so",
+                "dylib",
+                "bin",
+                "o",
+                "a",
+                "wasm",
+                "pdf",
+                "onnx",
+                "pt",
+                "pth",
+                "safetensors",
             ];
             if binary_exts.contains(&ext.as_str()) {
                 return;
@@ -428,11 +447,7 @@ impl ConvoController {
         Ok(context_items)
     }
 
-    fn walk_folder_files(
-        &self,
-        dir: &std::path::Path,
-        callback: &mut dyn FnMut(&std::path::Path),
-    ) {
+    fn walk_folder_files(&self, dir: &std::path::Path, callback: &mut dyn FnMut(&std::path::Path)) {
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return,
@@ -527,6 +542,14 @@ impl ConvoController {
             "Overlay Position",
             "Where the recording overlay appears on screen.",
             format!("{:?}", settings.overlay_position),
+            "Appearance",
+            "general_app_settings"
+        );
+        entry!(
+            "recording_overlay_style",
+            "Recording Overlay Style",
+            "Compact (minimal) or detailed (full level meters + partial text).",
+            format!("{:?}", settings.recording_overlay_style),
             "Appearance",
             "general_app_settings"
         );
@@ -831,11 +854,7 @@ impl ConvoController {
 
     // ── Response parsing ────────────────────────────────────────────────────
 
-    fn parse_actions(
-        &self,
-        response: &str,
-        mode: &ConvoMode,
-    ) -> Vec<ConvoActionSuggestion> {
+    fn parse_actions(&self, response: &str, mode: &ConvoMode) -> Vec<ConvoActionSuggestion> {
         let mut actions = Vec::new();
 
         // Parse [[SETTING:section_id]] markers (Settings Coach mode)
@@ -856,8 +875,7 @@ impl ConvoController {
 
         // Parse <draft>...</draft> blocks (Jotpad mode)
         if *mode == ConvoMode::Jotpad {
-            let re_draft =
-                regex::Regex::new(r"(?s)<draft>(.*?)</draft>").ok();
+            let re_draft = regex::Regex::new(r"(?s)<draft>(.*?)</draft>").ok();
             if let Some(re) = re_draft {
                 for cap in re.captures_iter(response) {
                     if let Some(draft_content) = cap.get(1) {

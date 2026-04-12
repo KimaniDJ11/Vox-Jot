@@ -1,0 +1,314 @@
+{
+  "metadata": {
+    "corpus_id": "voxjot-spelling-v1",
+    "description": "Spelling correctness test cases for post-processing evaluation. Tests that the LLM post-processor fixes STT misspellings, handles homophones correctly, preserves correctly-spelled unusual words, and doesn't introduce new spelling errors.",
+    "generated_at": "2026-04-11",
+    "categories": {
+      "homophones": "Homophone pairs where STT picks the wrong form — post-process should fix based on context",
+      "commonly-confused": "Commonly confused word pairs (affect/effect, than/then) — must choose the right one",
+      "stt-misspelling": "Typical STT transcription errors (dropped letters, phonetic spelling) — post-process should correct",
+      "proper-noun-preservation": "Correctly-spelled proper nouns and brand names — must NOT be 'corrected' to common words",
+      "technical-spelling": "Technical terms, acronyms, and jargon that look unusual but are correct — must be preserved",
+      "possessive-contraction": "Its/it's, whose/who's, and similar possessive vs contraction distinctions",
+      "double-word-trap": "Words that sound like two words or vice versa — must be joined/split correctly"
+    },
+    "case_count": 42,
+    "notes": "These cases specifically target spelling correctness. The raw_stt field simulates realistic STT output including common transcription errors. Expected output shows the correctly spelled version."
+  },
+  "cases": [
+    {
+      "id": "hom-01",
+      "raw_stt": "there going to the store to get there supplies for they're project",
+      "expected_output": "They're going to the store to get their supplies for their project.",
+      "category": "homophones",
+      "notes": "Three forms of there/their/they're all used incorrectly"
+    },
+    {
+      "id": "hom-02",
+      "raw_stt": "your going to need you're laptop for the presentation",
+      "expected_output": "You're going to need your laptop for the presentation.",
+      "category": "homophones",
+      "notes": "your/you're swapped"
+    },
+    {
+      "id": "hom-03",
+      "raw_stt": "the company past the audit and we can now proceed with the next phase",
+      "expected_output": "The company passed the audit and we can now proceed with the next phase.",
+      "category": "homophones",
+      "notes": "past vs passed — STT often drops the -ed"
+    },
+    {
+      "id": "hom-04",
+      "raw_stt": "I here that the new hire will be hear by Monday",
+      "expected_output": "I hear that the new hire will be here by Monday.",
+      "category": "homophones",
+      "notes": "here/hear swapped"
+    },
+    {
+      "id": "hom-05",
+      "raw_stt": "the whether is going to effect are plans for the outdoor event",
+      "expected_output": "The weather is going to affect our plans for the outdoor event.",
+      "category": "homophones",
+      "notes": "whether/weather, effect/affect, are/our — triple homophone error"
+    },
+    {
+      "id": "hom-06",
+      "raw_stt": "please site your sources when you right the report",
+      "expected_output": "Please cite your sources when you write the report.",
+      "category": "homophones",
+      "notes": "site/cite, right/write"
+    },
+    {
+      "id": "hom-07",
+      "raw_stt": "we need to ensure that are role based access is setup correctly",
+      "expected_output": "We need to ensure that our role-based access is set up correctly.",
+      "category": "homophones",
+      "notes": "are/our, setup/set up (verb form)"
+    },
+    {
+      "id": "conf-01",
+      "raw_stt": "the new policy will effect all employees accept those in the legal department",
+      "expected_output": "The new policy will affect all employees except those in the legal department.",
+      "category": "commonly-confused",
+      "notes": "effect/affect and accept/except"
+    },
+    {
+      "id": "conf-02",
+      "raw_stt": "I would rather work on this then the other project because it has less dependencies",
+      "expected_output": "I would rather work on this than the other project because it has fewer dependencies.",
+      "category": "commonly-confused",
+      "notes": "then/than and less/fewer"
+    },
+    {
+      "id": "conf-03",
+      "raw_stt": "the team lead was complementing everyone on how good they did on the project",
+      "expected_output": "The team lead was complimenting everyone on how well they did on the project.",
+      "category": "commonly-confused",
+      "notes": "complementing/complimenting and good/well"
+    },
+    {
+      "id": "conf-04",
+      "raw_stt": "we need to insure that the principle stakeholders are appraised of the situation",
+      "expected_output": "We need to ensure that the principal stakeholders are apprised of the situation.",
+      "category": "commonly-confused",
+      "notes": "insure/ensure, principle/principal, appraised/apprised"
+    },
+    {
+      "id": "conf-05",
+      "raw_stt": "the advise from the counsel was to proceed with caution and not loose any documents",
+      "expected_output": "The advice from the counsel was to proceed with caution and not lose any documents.",
+      "category": "commonly-confused",
+      "notes": "advise/advice (noun form), loose/lose"
+    },
+    {
+      "id": "conf-06",
+      "raw_stt": "irregardless of the data we should precede with the plan as it stands",
+      "expected_output": "Regardless of the data, we should proceed with the plan as it stands.",
+      "category": "commonly-confused",
+      "notes": "irregardless → regardless, precede/proceed"
+    },
+    {
+      "id": "stt-01",
+      "raw_stt": "the goverment anounced a new infastructure bill worth aproximately three billion dollars",
+      "expected_output": "The government announced a new infrastructure bill worth approximately $3 billion.",
+      "category": "stt-misspelling",
+      "notes": "Common phonetic misspellings from STT: goverment, anounced, infastructure, aproximately"
+    },
+    {
+      "id": "stt-02",
+      "raw_stt": "the enviroment variables need to be configured seperately for each developement server",
+      "expected_output": "The environment variables need to be configured separately for each development server.",
+      "category": "stt-misspelling",
+      "notes": "Technical context with common misspellings: enviroment, seperately, developement"
+    },
+    {
+      "id": "stt-03",
+      "raw_stt": "we recieved the calender invite for the comittee meeting on Wenesday",
+      "expected_output": "We received the calendar invite for the committee meeting on Wednesday.",
+      "category": "stt-misspelling",
+      "notes": "Common misspellings: recieved (ie/ei), calender, comittee, Wenesday"
+    },
+    {
+      "id": "stt-04",
+      "raw_stt": "the restaraunt on the corner has excelent Mediteranian food and a beautifull patio",
+      "expected_output": "The restaurant on the corner has excellent Mediterranean food and a beautiful patio.",
+      "category": "stt-misspelling",
+      "notes": "Everyday misspellings: restaraunt, excelent, Mediteranian, beautifull"
+    },
+    {
+      "id": "stt-05",
+      "raw_stt": "please scheduele a maintainance window for the database and notify all relevent stakeholders",
+      "expected_output": "Please schedule a maintenance window for the database and notify all relevant stakeholders.",
+      "category": "stt-misspelling",
+      "notes": "Work context misspellings: scheduele, maintainance, relevent"
+    },
+    {
+      "id": "stt-06",
+      "raw_stt": "the managment team needs to adress the recurant performace issues imediately",
+      "expected_output": "The management team needs to address the recurrent performance issues immediately.",
+      "category": "stt-misspelling",
+      "notes": "Heavy misspelling load: managment, adress, recurant, performace, imediately"
+    },
+    {
+      "id": "pnp-01",
+      "raw_stt": "Elon Musk announced that SpaceX will launch the Starship rocket from Boca Chica Texas",
+      "expected_output": "Elon Musk announced that SpaceX will launch the Starship rocket from Boca Chica, Texas.",
+      "category": "proper-noun-preservation",
+      "notes": "Celebrity + company + product + place names — all correctly spelled, must not be altered"
+    },
+    {
+      "id": "pnp-02",
+      "raw_stt": "we're migrating from Elasticsearch to Meilisearch and deploying on Hetzner",
+      "expected_output": "We're migrating from Elasticsearch to Meilisearch and deploying on Hetzner.",
+      "category": "proper-noun-preservation",
+      "notes": "Less-common tech brand names — must not be 'corrected' to similar words"
+    },
+    {
+      "id": "pnp-03",
+      "raw_stt": "the Kubernetes cluster running on DigitalOcean uses Traefik as the ingress controller",
+      "expected_output": "The Kubernetes cluster running on DigitalOcean uses Traefik as the ingress controller.",
+      "category": "proper-noun-preservation",
+      "notes": "Infrastructure tech names — Traefik especially looks like a misspelling but is correct"
+    },
+    {
+      "id": "pnp-04",
+      "raw_stt": "Shopify is built with Ruby on Rails and uses Sorbet for type checking",
+      "expected_output": "Shopify is built with Ruby on Rails and uses Sorbet for type checking.",
+      "category": "proper-noun-preservation",
+      "notes": "Framework and tool names that must be preserved exactly"
+    },
+    {
+      "id": "pnp-05",
+      "raw_stt": "I booked a table at Nobu in Malibu for dinner with Chiwetel Ejiofor",
+      "expected_output": "I booked a table at Nobu in Malibu for dinner with Chiwetel Ejiofor.",
+      "category": "proper-noun-preservation",
+      "notes": "Restaurant name and actor name with unusual spelling — must preserve exactly"
+    },
+    {
+      "id": "tech-01",
+      "raw_stt": "the YAML config uses OAuth2 with PKCE flow and HMAC SHA256 for signing",
+      "expected_output": "The YAML config uses OAuth2 with PKCE flow and HMAC-SHA256 for signing.",
+      "category": "technical-spelling",
+      "notes": "Technical acronyms and protocol names — must not be lowercased or altered"
+    },
+    {
+      "id": "tech-02",
+      "raw_stt": "we should add a CSRF token to the GraphQL endpoint and enable CORS for the CDN",
+      "expected_output": "We should add a CSRF token to the GraphQL endpoint and enable CORS for the CDN.",
+      "category": "technical-spelling",
+      "notes": "Security/web acronyms — must be preserved in uppercase"
+    },
+    {
+      "id": "tech-03",
+      "raw_stt": "the PostgreSQL query uses a CTE with a recursive JOIN and JSONB operators",
+      "expected_output": "The PostgreSQL query uses a CTE with a recursive JOIN and JSONB operators.",
+      "category": "technical-spelling",
+      "notes": "Database terminology — PostgreSQL capitalization and SQL keywords"
+    },
+    {
+      "id": "tech-04",
+      "raw_stt": "run pytest with the dash dash cov flag to generate the code coverage report in HTML format",
+      "expected_output": "Run pytest with the --cov flag to generate the code coverage report in HTML format.",
+      "category": "technical-spelling",
+      "notes": "CLI tool names and flags — pytest, --cov must be preserved"
+    },
+    {
+      "id": "tech-05",
+      "raw_stt": "the WebSocket connection uses wss protocol on port 8443 with TLS 1.3",
+      "expected_output": "The WebSocket connection uses wss protocol on port 8443 with TLS 1.3.",
+      "category": "technical-spelling",
+      "notes": "Networking terms with specific capitalization"
+    },
+    {
+      "id": "poss-01",
+      "raw_stt": "its important that the company reviews it's policies before its too late",
+      "expected_output": "It's important that the company reviews its policies before it's too late.",
+      "category": "possessive-contraction",
+      "notes": "its/it's — three instances, two should be contractions and one possessive"
+    },
+    {
+      "id": "poss-02",
+      "raw_stt": "whose responsible for the project and who's idea was it to change the deadline",
+      "expected_output": "Who's responsible for the project and whose idea was it to change the deadline?",
+      "category": "possessive-contraction",
+      "notes": "whose/who's swapped — question should also get question mark"
+    },
+    {
+      "id": "poss-03",
+      "raw_stt": "the teams performance improved since they updated they're workflow and there daily standups",
+      "expected_output": "The team's performance improved since they updated their workflow and their daily standups.",
+      "category": "possessive-contraction",
+      "notes": "teams/team's (possessive), they're/their, there/their"
+    },
+    {
+      "id": "poss-04",
+      "raw_stt": "lets review the PR and make sure we're changes dont break the CI pipeline",
+      "expected_output": "Let's review the PR and make sure our changes don't break the CI pipeline.",
+      "category": "possessive-contraction",
+      "notes": "lets/let's, we're/our, dont/don't"
+    },
+    {
+      "id": "dbl-01",
+      "raw_stt": "we need to login to the data base and check the back end service alot",
+      "expected_output": "We need to log in to the database and check the back-end service a lot.",
+      "category": "double-word-trap",
+      "notes": "login→log in (verb), data base→database, back end→back-end, alot→a lot"
+    },
+    {
+      "id": "dbl-02",
+      "raw_stt": "can you setup the work flow so it runs every time we push to the main branch",
+      "expected_output": "Can you set up the workflow so it runs every time we push to the main branch?",
+      "category": "double-word-trap",
+      "notes": "setup→set up (verb), work flow→workflow, also a question"
+    },
+    {
+      "id": "dbl-03",
+      "raw_stt": "the sign up process requires an e mail address and a pass word with atleast eight characters",
+      "expected_output": "The sign-up process requires an email address and a password with at least eight characters.",
+      "category": "double-word-trap",
+      "notes": "sign up→sign-up (adj), e mail→email, pass word→password, atleast→at least"
+    },
+    {
+      "id": "dbl-04",
+      "raw_stt": "every one on the team needs to checkout the new code base and do a walk through",
+      "expected_output": "Everyone on the team needs to check out the new codebase and do a walkthrough.",
+      "category": "double-word-trap",
+      "notes": "every one→everyone, checkout→check out (verb), code base→codebase, walk through→walkthrough (noun)"
+    },
+    {
+      "id": "dbl-05",
+      "raw_stt": "the over all feed back from the stake holders was in line with are expectations",
+      "expected_output": "The overall feedback from the stakeholders was in line with our expectations.",
+      "category": "double-word-trap",
+      "notes": "over all→overall, feed back→feedback, stake holders→stakeholders, are→our"
+    },
+    {
+      "id": "mix-01",
+      "raw_stt": "we recieved feed back that are Kubernetes deployement has a recurant issue with it's health checks",
+      "expected_output": "We received feedback that our Kubernetes deployment has a recurrent issue with its health checks.",
+      "category": "stt-misspelling",
+      "notes": "Mixed: misspelling + compound word + homophone + possessive — realistic worst-case STT output"
+    },
+    {
+      "id": "mix-02",
+      "raw_stt": "the principle engineer said we should of migrated the data base to PostgreSQL and it's effecting our performace",
+      "expected_output": "The principal engineer said we should have migrated the database to PostgreSQL and it's affecting our performance.",
+      "category": "commonly-confused",
+      "notes": "Mixed: principle/principal, should of/should have, data base, its/it's, effecting/affecting, performace"
+    },
+    {
+      "id": "mix-03",
+      "raw_stt": "irregardless of whose in charge we need to insure the sign up work flow doesnt loose any user data",
+      "expected_output": "Regardless of who's in charge, we need to ensure the sign-up workflow doesn't lose any user data.",
+      "category": "commonly-confused",
+      "notes": "Kitchen sink: irregardless, whose/who's, insure/ensure, sign up, work flow, doesnt/doesn't, loose/lose"
+    },
+    {
+      "id": "mix-04",
+      "raw_stt": "their are alot of enviroment variables that effect the behavour of the WebSocket connection on Hetzner",
+      "expected_output": "There are a lot of environment variables that affect the behavior of the WebSocket connection on Hetzner.",
+      "category": "stt-misspelling",
+      "notes": "Mixed realistic case: their/there, alot, enviroment, effect/affect, behavour, proper nouns preserved"
+    }
+  ]
+}

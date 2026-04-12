@@ -24,7 +24,7 @@ pub mod span;
 pub mod store;
 
 use app_classifier::classify_app;
-use log::{debug, info};
+use log::info;
 use recent_input::RecentInputTracker;
 use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
@@ -81,6 +81,10 @@ impl InsertedSpanTracker {
             params.window_secs,
         );
 
+        // Retry listener startup here in case app boot happened before macOS
+        // Input Monitoring was granted.
+        recent_input.start_listener();
+
         // Store the span
         {
             let mut active = self.active_span.lock().unwrap_or_else(|e| e.into_inner());
@@ -98,7 +102,7 @@ impl InsertedSpanTracker {
     }
 
     /// Get a clone of the currently active span, if any.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn get_active_span(&self) -> Option<InsertedSpan> {
         self.active_span
             .lock()
@@ -107,11 +111,11 @@ impl InsertedSpanTracker {
     }
 
     /// Clear the active span.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn clear_active_span(&self) {
         let mut active = self.active_span.lock().unwrap_or_else(|e| e.into_inner());
         if active.is_some() {
-            debug!("Clearing active inserted span");
+            log::debug!("Clearing active inserted span");
         }
         *active = None;
     }

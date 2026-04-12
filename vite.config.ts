@@ -26,6 +26,17 @@ export default defineConfig(async () => ({
         scratchpad: resolve(__dirname, "src/scratchpad/index.html"),
         detail: resolve(__dirname, "src/detail/index.html"),
       },
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-tauri": [
+            "@tauri-apps/api",
+            "@tauri-apps/plugin-os",
+            "@tauri-apps/plugin-fs",
+          ],
+          "vendor-ui": ["lucide-react", "react-i18next", "i18next", "sonner"],
+        },
+      },
     },
   },
 

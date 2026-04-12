@@ -21,11 +21,11 @@ import { ClamshellMicrophoneSelector } from "@/components/settings/ClamshellMicr
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { AlwaysOnMicrophone } from "@/components/settings/AlwaysOnMicrophone";
 import { PushToTalk } from "@/components/settings/PushToTalk";
+import { AudioEnhancement } from "@/components/settings/AudioEnhancement";
 import { AudioFeedback } from "@/components/settings/AudioFeedback";
 import { VolumeSlider } from "@/components/settings/VolumeSlider";
 import { ShowOverlay } from "@/components/settings/ShowOverlay";
 import { ShortcutInput } from "@/components/settings/ShortcutInput";
-import { TranslateToEnglish } from "@/components/settings/TranslateToEnglish";
 import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
 import { ModelUnloadTimeoutSetting } from "@/components/settings/ModelUnloadTimeout";
 import { StartHidden } from "@/components/settings/StartHidden";
@@ -67,7 +67,7 @@ import {
   ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
-import OllamaSettings from "@/components/settings/ollama/OllamaSettings";
+import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
 import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
 import { AppAwareWriteProfilesToggle } from "@/components/settings/AppAwareWriteProfilesToggle";
@@ -152,19 +152,6 @@ export const DictateHistorySection: React.FC = () => {
   );
 };
 
-export const DictateTranslationSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <SettingsGroup title="Quick Translation">
-        <TranslateToEnglish descriptionMode="tooltip" grouped={true} />
-      </SettingsGroup>
-      <SettingsGroup title="Translation Output">
-        <TranslationSettingsCard />
-      </SettingsGroup>
-    </div>
-  );
-};
-
 export const RefineTranslationSection: React.FC = () => {
   return (
     <div className="space-y-6">
@@ -209,7 +196,7 @@ export const AppMappingsSection: React.FC = () => {
 export const RefineModelsSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <OllamaSettings />
+      <RefineModelsSettings />
     </div>
   );
 };
@@ -562,6 +549,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       <SettingsGroup title="Speech Cleanup">
+        <AudioEnhancement descriptionMode="tooltip" grouped={true} />
         <CustomFillerWordsSetting />
       </SettingsGroup>
     </div>
@@ -698,10 +686,10 @@ const TranslationProviderSettingsCard: React.FC = () => {
 export const AISetupSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
+      <RefineModelsSettings />
       <PostProcessingSettings omitLocalPrivacy />
       <TranslationProviderSettingsCard />
       <FileTranscriptionCard />
-      <OllamaSettings />
     </div>
   );
 };

@@ -5,6 +5,10 @@ import {
   getTranslatedModelName,
   getTranslatedModelDescription,
 } from "../../lib/utils/modelTranslation";
+import {
+  ProviderIcon,
+  engineTypeToProviderId,
+} from "../ui/ProviderIcon";
 
 interface ModelDropdownProps {
   models: ModelInfo[];
@@ -46,18 +50,25 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                   : ""
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-[var(--text)]">
-                    {getTranslatedModelName(model, t)}
-                    {model.is_custom && (
-                      <span className="ms-1.5 text-xs font-medium text-[var(--muted)] uppercase">
-                        {t("modelSelector.custom")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-[var(--muted)] italic pe-4">
-                    {getTranslatedModelDescription(model, t)}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <ProviderIcon
+                    providerId={engineTypeToProviderId(model.engine_type)}
+                    size="sm"
+                    className="mt-0.5"
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm text-[var(--text)]">
+                      {getTranslatedModelName(model, t)}
+                      {model.is_custom && (
+                        <span className="ms-1.5 text-xs font-medium text-[var(--muted)] uppercase">
+                          {t("modelSelector.custom")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-[var(--muted)] italic pe-4">
+                      {getTranslatedModelDescription(model, t)}
+                    </div>
                   </div>
                 </div>
                 {currentModelId === model.id && (

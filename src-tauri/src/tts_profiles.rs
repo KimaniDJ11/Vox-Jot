@@ -1,5 +1,6 @@
 use crate::portable;
 use crate::settings::{get_settings, write_settings, TTS_PROVIDER_QWEN3_NATIVE_ID};
+use crate::tts::supported_voice_profile_compatibility;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
@@ -62,8 +63,53 @@ fn default_satisfactory_threshold_secs() -> f32 {
     60.0
 }
 
+fn legacy_qwen_only_profile(
+    compatible_provider_ids: &[String],
+    compatible_model_ids: &[String],
+) -> bool {
+    compatible_provider_ids.len() == 1
+        && compatible_provider_ids[0] == TTS_PROVIDER_QWEN3_NATIVE_ID
+        && compatible_model_ids.len() == 1
+        && compatible_model_ids[0] == QWEN3_CLONE_MODEL_ID
+}
+
+fn normalize_profile_compatibility(
+    compatible_provider_ids: Vec<String>,
+    compatible_model_ids: Vec<String>,
+) -> (Vec<String>, Vec<String>) {
+    let mut provider_ids = compatible_provider_ids
+        .into_iter()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    provider_ids.sort();
+    provider_ids.dedup();
+
+    let mut model_ids = compatible_model_ids
+        .into_iter()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    model_ids.sort();
+    model_ids.dedup();
+
+    if provider_ids.is_empty()
+        || model_ids.is_empty()
+        || legacy_qwen_only_profile(&provider_ids, &model_ids)
+    {
+        let compatibility = supported_voice_profile_compatibility();
+        return (compatibility.provider_ids, compatibility.model_ids);
+    }
+
+    (provider_ids, model_ids)
+}
+
 impl StoredTtsVoiceProfile {
     fn into_descriptor(self, profile_dir: &Path) -> TtsVoiceProfileDescriptor {
+        let (compatible_provider_ids, compatible_model_ids) = normalize_profile_compatibility(
+            self.compatible_provider_ids,
+            self.compatible_model_ids,
+        );
         let reference_audio_path = self
             .reference_audio_file_name
             .as_ref()
@@ -75,8 +121,8 @@ impl StoredTtsVoiceProfile {
             label: self.label,
             description: self.description,
             transcript: self.transcript,
-            compatible_provider_ids: self.compatible_provider_ids,
-            compatible_model_ids: self.compatible_model_ids,
+            compatible_provider_ids,
+            compatible_model_ids,
             has_reference_audio: reference_audio_path.is_some(),
             reference_audio_path: reference_audio_path
                 .as_ref()
@@ -137,8 +183,8 @@ pub fn create_voice_profile(
         label: trimmed_label.to_string(),
         description: clean_optional_text(description),
         transcript: clean_optional_text(transcript),
-        compatible_provider_ids: vec![TTS_PROVIDER_QWEN3_NATIVE_ID.to_string()],
-        compatible_model_ids: vec![QWEN3_CLONE_MODEL_ID.to_string()],
+        compatible_provider_ids: supported_voice_profile_compatibility().provider_ids,
+        compatible_model_ids: supported_voice_profile_compatibility().model_ids,
         reference_audio_file_name: None,
         sample_rate_hz: None,
         continuous_improvement_enabled: false,
@@ -406,8 +452,15 @@ fn read_profile_metadata(profile_dir: &Path) -> Result<StoredTtsVoiceProfile, St
     let metadata_path = profile_dir.join(PROFILE_METADATA_FILE_NAME);
     let bytes = fs::read(&metadata_path)
         .map_err(|err| format!("Failed to read TTS profile metadata: {err}"))?;
-    serde_json::from_slice(&bytes)
-        .map_err(|err| format!("Failed to parse TTS profile metadata: {err}"))
+    let mut metadata = serde_json::from_slice::<StoredTtsVoiceProfile>(&bytes)
+        .map_err(|err| format!("Failed to parse TTS profile metadata: {err}"))?;
+    let (compatible_provider_ids, compatible_model_ids) = normalize_profile_compatibility(
+        metadata.compatible_provider_ids.clone(),
+        metadata.compatible_model_ids.clone(),
+    );
+    metadata.compatible_provider_ids = compatible_provider_ids;
+    metadata.compatible_model_ids = compatible_model_ids;
+    Ok(metadata)
 }
 
 fn write_profile_metadata(

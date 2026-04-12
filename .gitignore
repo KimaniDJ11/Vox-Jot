@@ -54,3 +54,6 @@ output/eval/
 
 # TTS release assets (stored as GitHub release assets, not in repo)
 .codex-tmp/tts-release-assets/
+
+# Generated eval output
+output/

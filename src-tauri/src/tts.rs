@@ -95,7 +95,6 @@ struct RuntimeListenProviderDefinition {
     id: String,
     label: String,
     engine_family: String,
-    runtime_kind: String,
     supported_platforms: Vec<String>,
     license_label: Option<String>,
 }
@@ -128,7 +127,6 @@ struct RuntimeListenModelCatalogEntry {
     label: String,
     description: String,
     source_label: String,
-    local_path: Option<String>,
     capabilities: RuntimeListenCapabilities,
     readiness: RuntimeListenReadiness,
     supported_languages: Vec<String>,
@@ -140,14 +138,8 @@ struct RuntimeListenModelCatalogEntry {
 struct RuntimeListenCapabilities {
     supports_basic_tts: bool,
     supports_voice_cloning: bool,
-    supports_reference_transcript: bool,
     supports_instruction_prompt: bool,
-    supports_preset_speakers: bool,
-    supports_voice_design: bool,
-    supports_multilingual: bool,
-    supports_multi_speaker: bool,
     supports_streaming: bool,
-    supports_audio_editing: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -155,14 +147,12 @@ struct RuntimeListenReadiness {
     status: String,
     runtime_label: String,
     issues: Vec<String>,
-    local_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct RuntimeListenSelection {
     selected_provider_id: Option<String>,
     selected_model_id: Option<String>,
-    selected_profile_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -508,10 +498,15 @@ struct MlxAudioTtsModelDefinition {
     description: &'static str,
     engine_family: &'static str,
     license_label: Option<&'static str>,
-    locale: Option<&'static str>,
     supported_languages: &'static [&'static str],
     supports_voice_cloning: bool,
     supports_instruction_prompt: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct VoiceProfileCompatibility {
+    pub provider_ids: Vec<String>,
+    pub model_ids: Vec<String>,
 }
 
 const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
@@ -526,7 +521,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Fast, lightweight multilingual TTS on Apple Silicon.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["en", "ja", "zh", "fr", "es", "it", "pt", "hi"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
@@ -542,7 +536,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Expressive multilingual TTS with preset voice styles.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &[
             "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh", "ja",
             "hu", "ko",
@@ -561,7 +554,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Smaller Qwen3 TTS model for multilingual synthesis and cloning.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["zh", "en", "ja", "ko", "mul"],
         supports_voice_cloning: true,
         supports_instruction_prompt: true,
@@ -577,7 +569,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Larger Qwen3 TTS model with richer voice design controls.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["zh", "en", "ja", "ko", "mul"],
         supports_voice_cloning: true,
         supports_instruction_prompt: true,
@@ -593,7 +584,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Dialogue-focused English TTS with multi-speaker support.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("en"),
         supported_languages: &["en"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
@@ -609,7 +599,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Conversational speech model with reference-audio cloning.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("en"),
         supported_languages: &["en"],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
@@ -625,7 +614,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Efficient bilingual Spark TTS model for English and Chinese.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["en", "zh"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
@@ -641,7 +629,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Compact English TTS model with fast inference.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("en"),
         supported_languages: &["en"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
@@ -657,7 +644,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Dense Ming Omni TTS with voice cloning and style control.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["en", "zh"],
         supports_voice_cloning: true,
         supports_instruction_prompt: true,
@@ -673,7 +659,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "High-quality European-language TTS with a default voice.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &[
             "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "uk", "cs", "ro", "hu", "sv",
             "da", "fi", "no", "el", "bg", "sk", "hr", "sr", "tr",
@@ -692,7 +677,6 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         description: "Multilingual Mistral TTS with preset voices across nine languages.",
         engine_family: "mlx_audio",
         license_label: None,
-        locale: Some("mul"),
         supported_languages: &["en", "fr", "es", "de", "it", "pt", "nl", "ar", "hi"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
@@ -749,6 +733,33 @@ fn first_mlx_audio_model_for_provider(
     MLX_AUDIO_TTS_MODEL_DEFINITIONS
         .iter()
         .find(|definition| definition.provider_id == provider_id)
+}
+
+pub(crate) fn supported_voice_profile_compatibility() -> VoiceProfileCompatibility {
+    let mut provider_ids =
+        std::collections::BTreeSet::from([TTS_PROVIDER_QWEN3_NATIVE_ID.to_string()]);
+    let mut model_ids = std::collections::BTreeSet::from(["qwen3-0.6b-base".to_string()]);
+
+    for definition in MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .filter(|definition| definition.supports_voice_cloning)
+    {
+        provider_ids.insert(definition.provider_id.to_string());
+        model_ids.insert(definition.model_id.to_string());
+    }
+
+    for definition in MLX_AUDIO_TTS_MODEL_DEFINITIONS
+        .iter()
+        .filter(|definition| definition.supports_voice_cloning)
+    {
+        provider_ids.insert(definition.provider_id.to_string());
+        model_ids.insert(definition.model_id.to_string());
+    }
+
+    VoiceProfileCompatibility {
+        provider_ids: provider_ids.into_iter().collect(),
+        model_ids: model_ids.into_iter().collect(),
+    }
 }
 
 fn mlx_voice_locale(voice_id: &str) -> Option<&'static str> {
@@ -1070,11 +1081,7 @@ impl TtsManager {
         voices
     }
 
-    fn mlx_config_voice_inventory(
-        &self,
-        model_source: &Path,
-        provider_id: &str,
-    ) -> Vec<VoiceInfo> {
+    fn mlx_config_voice_inventory(&self, model_source: &Path, provider_id: &str) -> Vec<VoiceInfo> {
         let voice_ids = ["config.json", "params.json"]
             .into_iter()
             .filter_map(|filename| {
@@ -1414,17 +1421,14 @@ impl TtsManager {
                 .try_state::<std::sync::Arc<crate::sidecar::SidecarManager>>()
             {
                 let sidecar = Arc::clone(&*sidecar);
-                let runtime_state =
-                    tokio::task::spawn_blocking(move || {
-                        (
-                            sidecar.is_speech_runtime_running(),
-                            sidecar.has_speech_runtime_source(),
-                        )
-                    })
-                        .await
-                        .map_err(|err| {
-                            format!("Failed to check speech runtime availability: {err}")
-                        })?;
+                let runtime_state = tokio::task::spawn_blocking(move || {
+                    (
+                        sidecar.is_speech_runtime_running(),
+                        sidecar.has_speech_runtime_source(),
+                    )
+                })
+                .await
+                .map_err(|err| format!("Failed to check speech runtime availability: {err}"))?;
                 let (runtime_running, runtime_available) = runtime_state;
                 if runtime_running || runtime_available {
                     return Ok(());
@@ -2008,7 +2012,6 @@ impl TtsManager {
                             id: definition.provider_id.to_string(),
                             label: definition.provider_label.to_string(),
                             engine_family: definition.engine_family.to_string(),
-                            runtime_kind: "mlx_audio".to_string(),
                             supported_platforms: vec!["darwin".to_string()],
                             license_label: definition.license_label.map(str::to_string),
                         },
@@ -2024,24 +2027,16 @@ impl TtsManager {
                 label: definition.label.to_string(),
                 description: definition.description.to_string(),
                 source_label: "mlx-audio runtime".to_string(),
-                local_path: None,
                 capabilities: RuntimeListenCapabilities {
                     supports_basic_tts: true,
                     supports_voice_cloning: definition.supports_voice_cloning,
-                    supports_reference_transcript: false,
                     supports_instruction_prompt: definition.supports_instruction_prompt,
-                    supports_preset_speakers: false,
-                    supports_voice_design: definition.supports_instruction_prompt,
-                    supports_multilingual: definition.supported_languages.len() > 1,
-                    supports_multi_speaker: definition.provider_id == TTS_PROVIDER_MLX_DIA_ID,
                     supports_streaming: false,
-                    supports_audio_editing: false,
                 },
                 readiness: RuntimeListenReadiness {
                     status: "ready".to_string(),
                     runtime_label: "mlx-audio runtime".to_string(),
                     issues: Vec::new(),
-                    local_path: None,
                 },
                 supported_languages: definition
                     .supported_languages
@@ -3005,6 +3000,15 @@ impl TtsManager {
             .send()
             .map_err(|err| format!("Failed to fetch runtime voice inventory: {err}"))?;
 
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            warn!(
+                "Speech runtime does not expose /listen/voices yet for provider '{}' model '{}'; returning an empty voice inventory.",
+                provider_id,
+                model_id.unwrap_or("")
+            );
+            return Ok(Vec::new());
+        }
+
         if !response.status().is_success() {
             let body = response.text().unwrap_or_default();
             let detail = serde_json::from_str::<serde_json::Value>(&body)
@@ -3898,12 +3902,7 @@ impl TtsManager {
         // Create a subdirectory matching the repo basename so the extracted
         // layout mirrors the GitHub-release tar structure (archive contains a
         // single top-level directory named after the pack id).
-        let inner_dir = install_dir.join(
-            repo_id
-                .rsplit('/')
-                .next()
-                .unwrap_or(repo_id),
-        );
+        let inner_dir = install_dir.join(repo_id.rsplit('/').next().unwrap_or(repo_id));
         fs::create_dir_all(&inner_dir)
             .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
 
@@ -3939,7 +3938,10 @@ impl TtsManager {
                 .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
         }
 
-        info!("HF snapshot: completed {label} ({} files)", model_info.siblings.len());
+        info!(
+            "HF snapshot: completed {label} ({} files)",
+            model_info.siblings.len()
+        );
         Ok(())
     }
 

@@ -219,14 +219,6 @@ pub fn show_scratchpad(app: &AppHandle) {
     create_scratchpad_window(app);
 }
 
-/// Hide the scratchpad window without destroying it.
-#[allow(dead_code)]
-pub fn hide_scratchpad(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(SCRATCHPAD_LABEL) {
-        let _ = window.hide();
-    }
-}
-
 /// Toggle scratchpad visibility.
 pub fn toggle_scratchpad(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(SCRATCHPAD_LABEL) {

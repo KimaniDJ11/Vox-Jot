@@ -841,7 +841,7 @@ Rules:\n\
 - Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.\n\
 - Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.\n\
 - Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.\n\
-- Interpret spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"correction\", \"wait no\", \"rather\", and natural restarts, and keep only the corrected intent.\n\
+- Interpret spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"correction\", \"wait no\", \"no wait\", \"rather\", \"no sorry\", and natural restarts, and keep only the corrected intent.\n\
 - Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.\n\
 - If the transcript is already clear, make the smallest possible changes.\n\
 - Use stronger rewrites only when clear structure, correction, or formatting cues are present.\n\
@@ -986,7 +986,9 @@ fn has_spoken_correction_restart(text: &str) -> bool {
         "correction",
         "actually",
         "wait no",
+        "no wait",
         "rather",
+        "no sorry",
     ];
     if direct_cues.iter().any(|cue| normalized.contains(cue)) {
         return true;
@@ -3289,7 +3291,9 @@ mod tests {
         should_block_paste_candidate, should_fallback_to_plain_text_candidate,
         should_fallback_to_plain_text_drift, should_force_conservative_rewrite, PostProcessPass,
     };
-    use crate::post_processing::{ActiveAppContext, AppToneMapping, DictionaryEntry, PostProcessMode};
+    use crate::post_processing::{
+        ActiveAppContext, AppToneMapping, DictionaryEntry, PostProcessMode,
+    };
     use crate::settings::{get_default_settings, AutoSubmitKey};
 
     #[test]
@@ -3506,7 +3510,11 @@ mod tests {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
         // Explicitly inject the Slack mapping so the test is machine-independent.
-        if !settings.app_tone_mappings.iter().any(|m| m.bundle_id == "com.tinyspeck.slackmacgap") {
+        if !settings
+            .app_tone_mappings
+            .iter()
+            .any(|m| m.bundle_id == "com.tinyspeck.slackmacgap")
+        {
             settings.app_tone_mappings.push(AppToneMapping {
                 bundle_id: "com.tinyspeck.slackmacgap".to_string(),
                 app_name: "Slack".to_string(),
@@ -3587,7 +3595,11 @@ mod tests {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
         // Explicitly inject the Slack mapping so the test is machine-independent.
-        if !settings.app_tone_mappings.iter().any(|m| m.bundle_id == "com.tinyspeck.slackmacgap") {
+        if !settings
+            .app_tone_mappings
+            .iter()
+            .any(|m| m.bundle_id == "com.tinyspeck.slackmacgap")
+        {
             settings.app_tone_mappings.push(AppToneMapping {
                 bundle_id: "com.tinyspeck.slackmacgap".to_string(),
                 app_name: "Slack".to_string(),

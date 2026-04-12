@@ -28,6 +28,11 @@
     "regression:diff": "bun scripts/compare-regression-reports.ts",
     "eval:post-process": "bun scripts/eval-post-process.ts",
     "eval:post-process:dry": "bun scripts/eval-post-process.ts --dry-run",
+    "eval:test-bank": "bun scripts/run-test-bank-eval.ts",
+    "eval:test-bank:live": "bun scripts/run-test-bank-eval.ts --live",
+    "eval:test-bank:sanity": "bun scripts/run-test-bank-eval.ts --suite sanity",
+    "eval:spelling": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json",
+    "eval:spelling:dry": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json --dry-run",
     "check:translations": "bun scripts/check-translations.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"
   },

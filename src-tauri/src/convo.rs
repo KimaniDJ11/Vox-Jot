@@ -241,10 +241,7 @@ impl PersonaPlexHelper {
         let child = std::process::Command::new(&binary)
             .arg("--port")
             .arg(PERSONAPLEX_PORT.to_string())
-            .env(
-                "PERSONAPLEX_MODEL_ID",
-                "aufklarer/PersonaPlex-7B-MLX-8bit",
-            )
+            .env("PERSONAPLEX_MODEL_ID", "aufklarer/PersonaPlex-7B-MLX-8bit")
             .env(
                 "QWEN3_CACHE_DIR",
                 dirs::home_dir()
@@ -440,81 +437,85 @@ impl ConvoAudioCapture {
         let worker = std::thread::spawn(move || {
             use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
-            let init_result = (|| -> Result<(cpal::Stream, std::sync::Arc<Mutex<Vec<f32>>>, u32), String> {
-                let host = crate::audio_toolkit::get_cpal_host();
-                let device = host
-                    .default_input_device()
-                    .ok_or("No input device available")?;
+            let init_result =
+                (|| -> Result<(cpal::Stream, std::sync::Arc<Mutex<Vec<f32>>>, u32), String> {
+                    let host = crate::audio_toolkit::get_cpal_host();
+                    let device = host
+                        .default_input_device()
+                        .ok_or("No input device available")?;
 
-                let config = device
-                    .default_input_config()
-                    .map_err(|e| format!("Failed to get input config: {}", e))?;
+                    let config = device
+                        .default_input_config()
+                        .map_err(|e| format!("Failed to get input config: {}", e))?;
 
-                let sample_rate = config.sample_rate().0;
-                let channels = config.channels() as usize;
-                let sample_format = config.sample_format();
-                let stream_config: cpal::StreamConfig = config.clone().into();
+                    let sample_rate = config.sample_rate().0;
+                    let channels = config.channels() as usize;
+                    let sample_format = config.sample_format();
+                    let stream_config: cpal::StreamConfig = config.clone().into();
 
-                let buffer = std::sync::Arc::new(Mutex::new(Vec::<f32>::new()));
-                let buffer_clone = buffer.clone();
+                    let buffer = std::sync::Arc::new(Mutex::new(Vec::<f32>::new()));
+                    let buffer_clone = buffer.clone();
 
-                let stream = match sample_format {
-                    cpal::SampleFormat::F32 => {
-                        let buffer = buffer_clone.clone();
-                        device.build_input_stream(
-                            &stream_config,
-                            move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                                push_mono_samples(data, channels, &buffer, |value| value);
-                            },
-                            |err| {
-                                error!("Convo audio capture error: {}", err);
-                            },
-                            None,
-                        )
+                    let stream = match sample_format {
+                        cpal::SampleFormat::F32 => {
+                            let buffer = buffer_clone.clone();
+                            device.build_input_stream(
+                                &stream_config,
+                                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                                    push_mono_samples(data, channels, &buffer, |value| value);
+                                },
+                                |err| {
+                                    error!("Convo audio capture error: {}", err);
+                                },
+                                None,
+                            )
+                        }
+                        cpal::SampleFormat::I16 => {
+                            let buffer = buffer_clone.clone();
+                            device.build_input_stream(
+                                &stream_config,
+                                move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                                    push_mono_samples(data, channels, &buffer, |value| {
+                                        value as f32 / i16::MAX as f32
+                                    });
+                                },
+                                |err| {
+                                    error!("Convo audio capture error: {}", err);
+                                },
+                                None,
+                            )
+                        }
+                        cpal::SampleFormat::U16 => {
+                            let buffer = buffer_clone.clone();
+                            device.build_input_stream(
+                                &stream_config,
+                                move |data: &[u16], _: &cpal::InputCallbackInfo| {
+                                    push_mono_samples(data, channels, &buffer, |value| {
+                                        (value as f32 / u16::MAX as f32) * 2.0 - 1.0
+                                    });
+                                },
+                                |err| {
+                                    error!("Convo audio capture error: {}", err);
+                                },
+                                None,
+                            )
+                        }
+                        other => {
+                            return Err(format!("Unsupported input sample format: {:?}", other));
+                        }
                     }
-                    cpal::SampleFormat::I16 => {
-                        let buffer = buffer_clone.clone();
-                        device.build_input_stream(
-                            &stream_config,
-                            move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                                push_mono_samples(data, channels, &buffer, |value| {
-                                    value as f32 / i16::MAX as f32
-                                });
-                            },
-                            |err| {
-                                error!("Convo audio capture error: {}", err);
-                            },
-                            None,
-                        )
-                    }
-                    cpal::SampleFormat::U16 => {
-                        let buffer = buffer_clone.clone();
-                        device.build_input_stream(
-                            &stream_config,
-                            move |data: &[u16], _: &cpal::InputCallbackInfo| {
-                                push_mono_samples(data, channels, &buffer, |value| {
-                                    (value as f32 / u16::MAX as f32) * 2.0 - 1.0
-                                });
-                            },
-                            |err| {
-                                error!("Convo audio capture error: {}", err);
-                            },
-                            None,
-                        )
-                    }
-                    other => {
-                        return Err(format!("Unsupported input sample format: {:?}", other));
-                    }
-                }
-                .map_err(|e| format!("Failed to build input stream: {}", e))?;
+                    .map_err(|e| format!("Failed to build input stream: {}", e))?;
 
-                stream
-                    .play()
-                    .map_err(|e| format!("Failed to start capture: {}", e))?;
+                    stream
+                        .play()
+                        .map_err(|e| format!("Failed to start capture: {}", e))?;
 
-                debug!("Convo audio capture started ({}Hz, {} ch)", sample_rate, channels);
-                Ok((stream, buffer, sample_rate))
-            })();
+                    debug!(
+                        "Convo audio capture started ({}Hz, {} ch)",
+                        sample_rate, channels
+                    );
+                    Ok((stream, buffer, sample_rate))
+                })();
 
             match init_result {
                 Ok((_stream, buffer, sample_rate)) => {

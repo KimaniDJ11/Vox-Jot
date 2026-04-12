@@ -20,6 +20,7 @@ mod ollama;
 mod overlay;
 pub mod portable;
 mod post_processing;
+mod refine_models;
 mod regression;
 mod scratchpad;
 mod settings;
@@ -430,9 +431,12 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_tts_rate_setting,
         shortcut::change_tts_volume_setting,
         shortcut::change_tts_stop_on_record_setting,
+        shortcut::change_audio_enhancement_enabled_setting,
+        shortcut::change_audio_enhancement_model_setting,
         shortcut::change_tts_model_store_path_setting,
         shortcut::change_speech_runtime_path_setting,
         shortcut::change_overlay_position_setting,
+        shortcut::change_recording_overlay_style_setting,
         shortcut::change_debug_mode_setting,
         shortcut::change_word_correction_threshold_setting,
         shortcut::change_paste_method_setting,
@@ -571,6 +575,10 @@ pub fn run(cli_args: CliArgs) {
         ollama::delete_ollama_model,
         ollama::get_recommended_ollama_models,
         ollama::start_ollama_serve,
+        refine_models::get_refine_model_catalog,
+        refine_models::set_refine_model_selection,
+        refine_models::install_refine_model,
+        refine_models::get_active_refine_installs,
         commands::notes::get_notes,
         commands::notes::get_note,
         commands::notes::create_note,

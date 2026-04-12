@@ -1,0 +1,96 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-12",
+  "evaluator": "cursor-agent",
+
+  "source": {
+    "url": "https://huggingface.co/openbmb/VoxCPM2",
+    "repo_url": "https://github.com/OpenBMB/VoxCPM",
+    "paper_url": "https://arxiv.org/abs/2509.24650",
+    "license": "Apache-2.0",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "voxcpm2",
+    "label": "VoxCPM2",
+    "description": "Tokenizer-free diffusion autoregressive TTS. 30 languages, 48kHz, voice cloning + voice design.",
+    "domain": "tts",
+    "parameter_count": "2B",
+    "model_format": "safetensors",
+    "dtype": "bfloat16"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": true,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": [
+      "https://huggingface.co/openbmb/VoxCPM2/discussions"
+    ]
+  },
+
+  "runtime_fit": {
+    "lane": "reject",
+    "can_run_as_local_process": true,
+    "api_surface": ["generate", "generate_streaming"],
+    "output_format": "wav",
+    "supports_streaming": true,
+    "cold_start_estimate_sec": null,
+    "vram_estimate_gb": 8,
+    "disk_size_mb": 4000
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": false,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": true,
+    "supports_voice_cloning": true,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": [
+    "ar", "my", "zh", "da", "nl", "en", "fi", "fr", "de", "el",
+    "he", "hi", "id", "it", "ja", "km", "ko", "lo", "ms", "no",
+    "pl", "pt", "ru", "es", "sw", "sv", "tl", "th", "tr", "vi"
+  ],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 4000,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "RTF ~0.30 on RTX 4090. No Mac benchmarks available."
+  },
+
+  "verdict": {
+    "score": 36,
+    "decision": "skip",
+    "blockers": [
+      "CUDA 12.0+ required — no Mac GPU path",
+      "Python/PyTorch runtime — no Rust binding",
+      "No MLX, GGUF, ONNX, or CoreML conversion available"
+    ],
+    "notes": "Score of 36 would be 'ship experimental' but Mac runtime dimension is a hard 0. Revisit when an MLX or MPS port appears in the community. The model's feature set (voice design, controllable cloning, 30 languages) is a strong fit for Vox Jot's Listen section if the runtime blocker clears."
+  }
+}

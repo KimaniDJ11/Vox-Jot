@@ -14,11 +14,18 @@ pub struct FrameResampler {
 
 impl FrameResampler {
     pub fn new(in_hz: usize, out_hz: usize, frame_dur: Duration) -> Self {
+        Self::with_chunk_size(in_hz, out_hz, frame_dur, RESAMPLER_CHUNK_SIZE)
+    }
+
+    pub fn with_chunk_size(
+        in_hz: usize,
+        out_hz: usize,
+        frame_dur: Duration,
+        chunk_in: usize,
+    ) -> Self {
         let frame_samples = ((out_hz as f64 * frame_dur.as_secs_f64()).round()) as usize;
         assert!(frame_samples > 0, "frame duration too short");
-
-        // Use fixed chunk size instead of GCD-based
-        let chunk_in = RESAMPLER_CHUNK_SIZE;
+        assert!(chunk_in > 0, "chunk size must be positive");
 
         let resampler = (in_hz != out_hz).then(|| {
             FftFixedIn::<f32>::new(in_hz, out_hz, chunk_in, 1, 1)
@@ -72,6 +79,7 @@ impl FrameResampler {
                 if let Ok(out) = resampler.process(&[&self.in_buf[..]], None) {
                     self.emit_frames(&out[0], &mut emit);
                 }
+                self.in_buf.clear();
             }
         }
 

@@ -8,8 +8,6 @@ pub const OLLAMA_BASE_URL: &str = "http://127.0.0.1:11434";
 // Note: The canonical OLLAMA_PROVIDER_ID is in settings.rs; this module re-exports for local use.
 #[allow(dead_code)]
 pub const OLLAMA_PROVIDER_ID: &str = "ollama";
-#[allow(dead_code)]
-pub const OLLAMA_DEFAULT_MODEL: &str = "llama3.2:1b";
 
 /// The recommended tiny LLM models to surface in the UI
 pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
@@ -101,30 +99,11 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-const TINY_MODELS_TARGET_COUNT: usize = 22;
 const OLLAMA_REGISTRY_TAGS_URL: &str = "https://ollama.com/api/tags";
 const SOFT_MAX_PARAMS_B: f64 = 11.0;
 const SOFT_MAX_SIZE_BYTES: u64 = 11_000_000_000;
 const HARD_MAX_PARAMS_B: f64 = 11.0;
 const HARD_MAX_SIZE_BYTES: u64 = 11_000_000_000;
-
-// Model families commonly present in Artificial Analysis tiny open-source, non-reasoning slice.
-const AA_TINY_FAMILY_HINTS: &[&str] = &[
-    "qwen3",
-    "qwen2.5",
-    "qwen",
-    "gemma",
-    "phi",
-    "granite",
-    "ministral",
-    "mistral",
-    "smollm",
-    "tinyllama",
-    "llama3.2",
-    "falcon",
-    "lfm",
-    "exaone",
-];
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type)]
 pub struct OllamaStatus {
@@ -237,13 +216,6 @@ fn exceeds_hard_param_limit(name: &str, size_bytes: u64) -> bool {
     size_bytes > HARD_MAX_SIZE_BYTES
 }
 
-fn matches_aa_tiny_family(name: &str) -> bool {
-    let lower = name.to_lowercase();
-    AA_TINY_FAMILY_HINTS
-        .iter()
-        .any(|family| lower.contains(family))
-}
-
 async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
@@ -269,22 +241,17 @@ async fn fetch_registry_tiny_models() -> Vec<OllamaModelInfo> {
         .collect::<Vec<_>>();
 
     tiny.sort_by(|a, b| {
-        let a_priority = matches_aa_tiny_family(&a.name);
-        let b_priority = matches_aa_tiny_family(&b.name);
-
-        b_priority
-            .cmp(&a_priority)
-            .then_with(|| b.modified_at.cmp(&a.modified_at))
+        b.modified_at
+            .cmp(&a.modified_at)
             .then_with(|| a.name.cmp(&b.name))
     });
 
     tiny.into_iter()
-        .take(TINY_MODELS_TARGET_COUNT)
         .map(|m| OllamaModelInfo {
             id: m.name.clone(),
             label: m.name.clone(),
             description: format!(
-                "{} — recommended model (AA-style family + Ollama registry)",
+                "{} — available from Ollama registry",
                 format_bytes_gb(m.size)
             ),
             is_pulled: false,
@@ -346,8 +313,13 @@ pub async fn get_ollama_status() -> OllamaStatus {
     }
 }
 
-fn is_ollama_installed() -> bool {
+pub(crate) fn is_ollama_installed() -> bool {
     find_ollama_binary().is_some()
+}
+
+pub async fn is_ollama_available() -> bool {
+    let status = get_ollama_status().await;
+    status.installed && status.running
 }
 
 /// Find the full path to the Ollama binary.
@@ -356,7 +328,7 @@ fn is_ollama_installed() -> bool {
 /// `/usr/local/bin` and `/opt/homebrew/bin`, so we cannot rely on a bare
 /// `ollama` lookup.  This function checks well-known install locations first,
 /// then falls back to `which` for edge cases.
-fn find_ollama_binary() -> Option<String> {
+pub(crate) fn find_ollama_binary() -> Option<String> {
     let paths = [
         "/usr/local/bin/ollama",
         "/usr/bin/ollama",
@@ -565,9 +537,6 @@ pub async fn delete_ollama_model(model_name: String) -> Result<(), String> {
 #[specta::specta]
 pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
     let mut dynamic = fetch_registry_tiny_models().await;
-    if dynamic.len() >= TINY_MODELS_TARGET_COUNT {
-        return dynamic;
-    }
 
     let fallback = fallback_tiny_models();
     for model in fallback {
@@ -575,9 +544,6 @@ pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
             continue;
         }
         dynamic.push(model);
-        if dynamic.len() >= TINY_MODELS_TARGET_COUNT {
-            break;
-        }
     }
 
     dynamic

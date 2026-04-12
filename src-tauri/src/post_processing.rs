@@ -252,9 +252,12 @@ fn prepare_entries(entries: &[DictionaryEntry]) -> Vec<PreparedDictionaryEntry<'
                 return None;
             }
 
+            // Count words during normalization instead of re-iterating
+            let spoken_words = exact_form.split_whitespace().count();
+
             Some(PreparedDictionaryEntry {
                 entry,
-                spoken_words: exact_form.split_whitespace().count(),
+                spoken_words,
                 exact_form,
                 compact_form,
             })
@@ -268,27 +271,26 @@ fn candidate_matches(
     exact_phrase: &str,
     compact_phrase: &str,
 ) -> bool {
-    let candidate_exact = if candidate.entry.case_sensitive {
-        normalize_exact_phrase(phrase, true)
+    // Avoid allocating when the non-case-sensitive path can just borrow
+    if candidate.entry.case_sensitive {
+        let candidate_exact = normalize_exact_phrase(phrase, true);
+        if candidate_exact == candidate.exact_form {
+            return true;
+        }
+        if candidate.entry.exact_only {
+            return false;
+        }
+        let candidate_compact = normalize_compact_phrase(phrase, true);
+        !candidate_compact.is_empty() && candidate_compact == candidate.compact_form
     } else {
-        exact_phrase.to_string()
-    };
-
-    if candidate_exact == candidate.exact_form {
-        return true;
+        if exact_phrase == candidate.exact_form {
+            return true;
+        }
+        if candidate.entry.exact_only {
+            return false;
+        }
+        !compact_phrase.is_empty() && compact_phrase == candidate.compact_form
     }
-
-    if candidate.entry.exact_only {
-        return false;
-    }
-
-    let candidate_compact = if candidate.entry.case_sensitive {
-        normalize_compact_phrase(phrase, true)
-    } else {
-        compact_phrase.to_string()
-    };
-
-    !candidate_compact.is_empty() && candidate_compact == candidate.compact_form
 }
 
 fn normalize_exact_phrase(value: &str, case_sensitive: bool) -> String {
@@ -363,13 +365,14 @@ pub fn get_merged_dictionary(
 ) -> Vec<DictionaryEntry> {
     let mut merged = manual_entries.to_vec();
 
-    for auto_entry in auto_entries {
-        // Skip if a manual entry already covers this spoken form
-        let already_covered = manual_entries
-            .iter()
-            .any(|manual| manual.spoken.to_lowercase() == auto_entry.spoken.to_lowercase());
+    // Build a HashSet of normalized manual spoken forms for O(1) lookup
+    let manual_spoken: std::collections::HashSet<String> = manual_entries
+        .iter()
+        .map(|e| e.spoken.to_lowercase())
+        .collect();
 
-        if !already_covered {
+    for auto_entry in auto_entries {
+        if !manual_spoken.contains(&auto_entry.spoken.to_lowercase()) {
             merged.push(auto_entry.clone());
         }
     }
@@ -381,7 +384,7 @@ pub fn get_merged_dictionary(
 ///
 /// This generates a concise list of known corrections that can be appended
 /// to the system prompt to bias the LLM toward correct spellings.
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn build_correction_bias_prompt(corrections: &[DictionaryEntry]) -> Option<String> {
     if corrections.is_empty() {
         return None;

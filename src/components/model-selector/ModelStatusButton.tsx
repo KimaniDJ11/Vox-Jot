@@ -14,6 +14,7 @@ interface ModelStatusButtonProps {
   displayText: string;
   isDropdownOpen: boolean;
   onClick: () => void;
+  leading?: React.ReactNode;
   className?: string;
   /** Overrides default `font-semibold` on the label (e.g. title bar `font-bold`). */
   labelClassName?: string;
@@ -26,6 +27,7 @@ const ModelStatusButton: React.FC<ModelStatusButtonProps> = ({
   displayText,
   isDropdownOpen,
   onClick,
+  leading,
   className = "",
   labelClassName,
   density = "default",
@@ -67,6 +69,7 @@ const ModelStatusButton: React.FC<ModelStatusButtonProps> = ({
           isTitleBar ? "h-2.5 w-2.5" : "h-2 w-2"
         }`}
       />
+      {leading}
       <span
         className={`truncate ${isTitleBar ? "max-w-[11rem]" : "max-w-28"} ${
           labelClassName ?? "font-semibold"

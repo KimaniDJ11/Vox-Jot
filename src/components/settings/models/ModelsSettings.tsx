@@ -18,6 +18,7 @@ import {
   getModelPlatformOverview,
   type ModelPlatformOverview,
 } from "@/lib/modelPlatform";
+import { ProviderIcon } from "@/components/ui/ProviderIcon";
 
 // check if model supports a language based on its supported_languages list
 const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
@@ -405,6 +406,9 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
             {t("settings.models.activeSpeechModel")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            {currentModelCatalog ? (
+              <ProviderIcon providerId={currentModelCatalog.provider_id} size="md" />
+            ) : null}
             <p className="text-lg font-bold text-[var(--text)]">
               {currentModelInfo.name}
             </p>
@@ -481,6 +485,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       downloadProgress={getDownloadProgress(model.id)}
                       downloadSpeed={getDownloadSpeed(model.id)}
                       showRecommended={false}
+                      providerId={catalog?.provider_id}
                       providerLabel={
                         platformOverview?.stt.providers.find(
                           (provider) => provider.id === catalog?.provider_id,
@@ -533,6 +538,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       downloadProgress={getDownloadProgress(model.id)}
                       downloadSpeed={getDownloadSpeed(model.id)}
                       showRecommended={false}
+                      providerId={catalog?.provider_id}
                       providerLabel={
                         platformOverview?.stt.providers.find(
                           (provider) => provider.id === catalog?.provider_id,

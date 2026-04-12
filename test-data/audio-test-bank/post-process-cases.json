@@ -1,0 +1,358 @@
+{
+  "metadata": {
+    "corpus_id": "voxjot-test-bank-postprocess-v1",
+    "description": "Post-process test cases derived from the audio-test-bank post-process-test-matrix. Each case simulates raw STT output for content styles the matrix flags as high-risk for post-process failures: numbers, names, code-ish, punctuation, disfluency, and overlapping speakers.",
+    "generated_at": "2026-04-10",
+    "categories": {
+      "numbers": "Dates, times, money, addresses, phone numbers — must not corrupt formatting",
+      "punctuation-triggers": "Questions, abbreviations, spoken punctuation — must be respected",
+      "names": "People + places with uncommon spellings — must not be 'corrected' away",
+      "code-ish": "Filenames, URLs, email addresses — must not be 'helpfully' corrupted",
+      "disfluency": "Um, uh, restarts, corrections mid-sentence — clean without losing meaning",
+      "overlap-style": "Simulated multi-speaker fragments — should not hallucinate extra content",
+      "non-speech-resilience": "Very short / borderline / near-silence — should pass through minimally"
+    },
+    "case_count": 46,
+    "notes": "These cases stress the specific failure modes identified in post-process-test-matrix.md. Run with: bun run eval:post-process --cases test-data/audio-test-bank/post-process-cases.json"
+  },
+  "cases": [
+    {
+      "id": "num-01",
+      "raw_stt": "the meeting is on March twenty third twenty twenty six at two thirty PM",
+      "expected_output": "The meeting is on March 23rd, 2026 at 2:30 PM.",
+      "category": "numbers",
+      "notes": "Date + time formatting from spoken numbers"
+    },
+    {
+      "id": "num-02",
+      "raw_stt": "my address is one twenty three B Oak Street apartment four A",
+      "expected_output": "My address is 123B Oak Street, Apartment 4A.",
+      "category": "numbers",
+      "notes": "Address with alphanumeric unit — must not drop the B"
+    },
+    {
+      "id": "num-03",
+      "raw_stt": "the total comes to nineteen dollars and ninety nine cents plus tax",
+      "expected_output": "The total comes to $19.99 plus tax.",
+      "category": "numbers",
+      "notes": "Currency formatting"
+    },
+    {
+      "id": "num-04",
+      "raw_stt": "call me at five five five zero one two three four five six",
+      "expected_output": "Call me at 555-012-3456.",
+      "category": "numbers",
+      "notes": "Phone number formatting with spoken digits"
+    },
+    {
+      "id": "num-05",
+      "raw_stt": "the flight departs at oh seven thirty and arrives at fourteen forty five",
+      "expected_output": "The flight departs at 07:30 and arrives at 14:45.",
+      "category": "numbers",
+      "notes": "24-hour time with leading zero"
+    },
+    {
+      "id": "punc-01",
+      "raw_stt": "is the report ready or should I check back later",
+      "expected_output": "Is the report ready, or should I check back later?",
+      "category": "punctuation-triggers",
+      "notes": "Question detection — must add question mark"
+    },
+    {
+      "id": "punc-02",
+      "raw_stt": "Dr Chang from the US office will meet with Prof Williams",
+      "expected_output": "Dr. Chang from the U.S. office will meet with Prof. Williams.",
+      "category": "punctuation-triggers",
+      "notes": "Abbreviations: Dr, US, Prof — must preserve and format correctly"
+    },
+    {
+      "id": "punc-03",
+      "raw_stt": "please note colon the deadline is Friday period no exceptions exclamation point",
+      "expected_output": "Please note: the deadline is Friday. No exceptions!",
+      "category": "punctuation-triggers",
+      "notes": "Spoken punctuation words must be converted to symbols"
+    },
+    {
+      "id": "punc-04",
+      "raw_stt": "items one through five are mandatory semicolon items six through ten are optional",
+      "expected_output": "Items 1 through 5 are mandatory; items 6 through 10 are optional.",
+      "category": "punctuation-triggers",
+      "notes": "Semicolon + number range formatting"
+    },
+    {
+      "id": "name-01",
+      "raw_stt": "Saoirse Ronan is meeting with Aoife O'Brien at the Taoiseach's office",
+      "expected_output": "Saoirse Ronan is meeting with Aoife O'Brien at the Taoiseach's office.",
+      "category": "names",
+      "notes": "Irish names — must not be 'corrected' to common English words"
+    },
+    {
+      "id": "name-02",
+      "raw_stt": "send the invite to Priyanka Raghunathan and Xinyue Zhang",
+      "expected_output": "Send the invite to Priyanka Raghunathan and Xinyue Zhang.",
+      "category": "names",
+      "notes": "Non-English names — must preserve exact spelling from STT"
+    },
+    {
+      "id": "name-03",
+      "raw_stt": "the restaurant is called Île de France on Côte d'Azur Boulevard",
+      "expected_output": "The restaurant is called Île de France on Côte d'Azur Boulevard.",
+      "category": "names",
+      "notes": "French names with diacritics — must preserve accents"
+    },
+    {
+      "id": "name-04",
+      "raw_stt": "Mr Krzyzewski coaches at Duke University in Durham North Carolina",
+      "expected_output": "Mr. Krzyzewski coaches at Duke University in Durham, North Carolina.",
+      "category": "names",
+      "notes": "Unusual surname — must not normalize to a common name"
+    },
+    {
+      "id": "code-01",
+      "raw_stt": "check the file at src slash components slash settings dot tsx",
+      "expected_output": "Check the file at src/components/settings.tsx.",
+      "category": "code-ish",
+      "notes": "File path with spoken separators — must reconstruct path"
+    },
+    {
+      "id": "code-02",
+      "raw_stt": "the endpoint is https colon slash slash api dot example dot com slash v2 slash users",
+      "expected_output": "The endpoint is https://api.example.com/v2/users.",
+      "category": "code-ish",
+      "notes": "Spoken URL — must reconstruct without corruption"
+    },
+    {
+      "id": "code-03",
+      "raw_stt": "send it to admin at company dot io and CC ops dash team at company dot io",
+      "expected_output": "Send it to admin@company.io and CC ops-team@company.io.",
+      "category": "code-ish",
+      "notes": "Email addresses with spoken punctuation"
+    },
+    {
+      "id": "code-04",
+      "raw_stt": "the variable name is user underscore profile underscore image underscore URL",
+      "expected_output": "The variable name is user_profile_image_URL.",
+      "category": "code-ish",
+      "notes": "Variable name with underscores — must preserve snake_case"
+    },
+    {
+      "id": "code-05",
+      "raw_stt": "run npm install dash dash save dev at types slash react",
+      "expected_output": "Run npm install --save-dev @types/react.",
+      "category": "code-ish",
+      "notes": "CLI command with flags and scoped package"
+    },
+    {
+      "id": "disf-01",
+      "raw_stt": "so we need to um basically the the issue is uh we need to refactor the whole auth module because it's it's getting really tangled",
+      "expected_output": "We need to refactor the whole auth module because it's getting really tangled.",
+      "category": "disfluency",
+      "notes": "Heavy disfluency with false start, fillers, and stuttered repetition"
+    },
+    {
+      "id": "disf-02",
+      "raw_stt": "the deadline is uh Friday no wait Monday the deadline is Monday at five PM",
+      "expected_output": "The deadline is Monday at 5 PM.",
+      "category": "disfluency",
+      "notes": "Self-correction with filler + restart"
+    },
+    {
+      "id": "disf-03",
+      "raw_stt": "I think we should probably we could maybe look into using a different a different database maybe Postgres yeah let's use Postgres",
+      "expected_output": "Let's use Postgres.",
+      "category": "disfluency",
+      "notes": "Extended rambling that resolves to a clear final decision"
+    },
+    {
+      "id": "disf-04",
+      "raw_stt": "can you um can you check if the uh if the deployment went through or if it's still if it's still pending",
+      "expected_output": "Can you check if the deployment went through or if it's still pending?",
+      "category": "disfluency",
+      "notes": "Mid-sentence stutters and fillers with question intent"
+    },
+    {
+      "id": "disf-05",
+      "raw_stt": "yeah so basically like what happened was um the the CI pipeline like it failed because of like a a timeout on the integration tests you know",
+      "expected_output": "The CI pipeline failed because of a timeout on the integration tests.",
+      "category": "disfluency",
+      "notes": "Technical content buried under discourse markers and fillers"
+    },
+    {
+      "id": "ovlp-01",
+      "raw_stt": "let's push the release to next sprint okay sounds good",
+      "expected_output": "Let's push the release to next sprint. Okay, sounds good.",
+      "category": "overlap-style",
+      "notes": "Two speakers agreeing — should separate as distinct utterances"
+    },
+    {
+      "id": "ovlp-02",
+      "raw_stt": "the server cost is too high we should switch to we're already looking at alternatives",
+      "expected_output": "The server cost is too high. We should switch to — we're already looking at alternatives.",
+      "category": "overlap-style",
+      "notes": "Interrupted speech — should produce readable output without hallucination"
+    },
+    {
+      "id": "nsr-01",
+      "raw_stt": "",
+      "expected_output": "",
+      "category": "non-speech-resilience",
+      "notes": "Empty input — must not hallucinate any text"
+    },
+    {
+      "id": "nsr-02",
+      "raw_stt": "hmm",
+      "expected_output": "Hmm.",
+      "category": "non-speech-resilience",
+      "notes": "Single non-word — should pass through with minimal formatting"
+    },
+    {
+      "id": "nsr-03",
+      "raw_stt": "okay",
+      "expected_output": "Okay.",
+      "category": "non-speech-resilience",
+      "notes": "Single word acknowledgment — should not expand or interpret"
+    },
+    {
+      "id": "nsr-04",
+      "raw_stt": "uh",
+      "expected_output": "",
+      "category": "non-speech-resilience",
+      "notes": "Pure filler — should be removed entirely or passed minimally"
+    },
+    {
+      "id": "nsr-05",
+      "raw_stt": "the the the",
+      "expected_output": "The.",
+      "category": "non-speech-resilience",
+      "notes": "Pure stutter — should collapse to single word"
+    },
+    {
+      "id": "tone-cas-01",
+      "raw_stt": "hey so um I was thinking maybe we could grab coffee tomorrow if you're free",
+      "expected_output": "Hey, I was thinking maybe we could grab coffee tomorrow if you're free.",
+      "category": "tone-casual",
+      "tone": "casual",
+      "notes": "Casual tone — should keep conversational, not formalize to 'Would you like to have coffee'"
+    },
+    {
+      "id": "tone-cas-02",
+      "raw_stt": "yeah sounds good let's do it I'll bring the um the thing we talked about",
+      "expected_output": "Yeah sounds good, let's do it! I'll bring the thing we talked about.",
+      "category": "tone-casual",
+      "tone": "casual",
+      "notes": "Casual tone — fillers removed but casual energy preserved"
+    },
+    {
+      "id": "tone-cas-03",
+      "raw_stt": "lol that's hilarious tell me more about the bug you found",
+      "expected_output": "Lol, that's hilarious. Tell me more about the bug you found.",
+      "category": "tone-casual",
+      "tone": "casual",
+      "notes": "Casual tone — must preserve internet slang 'lol'"
+    },
+    {
+      "id": "tone-cas-04",
+      "raw_stt": "so uh quick question do we need to finish the PR before standup or can it wait",
+      "expected_output": "Quick question — do we need to finish the PR before standup or can it wait?",
+      "category": "tone-casual",
+      "tone": "casual",
+      "notes": "Casual tone — question in chat context, should feel natural"
+    },
+    {
+      "id": "tone-pro-01",
+      "raw_stt": "hi I wanted to follow up on the proposal we discussed can you send me the updated timeline",
+      "expected_output": "Hi, I wanted to follow up on the proposal we discussed. Can you send me the updated timeline?",
+      "category": "tone-professional",
+      "tone": "professional",
+      "notes": "Professional tone — polished email style, proper sentence separation"
+    },
+    {
+      "id": "tone-pro-02",
+      "raw_stt": "per our conversation I'm attaching the revised budget please review and let me know if you have any questions",
+      "expected_output": "Per our conversation, I'm attaching the revised budget. Please review and let me know if you have any questions.",
+      "category": "tone-professional",
+      "tone": "professional",
+      "notes": "Professional tone — formal email phrasing preserved"
+    },
+    {
+      "id": "tone-pro-03",
+      "raw_stt": "I'd like to um schedule a meeting to discuss the Q3 results with the leadership team",
+      "expected_output": "I'd like to schedule a meeting to discuss the Q3 results with the leadership team.",
+      "category": "tone-professional",
+      "tone": "professional",
+      "notes": "Professional tone — fillers removed, formality maintained"
+    },
+    {
+      "id": "tone-pro-04",
+      "raw_stt": "thank you for your patience we apologize for the delay and expect to have the deliverables ready by end of week",
+      "expected_output": "Thank you for your patience. We apologize for the delay and expect to have the deliverables ready by end of week.",
+      "category": "tone-professional",
+      "tone": "professional",
+      "notes": "Professional tone — client-facing communication, proper punctuation"
+    },
+    {
+      "id": "tone-code-01",
+      "raw_stt": "the function takes a string and returns a boolean true if the string contains at least one uppercase letter",
+      "expected_output": "The function takes a string and returns a boolean — true if the string contains at least one uppercase letter.",
+      "category": "tone-coding",
+      "tone": "coding",
+      "notes": "Coding tone — should preserve technical terms precisely"
+    },
+    {
+      "id": "tone-code-02",
+      "raw_stt": "add a comment that says TODO fix the race condition in the worker pool",
+      "expected_output": "// TODO: fix the race condition in the worker pool",
+      "category": "tone-coding",
+      "tone": "coding",
+      "notes": "Coding tone — should format as a code comment"
+    },
+    {
+      "id": "tone-code-03",
+      "raw_stt": "import react from react and use state from react",
+      "expected_output": "import React from 'react';\nimport { useState } from 'react';",
+      "category": "tone-coding",
+      "tone": "coding",
+      "notes": "Coding tone — should attempt to format as valid import statements"
+    },
+    {
+      "id": "tone-code-04",
+      "raw_stt": "the error is on line forty two of app dot tsx we're passing a string where it expects a number",
+      "expected_output": "The error is on line 42 of app.tsx — we're passing a string where it expects a number.",
+      "category": "tone-coding",
+      "tone": "coding",
+      "notes": "Coding tone — filename preserved, line number formatted"
+    },
+    {
+      "id": "tone-neu-01",
+      "raw_stt": "remind me to call the dentist tomorrow and pick up the dry cleaning",
+      "expected_output": "Remind me to call the dentist tomorrow and pick up the dry cleaning.",
+      "category": "tone-neutral",
+      "tone": "neutral",
+      "notes": "Neutral tone — minimal changes, close to original wording"
+    },
+    {
+      "id": "tone-neu-02",
+      "raw_stt": "the meeting went well we covered the roadmap and agreed on the timeline for the next milestone",
+      "expected_output": "The meeting went well. We covered the roadmap and agreed on the timeline for the next milestone.",
+      "category": "tone-neutral",
+      "tone": "neutral",
+      "notes": "Neutral tone — light punctuation fix only, no formalization"
+    },
+    {
+      "id": "tone-neu-03",
+      "raw_stt": "I think the problem is that we're over engineering this it should be simpler",
+      "expected_output": "I think the problem is that we're over-engineering this. It should be simpler.",
+      "category": "tone-neutral",
+      "tone": "neutral",
+      "notes": "Neutral tone — preserves opinion, adds hyphen and sentence break"
+    },
+    {
+      "id": "tone-neu-04",
+      "raw_stt": "just a quick note the API keys expire next Friday so we need to rotate them before then",
+      "expected_output": "Just a quick note: the API keys expire next Friday, so we need to rotate them before then.",
+      "category": "tone-neutral",
+      "tone": "neutral",
+      "notes": "Neutral tone — note-taking style, adds colon after intro phrase"
+    }
+  ]
+}

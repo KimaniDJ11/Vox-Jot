@@ -20,6 +20,7 @@ import {
   CompactMetaRow,
   type CompactBadgeItem,
 } from "../ui/CompactOverflow";
+import { ProviderIcon } from "../ui/ProviderIcon";
 
 const formatLanguageAbbreviation = (language: string): string => {
   const trimmed = language.trim();
@@ -48,6 +49,7 @@ interface ModelCardProps {
   downloadProgress?: number;
   downloadSpeed?: number; // MB/s
   showRecommended?: boolean;
+  providerId?: string;
   providerLabel?: string;
   runtimeLabel?: string;
 }
@@ -65,6 +67,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   downloadProgress,
   downloadSpeed,
   showRecommended = true,
+  providerId,
   providerLabel,
   runtimeLabel,
 }) => {
@@ -174,6 +177,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
+            {providerId && <ProviderIcon providerId={providerId} size="sm" />}
             <h3
               className={`min-w-0 flex-1 truncate text-base font-semibold text-text ${isClickable ? "group-hover:text-[var(--accent)]" : ""} transition-colors`}
               title={displayName}

@@ -57,7 +57,7 @@ impl RecentInputState {
 pub struct RecentInputTracker {
     state: Arc<RecentInputState>,
     running: Arc<AtomicBool>,
-    started: AtomicBool,
+    started: Arc<AtomicBool>,
     thread_handle: Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -66,13 +66,22 @@ impl RecentInputTracker {
         Self {
             state: Arc::new(RecentInputState::default()),
             running: Arc::new(AtomicBool::new(false)),
-            started: AtomicBool::new(false),
+            started: Arc::new(AtomicBool::new(false)),
             thread_handle: Mutex::new(None),
         }
     }
 
+    fn try_begin_listener_start(&self) -> bool {
+        !self.started.swap(true, Ordering::SeqCst)
+    }
+
+    fn reset_listener_state(started: &AtomicBool, running: &AtomicBool) {
+        running.store(false, Ordering::SeqCst);
+        started.store(false, Ordering::SeqCst);
+    }
+
     pub fn start_listener(&self) {
-        if self.started.swap(true, Ordering::SeqCst) {
+        if !self.try_begin_listener_start() {
             return;
         }
 
@@ -80,12 +89,14 @@ impl RecentInputTracker {
 
         let state = Arc::clone(&self.state);
         let running = Arc::clone(&self.running);
+        let started = Arc::clone(&self.started);
 
         let handle = thread::spawn(move || {
             let listener = match KeyboardListener::new() {
                 Ok(listener) => listener,
                 Err(err) => {
                     warn!("Failed to start recent input tracker listener: {}", err);
+                    Self::reset_listener_state(started.as_ref(), running.as_ref());
                     return;
                 }
             };
@@ -223,5 +234,22 @@ mod tests {
         assert!(signals.saw_submit);
         assert!(signals.saw_destructive_edit);
         assert!(signals.destructive_after_submit);
+    }
+
+    #[test]
+    fn listener_start_failure_resets_state_for_retry() {
+        let tracker = RecentInputTracker::new();
+
+        assert!(tracker.try_begin_listener_start());
+        tracker.running.store(true, Ordering::SeqCst);
+
+        RecentInputTracker::reset_listener_state(
+            tracker.started.as_ref(),
+            tracker.running.as_ref(),
+        );
+
+        assert!(!tracker.started.load(Ordering::SeqCst));
+        assert!(!tracker.running.load(Ordering::SeqCst));
+        assert!(tracker.try_begin_listener_start());
     }
 }

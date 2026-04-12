@@ -137,6 +137,7 @@ const baseSettings = {
   model_unload_timeout: "never",
   mute_while_recording: false,
   overlay_position: "bottom",
+  recording_overlay_style: "compact",
   paste_delay_ms: 0,
   paste_method: "direct",
   personal_dictionary: [],

@@ -10,7 +10,7 @@ use cpal::{
 };
 
 use crate::audio_toolkit::{
-    audio::{AudioVisualiser, FrameResampler},
+    audio::{AudioEnhancementConfig, AudioEnhancer, AudioVisualiser, FrameResampler},
     constants,
     vad::{self, VadFrame},
     VoiceActivityDetector,
@@ -28,6 +28,7 @@ pub struct AudioRecorder {
     cmd_tx: Option<mpsc::Sender<Cmd>>,
     worker_handle: Option<std::thread::JoinHandle<()>>,
     vad: Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
+    enhancement_config: Option<AudioEnhancementConfig>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
 }
 
@@ -38,12 +39,18 @@ impl AudioRecorder {
             cmd_tx: None,
             worker_handle: None,
             vad: None,
+            enhancement_config: None,
             level_cb: None,
         })
     }
 
     pub fn with_vad(mut self, vad: Box<dyn VoiceActivityDetector>) -> Self {
         self.vad = Some(Arc::new(Mutex::new(vad)));
+        self
+    }
+
+    pub fn with_enhancement(mut self, config: AudioEnhancementConfig) -> Self {
+        self.enhancement_config = Some(config);
         self
     }
 
@@ -74,6 +81,7 @@ impl AudioRecorder {
 
         let thread_device = device.clone();
         let vad = self.vad.clone();
+        let enhancement_config = self.enhancement_config;
         // Move the optional level callback into the worker thread
         let level_cb = self.level_cb.clone();
 
@@ -145,7 +153,9 @@ impl AudioRecorder {
                 Ok((stream, sample_rate)) => {
                     let _ = init_tx.send(Ok(()));
                     // Keep the stream alive while we process samples.
-                    run_consumer(sample_rate, vad, sample_rx, cmd_rx, level_cb);
+                    let enhancer =
+                        enhancement_config.map(|config| AudioEnhancer::new(sample_rate, config));
+                    run_consumer(sample_rate, vad, enhancer, sample_rx, cmd_rx, level_cb);
                     drop(stream);
                 }
                 Err(error_message) => {
@@ -255,8 +265,9 @@ impl AudioRecorder {
             }
         };
 
+        let stream_config: cpal::StreamConfig = config.clone().into();
         device.build_input_stream(
-            &config.clone().into(),
+            &stream_config,
             stream_cb,
             |err| log::error!("Stream error: {}", err),
             None,
@@ -320,6 +331,7 @@ fn normalize_microphone_error(error_message: String) -> String {
 fn run_consumer(
     in_sample_rate: u32,
     vad: Option<Arc<Mutex<Box<dyn vad::VoiceActivityDetector>>>>,
+    mut enhancer: Option<AudioEnhancer>,
     sample_rx: mpsc::Receiver<Vec<f32>>,
     cmd_rx: mpsc::Receiver<Cmd>,
     level_cb: Option<Arc<dyn Fn(Vec<f32>) + Send + Sync + 'static>>,
@@ -330,7 +342,8 @@ fn run_consumer(
         Duration::from_millis(30),
     );
 
-    let mut processed_samples = Vec::<f32>::new();
+    // Pre-allocate for ~10 seconds of audio at 16kHz to avoid repeated reallocs
+    let mut processed_samples = Vec::<f32>::with_capacity(160_000);
     let mut recording = false;
 
     // ---------- spectrum visualisation setup ---------------------------- //
@@ -379,9 +392,15 @@ fn run_consumer(
         }
 
         // ---------- existing pipeline ------------------------------------ //
-        frame_resampler.push(&raw, &mut |frame: &[f32]| {
-            handle_frame(frame, recording, &vad, &mut processed_samples)
-        });
+        if let Some(enhancer) = enhancer.as_mut() {
+            enhancer.push(&raw, &mut |frame: &[f32]| {
+                handle_frame(frame, recording, &vad, &mut processed_samples)
+            });
+        } else {
+            frame_resampler.push(&raw, &mut |frame: &[f32]| {
+                handle_frame(frame, recording, &vad, &mut processed_samples)
+            });
+        }
 
         // non-blocking check for a command
         while let Ok(cmd) = cmd_rx.try_recv() {
@@ -399,14 +418,26 @@ fn run_consumer(
 
                     // Drain any audio chunks that were captured but not yet consumed
                     while let Ok(remaining) = sample_rx.try_recv() {
-                        frame_resampler.push(&remaining, &mut |frame: &[f32]| {
+                        if let Some(enhancer) = enhancer.as_mut() {
+                            enhancer.push(&remaining, &mut |frame: &[f32]| {
+                                handle_frame(frame, true, &vad, &mut processed_samples)
+                            });
+                        } else {
+                            frame_resampler.push(&remaining, &mut |frame: &[f32]| {
+                                handle_frame(frame, true, &vad, &mut processed_samples)
+                            });
+                        }
+                    }
+
+                    if let Some(enhancer) = enhancer.as_mut() {
+                        enhancer.finish(&mut |frame: &[f32]| {
+                            handle_frame(frame, true, &vad, &mut processed_samples)
+                        });
+                    } else {
+                        frame_resampler.finish(&mut |frame: &[f32]| {
                             handle_frame(frame, true, &vad, &mut processed_samples)
                         });
                     }
-
-                    frame_resampler.finish(&mut |frame: &[f32]| {
-                        handle_frame(frame, true, &vad, &mut processed_samples)
-                    });
 
                     let _ = reply_tx.send(std::mem::take(&mut processed_samples));
                 }

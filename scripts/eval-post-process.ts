@@ -36,6 +36,7 @@ interface TestCase {
   expected_output: string;
   category: string;
   notes?: string;
+  tone?: "neutral" | "casual" | "professional" | "coding";
 }
 
 interface CasesFile {
@@ -53,7 +54,7 @@ interface RouteFeatures {
   looks_incomplete: boolean;
 }
 
-type PostProcessPass = "pass1" | "pass2" | "command";
+type PostProcessPass = "skip" | "pass1" | "pass2" | "command";
 
 interface RouteAnalysis {
   route: PostProcessPass;
@@ -173,7 +174,9 @@ function hasSpokeNCorrectionRestart(text: string): boolean {
     "correction",
     "actually",
     "wait no",
+    "no wait",
     "rather",
+    "no sorry",
   ];
   if (directCues.some((cue) => normalized.includes(cue))) return true;
 
@@ -329,13 +332,16 @@ function choosePass(text: string): PostProcessPass {
   const features = extractRouteFeatures(trimmed);
   if (features.has_transform_cue) return "command";
   if (features.looks_incomplete) return "pass1";
-  if (
-    features.word_count <= 6 &&
-    !features.has_correction_cue &&
-    !features.has_list_cue &&
-    !features.has_paragraph_cue
-  )
-    return "pass1";
+
+  // Skip LLM entirely for short, clean utterances with no processing cues.
+  // Mirrors Rust choose_post_process_pass() threshold.
+  const hasAnyCue =
+    features.has_correction_cue ||
+    features.has_list_cue ||
+    features.has_paragraph_cue;
+  if (features.word_count <= 10 && !hasAnyCue && !features.has_technical_tokens)
+    return "skip";
+
   return routeScore(features) >= 3 ? "pass2" : "pass1";
 }
 
@@ -360,15 +366,40 @@ function analyzeRoute(text: string, maxStrength: number): RouteAnalysis {
 }
 
 // ---------------------------------------------------------------------------
-// System prompt (mirrors build_apple_system_prompt from actions.rs)
+// Tone definitions (mirrors Rust default_tone_definitions from settings.rs)
 // ---------------------------------------------------------------------------
+
+const TONE_INSTRUCTIONS: Record<string, string> = {
+  neutral:
+    "Keep the tone neutral and close to the speaker's original wording.",
+  casual:
+    "Use a casual, conversational tone suitable for quick chat messages while preserving meaning.",
+  professional:
+    "Use a polished, professional tone suitable for email or documents while preserving meaning.",
+  coding:
+    "Format the text as precise technical writing suited for code editors and terminals. " +
+    "Use exact technical terms, preserve variable and function names verbatim, " +
+    "format code snippets with proper syntax, and keep comments concise. " +
+    'Convert spoken code descriptions into valid code when the intent is clear ' +
+    '(e.g., "define a function called foo that takes a string" → "fn foo(s: &str)"). ' +
+    "Prefer lowercase and avoid unnecessary punctuation.",
+};
 
 function buildSystemPrompt(
   mode: "literal" | "intent",
   rewriteStrength: number,
+  tone: string = "neutral",
 ): string {
-  const toneRule =
-    "- Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording.";
+  const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.neutral;
+  const toneAppName =
+    tone === "coding"
+      ? "VS Code"
+      : tone === "casual"
+        ? "Slack"
+        : tone === "professional"
+          ? "Mail"
+          : "Notes";
+  const toneRule = `- ${toneAppName} (tone: ${tone}): ${toneInstruction}`;
 
   return `You are a local dictation post-processor.
 
@@ -387,7 +418,7 @@ Rules:
 - Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.
 - Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.
 - Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.
-- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "rather", and natural restarts, and keep only the corrected intent.
+- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "no wait", "rather", "no sorry", and natural restarts, and keep only the corrected intent.
 - Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.
 - If the transcript is already clear, make the smallest possible changes.
 - Use stronger rewrites only when clear structure, correction, or formatting cues are present.
@@ -431,7 +462,14 @@ Active app guidance:
 - Output:
 - Return only the final processed text.
 - Do not explain changes.
-- Do not mention rules.`;
+- Do not mention rules.
+
+CRITICAL OUTPUT CONSTRAINT:
+- You must output the corrected transcript text only.
+- Never ask for more context.
+- Never apologize.
+- Never explain what you are doing.
+- If the transcript is a single word or fragment, return just that word or fragment.`;
 }
 
 function buildUserContent(
@@ -640,6 +678,7 @@ async function main() {
         const systemPrompt = buildSystemPrompt(
           config.mode,
           route.rewrite_strength,
+          tc.tone || "neutral",
         );
         const userContent = buildUserContent(
           config.mode,

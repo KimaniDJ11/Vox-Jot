@@ -502,6 +502,12 @@ function App() {
     refreshSettings,
   ]);
 
+  // Use a ref to track debug_mode so the listener doesn't tear down on every toggle
+  const debugModeRef = useRef(settings?.debug_mode ?? false);
+  useEffect(() => {
+    debugModeRef.current = settings?.debug_mode ?? false;
+  }, [settings?.debug_mode]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isDebugShortcut =
@@ -511,8 +517,7 @@ function App() {
 
       if (isDebugShortcut) {
         event.preventDefault();
-        const currentDebugMode = settings?.debug_mode ?? false;
-        void updateSetting("debug_mode", !currentDebugMode);
+        void updateSetting("debug_mode", !debugModeRef.current);
       }
     };
 
@@ -520,7 +525,7 @@ function App() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [settings?.debug_mode, updateSetting]);
+  }, [updateSetting]);
 
   useEffect(() => {
     const unlisten = listen<string>("recording-error", (event) => {

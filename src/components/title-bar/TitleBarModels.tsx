@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
 import ModelSelector from "../model-selector";
 import ModelStatusButton from "../model-selector/ModelStatusButton";
+import { ProviderIcon } from "../ui/ProviderIcon";
 
 const TitleBarModels: React.FC = () => {
   const { t } = useTranslation();
@@ -75,6 +76,9 @@ const TitleBarModels: React.FC = () => {
             status={llmStatus}
             displayText={t("footer.llmPrefix", { name: llmDisplayText })}
             isDropdownOpen={showLlmDropdown}
+            leading={
+              <ProviderIcon providerId={selectedProvider.id} size="xs" />
+            }
             labelClassName="font-bold"
             density="titleBar"
             onClick={() => {
@@ -111,8 +115,14 @@ const TitleBarModels: React.FC = () => {
                       `post_process_model:${selectedProvider.id}`,
                     )}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate pe-4">{model}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ProviderIcon
+                          providerId={selectedProvider.id}
+                          size="xs"
+                        />
+                        <span className="truncate pe-2">{model}</span>
+                      </div>
                       {selectedLlmModel === model && (
                         <span className="text-xs text-[var(--inverse-text)]">
                           {t("common.active")}

@@ -155,7 +155,7 @@ pub(crate) fn run_cli(cli_args: &CliArgs) -> Result<()> {
 
     let models_dir = settings_path
         .parent()
-        .map(|parent| parent.join("models"))
+        .map(|parent| parent.join("models").join("stt"))
         .ok_or_else(|| anyhow!("Could not determine models directory from settings path"))?;
     let model_runtime = resolve_model_runtime(&models_dir, &model_id)?;
     let manifest = load_manifest(&manifest_path, cli_args.regression_limit)?;

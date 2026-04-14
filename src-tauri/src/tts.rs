@@ -7,15 +7,17 @@ use crate::model_platform::{
 use crate::settings::{
     default_tts_model_store_dir, get_settings, is_local_base_url, AppSettings, TtsAutoReadbackMode,
     TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue,
-    TtsVoicePreset, TtsVoiceTuningSettings, DEFAULT_TTS_MODEL_STORE_PATH,
-    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID,
-    TTS_PROVIDER_FISH_SPEECH_ID, TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
-    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
-    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_KOKORO_ID,
-    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_OUTE_ID,
-    TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
-    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_XTTS_ID,
+    TtsVoicePreset, TtsVoiceTuningSettings, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
+    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_FISH_SPEECH_ID,
+    TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID, TTS_PROVIDER_KOKORO_ID,
+    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
+    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
+    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID,
+    TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID,
+    TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
+    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
+    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
+    TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
 use crate::translation::TranslationOrigin;
@@ -562,11 +564,41 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
         provider_label: "MLX Qwen3 TTS",
         provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
+        model_id: "qwen3-tts-0.6b-4bit",
+        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit",
+        local_dir_names: &["Qwen3-TTS-12Hz-0.6B-Base-4bit"],
+        label: "Qwen3 TTS 0.6B 4-bit",
+        description: "Smaller quantized Qwen3 TTS model for local multilingual synthesis.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["zh", "en", "ja", "ko", "mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
+        provider_label: "MLX Qwen3 TTS",
+        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
         model_id: "qwen3-tts-1.7b",
         hf_model_id: "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16",
         local_dir_names: &["Qwen3-TTS-1.7B-VoiceDesign-bf16"],
         label: "Qwen3 TTS 1.7B",
         description: "Larger Qwen3 TTS model with richer voice design controls.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["zh", "en", "ja", "ko", "mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
+        provider_label: "MLX Qwen3 TTS",
+        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
+        model_id: "qwen3-tts-1.7b-base",
+        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16",
+        local_dir_names: &["Qwen3-TTS-12Hz-1.7B-Base-bf16"],
+        label: "Qwen3 TTS 1.7B Base",
+        description: "Larger base Qwen3 TTS checkpoint for multilingual synthesis and cloning.",
         engine_family: "mlx_audio",
         license_label: None,
         supported_languages: &["zh", "en", "ja", "ko", "mul"],
@@ -667,6 +699,113 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         supports_instruction_prompt: false,
     },
     MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_BARK_ID,
+        provider_label: "MLX Bark",
+        provider_description: "Suno Bark voices running through mlx-audio.",
+        model_id: "bark-small",
+        hf_model_id: "mlx-community/bark-small",
+        local_dir_names: &["bark-small"],
+        label: "Bark Small",
+        description: "Compact Bark checkpoint for expressive local speech generation.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["mul"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_FISH_AUDIO_ID,
+        provider_label: "MLX Fish Audio",
+        provider_description: "Fish Audio S2 synthesis and cloning through mlx-audio.",
+        model_id: "fish-audio-s2-pro",
+        hf_model_id: "mlx-community/fish-audio-s2-pro-bf16",
+        local_dir_names: &["fish-audio-s2-pro-bf16"],
+        label: "Fish Audio S2 Pro",
+        description: "Multilingual Fish Audio checkpoint with reference-audio voice cloning.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_LFM_AUDIO_ID,
+        provider_label: "MLX LFM Audio",
+        provider_description: "Liquid LFM Audio speech generation through a custom MLX bridge.",
+        model_id: "lfm2-5-audio-1-5b",
+        hf_model_id: "mlx-community/LFM2.5-Audio-1.5B-bf16",
+        local_dir_names: &["LFM2.5-Audio-1.5B-bf16"],
+        label: "LFM2.5 Audio 1.5B",
+        description: "Unified Liquid audio model wired for local text-to-speech previews.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["en"],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: true,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_POCKET_TTS_ID,
+        provider_label: "MLX Pocket TTS",
+        provider_description: "Pocket TTS voices and cloning through mlx-audio.",
+        model_id: "pocket-tts",
+        hf_model_id: "mlx-community/pocket-tts",
+        local_dir_names: &["pocket-tts"],
+        label: "Pocket TTS",
+        description:
+            "Reference-audio driven Pocket TTS checkpoint with bundled speaker embeddings.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_VOXCPM_ID,
+        provider_label: "MLX VoxCPM2",
+        provider_description:
+            "VoxCPM2 voice cloning and voice design through a patched MLX bridge.",
+        model_id: "voxcpm2-4bit",
+        hf_model_id: "mlx-community/VoxCPM2-4bit",
+        local_dir_names: &["VoxCPM2-4bit"],
+        label: "VoxCPM2 4-bit",
+        description: "Quantized multilingual VoxCPM2 with local voice design and cloning support.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["en", "zh", "id", "ja", "ko", "mul"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_POCKET_TTS_ID,
+        provider_label: "MLX Pocket TTS",
+        provider_description: "Pocket TTS voices and cloning through mlx-audio.",
+        model_id: "pocket-tts-4bit",
+        hf_model_id: "mlx-community/pocket-tts-4bit",
+        local_dir_names: &["pocket-tts-4bit"],
+        label: "Pocket TTS 4-bit",
+        description: "Quantized Pocket TTS checkpoint for lighter-weight local generation.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
+        provider_id: TTS_PROVIDER_MLX_POCKET_TTS_ID,
+        provider_label: "MLX Pocket TTS",
+        provider_description: "Pocket TTS voices and cloning through mlx-audio.",
+        model_id: "pocket-tts-8bit",
+        hf_model_id: "mlx-community/pocket-tts-8bit",
+        local_dir_names: &["pocket-tts-8bit"],
+        label: "Pocket TTS 8-bit",
+        description: "8-bit Pocket TTS checkpoint for faster local synthesis.",
+        engine_family: "mlx_audio",
+        license_label: None,
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+    },
+    MlxAudioTtsModelDefinition {
         provider_id: TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
         provider_label: "MLX Voxtral TTS",
         provider_description: "Voxtral multilingual TTS exposed through mlx-audio.",
@@ -706,6 +845,11 @@ fn provider_is_mlx_audio(provider_id: &str) -> bool {
             | TTS_PROVIDER_MLX_OUTE_ID
             | TTS_PROVIDER_MLX_MING_OMNI_ID
             | TTS_PROVIDER_MLX_KUGEL_ID
+            | TTS_PROVIDER_MLX_BARK_ID
+            | TTS_PROVIDER_MLX_FISH_AUDIO_ID
+            | TTS_PROVIDER_MLX_LFM_AUDIO_ID
+            | TTS_PROVIDER_MLX_POCKET_TTS_ID
+            | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
     )
 }
@@ -830,12 +974,18 @@ pub struct TtsManager {
 
 impl TtsManager {
     pub fn new(app_handle: &AppHandle) -> Self {
-        Self {
+        let manager = Self {
             app_handle: app_handle.clone(),
             current_stop_flag: Mutex::new(None),
             last_output: Mutex::new(None),
             cached_system_voices: Mutex::new(None),
+        };
+
+        if let Err(err) = migrate_legacy_tts_model_layout(app_handle) {
+            warn!("Failed to migrate legacy TTS assets: {err}");
         }
+
+        manager
     }
 
     fn qwen3_pack_features(&self, definition: &Qwen3PackDefinition) -> Qwen3PackFeatures {
@@ -868,13 +1018,25 @@ impl TtsManager {
     }
 
     fn tts_model_store_root(&self) -> PathBuf {
-        get_settings(&self.app_handle)
+        let configured = get_settings(&self.app_handle)
             .tts_model_store_path
             .as_deref()
             .map(str::trim)
             .filter(|path| !path.is_empty())
-            .map(PathBuf::from)
-            .unwrap_or_else(|| default_tts_model_store_dir(&self.app_handle))
+            .map(PathBuf::from);
+
+        if let Some(path) = configured {
+            if legacy_dev_tts_store_dir()
+                .as_ref()
+                .is_some_and(|legacy| legacy == &path)
+            {
+                return default_tts_model_store_dir(&self.app_handle);
+            }
+
+            return path;
+        }
+
+        default_tts_model_store_dir(&self.app_handle)
     }
 
     fn mlx_audio_model_candidate_paths(
@@ -883,39 +1045,24 @@ impl TtsManager {
     ) -> Vec<PathBuf> {
         let mut candidates = Vec::new();
         let configured_store = self.tts_model_store_root();
-        let default_store = PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH);
-        let hf_repo_basename = definition
+        let (hf_repo_namespace, hf_repo_basename) = definition
             .hf_model_id
-            .rsplit('/')
-            .next()
-            .unwrap_or(definition.model_id);
+            .rsplit_once('/')
+            .map(|(namespace, basename)| (Some(namespace), basename))
+            .unwrap_or((None, definition.model_id));
 
-        for store in [
-            configured_store.clone(),
-            configured_store.join("MLX"),
-            configured_store
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_else(|| configured_store.clone()),
-            configured_store
-                .parent()
-                .map(|parent| parent.join("MLX"))
-                .unwrap_or_else(|| configured_store.join("MLX")),
-            default_store.clone(),
-            default_store.join("MLX"),
-            default_store
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_else(|| default_store.clone()),
-            default_store
-                .parent()
-                .map(|parent| parent.join("MLX"))
-                .unwrap_or_else(|| default_store.join("MLX")),
-        ] {
+        for store in [configured_store.clone(), configured_store.join("MLX")] {
             candidates.push(store.join(definition.model_id));
             candidates.push(store.join(hf_repo_basename));
             for dir_name in definition.local_dir_names {
                 candidates.push(store.join(dir_name));
+            }
+            if let Some(namespace) = hf_repo_namespace {
+                candidates.push(store.join(namespace).join(hf_repo_basename));
+                candidates.push(store.join(namespace).join(definition.model_id));
+                for dir_name in definition.local_dir_names {
+                    candidates.push(store.join(namespace).join(dir_name));
+                }
             }
         }
 
@@ -1039,10 +1186,13 @@ impl TtsManager {
     }
 
     fn mlx_embedded_voice_inventory(&self, model_source: &Path) -> Vec<VoiceInfo> {
-        let voices_dir = model_source.join("voice_embedding");
-        if !voices_dir.is_dir() {
+        let voices_dir = ["voice_embedding", "embeddings", "voices"]
+            .into_iter()
+            .map(|dir| model_source.join(dir))
+            .find(|candidate| candidate.is_dir());
+        let Some(voices_dir) = voices_dir else {
             return Vec::new();
-        }
+        };
 
         let Ok(entries) = fs::read_dir(&voices_dir) else {
             warn!(
@@ -1056,11 +1206,11 @@ impl TtsManager {
             .filter_map(Result::ok)
             .filter_map(|entry| {
                 let path = entry.path();
-                let is_embedding_file = path
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .map(|ext| ext.eq_ignore_ascii_case("safetensors"))
-                    .unwrap_or(false);
+                let extension = path.extension().and_then(|ext| ext.to_str())?;
+                let is_embedding_file = matches!(
+                    extension.to_ascii_lowercase().as_str(),
+                    "safetensors" | "pt" | "bin"
+                );
                 if !is_embedding_file {
                     return None;
                 }
@@ -1151,11 +1301,6 @@ impl TtsManager {
             return Some(configured_path);
         }
 
-        let default_path = PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH).join(source_repo_dir);
-        if default_path.exists() {
-            return Some(default_path);
-        }
-
         None
     }
 
@@ -1215,10 +1360,6 @@ impl TtsManager {
         );
         candidates.push(repo_root.join(definition.archive_name));
         candidates.push(repo_root.join(definition.model_id));
-
-        if let Some(source_repo_dir) = definition.source_repo_dir {
-            candidates.push(PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH).join(source_repo_dir));
-        }
 
         candidates
     }
@@ -3469,23 +3610,20 @@ impl TtsManager {
     }
 
     fn pack_install_dir(&self, pack_id: &str) -> PathBuf {
-        portable::app_data_dir(&self.app_handle)
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("tts-packs")
+        crate::storage_paths::tts_packs_dir(&self.app_handle)
+            .unwrap_or_else(|_| default_tts_model_store_dir(&self.app_handle))
             .join(pack_id)
     }
 
     fn runtime_install_dir(&self, platform_id: &str) -> PathBuf {
-        portable::app_data_dir(&self.app_handle)
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("tts-runtime")
+        crate::storage_paths::tts_runtime_dir(&self.app_handle)
+            .unwrap_or_else(|_| default_tts_model_store_dir(&self.app_handle))
             .join(platform_id)
     }
 
     fn qwen3_runtime_install_dir(&self, platform_id: &str) -> PathBuf {
-        portable::app_data_dir(&self.app_handle)
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("tts-runtime")
+        crate::storage_paths::tts_runtime_dir(&self.app_handle)
+            .unwrap_or_else(|_| default_tts_model_store_dir(&self.app_handle))
             .join(format!("qwen3-{platform_id}"))
     }
 
@@ -3812,9 +3950,8 @@ impl TtsManager {
         install_dir: &Path,
         label: &str,
     ) -> Result<(), String> {
-        let app_data_dir = portable::app_data_dir(&self.app_handle)
+        let download_dir = crate::storage_paths::tts_downloads_dir(&self.app_handle)
             .map_err(|err| format!("TTS dir error: {err}"))?;
-        let download_dir = app_data_dir.join("tts-downloads");
         fs::create_dir_all(&download_dir)
             .map_err(|err| format!("Failed to create TTS download dir: {err}"))?;
 
@@ -5305,11 +5442,16 @@ fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_CHATTERBOX_ID
             | TTS_PROVIDER_MLX_CSM_ID
             | TTS_PROVIDER_MLX_DIA_ID
+            | TTS_PROVIDER_MLX_BARK_ID
+            | TTS_PROVIDER_MLX_FISH_AUDIO_ID
+            | TTS_PROVIDER_MLX_LFM_AUDIO_ID
             | TTS_PROVIDER_MLX_KUGEL_ID
             | TTS_PROVIDER_MLX_MING_OMNI_ID
             | TTS_PROVIDER_MLX_OUTE_ID
+            | TTS_PROVIDER_MLX_POCKET_TTS_ID
             | TTS_PROVIDER_MLX_QWEN3TTS_ID
             | TTS_PROVIDER_MLX_SPARK_ID
+            | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
     )
 }
@@ -5600,6 +5742,146 @@ pub fn choose_readback_locale(
     }
 }
 
+fn legacy_dev_models_root() -> Option<PathBuf> {
+    dirs::home_dir().map(|home| home.join("Apps").join("Models"))
+}
+
+fn legacy_dev_tts_store_dir() -> Option<PathBuf> {
+    legacy_dev_models_root().map(|root| root.join("TTS"))
+}
+
+fn copy_legacy_path_if_missing(
+    source: &Path,
+    destination: &Path,
+    label: &str,
+) -> Result<(), String> {
+    if !source.exists() || destination.exists() {
+        return Ok(());
+    }
+
+    if source.is_dir() {
+        copy_directory_recursive(source, destination).map_err(|err| {
+            format!(
+                "Failed to migrate {label} from '{}' to '{}': {err}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    } else {
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("Failed to create '{}': {err}", parent.display()))?;
+        }
+        fs::copy(source, destination).map_err(|err| {
+            format!(
+                "Failed to migrate {label} from '{}' to '{}': {err}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
+
+    info!(
+        "Migrated {label} from '{}' to '{}'",
+        source.display(),
+        destination.display()
+    );
+    Ok(())
+}
+
+fn migrate_legacy_tts_model_layout(app_handle: &AppHandle) -> Result<(), String> {
+    let store_dir = crate::storage_paths::tts_model_store_dir(app_handle)
+        .map_err(|err| format!("Failed to resolve TTS store dir: {err}"))?;
+    fs::create_dir_all(&store_dir).map_err(|err| {
+        format!(
+            "Failed to create TTS store dir '{}': {err}",
+            store_dir.display()
+        )
+    })?;
+
+    let Some(legacy_root) = legacy_dev_models_root() else {
+        return Ok(());
+    };
+
+    if let Some(legacy_tts_store) = legacy_dev_tts_store_dir() {
+        if legacy_tts_store.exists() {
+            for entry in fs::read_dir(&legacy_tts_store).map_err(|err| {
+                format!(
+                    "Failed to read legacy TTS store '{}': {err}",
+                    legacy_tts_store.display()
+                )
+            })? {
+                let entry =
+                    entry.map_err(|err| format!("Failed to read legacy TTS entry: {err}"))?;
+                copy_legacy_path_if_missing(
+                    &entry.path(),
+                    &store_dir.join(entry.file_name()),
+                    "legacy TTS asset",
+                )?;
+            }
+        }
+    }
+
+    let legacy_mlx_dir = legacy_root.join("MLX");
+    let target_mlx_dir = store_dir.join("MLX");
+    if legacy_mlx_dir.exists() {
+        for entry in fs::read_dir(&legacy_mlx_dir).map_err(|err| {
+            format!(
+                "Failed to read legacy MLX store '{}': {err}",
+                legacy_mlx_dir.display()
+            )
+        })? {
+            let entry = entry.map_err(|err| format!("Failed to read legacy MLX entry: {err}"))?;
+            copy_legacy_path_if_missing(
+                &entry.path(),
+                &target_mlx_dir.join(entry.file_name()),
+                "legacy MLX TTS asset",
+            )?;
+        }
+    }
+
+    for definition in MLX_AUDIO_TTS_MODEL_DEFINITIONS {
+        let hf_repo_basename = definition
+            .hf_model_id
+            .rsplit('/')
+            .next()
+            .unwrap_or(definition.model_id);
+
+        for name in definition
+            .local_dir_names
+            .iter()
+            .copied()
+            .chain(std::iter::once(definition.model_id))
+            .chain(std::iter::once(hf_repo_basename))
+        {
+            copy_legacy_path_if_missing(
+                &legacy_root.join(name),
+                &store_dir.join(name),
+                "legacy MLX TTS model",
+            )?;
+            copy_legacy_path_if_missing(
+                &legacy_root.join("MLX").join(name),
+                &target_mlx_dir.join(name),
+                "legacy MLX TTS model",
+            )?;
+        }
+    }
+
+    for definition in MANAGED_RUNTIME_MODEL_DEFINITIONS {
+        let Some(source_repo_dir) = definition.source_repo_dir else {
+            continue;
+        };
+
+        copy_legacy_path_if_missing(
+            &legacy_root.join(source_repo_dir),
+            &store_dir.join(source_repo_dir),
+            "legacy runtime-backed TTS asset",
+        )?;
+    }
+
+    Ok(())
+}
+
 pub fn default_preview_request(
     voice_id: Option<String>,
     preview_text: Option<String>,
@@ -5768,6 +6050,37 @@ mod tests {
     }
 
     #[test]
+    fn sidecar_payload_maps_new_mlx_model_ids_to_huggingface_ids() {
+        let tuning = TtsVoiceTuningSettings {
+            tempo_rate: 1.0,
+            expressiveness: 0.5,
+            exaggeration: 0.5,
+            randomness: 0.2,
+            guidance: 1.0,
+            stability: 0.5,
+            repetition_penalty: 1.2,
+            style_instructions: None,
+        };
+
+        let payload = build_sidecar_request_payload(
+            "Hello world",
+            TTS_PROVIDER_MLX_POCKET_TTS_ID,
+            Some("pocket-tts-4bit"),
+            None,
+            Some("en-US"),
+            None,
+            None,
+            &tuning,
+        );
+
+        assert_eq!(payload["model"], "mlx-community/pocket-tts-4bit");
+        assert_eq!(
+            payload["extra_controls"]["model_id"],
+            "mlx-community/pocket-tts-4bit"
+        );
+    }
+
+    #[test]
     fn fish_speech_preview_text_expands_for_short_custom_preview() {
         let expanded = expanded_preview_text_for_sidecar(
             Some("preview_tts_voice_preset_draft"),
@@ -5784,7 +6097,9 @@ mod tests {
     fn mlx_voice_sanitizer_rejects_placeholder_and_model_ids() {
         assert!(!is_valid_mlx_voice_id("__auto__"));
         assert!(!is_valid_mlx_voice_id("qwen3-tts-0.6b"));
+        assert!(!is_valid_mlx_voice_id("pocket-tts-4bit"));
         assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_KOKORO_ID));
+        assert!(!is_valid_mlx_voice_id(TTS_PROVIDER_MLX_POCKET_TTS_ID));
         assert!(is_valid_mlx_voice_id("af_heart"));
     }
 

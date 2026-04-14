@@ -16,7 +16,8 @@ const SIDECAR_PORT: u16 = 8008;
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 3;
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
-const MLX_AUDIO_PACKAGE_SPEC: &str = "mlx-audio==0.4.2";
+const MLX_AUDIO_RUNTIME_MARKER: &str = "mlx-audio==0.4.2|torch==2.11.0|patches=voxtral_eos_v1";
+const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.2", "torch==2.11.0"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidecarBackend {
@@ -111,9 +112,7 @@ impl SidecarManager {
     }
 
     fn managed_runtime_path(&self) -> Option<PathBuf> {
-        let base_dir = crate::portable::app_data_dir(&self.app_handle)
-            .ok()?
-            .join("tts-runtime");
+        let base_dir = crate::storage_paths::tts_runtime_dir(&self.app_handle).ok()?;
         if !base_dir.exists() {
             return None;
         }
@@ -615,9 +614,10 @@ impl SidecarManager {
             .ok()
             .map(|value| value.trim().to_string());
         let needs_install =
-            !python.exists() || installed_version.as_deref() != Some(MLX_AUDIO_PACKAGE_SPEC);
+            !python.exists() || installed_version.as_deref() != Some(MLX_AUDIO_RUNTIME_MARKER);
 
         if !needs_install {
+            self.apply_mlx_audio_runtime_patches(&venv_dir)?;
             return Ok(python);
         }
 
@@ -646,17 +646,19 @@ impl SidecarManager {
         }
 
         self.emit_setup_progress("installing", "Installing pinned mlx-audio runtime.");
-        for pip_args in [
-            vec!["-m", "pip", "install", "--upgrade", "pip"],
-            vec![
+        let mut pip_commands = vec![vec!["-m", "pip", "install", "--upgrade", "pip"]];
+        for package in MLX_AUDIO_RUNTIME_PACKAGES {
+            pip_commands.push(vec![
                 "-m",
                 "pip",
                 "install",
                 "--upgrade",
                 "--force-reinstall",
-                MLX_AUDIO_PACKAGE_SPEC,
-            ],
-        ] {
+                package,
+            ]);
+        }
+
+        for pip_args in pip_commands {
             let status = Command::new(&python)
                 .args(&pip_args)
                 .status()
@@ -675,10 +677,107 @@ impl SidecarManager {
             }
         }
 
-        std::fs::write(&version_marker, MLX_AUDIO_PACKAGE_SPEC)
+        self.apply_mlx_audio_runtime_patches(&venv_dir)?;
+
+        std::fs::write(&version_marker, MLX_AUDIO_RUNTIME_MARKER)
             .map_err(|err| format!("Failed to write mlx-audio version marker: {err}"))?;
         self.emit_setup_progress("ready", "mlx-audio is ready.");
         Ok(python)
+    }
+
+    fn apply_mlx_audio_runtime_patches(&self, venv_dir: &Path) -> Result<(), String> {
+        let site_packages = Self::mlx_audio_site_packages_dir(venv_dir)?;
+        let voxtral_model_file = site_packages
+            .join("mlx_audio")
+            .join("stt")
+            .join("models")
+            .join("voxtral")
+            .join("voxtral.py");
+
+        if !voxtral_model_file.exists() {
+            return Ok(());
+        }
+
+        let contents = std::fs::read_to_string(&voxtral_model_file)
+            .map_err(|err| format!("Failed to read '{}': {err}", voxtral_model_file.display()))?;
+
+        if contents.contains("_vox_jot_eos_token_ids") {
+            return Ok(());
+        }
+
+        let old_block = r#"        model._processor.tokenizer.eos_token_ids = getattr(
+            model._processor.tokenizer, "eos_token_ids", [2, 4, 32000]
+        )
+"#;
+        let new_block = r#"        tokenizer_eos_ids = getattr(model._processor.tokenizer, "eos_token_ids", None)
+        if tokenizer_eos_ids is None:
+            tokenizer_eos_ids = getattr(model._processor.tokenizer, "eos_token_id", None)
+        if tokenizer_eos_ids is None:
+            tokenizer_eos_ids = [2, 4, 32000]
+        elif isinstance(tokenizer_eos_ids, int):
+            tokenizer_eos_ids = [tokenizer_eos_ids]
+        else:
+            tokenizer_eos_ids = list(tokenizer_eos_ids)
+        model._processor._vox_jot_eos_token_ids = tokenizer_eos_ids
+"#;
+
+        let mut patched = contents.replace(old_block, new_block);
+        patched = patched.replace(
+            "self._processor.tokenizer.eos_token_ids",
+            "self._processor._vox_jot_eos_token_ids",
+        );
+        patched = patched.replace(
+            "with wired_limit(self, [generation_stream]):",
+            "with wired_limit(self):",
+        );
+
+        if patched == contents {
+            return Err(format!(
+                "Failed to patch mlx-audio Voxtral tokenizer handling in '{}'",
+                voxtral_model_file.display()
+            ));
+        }
+
+        std::fs::write(&voxtral_model_file, patched).map_err(|err| {
+            format!(
+                "Failed to write patched mlx-audio Voxtral file '{}': {err}",
+                voxtral_model_file.display()
+            )
+        })?;
+
+        Ok(())
+    }
+
+    fn mlx_audio_site_packages_dir(venv_dir: &Path) -> Result<PathBuf, String> {
+        #[cfg(target_os = "windows")]
+        {
+            let path = venv_dir.join("Lib").join("site-packages");
+            if path.exists() {
+                return Ok(path);
+            }
+            return Err(format!(
+                "mlx-audio site-packages directory not found under '{}'",
+                venv_dir.display()
+            ));
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let lib_dir = venv_dir.join("lib");
+            let entries = std::fs::read_dir(&lib_dir)
+                .map_err(|err| format!("Failed to read '{}': {err}", lib_dir.display()))?;
+            for entry in entries.flatten() {
+                let path = entry.path().join("site-packages");
+                if path.exists() {
+                    return Ok(path);
+                }
+            }
+
+            Err(format!(
+                "mlx-audio site-packages directory not found under '{}'",
+                lib_dir.display()
+            ))
+        }
     }
 
     pub fn ensure_running_if_available(&self) -> Result<bool, String> {

@@ -163,7 +163,7 @@ impl PersonaPlexHelper {
             .unwrap_or(false)
     }
 
-    fn candidate_audio_server_paths() -> Vec<PathBuf> {
+    fn candidate_audio_server_paths(&self) -> Vec<PathBuf> {
         let mut candidates = Vec::new();
 
         if let Ok(explicit_path) = std::env::var("VOX_JOT_PERSONAPLEX_HELPER") {
@@ -173,23 +173,30 @@ impl PersonaPlexHelper {
             }
         }
 
+        if let Ok(app_managed_path) =
+            crate::storage_paths::personaplex_helper_path(&self.app_handle)
+        {
+            candidates.push(app_managed_path);
+        }
+
         for candidate in AUDIO_SERVER_SEARCH_PATHS {
             candidates.push(PathBuf::from(candidate));
         }
 
         if let Some(home) = dirs::home_dir() {
             candidates.push(home.join("Apps/speech-swift/.build/release/audio-server"));
+            candidates.push(
+                home.join("Apps/speech-swift/.build/arm64-apple-macosx/release/audio-server"),
+            );
             candidates.push(home.join("Apps/speech-swift/.build/debug/audio-server"));
-            candidates.push(home.join("Apps/Models/speech-swift/.build/release/audio-server"));
-            candidates.push(home.join("Apps/Models/speech-swift/.build/debug/audio-server"));
         }
 
         candidates
     }
 
     /// Locate the `audio-server` binary from known paths or the user's PATH.
-    fn find_audio_server_binary() -> Option<PathBuf> {
-        for path in Self::candidate_audio_server_paths() {
+    fn find_audio_server_binary(&self) -> Option<PathBuf> {
+        for path in self.candidate_audio_server_paths() {
             if path.exists() {
                 return Some(path);
             }
@@ -220,8 +227,9 @@ impl PersonaPlexHelper {
         }
 
         // Try to auto-start the helper binary
-        let binary = Self::find_audio_server_binary().ok_or_else(|| {
-            let mut searched = Self::candidate_audio_server_paths()
+        let binary = self.find_audio_server_binary().ok_or_else(|| {
+            let mut searched = self
+                .candidate_audio_server_paths()
                 .into_iter()
                 .map(|path| path.display().to_string())
                 .collect::<Vec<_>>();
@@ -244,9 +252,8 @@ impl PersonaPlexHelper {
             .env("PERSONAPLEX_MODEL_ID", "aufklarer/PersonaPlex-7B-MLX-8bit")
             .env(
                 "QWEN3_CACHE_DIR",
-                dirs::home_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join("Apps/Models/qwen3-cache"),
+                crate::storage_paths::qwen3_cache_dir(&self.app_handle)
+                    .unwrap_or_else(|_| PathBuf::from(".")),
             )
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())

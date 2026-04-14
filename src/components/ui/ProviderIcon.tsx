@@ -157,6 +157,11 @@ const PROVIDER_BRAND: Record<string, string> = {
   mlx_oute: "outetts",
   mlx_ming_omni: "ming",
   mlx_kugel: "kugelaudio",
+  mlx_bark: "huggingface",
+  mlx_fish_audio: "fish_audio",
+  mlx_lfm_audio: "huggingface",
+  mlx_pocket_tts: "huggingface",
+  mlx_voxcpm: "huggingface",
   mlx_voxtral_tts: "mistral",
   // LLM providers
   ollama: "ollama",

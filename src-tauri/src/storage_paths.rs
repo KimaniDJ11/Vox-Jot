@@ -1,0 +1,262 @@
+use log::{info, warn};
+use std::fs;
+use std::path::{Path, PathBuf};
+use tauri::AppHandle;
+
+use crate::portable;
+
+const MODEL_ROOT_DIR: &str = "models";
+const STT_MODELS_DIR: &str = "stt";
+const TTS_MODELS_DIR: &str = "tts";
+const TTS_STORE_DIR: &str = "store";
+const TTS_PACKS_DIR: &str = "packs";
+const TTS_RUNTIME_DIR: &str = "runtime";
+const TTS_DOWNLOADS_DIR: &str = "downloads";
+const LLM_MODELS_DIR: &str = "llm";
+const QWEN3_CACHE_DIR: &str = "qwen3-cache";
+const PERSONAPLEX_DIR: &str = "personaplex";
+const PERSONAPLEX_HELPER_NAME: &str = "audio-server";
+
+fn ensure_dir(path: &Path) -> Result<(), String> {
+    fs::create_dir_all(path).map_err(|err| format!("Failed to create '{}': {err}", path.display()))
+}
+
+fn copy_dir_if_missing(source: &Path, destination: &Path, label: &str) -> Result<(), String> {
+    if !source.exists() || destination.exists() {
+        return Ok(());
+    }
+
+    if source.is_file() {
+        if let Some(parent) = destination.parent() {
+            ensure_dir(parent)?;
+        }
+        fs::copy(source, destination).map_err(|err| {
+            format!(
+                "Failed to migrate {label} from '{}' to '{}': {err}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+        info!(
+            "Migrated {label} from '{}' to '{}'",
+            source.display(),
+            destination.display()
+        );
+        return Ok(());
+    }
+
+    ensure_dir(destination)?;
+
+    for entry in fs::read_dir(source)
+        .map_err(|err| format!("Failed to read '{}': {err}", source.display()))?
+    {
+        let entry = entry.map_err(|err| format!("Failed to read directory entry: {err}"))?;
+        let child_source = entry.path();
+        let child_destination = destination.join(entry.file_name());
+        copy_dir_if_missing(&child_source, &child_destination, label)?;
+    }
+
+    info!(
+        "Migrated {label} from '{}' to '{}'",
+        source.display(),
+        destination.display()
+    );
+    Ok(())
+}
+
+pub fn model_root_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(portable::app_data_dir(app)?.join(MODEL_ROOT_DIR))
+}
+
+pub fn stt_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(STT_MODELS_DIR))
+}
+
+pub fn tts_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(TTS_MODELS_DIR))
+}
+
+pub fn tts_model_store_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_models_dir(app)?.join(TTS_STORE_DIR))
+}
+
+pub fn tts_packs_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_models_dir(app)?.join(TTS_PACKS_DIR))
+}
+
+pub fn tts_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_models_dir(app)?.join(TTS_RUNTIME_DIR))
+}
+
+pub fn tts_downloads_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_models_dir(app)?.join(TTS_DOWNLOADS_DIR))
+}
+
+pub fn llm_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(LLM_MODELS_DIR))
+}
+
+pub fn qwen3_cache_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(llm_models_dir(app)?.join(QWEN3_CACHE_DIR))
+}
+
+pub fn personaplex_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(llm_models_dir(app)?.join(PERSONAPLEX_DIR))
+}
+
+pub fn personaplex_helper_path(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(personaplex_dir(app)?.join(PERSONAPLEX_HELPER_NAME))
+}
+
+fn migrate_legacy_stt_layout(app: &AppHandle) -> Result<(), String> {
+    let legacy_dir = portable::app_data_dir(app)
+        .map_err(|err| format!("Failed to resolve app data dir: {err}"))?
+        .join(MODEL_ROOT_DIR);
+    let stt_dir =
+        stt_models_dir(app).map_err(|err| format!("Failed to resolve STT model dir: {err}"))?;
+
+    ensure_dir(&stt_dir)?;
+
+    if !legacy_dir.exists() {
+        return Ok(());
+    }
+
+    for entry in fs::read_dir(&legacy_dir).map_err(|err| {
+        format!(
+            "Failed to read legacy model dir '{}': {err}",
+            legacy_dir.display()
+        )
+    })? {
+        let entry = entry.map_err(|err| format!("Failed to read directory entry: {err}"))?;
+        let path = entry.path();
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+
+        if matches!(
+            name_str.as_ref(),
+            STT_MODELS_DIR | TTS_MODELS_DIR | LLM_MODELS_DIR
+        ) {
+            continue;
+        }
+
+        if name_str.starts_with('.') {
+            continue;
+        }
+
+        let destination = stt_dir.join(&name);
+        if destination.exists() {
+            continue;
+        }
+
+        fs::rename(&path, &destination).map_err(|err| {
+            format!(
+                "Failed to move legacy STT asset '{}' to '{}': {err}",
+                path.display(),
+                destination.display()
+            )
+        })?;
+        info!(
+            "Moved legacy STT asset '{}' to '{}'",
+            path.display(),
+            destination.display()
+        );
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_llm_layout(app: &AppHandle) -> Result<(), String> {
+    let llm_dir =
+        llm_models_dir(app).map_err(|err| format!("Failed to resolve LLM model dir: {err}"))?;
+    let qwen_cache_dir =
+        qwen3_cache_dir(app).map_err(|err| format!("Failed to resolve Qwen cache dir: {err}"))?;
+    let personaplex_dir =
+        personaplex_dir(app).map_err(|err| format!("Failed to resolve PersonaPlex dir: {err}"))?;
+    let personaplex_helper = personaplex_helper_path(app)
+        .map_err(|err| format!("Failed to resolve PersonaPlex helper path: {err}"))?;
+
+    ensure_dir(&llm_dir)?;
+    ensure_dir(&qwen_cache_dir)?;
+    ensure_dir(&personaplex_dir)?;
+
+    if let Some(home) = dirs::home_dir() {
+        let legacy_qwen_cache = home.join("Apps").join("Models").join(QWEN3_CACHE_DIR);
+        if legacy_qwen_cache.exists() {
+            for entry in fs::read_dir(&legacy_qwen_cache).map_err(|err| {
+                format!(
+                    "Failed to read legacy Qwen cache '{}': {err}",
+                    legacy_qwen_cache.display()
+                )
+            })? {
+                let entry = entry
+                    .map_err(|err| format!("Failed to read legacy Qwen cache entry: {err}"))?;
+                copy_dir_if_missing(
+                    &entry.path(),
+                    &qwen_cache_dir.join(entry.file_name()),
+                    "legacy Qwen cache",
+                )?;
+            }
+        }
+
+        for legacy_helper in [
+            home.join("Apps")
+                .join("speech-swift")
+                .join(".build")
+                .join("release")
+                .join(PERSONAPLEX_HELPER_NAME),
+            home.join("Apps")
+                .join("speech-swift")
+                .join(".build")
+                .join("arm64-apple-macosx")
+                .join("release")
+                .join(PERSONAPLEX_HELPER_NAME),
+            home.join("Apps")
+                .join("Models")
+                .join("speech-swift")
+                .join(".build")
+                .join("release")
+                .join(PERSONAPLEX_HELPER_NAME),
+            home.join("Apps")
+                .join("Models")
+                .join("speech-swift")
+                .join(".build")
+                .join("arm64-apple-macosx")
+                .join("release")
+                .join(PERSONAPLEX_HELPER_NAME),
+        ] {
+            copy_dir_if_missing(
+                &legacy_helper,
+                &personaplex_helper,
+                "PersonaPlex helper binary",
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
+    for dir in [
+        model_root_dir(app).map_err(|err| format!("Failed to resolve model root: {err}"))?,
+        stt_models_dir(app).map_err(|err| format!("Failed to resolve STT dir: {err}"))?,
+        tts_models_dir(app).map_err(|err| format!("Failed to resolve TTS dir: {err}"))?,
+        tts_model_store_dir(app).map_err(|err| format!("Failed to resolve TTS store: {err}"))?,
+        tts_packs_dir(app).map_err(|err| format!("Failed to resolve TTS packs: {err}"))?,
+        tts_runtime_dir(app).map_err(|err| format!("Failed to resolve TTS runtime: {err}"))?,
+        tts_downloads_dir(app)
+            .map_err(|err| format!("Failed to resolve TTS download dir: {err}"))?,
+        llm_models_dir(app).map_err(|err| format!("Failed to resolve LLM dir: {err}"))?,
+        qwen3_cache_dir(app).map_err(|err| format!("Failed to resolve Qwen cache: {err}"))?,
+        personaplex_dir(app).map_err(|err| format!("Failed to resolve PersonaPlex dir: {err}"))?,
+    ] {
+        if let Err(err) = ensure_dir(&dir) {
+            warn!("{err}");
+            return Err(err);
+        }
+    }
+
+    migrate_legacy_stt_layout(app)?;
+    migrate_legacy_llm_layout(app)?;
+
+    Ok(())
+}

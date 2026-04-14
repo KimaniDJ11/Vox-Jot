@@ -141,15 +141,76 @@ impl ModelManager {
         Ok(())
     }
 
+    fn copy_path_if_missing(source: &Path, destination: &Path) -> Result<()> {
+        if !source.exists() || destination.exists() {
+            return Ok(());
+        }
+
+        if source.is_file() {
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(source, destination)?;
+            return Ok(());
+        }
+
+        fs::create_dir_all(destination)?;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            Self::copy_path_if_missing(&entry.path(), &destination.join(entry.file_name()))?;
+        }
+
+        Ok(())
+    }
+
+    fn migrate_local_mlx_stt_assets(app_handle: &AppHandle, models_dir: &Path) -> Result<()> {
+        let Some(home) = dirs::home_dir() else {
+            return Ok(());
+        };
+
+        let asset_names = [
+            "Voxtral-Mini-3B-2507-bf16",
+            "Voxtral-Mini-4B-Realtime-2602-4bit",
+        ];
+        let tts_store_dir = crate::storage_paths::tts_model_store_dir(app_handle)
+            .map_err(|err| anyhow::anyhow!("Failed to resolve TTS store dir: {err}"))?;
+        let stt_mlx_dir = models_dir.join("MLX").join("mlx-community");
+
+        for asset_name in asset_names {
+            let destination = stt_mlx_dir.join(asset_name);
+            let candidate_sources = [
+                tts_store_dir
+                    .join("MLX")
+                    .join("mlx-community")
+                    .join(asset_name),
+                home.join("Apps")
+                    .join("Models")
+                    .join("MLX")
+                    .join("mlx-community")
+                    .join(asset_name),
+            ];
+
+            for source in candidate_sources {
+                if source.exists() {
+                    Self::copy_path_if_missing(&source, &destination)?;
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn new(app_handle: &AppHandle) -> Result<Self> {
         // Create models directory in app data
-        let models_dir = crate::portable::app_data_dir(app_handle)
-            .map_err(|e| anyhow::anyhow!("Failed to get app data dir: {}", e))?
-            .join("models");
+        let models_dir = crate::storage_paths::stt_models_dir(app_handle)
+            .map_err(|e| anyhow::anyhow!("Failed to get STT model dir: {}", e))?;
 
         if !models_dir.exists() {
             fs::create_dir_all(&models_dir)?;
         }
+
+        Self::migrate_local_mlx_stt_assets(app_handle, &models_dir)?;
 
         let mut available_models = HashMap::new();
 
@@ -688,6 +749,80 @@ impl ModelManager {
                     is_custom: false,
                 },
             );
+
+            available_models.insert(
+                "mlx-voxtral-mini-3b".to_string(),
+                ModelInfo {
+                    id: "mlx-voxtral-mini-3b".to_string(),
+                    name: "Voxtral Mini 3B (MLX)".to_string(),
+                    description:
+                        "Local Voxtral Mini 3B transcription from the shared mlx-audio runtime."
+                            .to_string(),
+                    filename: "MLX/mlx-community/Voxtral-Mini-3B-2507-bf16".to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: true,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.90,
+                    speed_score: 0.70,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec![
+                        "en".to_string(),
+                        "fr".to_string(),
+                        "de".to_string(),
+                        "es".to_string(),
+                        "it".to_string(),
+                        "pt".to_string(),
+                        "nl".to_string(),
+                        "hi".to_string(),
+                    ],
+                    is_custom: false,
+                },
+            );
+
+            available_models.insert(
+                "mlx-voxtral-mini-4b-realtime".to_string(),
+                ModelInfo {
+                    id: "mlx-voxtral-mini-4b-realtime".to_string(),
+                    name: "Voxtral Mini 4B Realtime (MLX)".to_string(),
+                    description:
+                        "Streaming Voxtral realtime transcription through the shared mlx-audio runtime."
+                            .to_string(),
+                    filename: "MLX/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+                        .to_string(),
+                    url: None,
+                    size_mb: 0,
+                    is_downloaded: false,
+                    is_downloading: false,
+                    partial_size: 0,
+                    is_directory: true,
+                    engine_type: EngineType::MlxAudioStt,
+                    accuracy_score: 0.92,
+                    speed_score: 0.88,
+                    supports_translation: false,
+                    is_recommended: false,
+                    supported_languages: vec![
+                        "ar".to_string(),
+                        "de".to_string(),
+                        "en".to_string(),
+                        "es".to_string(),
+                        "fr".to_string(),
+                        "hi".to_string(),
+                        "it".to_string(),
+                        "nl".to_string(),
+                        "pt".to_string(),
+                        "zh".to_string(),
+                        "ja".to_string(),
+                        "ko".to_string(),
+                        "ru".to_string(),
+                    ],
+                    is_custom: false,
+                },
+            );
         }
 
         // Auto-discover custom Whisper models (.bin files) in the models directory
@@ -766,6 +901,12 @@ impl ModelManager {
 
         for model in models.values_mut() {
             if engine_uses_remote_runtime(&model.engine_type) {
+                let model_path = self.models_dir.join(&model.filename);
+                model.is_downloaded = if model.is_directory {
+                    model_path.is_dir()
+                } else {
+                    model_path.is_file()
+                };
                 model.is_downloading = false;
                 model.partial_size = 0;
                 continue;

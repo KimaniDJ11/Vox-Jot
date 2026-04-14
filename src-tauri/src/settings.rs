@@ -36,7 +36,11 @@ pub const TTS_PROVIDER_MLX_OUTE_ID: &str = "mlx_oute";
 pub const TTS_PROVIDER_MLX_MING_OMNI_ID: &str = "mlx_ming_omni";
 pub const TTS_PROVIDER_MLX_KUGEL_ID: &str = "mlx_kugel";
 pub const TTS_PROVIDER_MLX_VOXTRAL_TTS_ID: &str = "mlx_voxtral_tts";
-pub const DEFAULT_TTS_MODEL_STORE_PATH: &str = "/Users/dinamikjames/Apps/Models/TTS";
+pub const TTS_PROVIDER_MLX_BARK_ID: &str = "mlx_bark";
+pub const TTS_PROVIDER_MLX_FISH_AUDIO_ID: &str = "mlx_fish_audio";
+pub const TTS_PROVIDER_MLX_LFM_AUDIO_ID: &str = "mlx_lfm_audio";
+pub const TTS_PROVIDER_MLX_POCKET_TTS_ID: &str = "mlx_pocket_tts";
+pub const TTS_PROVIDER_MLX_VOXCPM_ID: &str = "mlx_voxcpm";
 pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
 pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
 const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 5;
@@ -44,20 +48,24 @@ const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2"
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
 
 pub fn default_tts_model_store_dir(app: &AppHandle) -> PathBuf {
-    let preferred_path = PathBuf::from(DEFAULT_TTS_MODEL_STORE_PATH);
-    if preferred_path.exists() {
-        return preferred_path;
-    }
-
-    portable::app_data_dir(app)
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join("tts-model-store")
+    crate::storage_paths::tts_model_store_dir(app).unwrap_or_else(|_| {
+        portable::app_data_dir(app)
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join("models")
+            .join("tts")
+            .join("store")
+    })
 }
 
 pub fn default_speech_runtime_install_dir(app: &AppHandle, platform_id: &str) -> PathBuf {
-    portable::app_data_dir(app)
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join("tts-runtime")
+    crate::storage_paths::tts_runtime_dir(app)
+        .unwrap_or_else(|_| {
+            portable::app_data_dir(app)
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("models")
+                .join("tts")
+                .join("runtime")
+        })
         .join(platform_id)
 }
 

@@ -41,7 +41,7 @@ pub struct ModelStateEvent {
 
 struct MlxAudioSttEngine {
     base_url: String,
-    hf_model_id: String,
+    model_source: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -72,7 +72,7 @@ impl MlxAudioSttEngine {
             .map_err(|err| anyhow::anyhow!("Failed to prepare mlx-audio upload: {}", err))?;
         let form = reqwest::blocking::multipart::Form::new()
             .part("file", file_part)
-            .text("model", self.hf_model_id.clone());
+            .text("model", self.model_source.clone());
 
         let client = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(300))
@@ -125,12 +125,14 @@ impl MlxAudioSttEngine {
     }
 }
 
-fn mlx_audio_stt_hf_model_id(model_id: &str) -> Option<&'static str> {
+fn mlx_audio_stt_model_ref(model_id: &str) -> Option<&'static str> {
     match model_id {
         "mlx-whisper-large-v3-turbo" => Some("mlx-community/whisper-large-v3-turbo-asr-fp16"),
         "mlx-distil-whisper-large-v3" => Some("distil-whisper/distil-large-v3"),
         "mlx-qwen3-asr" => Some("mlx-community/Qwen3-ASR-1.7B-8bit"),
         "mlx-parakeet-v3" => Some("mlx-community/parakeet-tdt-0.6b-v3"),
+        "mlx-voxtral-mini-3b" => Some("mlx-community/Voxtral-Mini-3B-2507-bf16"),
+        "mlx-voxtral-mini-4b-realtime" => Some("mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"),
         _ => None,
     }
 }
@@ -487,12 +489,20 @@ impl TranscriptionManager {
                 sidecar
                     .ensure_running()
                     .map_err(|err| anyhow::anyhow!(err))?;
-                let hf_model_id = mlx_audio_stt_hf_model_id(model_id).ok_or_else(|| {
-                    anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
-                })?;
+                let model_source = self
+                    .model_manager
+                    .get_model_path(model_id)
+                    .map(|path| path.to_string_lossy().to_string())
+                    .or_else(|_| {
+                        mlx_audio_stt_model_ref(model_id)
+                            .map(str::to_string)
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
+                            })
+                    })?;
                 LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
                     base_url: mlx_audio_base_url(),
-                    hf_model_id: hf_model_id.to_string(),
+                    model_source,
                 })
             }
         };

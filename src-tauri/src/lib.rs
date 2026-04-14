@@ -28,6 +28,7 @@ mod shortcut;
 mod sidecar;
 mod signal_handle;
 pub mod snippets;
+mod storage_paths;
 mod transcription_coordinator;
 mod translation;
 mod tray;
@@ -763,6 +764,9 @@ pub fn run(cli_args: CliArgs) {
             let app_handle = app.handle().clone();
             app.manage(TranscriptionCoordinator::new(app_handle.clone()));
             app.manage(PreviewManager::default());
+
+            crate::storage_paths::ensure_model_storage_layout(&app_handle)
+                .expect("Failed to prepare model storage layout");
 
             // Initialize correction tracking system
             let app_data_dir = crate::portable::app_data_dir(&app_handle)

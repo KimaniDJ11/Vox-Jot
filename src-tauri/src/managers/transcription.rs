@@ -1,7 +1,8 @@
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
+use crate::managers::audio::AudioRecordingManager;
 use crate::managers::continuous_cloning::ContinuousCloningManager;
-use crate::managers::model::{model_is_available, EngineType, ModelManager};
-use crate::settings::{get_settings, ModelUnloadTimeout};
+use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
+use crate::settings::{get_settings, AppSettings, ModelUnloadTimeout};
 use anyhow::Result;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -57,6 +58,21 @@ enum LoadedEngine {
     SenseVoice(SenseVoiceEngine),
     GigaAM(GigaAMEngine),
     MlxAudioStt(MlxAudioSttEngine),
+}
+
+#[derive(Clone, Debug)]
+struct PartialProviderConfig {
+    interval: Duration,
+    min_samples: usize,
+    min_growth: usize,
+    max_samples: Option<usize>,
+}
+
+#[derive(Debug)]
+struct PartialProviderSession {
+    generation: u64,
+    binding_id: String,
+    cancel: Arc<AtomicBool>,
 }
 
 impl MlxAudioSttEngine {
@@ -141,6 +157,64 @@ fn mlx_audio_base_url() -> String {
     "http://127.0.0.1:8008".to_string()
 }
 
+fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {
+    let lower = model_id.to_ascii_lowercase();
+
+    if lower.contains("moonshine") && lower.contains("stream") {
+        return PartialProviderConfig {
+            interval: Duration::from_millis(450),
+            min_samples: 8_000,
+            min_growth: 2_400,
+            max_samples: Some(192_000),
+        };
+    }
+    if lower.contains("moonshine") {
+        return PartialProviderConfig {
+            interval: Duration::from_millis(650),
+            min_samples: 12_000,
+            min_growth: 3_200,
+            max_samples: Some(96_000),
+        };
+    }
+    if lower.contains("whisper") {
+        return PartialProviderConfig {
+            interval: Duration::from_millis(1_200),
+            min_samples: 20_000,
+            min_growth: 6_400,
+            max_samples: Some(128_000),
+        };
+    }
+    if lower.contains("parakeet") {
+        return PartialProviderConfig {
+            interval: Duration::from_millis(900),
+            min_samples: 16_000,
+            min_growth: 4_800,
+            max_samples: Some(112_000),
+        };
+    }
+
+    PartialProviderConfig {
+        interval: Duration::from_millis(900),
+        min_samples: 16_000,
+        min_growth: 4_800,
+        max_samples: Some(96_000),
+    }
+}
+
+fn trim_partial_audio(mut samples: Vec<f32>, max_samples: Option<usize>) -> Vec<f32> {
+    let Some(max_samples) = max_samples else {
+        return samples;
+    };
+
+    if samples.len() <= max_samples {
+        return samples;
+    }
+
+    let start = samples.len().saturating_sub(max_samples);
+    samples.drain(..start);
+    samples
+}
+
 #[derive(Clone)]
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
@@ -153,6 +227,8 @@ pub struct TranscriptionManager {
     watcher_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
     is_loading: Arc<Mutex<bool>>,
     loading_condvar: Arc<Condvar>,
+    partial_session: Arc<Mutex<Option<PartialProviderSession>>>,
+    partial_generation: Arc<AtomicU64>,
 }
 
 impl TranscriptionManager {
@@ -173,6 +249,8 @@ impl TranscriptionManager {
             watcher_handle: Arc::new(Mutex::new(None)),
             is_loading: Arc::new(Mutex::new(false)),
             loading_condvar: Arc::new(Condvar::new()),
+            partial_session: Arc::new(Mutex::new(None)),
+            partial_generation: Arc::new(AtomicU64::new(0)),
         };
 
         // Start the idle watcher
@@ -249,14 +327,450 @@ impl TranscriptionManager {
         })
     }
 
+    fn next_partial_generation(&self) -> u64 {
+        self.partial_generation.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    fn partial_generation_is_current(&self, generation: u64) -> bool {
+        self.partial_generation.load(Ordering::Relaxed) == generation
+    }
+
+    fn stop_partial_session_internal(&self) {
+        if let Some(session) = self
+            .partial_session
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+        {
+            debug!(
+                "Stopping partial transcription session {} for binding {}",
+                session.generation, session.binding_id
+            );
+            session.cancel.store(true, Ordering::Relaxed);
+        }
+        self.next_partial_generation();
+    }
+
+    fn create_loaded_engine(
+        &self,
+        model_id: &str,
+        model_info: &ModelInfo,
+        emit_state_events: bool,
+    ) -> Result<LoadedEngine> {
+        let emit_loading_failure = |error_msg: String| {
+            if emit_state_events {
+                let _ = self.app_handle.emit(
+                    "model-state-changed",
+                    ModelStateEvent {
+                        event_type: "loading_failed".to_string(),
+                        model_id: Some(model_id.to_string()),
+                        model_name: Some(model_info.name.clone()),
+                        error: Some(error_msg.clone()),
+                    },
+                );
+            }
+            anyhow::anyhow!(error_msg)
+        };
+
+        let loaded_engine = match model_info.engine_type {
+            EngineType::Whisper => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = WhisperEngine::new();
+                engine.load_model(&model_path).map_err(|e| {
+                    emit_loading_failure(format!(
+                        "Failed to load whisper model {}: {}",
+                        model_id, e
+                    ))
+                })?;
+                LoadedEngine::Whisper(engine)
+            }
+            EngineType::Parakeet => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = ParakeetEngine::new();
+                engine
+                    .load_model_with_params(&model_path, ParakeetModelParams::int8())
+                    .map_err(|e| {
+                        emit_loading_failure(format!(
+                            "Failed to load parakeet model {}: {}",
+                            model_id, e
+                        ))
+                    })?;
+                LoadedEngine::Parakeet(engine)
+            }
+            EngineType::Moonshine => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = MoonshineEngine::new();
+                engine
+                    .load_model_with_params(
+                        &model_path,
+                        MoonshineModelParams::variant(ModelVariant::Base),
+                    )
+                    .map_err(|e| {
+                        emit_loading_failure(format!(
+                            "Failed to load moonshine model {}: {}",
+                            model_id, e
+                        ))
+                    })?;
+                LoadedEngine::Moonshine(engine)
+            }
+            EngineType::MoonshineStreaming => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = MoonshineStreamingEngine::new();
+                engine
+                    .load_model_with_params(&model_path, StreamingModelParams::default())
+                    .map_err(|e| {
+                        emit_loading_failure(format!(
+                            "Failed to load moonshine streaming model {}: {}",
+                            model_id, e
+                        ))
+                    })?;
+                LoadedEngine::MoonshineStreaming(engine)
+            }
+            EngineType::SenseVoice => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = SenseVoiceEngine::new();
+                engine
+                    .load_model_with_params(&model_path, SenseVoiceModelParams::int8())
+                    .map_err(|e| {
+                        emit_loading_failure(format!(
+                            "Failed to load SenseVoice model {}: {}",
+                            model_id, e
+                        ))
+                    })?;
+                LoadedEngine::SenseVoice(engine)
+            }
+            EngineType::GigaAM => {
+                let model_path = self.model_manager.get_model_path(model_id)?;
+                let mut engine = GigaAMEngine::new();
+                engine.load_model(&model_path).map_err(|e| {
+                    emit_loading_failure(format!("Failed to load gigaam model {}: {}", model_id, e))
+                })?;
+                LoadedEngine::GigaAM(engine)
+            }
+            EngineType::QwenAudio => {
+                return Err(anyhow::anyhow!(
+                    "QwenAudio engine implementation is coming soon."
+                ));
+            }
+            EngineType::MlxAudioStt => {
+                let sidecar = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
+                    .ok_or_else(|| anyhow::anyhow!("SidecarManager is not available."))?;
+                sidecar
+                    .ensure_running()
+                    .map_err(|err| anyhow::anyhow!(err))?;
+                let model_source = self
+                    .model_manager
+                    .get_model_path(model_id)
+                    .map(|path| path.to_string_lossy().to_string())
+                    .or_else(|_| {
+                        mlx_audio_stt_model_ref(model_id)
+                            .map(str::to_string)
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
+                            })
+                    })?;
+                LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
+                    base_url: mlx_audio_base_url(),
+                    model_source,
+                })
+            }
+        };
+
+        Ok(loaded_engine)
+    }
+
+    fn transcribe_with_loaded_engine(
+        engine: &mut LoadedEngine,
+        audio: Vec<f32>,
+        settings: &AppSettings,
+    ) -> Result<String> {
+        let result = match engine {
+            LoadedEngine::Whisper(whisper_engine) => {
+                let whisper_language = if settings.selected_language == "auto" {
+                    None
+                } else {
+                    let normalized = if settings.selected_language == "zh-Hans"
+                        || settings.selected_language == "zh-Hant"
+                    {
+                        "zh".to_string()
+                    } else {
+                        settings.selected_language.clone()
+                    };
+                    Some(normalized)
+                };
+
+                let whisper_translate_to_english = settings.translation_output_mode
+                    == crate::settings::TranslationOutputMode::Translated
+                    && settings.translation_target_language == "en"
+                    && matches!(
+                        settings.translation_route_preference,
+                        crate::settings::TranslationRoutePreference::Auto
+                            | crate::settings::TranslationRoutePreference::WhisperEnglish
+                    );
+
+                let params = WhisperInferenceParams {
+                    language: whisper_language,
+                    translate: whisper_translate_to_english,
+                    ..Default::default()
+                };
+
+                whisper_engine
+                    .transcribe_samples(audio, Some(params))
+                    .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))?
+                    .text
+            }
+            LoadedEngine::Parakeet(parakeet_engine) => {
+                let params = ParakeetInferenceParams {
+                    timestamp_granularity: TimestampGranularity::Segment,
+                    ..Default::default()
+                };
+                parakeet_engine
+                    .transcribe_samples(audio, Some(params))
+                    .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?
+                    .text
+            }
+            LoadedEngine::Moonshine(moonshine_engine) => {
+                moonshine_engine
+                    .transcribe_samples(audio, None)
+                    .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e))?
+                    .text
+            }
+            LoadedEngine::MoonshineStreaming(streaming_engine) => {
+                streaming_engine
+                    .transcribe_samples(audio, None)
+                    .map_err(|e| {
+                        anyhow::anyhow!("Moonshine streaming transcription failed: {}", e)
+                    })?
+                    .text
+            }
+            LoadedEngine::SenseVoice(sense_voice_engine) => {
+                let language = match settings.selected_language.as_str() {
+                    "zh" | "zh-Hans" | "zh-Hant" => SenseVoiceLanguage::Chinese,
+                    "en" => SenseVoiceLanguage::English,
+                    "ja" => SenseVoiceLanguage::Japanese,
+                    "ko" => SenseVoiceLanguage::Korean,
+                    "yue" => SenseVoiceLanguage::Cantonese,
+                    _ => SenseVoiceLanguage::Auto,
+                };
+                let params = SenseVoiceInferenceParams {
+                    language,
+                    use_itn: true,
+                };
+                sense_voice_engine
+                    .transcribe_samples(audio, Some(params))
+                    .map_err(|e| anyhow::anyhow!("SenseVoice transcription failed: {}", e))?
+                    .text
+            }
+            LoadedEngine::GigaAM(gigaam_engine) => {
+                gigaam_engine
+                    .transcribe_samples(audio, None)
+                    .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e))?
+                    .text
+            }
+            LoadedEngine::MlxAudioStt(mlx_engine) => {
+                mlx_engine
+                    .transcribe(audio, 16_000)
+                    .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?
+                    .text
+            }
+        };
+
+        let corrected_result = if !settings.custom_words.is_empty() {
+            apply_custom_words(
+                &result,
+                &settings.custom_words,
+                settings.word_correction_threshold,
+            )
+        } else {
+            result
+        };
+
+        let filter_language = match settings.selected_language.as_str() {
+            "auto" => settings.app_language.as_str(),
+            "zh-Hans" | "zh-Hant" => "zh",
+            lang => lang,
+        };
+
+        Ok(filter_transcription_output(
+            &corrected_result,
+            filter_language,
+            &settings.custom_filler_words,
+        ))
+    }
+
+    fn transcribe_partial_snapshot(
+        &self,
+        engine: &mut LoadedEngine,
+        audio: Vec<f32>,
+        settings: &AppSettings,
+    ) -> Result<String> {
+        match catch_unwind(AssertUnwindSafe(|| {
+            Self::transcribe_with_loaded_engine(engine, audio, settings)
+        })) {
+            Ok(result) => result,
+            Err(panic_payload) => {
+                let panic_msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "unknown panic".to_string()
+                };
+                Err(anyhow::anyhow!(
+                    "Partial transcription engine panicked: {}",
+                    panic_msg
+                ))
+            }
+        }
+    }
+
+    fn run_partial_provider(
+        &self,
+        generation: u64,
+        binding_id: String,
+        config: PartialProviderConfig,
+        cancel: Arc<AtomicBool>,
+        recording_manager: Arc<AudioRecordingManager>,
+        model_id: String,
+    ) {
+        let Some(model_info) = self.model_manager.get_model_info(&model_id) else {
+            debug!(
+                "Skipping partial transcription for binding {} because model {} is unknown",
+                binding_id, model_id
+            );
+            return;
+        };
+
+        if !model_is_available(&model_info) {
+            debug!(
+                "Skipping partial transcription for binding {} because model {} is not available",
+                binding_id, model_id
+            );
+            return;
+        }
+
+        let mut engine = match self.create_loaded_engine(&model_id, &model_info, false) {
+            Ok(engine) => engine,
+            Err(err) => {
+                warn!(
+                    "Failed to start partial transcription provider for binding {}: {}",
+                    binding_id, err
+                );
+                return;
+            }
+        };
+
+        let mut last_snapshot_len = 0usize;
+        let mut last_emitted = String::new();
+
+        while !cancel.load(Ordering::Relaxed)
+            && !self.shutdown_signal.load(Ordering::Relaxed)
+            && self.partial_generation_is_current(generation)
+        {
+            thread::sleep(config.interval);
+
+            if cancel.load(Ordering::Relaxed)
+                || self.shutdown_signal.load(Ordering::Relaxed)
+                || !self.partial_generation_is_current(generation)
+            {
+                break;
+            }
+
+            let Some(snapshot) = recording_manager.snapshot_recording() else {
+                break;
+            };
+            let snapshot_len = snapshot.len();
+            let growth = snapshot_len.saturating_sub(last_snapshot_len);
+            if snapshot_len < config.min_samples || growth < config.min_growth {
+                continue;
+            }
+            last_snapshot_len = snapshot_len;
+
+            let settings = get_settings(&self.app_handle);
+            let partial_audio = trim_partial_audio(snapshot, config.max_samples);
+            let partial_text =
+                match self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings) {
+                    Ok(text) => text,
+                    Err(err) => {
+                        warn!(
+                            "Partial transcription failed for binding {}: {}",
+                            binding_id, err
+                        );
+                        continue;
+                    }
+                };
+
+            if !self.partial_generation_is_current(generation) {
+                break;
+            }
+
+            let trimmed = partial_text.trim();
+            if trimmed.is_empty() || trimmed == last_emitted {
+                continue;
+            }
+
+            last_emitted = trimmed.to_string();
+            crate::overlay::emit_partial_transcription(&self.app_handle, trimmed);
+        }
+    }
+
     pub fn is_model_loaded(&self) -> bool {
         let engine = self.lock_engine();
         engine.is_some()
     }
 
+    pub fn start_partial_provider(
+        &self,
+        binding_id: &str,
+        recording_manager: Arc<AudioRecordingManager>,
+    ) {
+        self.stop_partial_session_internal();
+
+        let settings = get_settings(&self.app_handle);
+        let model_id = settings.selected_model.trim().to_string();
+        if model_id.is_empty() {
+            return;
+        }
+
+        let generation = self.next_partial_generation();
+        let cancel = Arc::new(AtomicBool::new(false));
+        *self
+            .partial_session
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(PartialProviderSession {
+            generation,
+            binding_id: binding_id.to_string(),
+            cancel: Arc::clone(&cancel),
+        });
+
+        let config = partial_provider_config_for_model(&model_id);
+        let manager = self.clone();
+        let binding_id = binding_id.to_string();
+        thread::spawn(move || {
+            if cancel.load(Ordering::Relaxed) {
+                return;
+            }
+            manager.run_partial_provider(
+                generation,
+                binding_id,
+                config,
+                cancel,
+                recording_manager,
+                model_id,
+            );
+        });
+    }
+
+    pub fn stop_partial_provider(&self) {
+        self.stop_partial_session_internal();
+    }
+
     pub fn unload_model(&self) -> Result<()> {
         let unload_start = std::time::Instant::now();
         debug!("Starting to unload model");
+        self.stop_partial_session_internal();
 
         {
             let mut engine = self.lock_engine();
@@ -347,165 +861,7 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
-        // Create appropriate engine based on model type
-        let loaded_engine = match model_info.engine_type {
-            EngineType::Whisper => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = WhisperEngine::new();
-                engine.load_model(&model_path).map_err(|e| {
-                    let error_msg = format!("Failed to load whisper model {}: {}", model_id, e);
-                    let _ = self.app_handle.emit(
-                        "model-state-changed",
-                        ModelStateEvent {
-                            event_type: "loading_failed".to_string(),
-                            model_id: Some(model_id.to_string()),
-                            model_name: Some(model_info.name.clone()),
-                            error: Some(error_msg.clone()),
-                        },
-                    );
-                    anyhow::anyhow!(error_msg)
-                })?;
-                LoadedEngine::Whisper(engine)
-            }
-            EngineType::Parakeet => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = ParakeetEngine::new();
-                engine
-                    .load_model_with_params(&model_path, ParakeetModelParams::int8())
-                    .map_err(|e| {
-                        let error_msg =
-                            format!("Failed to load parakeet model {}: {}", model_id, e);
-                        let _ = self.app_handle.emit(
-                            "model-state-changed",
-                            ModelStateEvent {
-                                event_type: "loading_failed".to_string(),
-                                model_id: Some(model_id.to_string()),
-                                model_name: Some(model_info.name.clone()),
-                                error: Some(error_msg.clone()),
-                            },
-                        );
-                        anyhow::anyhow!(error_msg)
-                    })?;
-                LoadedEngine::Parakeet(engine)
-            }
-            EngineType::Moonshine => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = MoonshineEngine::new();
-                engine
-                    .load_model_with_params(
-                        &model_path,
-                        MoonshineModelParams::variant(ModelVariant::Base),
-                    )
-                    .map_err(|e| {
-                        let error_msg =
-                            format!("Failed to load moonshine model {}: {}", model_id, e);
-                        let _ = self.app_handle.emit(
-                            "model-state-changed",
-                            ModelStateEvent {
-                                event_type: "loading_failed".to_string(),
-                                model_id: Some(model_id.to_string()),
-                                model_name: Some(model_info.name.clone()),
-                                error: Some(error_msg.clone()),
-                            },
-                        );
-                        anyhow::anyhow!(error_msg)
-                    })?;
-                LoadedEngine::Moonshine(engine)
-            }
-            EngineType::MoonshineStreaming => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = MoonshineStreamingEngine::new();
-                engine
-                    .load_model_with_params(&model_path, StreamingModelParams::default())
-                    .map_err(|e| {
-                        let error_msg = format!(
-                            "Failed to load moonshine streaming model {}: {}",
-                            model_id, e
-                        );
-                        let _ = self.app_handle.emit(
-                            "model-state-changed",
-                            ModelStateEvent {
-                                event_type: "loading_failed".to_string(),
-                                model_id: Some(model_id.to_string()),
-                                model_name: Some(model_info.name.clone()),
-                                error: Some(error_msg.clone()),
-                            },
-                        );
-                        anyhow::anyhow!(error_msg)
-                    })?;
-                LoadedEngine::MoonshineStreaming(engine)
-            }
-            EngineType::SenseVoice => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = SenseVoiceEngine::new();
-                engine
-                    .load_model_with_params(&model_path, SenseVoiceModelParams::int8())
-                    .map_err(|e| {
-                        let error_msg =
-                            format!("Failed to load SenseVoice model {}: {}", model_id, e);
-                        let _ = self.app_handle.emit(
-                            "model-state-changed",
-                            ModelStateEvent {
-                                event_type: "loading_failed".to_string(),
-                                model_id: Some(model_id.to_string()),
-                                model_name: Some(model_info.name.clone()),
-                                error: Some(error_msg.clone()),
-                            },
-                        );
-                        anyhow::anyhow!(error_msg)
-                    })?;
-                LoadedEngine::SenseVoice(engine)
-            }
-            EngineType::GigaAM => {
-                let model_path = self.model_manager.get_model_path(model_id)?;
-                let mut engine = GigaAMEngine::new();
-                engine.load_model(&model_path).map_err(|e| {
-                    let error_msg = format!("Failed to load gigaam model {}: {}", model_id, e);
-                    let _ = self.app_handle.emit(
-                        "model-state-changed",
-                        ModelStateEvent {
-                            event_type: "loading_failed".to_string(),
-                            model_id: Some(model_id.to_string()),
-                            model_name: Some(model_info.name.clone()),
-                            error: Some(error_msg.clone()),
-                        },
-                    );
-                    anyhow::anyhow!(error_msg)
-                })?;
-                LoadedEngine::GigaAM(engine)
-            }
-            EngineType::QwenAudio => {
-                // For now, QwenAudio is a placeholder.
-                // Once we have a Qwen engine (e.g. sidecar or native), we implement it here.
-                return Err(anyhow::anyhow!(
-                    "QwenAudio engine implementation is coming soon."
-                ));
-            }
-            EngineType::MlxAudioStt => {
-                let sidecar = self
-                    .app_handle
-                    .try_state::<Arc<crate::sidecar::SidecarManager>>()
-                    .ok_or_else(|| anyhow::anyhow!("SidecarManager is not available."))?;
-                sidecar
-                    .ensure_running()
-                    .map_err(|err| anyhow::anyhow!(err))?;
-                let model_source = self
-                    .model_manager
-                    .get_model_path(model_id)
-                    .map(|path| path.to_string_lossy().to_string())
-                    .or_else(|_| {
-                        mlx_audio_stt_model_ref(model_id)
-                            .map(str::to_string)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
-                            })
-                    })?;
-                LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
-                    base_url: mlx_audio_base_url(),
-                    model_source,
-                })
-            }
-        };
+        let loaded_engine = self.create_loaded_engine(model_id, &model_info, true)?;
 
         // Update the current engine and model ID
         {
@@ -640,90 +996,9 @@ impl TranscriptionManager {
             // Release the lock before transcribing — no mutex held during the engine call
             drop(engine_guard);
 
-            let transcribe_result = catch_unwind(AssertUnwindSafe(
-                || -> Result<transcribe_rs::TranscriptionResult> {
-                    match &mut engine {
-                        LoadedEngine::Whisper(whisper_engine) => {
-                            let whisper_language = if settings.selected_language == "auto" {
-                                None
-                            } else {
-                                let normalized = if settings.selected_language == "zh-Hans"
-                                    || settings.selected_language == "zh-Hant"
-                                {
-                                    "zh".to_string()
-                                } else {
-                                    settings.selected_language.clone()
-                                };
-                                Some(normalized)
-                            };
-
-                            let whisper_translate_to_english =
-                                settings.translation_output_mode
-                                    == crate::settings::TranslationOutputMode::Translated
-                                    && settings.translation_target_language == "en"
-                                    && matches!(
-                                        settings.translation_route_preference,
-                                        crate::settings::TranslationRoutePreference::Auto
-                                            | crate::settings::TranslationRoutePreference::WhisperEnglish
-                                    );
-
-                            let params = WhisperInferenceParams {
-                                language: whisper_language,
-                                translate: whisper_translate_to_english,
-                                ..Default::default()
-                            };
-
-                            whisper_engine
-                                .transcribe_samples(audio, Some(params))
-                                .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))
-                        }
-                        LoadedEngine::Parakeet(parakeet_engine) => {
-                            let params = ParakeetInferenceParams {
-                                timestamp_granularity: TimestampGranularity::Segment,
-                                ..Default::default()
-                            };
-                            parakeet_engine
-                                .transcribe_samples(audio, Some(params))
-                                .map_err(|e| {
-                                    anyhow::anyhow!("Parakeet transcription failed: {}", e)
-                                })
-                        }
-                        LoadedEngine::Moonshine(moonshine_engine) => moonshine_engine
-                            .transcribe_samples(audio, None)
-                            .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e)),
-                        LoadedEngine::MoonshineStreaming(streaming_engine) => streaming_engine
-                            .transcribe_samples(audio, None)
-                            .map_err(|e| {
-                                anyhow::anyhow!("Moonshine streaming transcription failed: {}", e)
-                            }),
-                        LoadedEngine::SenseVoice(sense_voice_engine) => {
-                            let language = match settings.selected_language.as_str() {
-                                "zh" | "zh-Hans" | "zh-Hant" => SenseVoiceLanguage::Chinese,
-                                "en" => SenseVoiceLanguage::English,
-                                "ja" => SenseVoiceLanguage::Japanese,
-                                "ko" => SenseVoiceLanguage::Korean,
-                                "yue" => SenseVoiceLanguage::Cantonese,
-                                _ => SenseVoiceLanguage::Auto,
-                            };
-                            let params = SenseVoiceInferenceParams {
-                                language,
-                                use_itn: true,
-                            };
-                            sense_voice_engine
-                                .transcribe_samples(audio, Some(params))
-                                .map_err(|e| {
-                                    anyhow::anyhow!("SenseVoice transcription failed: {}", e)
-                                })
-                        }
-                        LoadedEngine::GigaAM(gigaam_engine) => gigaam_engine
-                            .transcribe_samples(audio, None)
-                            .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e)),
-                        LoadedEngine::MlxAudioStt(mlx_engine) => mlx_engine
-                            .transcribe(audio, 16_000)
-                            .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e)),
-                    }
-                },
-            ));
+            let transcribe_result = catch_unwind(AssertUnwindSafe(|| {
+                Self::transcribe_with_loaded_engine(&mut engine, audio, &settings)
+            }));
 
             match transcribe_result {
                 Ok(inner_result) => {
@@ -774,30 +1049,6 @@ impl TranscriptionManager {
             }
         };
 
-        // Apply word correction if custom words are configured
-        let corrected_result = if !settings.custom_words.is_empty() {
-            apply_custom_words(
-                &result.text,
-                &settings.custom_words,
-                settings.word_correction_threshold,
-            )
-        } else {
-            result.text
-        };
-
-        let filter_language = match settings.selected_language.as_str() {
-            "auto" => settings.app_language.as_str(),
-            "zh-Hans" | "zh-Hant" => "zh",
-            lang => lang,
-        };
-
-        // Filter out filler words and hallucinations
-        let filtered_result = filter_transcription_output(
-            &corrected_result,
-            filter_language,
-            &settings.custom_filler_words,
-        );
-
         let et = std::time::Instant::now();
         let translation_note = if settings.translation_output_mode
             == crate::settings::TranslationOutputMode::Translated
@@ -817,7 +1068,7 @@ impl TranscriptionManager {
             translation_note
         );
 
-        let final_result = filtered_result;
+        let final_result = result;
 
         if final_result.is_empty() {
             info!("Transcription result is empty");
@@ -849,6 +1100,7 @@ impl TranscriptionManager {
 impl Drop for TranscriptionManager {
     fn drop(&mut self) {
         debug!("Shutting down TranscriptionManager");
+        self.stop_partial_session_internal();
 
         // Signal the watcher thread to shutdown
         self.shutdown_signal.store(true, Ordering::Relaxed);

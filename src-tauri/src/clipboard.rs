@@ -3,7 +3,7 @@ use crate::input::{self, EnigoState};
 use crate::settings::TypingTool;
 use crate::settings::{get_settings, AutoSubmitKey, ClipboardHandling, PasteMethod};
 use enigo::{Direction, Enigo, Key, Keyboard};
-use log::info;
+use log::{info, warn};
 use std::process::Command;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -42,6 +42,37 @@ fn clipboard_restore_delay_ms(app_handle: &AppHandle) -> u64 {
     }
 
     150
+}
+
+#[derive(Clone, Copy)]
+enum ClipboardRestoreTarget {
+    PreviousContent,
+    DictatedText,
+}
+
+fn schedule_clipboard_restore(app_handle: AppHandle, restore_text: String, delay_ms: u64) {
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(delay_ms));
+        let clipboard = app_handle.clipboard();
+
+        #[cfg(target_os = "linux")]
+        let result = if is_wayland() && is_wl_copy_available() {
+            write_clipboard_via_wl_copy(&restore_text)
+        } else {
+            clipboard
+                .write_text(&restore_text)
+                .map_err(|e| format!("Failed to restore clipboard: {}", e))
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        let result = clipboard
+            .write_text(&restore_text)
+            .map_err(|e| format!("Failed to restore clipboard: {}", e));
+
+        if let Err(err) = result {
+            warn!("{}", err);
+        }
+    });
 }
 
 fn prefers_direct_paste_for_bundle_id(bundle_id: &str) -> bool {
@@ -86,6 +117,7 @@ fn paste_via_clipboard(
     app_handle: &AppHandle,
     paste_method: &PasteMethod,
     paste_delay_ms: u64,
+    restore_target: ClipboardRestoreTarget,
 ) -> Result<(), String> {
     let clipboard = app_handle.clipboard();
     let clipboard_content = clipboard.read_text().unwrap_or_default();
@@ -128,25 +160,17 @@ fn paste_via_clipboard(
         }
     }
 
-    // Allow enough time for the target app to process the paste keystroke
-    // before restoring the previous clipboard content. Webview-based windows
-    // (including the Jot Pad) need more time than native text fields because
-    // the event passes through the browser engine before the clipboard is read.
-    std::thread::sleep(std::time::Duration::from_millis(
+    // Restore the desired clipboard content in the background so the user-visible
+    // paste path does not block on a fixed delay after the key event is sent.
+    let restore_text = match restore_target {
+        ClipboardRestoreTarget::PreviousContent => clipboard_content,
+        ClipboardRestoreTarget::DictatedText => text.to_string(),
+    };
+    schedule_clipboard_restore(
+        app_handle.clone(),
+        restore_text,
         clipboard_restore_delay_ms(app_handle),
-    ));
-
-    // Restore original clipboard content
-    // On Wayland, prefer wl-copy for better compatibility
-    #[cfg(target_os = "linux")]
-    if is_wayland() && is_wl_copy_available() {
-        let _ = write_clipboard_via_wl_copy(&clipboard_content);
-    } else {
-        let _ = clipboard.write_text(&clipboard_content);
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    let _ = clipboard.write_text(&clipboard_content);
+    );
 
     Ok(())
 }
@@ -700,6 +724,8 @@ pub fn paste_with_submit_override(
     let requested_paste_method = settings.paste_method;
     let paste_method = effective_paste_method(requested_paste_method);
     let paste_delay_ms = settings.paste_delay_ms;
+    let should_copy_after_output =
+        settings.clipboard_handling == ClipboardHandling::CopyToClipboard;
 
     // Append trailing space if setting is enabled
     let text = if settings.append_trailing_space {
@@ -754,6 +780,11 @@ pub fn paste_with_submit_override(
                 &app_handle,
                 &paste_method,
                 paste_delay_ms,
+                if should_copy_after_output {
+                    ClipboardRestoreTarget::DictatedText
+                } else {
+                    ClipboardRestoreTarget::PreviousContent
+                },
             )?
         }
         PasteMethod::ExternalScript => {
@@ -777,7 +808,12 @@ pub fn paste_with_submit_override(
     }
 
     // After pasting, optionally copy to clipboard based on settings
-    if settings.clipboard_handling == ClipboardHandling::CopyToClipboard {
+    if should_copy_after_output
+        && !matches!(
+            paste_method,
+            PasteMethod::CtrlV | PasteMethod::CtrlShiftV | PasteMethod::ShiftInsert
+        )
+    {
         let clipboard = app_handle.clipboard();
         clipboard
             .write_text(&text)

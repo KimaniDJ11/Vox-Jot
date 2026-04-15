@@ -176,6 +176,12 @@
         "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
         "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app."
       },
+      "screenRecording": {
+        "title": "Screen Recording",
+        "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
+        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating."
+      },
       "grant": "Grant Permission",
       "granted": "Granted",
       "waiting": "Waiting...",
@@ -188,7 +194,7 @@
       "continue": "Continue",
       "moreInfo": "More info",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone, Accessibility, and Input Monitoring so Vox Jot can capture your voice, place text in the right app, and better understand quick send-vs-delete changes."
+      "visualDescription": "Grant microphone, Accessibility, Input Monitoring, and Screen Recording so Vox Jot can capture your voice, place text in the right app, understand quick send-vs-delete changes, and build local OCR context from the active display."
     },
     "steps": {
       "welcome": "Overview",
@@ -1103,7 +1109,7 @@
     "permissionsRequired": "Accessibility Permissions Required",
     "permissionNeeded": "Permission Needed",
     "permissionsTitle": "macOS permissions need attention",
-    "permissionsDescription": "Vox Jot needs Accessibility to type text and Input Monitoring to better understand send-versus-delete behavior in text fields.",
+    "permissionsDescription": "Vox Jot needs Accessibility to type text, Input Monitoring to better understand send-versus-delete behavior, and Screen Recording for screenshot-based OCR context during dictation.",
     "openSettings": "Open System Settings",
     "dismiss": "Dismiss"
   },

@@ -119,14 +119,19 @@ fn build_apple_intelligence_bridge() {
 
     const REAL_SWIFT_FILE: &str = "swift/apple_intelligence.swift";
     const STUB_SWIFT_FILE: &str = "swift/apple_intelligence_stub.swift";
+    const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
     const BRIDGE_HEADER: &str = "swift/apple_intelligence_bridge.h";
 
     println!("cargo:rerun-if-changed={REAL_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
-    let object_path = out_dir.join("apple_intelligence.o");
+    let object_paths = [
+        out_dir.join("apple_intelligence.o"),
+        out_dir.join("screen_context.o"),
+    ];
     let static_lib_path = out_dir.join("libapple_intelligence.a");
 
     let sdk_path = String::from_utf8(
@@ -153,8 +158,10 @@ fn build_apple_intelligence_bridge() {
         STUB_SWIFT_FILE
     };
 
-    if !Path::new(source_file).exists() {
-        panic!("Source file {} is missing!", source_file);
+    for source in [source_file, SCREEN_CONTEXT_SWIFT_FILE] {
+        if !Path::new(source).exists() {
+            panic!("Source file {} is missing!", source);
+        }
     }
 
     let swiftc_path = String::from_utf8(
@@ -178,41 +185,47 @@ fn build_apple_intelligence_bridge() {
     // Use macOS 11.0 as deployment target for compatibility
     // The @available(macOS 26.0, *) checks in Swift handle runtime availability
     // Weak linking for FoundationModels is handled via cargo:rustc-link-arg below
-    let status = Command::new("xcrun")
-        .args([
-            "swiftc",
-            "-target",
-            "arm64-apple-macosx11.0",
-            "-sdk",
-            &sdk_path,
-            "-O",
-            "-import-objc-header",
-            BRIDGE_HEADER,
-            "-c",
-            source_file,
-            "-o",
-            object_path
-                .to_str()
-                .expect("Failed to convert object path to string"),
-        ])
-        .status()
-        .expect("Failed to invoke swiftc for Apple Intelligence bridge");
+    for (source, object_path) in [
+        (source_file, &object_paths[0]),
+        (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
+    ] {
+        let status = Command::new("xcrun")
+            .args([
+                "swiftc",
+                "-target",
+                "arm64-apple-macosx11.0",
+                "-sdk",
+                &sdk_path,
+                "-O",
+                "-import-objc-header",
+                BRIDGE_HEADER,
+                "-c",
+                source,
+                "-o",
+                object_path
+                    .to_str()
+                    .expect("Failed to convert object path to string"),
+            ])
+            .status()
+            .expect("Failed to invoke swiftc for Apple Intelligence bridge");
 
-    if !status.success() {
-        panic!("swiftc failed to compile {source_file}");
+        if !status.success() {
+            panic!("swiftc failed to compile {source}");
+        }
     }
 
     let status = Command::new("libtool")
-        .args([
-            "-static",
-            "-o",
+        .arg("-static")
+        .arg("-o")
+        .arg(
             static_lib_path
                 .to_str()
                 .expect("Failed to convert static lib path to string"),
-            object_path
-                .to_str()
-                .expect("Failed to convert object path to string"),
-        ])
+        )
+        .args(object_paths.iter().map(|path| {
+            path.to_str()
+                .expect("Failed to convert object path to string")
+        }))
         .status()
         .expect("Failed to create static library for Apple Intelligence bridge");
 
@@ -229,6 +242,9 @@ fn build_apple_intelligence_bridge() {
     println!("cargo:rustc-link-search=native={}", sdk_swift_lib.display());
     println!("cargo:rustc-link-lib=framework=Foundation");
     println!("cargo:rustc-link-lib=framework=AppKit");
+    println!("cargo:rustc-link-lib=framework=Vision");
+    println!("cargo:rustc-link-arg=-weak_framework");
+    println!("cargo:rustc-link-arg=ScreenCaptureKit");
 
     if has_foundation_models {
         // Use weak linking so the app can launch on systems without FoundationModels

@@ -444,8 +444,15 @@ fn run_entry_inner(
 
     let post_processed: Option<PostProcessResult> =
         if settings.post_process_enabled && !skip_post_process && !final_text.trim().is_empty() {
-            tauri::async_runtime::block_on(post_process_transcription(settings, &final_text, None))
-                .map(|result| result.result)
+            tauri::async_runtime::block_on(post_process_transcription(
+                settings,
+                &final_text,
+                None,
+                None,
+                None,
+                None,
+            ))
+            .map(|result| result.result)
         } else {
             None
         };

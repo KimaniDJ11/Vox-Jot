@@ -10,8 +10,10 @@ pub mod tts;
 
 use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{InstalledApp, PostProcessResult, PreviewManager};
+use crate::screen_context::{ContextCaptureManager, ScreenContextDiagnostics};
 use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
 use crate::utils::cancel_current_operation;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -167,6 +169,13 @@ pub fn resolve_post_process_preview(
 #[tauri::command]
 pub fn debug_analyze_post_process_route(text: String) -> Result<PostProcessRouteDebug, String> {
     Ok(crate::actions::analyze_post_process_route(&text))
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn get_screen_context_diagnostics(app: AppHandle) -> Result<ScreenContextDiagnostics, String> {
+    let manager = app.state::<Arc<ContextCaptureManager>>();
+    Ok(manager.diagnostics())
 }
 
 /// Try to initialize Enigo (keyboard/mouse simulation).

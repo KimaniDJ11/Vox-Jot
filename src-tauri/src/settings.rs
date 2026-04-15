@@ -43,7 +43,7 @@ pub const TTS_PROVIDER_MLX_POCKET_TTS_ID: &str = "mlx_pocket_tts";
 pub const TTS_PROVIDER_MLX_VOXCPM_ID: &str = "mlx_voxcpm";
 pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
 pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
-const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 5;
+const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 6;
 const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
 
@@ -227,6 +227,22 @@ pub enum RecordingRetentionPeriod {
     Days3,
     Weeks2,
     Months3,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextCaptureMode {
+    AlwaysFrequent,
+    AdaptiveCache,
+    MostlyOnDemand,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum OcrQualityMode {
+    Fast,
+    Balanced,
+    Accurate,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
@@ -729,6 +745,16 @@ pub struct AppSettings {
     pub post_process_enabled: bool,
     #[serde(default = "default_local_privacy_mode")]
     pub local_privacy_mode: bool,
+    #[serde(default = "default_context_capture_mode")]
+    pub context_capture_mode: ContextCaptureMode,
+    #[serde(default = "default_screen_context_ocr_quality")]
+    pub screen_context_ocr_quality: OcrQualityMode,
+    #[serde(default = "default_screen_context_ocr_timeout_ms")]
+    pub screen_context_ocr_timeout_ms: u32,
+    #[serde(default = "default_screen_context_token_budget")]
+    pub screen_context_token_budget: u32,
+    #[serde(default = "default_screen_context_stale_threshold_ms")]
+    pub screen_context_stale_threshold_ms: u32,
     #[serde(default = "default_post_process_mode")]
     pub post_process_mode: PostProcessMode,
     #[serde(default = "default_post_process_provider_id")]
@@ -966,6 +992,26 @@ fn default_post_process_enabled() -> bool {
 
 fn default_local_privacy_mode() -> bool {
     false
+}
+
+fn default_context_capture_mode() -> ContextCaptureMode {
+    ContextCaptureMode::AlwaysFrequent
+}
+
+fn default_screen_context_ocr_quality() -> OcrQualityMode {
+    OcrQualityMode::Balanced
+}
+
+fn default_screen_context_ocr_timeout_ms() -> u32 {
+    700
+}
+
+fn default_screen_context_token_budget() -> u32 {
+    400
+}
+
+fn default_screen_context_stale_threshold_ms() -> u32 {
+    2_500
 }
 
 fn default_post_process_mode() -> PostProcessMode {
@@ -1427,6 +1473,15 @@ fn default_model_for_provider(provider_id: &str) -> String {
     if provider_id == APPLE_INTELLIGENCE_PROVIDER_ID {
         return APPLE_INTELLIGENCE_DEFAULT_MODEL_ID.to_string();
     }
+    if provider_id == OLLAMA_PROVIDER_ID {
+        return "qwen2.5:1.5b".to_string();
+    }
+    if provider_id == "groq" {
+        return "llama-3.1-8b-instant".to_string();
+    }
+    if provider_id == "cerebras" {
+        return "llama-3.3-70b".to_string();
+    }
 
     String::new()
 }
@@ -1447,75 +1502,8 @@ fn default_translation_model_ids() -> HashMap<String, String> {
 }
 
 fn default_post_process_prompt_template() -> &'static str {
-    r#"You are a local dictation post-processor.
-
-Task:
-Clean speech-to-text output while preserving the speaker's meaning exactly.
-
-Active mode: intent
-Rewrite strength: 1 (0=conservative, 2=aggressive)
-
-Return only the final text.
-
-Rules:
-- Preserve meaning and the speaker's intended correction.
-- Never invent facts, headings, commentary, explanations, or extra detail.
-- Apply personal dictionary spellings exactly when they appear in the transcript.
-- Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.
-- Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.
-- Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.
-- Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "no wait", "rather", "no sorry", and natural restarts, and keep only the corrected intent.
-- Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.
-- If the transcript is already clear, make the smallest possible changes.
-- Use stronger rewrites only when clear structure, correction, or formatting cues are present.
-- If multiple interpretations are possible, choose the most conservative one.
-- If the utterance seems incomplete, ambiguous, cut off, or mid-thought, avoid heavy rewriting and stay close to the transcript.
-
-Structure rules:
-- Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.
-- If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.
-- Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.
-- You may infer list item boundaries from repeated short noun phrases even when the transcript has little or no punctuation.
-- Treat joiners such as "and", "also", and "plus" as list separators when the content is clearly list-like.
-- When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.
-- Example: "I want to pick up a few things from the store. Bread, potato chips, ice cream." -> "I want to pick up a few things from the store:\n* Bread\n* Potato chips\n* Ice cream"
-- Example: "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification" -> "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification"
-- If sequence words or ordered cues appear, such as "one", "two", "three", "first", "second", "next", or "finally", prefer a numbered list when the content is clearly step-like or ordered.
-- If the user clearly dictated separate thoughts, insert paragraph breaks.
-- If the user says "new line", "new paragraph", "skip a line", or equivalent phrasing, reflect that structure in the final text when it fits naturally.
-- If punctuation words are spoken explicitly, such as "period", "comma", "question mark", "exclamation point", or "colon", respect them when they appear intentional.
-- If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.
-
-Mode behavior:
-- In literal mode, preserve wording as much as possible and avoid stylistic rewriting.
-- In intent mode, lightly clean for readability while preserving tone, specificity, and meaning.
-- In intent mode, convert obvious rambling speech into clean written text only when the meaning is unmistakable.
-- Do not summarize, shorten, or formalize unless the transcript itself clearly signals that intent.
-
-Correction behavior:
-- When the speaker revises a phrase mid-sentence, keep the final intended wording and remove the abandoned wording.
-- When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.
-- Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like "...? No, ..." and "..., no, ...".
-- Example: "Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock." -> "Hi Greg, let's connect soon. Are you available Friday at four o'clock?"
-- When a correction cue appears inside a list or sequence of short items, replace only the item being corrected and keep the surrounding items.
-- Example: "Personnel Reference Previous Reference I meant previous landlord reference credit check social security verification" -> "Personnel Reference Previous Landlord Reference Credit Check Social Security Verification"
-- Example: "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification" -> "Required Verification Request:\n* Government-issued ID\n* Conduct in-person meeting\n* Employment verification\n* Income documentation\n* Personal references\n* Previous landlord reference\n* Credit check\n* Social security verification"
-- If a correction is unclear, preserve the original wording instead of guessing.
-
-Safety behavior:
-- Do not guess unknown jargon.
-- Do not replace uncommon words with more common words unless the speaker clearly intended that.
-- Do not convert uncertain technical text into plain English.
-- Do not add markdown headings, explanations, labels, or surrounding quotation marks.
-
-Active app guidance:
-- Notes (tone: neutral): Keep the tone neutral and close to the speaker's original wording.
-- Prefer readable notes over polished prose, but do not over-format short fragments.
-
-Output:
-- Return only the final processed text.
-- Do not explain changes.
-- Do not mention rules.
+    r#"Optional extra instructions for Vox Jot's built-in dictation post-processor.
+Keep additions brief and task-specific.
 
 Transcript:
 ${output}"#
@@ -2131,6 +2119,11 @@ pub fn get_default_settings() -> AppSettings {
         auto_submit_key: AutoSubmitKey::default(),
         post_process_enabled: default_post_process_enabled(),
         local_privacy_mode: default_local_privacy_mode(),
+        context_capture_mode: default_context_capture_mode(),
+        screen_context_ocr_quality: default_screen_context_ocr_quality(),
+        screen_context_ocr_timeout_ms: default_screen_context_ocr_timeout_ms(),
+        screen_context_token_budget: default_screen_context_token_budget(),
+        screen_context_stale_threshold_ms: default_screen_context_stale_threshold_ms(),
         post_process_mode: default_post_process_mode(),
         post_process_provider_id: default_post_process_provider_id(),
         post_process_providers: default_post_process_providers(),
@@ -2845,9 +2838,33 @@ mod tests {
             settings.post_process_selected_prompt_id,
             Some(DEFAULT_POST_PROCESS_PROMPT_ID.to_string())
         );
-        assert!(settings.post_process_prompts[0]
-            .prompt
-            .contains("Previous Landlord Reference Credit Check Social Security Verification"));
+        assert!(settings.post_process_prompts[0].prompt.contains(
+            "Optional extra instructions for Vox Jot's built-in dictation post-processor."
+        ));
+    }
+
+    #[test]
+    fn default_post_process_models_prefer_fast_presets() {
+        let settings = get_default_settings();
+
+        assert_eq!(
+            settings
+                .post_process_models
+                .get(OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some("qwen2.5:1.5b")
+        );
+        assert_eq!(
+            settings.post_process_models.get("groq").map(String::as_str),
+            Some("llama-3.1-8b-instant")
+        );
+        assert_eq!(
+            settings
+                .post_process_models
+                .get("cerebras")
+                .map(String::as_str),
+            Some("llama-3.3-70b")
+        );
     }
 
     #[test]

@@ -242,6 +242,16 @@ const settingUpdaters: {
     commands.changePostProcessEnabledSetting(value as boolean),
   local_privacy_mode: (value) =>
     commands.changeLocalPrivacyModeSetting(value as boolean),
+  context_capture_mode: (value) =>
+    commands.changeContextCaptureModeSetting(value as string),
+  screen_context_ocr_quality: (value) =>
+    commands.changeScreenContextOcrQualitySetting(value as string),
+  screen_context_ocr_timeout_ms: (value) =>
+    commands.changeScreenContextOcrTimeoutMsSetting(value as number),
+  screen_context_token_budget: (value) =>
+    commands.changeScreenContextTokenBudgetSetting(value as number),
+  screen_context_stale_threshold_ms: (value) =>
+    commands.changeScreenContextStaleThresholdMsSetting(value as number),
   post_process_mode: (value) =>
     commands.changePostProcessModeSetting(value as string),
   post_process_selected_prompt_id: (value) =>

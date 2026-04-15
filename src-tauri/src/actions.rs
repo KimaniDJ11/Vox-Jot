@@ -11,7 +11,11 @@ use crate::managers::notes::NotesManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
     apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
-    PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
+    DictionaryEntry, PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
+};
+use crate::screen_context::{
+    packet_age_ms, summarize_packet_for_prompt, ContextCaptureManager, ContextImpactMetadata,
+    DictationContextPacket,
 };
 use crate::settings::{
     get_settings, post_process_provider_is_local, AppSettings, AutoSubmitKey,
@@ -39,7 +43,7 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use specta::Type;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::Instant;
 use tauri::Manager;
@@ -121,6 +125,34 @@ struct ResolvedToneContext {
     active_app_context: ActiveAppContext,
     tone_id: String,
     instruction: String,
+}
+
+static PREPARED_ACTIVE_APP_CONTEXTS: Lazy<Mutex<HashMap<String, Option<ActiveAppContext>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn remember_prepared_active_app_context(
+    binding_id: &str,
+    active_app_context: Option<ActiveAppContext>,
+) {
+    let mut prepared = PREPARED_ACTIVE_APP_CONTEXTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    prepared.insert(binding_id.to_string(), active_app_context);
+}
+
+fn take_prepared_active_app_context(binding_id: &str) -> Option<ActiveAppContext> {
+    PREPARED_ACTIVE_APP_CONTEXTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(binding_id)
+        .flatten()
+}
+
+fn clear_prepared_active_app_context(binding_id: &str) {
+    PREPARED_ACTIVE_APP_CONTEXTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(binding_id);
 }
 
 fn first_match_index(text: &str, patterns: &[&str]) -> Option<usize> {
@@ -241,6 +273,17 @@ fn build_system_prompt(prompt_template: &str) -> String {
     }
 
     lines[..end].join("\n").trim().to_string()
+}
+
+fn looks_like_builtin_post_process_prompt(prompt: &str) -> bool {
+    let normalized = normalize_match_text(prompt);
+    normalized.contains("you are a local dictation post-processor")
+        && normalized.contains("return only the final text")
+        && normalized.contains("apply personal dictionary spellings exactly when they appear")
+}
+
+fn estimate_text_tokens(text: &str) -> usize {
+    text.chars().count().div_ceil(4)
 }
 
 fn unwrap_markdown_code_fence(text: &str) -> Option<String> {
@@ -767,6 +810,7 @@ fn build_post_process_result(
     normalized_text: String,
     final_text: String,
     dictionary_hits: Vec<String>,
+    context_impact: Option<ContextImpactMetadata>,
     active_app_context: Option<ActiveAppContext>,
     applied_tone_id: Option<String>,
 ) -> PostProcessResult {
@@ -793,6 +837,7 @@ fn build_post_process_result(
         normalized_text,
         final_text,
         dictionary_hits,
+        context_impact,
         edits,
         mode: settings.post_process_mode,
         active_app_context,
@@ -803,6 +848,7 @@ fn build_post_process_result(
 fn build_apple_system_prompt(
     settings: &AppSettings,
     tone_context: Option<&ResolvedToneContext>,
+    screen_context_present: bool,
     _route: PostProcessPass,
     rewrite_strength: u8,
     _conservative_gate_active: bool,
@@ -823,6 +869,17 @@ fn build_apple_system_prompt(
             .to_string()
     };
 
+    let screen_context_rule = if screen_context_present {
+        "Screen context safety:\n\
+- Use the provided screen context only as supporting evidence for nearby names, jargon, thread topics, and formatting cues.\n\
+- Never copy unrelated background text into the output unless the transcript clearly indicates it belongs in the dictation.\n\
+- Treat focused-field text and repeated OCR entities as higher-signal than random background fragments.\n\
+\n"
+            .to_string()
+    } else {
+        String::new()
+    };
+
     format!(
         "You are a local dictation post-processor.\n\
 \n\
@@ -835,68 +892,59 @@ Rewrite strength: {} (0=conservative, 2=aggressive)\n\
 Return only the final text.\n\
 \n\
 Rules:\n\
-- Preserve meaning and the speaker's intended correction.\n\
-- Never invent facts, headings, commentary, explanations, or extra detail.\n\
-- Apply personal dictionary spellings exactly when they appear in the transcript.\n\
-- Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.\n\
-- Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.\n\
-- Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.\n\
-- Interpret spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"correction\", \"wait no\", \"no wait\", \"rather\", \"no sorry\", and natural restarts, and keep only the corrected intent.\n\
-- Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.\n\
-- If the transcript is already clear, make the smallest possible changes.\n\
-- Use stronger rewrites only when clear structure, correction, or formatting cues are present.\n\
-- If multiple interpretations are possible, choose the most conservative one.\n\
-- If the utterance seems incomplete, ambiguous, cut off, or mid-thought, avoid heavy rewriting and stay close to the transcript.\n\
-- Structure rules:\n\
-- Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.\n\
-- If the transcript contains an introductory sentence that implies a list, followed by two or more short parallel items, format the items as a bullet list and end the intro sentence with a colon.\n\
-- Treat groceries, packing items, tasks, ingredients, feature lists, names, and short noun phrases as strong list candidates when grouped together.\n\
-- You may infer list item boundaries from repeated short noun phrases even when the transcript has little or no punctuation.\n\
-- Treat joiners such as \"and\", \"also\", and \"plus\" as list separators when the content is clearly list-like.\n\
-- When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use `* ` bullets for each item.\n\
-- Example: \"I want to pick up a few things from the store. Bread, potato chips, ice cream.\" -> \"I want to pick up a few things from the store:\\n* Bread\\n* Potato chips\\n* Ice cream\"\n\
-- Example: \"Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification\" -> \"Required Verification Request:\\n* Government-issued ID\\n* Conduct in-person meeting\\n* Employment verification\\n* Income documentation\\n* Personal references\\n* Previous landlord reference\\n* Credit check\\n* Social security verification\"\n\
-- If sequence words or ordered cues appear, such as \"one\", \"two\", \"three\", \"first\", \"second\", \"next\", or \"finally\", prefer a numbered list when the content is clearly step-like or ordered.\n\
-- If the user clearly dictated separate thoughts, insert paragraph breaks.\n\
-- If the user says \"new line\", \"new paragraph\", \"skip a line\", or equivalent phrasing, reflect that structure in the final text when it fits naturally.\n\
-- If punctuation words are spoken explicitly, such as \"period\", \"comma\", \"question mark\", \"exclamation point\", or \"colon\", respect them when they appear intentional.\n\
-- If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.\n\
-- Mode behavior:\n\
-- In literal mode, preserve wording as much as possible.\n\
-- In intent mode, lightly clean for readability while preserving tone, specificity, and meaning.\n\
-- In intent mode, convert obvious rambling speech into clean written text only when the meaning is unmistakable.\n\
-- Do not summarize, shorten, or formalize unless the transcript itself clearly signals that intent.\n\
-- Correction behavior:\n\
-- When the speaker revises a phrase mid-sentence, keep the final intended wording and remove the abandoned wording.\n\
-- When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.\n\
-- Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like \"...? No, ...\" and \"..., no, ...\".\n\
-- Example: \"Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock.\" -> \"Hi Greg, let's connect soon. Are you available Friday at four o'clock?\"\n\
-- When a correction cue appears inside a list or sequence of short items, replace only the item being corrected and keep the surrounding items.\n\
-- Example: \"Personnel Reference Previous Reference I meant previous landlord reference credit check social security verification\" -> \"Personnel Reference Previous Landlord Reference Credit Check Social Security Verification\"\n\
-- Example: \"Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification\" -> \"Required Verification Request:\\n* Government-issued ID\\n* Conduct in-person meeting\\n* Employment verification\\n* Income documentation\\n* Personal references\\n* Previous landlord reference\\n* Credit check\\n* Social security verification\"\n\
-- If a correction is unclear, preserve the original wording instead of guessing.\n\
-- Safety behavior:\n\
-- Do not guess unknown jargon.\n\
-- Do not replace uncommon words with more common words unless the speaker clearly intended that.\n\
-- Do not convert uncertain technical text into plain English.\n\
-- Do not add markdown headings, explanations, labels, or surrounding quotation marks.\n\
+- Preserve meaning and explicit self-corrections.\n\
+- Make the smallest possible change when the transcript is already clear.\n\
+- Preserve names, jargon, code terms, URLs, emails, filenames, acronyms, and intentional symbols.\n\
+- Apply relevant personal dictionary spellings when they appear.\n\
+- Respect spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"wait no\", and \"no sorry\".\n\
+- Fix capitalization, punctuation, spacing, paragraph breaks, and obvious list structure only when the intent is clear.\n\
+- Remove fillers or false starts only when meaning stays identical.\n\
+- If the utterance looks cut off or ambiguous, stay close to the transcript.\n\
+- Use bullets or numbering only when the transcript clearly dictates a list or ordered steps.\n\
+- In literal mode, stay very close to the original wording.\n\
+- In intent mode, lightly clean for readability without summarizing or formalizing.\n\
+- Return only the final processed text with no commentary.\n\
+{screen_context_rule}\
 \n\
 Active app guidance:\n\
 - {tone_rule}\n\
 \n\
 - Output:\n\
-- Return only the final processed text.\n\
-- Do not explain changes.\n\
-- Do not mention rules.\n\
-\n\
-CRITICAL OUTPUT CONSTRAINT:\n\
-- You must output the corrected transcript text only.\n\
-- Never ask for more context.\n\
-- Never apologize.\n\
-- Never explain what you are doing.\n\
-- If the transcript is a single word or fragment, return just that word or fragment.",
+- Return only the final processed text.",
         rewrite_strength,
     )
+}
+
+fn normalized_contains_phrase(haystack: &str, needle: &str) -> bool {
+    let needle = normalize_match_text(needle);
+    if needle.is_empty() {
+        return false;
+    }
+
+    haystack == needle
+        || haystack.starts_with(&format!("{needle} "))
+        || haystack.ends_with(&format!(" {needle}"))
+        || haystack.contains(&format!(" {needle} "))
+}
+
+fn relevant_dictionary_entries<'a>(
+    settings: &'a AppSettings,
+    normalized_text: &str,
+) -> Vec<&'a DictionaryEntry> {
+    let haystack = normalize_match_text(normalized_text);
+    if haystack.is_empty() {
+        return Vec::new();
+    }
+
+    settings
+        .personal_dictionary
+        .iter()
+        .filter(|entry| {
+            normalized_contains_phrase(&haystack, &entry.spoken)
+                || normalized_contains_phrase(&haystack, &entry.written)
+        })
+        .take(8)
+        .collect()
 }
 
 fn build_apple_user_content(
@@ -904,17 +952,19 @@ fn build_apple_user_content(
     normalized_text: &str,
     rewrite_strength: u8,
     conservative_gate_active: bool,
+    screen_context: Option<&DictationContextPacket>,
+    redact_for_external: bool,
 ) -> String {
     let mode_label = match settings.post_process_mode {
         PostProcessMode::Literal => "literal",
         PostProcessMode::Intent => "intent",
     };
 
-    let dictionary_section = if settings.personal_dictionary.is_empty() {
-        "Personal dictionary:\n- (none)".to_string()
+    let relevant_dictionary_entries = relevant_dictionary_entries(settings, normalized_text);
+    let dictionary_section = if relevant_dictionary_entries.is_empty() {
+        "Relevant dictionary entries:\n- (none)".to_string()
     } else {
-        let entries = settings
-            .personal_dictionary
+        let entries = relevant_dictionary_entries
             .iter()
             .map(|entry| {
                 let qualifier = if entry.exact_only {
@@ -927,7 +977,7 @@ fn build_apple_user_content(
             .collect::<Vec<_>>()
             .join("\n");
 
-        format!("Personal dictionary:\n{}", entries)
+        format!("Relevant dictionary entries:\n{}", entries)
     };
 
     let conservative_gate_note = if conservative_gate_active {
@@ -936,22 +986,176 @@ fn build_apple_user_content(
         "Utterance boundary confidence: sufficient for normal formatting rules."
     };
 
+    let screen_context_section = screen_context
+        .map(|packet| summarize_packet_for_prompt(packet, redact_for_external))
+        .filter(|summary| !summary.trim().is_empty())
+        .map(|summary| {
+            format!(
+                "\n\nScreen context (ranked OCR + focused field hints):\n{}",
+                summary
+            )
+        })
+        .unwrap_or_default();
+
     format!(
         "Mode: {mode_label}\n\
 Rewrite strength: {}\n\
 {conservative_gate_note}\n\
 \n\
 Special handling:\n\
-- If the transcript corrects itself with a later \"no\", \"sorry\", \"actually\", or similar restart, keep only the corrected wording.\n\
-- If the transcript has an intro sentence followed by short list items, keep the intro sentence and format the items as `* ` bullets.\n\
-- If a correction happens inside a list of short items, replace only the corrected item and keep the items after it.\n\
-- You may infer list boundaries from repeated short phrases even when commas are missing, especially for request, checklist, or verification-style content.\n\
+- Keep only the corrected wording after clear restarts like \"no\", \"sorry\", or \"actually\".\n\
+- Preserve short lists when the transcript clearly sounds list-like.\n\
+- Stay conservative when structure is uncertain.\n\
 \n\
 {dictionary_section}\n\
 \n\
-Transcript:\n{normalized_text}",
+Transcript:\n{normalized_text}{screen_context_section}",
         rewrite_strength
     )
+}
+
+fn compact_match_text(text: &str) -> String {
+    text.chars()
+        .filter(|ch| ch.is_alphanumeric())
+        .flat_map(|ch| ch.to_lowercase())
+        .collect()
+}
+
+fn extract_outer_punctuation(word: &str) -> (String, String) {
+    let chars: Vec<char> = word.chars().collect();
+    let mut start = 0usize;
+    let mut end = chars.len();
+
+    while start < end && chars[start].is_ascii_punctuation() {
+        start += 1;
+    }
+    while end > start && chars[end - 1].is_ascii_punctuation() {
+        end -= 1;
+    }
+
+    (
+        chars[..start].iter().collect(),
+        chars[end..].iter().collect(),
+    )
+}
+
+fn context_entities(packet: &DictationContextPacket) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut entities = Vec::new();
+
+    for snippet in &packet.snippets {
+        for part in snippet
+            .text
+            .split(|ch: char| matches!(ch, '\n' | ',' | ';' | ':' | '|' | '/'))
+        {
+            let candidate = part
+                .trim()
+                .trim_matches(|ch: char| ch.is_ascii_punctuation() || ch.is_whitespace());
+            let word_count = candidate.split_whitespace().count();
+            if candidate.is_empty() || !(1..=4).contains(&word_count) {
+                continue;
+            }
+            let has_signal = candidate.chars().any(|ch| ch.is_ascii_digit())
+                || candidate
+                    .chars()
+                    .any(|ch| ch.is_uppercase() || ch == '-' || ch == '_');
+            if !has_signal {
+                continue;
+            }
+            let normalized = compact_match_text(candidate);
+            if normalized.len() < 4 || !seen.insert(normalized) {
+                continue;
+            }
+            entities.push(candidate.to_string());
+        }
+    }
+
+    entities
+}
+
+fn apply_contextual_entity_corrections(
+    text: &str,
+    packet: Option<&DictationContextPacket>,
+) -> (String, Vec<String>) {
+    let Some(packet) = packet else {
+        return (text.to_string(), Vec::new());
+    };
+    let entities = context_entities(packet);
+    if entities.is_empty() || text.trim().is_empty() {
+        return (text.to_string(), Vec::new());
+    }
+
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let mut output = Vec::new();
+    let mut hits = Vec::new();
+    let mut index = 0usize;
+
+    while index < words.len() {
+        let mut best_match: Option<(usize, String, f64)> = None;
+
+        for entity in &entities {
+            let entity_words: Vec<&str> = entity.split_whitespace().collect();
+            let len = entity_words.len();
+            if index + len > words.len() {
+                continue;
+            }
+
+            let phrase_words = &words[index..index + len];
+            let phrase = phrase_words.join(" ");
+            let compact_phrase = compact_match_text(&phrase);
+            let compact_entity = compact_match_text(entity);
+            if compact_phrase == compact_entity || compact_phrase.is_empty() {
+                continue;
+            }
+
+            let similarity = strsim::jaro_winkler(&compact_phrase, &compact_entity);
+            let first_phrase = compact_phrase.chars().next();
+            let first_entity = compact_entity.chars().next();
+            if similarity >= 0.94
+                && first_phrase == first_entity
+                && compact_phrase.len().abs_diff(compact_entity.len()) <= 3
+            {
+                match &best_match {
+                    Some((_, _, current_similarity)) if *current_similarity >= similarity => {}
+                    _ => best_match = Some((len, entity.clone(), similarity)),
+                }
+            }
+        }
+
+        if let Some((len, replacement, _)) = best_match {
+            let (prefix, _) = extract_outer_punctuation(words[index]);
+            let (_, suffix) = extract_outer_punctuation(words[index + len - 1]);
+            output.push(format!("{}{}{}", prefix, replacement, suffix));
+            hits.push(replacement);
+            index += len;
+        } else {
+            output.push(words[index].to_string());
+            index += 1;
+        }
+    }
+
+    (output.join(" "), hits)
+}
+
+fn context_confirms_snippet(
+    trigger: &str,
+    expansion: &str,
+    packet: Option<&DictationContextPacket>,
+) -> bool {
+    let Some(packet) = packet else {
+        return false;
+    };
+    let context_text = packet
+        .snippets
+        .iter()
+        .map(|snippet| snippet.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+    context_text.contains(&trigger.to_ascii_lowercase())
+        || expansion
+            .split_whitespace()
+            .any(|token| token.len() >= 4 && context_text.contains(&token.to_ascii_lowercase()))
 }
 
 #[cfg(test)]
@@ -976,6 +1180,45 @@ fn normalize_match_text(text: &str) -> String {
         .collect::<Vec<_>>()
         .join(" ")
         .to_ascii_lowercase()
+}
+
+fn filler_density(text: &str) -> f32 {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|word| {
+            word.trim_matches(|c: char| !c.is_alphanumeric())
+                .to_ascii_lowercase()
+        })
+        .filter(|word| !word.is_empty())
+        .collect();
+
+    if words.is_empty() {
+        return 0.0;
+    }
+
+    let single_word_fillers = ["um", "uh", "erm", "hmm", "like"];
+    let mut filler_hits = words
+        .iter()
+        .filter(|word| single_word_fillers.contains(&word.as_str()))
+        .count();
+
+    let normalized = normalize_match_text(text);
+    for phrase in ["you know", "i mean", "kind of", "sort of"] {
+        if normalized.contains(phrase) {
+            filler_hits += phrase.split_whitespace().count();
+        }
+    }
+
+    filler_hits as f32 / words.len() as f32
+}
+
+fn should_invoke_llm_post_process(features: &RouteFeatures, transcription: &str) -> bool {
+    features.has_transform_cue
+        || features.has_correction_cue
+        || features.has_list_cue
+        || features.has_paragraph_cue
+        || features.word_count > 15
+        || filler_density(transcription) >= 0.12
 }
 
 fn has_spoken_correction_restart(text: &str) -> bool {
@@ -1206,14 +1449,13 @@ fn choose_post_process_pass(transcription: &str) -> PostProcessPass {
     if features.has_transform_cue {
         return PostProcessPass::Command;
     }
+    if features.word_count <= 3 {
+        return PostProcessPass::Skip;
+    }
     if features.looks_incomplete {
         return PostProcessPass::Pass1;
     }
-
-    // Skip LLM entirely for short, clean utterances with no processing cues.
-    let has_any_cue =
-        features.has_correction_cue || features.has_list_cue || features.has_paragraph_cue;
-    if features.word_count <= 10 && !has_any_cue && !features.has_technical_tokens {
+    if !should_invoke_llm_post_process(&features, trimmed) {
         return PostProcessPass::Skip;
     }
 
@@ -1292,6 +1534,7 @@ fn should_force_conservative_rewrite(transcription: &str) -> bool {
     word_count <= 8 || has_trailing_fragment
 }
 
+#[cfg(test)]
 fn live_partial_config_for_model(model_id: &str) -> (u64, usize, usize) {
     let lower = model_id.to_ascii_lowercase();
 
@@ -1317,6 +1560,7 @@ fn build_apple_result(
     normalized_text: String,
     final_text: String,
     dictionary_hits: Vec<String>,
+    context_impact: Option<ContextImpactMetadata>,
     system_prompt: String,
     active_app_context: Option<ActiveAppContext>,
     applied_tone_id: Option<String>,
@@ -1328,6 +1572,7 @@ fn build_apple_result(
             normalized_text,
             final_text,
             dictionary_hits,
+            context_impact,
             active_app_context,
             applied_tone_id,
         ),
@@ -1340,6 +1585,7 @@ fn apple_fallback_result(
     raw_text: &str,
     normalized_text: String,
     dictionary_hits: Vec<String>,
+    context_impact: Option<ContextImpactMetadata>,
     active_app_context: Option<ActiveAppContext>,
 ) -> Option<PostProcessExecution> {
     if settings.fallback_to_raw_on_failure {
@@ -1349,9 +1595,11 @@ fn apple_fallback_result(
             normalized_text.clone(),
             normalized_text,
             dictionary_hits,
+            context_impact,
             build_apple_system_prompt(
                 settings,
                 None,
+                false,
                 PostProcessPass::Pass1,
                 settings.max_rewrite_strength,
                 false,
@@ -1405,11 +1653,35 @@ fn preview_app_context_from_override(
     })
 }
 
+/// Creates a channel whose receiver forwards each accumulated chunk to the
+/// overlay `post-process-chunk` event. Emits a `streaming` status on start
+/// and `complete` on close. The returned sender should be passed to the LLM
+/// client; when the LLM call finishes, dropping it closes the channel and
+/// the forwarder task exits.
+fn spawn_post_process_overlay_forwarder(
+    app_handle: &AppHandle,
+) -> (crate::llm_client::ChunkSink, tokio::task::JoinHandle<()>) {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    let app_for_forwarder = app_handle.clone();
+    crate::overlay::emit_post_process_status(app_handle, "streaming");
+    let handle = tokio::spawn(async move {
+        while let Some(accumulated) = rx.recv().await {
+            crate::overlay::emit_post_process_chunk(&app_for_forwarder, &accumulated);
+        }
+        crate::overlay::emit_post_process_status(&app_for_forwarder, "complete");
+    });
+    (tx, handle)
+}
+
 pub(crate) async fn post_process_transcription(
     settings: &AppSettings,
     transcription: &str,
+    screen_context: Option<DictationContextPacket>,
+    context_impact: Option<ContextImpactMetadata>,
     active_app_context: Option<ActiveAppContext>,
+    app_handle: Option<&AppHandle>,
 ) -> Option<PostProcessExecution> {
+    let mut context_impact = context_impact.unwrap_or_default();
     let route_features = extract_route_features(transcription);
     let selected_pass = choose_post_process_pass(transcription);
 
@@ -1463,6 +1735,9 @@ pub(crate) async fn post_process_transcription(
         return None;
     }
 
+    context_impact.context_sent_externally =
+        screen_context.is_some() && !post_process_provider_is_local(&provider);
+
     if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         let dictionary_result =
             apply_personal_dictionary(transcription, &settings.personal_dictionary);
@@ -1470,6 +1745,7 @@ pub(crate) async fn post_process_transcription(
         let system_prompt = build_apple_system_prompt(
             settings,
             tone_context.as_ref(),
+            screen_context.is_some(),
             selected_pass,
             effective_rewrite_strength,
             force_conservative_rewrite,
@@ -1479,6 +1755,8 @@ pub(crate) async fn post_process_transcription(
             &dictionary_result.text,
             effective_rewrite_strength,
             force_conservative_rewrite,
+            screen_context.as_ref(),
+            false,
         );
         let applied_tone_id = tone_context.as_ref().map(|tone| tone.tone_id.clone());
 
@@ -1491,15 +1769,34 @@ pub(crate) async fn post_process_transcription(
                     transcription,
                     dictionary_result.text,
                     dictionary_result.hits,
+                    Some(context_impact.clone()),
                     active_app_context,
                 );
             }
 
-            return match apple_intelligence::process_text_with_system_prompt(
+            // Apple Intelligence does not stream, but we still flip the overlay
+            // into a "thinking" state so the user gets feedback during the call.
+            if let Some(app) = app_handle {
+                crate::overlay::emit_post_process_status(app, "thinking");
+            }
+
+            let ai_result = apple_intelligence::process_text_with_system_prompt(
                 &system_prompt,
                 &user_content,
                 0,
-            ) {
+            );
+
+            if let Some(app) = app_handle {
+                if let Ok(text) = ai_result.as_ref() {
+                    let preview = strip_invisible_chars(text);
+                    if !preview.trim().is_empty() {
+                        crate::overlay::emit_post_process_chunk(app, &preview);
+                    }
+                }
+                crate::overlay::emit_post_process_status(app, "complete");
+            }
+
+            return match ai_result {
                 Ok(result) => {
                     let final_text = strip_invisible_chars(&result);
                     if final_text.trim().is_empty() {
@@ -1509,6 +1806,7 @@ pub(crate) async fn post_process_transcription(
                             transcription,
                             dictionary_result.text,
                             dictionary_result.hits,
+                            Some(context_impact.clone()),
                             active_app_context,
                         )
                     } else {
@@ -1522,6 +1820,7 @@ pub(crate) async fn post_process_transcription(
                             dictionary_result.text,
                             final_text,
                             dictionary_result.hits,
+                            Some(context_impact.clone()),
                             system_prompt.clone(),
                             active_app_context,
                             applied_tone_id,
@@ -1535,6 +1834,7 @@ pub(crate) async fn post_process_transcription(
                         transcription,
                         dictionary_result.text,
                         dictionary_result.hits,
+                        Some(context_impact.clone()),
                         active_app_context,
                     )
                 }
@@ -1549,6 +1849,7 @@ pub(crate) async fn post_process_transcription(
                 transcription,
                 dictionary_result.text,
                 dictionary_result.hits,
+                Some(context_impact),
                 active_app_context,
             );
         }
@@ -1626,21 +1927,31 @@ pub(crate) async fn post_process_transcription(
     let mut base_system_prompt = build_apple_system_prompt(
         settings,
         tone_context.as_ref(),
+        screen_context.is_some(),
         selected_pass,
         effective_rewrite_strength,
         force_conservative_rewrite,
     );
     let custom_prompt = build_system_prompt(&prompt);
-    if !custom_prompt.is_empty() {
+    if !custom_prompt.is_empty() && !looks_like_builtin_post_process_prompt(&custom_prompt) {
         base_system_prompt.push_str("\n\nAdditional custom instructions:\n");
         base_system_prompt.push_str(&custom_prompt);
+    } else if !custom_prompt.is_empty() {
+        debug!("Skipping duplicate built-in post-process prompt instructions");
     }
 
     if provider.supports_structured_output {
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = base_system_prompt.clone();
-        let user_content = dict_text.to_string();
+        let user_content = build_apple_user_content(
+            settings,
+            dict_text,
+            effective_rewrite_strength,
+            force_conservative_rewrite,
+            screen_context.as_ref(),
+            !post_process_provider_is_local(&provider),
+        );
 
         // Define JSON schema for transcription output
         let json_schema = serde_json::json!({
@@ -1654,18 +1965,50 @@ pub(crate) async fn post_process_transcription(
             "required": [TRANSCRIPTION_FIELD],
             "additionalProperties": false
         });
+        let estimated_prompt_tokens = estimate_text_tokens(&system_prompt)
+            + estimate_text_tokens(&user_content)
+            + estimate_text_tokens(&json_schema.to_string());
+        let request_started_at = Instant::now();
 
-        match crate::llm_client::send_chat_completion_with_schema(
+        debug!(
+            "Dispatching structured post-process request (provider='{}', model='{}', prompt_tokens_est={})",
+            provider.id,
+            model,
+            estimated_prompt_tokens
+        );
+
+        let (structured_chunk_tx, structured_forwarder) = match app_handle {
+            Some(app) => {
+                let (tx, handle) = spawn_post_process_overlay_forwarder(app);
+                (Some(tx), Some(handle))
+            }
+            None => (None, None),
+        };
+
+        let structured_result = crate::llm_client::send_chat_completion_with_schema_streaming(
             &provider,
             api_key.clone(),
             &model,
             user_content,
             Some(system_prompt.clone()),
             Some(json_schema),
+            structured_chunk_tx,
         )
-        .await
-        {
+        .await;
+
+        if let Some(handle) = structured_forwarder {
+            let _ = handle.await;
+        }
+
+        match structured_result {
             Ok(Some(content)) => {
+                debug!(
+                    "Structured post-process request finished in {:?} (provider='{}', model='{}', prompt_tokens_est={})",
+                    request_started_at.elapsed(),
+                    provider.id,
+                    model,
+                    estimated_prompt_tokens
+                );
                 if let Some(result) = parse_transcription_field_from_json(&content) {
                     debug!(
                         "Structured output post-processing succeeded for provider '{}'. Output length: {} chars",
@@ -1679,6 +2022,7 @@ pub(crate) async fn post_process_transcription(
                             dict_text.clone(),
                             result.clone(),
                             dict_hits.clone(),
+                            Some(context_impact.clone()),
                             tone_app_context.clone(),
                             applied_tone_id.clone(),
                         ),
@@ -1693,10 +2037,24 @@ pub(crate) async fn post_process_transcription(
                 // Fall through to legacy mode below rather than trusting malformed content.
             }
             Ok(None) => {
+                debug!(
+                    "Structured post-process request finished in {:?} without content (provider='{}', model='{}', prompt_tokens_est={})",
+                    request_started_at.elapsed(),
+                    provider.id,
+                    model,
+                    estimated_prompt_tokens
+                );
                 error!("LLM API response has no content");
                 return None;
             }
             Err(e) => {
+                debug!(
+                    "Structured post-process request failed in {:?} (provider='{}', model='{}', prompt_tokens_est={})",
+                    request_started_at.elapsed(),
+                    provider.id,
+                    model,
+                    estimated_prompt_tokens
+                );
                 warn!(
                     "Structured output failed for provider '{}': {}. Falling back to legacy mode.",
                     provider.id, e
@@ -1708,19 +2066,57 @@ pub(crate) async fn post_process_transcription(
 
     // Legacy mode: send system/user split so tiny models respect instructions
     let system_prompt = base_system_prompt.clone();
-    let user_content = dict_text.to_string();
+    let user_content = build_apple_user_content(
+        settings,
+        dict_text,
+        effective_rewrite_strength,
+        force_conservative_rewrite,
+        screen_context.as_ref(),
+        !post_process_provider_is_local(&provider),
+    );
+    let estimated_prompt_tokens =
+        estimate_text_tokens(&system_prompt) + estimate_text_tokens(&user_content);
+    let request_started_at = Instant::now();
 
-    match crate::llm_client::send_chat_completion_with_schema(
+    debug!(
+        "Dispatching plain-text post-process request (provider='{}', model='{}', prompt_tokens_est={})",
+        provider.id,
+        model,
+        estimated_prompt_tokens
+    );
+
+    let (plain_chunk_tx, plain_forwarder) = match app_handle {
+        Some(app) => {
+            let (tx, handle) = spawn_post_process_overlay_forwarder(app);
+            (Some(tx), Some(handle))
+        }
+        None => (None, None),
+    };
+
+    let plain_result = crate::llm_client::send_chat_completion_with_schema_streaming(
         &provider,
         api_key,
         &model,
         user_content,
         Some(system_prompt.clone()),
         None,
+        plain_chunk_tx,
     )
-    .await
-    {
+    .await;
+
+    if let Some(handle) = plain_forwarder {
+        let _ = handle.await;
+    }
+
+    match plain_result {
         Ok(Some(content)) => {
+            debug!(
+                "Plain-text post-process request finished in {:?} (provider='{}', model='{}', prompt_tokens_est={})",
+                request_started_at.elapsed(),
+                provider.id,
+                model,
+                estimated_prompt_tokens
+            );
             let Some(content) = sanitize_plain_model_output(&content) else {
                 warn!(
                     "LLM post-processing for provider '{}' returned non-transcript output; falling back to non-LLM result",
@@ -1741,6 +2137,7 @@ pub(crate) async fn post_process_transcription(
                     dict_text.clone(),
                     content.clone(),
                     dict_hits,
+                    Some(context_impact),
                     tone_app_context.clone(),
                     applied_tone_id.clone(),
                 ),
@@ -1748,10 +2145,24 @@ pub(crate) async fn post_process_transcription(
             })
         }
         Ok(None) => {
+            debug!(
+                "Plain-text post-process request finished in {:?} without content (provider='{}', model='{}', prompt_tokens_est={})",
+                request_started_at.elapsed(),
+                provider.id,
+                model,
+                estimated_prompt_tokens
+            );
             error!("LLM API response has no content");
             None
         }
         Err(e) => {
+            debug!(
+                "Plain-text post-process request failed in {:?} (provider='{}', model='{}', prompt_tokens_est={})",
+                request_started_at.elapsed(),
+                provider.id,
+                model,
+                estimated_prompt_tokens
+            );
             error!(
                 "LLM post-processing failed for provider '{}': {}. Falling back to original transcription.",
                 provider.id,
@@ -1939,6 +2350,7 @@ async fn run_translate_selection(app: AppHandle) {
                     }),
                 },
                 tts_history_context_from_plan(&auto_speak_plan),
+                None,
             )
             .await
         {
@@ -2165,6 +2577,122 @@ fn tts_history_context_from_plan(plan: &crate::tts::TtsAutoSpeakPlan) -> TtsHist
     }
 }
 
+struct DeferredHistorySave {
+    audio_samples: Vec<f32>,
+    transcription_text: String,
+    post_processed_text: Option<String>,
+    post_process_prompt: Option<String>,
+    dictionary_hits: Vec<String>,
+    pasted_text: Option<String>,
+    translation_context: TranslationHistoryContext,
+    tts_context: TtsHistoryContext,
+    screen_context_metadata: Option<crate::managers::history::ScreenContextHistoryMetadata>,
+    field_snapshot_app_id: Option<String>,
+}
+
+fn spawn_history_save(
+    app: &AppHandle,
+    history_manager: Arc<HistoryManager>,
+    request: DeferredHistorySave,
+) {
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let pasted_text = request.pasted_text.clone();
+        let field_snapshot_app_id = request.field_snapshot_app_id.clone();
+
+        match history_manager
+            .save_transcription(
+                request.audio_samples,
+                request.transcription_text,
+                request.post_processed_text,
+                request.post_process_prompt,
+                request.dictionary_hits,
+                request.pasted_text,
+                request.translation_context,
+                request.tts_context,
+                request.screen_context_metadata,
+            )
+            .await
+        {
+            Ok(history_entry_id) => {
+                info!("Saved transcription to history (id={})", history_entry_id);
+
+                if pasted_text.is_some() {
+                    if let Err(err) = history_manager.mark_field_snapshot_pending(history_entry_id)
+                    {
+                        warn!("Failed to mark field snapshot pending: {}", err);
+                    }
+
+                    let app_for_snapshot = app_handle.clone();
+                    let history_manager = Arc::clone(&history_manager);
+                    tauri::async_runtime::spawn(async move {
+                        match crate::correction_tracker::observe_field_snapshot(
+                            field_snapshot_app_id,
+                            HISTORY_FIELD_OBSERVATION_WINDOW_SECS,
+                            Duration::from_millis(HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS),
+                        )
+                        .await
+                        {
+                            crate::correction_tracker::FieldObservationOutcome::Captured {
+                                snapshot_text,
+                            } => {
+                                if let Err(err) =
+                                    history_manager.update_field_snapshot(history_entry_id, snapshot_text)
+                                {
+                                    warn!("Failed to save field snapshot: {}", err);
+                                }
+                            }
+                            crate::correction_tracker::FieldObservationOutcome::SkippedFocusChanged {
+                                snapshot_text,
+                            } => {
+                                if let Err(err) = history_manager
+                                    .update_field_snapshot_skipped(history_entry_id, snapshot_text)
+                                {
+                                    warn!("Failed to save skipped field snapshot: {}", err);
+                                }
+                            }
+                            crate::correction_tracker::FieldObservationOutcome::SkippedUnreadable {
+                                snapshot_text,
+                                reason,
+                            } => {
+                                debug!(
+                                    "Skipping field snapshot for history entry {}: {}",
+                                    history_entry_id, reason
+                                );
+                                if let Err(err) = history_manager
+                                    .update_field_snapshot_skipped(history_entry_id, snapshot_text)
+                                {
+                                    warn!(
+                                        "Failed to save unreadable field snapshot as skipped: {}",
+                                        err
+                                    );
+                                }
+                            }
+                            crate::correction_tracker::FieldObservationOutcome::Failed {
+                                error_message,
+                            } => {
+                                if let Err(err) = history_manager
+                                    .update_field_snapshot_failure(
+                                        history_entry_id,
+                                        error_message.clone(),
+                                    )
+                                {
+                                    warn!("Failed to save field snapshot failure: {}", err);
+                                }
+                                let _ = app_for_snapshot.emit("field-snapshot-failed", error_message);
+                            }
+                        }
+                    });
+                }
+            }
+            Err(err) => {
+                error!("Failed to save transcription to history: {}", err);
+                let _ = app_handle.emit("history-save-failed", err.to_string());
+            }
+        }
+    });
+}
+
 fn spawn_tts_playback(app: &AppHandle, request: SpeakRequest, history_entry_id: Option<i64>) {
     let app_handle = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -2255,10 +2783,17 @@ pub(crate) async fn preview_post_process(
         .unwrap_or_else(|| transcription.to_string());
     let active_app_context = preview_app_context_from_override(&settings, app_bundle_id_override);
 
-    post_process_transcription(&settings, &base_text, active_app_context)
-        .await
-        .map(|execution| execution.result)
-        .ok_or_else(|| "Post-processing did not produce a result".to_string())
+    post_process_transcription(
+        &settings,
+        &base_text,
+        None,
+        None,
+        active_app_context,
+        Some(app),
+    )
+    .await
+    .map(|execution| execution.result)
+    .ok_or_else(|| "Post-processing did not produce a result".to_string())
 }
 
 pub(crate) async fn maybe_convert_chinese_variant(
@@ -2325,10 +2860,16 @@ impl ShortcutAction for TranscribeAction {
             }
         }
 
+        let prepared_active_app_context = capture_active_app_context(&settings);
+        remember_prepared_active_app_context(binding_id, prepared_active_app_context);
+
         // Load model in the background
         let tm = app.state::<Arc<TranscriptionManager>>();
         tm.initiate_model_load();
         crate::scratchpad::snapshot_pending_insert_target(app);
+        if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
+            context_manager.request_immediate_capture("dictation_start");
+        }
 
         let binding_id = binding_id.to_string();
         change_tray_icon(app, TrayIconState::Recording);
@@ -2385,62 +2926,15 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
-            let ah_partial = app.clone();
-            let rm_partial = Arc::clone(&rm);
-            let tm_partial = Arc::clone(&tm);
-            let binding_id_partial = binding_id.clone();
-            let selected_model_id = settings.selected_model.clone();
-            std::thread::spawn(move || {
-                let mut last_snapshot_len = 0usize;
-                let mut last_partial = String::new();
-                let (base_interval_ms, min_samples, min_growth) =
-                    live_partial_config_for_model(&selected_model_id);
-                let mut interval_ms = base_interval_ms;
-
-                while rm_partial.is_recording() {
-                    std::thread::sleep(std::time::Duration::from_millis(interval_ms));
-
-                    let Some(snapshot) = rm_partial.snapshot_recording(&binding_id_partial) else {
-                        break;
-                    };
-
-                    if snapshot.len() < min_samples
-                        || snapshot.len() <= last_snapshot_len + min_growth
-                    {
-                        continue;
-                    }
-
-                    let snapshot_len = snapshot.len();
-                    match tm_partial.transcribe(snapshot) {
-                        Ok(text) => {
-                            let trimmed = text.trim();
-                            if trimmed.is_empty() {
-                                continue;
-                            }
-                            let cleaned = strip_invisible_chars(trimmed);
-                            if cleaned == last_partial {
-                                continue;
-                            }
-                            last_partial = cleaned.clone();
-                            last_snapshot_len = snapshot_len;
-                            interval_ms = base_interval_ms;
-                            crate::overlay::emit_partial_transcription(&ah_partial, &cleaned);
-                        }
-                        Err(_) => {
-                            // Ignore transient model/loading errors during live preview.
-                            interval_ms = (interval_ms + 200).min(1_800);
-                        }
-                    }
-                }
-
-                crate::overlay::emit_partial_transcription(&ah_partial, "");
-            });
-
+            tm.start_partial_provider(&binding_id, Arc::clone(&rm));
+            // Live partial STT currently shares the same engine as the final
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
             shortcut::register_cancel_shortcut(app);
         } else {
             // Starting failed (for example due to blocked microphone permissions).
             // Revert UI state so we don't stay stuck in the recording overlay.
+            tm.stop_partial_provider();
+            clear_prepared_active_app_context(&binding_id);
             utils::hide_recording_overlay(app);
             change_tray_icon(app, TrayIconState::Idle);
             if let Some(err) = recording_error {
@@ -2465,6 +2959,7 @@ impl ShortcutAction for TranscribeAction {
         let rm = Arc::clone(&app.state::<Arc<AudioRecordingManager>>());
         let tm = Arc::clone(&app.state::<Arc<TranscriptionManager>>());
         let hm = Arc::clone(&app.state::<Arc<HistoryManager>>());
+        let context_manager = Arc::clone(&app.state::<Arc<ContextCaptureManager>>());
 
         change_tray_icon(app, TrayIconState::Transcribing);
         show_transcribing_overlay(app);
@@ -2474,6 +2969,7 @@ impl ShortcutAction for TranscribeAction {
 
         // Play audio feedback for recording stop
         play_feedback_sound(app, SoundType::Stop);
+        tm.stop_partial_provider();
 
         let binding_id = binding_id.to_string(); // Clone binding_id for the async task
         let post_process = self.post_process;
@@ -2484,6 +2980,7 @@ impl ShortcutAction for TranscribeAction {
             let _scratchpad_guard = crate::scratchpad::PendingScratchpadInsertGuard::new(&ah);
             crate::overlay::emit_partial_transcription(&ah, "");
             let binding_id = binding_id.clone(); // Clone for the inner async task
+            let prepared_active_app_context = take_prepared_active_app_context(&binding_id);
             debug!(
                 "Starting async transcription task for binding: {}",
                 binding_id
@@ -2527,7 +3024,18 @@ impl ShortcutAction for TranscribeAction {
                                 post_process && settings.post_process_enabled && !rewrite_selection;
                             // Always capture app context — needed for correction tracking
                             // and field snapshots, not just post-processing.
-                            let active_app_context = capture_active_app_context(&settings);
+                            let active_app_context = prepared_active_app_context
+                                .clone()
+                                .or_else(|| capture_active_app_context(&settings));
+                            let screen_context = context_manager.resolve_context_for_dictation(
+                                &settings,
+                                active_app_context.clone(),
+                            );
+                            let mut context_impact = ContextImpactMetadata::default();
+                            let screen_context_summary = screen_context
+                                .as_ref()
+                                .map(|packet| summarize_packet_for_prompt(packet, false))
+                                .filter(|summary| !summary.trim().is_empty());
                             if should_post_process {
                                 show_processing_overlay(&ah);
                             }
@@ -2579,6 +3087,17 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
+                            let (contextual_text, contextual_hits) =
+                                apply_contextual_entity_corrections(
+                                    &final_text,
+                                    screen_context.as_ref(),
+                                );
+                            if contextual_text != final_text {
+                                context_impact.dictionary_context_hits = contextual_hits.clone();
+                                final_text = contextual_text;
+                                dictionary_hits_for_history.extend(contextual_hits);
+                            }
+
                             // Apply snippet expansions (after dictionary, before post-processing)
                             if settings.snippets_enabled && !settings.snippets.is_empty() {
                                 let snippet_result =
@@ -2588,6 +3107,19 @@ impl ShortcutAction for TranscribeAction {
                                         "Applied {} snippet expansion(s)",
                                         snippet_result.hits.len()
                                     );
+                                    context_impact.snippet_context_hits = settings
+                                        .snippets
+                                        .iter()
+                                        .filter(|snippet| {
+                                            snippet_result.hits.contains(&snippet.trigger)
+                                                && context_confirms_snippet(
+                                                    &snippet.trigger,
+                                                    &snippet.expansion,
+                                                    screen_context.as_ref(),
+                                                )
+                                        })
+                                        .map(|snippet| snippet.trigger.clone())
+                                        .collect();
                                     final_text = snippet_result.text;
                                 }
                             }
@@ -2640,13 +3172,19 @@ impl ShortcutAction for TranscribeAction {
                                 post_process_transcription(
                                     &effective_settings,
                                     &post_process_input,
+                                    screen_context.clone(),
+                                    Some(context_impact.clone()),
                                     active_app_context.clone(),
+                                    Some(&ah),
                                 )
                                 .await
                             } else {
                                 None
                             };
                             if let Some(processed) = processed {
+                                if let Some(impact) = processed.result.context_impact.clone() {
+                                    context_impact = impact;
+                                }
                                 if should_post_process && settings.show_preview_before_paste {
                                     preview_was_shown = true;
                                 }
@@ -2700,6 +3238,8 @@ impl ShortcutAction for TranscribeAction {
                             } else if final_text != transcription {
                                 post_processed_text = Some(final_text.clone());
                             }
+
+                            context_impact.context_changed_output = final_text != transcription;
 
                             if !rewrite_selection {
                                 if let Some(execution) = translation_execution.as_mut() {
@@ -2867,14 +3407,6 @@ impl ShortcutAction for TranscribeAction {
                                 readback_locale.clone(),
                             );
 
-                            // Save to history after preview resolution so stored text matches
-                            // the final pasted output when preview editing is enabled.
-                            let hm_clone = Arc::clone(&hm);
-                            let transcription_for_history = transcription.clone();
-                            let post_processed_for_history = post_processed_text.clone();
-                            let post_process_prompt_for_history = post_process_prompt.clone();
-                            let dict_hits_for_history = dictionary_hits_for_history.clone();
-                            let pasted_text_for_history = text_to_paste.clone();
                             let translation_history_context = translation_execution
                                 .as_ref()
                                 .map(|execution| TranslationHistoryContext {
@@ -2896,53 +3428,73 @@ impl ShortcutAction for TranscribeAction {
                                     }),
                                 })
                                 .unwrap_or_default();
-                            let history_entry_id = match hm_clone
-                                .save_transcription(
-                                    samples_clone,
-                                    transcription_for_history,
-                                    post_processed_for_history,
-                                    post_process_prompt_for_history,
-                                    dict_hits_for_history,
-                                    pasted_text_for_history,
-                                    translation_history_context,
-                                    tts_history_context_from_plan(&auto_speak_plan),
-                                )
-                                .await
-                            {
-                                Ok(id) => {
-                                    info!("Saved transcription to history (id={})", id);
-                                    id
-                                }
-                                Err(e) => {
-                                    error!("Failed to save transcription to history: {}", e);
-                                    // Notify the frontend so the user sees the failure
-                                    let _ = ah.emit("history-save-failed", e.to_string());
-                                    -1
-                                }
+                            let history_save_request = DeferredHistorySave {
+                                audio_samples: samples_clone,
+                                transcription_text: transcription.clone(),
+                                post_processed_text: post_processed_text.clone(),
+                                post_process_prompt: post_process_prompt.clone(),
+                                dictionary_hits: dictionary_hits_for_history.clone(),
+                                pasted_text: text_to_paste.clone(),
+                                translation_context: translation_history_context,
+                                tts_context: tts_history_context_from_plan(&auto_speak_plan),
+                                screen_context_metadata:
+                                    Some(crate::managers::history::ScreenContextHistoryMetadata {
+                                        source: screen_context
+                                            .as_ref()
+                                            .map(|packet| packet.source.clone()),
+                                        capture_status: screen_context
+                                            .as_ref()
+                                            .map(|packet| {
+                                                if packet_age_ms(packet)
+                                                    > settings.screen_context_stale_threshold_ms as u64
+                                                {
+                                                    crate::screen_context::ContextCaptureStatus::Stale
+                                                } else {
+                                                    crate::screen_context::ContextCaptureStatus::Ready
+                                                }
+                                            })
+                                            .unwrap_or_else(|| context_manager.diagnostics().status),
+                                        cache_age_ms: screen_context
+                                            .as_ref()
+                                            .map(packet_age_ms),
+                                        summary: screen_context_summary.clone(),
+                                        sent_externally: should_post_process
+                                            && context_manager.context_sent_externally(
+                                                &settings,
+                                                screen_context.as_ref(),
+                                                settings
+                                                    .active_post_process_provider()
+                                                    .map(post_process_provider_is_local)
+                                                    .unwrap_or(true),
+                                            ),
+                                        changed_output: context_impact.context_changed_output,
+                                    }),
+                                field_snapshot_app_id: active_app_context
+                                    .as_ref()
+                                    .map(|ctx| ctx.bundle_id.clone()),
                             };
 
-                            if routed_to_jot_pad && auto_speak_plan.should_speak {
-                                spawn_tts_playback(
-                                    &ah,
-                                    SpeakRequest {
-                                        text: auto_speak_plan.text.clone(),
-                                        locale: auto_speak_plan.locale.clone(),
-                                        preferred_voice_id: None,
-                                        preset_id: None,
-                                        inline_preset: None,
-                                        trigger: Some(auto_speak_plan.trigger.clone()),
-                                        remember_last_output: false,
-                                    },
-                                    if history_entry_id > 0 {
-                                        Some(history_entry_id)
-                                    } else {
-                                        None
-                                    },
-                                );
-                                auto_speak_plan.should_speak = false;
-                            }
-
-                            if let Some(ref text_to_paste) = text_to_paste {
+                            if routed_to_jot_pad {
+                                spawn_history_save(&ah, Arc::clone(&hm), history_save_request);
+                                if auto_speak_plan.should_speak {
+                                    spawn_tts_playback(
+                                        &ah,
+                                        SpeakRequest {
+                                            text: auto_speak_plan.text.clone(),
+                                            locale: auto_speak_plan.locale.clone(),
+                                            preferred_voice_id: None,
+                                            preset_id: None,
+                                            inline_preset: None,
+                                            trigger: Some(auto_speak_plan.trigger.clone()),
+                                            remember_last_output: false,
+                                        },
+                                        None,
+                                    );
+                                    auto_speak_plan.should_speak = false;
+                                }
+                                utils::hide_recording_overlay(&ah);
+                                change_tray_icon(&ah, TrayIconState::Idle);
+                            } else if let Some(ref text_to_paste) = text_to_paste {
                                 // Start correction monitoring if enabled
                                 let correction_settings = get_settings(&ah);
                                 if correction_settings.correction_tracking_enabled {
@@ -2993,8 +3545,8 @@ impl ShortcutAction for TranscribeAction {
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
                                 let scratchpad_guard = _scratchpad_guard;
-                                let active_app_id_for_snapshot =
-                                    active_app_context.as_ref().map(|ctx| ctx.bundle_id.clone());
+                                let hm_for_paste = Arc::clone(&hm);
+                                let history_save_request = history_save_request;
                                 let auto_speak_request = if auto_speak_plan.should_speak {
                                     Some(SpeakRequest {
                                         text: auto_speak_plan.text.clone(),
@@ -3026,117 +3578,19 @@ impl ShortcutAction for TranscribeAction {
                                                 "Text pasted successfully in {:?}",
                                                 paste_time.elapsed()
                                             );
+                                            spawn_history_save(
+                                                &ah_clone,
+                                                Arc::clone(&hm_for_paste),
+                                                history_save_request,
+                                            );
 
-                                            if history_entry_id > 0 {
-                                                let hm = ah_clone.state::<std::sync::Arc<
-                                                    crate::managers::history::HistoryManager,
-                                                >>();
-                                                if let Err(e) =
-                                                    hm.mark_field_snapshot_pending(history_entry_id)
-                                                {
-                                                    log::warn!(
-                                                        "Failed to mark field snapshot pending: {}",
-                                                        e
-                                                    );
-                                                }
-
-                                                let app_snap = ah_clone.clone();
-                                                let active_app_id =
-                                                    active_app_id_for_snapshot.clone();
-                                                tauri::async_runtime::spawn(async move {
-                                                    let hm = app_snap.state::<std::sync::Arc<
-                                                        crate::managers::history::HistoryManager,
-                                                    >>();
-                                                    match crate::correction_tracker::observe_field_snapshot(
-                                                        active_app_id,
-                                                        HISTORY_FIELD_OBSERVATION_WINDOW_SECS,
-                                                        Duration::from_millis(
-                                                            HISTORY_FIELD_OBSERVATION_POLL_INTERVAL_MS,
-                                                        ),
-                                                    )
-                                                    .await
-                                                    {
-                                                        crate::correction_tracker::FieldObservationOutcome::Captured {
-                                                            snapshot_text,
-                                                        } => {
-                                                            if let Err(e) = hm.update_field_snapshot(
-                                                                history_entry_id,
-                                                                snapshot_text,
-                                                            ) {
-                                                                log::warn!(
-                                                                    "Failed to save field snapshot: {}",
-                                                                    e
-                                                                );
-                                                            }
-                                                        }
-                                                        crate::correction_tracker::FieldObservationOutcome::SkippedFocusChanged {
-                                                            snapshot_text,
-                                                        } => {
-                                                            if let Err(e) = hm
-                                                                .update_field_snapshot_skipped(
-                                                                    history_entry_id,
-                                                                    snapshot_text,
-                                                                )
-                                                            {
-                                                                log::warn!(
-                                                                    "Failed to save skipped field snapshot: {}",
-                                                                    e
-                                                                );
-                                                            }
-                                                        }
-                                                        crate::correction_tracker::FieldObservationOutcome::SkippedUnreadable {
-                                                            snapshot_text,
-                                                            reason,
-                                                        } => {
-                                                            log::debug!(
-                                                                "Skipping field snapshot for history entry {}: {}",
-                                                                history_entry_id,
-                                                                reason
-                                                            );
-                                                            if let Err(e) = hm
-                                                                .update_field_snapshot_skipped(
-                                                                    history_entry_id,
-                                                                    snapshot_text,
-                                                                )
-                                                            {
-                                                                log::warn!(
-                                                                    "Failed to save unreadable field snapshot as skipped: {}",
-                                                                    e
-                                                                );
-                                                            }
-                                                        }
-                                                        crate::correction_tracker::FieldObservationOutcome::Failed {
-                                                            error_message,
-                                                        } => {
-                                                            if let Err(e) = hm
-                                                                .update_field_snapshot_failure(
-                                                                    history_entry_id,
-                                                                    error_message.clone(),
-                                                                )
-                                                            {
-                                                                log::warn!(
-                                                                    "Failed to save field snapshot failure: {}",
-                                                                    e
-                                                                );
-                                                            }
-                                                            let _ = app_snap.emit(
-                                                                "field-snapshot-failed",
-                                                                error_message,
-                                                            );
-                                                        }
-                                                    }
-                                                });
-                                            }
-
-                                            if let Some(auto_speak_request) = auto_speak_request.clone() {
+                                            if let Some(auto_speak_request) =
+                                                auto_speak_request.clone()
+                                            {
                                                 spawn_tts_playback(
                                                     &ah_clone,
                                                     auto_speak_request,
-                                                    if history_entry_id > 0 {
-                                                        Some(history_entry_id)
-                                                    } else {
-                                                        None
-                                                    },
+                                                    None,
                                                 );
                                             }
                                         }
@@ -3305,6 +3759,7 @@ mod tests {
         let prompt = build_apple_system_prompt(
             &settings,
             None,
+            false,
             PostProcessPass::Pass2,
             settings.max_rewrite_strength,
             false,
@@ -3314,11 +3769,9 @@ mod tests {
         assert!(prompt.contains("Rewrite strength: 2"));
         assert!(prompt.contains("Return only the final text."));
         assert!(prompt.contains("scratch that"));
-        assert!(prompt.contains("Are you available Friday at four o'clock?"));
-        assert!(prompt.contains("I want to pick up a few things from the store"));
-        assert!(prompt
-            .contains("Previous Landlord Reference Credit Check Social Security Verification"));
-        assert!(prompt.contains("Required Verification Request:"));
+        assert!(prompt.contains("Make the smallest possible change"));
+        assert!(prompt.contains("Use bullets or numbering only"));
+        assert!(prompt.contains("lightly clean for readability"));
     }
 
     #[test]
@@ -3337,13 +3790,14 @@ mod tests {
             "swift ui example",
             settings.max_rewrite_strength,
             false,
+            None,
+            false,
         );
 
         assert!(content.contains("Mode: literal"));
         assert!(content.contains("Special handling:"));
-        assert!(content.contains("format the items as `* ` bullets"));
-        assert!(content.contains("replace only the corrected item"));
-        assert!(content.contains("verification-style content"));
+        assert!(content.contains("Keep only the corrected wording"));
+        assert!(content.contains("Preserve short lists"));
         assert!(content.contains("- swift ui => SwiftUI [exact only]"));
         assert!(content.contains("Transcript:\nswift ui example"));
     }
@@ -3491,6 +3945,7 @@ mod tests {
             "normalized text".to_string(),
             vec!["SwiftUI".to_string()],
             None,
+            None,
         );
         assert!(fallback.is_some());
 
@@ -3500,6 +3955,7 @@ mod tests {
             "raw text",
             "normalized text".to_string(),
             vec![],
+            None,
             None,
         );
         assert!(no_fallback.is_none());
@@ -3531,6 +3987,7 @@ mod tests {
         let prompt = build_apple_system_prompt(
             &settings,
             Some(&tone_context),
+            false,
             PostProcessPass::Pass2,
             settings.max_rewrite_strength,
             false,
@@ -3555,6 +4012,7 @@ mod tests {
         let prompt = build_apple_system_prompt(
             &settings,
             tone_context.as_ref(),
+            false,
             PostProcessPass::Pass2,
             settings.max_rewrite_strength,
             false,
@@ -3632,6 +4090,7 @@ mod tests {
             "normalized text".to_string(),
             "final text".to_string(),
             vec![],
+            None,
             Some(active_app_context.clone()),
             Some("casual".to_string()),
         );
@@ -3675,6 +4134,22 @@ mod tests {
     fn choose_pass_skips_short_plain_phrase() {
         assert_eq!(
             choose_post_process_pass("sounds good"),
+            PostProcessPass::Skip
+        );
+    }
+
+    #[test]
+    fn choose_pass_skips_clean_sentence_without_cleanup_signals() {
+        assert_eq!(
+            choose_post_process_pass("Please send the update to finance after lunch tomorrow."),
+            PostProcessPass::Skip
+        );
+    }
+
+    #[test]
+    fn choose_pass_skips_ultra_short_phrase_even_with_pass1_cue() {
+        assert_eq!(
+            choose_post_process_pass("new paragraph thanks"),
             PostProcessPass::Skip
         );
     }

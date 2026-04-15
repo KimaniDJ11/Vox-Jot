@@ -23,6 +23,7 @@ mod post_processing;
 mod refine_models;
 mod regression;
 mod scratchpad;
+mod screen_context;
 mod settings;
 mod shortcut;
 mod sidecar;
@@ -76,6 +77,7 @@ use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKi
 
 use crate::detail_view::DetailViewRoutingState;
 use crate::scratchpad::ScratchpadRoutingState;
+use crate::screen_context::ContextCaptureManager;
 use crate::settings::get_settings;
 use crate::sidecar::SidecarManager;
 use crate::tts::TtsManager;
@@ -181,6 +183,91 @@ fn should_force_show_permissions_window(app: &AppHandle) -> bool {
     false
 }
 
+fn warm_selected_stt_engine(
+    app_handle: &AppHandle,
+    model_manager: &Arc<ModelManager>,
+    transcription_manager: &Arc<TranscriptionManager>,
+) {
+    let settings = settings::get_settings(app_handle);
+    let selected_model = settings.selected_model.trim();
+    if selected_model.is_empty() {
+        return;
+    }
+
+    match model_manager.get_model_info(selected_model) {
+        Some(model_info) if managers::model::model_is_available(&model_info) => {
+            transcription_manager.initiate_model_load();
+        }
+        Some(_) => {
+            log::debug!(
+                "Skipping startup STT pre-warm because selected model '{}' is not available yet",
+                selected_model
+            );
+        }
+        None => {
+            log::debug!(
+                "Skipping startup STT pre-warm because selected model '{}' is unknown",
+                selected_model
+            );
+        }
+    }
+}
+
+async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
+    if !settings.post_process_enabled
+        || settings.post_process_provider_id != settings::OLLAMA_PROVIDER_ID
+    {
+        return;
+    }
+
+    let Some(provider) = settings.active_post_process_provider().cloned() else {
+        return;
+    };
+    let Some(model) = settings
+        .post_process_models
+        .get(&provider.id)
+        .cloned()
+        .filter(|model| !model.trim().is_empty())
+    else {
+        return;
+    };
+    let api_key = settings
+        .post_process_api_keys
+        .get(&provider.id)
+        .cloned()
+        .unwrap_or_default();
+
+    let mut status = ollama::get_ollama_status().await;
+    if !status.installed {
+        return;
+    }
+
+    if !status.running {
+        log::info!("Auto-starting Ollama serve (configured as post-process provider)");
+        if let Err(e) = ollama::start_ollama_serve().await {
+            log::warn!("Failed to auto-start Ollama: {}", e);
+            return;
+        }
+
+        for _ in 0..10 {
+            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            status = ollama::get_ollama_status().await;
+            if status.running {
+                break;
+            }
+        }
+
+        if !status.running {
+            log::warn!("Ollama did not report ready in time for startup warm-up");
+            return;
+        }
+    }
+
+    if let Err(e) = llm_client::warm_ollama_model(&provider, api_key, &model).await {
+        log::warn!("Failed to warm Ollama model '{}': {}", model, e);
+    }
+}
+
 fn initialize_core_logic(app_handle: &AppHandle) {
     // Note: Enigo (keyboard/mouse simulation) is NOT initialized here.
     // The frontend is responsible for calling the `initialize_enigo` command
@@ -205,6 +292,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     let continuous_cloning_manager = Arc::new(ContinuousCloningManager::new(app_handle));
     let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
     let convo_controller = Arc::new(ConvoController::new(app_handle));
+    let context_capture_manager = Arc::new(ContextCaptureManager::new(app_handle));
 
     // Pre-warm the system voice cache in a background thread so the first
     // UI request returns instantly instead of spawning a subprocess.
@@ -225,8 +313,11 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(continuous_cloning_manager.clone());
     app_handle.manage(sidecar_manager.clone());
     app_handle.manage(convo_controller.clone());
+    app_handle.manage(context_capture_manager.clone());
     app_handle.manage(ScratchpadRoutingState::default());
     app_handle.manage(DetailViewRoutingState::default());
+
+    warm_selected_stt_engine(app_handle, &model_manager, &transcription_manager);
 
     // Note: Shortcuts are NOT initialized here.
     // The frontend is responsible for calling the `initialize_shortcuts` command
@@ -352,20 +443,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // Create the recording overlay window (hidden by default)
     utils::create_recording_overlay(app_handle);
 
-    // Auto-start Ollama if it's the configured post-process provider
-    if settings.post_process_enabled
-        && settings.post_process_provider_id == settings::OLLAMA_PROVIDER_ID
-    {
-        tauri::async_runtime::spawn(async {
-            let status = ollama::get_ollama_status().await;
-            if status.installed && !status.running {
-                log::info!("Auto-starting Ollama serve (configured as post-process provider)");
-                if let Err(e) = ollama::start_ollama_serve().await {
-                    log::warn!("Failed to auto-start Ollama: {}", e);
-                }
-            }
-        });
-    }
+    // Auto-start and preload Ollama if it's the configured post-process provider.
+    tauri::async_runtime::spawn(maybe_warm_selected_ollama_model(settings));
 }
 
 #[tauri::command]
@@ -449,6 +528,11 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_auto_submit_key_setting,
         shortcut::change_post_process_enabled_setting,
         shortcut::change_local_privacy_mode_setting,
+        shortcut::change_context_capture_mode_setting,
+        shortcut::change_screen_context_ocr_quality_setting,
+        shortcut::change_screen_context_ocr_timeout_ms_setting,
+        shortcut::change_screen_context_token_budget_setting,
+        shortcut::change_screen_context_stale_threshold_ms_setting,
         shortcut::change_post_process_mode_setting,
         shortcut::change_experimental_enabled_setting,
         shortcut::change_post_process_base_url_setting,
@@ -502,6 +586,7 @@ pub fn run(cli_args: CliArgs) {
         commands::preview_post_process_text,
         commands::resolve_post_process_preview,
         commands::debug_analyze_post_process_route,
+        commands::get_screen_context_diagnostics,
         commands::tts::tts_speak,
         commands::tts::tts_stop,
         commands::tts::get_available_tts_voices,

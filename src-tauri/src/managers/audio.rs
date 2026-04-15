@@ -466,26 +466,27 @@ impl AudioRecordingManager {
         }
     }
 
-    pub fn snapshot_recording(&self, binding_id: &str) -> Option<Vec<f32>> {
-        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+    pub fn snapshot_recording(&self) -> Option<Vec<f32>> {
+        if !self.is_recording() {
+            return None;
+        }
 
-        match *state {
-            RecordingState::Recording {
-                binding_id: ref active,
-            } if active == binding_id => {
-                drop(state);
-                if let Some(rec) = self
-                    .recorder
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .as_ref()
-                {
-                    rec.snapshot().ok()
-                } else {
+        if let Some(rec) = self
+            .recorder
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+        {
+            match rec.snapshot() {
+                Ok(samples) => Some(samples),
+                Err(e) => {
+                    error!("snapshot() failed: {e}");
                     None
                 }
             }
-            _ => None,
+        } else {
+            error!("Recorder not available");
+            None
         }
     }
 

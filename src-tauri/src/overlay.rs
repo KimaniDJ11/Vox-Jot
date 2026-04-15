@@ -428,3 +428,24 @@ pub fn emit_partial_transcription(app_handle: &AppHandle, text: &str) {
         let _ = overlay_window.emit("partial-transcription", text);
     }
 }
+
+/// Emits the accumulated post-process text as it streams in from the LLM.
+/// Each event carries the *full* text accumulated so far, so the UI can simply
+/// replace its current buffer on each tick.
+pub fn emit_post_process_chunk(app_handle: &AppHandle, accumulated: &str) {
+    let _ = app_handle.emit("post-process-chunk", accumulated);
+
+    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        let _ = overlay_window.emit("post-process-chunk", accumulated);
+    }
+}
+
+/// Emits a coarse post-process lifecycle status so overlays can switch
+/// between "thinking", "streaming", and "complete" UI states.
+pub fn emit_post_process_status(app_handle: &AppHandle, status: &str) {
+    let _ = app_handle.emit("post-process-status", status);
+
+    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        let _ = overlay_window.emit("post-process-status", status);
+    }
+}

@@ -23,14 +23,14 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::managers::audio::AudioRecordingManager;
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
 use crate::settings::{
-    self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling,
-    KeyboardImplementation, LLMPrompt, OverlayPosition, PasteMethod, RecordingOverlayStyle,
-    ShortcutBinding, SoundTheme, TranslationBilingualLayout, TranslationDestinationMode,
-    TranslationOutputMode, TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope,
-    TtsEnginePreference, TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
-    APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
-    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
+    KeyboardImplementation, LLMPrompt, OcrQualityMode, OverlayPosition, PasteMethod,
+    RecordingOverlayStyle, ShortcutBinding, SoundTheme, TranslationBilingualLayout,
+    TranslationDestinationMode, TranslationOutputMode, TranslationRoutePreference,
+    TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
+    TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
+    OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
+    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
 };
 use crate::tray;
 
@@ -1204,6 +1204,73 @@ pub fn change_local_privacy_mode_setting(app: AppHandle, enabled: bool) -> Resul
     let mut settings = settings::get_settings(&app);
     settings.local_privacy_mode = enabled;
     settings.enforce_local_privacy_mode();
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_context_capture_mode_setting(app: AppHandle, mode: String) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.context_capture_mode = match mode.as_str() {
+        "always_frequent" => ContextCaptureMode::AlwaysFrequent,
+        "adaptive_cache" => ContextCaptureMode::AdaptiveCache,
+        "mostly_on_demand" => ContextCaptureMode::MostlyOnDemand,
+        other => return Err(format!("Invalid context capture mode '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_ocr_quality_setting(
+    app: AppHandle,
+    quality: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_ocr_quality = match quality.as_str() {
+        "fast" => OcrQualityMode::Fast,
+        "balanced" => OcrQualityMode::Balanced,
+        "accurate" => OcrQualityMode::Accurate,
+        other => return Err(format!("Invalid OCR quality '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_ocr_timeout_ms_setting(
+    app: AppHandle,
+    timeout_ms: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_ocr_timeout_ms = timeout_ms.clamp(200, 5_000);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_token_budget_setting(
+    app: AppHandle,
+    token_budget: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_token_budget = token_budget.clamp(100, 2_000);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_stale_threshold_ms_setting(
+    app: AppHandle,
+    stale_threshold_ms: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_stale_threshold_ms = stale_threshold_ms.clamp(500, 10_000);
     settings::write_settings(&app, settings);
     Ok(())
 }

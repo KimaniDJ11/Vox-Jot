@@ -5,16 +5,23 @@ import { type } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
+  checkScreenRecordingPermission,
   requestAccessibilityPermission,
   requestInputMonitoringPermission,
+  requestScreenRecordingPermission,
 } from "tauri-plugin-macos-permissions-api";
 
-type MissingPermission = "accessibility" | "inputMonitoring" | null;
+type MissingPermission =
+  | "accessibility"
+  | "inputMonitoring"
+  | "screenRecording"
+  | null;
 type AccessibilityPermissionsPresentation = "card" | "titleBar";
 
 interface MacPermissionsState {
   accessibility: boolean;
   inputMonitoring: boolean;
+  screenRecording: boolean;
 }
 
 interface AccessibilityPermissionsProps {
@@ -28,6 +35,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
   const [permissions, setPermissions] = useState<MacPermissionsState>({
     accessibility: false,
     inputMonitoring: false,
+    screenRecording: false,
   });
   const [busyPermission, setBusyPermission] = useState<MissingPermission>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -37,14 +45,16 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
   const isMacOS = type() === "macos";
 
   const refreshPermissions = async (): Promise<void> => {
-    const [accessibility, inputMonitoring] = await Promise.all([
+    const [accessibility, inputMonitoring, screenRecording] = await Promise.all([
       checkAccessibilityPermission(),
       checkInputMonitoringPermission(),
+      checkScreenRecordingPermission(),
     ]);
 
     setPermissions({
       accessibility,
       inputMonitoring,
+      screenRecording,
     });
   };
 
@@ -56,6 +66,8 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     try {
       if (permission === "accessibility") {
         await requestAccessibilityPermission();
+      } else if (permission === "screenRecording") {
+        await requestScreenRecordingPermission();
       } else {
         await requestInputMonitoringPermission();
       }
@@ -108,7 +120,9 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
   }, [isOpen, presentation]);
 
   const hasAllPermissions =
-    permissions.accessibility && permissions.inputMonitoring;
+    permissions.accessibility &&
+    permissions.inputMonitoring &&
+    permissions.screenRecording;
 
   if (!isMacOS || hasAllPermissions) {
     return null;
@@ -165,6 +179,32 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
           <button
             type="button"
             onClick={() => void requestPermission("inputMonitoring")}
+            className={buttonClassName}
+            disabled={busyPermission !== null}
+          >
+            {t("accessibility.openSettings")}
+          </button>
+        </div>
+      )}
+
+      {!permissions.screenRecording && (
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-semibold">
+              {t("onboarding.permissions.screenRecording.title", {
+                defaultValue: "Screen Recording",
+              })}
+            </p>
+            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+              {t("onboarding.permissions.screenRecording.cardDescription", {
+                defaultValue:
+                  "Vox Jot uses periodic local OCR from the active display to improve names, jargon, and phrase-key accuracy during dictation.",
+              })}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void requestPermission("screenRecording")}
             className={buttonClassName}
             disabled={busyPermission !== null}
           >

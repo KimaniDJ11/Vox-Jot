@@ -1,3 +1,4 @@
+use crate::screen_context::ContextImpactMetadata;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::cmp::Reverse;
@@ -39,6 +40,8 @@ pub struct PostProcessResult {
     pub normalized_text: String,
     pub final_text: String,
     pub dictionary_hits: Vec<String>,
+    #[serde(default)]
+    pub context_impact: Option<ContextImpactMetadata>,
     pub edits: PostProcessEdits,
     pub mode: PostProcessMode,
     pub active_app_context: Option<ActiveAppContext>,

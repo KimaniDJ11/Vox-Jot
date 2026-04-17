@@ -71,46 +71,55 @@ struct HfImportSpec {
     runtime_model_id: &'static str,
 }
 
+const HF_COLLECTION_SLUG_ENV: &str = "VOXJOT_HF_COLLECTION_SLUG";
+const HF_DEFAULT_COLLECTION_SLUG: &str =
+    "IrieDinamik/vox-jot-best-gguf-models-for-custom-import";
+const HF_DYNAMIC_SEARCH_QUERY: &str = "bartowski GGUF instruct";
+const HF_DYNAMIC_SEARCH_LIMIT: usize = 24;
+const HF_DYNAMIC_SEARCH_MAX_RESULTS: usize = 8;
+const HF_DYNAMIC_COLLECTION_MAX_RESULTS: usize = 32;
+const HF_DYNAMIC_MAX_PARAMETER_BILLIONS: f32 = 4.0;
+
 const HF_IMPORT_SPECS: &[HfImportSpec] = &[
     HfImportSpec {
-        id: "hf:qwen3-0.6b",
-        title: "Qwen3 0.6B",
-        description: "Ultra-light Q4_K_M GGUF tuned for low-latency dictation cleanup on-device.",
-        repo_id: "bartowski/Qwen_Qwen3-0.6B-GGUF",
-        file_name: "Qwen_Qwen3-0.6B-Q4_K_M.gguf",
-        runtime_model_id: "qwen3-0.6b-q4_k_m",
+        id: "hf:llama-3.2-3b",
+        title: "Llama 3.2 3B Instruct",
+        description: "Best balance of speed and intelligence. Excellent instruction-following for dictation cleanup.",
+        repo_id: "bartowski/Llama-3.2-3B-Instruct-GGUF",
+        file_name: "",
+        runtime_model_id: "llama-3.2-3b-instruct-q4_k_m",
     },
     HfImportSpec {
-        id: "hf:qwen3-1.7b",
-        title: "Qwen3 1.7B",
-        description: "Balanced Q4_K_M GGUF with enough headroom for cleanup, tone, and light rewrites.",
-        repo_id: "bartowski/Qwen_Qwen3-1.7B-GGUF",
-        file_name: "Qwen_Qwen3-1.7B-Q4_K_M.gguf",
-        runtime_model_id: "qwen3-1.7b-q4_k_m",
+        id: "hf:llama-3.2-1b",
+        title: "Llama 3.2 1B Instruct",
+        description: "Fastest responses from Meta. Perfect for getting nearly instant grammar fixes.",
+        repo_id: "bartowski/Llama-3.2-1B-Instruct-GGUF",
+        file_name: "",
+        runtime_model_id: "llama-3.2-1b-instruct-q4_k_m",
     },
     HfImportSpec {
-        id: "hf:gemma-3-1b",
-        title: "Gemma 3 1B IT",
-        description: "Compact Gemma GGUF that stays fast while following short dictation cleanup instructions well.",
-        repo_id: "lmstudio-community/gemma-3-1b-it-GGUF",
-        file_name: "gemma-3-1b-it-Q4_K_M.gguf",
-        runtime_model_id: "gemma-3-1b-it-q4_k_m",
+        id: "hf:qwen-2.5-1.5b",
+        title: "Qwen 2.5 1.5B Instruct",
+        description: "Highly capable model from Alibaba punching above its weight class for language tasks.",
+        repo_id: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+        file_name: "",
+        runtime_model_id: "qwen2.5-1.5b-instruct-q4_k_m",
     },
     HfImportSpec {
-        id: "hf:smollm2-1.7b",
-        title: "SmolLM2 1.7B Instruct",
-        description: "Small-device-friendly GGUF with good cleanup quality at roughly 1 GB.",
-        repo_id: "lmstudio-community/SmolLM2-1.7B-Instruct-GGUF",
-        file_name: "SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
-        runtime_model_id: "smollm2-1.7b-instruct-q4_k_m",
+        id: "hf:qwen-2.5-0.5b",
+        title: "Qwen 2.5 0.5B Instruct",
+        description: "The absolute minimum RAM option. Blazing fast, handles simple dictation cleanup reliably.",
+        repo_id: "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
+        file_name: "",
+        runtime_model_id: "qwen2.5-0.5b-instruct-q4_k_m",
     },
     HfImportSpec {
-        id: "hf:phi-3-mini-4k",
-        title: "Phi-3 Mini 4K",
-        description: "A slightly larger fallback when you want more structure-following without jumping to 8B.",
-        repo_id: "microsoft/Phi-3-mini-4k-instruct-gguf",
-        file_name: "Phi-3-mini-4k-instruct-q4.gguf",
-        runtime_model_id: "phi-3-mini-4k-instruct-q4",
+        id: "hf:phi-4-mini",
+        title: "Phi-4 Mini Instruct",
+        description: "Microsoft's Phi-4 Mini is an overachiever for grammar, focusing heavily on text quality and reasoning.",
+        repo_id: "bartowski/microsoft_Phi-4-mini-instruct-GGUF",
+        file_name: "",
+        runtime_model_id: "phi-4-mini-instruct-q4_k_m",
     },
 ];
 
@@ -121,7 +130,33 @@ struct HfSibling {
 
 #[derive(Debug, Deserialize)]
 struct HfModelInfo {
+    #[serde(default)]
     siblings: Vec<HfSibling>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfSearchModel {
+    id: String,
+    #[serde(default)]
+    downloads: u64,
+    pipeline_tag: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfCollectionItem {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfCollectionInfo {
+    #[serde(default)]
+    items: Vec<HfCollectionItem>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HfDiscoverySource {
+    Collection,
+    Search,
 }
 
 fn find_provider<'a>(
@@ -172,6 +207,197 @@ fn sanitize_runtime_model_id(value: &str) -> String {
     }
 
     sanitized.trim_matches('-').to_string()
+}
+
+fn parse_parameter_billions(repo_id: &str) -> Option<f32> {
+    let lower = repo_id.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        if !bytes[i].is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+
+        let start = i;
+        i += 1;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+
+        if i < bytes.len() && bytes[i] == b'.' {
+            i += 1;
+            while i < bytes.len() && bytes[i].is_ascii_digit() {
+                i += 1;
+            }
+        }
+
+        if i < bytes.len() && bytes[i] == b'b' {
+            if let Ok(value) = lower[start..i].parse::<f32>() {
+                return Some(value);
+            }
+        }
+    }
+
+    None
+}
+
+fn is_hf_repo_safe_candidate(repo_id: &str) -> bool {
+    let lower = repo_id.to_ascii_lowercase();
+    if !lower.contains("gguf") || !lower.contains("instruct") {
+        return false;
+    }
+
+    if let Some(param_size) = parse_parameter_billions(&lower) {
+        return param_size <= HF_DYNAMIC_MAX_PARAMETER_BILLIONS;
+    }
+
+    lower.contains("mini") || lower.contains("smol") || lower.contains("tiny")
+}
+
+fn make_dynamic_hf_runtime_model_id(repo_id: &str) -> String {
+    let repo_name = repo_id.split('/').nth(1).unwrap_or(repo_id);
+    let base = sanitize_runtime_model_id(repo_name);
+    if base.ends_with("q4_k_m") {
+        base
+    } else {
+        format!("{base}-q4_k_m")
+    }
+}
+
+fn make_dynamic_hf_title(repo_id: &str) -> String {
+    let repo_name = repo_id.split('/').nth(1).unwrap_or(repo_id);
+    repo_name
+        .replace("-GGUF", "")
+        .replace("-gguf", "")
+        .replace('_', " ")
+}
+
+fn normalize_collection_slug(value: &str) -> String {
+    let trimmed = value.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    if let Some(path) = trimmed.strip_prefix("https://huggingface.co/collections/") {
+        return path.to_string();
+    }
+    if let Some(path) = trimmed.strip_prefix("http://huggingface.co/collections/") {
+        return path.to_string();
+    }
+    if let Some(path) = trimmed.strip_prefix("collections/") {
+        return path.to_string();
+    }
+
+    trimmed.to_string()
+}
+
+async fn fetch_dynamic_hf_repo_ids(
+    client: &reqwest::Client,
+) -> Result<(Vec<String>, HfDiscoverySource), String> {
+    let env_slug = std::env::var(HF_COLLECTION_SLUG_ENV).unwrap_or_default();
+    let collection_slug = normalize_collection_slug(if env_slug.trim().is_empty() {
+        HF_DEFAULT_COLLECTION_SLUG
+    } else {
+        &env_slug
+    });
+
+    if !collection_slug.is_empty() {
+        let collection_url = format!("https://huggingface.co/api/collections/{collection_slug}");
+        let collection: HfCollectionInfo = client
+            .get(&collection_url)
+            .send()
+            .await
+            .map_err(|err| {
+                format!(
+                    "Failed to query Hugging Face collection '{}': {err}",
+                    collection_slug
+                )
+            })?
+            .json()
+            .await
+            .map_err(|err| {
+                format!(
+                    "Failed to parse Hugging Face collection '{}': {err}",
+                    collection_slug
+                )
+            })?;
+
+        let mut seen = HashSet::new();
+        let mut repo_ids = Vec::new();
+        for item in collection.items {
+            let repo_id = item.id.trim();
+            if repo_id.is_empty() || !seen.insert(repo_id.to_string()) {
+                continue;
+            }
+            if !is_hf_repo_safe_candidate(repo_id) {
+                continue;
+            }
+            repo_ids.push(repo_id.to_string());
+            if repo_ids.len() >= HF_DYNAMIC_COLLECTION_MAX_RESULTS {
+                break;
+            }
+        }
+
+        if !repo_ids.is_empty() {
+            return Ok((repo_ids, HfDiscoverySource::Collection));
+        }
+
+        log::warn!(
+            "Hugging Face collection '{}' did not return safe GGUF instruct repos; falling back to search.",
+            collection_slug
+        );
+    }
+
+    let query_params = vec![
+        ("search".to_string(), HF_DYNAMIC_SEARCH_QUERY.to_string()),
+        ("sort".to_string(), "downloads".to_string()),
+        ("direction".to_string(), "-1".to_string()),
+        ("limit".to_string(), HF_DYNAMIC_SEARCH_LIMIT.to_string()),
+    ];
+
+    let models: Vec<HfSearchModel> = client
+        .get("https://huggingface.co/api/models")
+        .query(&query_params)
+        .send()
+        .await
+        .map_err(|err| format!("Failed to query Hugging Face model search: {err}"))?
+        .json()
+        .await
+        .map_err(|err| format!("Failed to parse Hugging Face model search: {err}"))?;
+
+    let mut seen = HashSet::new();
+    let mut repo_ids = Vec::new();
+    for model in models {
+        if let Some(tag) = model.pipeline_tag.as_deref() {
+            if tag != "text-generation" {
+                continue;
+            }
+        }
+
+        let repo_id = model.id.trim();
+        if repo_id.is_empty() || !seen.insert(repo_id.to_string()) {
+            continue;
+        }
+        if !is_hf_repo_safe_candidate(repo_id) {
+            continue;
+        }
+        if model.downloads == 0 {
+            continue;
+        }
+
+        repo_ids.push(repo_id.to_string());
+        if repo_ids.len() >= HF_DYNAMIC_SEARCH_MAX_RESULTS {
+            break;
+        }
+    }
+
+    if repo_ids.is_empty() {
+        return Err("Hugging Face search returned no safe GGUF instruct models.".to_string());
+    }
+
+    Ok((repo_ids, HfDiscoverySource::Search))
 }
 
 async fn fetch_lmstudio_models(
@@ -303,7 +529,7 @@ fn build_local_ollama_models(
         .collect()
 }
 
-fn build_hf_curated_models(
+fn build_hf_fallback_models(
     settings: &settings::AppSettings,
     ollama_status: &ollama::OllamaStatus,
 ) -> Vec<RefineModelDescriptor> {
@@ -337,9 +563,92 @@ fn build_hf_curated_models(
         .collect()
 }
 
+fn build_dynamic_hf_models(
+    settings: &settings::AppSettings,
+    ollama_status: &ollama::OllamaStatus,
+    repo_ids: &[String],
+    source: HfDiscoverySource,
+) -> Vec<RefineModelDescriptor> {
+    repo_ids
+        .iter()
+        .map(|repo_id| {
+            let runtime_model_id = make_dynamic_hf_runtime_model_id(repo_id);
+            let title = make_dynamic_hf_title(repo_id);
+            let description = match source {
+                HfDiscoverySource::Collection => {
+                    "Auto-listed from your verified Hugging Face collection. GGUF file is resolved automatically during import.".to_string()
+                }
+                HfDiscoverySource::Search => {
+                    "Auto-discovered top-downloaded small GGUF instruct model. GGUF file is resolved automatically during import.".to_string()
+                }
+            };
+
+            RefineModelDescriptor {
+                id: format!("hf:auto:{runtime_model_id}"),
+                title,
+                description,
+                source_kind: RefineModelSourceKind::HuggingFace,
+                source_label: "Hugging Face".to_string(),
+                runtime_provider_id: OLLAMA_PROVIDER_ID.to_string(),
+                runtime_model_id: runtime_model_id.clone(),
+                runtime_label: "Imported into Ollama".to_string(),
+                installed: ollama_model_matches(&ollama_status.models, &runtime_model_id),
+                active: is_active_model(settings, OLLAMA_PROVIDER_ID, &runtime_model_id),
+                runnable: ollama_status.installed && ollama_status.running,
+                downloadable: true,
+                source_repo_id: Some(repo_id.clone()),
+                source_file_name: None,
+                source_url: Some(format!("https://huggingface.co/{repo_id}")),
+                note: if ollama_status.installed && ollama_status.running {
+                    None
+                } else {
+                    Some(
+                        "Install and start Ollama before importing Hugging Face GGUF models."
+                            .to_string(),
+                    )
+                },
+            }
+        })
+        .collect()
+}
+
+async fn build_hf_catalog_models(
+    settings: &settings::AppSettings,
+    ollama_status: &ollama::OllamaStatus,
+) -> (Vec<RefineModelDescriptor>, String) {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+
+    match fetch_dynamic_hf_repo_ids(&client).await {
+        Ok((repo_ids, source)) => {
+            let models = build_dynamic_hf_models(settings, ollama_status, &repo_ids, source);
+            let detail = match source {
+                HfDiscoverySource::Collection => {
+                    "Auto-updating verified Hugging Face collection. Add or remove collection items to update this catalog without an app release.".to_string()
+                }
+                HfDiscoverySource::Search => {
+                    "Auto-discovered small Hugging Face GGUF instruct models ranked by downloads with safety filters.".to_string()
+                }
+            };
+            (models, detail)
+        }
+        Err(err) => {
+            log::warn!("Hugging Face dynamic model discovery failed, using fallback list: {err}");
+            (
+                build_hf_fallback_models(settings, ollama_status),
+                "Using bundled verified Hugging Face imports (offline-safe fallback)."
+                    .to_string(),
+            )
+        }
+    }
+}
+
 pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineModelCatalog, String> {
     let settings = settings::get_settings(app);
     let ollama_status = ollama::get_ollama_status().await;
+    let (hf_models, hf_provider_detail) = build_hf_catalog_models(&settings, &ollama_status).await;
     let mut providers = vec![make_ollama_provider_status(&ollama_status)];
     providers.push(RefineProviderStatus {
         id: "huggingface".to_string(),
@@ -348,9 +657,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
         local_only: false,
         installed: true,
         running: true,
-        detail:
-            "Curated GGUF imports can be downloaded and installed into Ollama from this catalog."
-                .to_string(),
+        detail: hf_provider_detail,
     });
 
     let mut models = build_local_ollama_models(&settings, &ollama_status);
@@ -393,7 +700,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
     let (lmstudio_status, lmstudio_models) = fetch_lmstudio_models(&settings).await;
     providers.push(lmstudio_status);
     models.extend(lmstudio_models);
-    models.extend(build_hf_curated_models(&settings, &ollama_status));
+    models.extend(hf_models);
 
     models.sort_by(|a, b| {
         let a_rank = (

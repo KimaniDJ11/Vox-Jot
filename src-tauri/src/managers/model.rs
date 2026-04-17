@@ -122,6 +122,13 @@ impl ModelManager {
         format!("{}/{}", base_url.trim_end_matches('/'), filename)
     }
 
+    fn whisper_cpp_resolve_url(filename: &str) -> String {
+        format!(
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{}",
+            filename
+        )
+    }
+
     fn is_tar_gz_url(url: &str) -> bool {
         let path = url.split('?').next().unwrap_or(url);
         path.ends_with(".tar.gz")
@@ -232,6 +239,98 @@ impl ModelManager {
 
         // TODO this should be read from a JSON file or something..
         available_models.insert(
+            "tiny".to_string(),
+            ModelInfo {
+                id: "tiny".to_string(),
+                name: "Whisper Tiny".to_string(),
+                description: "Fastest multilingual Whisper model.".to_string(),
+                filename: "ggml-tiny.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-tiny.bin")),
+                size_mb: 75,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.45,
+                speed_score: 0.98,
+                supports_translation: true,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "tiny.en".to_string(),
+            ModelInfo {
+                id: "tiny.en".to_string(),
+                name: "Whisper Tiny (English)".to_string(),
+                description: "Fastest English-only Whisper model.".to_string(),
+                filename: "ggml-tiny.en.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-tiny.en.bin")),
+                size_mb: 75,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.47,
+                speed_score: 0.99,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: vec!["en".to_string()],
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "base".to_string(),
+            ModelInfo {
+                id: "base".to_string(),
+                name: "Whisper Base".to_string(),
+                description: "Fast multilingual Whisper model.".to_string(),
+                filename: "ggml-base.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-base.bin")),
+                size_mb: 142,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.52,
+                speed_score: 0.94,
+                supports_translation: true,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "base.en".to_string(),
+            ModelInfo {
+                id: "base.en".to_string(),
+                name: "Whisper Base (English)".to_string(),
+                description: "Fast English-only Whisper model.".to_string(),
+                filename: "ggml-base.en.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-base.en.bin")),
+                size_mb: 142,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.55,
+                speed_score: 0.95,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: vec!["en".to_string()],
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
             "small".to_string(),
             ModelInfo {
                 id: "small".to_string(),
@@ -250,6 +349,30 @@ impl ModelManager {
                 supports_translation: true,
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "small.en".to_string(),
+            ModelInfo {
+                id: "small.en".to_string(),
+                name: "Whisper Small (English)".to_string(),
+                description: "Balanced English-only model with strong speed and quality."
+                    .to_string(),
+                filename: "ggml-small.en.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-small.en.bin")),
+                size_mb: 487,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.64,
+                speed_score: 0.86,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: vec!["en".to_string()],
                 is_custom: false,
             },
         );
@@ -274,6 +397,29 @@ impl ModelManager {
                 supports_translation: true,
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "medium.en".to_string(),
+            ModelInfo {
+                id: "medium.en".to_string(),
+                name: "Whisper Medium (English)".to_string(),
+                description: "High-quality English-only Whisper model.".to_string(),
+                filename: "ggml-medium.en.bin".to_string(),
+                url: Some(Self::whisper_cpp_resolve_url("ggml-medium.en.bin")),
+                size_mb: 1500,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.78,
+                speed_score: 0.62,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: vec!["en".to_string()],
                 is_custom: false,
             },
         );

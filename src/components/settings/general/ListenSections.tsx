@@ -121,7 +121,7 @@ const speechLibraryActiveBadgeClassName =
   "inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-medium text-white shadow-[var(--shadow-sm)]";
 const speechLibraryCountBadgeClassName =
   "inline-flex min-w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]";
-const HIDDEN_TTS_PROVIDER_IDS = new Set(["local_sidecar_api"]);
+const HIDDEN_TTS_PROVIDER_IDS = new Set<string>();
 const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "openvoice",
   "chatterbox",

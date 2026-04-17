@@ -12,8 +12,209 @@ use crate::settings::{
     TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::tts::TtsManager;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
+
+const STT_HF_VERIFIED_PROVIDER_ID: &str = "stt_hf_verified";
+const STT_HF_COLLECTION_ENV: &str = "VOXJOT_HF_STT_COLLECTION_SLUG";
+const STT_HF_COLLECTION_DEFAULT: &str = "IrieDinamik/vox-jot-stt-verified";
+
+const TTS_HF_COLLECTION_ENV: &str = "VOXJOT_HF_TTS_COLLECTION_SLUG";
+const TTS_HF_COLLECTION_DEFAULT: &str = "IrieDinamik/vox-jot-tts-verified";
+
+const HF_COLLECTION_CACHE_TTL: Duration = Duration::from_secs(300);
+const HF_COLLECTION_FETCH_TIMEOUT: Duration = Duration::from_secs(4);
+const HF_COLLECTION_MAX_ITEMS: usize = 48;
+
+static HF_COLLECTION_CACHE: Lazy<std::sync::Mutex<HashMap<String, (Instant, Vec<String>)>>> =
+    Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
+
+#[derive(Debug, Deserialize)]
+struct HfCollectionItem {
+    id: String,
+    #[serde(default)]
+    r#type: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfCollectionInfo {
+    #[serde(default)]
+    items: Vec<HfCollectionItem>,
+}
+
+fn normalize_collection_slug(value: &str) -> String {
+    let trimmed = value.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    if let Some(path) = trimmed.strip_prefix("https://huggingface.co/collections/") {
+        return path.to_string();
+    }
+    if let Some(path) = trimmed.strip_prefix("http://huggingface.co/collections/") {
+        return path.to_string();
+    }
+    if let Some(path) = trimmed.strip_prefix("collections/") {
+        return path.to_string();
+    }
+
+    trimmed.to_string()
+}
+
+fn hf_repo_title(repo_id: &str) -> String {
+    let repo_name = repo_id.split('/').nth(1).unwrap_or(repo_id);
+    repo_name
+        .replace("-GGUF", "")
+        .replace("-gguf", "")
+        .replace('_', " ")
+}
+
+fn stt_hf_repo_to_model_id(repo_id: &str) -> Option<&'static str> {
+    let lower = repo_id.to_ascii_lowercase();
+
+    if lower.contains("faster-whisper-tiny.en") {
+        return Some("tiny.en");
+    }
+    if lower.contains("faster-whisper-tiny") {
+        return Some("tiny");
+    }
+    if lower.contains("faster-whisper-base.en") {
+        return Some("base.en");
+    }
+    if lower.contains("faster-whisper-base") {
+        return Some("base");
+    }
+    if lower.contains("faster-whisper-small.en") {
+        return Some("small.en");
+    }
+    if lower.contains("faster-whisper-small") {
+        return Some("small");
+    }
+    if lower.contains("faster-whisper-medium.en") {
+        return Some("medium.en");
+    }
+    if lower.contains("faster-whisper-medium") {
+        return Some("medium");
+    }
+    if lower.contains("large-v3-turbo") {
+        return Some("turbo");
+    }
+    if lower.contains("faster-whisper-large-v3") {
+        return Some("large");
+    }
+
+    None
+}
+
+fn stt_hf_alias_to_model_id(alias_model_id: &str) -> Option<&'static str> {
+    let repo_id = alias_model_id.strip_prefix("hf_stt::")?;
+    stt_hf_repo_to_model_id(repo_id)
+}
+
+async fn fetch_hf_collection_repo_ids(collection_slug: &str) -> Vec<String> {
+    if collection_slug.is_empty() {
+        return Vec::new();
+    }
+
+    {
+        let cache = HF_COLLECTION_CACHE
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if let Some((fetched_at, ids)) = cache.get(collection_slug) {
+            if fetched_at.elapsed() < HF_COLLECTION_CACHE_TTL {
+                return ids.clone();
+            }
+        }
+    }
+
+    let client = match reqwest::Client::builder()
+        .timeout(HF_COLLECTION_FETCH_TIMEOUT)
+        .build()
+    {
+        Ok(client) => client,
+        Err(err) => {
+            log::warn!("Failed to create Hugging Face client: {err}");
+            return Vec::new();
+        }
+    };
+
+    let url = format!("https://huggingface.co/api/collections/{collection_slug}");
+    let fetched = match client.get(&url).send().await {
+        Ok(response) => match response.error_for_status() {
+            Ok(ok) => match ok.json::<HfCollectionInfo>().await {
+                Ok(collection) => {
+                    let mut repo_ids = Vec::new();
+                    let mut seen = std::collections::HashSet::new();
+                    for item in collection.items {
+                        if !matches!(item.r#type.as_deref(), Some("model") | None) {
+                            continue;
+                        }
+                        let repo_id = item.id.trim();
+                        if !repo_id.contains('/') {
+                            continue;
+                        }
+                        if !seen.insert(repo_id.to_string()) {
+                            continue;
+                        }
+                        repo_ids.push(repo_id.to_string());
+                        if repo_ids.len() >= HF_COLLECTION_MAX_ITEMS {
+                            break;
+                        }
+                    }
+                    repo_ids
+                }
+                Err(err) => {
+                    log::warn!(
+                        "Failed to parse Hugging Face collection '{}': {err}",
+                        collection_slug
+                    );
+                    Vec::new()
+                }
+            },
+            Err(err) => {
+                log::warn!(
+                    "Hugging Face collection '{}' request failed: {err}",
+                    collection_slug
+                );
+                Vec::new()
+            }
+        },
+        Err(err) => {
+            log::warn!(
+                "Failed to query Hugging Face collection '{}': {err}",
+                collection_slug
+            );
+            Vec::new()
+        }
+    };
+
+    {
+        let mut cache = HF_COLLECTION_CACHE
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        cache.insert(collection_slug.to_string(), (Instant::now(), fetched.clone()));
+    }
+
+    fetched
+}
+
+fn stt_collection_slug() -> String {
+    normalize_collection_slug(
+        &std::env::var(STT_HF_COLLECTION_ENV)
+            .unwrap_or_else(|_| STT_HF_COLLECTION_DEFAULT.to_string()),
+    )
+}
+
+fn tts_collection_slug() -> String {
+    normalize_collection_slug(
+        &std::env::var(TTS_HF_COLLECTION_ENV)
+            .unwrap_or_else(|_| TTS_HF_COLLECTION_DEFAULT.to_string()),
+    )
+}
 
 fn unsupported_delivery_support() -> TtsDeliverySupport {
     TtsDeliverySupport {
@@ -91,8 +292,12 @@ fn sync_stt_selection_fields(settings: &mut AppSettings, model_info: &ModelInfo)
     settings.selected_stt_provider_id = stt_provider_meta(&model_info.engine_type).0.to_string();
 }
 
-fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> DomainCatalog {
+async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> DomainCatalog {
     let models = model_manager.get_available_models();
+    let model_lookup = models
+        .iter()
+        .map(|model| (model.id.clone(), model.clone()))
+        .collect::<HashMap<_, _>>();
     let selected_provider_id = stt_selection_provider_id(settings, model_manager);
     let selected_model_id = if !settings.selected_stt_model_id.trim().is_empty() {
         Some(settings.selected_stt_model_id.clone())
@@ -113,7 +318,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         "stt_qwen",
     ];
 
-    let providers = provider_order
+    let mut providers: Vec<ProviderDescriptor> = provider_order
         .iter()
         .filter_map(|provider_id| {
             let model = models.iter().find(|model| stt_provider_meta(&model.engine_type).0 == *provider_id)?;
@@ -151,7 +356,7 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         })
         .collect();
 
-    let models = models
+    let mut catalog_models: Vec<CatalogModelDescriptor> = models
         .into_iter()
         .map(|model| {
             let (provider_id, _, source_label, runtime_label) =
@@ -212,7 +417,214 @@ fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> Do
         })
         .collect();
 
-    DomainCatalog { providers, models }
+    let stt_collection = fetch_hf_collection_repo_ids(&stt_collection_slug()).await;
+    if !stt_collection.is_empty() {
+        let alias_models = stt_collection
+            .into_iter()
+            .filter_map(|repo_id| {
+                let mapped_model_id = stt_hf_repo_to_model_id(&repo_id)?;
+                let mapped = model_lookup.get(mapped_model_id)?;
+                let available = model_is_available(mapped);
+                let downloadable = mapped.url.is_some();
+                let alias_id = format!("hf_stt::{repo_id}");
+
+                Some(CatalogModelDescriptor {
+                    id: alias_id,
+                    provider_id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
+                    domain: ModelDomain::Stt,
+                    source_kind: CatalogSourceKind::Builtin,
+                    label: hf_repo_title(&repo_id),
+                    description: format!(
+                        "Collection alias mapped to local model '{}'.",
+                        mapped.name
+                    ),
+                    installed: available,
+                    selected: selected_model_id.as_deref() == Some(mapped_model_id),
+                    active: selected_model_id.as_deref() == Some(mapped_model_id) && available,
+                    runnable: available,
+                    downloadable,
+                    source_label: "Hugging Face collection".to_string(),
+                    runtime: RuntimeRequirement {
+                        id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
+                        label: "Whisper engine".to_string(),
+                        engine_family: "whisper".to_string(),
+                        auto_routed: true,
+                    },
+                    license_label: None,
+                    locale: None,
+                    supported_languages: mapped.supported_languages.clone(),
+                    capabilities: CapabilityFlags {
+                        downloadable,
+                        loadable: true,
+                        local_only: true,
+                        supports_translation: mapped.supports_translation,
+                        supports_streaming: false,
+                        supports_voice_cloning: false,
+                        supports_instruction_prompt: false,
+                        supports_inline_tags: false,
+                        coming_soon: false,
+                    },
+                    delivery_support: unsupported_delivery_support(),
+                    readiness_status: Some(if available {
+                        "ready".to_string()
+                    } else {
+                        "missing".to_string()
+                    }),
+                    readiness_issues: if available {
+                        Vec::new()
+                    } else {
+                        vec![format!(
+                            "{} is available from the mapped local Whisper asset and will download on selection.",
+                            mapped.name
+                        )]
+                    },
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let has_aliases = !alias_models.is_empty();
+
+        if has_aliases {
+        providers.push(ProviderDescriptor {
+            id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
+            domain: ModelDomain::Stt,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "HF STT Verified".to_string(),
+            description: "Auto-synced STT aliases from your verified Hugging Face collection, mapped to installable local Whisper assets.".to_string(),
+            source_label: "Hugging Face collection".to_string(),
+            runtime: RuntimeRequirement {
+                id: "stt_hf_verified".to_string(),
+                label: "Whisper engine".to_string(),
+                engine_family: "huggingface_stt".to_string(),
+                auto_routed: true,
+            },
+            available: true,
+            local_only: true,
+            coming_soon: false,
+            license_label: None,
+            capabilities: CapabilityFlags {
+                downloadable: true,
+                loadable: true,
+                local_only: true,
+                supports_translation: true,
+                supports_streaming: false,
+                supports_voice_cloning: false,
+                supports_instruction_prompt: false,
+                supports_inline_tags: false,
+                coming_soon: false,
+            },
+        });
+            catalog_models.extend(alias_models);
+        }
+    }
+
+    DomainCatalog {
+        providers,
+        models: catalog_models,
+    }
+}
+
+fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_ids: Vec<String>) {
+    if repo_ids.is_empty() {
+        return;
+    }
+
+    if !tts_catalog
+        .providers
+        .iter()
+        .any(|provider| provider.id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID)
+    {
+        tts_catalog.providers.push(ProviderDescriptor {
+            id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Runtime,
+            label: "HF TTS Verified".to_string(),
+            description: "Auto-synced from your verified Hugging Face TTS collection and routed through the local sidecar runtime API.".to_string(),
+            source_label: "Hugging Face collection".to_string(),
+            runtime: RuntimeRequirement {
+                id: "local_sidecar_api".to_string(),
+                label: "Local speech API runtime".to_string(),
+                engine_family: "sidecar".to_string(),
+                auto_routed: true,
+            },
+            available: true,
+            local_only: true,
+            coming_soon: false,
+            license_label: None,
+            capabilities: CapabilityFlags {
+                downloadable: false,
+                loadable: true,
+                local_only: true,
+                supports_translation: false,
+                supports_streaming: true,
+                supports_voice_cloning: true,
+                supports_instruction_prompt: true,
+                supports_inline_tags: false,
+                coming_soon: false,
+            },
+        });
+    }
+
+    let mut seen = tts_catalog
+        .models
+        .iter()
+        .filter(|model| model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID)
+        .map(|model| model.id.clone())
+        .collect::<std::collections::HashSet<_>>();
+
+    for repo_id in repo_ids {
+        let model_id = repo_id.clone();
+        if !seen.insert(model_id.clone()) {
+            continue;
+        }
+
+        let lower = repo_id.to_ascii_lowercase();
+        let supports_cloning = lower.contains("f5")
+            || lower.contains("oute")
+            || lower.contains("xtts")
+            || lower.contains("voice");
+        let supports_instructions = lower.contains("parler") || lower.contains("qwen");
+
+        tts_catalog.models.push(CatalogModelDescriptor {
+            id: model_id,
+            provider_id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Runtime,
+            label: hf_repo_title(&repo_id),
+            description: format!(
+                "Verified TTS model from Hugging Face collection ({repo_id})."
+            ),
+            installed: true,
+            selected: false,
+            active: false,
+            runnable: true,
+            downloadable: false,
+            source_label: "Hugging Face collection".to_string(),
+            runtime: RuntimeRequirement {
+                id: "local_sidecar_api".to_string(),
+                label: "Local speech API runtime".to_string(),
+                engine_family: "sidecar".to_string(),
+                auto_routed: true,
+            },
+            license_label: None,
+            locale: None,
+            supported_languages: Vec::new(),
+            readiness_status: Some("ready".to_string()),
+            readiness_issues: Vec::new(),
+            capabilities: CapabilityFlags {
+                downloadable: false,
+                loadable: true,
+                local_only: true,
+                supports_translation: false,
+                supports_streaming: true,
+                supports_voice_cloning: supports_cloning,
+                supports_instruction_prompt: supports_instructions,
+                supports_inline_tags: false,
+                coming_soon: false,
+            },
+            delivery_support: unsupported_delivery_support(),
+        });
+    }
 }
 
 fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
@@ -362,7 +774,14 @@ pub async fn get_model_platform_overview(
     let model_manager = app_handle.state::<Arc<ModelManager>>();
     let tts_manager = app_handle.state::<Arc<TtsManager>>();
 
-    let tts_catalog = tts_manager.domain_catalog(&settings).await;
+    let tts_collection_slug = tts_collection_slug();
+    let (tts_collection_ids, mut tts_catalog) = tokio::join!(
+        fetch_hf_collection_repo_ids(&tts_collection_slug),
+        tts_manager.domain_catalog(&settings)
+    );
+
+    augment_tts_catalog_with_hf_verified(&mut tts_catalog, tts_collection_ids);
+
     let active_tts_model = tts_catalog
         .models
         .iter()
@@ -370,7 +789,7 @@ pub async fn get_model_platform_overview(
         .cloned();
 
     Ok(ModelPlatformOverview {
-        stt: build_stt_catalog(&*model_manager, &settings),
+        stt: build_stt_catalog(&*model_manager, &settings).await,
         llm: build_llm_catalog(&settings),
         tts: tts_catalog,
         selection: ModelPlatformSelectionState {
@@ -451,31 +870,51 @@ pub async fn set_stt_platform_selection(
     provider_id: String,
     model_id: String,
 ) -> Result<(), String> {
-    let model_info = model_manager
-        .get_model_info(&model_id)
-        .ok_or_else(|| format!("Model not found: {}", model_id))?;
+    let resolved_model_id = if provider_id == STT_HF_VERIFIED_PROVIDER_ID {
+        stt_hf_alias_to_model_id(&model_id)
+            .map(str::to_string)
+            .ok_or_else(|| format!("Unsupported STT collection model: {}", model_id))?
+    } else {
+        model_id.clone()
+    };
+
+    let mut model_info = model_manager
+        .get_model_info(&resolved_model_id)
+        .ok_or_else(|| format!("Model not found: {}", resolved_model_id))?;
 
     let expected_provider_id = stt_provider_meta(&model_info.engine_type).0;
-    if provider_id != expected_provider_id {
+    if provider_id != expected_provider_id && provider_id != STT_HF_VERIFIED_PROVIDER_ID {
         return Err(format!(
             "Model '{}' belongs to provider '{}' rather than '{}'",
-            model_id, expected_provider_id, provider_id
+            resolved_model_id, expected_provider_id, provider_id
         ));
     }
 
     if !model_is_available(&model_info) {
-        return Err(format!("Model not downloaded: {}", model_id));
+        if model_info.url.is_some() {
+            model_manager
+                .download_model(&resolved_model_id)
+                .await
+                .map_err(|err| format!("Failed to download model '{}': {err}", resolved_model_id))?;
+            model_info = model_manager
+                .get_model_info(&resolved_model_id)
+                .ok_or_else(|| format!("Model not found after download: {}", resolved_model_id))?;
+        }
+    }
+
+    if !model_is_available(&model_info) {
+        return Err(format!("Model not downloaded: {}", resolved_model_id));
     }
 
     transcription_manager
-        .load_model(&model_id)
+        .load_model(&resolved_model_id)
         .map_err(|e| e.to_string())?;
 
     let mut settings = get_settings(&app_handle);
     sync_stt_selection_fields(&mut settings, &model_info);
     write_settings(&app_handle, settings);
     app_handle
-        .emit("active-model-changed", model_id)
+        .emit("active-model-changed", resolved_model_id)
         .map_err(|e| e.to_string())?;
 
     Ok(())
@@ -520,7 +959,12 @@ pub async fn set_tts_platform_selection(
 ) -> Result<(), String> {
     let settings = get_settings(&app_handle);
     let tts_manager = app_handle.state::<Arc<TtsManager>>();
-    let catalog = tts_manager.domain_catalog(&settings).await;
+    let tts_collection_slug = tts_collection_slug();
+    let (tts_collection_ids, mut catalog) = tokio::join!(
+        fetch_hf_collection_repo_ids(&tts_collection_slug),
+        tts_manager.domain_catalog(&settings)
+    );
+    augment_tts_catalog_with_hf_verified(&mut catalog, tts_collection_ids);
 
     let provider = catalog
         .providers

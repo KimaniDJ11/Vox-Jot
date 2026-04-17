@@ -57,6 +57,7 @@ This matrix is designed to **stress Vox Jot post-processing** across realistic a
 - 2 non-speech clips (ESC-50 / UrbanSound8K)
 
 Pass criteria:
+
 - Post-process **never** turns understandable text into nonsense.
 - Non-speech **does not** produce confident long transcripts.
 
@@ -71,6 +72,7 @@ Pass criteria:
 - 6 non-speech
 
 Pass criteria:
+
 - Formatting is stable (capitalization, punctuation, spacing).
 - Post-process improvements are consistent across conditions.
 - No systematic failure mode (e.g., “adds random periods every 2–3 words”).
@@ -93,6 +95,7 @@ Goal: intentionally find edge-case regressions.
   - multiple languages in one clip (code switching)
 
 Pass criteria:
+
 - App stays responsive; no hangs; no runaway CPU usage.
 - Post-process fails “gracefully” (minor formatting issues) rather than catastrophic distortion.
 
@@ -105,4 +108,3 @@ Keep a small set of clips you re-run after changes:
 - 2× AMI meeting overlap
 - 3× DNS synthetic at different SNRs (+10, +5, 0 dB)
 - 2× Non-speech (siren, keyboard typing)
-

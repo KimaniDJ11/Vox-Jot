@@ -7,8 +7,21 @@ APP_PATH="/Applications/${APP_NAME}.app"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_DIR="${VOX_JOT_CARGO_TARGET_DIR:-/tmp/vox-jot-release}"
 BUILT_APP_PATH="${TARGET_DIR}/release/bundle/macos/${APP_NAME}.app"
-SIGNING_IDENTITY="Apple Development: Kimani James (6B77K7V4Z9)"
+SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 TAURI_CONFIG_OVERRIDE='{"build":{"beforeBuildCommand":"echo frontend-build-ready"},"bundle":{"createUpdaterArtifacts":false}}'
+
+if [[ -z "${SIGNING_IDENTITY}" ]]; then
+  SIGNING_IDENTITY="$(
+    /usr/bin/security find-identity -v -p codesigning 2>/dev/null \
+      | /usr/bin/awk -F '"' '/Apple Development: / { print $2; exit }'
+  )"
+fi
+
+if [[ -n "${SIGNING_IDENTITY}" ]]; then
+  echo "Using Apple signing identity: ${SIGNING_IDENTITY}"
+else
+  echo "No Apple Development signing identity found. Falling back to ad-hoc signing."
+fi
 
 echo "Closing running ${APP_NAME} instances..."
 /usr/bin/osascript -e "tell application \"${APP_NAME}\" to quit" >/dev/null 2>&1 || true
@@ -51,6 +64,18 @@ if [[ ! -d "${BUILT_APP_PATH}" ]]; then
   exit 1
 fi
 
+echo "Signing built bundle..."
+if [[ -n "${SIGNING_IDENTITY}" ]]; then
+  /usr/bin/codesign \
+    --force \
+    --deep \
+    --sign "${SIGNING_IDENTITY}" \
+    --entitlements "${REPO_ROOT}/src-tauri/Entitlements.plist" \
+    "${BUILT_APP_PATH}"
+else
+  /usr/bin/codesign --force --deep --sign - "${BUILT_APP_PATH}"
+fi
+
 echo "Verifying built bundle signature..."
 /usr/bin/codesign --verify --deep --strict "${BUILT_APP_PATH}"
 
@@ -68,14 +93,20 @@ fi
 VERSION="$(/usr/bin/defaults read "${APP_PATH}/Contents/Info.plist" CFBundleShortVersionString)"
 SIGNING_INFO="$(/usr/bin/codesign -dv --verbose=4 "${APP_PATH}" 2>&1)"
 
-if ! /usr/bin/grep -Fq "${SIGNING_IDENTITY}" <<<"${SIGNING_INFO}"; then
-  echo "Installed app is not signed with the expected Apple Development identity." >&2
-  echo "${SIGNING_INFO}" >&2
-  exit 1
+if [[ -n "${SIGNING_IDENTITY}" ]]; then
+  if ! /usr/bin/grep -Fq "${SIGNING_IDENTITY}" <<<"${SIGNING_INFO}"; then
+    echo "Installed app is not signed with the expected Apple Development identity." >&2
+    echo "${SIGNING_INFO}" >&2
+    exit 1
+  fi
 fi
 
 echo "Installed ${APP_NAME} ${VERSION} at ${APP_PATH}"
-echo "Signing identity verified: ${SIGNING_IDENTITY}"
+if [[ -n "${SIGNING_IDENTITY}" ]]; then
+  echo "Signing identity verified: ${SIGNING_IDENTITY}"
+else
+  echo "Installed app uses ad-hoc signing."
+fi
 
 echo "Opening installed app..."
 /usr/bin/open -a "${APP_PATH}"

@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
 import { ConvoModeView } from "@/components/convo";
 
-import { commands, type Note } from "@/bindings";
-import { useSettings } from "@/hooks/useSettings";
+import { commands, type Note, type ScreenContextDiagnostics } from "@/bindings";
+import {
+  useSettings,
+  useSettingsSlice,
+  useUpdateSetting,
+} from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -57,6 +62,7 @@ import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { StylesSettings } from "@/components/settings/styles/StylesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
 import {
@@ -524,7 +530,10 @@ const CustomFillerWordsSetting: React.FC = () => {
 };
 
 export const RecordingDevicesSettingsSection: React.FC = () => {
-  const { audioFeedbackEnabled, settings } = useSettings();
+  const {
+    audio_feedback: audioFeedbackEnabled,
+    tts_enabled: ttsEnabled,
+  } = useSettingsSlice(["audio_feedback", "tts_enabled"] as const);
 
   return (
     <div className="space-y-6">
@@ -546,7 +555,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
         <OutputDeviceSelector
           descriptionMode="tooltip"
           grouped={true}
-          disabled={!(audioFeedbackEnabled || settings?.tts_enabled)}
+          disabled={!((audioFeedbackEnabled ?? false) || (ttsEnabled ?? false))}
         />
       </SettingsGroup>
 
@@ -761,8 +770,26 @@ export const DiagnosticsSettingsSection: React.FC = () => {
 };
 
 const ScreenContextSettingsCard: React.FC = () => {
-  const { getSetting, updateSetting, isUpdating } = useSettings();
-  const [diagnostics, setDiagnostics] = useState<any | null>(null);
+  const { t } = useTranslation();
+  const updateSetting = useUpdateSetting();
+  const isUpdating = useSettingsStore((state) => state.isUpdatingKey);
+  const {
+    context_capture_mode: captureModeValue,
+    screen_context_ocr_quality: ocrQualityValue,
+    screen_context_ocr_timeout_ms: ocrTimeoutValue,
+    screen_context_token_budget: tokenBudgetValue,
+    screen_context_stale_threshold_ms: staleThresholdValue,
+  } = useSettingsSlice(
+    [
+      "context_capture_mode",
+      "screen_context_ocr_quality",
+      "screen_context_ocr_timeout_ms",
+      "screen_context_token_budget",
+      "screen_context_stale_threshold_ms",
+    ] as const,
+  );
+  const [diagnostics, setDiagnostics] =
+    useState<ScreenContextDiagnostics | null>(null);
 
   const refreshDiagnostics = useCallback(async () => {
     const result = await commands.getScreenContextDiagnostics();
@@ -779,11 +806,11 @@ const ScreenContextSettingsCard: React.FC = () => {
     return () => window.clearInterval(id);
   }, [refreshDiagnostics]);
 
-  const captureMode = getSetting("context_capture_mode") ?? "always_frequent";
-  const ocrQuality = getSetting("screen_context_ocr_quality") ?? "balanced";
-  const ocrTimeout = getSetting("screen_context_ocr_timeout_ms") ?? 700;
-  const tokenBudget = getSetting("screen_context_token_budget") ?? 400;
-  const staleThreshold = getSetting("screen_context_stale_threshold_ms") ?? 2500;
+  const captureMode = captureModeValue ?? "always_frequent";
+  const ocrQuality = ocrQualityValue ?? "balanced";
+  const ocrTimeout = ocrTimeoutValue ?? 700;
+  const tokenBudget = tokenBudgetValue ?? 400;
+  const staleThreshold = staleThresholdValue ?? 2500;
 
   return (
     <div className="space-y-6">
@@ -827,7 +854,10 @@ const ScreenContextSettingsCard: React.FC = () => {
         <Slider
           value={ocrTimeout as number}
           onChange={(value) =>
-            void updateSetting("screen_context_ocr_timeout_ms", Math.round(value) as never)
+            void updateSetting(
+              "screen_context_ocr_timeout_ms",
+              Math.round(value) as never,
+            )
           }
           min={200}
           max={2000}
@@ -840,7 +870,10 @@ const ScreenContextSettingsCard: React.FC = () => {
         <Slider
           value={tokenBudget as number}
           onChange={(value) =>
-            void updateSetting("screen_context_token_budget", Math.round(value) as never)
+            void updateSetting(
+              "screen_context_token_budget",
+              Math.round(value) as never,
+            )
           }
           min={100}
           max={1200}
@@ -878,29 +911,33 @@ const ScreenContextSettingsCard: React.FC = () => {
       >
         <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
           <p>
-            Status:{" "}
+            {t("settings.screenContext.statusLabel")}{" "}
             <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.status ?? "unknown"}
+              {diagnostics?.status ?? t("settings.screenContext.statusUnknown")}
             </span>
           </p>
           <p>
-            Screen Recording permission:{" "}
+            {t("settings.screenContext.screenRecordingLabel")}{" "}
             <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.has_screen_permission ? "Granted" : "Missing"}
+              {diagnostics?.has_screen_permission
+                ? t("settings.screenContext.screenRecordingGranted")
+                : t("settings.screenContext.screenRecordingMissing")}
             </span>
           </p>
           <p>
-            Cache size:{" "}
+            {t("settings.screenContext.cacheSizeLabel")}{" "}
             <span className="font-semibold text-[var(--text)]">
               {diagnostics?.cache_size ?? 0}
             </span>
           </p>
           <p>
-            Latest context age:{" "}
+            {t("settings.screenContext.latestContextAgeLabel")}{" "}
             <span className="font-semibold text-[var(--text)]">
               {diagnostics?.latest_context_age_ms != null
-                ? `${diagnostics.latest_context_age_ms} ms`
-                : "Unavailable"}
+                ? t("settings.screenContext.latestContextAgeValue", {
+                    ms: diagnostics.latest_context_age_ms,
+                  })
+                : t("settings.screenContext.latestContextAgeUnavailable")}
             </span>
           </p>
           {diagnostics?.last_error ? (

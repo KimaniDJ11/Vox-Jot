@@ -25,6 +25,11 @@ import { Dropdown } from "../../ui/Dropdown";
 import { Input } from "../../ui/Input";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { Textarea } from "../../ui/Textarea";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 import { useSettings } from "../../../hooks/useSettings";
 import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
 
@@ -126,25 +131,31 @@ const ToneCard: React.FC<ToneCardProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <Button
             type="button"
             onClick={onEdit}
             disabled={disabled}
-            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-40"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
             title={t("common.edit")}
+            aria-label={t("common.edit")}
           >
             <Pencil className="h-3.5 w-3.5" />
-          </button>
+          </Button>
           {canDelete && (
-            <button
+            <Button
               type="button"
               onClick={onDelete}
               disabled={disabled}
-              className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] disabled:opacity-40"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
               title={t("common.delete")}
+              aria-label={t("common.delete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -233,7 +244,7 @@ const ToneEditor: React.FC<ToneEditorProps> = ({
                 </label>
                 <button
                   type="button"
-                  className="text-xs font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)]"
+                  className={`rounded-md px-1 py-0.5 text-xs font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] ${interactiveFocusRingClass}`}
                   onClick={() => {
                     if (!showIdField && !customId) {
                       setCustomId(initial?.id ?? normalizeToneId(label));
@@ -356,7 +367,7 @@ const AppPicker: React.FC<AppPickerProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 rounded p-0.5 text-[var(--muted)] hover:text-[var(--text)]"
+          className={`shrink-0 rounded-md p-1 text-[var(--muted)] hover:text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -374,7 +385,7 @@ const AppPicker: React.FC<AppPickerProps> = ({
               <button
                 type="button"
                 onClick={() => onSelect(app)}
-                className="flex w-full items-baseline gap-3 px-3 py-1.5 text-left text-sm transition-colors hover:bg-[var(--accent-soft)]"
+                className={`flex w-full items-baseline gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--accent-soft)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
               >
                 <span className="font-medium text-[var(--text)]">
                   {app.name}
@@ -433,15 +444,18 @@ const MappingRow: React.FC<MappingRowProps> = ({
         className="w-full"
       />
       <div className="flex items-center justify-end md:justify-center">
-        <button
+        <Button
           type="button"
           onClick={onDelete}
           disabled={disabled}
-          className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] transition-colors hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] disabled:opacity-40"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
           title={t("common.delete")}
+          aria-label={t("common.delete")}
         >
           <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -726,7 +740,7 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
             <button
               type="button"
               onClick={() => setMappingsExpanded((current) => !current)}
-              className="flex w-full items-center justify-between px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+              className={`flex w-full items-center justify-between rounded-2xl px-5 py-4 text-sm text-[var(--muted)] transition-colors hover:text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
             >
               <span>{t("settings.styles.mappings.description")}</span>
               {mappingsExpanded ? (

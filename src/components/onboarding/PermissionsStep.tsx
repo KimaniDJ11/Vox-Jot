@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { Check, Loader2, Info } from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
@@ -302,7 +303,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         currentStep="permissions"
         onBack={onBack}
         leftContent={
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div className="flex justify-center">
             <Loader2
               className="ob-spinner"
               size={32}
@@ -336,8 +337,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       );
     }
     return (
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <button className="ob-perm-allow-btn" onClick={onGrant}>
+      <div className="flex items-center">
+        <button
+          type="button"
+          className={`ob-perm-allow-btn ${interactiveFocusRingClass}`}
+          onClick={onGrant}
+        >
           {buttonLabel ||
             (isWin
               ? t("accessibility.openSettings")
@@ -345,7 +350,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         </button>
         <span className="ob-info-wrap">
           <button
-            className="ob-info-btn"
+            className={`ob-info-btn ${interactiveFocusRingClass}`}
             type="button"
             aria-label={t("onboarding.permissions.moreInfo")}
           >
@@ -429,13 +434,18 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           {(allGranted || showDevBypass) && (
             <div className="ob-bottom-actions">
               {allGranted && (
-                <button className="ob-btn-primary" onClick={onComplete}>
+                <button
+                  type="button"
+                  className={`ob-btn-primary ${interactiveFocusRingClass}`}
+                  onClick={onComplete}
+                >
                   {t("onboarding.permissions.continue")}
                 </button>
               )}
               {showDevBypass && (
                 <button
-                  className="ob-btn-secondary"
+                  type="button"
+                  className={`ob-btn-secondary ${interactiveFocusRingClass}`}
                   onClick={onComplete}
                   title={t("onboarding.permissions.devBypassHint", {
                     defaultValue:

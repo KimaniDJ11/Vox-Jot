@@ -101,7 +101,11 @@ const BRANDS: Record<string, BrandConfig> = {
   sber: { bg: "#21A038", fg: "#FFFFFF", letter: "G" },
   huggingface: { bg: "#FFD21E", fg: "#000000", letter: "HF" },
   hume: { bg: "#F43F5E", fg: "#FFFFFF", letter: "H" },
-  system: { bg: "#6B7280", fg: "#FFFFFF", letter: "OS" },
+  system: {
+    bg: "var(--text-subtle)",
+    fg: "var(--inverse-text)",
+    letter: "OS",
+  },
   sherpa: { bg: "#2563EB", fg: "#FFFFFF", letter: "S" },
   myshell: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M" },
   resemble: { bg: "#7C3AED", fg: "#FFFFFF", letter: "R" },
@@ -115,8 +119,8 @@ const BRANDS: Record<string, BrandConfig> = {
   ming: { bg: "#92400E", fg: "#FFFFFF", letter: "M" },
   kugelaudio: { bg: "#1F2937", fg: "#FFFFFF", letter: "K" },
   ollama: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "O" },
-  custom: { bg: "#6B7280", fg: "#FFFFFF", letter: "C" },
-  generic: { bg: "#6B7280", fg: "#FFFFFF", letter: "?" },
+  custom: { bg: "var(--accent-2)", fg: "var(--inverse-text)", letter: "C" },
+  generic: { bg: "var(--muted)", fg: "var(--inverse-text)", letter: "?" },
 };
 
 // ---------- Provider ID → Brand Key Mapping ----------

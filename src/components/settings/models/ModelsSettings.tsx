@@ -407,7 +407,10 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {currentModelCatalog ? (
-              <ProviderIcon providerId={currentModelCatalog.provider_id} size="md" />
+              <ProviderIcon
+                providerId={currentModelCatalog.provider_id}
+                size="md"
+              />
             ) : null}
             <p className="text-lg font-bold text-[var(--text)]">
               {currentModelInfo.name}

@@ -46,7 +46,11 @@ import { OnboardingWizard } from "./components/onboarding";
 import { Sidebar, type SidebarItem } from "./components/Sidebar";
 import { Button } from "./components/ui/Button";
 import { Textarea } from "./components/ui/Textarea";
-import { useSettings } from "./hooks/useSettings";
+import {
+  useRefreshSettings,
+  useSettingsSlice,
+  useUpdateSetting,
+} from "./hooks/useSettings";
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
@@ -105,9 +109,7 @@ const SectionHeader: React.FC<{ id: string; title: string }> = ({
 }) => (
   <div className="px-1">
     <div className="flex items-center justify-between gap-4">
-      <h2
-        className="heading-display text-2xl font-semibold tracking-tight text-[var(--text)]"
-      >
+      <h2 className="heading-display text-2xl font-semibold tracking-tight text-[var(--text)]">
         {title}
       </h2>
       <div
@@ -197,7 +199,21 @@ function App() {
       return false;
     }
   });
-  const { settings, updateSetting, refreshSettings } = useSettings();
+  const updateSetting = useUpdateSetting();
+  const refreshSettings = useRefreshSettings();
+  const {
+    app_theme: appTheme,
+    debug_mode: debugMode,
+    selected_language: selectedLanguage,
+    translation_target_language: translationTargetLanguage,
+  } = useSettingsSlice(
+    [
+      "app_theme",
+      "debug_mode",
+      "selected_language",
+      "translation_target_language",
+    ] as const,
+  );
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
   const refreshAudioDevices = useSettingsStore(
@@ -477,13 +493,13 @@ function App() {
   }, [i18n.language]);
 
   useEffect(() => {
-    const theme = settings?.app_theme ?? "system";
+    const theme = appTheme ?? "system";
     if (theme === "system") {
       document.documentElement.removeAttribute("data-theme");
     } else {
       document.documentElement.setAttribute("data-theme", theme);
     }
-  }, [settings?.app_theme]);
+  }, [appTheme]);
 
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {
@@ -504,10 +520,10 @@ function App() {
   ]);
 
   // Use a ref to track debug_mode so the listener doesn't tear down on every toggle
-  const debugModeRef = useRef(settings?.debug_mode ?? false);
+  const debugModeRef = useRef(debugMode ?? false);
   useEffect(() => {
-    debugModeRef.current = settings?.debug_mode ?? false;
-  }, [settings?.debug_mode]);
+    debugModeRef.current = debugMode ?? false;
+  }, [debugMode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -650,20 +666,16 @@ function App() {
     }
 
     const sourceLocale =
-      settings?.selected_language && settings.selected_language !== "auto"
-        ? settings.selected_language
+      selectedLanguage && selectedLanguage !== "auto"
+        ? selectedLanguage
         : null;
 
     if (pendingPreview.origin?.startsWith("translation")) {
-      return settings?.translation_target_language ?? sourceLocale;
+      return translationTargetLanguage ?? sourceLocale;
     }
 
     return sourceLocale;
-  }, [
-    pendingPreview,
-    settings?.selected_language,
-    settings?.translation_target_language,
-  ]);
+  }, [pendingPreview, selectedLanguage, translationTargetLanguage]);
 
   const handlePreviewSpeak = useCallback(async () => {
     if (!previewDraft.trim()) {
@@ -716,13 +728,12 @@ function App() {
               hasMicrophone,
               hasInputMonitoring,
               hasScreenRecording,
-            ] =
-              await Promise.all([
-                checkAccessibilityPermission(),
-                checkMicrophonePermission(),
-                checkInputMonitoringPermission(),
-                checkScreenRecordingPermission(),
-              ]);
+            ] = await Promise.all([
+              checkAccessibilityPermission(),
+              checkMicrophonePermission(),
+              checkInputMonitoringPermission(),
+              checkScreenRecordingPermission(),
+            ]);
             if (
               !hasAccessibility ||
               !hasMicrophone ||
@@ -808,7 +819,12 @@ function App() {
         return;
       }
 
-      if (view === "dictate" || view === "refine" || view === "listen" || view === "convo") {
+      if (
+        view === "dictate" ||
+        view === "refine" ||
+        view === "listen" ||
+        view === "convo"
+      ) {
         handleModeSelect(view);
       }
     });

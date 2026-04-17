@@ -33,9 +33,7 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   "stt-models": {
     title: "Speech Models",
     component: () => (
-      <DictateModelsSection
-        titleActionTargetId="stt-models-section-actions"
-      />
+      <DictateModelsSection titleActionTargetId="stt-models-section-actions" />
     ),
   },
   "llm-models": {

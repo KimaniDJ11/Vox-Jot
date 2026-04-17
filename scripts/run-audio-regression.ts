@@ -74,6 +74,11 @@ interface ReportSummary {
   improved_entries: number;
   worsened_entries: number;
   unchanged_entries: number;
+  stt_latency_ms_p50: number;
+  stt_latency_ms_p95: number;
+  stt_latency_ms_max: number;
+  stt_rtf_p50: number;
+  stt_rtf_p95: number;
 }
 
 interface RegressionReport {
@@ -126,6 +131,11 @@ function buildMarkdownSummary(report: RegressionReport): string {
   lines.push(`| Improved | ${s.improved_entries} |`);
   lines.push(`| Worsened | ${s.worsened_entries} |`);
   lines.push(`| Unchanged | ${s.unchanged_entries} |`);
+  lines.push(`| STT latency p50 | ${s.stt_latency_ms_p50} ms |`);
+  lines.push(`| STT latency p95 | ${s.stt_latency_ms_p95} ms |`);
+  lines.push(`| STT latency max | ${s.stt_latency_ms_max} ms |`);
+  lines.push(`| STT RTF p50 | ${s.stt_rtf_p50.toFixed(2)}x |`);
+  lines.push(`| STT RTF p95 | ${s.stt_rtf_p95.toFixed(2)}x |`);
   lines.push("");
 
   // --- Route distribution ---

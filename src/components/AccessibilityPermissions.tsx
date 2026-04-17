@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { type } from "@tauri-apps/plugin-os";
 
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -47,11 +50,13 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
   const isMacOS = type() === "macos";
 
   const refreshPermissions = async (): Promise<void> => {
-    const [accessibility, inputMonitoring, screenRecording] = await Promise.all([
-      checkAccessibilityPermission(),
-      checkInputMonitoringPermission(),
-      checkScreenRecordingPermission(),
-    ]);
+    const [accessibility, inputMonitoring, screenRecording] = await Promise.all(
+      [
+        checkAccessibilityPermission(),
+        checkInputMonitoringPermission(),
+        checkScreenRecordingPermission(),
+      ],
+    );
 
     setPermissions({
       accessibility,

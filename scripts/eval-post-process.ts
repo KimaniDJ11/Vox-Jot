@@ -370,8 +370,7 @@ function analyzeRoute(text: string, maxStrength: number): RouteAnalysis {
 // ---------------------------------------------------------------------------
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
-  neutral:
-    "Keep the tone neutral and close to the speaker's original wording.",
+  neutral: "Keep the tone neutral and close to the speaker's original wording.",
   casual:
     "Use a casual, conversational tone suitable for quick chat messages while preserving meaning.",
   professional:
@@ -380,7 +379,7 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
     "Format the text as precise technical writing suited for code editors and terminals. " +
     "Use exact technical terms, preserve variable and function names verbatim, " +
     "format code snippets with proper syntax, and keep comments concise. " +
-    'Convert spoken code descriptions into valid code when the intent is clear ' +
+    "Convert spoken code descriptions into valid code when the intent is clear " +
     '(e.g., "define a function called foo that takes a string" → "fn foo(s: &str)"). ' +
     "Prefer lowercase and avoid unnecessary punctuation.",
 };

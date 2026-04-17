@@ -5,14 +5,20 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFER
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Instant;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::Sender;
 
 /// Sink that receives the *accumulated* LLM output each time new tokens arrive.
 /// Used by callers that want to drive progressive UI (overlay) while the request
 /// is still in flight. When the underlying provider does not support streaming,
 /// the sink is invoked exactly once with the final content before the function
 /// returns.
-pub type ChunkSink = UnboundedSender<String>;
+pub type ChunkSink = Sender<String>;
+
+async fn forward_chunk(tx: &ChunkSink, chunk: String) {
+    if tx.send(chunk).await.is_err() {
+        debug!("Chunk receiver dropped before the latest streaming update could be delivered");
+    }
+}
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -301,7 +307,7 @@ pub async fn send_chat_completion_with_schema_streaming(
     // Non-streaming providers can still drive progressive UI by emitting the
     // final content as a single chunk. Callers that don't care just pass None.
     if let (Some(tx), Some(final_content)) = (chunk_tx.as_ref(), content.as_ref()) {
-        let _ = tx.send(final_content.clone());
+        forward_chunk(tx, final_content.clone()).await;
     }
 
     Ok(content)
@@ -457,7 +463,7 @@ async fn send_ollama_chat_completion(
                     }
                     content.push_str(&message);
                     if let Some(tx) = chunk_tx.as_ref() {
-                        let _ = tx.send(content.clone());
+                        forward_chunk(tx, content.clone()).await;
                     }
                 }
             }
@@ -492,7 +498,7 @@ async fn send_ollama_chat_completion(
                 }
                 content.push_str(&message);
                 if let Some(tx) = chunk_tx.as_ref() {
-                    let _ = tx.send(content.clone());
+                    forward_chunk(tx, content.clone()).await;
                 }
             }
         }

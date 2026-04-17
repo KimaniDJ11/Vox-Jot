@@ -130,6 +130,12 @@
         "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
         "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
         "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app."
+      },
+      "screenRecording": {
+        "title": "Screen Recording",
+        "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
+        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating."
       }
     },
     "steps": {
@@ -331,7 +337,9 @@
       },
       "noModelsMatch": "Nessun modello corrisponde a questo filtro.",
       "yourModels": "Modelli scaricati",
-      "availableModels": "Disponibili per il Download"
+      "availableModels": "Disponibili per il Download",
+      "activeSpeechModel": "Active Speech Model",
+      "clearFilterHint": "Clear the language filter to browse the full model list again."
     },
     "general": {
       "title": "Generale",
@@ -408,6 +416,10 @@
       "volume": {
         "title": "Volume",
         "description": "Regola il volume del feedback audio"
+      },
+      "audioEnhancement": {
+        "label": "Noise Reduction (RNNoise)",
+        "description": "Denoise microphone audio before speech detection and transcription."
       }
     },
     "advanced": {
@@ -442,6 +454,12 @@
           "none": "Nessuna",
           "bottom": "In basso",
           "top": "In alto"
+        },
+        "style": {
+          "title": "Overlay Style",
+          "description": "Minimal shows only a small pill with level bars. Detailed adds full level meters and live partial text.",
+          "compact": "Minimal",
+          "detailed": "Detailed"
         }
       },
       "pasteMethod": {
@@ -509,6 +527,15 @@
         "add": "Aggiungi",
         "remove": "Rimuovi {{word}}",
         "duplicate": "\"{{word}}\" esiste già"
+      },
+      "theme": {
+        "title": "Theme",
+        "description": "Choose the app appearance.",
+        "options": {
+          "light": "Light",
+          "dark": "Dark",
+          "system": "System"
+        }
       }
     },
     "postProcessing": {
@@ -900,6 +927,86 @@
     },
     "experimental": {
       "title": "Laboratorio"
+    },
+    "globalLanguageSync": {
+      "syncAutomatically": "Sync future app-language changes automatically"
+    },
+    "refineModels": {
+      "title": "Refine Models",
+      "description": "Pick one cleanup model list without thinking about where it comes from first. Vox Jot handles the right runtime action behind each button.",
+      "refresh": "Refresh",
+      "search": {
+        "title": "Search refine models",
+        "description": "Filter by model name, source, runtime, or repo.",
+        "placeholder": "Try: qwen, nemotron, ollama, lm studio"
+      },
+      "sections": {
+        "readyNow": "Ready Now",
+        "readyNowDescription": "These models are already available on this Mac and can be activated immediately.",
+        "readyNowEmpty": "No ready refine models yet.",
+        "readyNowEmptyDescription": "Download one below, start a local provider, or import a GGUF from Hugging Face.",
+        "availableToAdd": "Available To Add",
+        "availableToAddDescription": "These entries can be downloaded into Ollama and selected automatically when the install finishes.",
+        "availableToAddEmpty": "No downloadable refine models match this search.",
+        "availableToAddEmptyDescription": "Try a different search term or import a custom Hugging Face GGUF below."
+      },
+      "badges": {
+        "ready": "Ready",
+        "active": "Active",
+        "needsDownload": "Needs download",
+        "needsSetup": "Needs setup"
+      },
+      "actions": {
+        "active": "Active",
+        "use": "Use",
+        "switching": "Switching...",
+        "downloadAndUse": "Download & Use",
+        "installOllama": "Install Ollama",
+        "startOllama": "Start Ollama",
+        "unavailable": "Unavailable",
+        "preparing": "Preparing...",
+        "downloading": "Downloading {{percent}}%",
+        "importing": "Importing...",
+        "installingIntoOllama": "Installing into Ollama..."
+      },
+      "customImport": {
+        "title": "Custom Import",
+        "description": "Bring in any Hugging Face GGUF repo, install it into Ollama, and switch Vox Jot to it in one flow.",
+        "importDescription": "Import a GGUF without leaving settings",
+        "importHint": "Paste a Hugging Face repo like <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Leave the file blank to let Vox Jot pick a sensible GGUF automatically.",
+        "repoLabel": "Hugging Face repo",
+        "repoPlaceholder": "org/model-GGUF",
+        "modelNameLabel": "Ollama model name",
+        "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
+        "fileLabel": "GGUF file",
+        "filePlaceholder": "Optional .gguf file name",
+        "runtimeTarget": "Runtime target",
+        "runtimeDescription": "Imports are installed into Ollama, then selected as the active refine model.",
+        "importAndUse": "Import & Use",
+        "importingCustom": "Importing..."
+      },
+      "source": "Source: {{repoId}}",
+      "loading": "Loading refine models...",
+      "toast": {
+        "activated": "{{title}} is now the active refine model.",
+        "installed": "{{title}} was downloaded and selected.",
+        "activateError": "Failed to activate refine model.",
+        "installError": "Failed to install refine model.",
+        "importError": "Failed to import Hugging Face GGUF.",
+        "importSuccess": "{{modelId}} was imported into Ollama and selected.",
+        "enterRepo": "Enter a Hugging Face repo ID first."
+      }
+    },
+    "screenContext": {
+      "statusLabel": "Status:",
+      "statusUnknown": "unknown",
+      "screenRecordingLabel": "Screen Recording permission:",
+      "screenRecordingGranted": "Granted",
+      "screenRecordingMissing": "Missing",
+      "cacheSizeLabel": "Cache size:",
+      "latestContextAgeLabel": "Latest context age:",
+      "latestContextAgeValue": "{{ms}} ms",
+      "latestContextAgeUnavailable": "Unavailable"
     }
   },
   "footer": {
@@ -949,7 +1056,8 @@
     "permissionsDescription": "Vox Jot ha bisogno dei permessi di accessibilità per digitare il testo trascritto.",
     "openSettings": "Apri Impostazioni di Sistema",
     "dismiss": "Ignora",
-    "permissionsTitle": "macOS permissions need attention"
+    "permissionsTitle": "macOS permissions need attention",
+    "permissionNeeded": "Permission Needed"
   },
   "errors": {
     "loadDirectory": "Errore di caricamento cartella: {{error}}",
@@ -993,7 +1101,12 @@
     "qualityEst": "quality est",
     "speedEst": "speed est",
     "pullError": "Could not start model download. Ensure Ollama is running and try again.",
-    "activateError": "Could not activate this model. Please try again."
+    "activateError": "Could not activate this model. Please try again.",
+    "activeRefineModel": "Active Refine Model",
+    "ollamaBadge": "Ollama",
+    "localOllamaModel": "Local Ollama Model",
+    "quality": "Quality",
+    "speed": "Speed"
   },
   "jotPad": {
     "newNote": "New note",
@@ -1005,5 +1118,126 @@
     "createFirst": "Create a note",
     "pin": "Pin",
     "unpin": "Unpin"
+  },
+  "convo": {
+    "title": "Convo",
+    "selection": {
+      "label": "Selection",
+      "title": "Selection",
+      "emptyState": "Highlight text in any app, then start a conversation about it.",
+      "pastePrompt": "Or paste text below to discuss:",
+      "refreshSelection": "Refresh Selection",
+      "copyLastReply": "Copy Last Reply",
+      "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
+      "copiedReply": "Copied the last reply."
+    },
+    "jotpad": {
+      "label": "Jot Pad",
+      "title": "Jot Pad",
+      "emptyState": "Start a conversation about your current note.",
+      "replaceNote": "Replace Note",
+      "appendToNote": "Append to Note",
+      "copyDraft": "Copy Draft",
+      "noteReplaced": "Replaced the current note.",
+      "noteReplaceFailed": "Couldn't replace the note.",
+      "noteAppended": "Appended the draft to the note.",
+      "noteAppendFailed": "Couldn't append to the note.",
+      "draftCopied": "Copied the draft."
+    },
+    "settingsCoach": {
+      "label": "Settings Coach",
+      "title": "Settings Coach",
+      "emptyState": "Ask me anything about Vox Jot's features and settings.",
+      "openFailed": "Couldn't open that settings section."
+    },
+    "filesContext": {
+      "label": "Files & Context",
+      "title": "Files & Context",
+      "emptyState": "Paste text, attach files, or select a folder to discuss.",
+      "attachFiles": "Attach Files",
+      "attachFolder": "Attach Folder",
+      "pasteText": "Paste Text",
+      "cancel": "Cancel",
+      "charCount": "({{count}}k)"
+    },
+    "common": {
+      "speakReplies": "Speak Replies",
+      "resetConversation": "Reset Conversation",
+      "typeMessage": "Type a message...",
+      "send": "Send",
+      "holdToSpeak": "Hold to speak",
+      "recording": "Recording...",
+      "thinking": "Thinking...",
+      "unavailable": "PersonaPlex conversation requires Apple Silicon (M1 or later).",
+      "helperNotRunning": "PersonaPlex helper is not running. Start the audio-server on port 8765.",
+      "helperStarting": "Starting PersonaPlex helper...",
+      "helperStartFailed": "Couldn't start the PersonaPlex audio helper.",
+      "sendFailed": "The assistant couldn't respond to that message.",
+      "audioCaptureFailed": "Couldn't start audio capture. Check microphone permissions.",
+      "audioTurnFailed": "The audio turn failed. Try again or type instead."
+    }
+  },
+  "listen": {
+    "tuning": {
+      "styleInstructions": "Style Instructions"
+    },
+    "myVoices": {
+      "active": "Active",
+      "activePreset": "Active preset: <bold>{{name}}</bold>",
+      "saveAs": "Save As",
+      "previewText": "Preview Text",
+      "preview": "Preview",
+      "stop": "Stop",
+      "draftModeHint": "Provider and model changes stay in draft mode until you save them as a new voice profile.",
+      "savedProfiles": "Profiles",
+      "saveCurrent": "Save Current",
+      "new": "New",
+      "refresh": "Refresh",
+      "clone": "Clone",
+      "useThisVoice": "Use This Voice"
+    },
+    "soundTuning": {
+      "tuneTitle": "Tune the active profile and listen immediately",
+      "activeProfileIs": "The active profile is",
+      "previewFromHere": ". Preview from here while you adjust the delivery sliders below.",
+      "preview": "Preview",
+      "stop": "Stop",
+      "previewText": "Preview Text"
+    },
+    "packManager": {
+      "title": "Pack Manager",
+      "description": "Download or remove offline speech packs without leaving Settings.",
+      "remove": "Remove",
+      "download": "Download"
+    },
+    "engineLibrary": {
+      "allLanguages": "All Languages",
+      "activeListenModel": "Active Listen Model",
+      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+    },
+    "voiceCloning": {
+      "cloneProfiles": "Clone Profiles",
+      "cloneProfilesDescription": "Create reusable voice-clone source profiles, then turn any ready profile into a saved voice preset.",
+      "refresh": "Refresh",
+      "createPreset": "Create preset",
+      "importWav": "Import WAV",
+      "deleteProfile": "Delete profile",
+      "transcriptHint": "Transcript: Optional, but helpful for clone quality.",
+      "improveFromDictations": "Improve from my dictations",
+      "improveFromDictationsDescription": "Uses your speech-to-text dictations to refine this clone locally.",
+      "clearCollectedData": "Clear collected data",
+      "cloningInactiveHint": "Voice cloning becomes active when a preset or model uses `Qwen3 0.6B Base`.",
+      "createProfile": "Create Profile",
+      "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
+      "createProfileButton": "Create profile",
+      "importWavIntoLatest": "Import WAV into latest",
+      "cloneTarget": "Clone Target",
+      "nextStep": "Next Step",
+      "fullyOptimized": "Fully optimized",
+      "readyForCloning": "Ready for cloning",
+      "needsReferenceAudio": "Needs reference audio",
+      "audioFile": "Audio file",
+      "transcript": "Transcript"
+    }
   }
 }

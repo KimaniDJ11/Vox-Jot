@@ -21,7 +21,9 @@ export const SelectionContextCard: React.FC<SelectionContextCardProps> = ({
 
   const displayText = text || "";
   const shouldTruncate = displayText.length > 300 && !expanded;
-  const shown = shouldTruncate ? displayText.slice(0, 300) + "\u2026" : displayText;
+  const shown = shouldTruncate
+    ? displayText.slice(0, 300) + "\u2026"
+    : displayText;
 
   if (showPasteBox) {
     return (

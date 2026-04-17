@@ -131,28 +131,30 @@ const OllamaSettings: React.FC = () => {
             <p className="text-sm text-[var(--text)]">
               {t("ollama.notInstalled")}
             </p>
-            <button
+            <Button
               type="button"
               onClick={installOllama}
               disabled={isInstalling}
-              className="px-4 py-2 rounded-full text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              size="sm"
+              variant="primary"
             >
               {isInstalling ? t("ollama.installing") : t("ollama.install")}
-            </button>
+            </Button>
           </div>
         ) : !isRunning ? (
           <div className="flex flex-wrap items-center justify-between gap-3 py-1">
             <p className="text-sm text-[var(--text)]">
               {t("ollama.notRunning")}
             </p>
-            <button
+            <Button
               type="button"
               onClick={startServe}
               disabled={isChecking}
-              className="px-4 py-2 rounded-full text-sm font-semibold bg-logo-primary text-[var(--inverse-text)] hover:bg-logo-primary/90 disabled:opacity-50 transition-colors"
+              size="sm"
+              variant="primary"
             >
               {isChecking ? t("ollama.checking") : t("ollama.start")}
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="flex items-center py-1 md:hidden">
@@ -232,7 +234,7 @@ const OllamaSettings: React.FC = () => {
                       key={model.id}
                       className={`flex h-full min-w-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left shadow-[var(--shadow-sm)] transition-all duration-200 ${
                         !isActive
-                          ? "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group"
+                          ? "cursor-pointer group hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:bg-[var(--accent-soft)] hover:shadow-md"
                           : ""
                       }`}
                     >
@@ -265,7 +267,7 @@ const OllamaSettings: React.FC = () => {
                             </p>
                             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
-                                className="h-full rounded-full bg-logo-primary"
+                                className="h-full rounded-full bg-[var(--accent)]"
                                 style={{ width: `${score.quality * 100}%` }}
                               />
                             </div>
@@ -276,7 +278,7 @@ const OllamaSettings: React.FC = () => {
                             </p>
                             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                               <div
-                                className="h-full rounded-full bg-logo-primary"
+                                className="h-full rounded-full bg-[var(--accent)]"
                                 style={{ width: `${score.speed * 100}%` }}
                               />
                             </div>
@@ -295,21 +297,27 @@ const OllamaSettings: React.FC = () => {
                             </span>
                           ) : null}
                           {!isActive && (
-                            <button
+                            <Button
+                              type="button"
                               onClick={() => handleActivateModel(model.id)}
-                              className="rounded-md px-2 py-0.5 text-[var(--text)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                              variant="ghost"
+                              size="sm"
+                              className="min-h-0 rounded-md border-transparent px-2 py-0.5 text-xs text-[var(--text)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                             >
                               <span>{t("ollama.setActive")}</span>
-                            </button>
+                            </Button>
                           )}
-                          <button
+                          <Button
+                            type="button"
                             onClick={() => deleteModel(model.id)}
                             title={t("common.delete")}
                             aria-label={t("common.delete")}
-                            className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--accent)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="ml-auto rounded-md border-transparent text-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
 
@@ -317,7 +325,7 @@ const OllamaSettings: React.FC = () => {
                         <div className="w-full">
                           <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                              className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
                               style={{ width: `${progress}%` }}
                             />
                           </div>
@@ -349,7 +357,7 @@ const OllamaSettings: React.FC = () => {
                 return (
                   <div
                     key={model.id}
-                    className="flex h-full min-w-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left shadow-[var(--shadow-sm)] transition-all duration-200 cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group"
+                    className="group flex h-full min-w-0 cursor-pointer flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--accent),transparent_50%)] hover:bg-[var(--accent-soft)] hover:shadow-md"
                   >
                     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
@@ -375,7 +383,7 @@ const OllamaSettings: React.FC = () => {
                           </p>
                           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div
-                              className="h-full rounded-full bg-logo-primary"
+                              className="h-full rounded-full bg-[var(--accent)]"
                               style={{ width: `${score.quality * 100}%` }}
                             />
                           </div>
@@ -386,7 +394,7 @@ const OllamaSettings: React.FC = () => {
                           </p>
                           <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
                             <div
-                              className="h-full rounded-full bg-logo-primary"
+                              className="h-full rounded-full bg-[var(--accent)]"
                               style={{ width: `${score.speed * 100}%` }}
                             />
                           </div>
@@ -408,15 +416,18 @@ const OllamaSettings: React.FC = () => {
                             })}
                           </span>
                         ) : (
-                          <button
+                          <Button
+                            type="button"
                             onClick={() => handlePullModel(model.id)}
                             disabled={pullingModels.size > 0}
                             title={t("ollama.download")}
                             aria-label={t("ollama.download")}
-                            className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--text)] transition-colors hover:bg-logo-primary/10 hover:text-[var(--accent)] disabled:opacity-50"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="ml-auto rounded-md border-transparent text-[var(--text)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                           >
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
+                            <Download className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -425,7 +436,7 @@ const OllamaSettings: React.FC = () => {
                       <div className="w-full">
                         <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-logo-primary rounded-full transition-all duration-300"
+                            className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
                             style={{ width: `${progress}%` }}
                           />
                         </div>

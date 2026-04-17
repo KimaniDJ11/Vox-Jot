@@ -2,7 +2,10 @@ import React from "react";
 import { ArrowRight } from "lucide-react";
 
 import { commands } from "@/bindings";
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface ShowMoreFooterProps {
   /** The detail-view section ID (e.g. "history", "phrase-keys"). */

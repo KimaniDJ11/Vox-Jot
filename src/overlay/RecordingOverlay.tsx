@@ -30,8 +30,7 @@ const RecordingOverlay: React.FC = () => {
   const smoothedRef = useRef<number[]>(Array(BAR_COUNT_DETAILED).fill(0));
   const direction = getLanguageDirection(i18n.language);
 
-  const barCount =
-    style === "compact" ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED;
+  const barCount = style === "compact" ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED;
 
   useEffect(() => {
     const setup = async () => {
@@ -83,6 +82,7 @@ const RecordingOverlay: React.FC = () => {
   const overlayClass = [
     "recording-overlay",
     isCompact ? "recording-overlay--compact" : "",
+    !isCompact && state === "recording" ? "is-interactive" : "",
     isVisible ? "fade-in" : "",
   ]
     .filter(Boolean)

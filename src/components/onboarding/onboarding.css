@@ -1,14 +1,14 @@
 /* ── Onboarding Design Tokens ────────────────────────────── */
 :root {
-  --ob-primary: #27408b;
-  --ob-primary-hover: #1e3370;
-  --ob-primary-light: rgba(39, 64, 139, 0.1);
-  --ob-white: #ffffff;
-  --ob-bg-right: rgba(250, 245, 236, 0.84);
-  --ob-text: #253247;
-  --ob-text-muted: #657286;
-  --ob-border: rgba(39, 64, 139, 0.15);
-  --ob-success: #16a34a;
+  --ob-primary: var(--accent);
+  --ob-primary-hover: var(--accent-hover);
+  --ob-primary-light: var(--accent-soft);
+  --ob-white: var(--inverse-text);
+  --ob-bg-right: color-mix(in srgb, var(--panel-bg) 84%, transparent 16%);
+  --ob-text: var(--text);
+  --ob-text-muted: var(--muted);
+  --ob-border: color-mix(in srgb, var(--accent) 15%, transparent);
+  --ob-success: var(--success);
   --ob-radius: 14px;
 }
 
@@ -222,7 +222,7 @@
 
 .ob-btn-secondary:hover {
   color: var(--ob-text);
-  background: rgba(39, 64, 139, 0.08);
+  background: var(--ob-primary-light);
 }
 
 /* ── Permission card ─────────────────────────────────────── */
@@ -272,7 +272,7 @@
 }
 
 .ob-perm-allow-btn:hover {
-  background: rgba(53, 92, 186, 0.12);
+  background: var(--ob-primary-light);
   border-color: var(--ob-primary);
   color: var(--ob-primary);
 }
@@ -324,7 +324,7 @@
   width: min(260px, calc(100vw - 32px));
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 84%);
   background: var(--card);
   color: var(--text);
   font-size: 12px;
@@ -505,7 +505,7 @@
   margin-top: 24px;
   padding: 16px 18px;
   border-radius: 12px;
-  background: rgba(53, 92, 186, 0.12);
+  background: var(--ob-primary-light);
 }
 
 .ob-note-title {
@@ -528,7 +528,7 @@
   padding: 6px 10px;
   border: 1px solid var(--ob-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.74);
+  background: color-mix(in srgb, var(--card) 74%, transparent 26%);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 14px;
   font-weight: 600;
@@ -701,7 +701,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(9, 15, 29, 0.72);
+  background: color-mix(in srgb, var(--bg) 72%, transparent 28%);
   border: 1px solid var(--ob-border);
   border-radius: 20px;
   padding: 6px 14px;

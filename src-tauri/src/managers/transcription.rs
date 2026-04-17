@@ -963,7 +963,10 @@ impl TranscriptionManager {
             // If the model is loading, wait for it to complete.
             let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
             while *is_loading {
-                is_loading = self.loading_condvar.wait(is_loading).unwrap();
+                is_loading = self
+                    .loading_condvar
+                    .wait(is_loading)
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
             }
 
             let engine_guard = self.lock_engine();

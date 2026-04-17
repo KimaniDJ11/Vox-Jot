@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Info } from "lucide-react";
 
-import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 
 import Badge from "./Badge";
 import { Tooltip } from "./Tooltip";
@@ -89,7 +92,9 @@ export const CompactBadgeRow: React.FC<{
           variant={item.variant ?? "secondary"}
           className="max-w-[9.5rem] shrink-0 truncate"
         >
-          {item.icon ? <span className="mr-1 shrink-0">{item.icon}</span> : null}
+          {item.icon ? (
+            <span className="mr-1 shrink-0">{item.icon}</span>
+          ) : null}
           <span className="truncate">{item.label}</span>
         </Badge>
       ))}

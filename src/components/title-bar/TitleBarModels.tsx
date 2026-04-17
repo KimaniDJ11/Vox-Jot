@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 import ModelSelector from "../model-selector";
 import ModelStatusButton from "../model-selector/ModelStatusButton";
 import { ProviderIcon } from "../ui/ProviderIcon";

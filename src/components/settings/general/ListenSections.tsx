@@ -18,7 +18,14 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { commands, type TtsPackInfo, type VoiceInfo } from "@/bindings";
+import {
+  commands,
+  type TtsAutoReadbackMode,
+  type TtsAutoReadbackScope,
+  type TtsPackInfo,
+  type TtsReadbackTextMode,
+  type VoiceInfo,
+} from "@/bindings";
 import { useSettings } from "@/hooks/useSettings";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { SettingContainer } from "@/components/ui/SettingContainer";
@@ -512,9 +519,7 @@ function useListenSpeechState() {
   }, [settings, refreshAll]);
 
   const activePresetId =
-    ((settings as any)?.tts_active_preset_id as string | null | undefined) ??
-    presets[0]?.id ??
-    null;
+    settings?.tts_active_preset_id ?? presets[0]?.id ?? null;
   const activePreset =
     presets.find((preset) => preset.id === activePresetId) ??
     presets[0] ??
@@ -603,10 +608,11 @@ function useListenSpeechState() {
       label: `${voice.label}${localeLabel(voice.locale)}`,
     })),
   ];
-  const activeCloneModel =
-    activeModel?.capabilities.supports_voice_cloning ? activeModel : null;
-  const compatibleProfiles = profiles.filter(
-    (profile) => profileSupportsModel(profile, activeCloneModel),
+  const activeCloneModel = activeModel?.capabilities.supports_voice_cloning
+    ? activeModel
+    : null;
+  const compatibleProfiles = profiles.filter((profile) =>
+    profileSupportsModel(profile, activeCloneModel),
   );
   const profileOptions = [
     { value: "__none__", label: "No clone profile" },
@@ -1131,7 +1137,9 @@ const VoiceTuningCard: React.FC<{
 
       {controlIds.has("style_instructions") ? (
         <div className="mt-3 space-y-2">
-          <p className={workflowFieldLabelClassName}>{t('listen.tuning.styleInstructions')}</p>
+          <p className={workflowFieldLabelClassName}>
+            {t("listen.tuning.styleInstructions")}
+          </p>
           <Textarea
             value={preset.tuning.style_instructions ?? ""}
             onChange={(event) =>
@@ -1166,7 +1174,9 @@ const VoiceArchitectSection: React.FC<{
     return buildVoiceArchitectDraftFromPreset(speech.activePreset);
   }, [speech.activePreset]);
   const [saveProfileNameDraft, setSaveProfileNameDraft] = useState("");
-  const [draftProviderId, setDraftProviderId] = useState(initialDraft.providerId);
+  const [draftProviderId, setDraftProviderId] = useState(
+    initialDraft.providerId,
+  );
   const [draftModelId, setDraftModelId] = useState(initialDraft.modelId);
   const [draftVoiceId, setDraftVoiceId] = useState(initialDraft.voiceId);
   const [draftVoiceProfileId, setDraftVoiceProfileId] = useState(
@@ -1174,8 +1184,9 @@ const VoiceArchitectSection: React.FC<{
   );
   const [draftVoices, setDraftVoices] = useState<VoiceInfo[]>([]);
   const [loadingDraftVoices, setLoadingDraftVoices] = useState(false);
-  const [draftVoiceErrorMessage, setDraftVoiceErrorMessage] =
-    useState<string | null>(null);
+  const [draftVoiceErrorMessage, setDraftVoiceErrorMessage] = useState<
+    string | null
+  >(null);
   const [draftTuning, setDraftTuning] = useState(initialDraft.tuning);
   const [previewTextDraft, setPreviewTextDraft] = useState(
     DEFAULT_TTS_PREVIEW_TEXT,
@@ -1227,8 +1238,9 @@ const VoiceArchitectSection: React.FC<{
     if (!speech.settings || !speech.activePreset) return;
 
     const providerIdForControls =
-      speech.providerOptions.find((provider) => provider.value === draftProviderId)
-        ?.value ??
+      speech.providerOptions.find(
+        (provider) => provider.value === draftProviderId,
+      )?.value ??
       speech.providerOptions[0]?.value ??
       "";
     const modelOptionsForProvider = speech.visibleModels.filter(
@@ -1266,8 +1278,9 @@ const VoiceArchitectSection: React.FC<{
     if (!speech.settings || !speech.activePreset) return;
 
     const providerIdForControls =
-      speech.providerOptions.find((provider) => provider.value === draftProviderId)
-        ?.value ??
+      speech.providerOptions.find(
+        (provider) => provider.value === draftProviderId,
+      )?.value ??
       speech.providerOptions[0]?.value ??
       "";
     const modelOptionsForProvider = speech.visibleModels.filter(
@@ -1355,7 +1368,9 @@ const VoiceArchitectSection: React.FC<{
   const activeProviderLabel =
     speech.activeProvider?.label ?? speech.activePreset?.provider_id ?? "";
   const activeLocaleLabel =
-    speech.activePreset?.locale_snapshot ?? speech.activeModel?.locale ?? "Auto";
+    speech.activePreset?.locale_snapshot ??
+    speech.activeModel?.locale ??
+    "Auto";
   const saveProfileName = saveProfileNameDraft.trim();
   const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
   const draftProviderIdForControls =
@@ -1416,12 +1431,15 @@ const VoiceArchitectSection: React.FC<{
   const draftLocaleLabel = draftMatchesActiveModel
     ? activeLocaleLabel
     : (draftSelectedModel?.locale ?? "Auto");
-  const draftVoiceInventory = draftMatchesActiveModel ? speech.voices : draftVoices;
+  const draftVoiceInventory = draftMatchesActiveModel
+    ? speech.voices
+    : draftVoices;
   const draftSelectedVoice =
     draftVoiceInventory.find((voice) => voice.id === draftVoiceId) ?? null;
   const draftSelectedProfile =
-    draftCompatibleProfiles.find((profile) => profile.id === draftVoiceProfileId) ??
-    null;
+    draftCompatibleProfiles.find(
+      (profile) => profile.id === draftVoiceProfileId,
+    ) ?? null;
   useEffect(() => {
     if (!draftSupportsVoiceCloning) {
       if (draftVoiceProfileId !== "__none__") {
@@ -1491,7 +1509,8 @@ const VoiceArchitectSection: React.FC<{
     const draftVoiceSelectionId =
       voiceIsFixedToModel || draftVoiceId === "__auto__" ? null : draftVoiceId;
     const draftVoiceSelection =
-      draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ?? null;
+      draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ??
+      null;
     const draftProfileSelectionId =
       draftSupportsVoiceCloning && draftVoiceProfileId !== "__none__"
         ? draftVoiceProfileId
@@ -1508,8 +1527,7 @@ const VoiceArchitectSection: React.FC<{
       voice_profile_id: draftProfileSelectionId,
       voice_label_snapshot: voiceIsFixedToModel
         ? (draftSelectedModel?.label ?? draftModelIdForControls)
-        : draftSelectedProfile?.label ??
-          (draftVoiceSelection?.label ?? null),
+        : (draftSelectedProfile?.label ?? draftVoiceSelection?.label ?? null),
       locale_snapshot: draftVoiceSelection
         ? (draftVoiceSelection.locale ?? null)
         : providerOrModelChanged
@@ -1557,7 +1575,9 @@ const VoiceArchitectSection: React.FC<{
         <div className={whiteWorkflowCardClassName}>
           <div className="flex items-start gap-4">
             <div className="min-w-0 flex-1 space-y-2">
-              <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
+              <p className={workflowFieldLabelClassName}>
+                {t("listen.myVoices.previewText")}
+              </p>
               <Textarea
                 value={previewTextDraft}
                 onChange={(event) => setPreviewTextDraft(event.target.value)}
@@ -1581,7 +1601,7 @@ const VoiceArchitectSection: React.FC<{
                 className="inline-flex items-center justify-center gap-1.5"
               >
                 <Play className="h-3.5 w-3.5" />
-                {t('listen.myVoices.preview')}
+                {t("listen.myVoices.preview")}
               </Button>
               <Button
                 type="button"
@@ -1591,7 +1611,7 @@ const VoiceArchitectSection: React.FC<{
                 className="inline-flex items-center justify-center gap-1.5"
               >
                 <Square className="h-3.5 w-3.5" />
-                {t('listen.myVoices.stop')}
+                {t("listen.myVoices.stop")}
               </Button>
             </div>
           </div>
@@ -1605,7 +1625,7 @@ const VoiceArchitectSection: React.FC<{
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={speechLibraryActiveBadgeClassName}>
                     <Star className="h-3.5 w-3.5" />
-                    {t('listen.myVoices.active')}
+                    {t("listen.myVoices.active")}
                   </span>
                   <span className={speechLibraryBadgeClassName}>
                     {activeEngineFamily}
@@ -1615,11 +1635,17 @@ const VoiceArchitectSection: React.FC<{
                   <Trans
                     i18nKey="listen.myVoices.activePreset"
                     values={{ name: speech.activePreset.label }}
-                    components={{ bold: <span className="font-semibold text-[var(--text)]" /> }}
+                    components={{
+                      bold: (
+                        <span className="font-semibold text-[var(--text)]" />
+                      ),
+                    }}
                   />
                 </p>
                 <div className="space-y-1">
-                  <p className={workflowFieldLabelClassName}>{t('listen.myVoices.saveAs')}</p>
+                  <p className={workflowFieldLabelClassName}>
+                    {t("listen.myVoices.saveAs")}
+                  </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <Input
                       value={saveProfileNameDraft}
@@ -1649,7 +1675,7 @@ const VoiceArchitectSection: React.FC<{
                       }
                       className="shrink-0"
                     >
-                      {t('listen.myVoices.saveCurrent')}
+                      {t("listen.myVoices.saveCurrent")}
                     </Button>
                   </div>
                 </div>
@@ -1709,8 +1735,9 @@ const VoiceArchitectSection: React.FC<{
                         return;
                       }
                       const selectedVoice =
-                        draftVoiceInventory.find((voice) => voice.id === value) ??
-                        null;
+                        draftVoiceInventory.find(
+                          (voice) => voice.id === value,
+                        ) ?? null;
                       void speech.updateActivePreset({
                         voice_id: value === "__auto__" ? null : value,
                         voice_label_snapshot:
@@ -1793,7 +1820,7 @@ const VoiceArchitectSection: React.FC<{
         <div className={whiteWorkflowCardClassName}>
           <div className="mb-2">
             <p className="text-sm font-semibold text-[var(--text)]">
-              {t('listen.myVoices.savedProfiles')}
+              {t("listen.myVoices.savedProfiles")}
             </p>
           </div>
 
@@ -1821,7 +1848,7 @@ const VoiceArchitectSection: React.FC<{
                         {isActive ? (
                           <span className={speechLibraryActiveBadgeClassName}>
                             <Check className="h-3.5 w-3.5" />
-                            {t('listen.myVoices.active')}
+                            {t("listen.myVoices.active")}
                           </span>
                         ) : null}
                       </div>
@@ -1834,7 +1861,7 @@ const VoiceArchitectSection: React.FC<{
                         </span>
                         {preset.voice_profile_id ? (
                           <span className={speechLibraryBadgeClassName}>
-                            {t('listen.myVoices.clone')}
+                            {t("listen.myVoices.clone")}
                           </span>
                         ) : null}
                       </div>
@@ -1849,7 +1876,7 @@ const VoiceArchitectSection: React.FC<{
                           onClick={() => void speech.setActivePreset(preset.id)}
                           disabled={!speech.ttsEnabled}
                         >
-                          {t('listen.myVoices.useThisVoice')}
+                          {t("listen.myVoices.useThisVoice")}
                         </Button>
                       ) : null}
                       <Button
@@ -1863,7 +1890,7 @@ const VoiceArchitectSection: React.FC<{
                         className="inline-flex items-center gap-1.5"
                       >
                         <Play className="h-3.5 w-3.5" />
-                        {t('listen.myVoices.preview')}
+                        {t("listen.myVoices.preview")}
                       </Button>
                       <Button
                         type="button"
@@ -1931,14 +1958,14 @@ const SoundDesignSection: React.FC<{
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-[var(--text)]">
-                {t('listen.soundTuning.tuneTitle')}
+                {t("listen.soundTuning.tuneTitle")}
               </h3>
               <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                {t('listen.soundTuning.activeProfileIs')}{" "}
+                {t("listen.soundTuning.activeProfileIs")}{" "}
                 <span className="font-semibold text-[var(--text)]">
                   {speech.activePreset.label}
                 </span>
-                {t('listen.soundTuning.previewFromHere')}
+                {t("listen.soundTuning.previewFromHere")}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1956,7 +1983,7 @@ const SoundDesignSection: React.FC<{
                 className="inline-flex items-center gap-1.5"
               >
                 <Play className="h-3.5 w-3.5" />
-                {t('listen.soundTuning.preview')}
+                {t("listen.soundTuning.preview")}
               </Button>
               <Button
                 type="button"
@@ -1966,13 +1993,15 @@ const SoundDesignSection: React.FC<{
                 className="inline-flex items-center gap-1.5"
               >
                 <Square className="h-3.5 w-3.5" />
-                {t('listen.soundTuning.stop')}
+                {t("listen.soundTuning.stop")}
               </Button>
             </div>
           </div>
 
           <div className="mt-5 space-y-2">
-            <p className={workflowFieldLabelClassName}>{t('listen.myVoices.previewText')}</p>
+            <p className={workflowFieldLabelClassName}>
+              {t("listen.myVoices.previewText")}
+            </p>
             <Textarea
               value={previewTextDraft}
               onChange={(event) => setPreviewTextDraft(event.target.value)}
@@ -2172,79 +2201,79 @@ const SpeechPackManagerCard: React.FC<{
 }> = ({ speech }) => {
   const { t } = useTranslation();
   return (
-  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-[var(--text)]">
-          {t('listen.packManager.title')}
-        </h3>
-        <p className="text-sm text-[var(--muted)]">
-          {t('listen.packManager.description')}
-        </p>
-      </div>
-      <div className="space-y-2">
-        {speech.packs.map((pack) => (
-          <div
-            key={pack.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
-          >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-[var(--text)]">
-                {pack.label}
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-[var(--text)]">
+            {t("listen.packManager.title")}
+          </h3>
+          <p className="text-sm text-[var(--muted)]">
+            {t("listen.packManager.description")}
+          </p>
+        </div>
+        <div className="space-y-2">
+          {speech.packs.map((pack) => (
+            <div
+              key={pack.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-[var(--text)]">
+                  {pack.label}
+                </div>
+                <div className="text-xs text-[var(--muted)]">
+                  {pack.archive_name}
+                </div>
               </div>
-              <div className="text-xs text-[var(--muted)]">
-                {pack.archive_name}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--muted)]">
+                  {pack.installed ? "Installed" : "Not installed"}
+                </span>
+                {pack.installed ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={speech.busyPackId === pack.id}
+                    onClick={async () => {
+                      speech.setBusyPackId(pack.id);
+                      const result = await commands.removeTtsPack(pack.id);
+                      if (result.status !== "ok") {
+                        speech.setStatusMessage(result.error);
+                      } else {
+                        await speech.refreshAll();
+                      }
+                      speech.setBusyPackId(null);
+                    }}
+                  >
+                    {t("listen.packManager.remove")}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={speech.busyPackId === pack.id}
+                    onClick={async () => {
+                      speech.setBusyPackId(pack.id);
+                      const result = await commands.downloadTtsPack(pack.id);
+                      if (result.status !== "ok") {
+                        speech.setStatusMessage(result.error);
+                      } else {
+                        await speech.refreshAll();
+                      }
+                      speech.setBusyPackId(null);
+                    }}
+                  >
+                    {t("listen.packManager.download")}
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--muted)]">
-                {pack.installed ? "Installed" : "Not installed"}
-              </span>
-              {pack.installed ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={speech.busyPackId === pack.id}
-                  onClick={async () => {
-                    speech.setBusyPackId(pack.id);
-                    const result = await commands.removeTtsPack(pack.id);
-                    if (result.status !== "ok") {
-                      speech.setStatusMessage(result.error);
-                    } else {
-                      await speech.refreshAll();
-                    }
-                    speech.setBusyPackId(null);
-                  }}
-                >
-                  {t('listen.packManager.remove')}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={speech.busyPackId === pack.id}
-                  onClick={async () => {
-                    speech.setBusyPackId(pack.id);
-                    const result = await commands.downloadTtsPack(pack.id);
-                    if (result.status !== "ok") {
-                      speech.setStatusMessage(result.error);
-                    } else {
-                      await speech.refreshAll();
-                    }
-                    speech.setBusyPackId(null);
-                  }}
-                >
-                  {t('listen.packManager.download')}
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
-  </div>
   );
 };
 
@@ -2421,7 +2450,7 @@ const EngineLibraryPanel: React.FC<{
                     : "hover:bg-mid-gray/10"
                 }`}
               >
-                {t('listen.engineLibrary.allLanguages')}
+                {t("listen.engineLibrary.allLanguages")}
               </button>
               {filteredLanguages.map((language) => (
                 <button
@@ -2455,7 +2484,7 @@ const EngineLibraryPanel: React.FC<{
       {speech.activeModel ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            {t('listen.engineLibrary.activeListenModel')}
+            {t("listen.engineLibrary.activeListenModel")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <p className="text-lg font-bold text-[var(--text)]">
@@ -2476,10 +2505,10 @@ const EngineLibraryPanel: React.FC<{
       ) : (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            {t('listen.engineLibrary.activeListenModel')}
+            {t("listen.engineLibrary.activeListenModel")}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {t('listen.engineLibrary.chooseProviderModel')}
+            {t("listen.engineLibrary.chooseProviderModel")}
           </p>
         </div>
       )}
@@ -2545,11 +2574,12 @@ const VoiceCloningSection: React.FC<{
     visibleProfiles.find((profile) => profile.id === selectedProfileId) ?? null;
 
   useEffect(() => {
-    const activeCloneModel =
-      speech.activeModel?.capabilities.supports_voice_cloning
-        ? speech.activeModel
-        : null;
-    const fallbackCloneModel = activeCloneModel ?? speech.cloneCapableModels[0] ?? null;
+    const activeCloneModel = speech.activeModel?.capabilities
+      .supports_voice_cloning
+      ? speech.activeModel
+      : null;
+    const fallbackCloneModel =
+      activeCloneModel ?? speech.cloneCapableModels[0] ?? null;
 
     setSelectedCloneModelValue((current) => {
       if (
@@ -2629,10 +2659,10 @@ const VoiceCloningSection: React.FC<{
       <div className="space-y-3 p-4">
         <div className="space-y-0.5">
           <h3 className="text-sm font-semibold text-[var(--text)]">
-            {t('listen.voiceCloning.cloneProfiles')}
+            {t("listen.voiceCloning.cloneProfiles")}
           </h3>
           <p className="text-xs text-[var(--muted)]">
-            {t('listen.voiceCloning.cloneProfilesDescription')}
+            {t("listen.voiceCloning.cloneProfilesDescription")}
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -2675,15 +2705,19 @@ const VoiceCloningSection: React.FC<{
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-              Clone Target
+              {t("listen.voiceCloning.cloneTarget")}
             </p>
-            <p className="mt-1 text-sm text-[var(--text)]">{cloneTargetSummary}</p>
+            <p className="mt-1 text-sm text-[var(--text)]">
+              {cloneTargetSummary}
+            </p>
           </div>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-              Next Step
+              {t("listen.voiceCloning.nextStep")}
             </p>
-            <p className="mt-1 text-sm text-[var(--text)]">{profileActionHint}</p>
+            <p className="mt-1 text-sm text-[var(--text)]">
+              {profileActionHint}
+            </p>
           </div>
         </div>
 
@@ -2701,7 +2735,7 @@ const VoiceCloningSection: React.FC<{
               }
               disabled={createPresetDisabled}
             >
-              {t('listen.voiceCloning.createPreset')}
+              {t("listen.voiceCloning.createPreset")}
             </Button>
             <Button
               type="button"
@@ -2731,7 +2765,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              {t('listen.voiceCloning.importWav')}
+              {t("listen.voiceCloning.importWav")}
             </Button>
             <div className="ms-auto">
               <Button
@@ -2751,7 +2785,7 @@ const VoiceCloningSection: React.FC<{
                   }
                 }}
               >
-                {t('listen.voiceCloning.deleteProfile')}
+                {t("listen.voiceCloning.deleteProfile")}
               </Button>
             </div>
           </div>
@@ -2763,42 +2797,52 @@ const VoiceCloningSection: React.FC<{
               {selectedProfile.fully_optimized ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--success)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-                  Fully optimized
+                  {t("listen.voiceCloning.fullyOptimized")}
                 </span>
               ) : selectedProfile.ready ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                  Ready for cloning
+                  {t("listen.voiceCloning.readyForCloning")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warning-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--warning)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)]" />
-                  Needs reference audio
+                  {t("listen.voiceCloning.needsReferenceAudio")}
                 </span>
               )}
             </div>
             {selectedProfile.reference_audio_path ? (
               <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Audio file</p>
-                <p className="break-all font-mono text-[11px] text-[var(--text)]">{selectedProfile.reference_audio_path}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
+                  {t("listen.voiceCloning.audioFile")}
+                </p>
+                <p className="break-all font-mono text-[11px] text-[var(--text)]">
+                  {selectedProfile.reference_audio_path}
+                </p>
               </div>
             ) : null}
             {selectedProfile.transcript ? (
               <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">Transcript</p>
-                <p className="text-[11px] text-[var(--text)]">{selectedProfile.transcript}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
+                  {t("listen.voiceCloning.transcript")}
+                </p>
+                <p className="text-[11px] text-[var(--text)]">
+                  {selectedProfile.transcript}
+                </p>
               </div>
             ) : (
-              <p className="italic text-[var(--muted)]">{t('listen.voiceCloning.transcriptHint')}</p>
+              <p className="italic text-[var(--muted)]">
+                {t("listen.voiceCloning.transcriptHint")}
+              </p>
             )}
             <div className="mt-2 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-[var(--text)]">
-                    {t('listen.voiceCloning.improveFromDictations')}
+                    {t("listen.voiceCloning.improveFromDictations")}
                   </p>
                   <p className="text-[10px] text-[var(--muted)]">
-                    {t('listen.voiceCloning.improveFromDictationsDescription')}
+                    {t("listen.voiceCloning.improveFromDictationsDescription")}
                   </p>
                 </div>
                 <label
@@ -2871,7 +2915,7 @@ const VoiceCloningSection: React.FC<{
                   disabled={!speech.ttsEnabled}
                   className="text-red-500 hover:text-red-600"
                 >
-                  {t('listen.voiceCloning.clearCollectedData')}
+                  {t("listen.voiceCloning.clearCollectedData")}
                 </Button>
               ) : null}
             </div>
@@ -2889,10 +2933,10 @@ const VoiceCloningSection: React.FC<{
         <div className="space-y-3">
           <div className="space-y-0.5">
             <h3 className="text-sm font-semibold text-[var(--text)]">
-              {t('listen.voiceCloning.createProfile')}
+              {t("listen.voiceCloning.createProfile")}
             </h3>
             <p className="text-xs text-[var(--muted)]">
-              {t('listen.voiceCloning.createProfileDescription')}
+              {t("listen.voiceCloning.createProfileDescription")}
             </p>
           </div>
           <Input
@@ -2948,7 +2992,7 @@ const VoiceCloningSection: React.FC<{
                 }
               }}
             >
-              {t('listen.voiceCloning.createProfileButton')}
+              {t("listen.voiceCloning.createProfileButton")}
             </Button>
           </div>
         </div>
@@ -2982,7 +3026,10 @@ const AutoReadbackPanel: React.FC<{
         <SelectField
           value={settings.tts_auto_readback_mode ?? "off"}
           onChange={(value) =>
-            void speech.updateSetting("tts_auto_readback_mode", value as any)
+            void speech.updateSetting(
+              "tts_auto_readback_mode",
+              value as TtsAutoReadbackMode,
+            )
           }
           disabled={
             !speech.ttsEnabled || speech.isUpdating("tts_auto_readback_mode")
@@ -3009,7 +3056,10 @@ const AutoReadbackPanel: React.FC<{
           <SelectField
             value={settings.tts_auto_readback_scope ?? "dictation_only"}
             onChange={(value) =>
-              void speech.updateSetting("tts_auto_readback_scope", value as any)
+              void speech.updateSetting(
+                "tts_auto_readback_scope",
+                value as TtsAutoReadbackScope,
+              )
             }
             disabled={
               !speech.ttsEnabled || speech.isUpdating("tts_auto_readback_scope")
@@ -3036,7 +3086,10 @@ const AutoReadbackPanel: React.FC<{
           <SelectField
             value={settings.tts_readback_text_mode ?? "final_output"}
             onChange={(value) =>
-              void speech.updateSetting("tts_readback_text_mode", value as any)
+              void speech.updateSetting(
+                "tts_readback_text_mode",
+                value as TtsReadbackTextMode,
+              )
             }
             disabled={
               !speech.ttsEnabled || speech.isUpdating("tts_readback_text_mode")

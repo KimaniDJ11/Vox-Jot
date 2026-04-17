@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 import { SettingContainer } from "./SettingContainer";
 

@@ -318,7 +318,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
             .build()
         {
             Ok(panel) => {
-                let _ = panel.hide();
+                panel.hide();
             }
             Err(e) => {
                 log::error!("Failed to create recording overlay panel: {}", e);
@@ -411,13 +411,30 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
     }
 }
 
-pub fn emit_levels(app_handle: &AppHandle, levels: &Vec<f32>) {
-    // emit levels to main app
-    let _ = app_handle.emit("mic-level", levels);
+const MIC_LEVEL_EMIT_INTERVAL_MS: u128 = 33; // ~30 Hz cap
 
-    // also emit to the recording overlay if it's open
+static LAST_APP_LEVEL_EMIT_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static LAST_OVERLAY_LEVEL_EMIT_MS: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+pub fn emit_levels(app_handle: &AppHandle, levels: &Vec<f32>) {
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    let app_last = LAST_APP_LEVEL_EMIT_MS.load(std::sync::atomic::Ordering::Relaxed);
+    if now_ms.saturating_sub(app_last) >= MIC_LEVEL_EMIT_INTERVAL_MS as u64 {
+        LAST_APP_LEVEL_EMIT_MS.store(now_ms, std::sync::atomic::Ordering::Relaxed);
+        let _ = app_handle.emit("mic-level", levels);
+    }
+
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
-        let _ = overlay_window.emit("mic-level", levels);
+        let overlay_last = LAST_OVERLAY_LEVEL_EMIT_MS.load(std::sync::atomic::Ordering::Relaxed);
+        if now_ms.saturating_sub(overlay_last) >= MIC_LEVEL_EMIT_INTERVAL_MS as u64 {
+            LAST_OVERLAY_LEVEL_EMIT_MS.store(now_ms, std::sync::atomic::Ordering::Relaxed);
+            let _ = overlay_window.emit("mic-level", levels);
+        }
     }
 }
 

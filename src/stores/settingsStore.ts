@@ -5,6 +5,7 @@ import type {
   AppToneMapping,
   AudioDevice,
   DictionaryEntry,
+  LogLevel,
   PostProcessResult,
   Snippet,
   TtsVoicePreset,
@@ -53,7 +54,7 @@ interface SettingsStore {
     key: K,
     value: Settings[K],
   ) => Promise<void>;
-  resetSetting: (key: keyof Settings) => Promise<void>;
+  resetSetting: <K extends keyof Settings>(key: K) => Promise<void>;
   refreshSettings: () => Promise<void>;
   refreshAudioDevices: () => Promise<void>;
   refreshOutputDevices: () => Promise<void>;
@@ -274,7 +275,7 @@ const settingUpdaters: {
     commands.changeMuteWhileRecordingSetting(value as boolean),
   append_trailing_space: (value) =>
     commands.changeAppendTrailingSpaceSetting(value as boolean),
-  log_level: (value) => commands.setLogLevel(value as any),
+  log_level: (value) => commands.setLogLevel((value ?? "info") as LogLevel),
   app_language: (value) => commands.changeAppLanguageSetting(value as string),
   global_language_sync_enabled: (value) =>
     commands.changeGlobalLanguageSyncEnabledSetting(value as boolean),
@@ -674,12 +675,12 @@ export const useSettingsStore = create<SettingsStore>()(
     },
 
     // Reset a setting to its default value
-    resetSetting: async (key) => {
+    resetSetting: async <K extends keyof Settings>(key: K) => {
       const { defaultSettings } = get();
       if (defaultSettings) {
         const defaultValue = defaultSettings[key];
         if (defaultValue !== undefined) {
-          await get().updateSetting(key, defaultValue as any);
+          await get().updateSetting(key, defaultValue);
         }
       }
     },

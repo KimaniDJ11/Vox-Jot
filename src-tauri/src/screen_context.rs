@@ -17,20 +17,15 @@ use tauri::AppHandle;
 #[cfg(target_os = "macos")]
 use crate::correction_tracker::field_monitor::FieldTextReader;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ContextCaptureStatus {
     Ready,
     Pending,
     Stale,
     PermissionDenied,
+    #[default]
     Failed,
-}
-
-impl Default for ContextCaptureStatus {
-    fn default() -> Self {
-        Self::Failed
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -94,6 +89,8 @@ struct ManagerState {
     last_error: Option<String>,
     cache: VecDeque<DictationContextPacket>,
     immediate_requested: bool,
+    consecutive_failures: u32,
+    next_capture_allowed_at_ms: i64,
 }
 
 impl Default for ManagerState {
@@ -104,6 +101,8 @@ impl Default for ManagerState {
             last_error: None,
             cache: VecDeque::new(),
             immediate_requested: false,
+            consecutive_failures: 0,
+            next_capture_allowed_at_ms: 0,
         }
     }
 }
@@ -179,29 +178,48 @@ impl ContextCaptureManager {
         settings: &AppSettings,
         active_app_context: Option<ActiveAppContext>,
     ) -> Option<DictationContextPacket> {
-        let stale_threshold = settings.screen_context_stale_threshold_ms as i64;
-        let latest = {
+        let desired_app_context = active_app_context.or_else(current_frontmost_app_context);
+        let current_field_text = read_ax_field_text(desired_app_context.as_ref());
+        let now_ms = now_millis();
+        let stale_threshold_ms = settings.screen_context_stale_threshold_ms as u64;
+        let fresh_relevant_packet = {
             let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-            state.cache.back().cloned()
+            select_best_cached_packet(
+                &state.cache,
+                desired_app_context.as_ref(),
+                stale_threshold_ms,
+                now_ms,
+            )
         };
 
-        if let Some(packet) = latest.clone() {
-            if now_millis().saturating_sub(packet.captured_at_ms) <= stale_threshold {
-                return Some(enrich_packet(packet, active_app_context));
+        if let Some(packet) = fresh_relevant_packet {
+            if should_prefer_ax_only_context(&packet, current_field_text.as_deref()) {
+                self.request_immediate_capture("dictation_stop_refresh");
+                return build_ax_only_packet(
+                    desired_app_context,
+                    current_field_text,
+                    now_ms,
+                    !settings.local_privacy_mode,
+                );
             }
+
+            return Some(enrich_packet(
+                packet,
+                desired_app_context,
+                current_field_text,
+            ));
         }
 
-        // Keep dictation stop fast: if our cache is stale, request a refresh in the
-        // background rather than synchronously blocking the output path on OCR.
+        // Keep dictation stop fast: if our cache is stale or belongs to another
+        // app, request a refresh in the background rather than blocking output.
         self.request_immediate_capture("dictation_stop_refresh");
 
-        latest.map(|packet| {
-            let mut enriched = enrich_packet(packet, active_app_context);
-            if enriched.source == "periodic" || enriched.source == "dictation_start" {
-                enriched.source = format!("{}+stale", enriched.source);
-            }
-            enriched
-        })
+        build_ax_only_packet(
+            desired_app_context,
+            current_field_text,
+            now_ms,
+            !settings.local_privacy_mode,
+        )
     }
 
     pub fn context_sent_externally(
@@ -210,7 +228,9 @@ impl ContextCaptureManager {
         packet: Option<&DictationContextPacket>,
         provider_is_local: bool,
     ) -> bool {
-        packet.is_some() && !settings.local_privacy_mode && !provider_is_local
+        packet.is_some_and(|packet| packet.external_routing_allowed)
+            && !settings.local_privacy_mode
+            && !provider_is_local
     }
 
     fn spawn_background_worker(&self) {
@@ -225,6 +245,7 @@ impl ContextCaptureManager {
                     let settings = get_settings(&manager.app_handle);
                     let interval = capture_interval(settings.context_capture_mode);
                     let frontmost_app = current_frontmost_bundle();
+                    let now_ms = now_millis();
 
                     let should_capture = {
                         let mut state = manager.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -233,10 +254,15 @@ impl ContextCaptureManager {
                             == ContextCaptureMode::AdaptiveCache
                             && frontmost_app != last_frontmost_app;
                         let requested = state.immediate_requested;
-                        if requested {
-                            state.immediate_requested = false;
+                        let backoff_active = now_ms < state.next_capture_allowed_at_ms;
+                        if backoff_active {
+                            false
+                        } else {
+                            if requested {
+                                state.immediate_requested = false;
+                            }
+                            requested || due || app_changed
                         }
-                        requested || due || app_changed
                     };
 
                     if should_capture {
@@ -275,6 +301,8 @@ impl ContextCaptureManager {
                 state.has_permission = true;
                 state.last_error = None;
                 state.status = ContextCaptureStatus::Ready;
+                state.consecutive_failures = 0;
+                state.next_capture_allowed_at_ms = 0;
                 state.cache.push_back(packet.clone());
                 while state.cache.len() > 3 {
                     state.cache.pop_front();
@@ -290,11 +318,155 @@ impl ContextCaptureManager {
                 } else {
                     ContextCaptureStatus::Failed
                 };
+                state.consecutive_failures = state.consecutive_failures.saturating_add(1);
+                state.next_capture_allowed_at_ms =
+                    now_millis() + failure_backoff_ms(&err, state.consecutive_failures);
                 warn!("Screen context capture failed: {}", err);
                 None
             }
         }
     }
+}
+
+fn bundle_ids_match(left: Option<&ActiveAppContext>, right: Option<&ActiveAppContext>) -> bool {
+    match (left, right) {
+        (_, None) => true,
+        (Some(left), Some(right)) => left.bundle_id.eq_ignore_ascii_case(&right.bundle_id),
+        (None, Some(_)) => false,
+    }
+}
+
+fn select_best_cached_packet(
+    cache: &VecDeque<DictationContextPacket>,
+    desired_app_context: Option<&ActiveAppContext>,
+    stale_threshold_ms: u64,
+    now_ms: i64,
+) -> Option<DictationContextPacket> {
+    cache
+        .iter()
+        .rev()
+        .find(|packet| {
+            packet_age_ms_at(packet, now_ms) <= stale_threshold_ms
+                && bundle_ids_match(packet.active_app_context.as_ref(), desired_app_context)
+        })
+        .cloned()
+}
+
+fn build_ax_only_packet(
+    active_app_context: Option<ActiveAppContext>,
+    current_field_text: Option<String>,
+    now_ms: i64,
+    external_routing_allowed: bool,
+) -> Option<DictationContextPacket> {
+    let field_text = current_field_text
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty())?;
+
+    Some(DictationContextPacket {
+        display_id: 0,
+        captured_at_ms: now_ms,
+        snippets: vec![RankedContextSnippet {
+            text: field_text.clone(),
+            source: "ax".to_string(),
+            confidence: 1.0,
+            score: 10_000.0,
+        }],
+        source: "ax_only".to_string(),
+        active_app_context,
+        ax_field_text: Some(field_text),
+        external_routing_allowed,
+    })
+}
+
+fn should_prefer_ax_only_context(
+    packet: &DictationContextPacket,
+    current_field_text: Option<&str>,
+) -> bool {
+    let Some(field_text) = current_field_text
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    else {
+        return false;
+    };
+
+    !packet_supports_field_text(packet, field_text)
+}
+
+fn packet_supports_field_text(packet: &DictationContextPacket, field_text: &str) -> bool {
+    let normalized_field = normalize_context_text(field_text);
+    if normalized_field.is_empty() {
+        return false;
+    }
+
+    if packet
+        .snippets
+        .iter()
+        .map(|snippet| normalize_context_text(&snippet.text))
+        .any(|normalized| {
+            !normalized.is_empty()
+                && (normalized.contains(&normalized_field)
+                    || normalized_field.contains(&normalized))
+        })
+    {
+        return true;
+    }
+
+    let field_keywords = context_keywords(field_text);
+    if field_keywords.is_empty() {
+        return false;
+    }
+
+    let packet_keywords = packet
+        .snippets
+        .iter()
+        .flat_map(|snippet| context_keywords(&snippet.text))
+        .collect::<std::collections::HashSet<_>>();
+    let overlap = field_keywords
+        .iter()
+        .filter(|keyword| packet_keywords.contains(*keyword))
+        .count();
+    let required_overlap = if field_keywords.len() <= 2 { 1 } else { 2 };
+
+    overlap >= required_overlap
+}
+
+fn failure_backoff_ms(error: &str, consecutive_failures: u32) -> i64 {
+    if error.contains("permission") {
+        return 30_000;
+    }
+
+    let capped_failures = consecutive_failures.min(5);
+    let base_ms = if error.contains("Active display was unavailable") {
+        3_000
+    } else {
+        2_000
+    };
+
+    let multiplier = 1_i64 << capped_failures.saturating_sub(1);
+    (base_ms * multiplier).min(20_000)
+}
+
+fn packet_age_ms_at(packet: &DictationContextPacket, now_ms: i64) -> u64 {
+    now_ms.saturating_sub(packet.captured_at_ms).max(0) as u64
+}
+
+fn normalize_context_text(text: &str) -> String {
+    text.chars()
+        .filter(|ch| ch.is_alphanumeric())
+        .flat_map(|ch| ch.to_lowercase())
+        .collect()
+}
+
+fn context_keywords(text: &str) -> Vec<String> {
+    text.split(|ch: char| !ch.is_alphanumeric())
+        .filter_map(|token| {
+            let trimmed = token.trim();
+            if trimmed.len() < 4 {
+                return None;
+            }
+            Some(trimmed.to_ascii_lowercase())
+        })
+        .collect()
 }
 
 pub fn summarize_packet_for_prompt(
@@ -336,15 +508,16 @@ pub fn summarize_packet_for_prompt(
 }
 
 pub fn packet_age_ms(packet: &DictationContextPacket) -> u64 {
-    now_millis().saturating_sub(packet.captured_at_ms).max(0) as u64
+    packet_age_ms_at(packet, now_millis())
 }
 
 fn enrich_packet(
     mut packet: DictationContextPacket,
     active_app_context: Option<ActiveAppContext>,
+    current_field_text: Option<String>,
 ) -> DictationContextPacket {
-    packet.active_app_context = active_app_context.or_else(current_frontmost_app_context);
-    packet.ax_field_text = read_ax_field_text(packet.active_app_context.as_ref());
+    packet.active_app_context = active_app_context.or(packet.active_app_context.clone());
+    packet.ax_field_text = current_field_text;
 
     if let Some(field_text) = packet.ax_field_text.clone() {
         let already_present = packet
@@ -635,6 +808,30 @@ mod tests {
         }
     }
 
+    fn app(bundle_id: &str) -> ActiveAppContext {
+        ActiveAppContext {
+            bundle_id: bundle_id.to_string(),
+            localized_name: bundle_id.to_string(),
+        }
+    }
+
+    fn packet_for_test(
+        bundle_id: Option<&str>,
+        captured_at_ms: i64,
+        source: &str,
+        snippets: Vec<RankedContextSnippet>,
+    ) -> DictationContextPacket {
+        DictationContextPacket {
+            display_id: 1,
+            captured_at_ms,
+            snippets,
+            source: source.to_string(),
+            active_app_context: bundle_id.map(app),
+            ax_field_text: None,
+            external_routing_allowed: true,
+        }
+    }
+
     #[test]
     fn clip_snippets_to_budget_truncates_last_snippet() {
         let clipped = clip_snippets_to_budget(
@@ -718,5 +915,111 @@ mod tests {
         assert!(summary.contains("first snippet"));
         assert!(summary.contains("second snippet"));
         assert!(!summary.contains("third snippet"));
+    }
+
+    #[test]
+    fn select_best_cached_packet_prefers_matching_app_context() {
+        let now_ms = 5_000;
+        let desired = app("com.apple.Notes");
+        let cache = VecDeque::from(vec![
+            packet_for_test(
+                Some("com.openai.codex"),
+                4_900,
+                "periodic",
+                vec![snippet("codex audit text", 10.0)],
+            ),
+            packet_for_test(
+                Some("com.apple.Notes"),
+                4_800,
+                "periodic",
+                vec![snippet("notes context", 9.0)],
+            ),
+        ]);
+
+        let selected = select_best_cached_packet(&cache, Some(&desired), 1_000, now_ms)
+            .expect("expected a matching packet");
+
+        assert_eq!(
+            selected
+                .active_app_context
+                .as_ref()
+                .map(|context| context.bundle_id.as_str()),
+            Some("com.apple.Notes")
+        );
+        assert_eq!(selected.snippets[0].text, "notes context");
+    }
+
+    #[test]
+    fn select_best_cached_packet_rejects_stale_matching_context() {
+        let now_ms = 10_000;
+        let desired = app("com.apple.Notes");
+        let cache = VecDeque::from(vec![packet_for_test(
+            Some("com.apple.Notes"),
+            6_500,
+            "periodic",
+            vec![snippet("old notes context", 9.0)],
+        )]);
+
+        assert!(select_best_cached_packet(&cache, Some(&desired), 2_000, now_ms).is_none());
+    }
+
+    #[test]
+    fn build_ax_only_packet_uses_focused_field_text() {
+        let desired = app("com.apple.Notes");
+        let packet = build_ax_only_packet(
+            Some(desired.clone()),
+            Some("Focused field text".to_string()),
+            1_234,
+            true,
+        )
+        .expect("expected ax-only fallback packet");
+
+        assert_eq!(packet.source, "ax_only");
+        assert_eq!(packet.captured_at_ms, 1_234);
+        assert_eq!(packet.ax_field_text.as_deref(), Some("Focused field text"));
+        assert_eq!(packet.snippets[0].source, "ax");
+        assert_eq!(packet.snippets[0].text, "Focused field text");
+        assert_eq!(
+            packet
+                .active_app_context
+                .as_ref()
+                .map(|context| context.bundle_id.as_str()),
+            Some(desired.bundle_id.as_str())
+        );
+    }
+
+    #[test]
+    fn failure_backoff_grows_for_repeated_timeouts() {
+        let first = failure_backoff_ms("Timed out while capturing screen context.", 1);
+        let third = failure_backoff_ms("Timed out while capturing screen context.", 3);
+        let sixth = failure_backoff_ms("Timed out while capturing screen context.", 6);
+
+        assert!(third > first);
+        assert!(sixth >= third);
+        assert!(sixth <= 20_000);
+    }
+
+    #[test]
+    fn should_prefer_ax_only_context_for_unrelated_ocr_packet() {
+        let packet = packet_for_test(
+            Some("com.apple.Notes"),
+            4_900,
+            "periodic",
+            vec![snippet("Nobody is Using Mega Glimmora Like This", 10.0)],
+        );
+
+        assert!(should_prefer_ax_only_context(&packet, Some("Very nice.")));
+    }
+
+    #[test]
+    fn keeps_ocr_packet_when_it_supports_current_field_text() {
+        let packet = packet_for_test(
+            Some("com.apple.Notes"),
+            4_900,
+            "periodic",
+            vec![snippet("Very nice. Draft reply", 10.0)],
+        );
+
+        assert!(!should_prefer_ax_only_context(&packet, Some("Very nice.")));
     }
 }

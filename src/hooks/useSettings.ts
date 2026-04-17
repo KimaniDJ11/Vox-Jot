@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import type {
   AppSettings as Settings,
   AudioDevice,
@@ -127,3 +128,41 @@ export const useSettings = (): UseSettingsReturn => {
     ],
   );
 };
+
+/**
+ * Subscribe to a single settings key. Re-renders only when that key changes,
+ * so hot components (sliders, toggles, overlays) don't repaint on unrelated
+ * settings writes like `useSettings()` would.
+ */
+export function useSetting<K extends keyof Settings>(
+  key: K,
+): Settings[K] | undefined {
+  return useSettingsStore((s) => s.settings?.[key]);
+}
+
+/**
+ * Subscribe to multiple settings keys at once with a shallow-equality check.
+ * Prefer this over `useSettings()` when a component reads more than one key
+ * but far fewer than all of them.
+ */
+export function useSettingsSlice<K extends keyof Settings>(
+  keys: readonly K[],
+): { [P in K]: Settings[P] | undefined } {
+  return useSettingsStore(
+    useShallow((s) => {
+      const slice = {} as { [P in K]: Settings[P] | undefined };
+      for (const k of keys) slice[k] = s.settings?.[k];
+      return slice;
+    }),
+  );
+}
+
+/** Stable accessor for `updateSetting` that doesn't subscribe to settings state. */
+export function useUpdateSetting() {
+  return useSettingsStore((s) => s.updateSetting);
+}
+
+/** Stable accessor for `refreshSettings` without subscribing to settings state. */
+export function useRefreshSettings() {
+  return useSettingsStore((s) => s.refreshSettings);
+}

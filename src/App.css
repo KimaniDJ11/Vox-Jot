@@ -797,6 +797,10 @@ input[type="range"]::-moz-range-thumb:active {
     -webkit-text-stroke: 2px var(--bg);
   }
 
+  .app-titlebar-safe-top {
+    padding-top: max(36px, env(titlebar-area-height, 36px));
+  }
+
   /* Core App Shell Grid layout */
   .shell {
     --sidebar-float-inset-inline: 0.9rem;

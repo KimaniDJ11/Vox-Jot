@@ -1464,7 +1464,7 @@ impl ModelManager {
                 return Ok(());
             }
 
-            let chunk = chunk.map_err(|e| {
+            let chunk = chunk.inspect_err(|_| {
                 // Mark as not downloading on error
                 {
                     let mut models = self
@@ -1475,7 +1475,6 @@ impl ModelManager {
                         model.is_downloading = false;
                     }
                 }
-                e
             })?;
 
             file.write_all(&chunk)?;

@@ -95,6 +95,11 @@ struct RegressionSummary {
     unchanged_entries: usize,
     average_raw_wer: f32,
     average_final_wer: f32,
+    stt_latency_ms_p50: u64,
+    stt_latency_ms_p95: u64,
+    stt_latency_ms_max: u64,
+    stt_rtf_p50: f32,
+    stt_rtf_p95: f32,
 }
 
 #[derive(Debug, Serialize)]
@@ -116,6 +121,8 @@ struct RegressionEntryReport {
     final_normalized_match: bool,
     post_process_route: Option<String>,
     paste_gate_fallback_applied: bool,
+    stt_latency_ms: Option<u64>,
+    stt_real_time_factor: Option<f32>,
     error: Option<String>,
 }
 
@@ -228,6 +235,14 @@ pub(crate) fn run_cli(cli_args: &CliArgs) -> Result<()> {
         report.summary.average_final_wer,
         report.summary.improved_entries
     );
+    eprintln!(
+        "STT latency: p50={}ms, p95={}ms, max={}ms | RTF p50={:.2}, p95={:.2}",
+        report.summary.stt_latency_ms_p50,
+        report.summary.stt_latency_ms_p95,
+        report.summary.stt_latency_ms_max,
+        report.summary.stt_rtf_p50,
+        report.summary.stt_rtf_p95,
+    );
 
     Ok(())
 }
@@ -246,10 +261,9 @@ fn default_app_data_dir() -> PathBuf {
         let home = std::env::var_os("HOME")
             .map(PathBuf::from)
             .unwrap_or_default();
-        return home
-            .join("Library")
+        home.join("Library")
             .join("Application Support")
-            .join(APP_DIR_NAME);
+            .join(APP_DIR_NAME)
     }
 
     #[cfg(target_os = "windows")]
@@ -414,6 +428,8 @@ fn run_entry(
             final_normalized_match: false,
             post_process_route: None,
             paste_gate_fallback_applied: false,
+            stt_latency_ms: None,
+            stt_real_time_factor: None,
             error: Some(err.to_string()),
         },
     }
@@ -427,7 +443,14 @@ fn run_entry_inner(
 ) -> Result<RegressionEntryReport> {
     let (mono, sample_rate) = read_wav_as_mono_f32(Path::new(&entry.audio_path))?;
     let audio_16k = resample_linear(&mono, sample_rate, 16_000);
+    let stt_start = std::time::Instant::now();
     let raw_transcription = transcribe_audio(settings, model_runtime, audio_16k)?;
+    let stt_latency_ms = stt_start.elapsed().as_millis() as u64;
+    let stt_real_time_factor = if entry.duration_secs > 0.0 {
+        Some((stt_latency_ms as f32 / 1000.0) / entry.duration_secs)
+    } else {
+        None
+    };
 
     let mut final_text = raw_transcription.clone();
     if let Some(converted) =
@@ -497,6 +520,8 @@ fn run_entry_inner(
             == normalize_compare_text(&entry.expected_text),
         post_process_route: Some(route_debug.route),
         paste_gate_fallback_applied,
+        stt_latency_ms: Some(stt_latency_ms),
+        stt_real_time_factor,
         error: None,
     })
 }
@@ -719,6 +744,8 @@ fn summarize_reports(reports: &[RegressionEntryReport]) -> RegressionSummary {
     };
     let mut raw_wer_total = 0.0f32;
     let mut final_wer_total = 0.0f32;
+    let mut latencies_ms: Vec<u64> = Vec::with_capacity(reports.len());
+    let mut rtfs: Vec<f32> = Vec::with_capacity(reports.len());
 
     for report in reports {
         if report.error.is_some() {
@@ -751,6 +778,13 @@ fn summarize_reports(reports: &[RegressionEntryReport]) -> RegressionSummary {
                 summary.unchanged_entries += 1;
             }
         }
+
+        if let Some(ms) = report.stt_latency_ms {
+            latencies_ms.push(ms);
+        }
+        if let Some(rtf) = report.stt_real_time_factor {
+            rtfs.push(rtf);
+        }
     }
 
     if summary.processed_entries > 0 {
@@ -759,7 +793,35 @@ fn summarize_reports(reports: &[RegressionEntryReport]) -> RegressionSummary {
         summary.average_final_wer = final_wer_total / denom;
     }
 
+    if !latencies_ms.is_empty() {
+        latencies_ms.sort_unstable();
+        summary.stt_latency_ms_p50 = percentile_u64(&latencies_ms, 0.50);
+        summary.stt_latency_ms_p95 = percentile_u64(&latencies_ms, 0.95);
+        summary.stt_latency_ms_max = *latencies_ms.last().unwrap();
+    }
+    if !rtfs.is_empty() {
+        rtfs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        summary.stt_rtf_p50 = percentile_f32(&rtfs, 0.50);
+        summary.stt_rtf_p95 = percentile_f32(&rtfs, 0.95);
+    }
+
     summary
+}
+
+fn percentile_u64(sorted: &[u64], q: f32) -> u64 {
+    if sorted.is_empty() {
+        return 0;
+    }
+    let idx = ((sorted.len() as f32 - 1.0) * q).round() as usize;
+    sorted[idx.min(sorted.len() - 1)]
+}
+
+fn percentile_f32(sorted: &[f32], q: f32) -> f32 {
+    if sorted.is_empty() {
+        return 0.0;
+    }
+    let idx = ((sorted.len() as f32 - 1.0) * q).round() as usize;
+    sorted[idx.min(sorted.len() - 1)]
 }
 
 fn word_error_rate(expected: &str, actual: &str) -> f32 {

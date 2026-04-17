@@ -5,10 +5,7 @@ import {
   getTranslatedModelName,
   getTranslatedModelDescription,
 } from "../../lib/utils/modelTranslation";
-import {
-  ProviderIcon,
-  engineTypeToProviderId,
-} from "../ui/ProviderIcon";
+import { ProviderIcon, engineTypeToProviderId } from "../ui/ProviderIcon";
 
 interface ModelDropdownProps {
   models: ModelInfo[];

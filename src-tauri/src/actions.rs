@@ -561,7 +561,7 @@ pub(crate) fn should_block_paste_candidate(text: &str) -> bool {
 fn strip_spoken_suffix(input: &str, suffix: &str) -> Option<String> {
     let candidate = input
         .trim_end()
-        .trim_end_matches(|c: char| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
+        .trim_end_matches(['.', ',', '!', '?', ';', ':']);
 
     if candidate.len() < suffix.len() {
         return None;
@@ -780,7 +780,7 @@ fn should_fallback_to_plain_text_drift(
 
         // (a) Same word count but 1-2 substitutions
         let subs = count_word_substitutions(normalized_text, candidate);
-        if subs >= 1 && subs <= 2 && candidate_words == norm_words {
+        if (1..=2).contains(&subs) && candidate_words == norm_words {
             debug!(
                 "Drift gate: {} minor word swap(s) on clean short utterance ({} words)",
                 subs, raw_words
@@ -1044,10 +1044,7 @@ fn context_entities(packet: &DictationContextPacket) -> Vec<String> {
     let mut entities = Vec::new();
 
     for snippet in &packet.snippets {
-        for part in snippet
-            .text
-            .split(|ch: char| matches!(ch, '\n' | ',' | ';' | ':' | '|' | '/'))
-        {
+        for part in snippet.text.split(['\n', ',', ';', ':', '|', '/']) {
             let candidate = part
                 .trim()
                 .trim_matches(|ch: char| ch.is_ascii_punctuation() || ch.is_whitespace());
@@ -1661,7 +1658,7 @@ fn preview_app_context_from_override(
 fn spawn_post_process_overlay_forwarder(
     app_handle: &AppHandle,
 ) -> (crate::llm_client::ChunkSink, tokio::task::JoinHandle<()>) {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(256);
     let app_for_forwarder = app_handle.clone();
     crate::overlay::emit_post_process_status(app_handle, "streaming");
     let handle = tokio::spawn(async move {

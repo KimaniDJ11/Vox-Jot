@@ -1489,17 +1489,17 @@ impl TtsManager {
             .await;
 
         match github_result {
-            Ok(()) => return Ok(()),
+            Ok(()) => Ok(()),
             Err(github_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
                     info!(
                         "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
                     );
-                    return self
-                        .download_hf_snapshot(hf_repo, &install_dir, &label)
-                        .await;
+                    self.download_hf_snapshot(hf_repo, &install_dir, &label)
+                        .await
+                } else {
+                    Err(github_error)
                 }
-                return Err(github_error);
             }
         }
     }
@@ -1711,7 +1711,7 @@ impl TtsManager {
         match github_result {
             Ok(()) => {
                 let _ = self.ensure_managed_speech_runtime_installed().await?;
-                return Ok(());
+                Ok(())
             }
             Err(github_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
@@ -1721,9 +1721,10 @@ impl TtsManager {
                     self.download_hf_snapshot(hf_repo, &install_dir, &label)
                         .await?;
                     let _ = self.ensure_managed_speech_runtime_installed().await?;
-                    return Ok(());
+                    Ok(())
+                } else {
+                    Err(github_error)
                 }
-                return Err(github_error);
             }
         }
     }
@@ -4444,16 +4445,12 @@ fn managed_speech_runtime_definition() -> Option<ManagedSpeechRuntimeDefinition>
 }
 
 fn managed_speech_runtime_entrypoint(runtime_root: &Path) -> Option<PathBuf> {
-    for candidate in [
+    [
         runtime_root.join("runtime").join("app.py"),
         runtime_root.join("app.py"),
-    ] {
-        if candidate.exists() {
-            return Some(candidate);
-        }
-    }
-
-    None
+    ]
+    .into_iter()
+    .find(|candidate| candidate.exists())
 }
 
 fn qwen3_runtime_definition() -> Option<(&'static str, &'static str, &'static str)> {

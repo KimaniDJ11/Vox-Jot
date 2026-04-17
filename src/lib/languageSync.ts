@@ -1,5 +1,8 @@
 import type { AppSettings as Settings, VoiceInfo } from "@/bindings";
-import type { CatalogModelDescriptor, ModelPlatformOverview } from "@/lib/modelPlatform";
+import type {
+  CatalogModelDescriptor,
+  ModelPlatformOverview,
+} from "@/lib/modelPlatform";
 
 export type LanguageSyncTrigger = "auto" | "manual";
 
@@ -19,7 +22,9 @@ const EXCLUDED_AUTO_TTS_PROVIDER_IDS = new Set([
   "fish_speech_local",
 ]);
 
-export function appLanguageToSttLanguage(appLanguage: string | null | undefined) {
+export function appLanguageToSttLanguage(
+  appLanguage: string | null | undefined,
+) {
   const normalized = (appLanguage ?? "").trim();
   if (!normalized) {
     return "auto";
@@ -82,7 +87,10 @@ function baseLanguageTag(value: string | null | undefined) {
   return normalized.split("-")[0] || normalized;
 }
 
-function languageCompatibilityScore(targetLanguage: string, candidateLanguage: string) {
+function languageCompatibilityScore(
+  targetLanguage: string,
+  candidateLanguage: string,
+) {
   const target = normalizeLanguageTag(targetLanguage);
   const candidate = normalizeLanguageTag(candidateLanguage);
   if (!target || !candidate) {
@@ -132,7 +140,10 @@ export function modelSupportsLanguage(
   );
 }
 
-function modelLanguageScore(model: CatalogModelDescriptor, targetLanguage: string) {
+function modelLanguageScore(
+  model: CatalogModelDescriptor,
+  targetLanguage: string,
+) {
   return Math.max(
     0,
     ...modelLanguageCandidates(model).map((language) =>

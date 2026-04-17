@@ -1,7 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { commands } from "@/bindings";
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface CappedSectionProps {
   /** The detail-view section ID (e.g. "history", "phrase-keys"). */

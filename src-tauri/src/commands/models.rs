@@ -196,7 +196,10 @@ async fn fetch_hf_collection_repo_ids(collection_slug: &str) -> Vec<String> {
         let mut cache = HF_COLLECTION_CACHE
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        cache.insert(collection_slug.to_string(), (Instant::now(), fetched.clone()));
+        cache.insert(
+            collection_slug.to_string(),
+            (Instant::now(), fetched.clone()),
+        );
     }
 
     fetched
@@ -485,7 +488,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
         let has_aliases = !alias_models.is_empty();
 
         if has_aliases {
-        providers.push(ProviderDescriptor {
+            providers.push(ProviderDescriptor {
             id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
             domain: ModelDomain::Stt,
             source_kind: CatalogSourceKind::Builtin,
@@ -591,9 +594,7 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             domain: ModelDomain::Tts,
             source_kind: CatalogSourceKind::Runtime,
             label: hf_repo_title(&repo_id),
-            description: format!(
-                "Verified TTS model from Hugging Face collection ({repo_id})."
-            ),
+            description: format!("Verified TTS model from Hugging Face collection ({repo_id})."),
             installed: true,
             selected: false,
             active: false,
@@ -789,11 +790,11 @@ pub async fn get_model_platform_overview(
         .cloned();
 
     Ok(ModelPlatformOverview {
-        stt: build_stt_catalog(&*model_manager, &settings).await,
+        stt: build_stt_catalog(&model_manager, &settings).await,
         llm: build_llm_catalog(&settings),
         tts: tts_catalog,
         selection: ModelPlatformSelectionState {
-            selected_stt_provider_id: stt_selection_provider_id(&settings, &*model_manager),
+            selected_stt_provider_id: stt_selection_provider_id(&settings, &model_manager),
             selected_stt_model_id: (!settings.selected_stt_model_id.trim().is_empty())
                 .then_some(settings.selected_stt_model_id.clone())
                 .or_else(|| {
@@ -890,16 +891,14 @@ pub async fn set_stt_platform_selection(
         ));
     }
 
-    if !model_is_available(&model_info) {
-        if model_info.url.is_some() {
-            model_manager
-                .download_model(&resolved_model_id)
-                .await
-                .map_err(|err| format!("Failed to download model '{}': {err}", resolved_model_id))?;
-            model_info = model_manager
-                .get_model_info(&resolved_model_id)
-                .ok_or_else(|| format!("Model not found after download: {}", resolved_model_id))?;
-        }
+    if !model_is_available(&model_info) && model_info.url.is_some() {
+        model_manager
+            .download_model(&resolved_model_id)
+            .await
+            .map_err(|err| format!("Failed to download model '{}': {err}", resolved_model_id))?;
+        model_info = model_manager
+            .get_model_info(&resolved_model_id)
+            .ok_or_else(|| format!("Model not found after download: {}", resolved_model_id))?;
     }
 
     if !model_is_available(&model_info) {

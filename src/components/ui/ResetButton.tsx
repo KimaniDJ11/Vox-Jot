@@ -1,6 +1,9 @@
 import React from "react";
 
-import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 
 import ResetIcon from "../icons/ResetIcon";
 

@@ -273,7 +273,11 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
       }
 
       try {
-        await commands.convoApplyNoteEdit(activeNoteId, "replace", draftContent);
+        await commands.convoApplyNoteEdit(
+          activeNoteId,
+          "replace",
+          draftContent,
+        );
         await loadActiveNote(activeNoteId);
         toast.success(t("convo.jotpad.noteReplaced"));
       } catch {
@@ -359,10 +363,7 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
         );
       case "jotpad":
         return (
-          <JotpadContextCard
-            noteContent={noteContent}
-            noteId={activeNoteId}
-          />
+          <JotpadContextCard noteContent={noteContent} noteId={activeNoteId} />
         );
       case "files_context":
         return <FilesContextCard sessionId={sessionId} />;

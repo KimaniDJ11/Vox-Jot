@@ -130,7 +130,7 @@ fn create_detail_window(app: &AppHandle, section: &str) {
 
     match builder.build() {
         Ok(panel) => {
-            let _ = panel.show();
+            panel.show();
             debug!("Detail view panel created for section: {}", section);
             attach_close_handler(&app_clone);
         }

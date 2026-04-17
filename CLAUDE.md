@@ -46,8 +46,9 @@ bun run format:check      # Check formatting without changes
 
 ```bash
 mkdir -p src-tauri/resources/models
-curl -L -o src-tauri/resources/models/silero_vad_v4.onnx https://github.com/cjpais/Vox-Jot/releases/latest/download/silero_vad_v4.onnx
 ```
+
+`src-tauri/resources/models/silero_vad_v4.onnx` is committed in the repo, so no manual download step is required for normal development.
 
 ## Architecture Overview
 
@@ -102,25 +103,25 @@ All user-facing strings must use i18next translations. ESLint enforces this (no 
 
 **UI navigation structure — use these labels in code names, not “General” or “Speech Output”:**
 
-| Top Nav | Sidebar Label | Code Component (AppSections.tsx) | Panel (ListenSections.tsx) |
-|---------|---------------|----------------------------------|---------------------------|
-| **Dictate** | Recent History, Corrections, Jot Pad, Speech Models | `DictateHistorySection`, etc. | — |
-| **Refine** | Phrase Keys, Write Profiles, Translation, Refine Models | `RefinePhraseKeysSection`, etc. | — |
-| **Listen** | My Voices | `ListenMyVoicesSection` | `MyVoicesSection` |
-| **Listen** | Sound & Tuning | `ListenSoundTuningSection` | `SoundAndTuningSection` |
-| **Listen** | Engine Library | `ListenEngineLibrarySection` | `EngineLibrarySection` |
-| **Listen** | Voice Cloning | `ListenVoiceCloningSection` | `ListenVoiceCloningSection` |
-| **Listen** | Auto-Readback | `ListenAutoReadbackSection` | `AutoReadbackSection` |
-| **Listen** | Output | `ListenOutputSection` | `ListenOutputSection` |
-| **Settings** | App & Dictation | `GeneralAppSettingsSection` | — |
-| **Settings** | Shortcuts | `ShortcutsSettingsSection` | — |
-| **Settings** | Recording & Devices | `RecordingDevicesSettingsSection` | — |
-| **Settings** | Output & Paste | `OutputPasteSettingsSection` | — |
-| **Settings** | Models & AI | `AISetupSettingsSection` | — |
-| **Settings** | Corrections | `CorrectionsSection` | — |
-| **Settings** | Privacy & Storage | `PrivacyStorageSettingsSection` | — |
-| **Settings** | Diagnostics | `DiagnosticsSettingsSection` | — |
-| **Settings** | About Vox Jot | `AboutSection` | — |
+| Top Nav      | Sidebar Label                                           | Code Component (AppSections.tsx)  | Panel (ListenSections.tsx)  |
+| ------------ | ------------------------------------------------------- | --------------------------------- | --------------------------- |
+| **Dictate**  | Recent History, Corrections, Jot Pad, Speech Models     | `DictateHistorySection`, etc.     | —                           |
+| **Refine**   | Phrase Keys, Write Profiles, Translation, Refine Models | `RefinePhraseKeysSection`, etc.   | —                           |
+| **Listen**   | My Voices                                               | `ListenMyVoicesSection`           | `MyVoicesSection`           |
+| **Listen**   | Sound & Tuning                                          | `ListenSoundTuningSection`        | `SoundAndTuningSection`     |
+| **Listen**   | Engine Library                                          | `ListenEngineLibrarySection`      | `EngineLibrarySection`      |
+| **Listen**   | Voice Cloning                                           | `ListenVoiceCloningSection`       | `ListenVoiceCloningSection` |
+| **Listen**   | Auto-Readback                                           | `ListenAutoReadbackSection`       | `AutoReadbackSection`       |
+| **Listen**   | Output                                                  | `ListenOutputSection`             | `ListenOutputSection`       |
+| **Settings** | App & Dictation                                         | `GeneralAppSettingsSection`       | —                           |
+| **Settings** | Shortcuts                                               | `ShortcutsSettingsSection`        | —                           |
+| **Settings** | Recording & Devices                                     | `RecordingDevicesSettingsSection` | —                           |
+| **Settings** | Output & Paste                                          | `OutputPasteSettingsSection`      | —                           |
+| **Settings** | Models & AI                                             | `AISetupSettingsSection`          | —                           |
+| **Settings** | Corrections                                             | `CorrectionsSection`              | —                           |
+| **Settings** | Privacy & Storage                                       | `PrivacyStorageSettingsSection`   | —                           |
+| **Settings** | Diagnostics                                             | `DiagnosticsSettingsSection`      | —                           |
+| **Settings** | About Vox Jot                                           | `AboutSection`                    | —                           |
 
 **File structure:**
 

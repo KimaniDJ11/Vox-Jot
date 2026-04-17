@@ -29,9 +29,7 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
                 </p>
               )}
             </div>
-            {titleAction ? (
-              <div className="shrink-0">{titleAction}</div>
-            ) : null}
+            {titleAction ? <div className="shrink-0">{titleAction}</div> : null}
           </div>
         </div>
       )}

@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 import { File, FolderOpen, ClipboardPaste, X, Plus } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/Button";
-import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 import { commands, type ConvoContextItem } from "@/bindings";
 
 interface FilesContextCardProps {
@@ -122,7 +125,9 @@ export const FilesContextCard: React.FC<FilesContextCardProps> = ({
               {sourceIcon(item.source_type)}
               <span className="max-w-[150px] truncate">{item.label}</span>
               <span className="text-[var(--muted)]">
-                {t("convo.filesContext.charCount", { count: Math.round(item.char_count / 1000) })}
+                {t("convo.filesContext.charCount", {
+                  count: Math.round(item.char_count / 1000),
+                })}
               </span>
               <button
                 type="button"

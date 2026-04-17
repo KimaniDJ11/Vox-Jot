@@ -1,6 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 
 import { SettingContainer } from "./SettingContainer";
 import { Tooltip } from "./Tooltip";
@@ -21,6 +24,41 @@ interface SliderProps {
   formatValue?: (value: number) => string;
 }
 
+// Commits to `onChange` only on pointer/key release so dragging doesn't
+// trigger a backend write for every intermediate value.
+function useDeferredSliderValue(
+  value: number,
+  onChange: (value: number) => void,
+) {
+  const [localValue, setLocalValue] = useState(value);
+  const pendingRef = useRef(value);
+  const activeRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeRef.current) {
+      setLocalValue(value);
+      pendingRef.current = value;
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const parsed = parseFloat(e.target.value);
+    pendingRef.current = parsed;
+    activeRef.current = true;
+    setLocalValue(parsed);
+  };
+
+  const commit = () => {
+    if (!activeRef.current) return;
+    activeRef.current = false;
+    if (pendingRef.current !== value) {
+      onChange(pendingRef.current);
+    }
+  };
+
+  return { localValue, handleChange, commit };
+}
+
 export const Slider: React.FC<SliderProps> = ({
   value,
   onChange,
@@ -36,14 +74,14 @@ export const Slider: React.FC<SliderProps> = ({
   showValue = true,
   formatValue = (v) => v.toFixed(2),
 }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(parseFloat(e.target.value));
-  };
-
+  const { localValue, handleChange, commit } = useDeferredSliderValue(
+    value,
+    onChange,
+  );
   const fillPercent =
     max === min
       ? 0
-      : Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+      : Math.min(100, Math.max(0, ((localValue - min) / (max - min)) * 100));
   const trackStyle = {
     "--slider-bg": `linear-gradient(to right, var(--accent) 0%, var(--accent) ${fillPercent}%, color-mix(in srgb, var(--accent), white 78%) ${fillPercent}%, color-mix(in srgb, var(--text), transparent 82%) 100%)`,
   } as React.CSSProperties;
@@ -57,12 +95,13 @@ export const Slider: React.FC<SliderProps> = ({
         disabled={disabled}
         showValue={showValue}
         formatValue={formatValue}
-        value={value}
+        value={localValue}
         min={min}
         max={max}
         step={step}
         trackStyle={trackStyle}
         handleChange={handleChange}
+        commit={commit}
       />
     );
   }
@@ -83,15 +122,18 @@ export const Slider: React.FC<SliderProps> = ({
             min={min}
             max={max}
             step={step}
-            value={value}
+            value={localValue}
             onChange={handleChange}
+            onPointerUp={commit}
+            onKeyUp={commit}
+            onBlur={commit}
             disabled={disabled}
             className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             style={trackStyle}
           />
           {showValue && (
             <span className="text-sm font-semibold text-[var(--text)] min-w-10 text-end tabular-nums">
-              {formatValue(value)}
+              {formatValue(localValue)}
             </span>
           )}
         </div>
@@ -114,6 +156,7 @@ const CompactSlider: React.FC<{
   step: number;
   trackStyle: React.CSSProperties;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  commit: () => void;
 }> = ({
   label,
   description,
@@ -127,6 +170,7 @@ const CompactSlider: React.FC<{
   step,
   trackStyle,
   handleChange,
+  commit,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
@@ -185,6 +229,9 @@ const CompactSlider: React.FC<{
         step={step}
         value={value}
         onChange={handleChange}
+        onPointerUp={commit}
+        onKeyUp={commit}
+        onBlur={commit}
         disabled={disabled}
         className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
         style={trackStyle}

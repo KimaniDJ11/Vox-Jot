@@ -9,7 +9,10 @@ import {
   openUpdateDownloadUrl,
   type CustomUpdateResult,
 } from "@/lib/utils/customUpdateChecker";
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface UpdateCheckerProps {
   className?: string;

@@ -1,7 +1,7 @@
 # Model Porting Rubric — Vox Jot on Apple Silicon
 
 Use this document to evaluate any new model for Vox Jot integration in under
-two minutes.  Fill out the **triage manifest** (JSON template below), then run
+two minutes. Fill out the **triage manifest** (JSON template below), then run
 the **scoring rubric** to get a numeric Go / Maybe / Skip verdict.
 
 ---
@@ -9,7 +9,7 @@ the **scoring rubric** to get a numeric Go / Maybe / Skip verdict.
 ## 1 — Triage Manifest Template
 
 Copy this JSON, fill in the fields, and save it as
-`docs/model-evals/<model-id>.json`.  The field names mirror Vox Jot's existing
+`docs/model-evals/<model-id>.json`. The field names mirror Vox Jot's existing
 `ProviderDescriptor` / `CatalogModelDescriptor` / `CapabilityFlags` shapes in
 `model_platform.rs` so the manifest can later be consumed programmatically.
 
@@ -106,35 +106,35 @@ Copy this JSON, fill in the fields, and save it as
 
 ## 2 — Scoring Rubric
 
-Score each dimension 0–3, multiply by the weight, and sum.  The total tells you
+Score each dimension 0–3, multiply by the weight, and sum. The total tells you
 the decision lane.
 
-| # | Dimension | Weight | 0 (Blocker) | 1 (Weak) | 2 (Workable) | 3 (Ideal) |
-|---|-----------|--------|-------------|----------|--------------|-----------|
-| 1 | **License** | ×4 | Non-commercial or unknown | Copyleft (GPL, AGPL) | Permissive with conditions (CC-BY, LGPL) | Fully permissive (Apache-2.0, MIT, BSD) |
-| 2 | **Mac runtime lane** | ×4 | CUDA-only, no Mac path | PyTorch + MPS hacks only | GGUF / Metal or ONNX available | MLX version or native Core ML |
-| 3 | **Domain fit** | ×3 | Unrelated to STT / TTS / LLM | Adjacent (e.g. audio classifier) | Covers a domain gap Vox Jot has | Direct drop-in for existing domain |
-| 4 | **Resource budget** | ×3 | >16 GB VRAM or >30s cold start | 8–16 GB, 10–30s cold start | 4–8 GB, 3–10s cold start | <4 GB, <3s cold start |
-| 5 | **Packaging ease** | ×2 | Requires embedded CUDA runtime | Needs custom sidecar build | Runtime archive + model archive | Single downloadable asset |
-| 6 | **Streaming support** | ×1 | No streaming, batch only | Chunk-level streaming | Token/frame streaming | Real-time streaming with low RTF |
-| 7 | **Language coverage** | ×1 | Single language, not en | English only | 5–15 languages | 15+ languages or fills a gap |
-| 8 | **Community health** | ×1 | Abandoned / no issues | Low activity, few contributors | Active repo, some Mac discussion | Active Mac community + MLX ports |
-| 9 | **Voice cloning** | ×1 | N/A or unsupported | Basic cloning, poor quality | Good zero-shot cloning | Cloning + style control |
+| #   | Dimension             | Weight | 0 (Blocker)                    | 1 (Weak)                         | 2 (Workable)                             | 3 (Ideal)                               |
+| --- | --------------------- | ------ | ------------------------------ | -------------------------------- | ---------------------------------------- | --------------------------------------- |
+| 1   | **License**           | ×4     | Non-commercial or unknown      | Copyleft (GPL, AGPL)             | Permissive with conditions (CC-BY, LGPL) | Fully permissive (Apache-2.0, MIT, BSD) |
+| 2   | **Mac runtime lane**  | ×4     | CUDA-only, no Mac path         | PyTorch + MPS hacks only         | GGUF / Metal or ONNX available           | MLX version or native Core ML           |
+| 3   | **Domain fit**        | ×3     | Unrelated to STT / TTS / LLM   | Adjacent (e.g. audio classifier) | Covers a domain gap Vox Jot has          | Direct drop-in for existing domain      |
+| 4   | **Resource budget**   | ×3     | >16 GB VRAM or >30s cold start | 8–16 GB, 10–30s cold start       | 4–8 GB, 3–10s cold start                 | <4 GB, <3s cold start                   |
+| 5   | **Packaging ease**    | ×2     | Requires embedded CUDA runtime | Needs custom sidecar build       | Runtime archive + model archive          | Single downloadable asset               |
+| 6   | **Streaming support** | ×1     | No streaming, batch only       | Chunk-level streaming            | Token/frame streaming                    | Real-time streaming with low RTF        |
+| 7   | **Language coverage** | ×1     | Single language, not en        | English only                     | 5–15 languages                           | 15+ languages or fills a gap            |
+| 8   | **Community health**  | ×1     | Abandoned / no issues          | Low activity, few contributors   | Active repo, some Mac discussion         | Active Mac community + MLX ports        |
+| 9   | **Voice cloning**     | ×1     | N/A or unsupported             | Basic cloning, poor quality      | Good zero-shot cloning                   | Cloning + style control                 |
 
 ### Maximum possible score: 60
 
-| Score range | Decision | Meaning |
-|-------------|----------|---------|
-| **45–60** | **Ship** | MLX/Metal ready, good fit. Add as a first-class provider. |
-| **30–44** | **Ship experimental** | Usable via sidecar or community port. Ship behind Labs toggle. |
-| **18–29** | **Prototype** | Interesting but needs conversion work. Build a spike, don't ship. |
-| **0–17**  | **Skip** | Blocked on license, runtime, or relevance. Revisit when status changes. |
+| Score range | Decision              | Meaning                                                                 |
+| ----------- | --------------------- | ----------------------------------------------------------------------- |
+| **45–60**   | **Ship**              | MLX/Metal ready, good fit. Add as a first-class provider.               |
+| **30–44**   | **Ship experimental** | Usable via sidecar or community port. Ship behind Labs toggle.          |
+| **18–29**   | **Prototype**         | Interesting but needs conversion work. Build a spike, don't ship.       |
+| **0–17**    | **Skip**              | Blocked on license, runtime, or relevance. Revisit when status changes. |
 
 ---
 
 ## 3 — Quick-pass checklist (2-minute version)
 
-Run this in order.  Stop at the first **STOP** result.
+Run this in order. Stop at the first **STOP** result.
 
 ```
 1. License?
@@ -205,21 +205,21 @@ Matches: `TtsEngineKind::Sidecar`, `SidecarBackend::LegacyPythonRuntime`
 
 ## 5 — Example: VoxCPM2 scored
 
-| # | Dimension | Raw | × Weight | Notes |
-|---|-----------|-----|----------|-------|
-| 1 | License | 3 | 12 | Apache-2.0 |
-| 2 | Mac runtime | 0 | 0 | CUDA 12 required, no MLX/Metal/ONNX path |
-| 3 | Domain fit | 3 | 9 | TTS — direct fit for Listen section |
-| 4 | Resource budget | 1 | 3 | ~8 GB VRAM, unknown cold start on Mac |
-| 5 | Packaging | 1 | 2 | Would need custom Python sidecar |
-| 6 | Streaming | 2 | 2 | Has streaming API |
-| 7 | Languages | 3 | 3 | 30 languages |
-| 8 | Community | 2 | 2 | Active repo, no Mac discussion yet |
-| 9 | Voice cloning | 3 | 3 | Cloning + style + voice design |
-| | **Total** | | **36** | **Ship experimental** — but blocked on Mac runtime (score 0). Revisit when MLX or MPS port appears. |
+| #   | Dimension       | Raw | × Weight | Notes                                                                                               |
+| --- | --------------- | --- | -------- | --------------------------------------------------------------------------------------------------- |
+| 1   | License         | 3   | 12       | Apache-2.0                                                                                          |
+| 2   | Mac runtime     | 0   | 0        | CUDA 12 required, no MLX/Metal/ONNX path                                                            |
+| 3   | Domain fit      | 3   | 9        | TTS — direct fit for Listen section                                                                 |
+| 4   | Resource budget | 1   | 3        | ~8 GB VRAM, unknown cold start on Mac                                                               |
+| 5   | Packaging       | 1   | 2        | Would need custom Python sidecar                                                                    |
+| 6   | Streaming       | 2   | 2        | Has streaming API                                                                                   |
+| 7   | Languages       | 3   | 3        | 30 languages                                                                                        |
+| 8   | Community       | 2   | 2        | Active repo, no Mac discussion yet                                                                  |
+| 9   | Voice cloning   | 3   | 3        | Cloning + style + voice design                                                                      |
+|     | **Total**       |     | **36**   | **Ship experimental** — but blocked on Mac runtime (score 0). Revisit when MLX or MPS port appears. |
 
-**Effective verdict: Prototype / wait.**  The score of 36 says "ship
-experimental," but the runtime dimension scoring 0 is a hard blocker.  If
+**Effective verdict: Prototype / wait.** The score of 36 says "ship
+experimental," but the runtime dimension scoring 0 is a hard blocker. If
 dimension 2 reaches ≥2, the total jumps to 44+ and it becomes a clear ship.
 
 ---
@@ -235,5 +235,5 @@ docs/
     └── ...
 ```
 
-Keep one JSON per model.  The manifest doubles as documentation and can be
+Keep one JSON per model. The manifest doubles as documentation and can be
 parsed by a future `scripts/score-model.ts` automation script.

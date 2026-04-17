@@ -30,10 +30,12 @@ use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use store::CorrectionStore;
+use tokio::task::JoinHandle;
 
 /// Manages the currently active inserted span and coordinates correction monitoring.
 pub struct InsertedSpanTracker {
     active_span: Mutex<Option<InsertedSpan>>,
+    monitor_task: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl InsertedSpanTracker {
@@ -41,6 +43,7 @@ impl InsertedSpanTracker {
     pub fn new() -> Self {
         Self {
             active_span: Mutex::new(None),
+            monitor_task: Mutex::new(None),
         }
     }
 
@@ -95,10 +98,16 @@ impl InsertedSpanTracker {
         let reader = create_platform_reader(app_identifier);
 
         // Spawn the monitoring task
-        tokio::spawn(async move {
+        let monitor_task = tokio::spawn(async move {
             field_monitor::monitor_for_corrections(reader, span, store, app_behavior, recent_input)
                 .await;
         });
+
+        let mut active_task = self.monitor_task.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(previous_task) = active_task.take() {
+            previous_task.abort();
+        }
+        *active_task = Some(monitor_task);
     }
 
     /// Get a clone of the currently active span, if any.
@@ -118,6 +127,16 @@ impl InsertedSpanTracker {
             log::debug!("Clearing active inserted span");
         }
         *active = None;
+    }
+}
+
+impl Drop for InsertedSpanTracker {
+    fn drop(&mut self) {
+        if let Ok(mut task) = self.monitor_task.lock() {
+            if let Some(handle) = task.take() {
+                handle.abort();
+            }
+        }
     }
 }
 

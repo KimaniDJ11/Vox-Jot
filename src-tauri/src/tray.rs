@@ -9,14 +9,14 @@ use tauri::tray::TrayIcon;
 use tauri::{AppHandle, Manager, Theme};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TrayIconState {
     Idle,
     Recording,
     Transcribing,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AppTheme {
     Dark,
     Light,
@@ -60,18 +60,48 @@ pub fn get_icon_path(theme: AppTheme, state: TrayIconState) -> &'static str {
     }
 }
 
+fn load_icon_from_path(app: &AppHandle, icon_path: &str) -> Result<Image<'static>, String> {
+    let resolved = crate::portable::resolve_resource(app, icon_path)
+        .map_err(|error| format!("failed to resolve {icon_path}: {error}"))?;
+    Image::from_path(resolved).map_err(|error| format!("failed to load {icon_path}: {error}"))
+}
+
+pub fn load_tray_icon(
+    app: &AppHandle,
+    theme: AppTheme,
+    state: TrayIconState,
+) -> Option<Image<'static>> {
+    let primary_path = get_icon_path(theme, state);
+    let fallback_paths = [
+        "resources/tray_idle.png",
+        "resources/tray_idle_dark.png",
+        "icons/32x32.png",
+    ];
+
+    for candidate in std::iter::once(primary_path).chain(
+        fallback_paths
+            .into_iter()
+            .filter(|fallback| *fallback != primary_path),
+    ) {
+        match load_icon_from_path(app, candidate) {
+            Ok(icon) => return Some(icon),
+            Err(error) => warn!("Tray icon candidate '{candidate}' unavailable: {error}"),
+        }
+    }
+
+    warn!("Unable to load any tray icon asset; continuing without changing the tray image");
+    None
+}
+
 pub fn change_tray_icon(app: &AppHandle, icon: TrayIconState) {
     let tray = app.state::<TrayIcon>();
     let theme = get_current_theme(app);
 
-    let icon_path = get_icon_path(theme, icon.clone());
-
-    let _ = tray.set_icon(Some(
-        Image::from_path(
-            crate::portable::resolve_resource(app, icon_path).expect("failed to resolve"),
-        )
-        .expect("failed to set icon"),
-    ));
+    if let Some(image) = load_tray_icon(app, theme, icon) {
+        if let Err(error) = tray.set_icon(Some(image)) {
+            warn!("Failed to update tray icon: {error}");
+        }
+    }
 
     // Update menu based on state
     update_tray_menu(app, &icon, None);

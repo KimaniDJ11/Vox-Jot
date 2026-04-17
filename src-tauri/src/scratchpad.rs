@@ -163,7 +163,7 @@ fn create_scratchpad_window(app: &AppHandle) {
 
     match builder.build() {
         Ok(panel) => {
-            let _ = panel.show();
+            panel.show();
             debug!("Scratchpad panel created");
             attach_scratchpad_close_handler(app);
         }

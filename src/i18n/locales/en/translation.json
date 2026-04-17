@@ -1054,6 +1054,17 @@
           "details": "Vox Jot uses Whisper.cpp for fast, local speech-to-text processing. Thanks to the amazing work by Georgi Gerganov and contributors."
         }
       }
+    },
+    "screenContext": {
+      "statusLabel": "Status:",
+      "statusUnknown": "unknown",
+      "screenRecordingLabel": "Screen Recording permission:",
+      "screenRecordingGranted": "Granted",
+      "screenRecordingMissing": "Missing",
+      "cacheSizeLabel": "Cache size:",
+      "latestContextAgeLabel": "Latest context age:",
+      "latestContextAgeValue": "{{ms}} ms",
+      "latestContextAgeUnavailable": "Unavailable"
     }
   },
   "titleBar": {
@@ -1219,7 +1230,14 @@
       "createProfile": "Create Profile",
       "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
       "createProfileButton": "Create profile",
-      "importWavIntoLatest": "Import WAV into latest"
+      "importWavIntoLatest": "Import WAV into latest",
+      "cloneTarget": "Clone Target",
+      "nextStep": "Next Step",
+      "fullyOptimized": "Fully optimized",
+      "readyForCloning": "Ready for cloning",
+      "needsReferenceAudio": "Needs reference audio",
+      "audioFile": "Audio file",
+      "transcript": "Transcript"
     }
   }
 }

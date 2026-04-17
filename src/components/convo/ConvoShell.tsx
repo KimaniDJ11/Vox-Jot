@@ -176,7 +176,9 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
       onSendAudioTurn(response);
 
       if (speakReplies && response.audio_base64) {
-        const playResult = await commands.convoPlayAudioReply(response.audio_base64);
+        const playResult = await commands.convoPlayAudioReply(
+          response.audio_base64,
+        );
         if (playResult.status !== "ok") {
           console.error("Failed to play convo audio reply:", playResult.error);
         }
@@ -298,8 +300,12 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
                             <DraftActions
                               draftContent={draftAction.payload}
                               noteId={activeNoteId ?? null}
-                              onReplace={() => onReplaceDraft(draftAction.payload)}
-                              onAppend={() => onAppendDraft(draftAction.payload)}
+                              onReplace={() =>
+                                onReplaceDraft(draftAction.payload)
+                              }
+                              onAppend={() =>
+                                onAppendDraft(draftAction.payload)
+                              }
                               onCopy={() => onCopyDraft(draftAction.payload)}
                             />
                           )}
@@ -374,8 +380,7 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
               placeholder={t("convo.common.typeMessage")}
               rows={1}
               disabled={isBusy}
-              className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] outline-none transition-colors focus:border-[var(--accent)]"
-              style={{ maxHeight: "120px", overflow: "auto" }}
+              className="max-h-[120px] w-full resize-none overflow-auto rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2.5 text-sm text-[var(--text)] placeholder-[var(--muted)] outline-none transition-colors focus:border-[var(--accent)]"
             />
           </div>
           <Button

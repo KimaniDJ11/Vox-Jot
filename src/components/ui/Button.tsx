@@ -1,6 +1,9 @@
 import React from "react";
 
-import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
@@ -10,7 +13,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     | "danger"
     | "danger-ghost"
     | "ghost";
-  size?: "sm" | "md" | "lg" | "icon";
+  size?: "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -46,7 +49,9 @@ export const Button: React.FC<ButtonProps> = ({
     sm: `${minTapTargetHeightClass} px-3 py-2 text-xs`,
     md: `${minTapTargetHeightClass} px-4 py-2 text-sm`,
     lg: "min-h-[48px] px-5 py-2.5 text-base",
-    icon: "h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 p-0 [&>svg]:shrink-0",
+    icon: "h-11 w-11 shrink-0 p-0 [&>svg]:shrink-0",
+    "icon-sm": "h-8 w-8 shrink-0 p-0 [&>svg]:shrink-0",
+    "icon-xs": "h-6 w-6 shrink-0 p-0 [&>svg]:shrink-0",
   };
 
   return (

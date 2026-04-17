@@ -324,9 +324,8 @@ export const CorrectionDictionaryView: React.FC<
       <>
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={() => {
             setShowManualEditor(true);
             setManualDraft(emptyManualCorrectionDraft());
@@ -342,9 +341,8 @@ export const CorrectionDictionaryView: React.FC<
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={handleImport}
           title={t("settings.corrections.dictionary.import")}
           aria-label={t("settings.corrections.dictionary.import")}
@@ -353,9 +351,8 @@ export const CorrectionDictionaryView: React.FC<
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={handleExport}
           disabled={bulkActionsDisabled}
           title={t("settings.corrections.dictionary.export")}
@@ -365,9 +362,8 @@ export const CorrectionDictionaryView: React.FC<
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="danger-ghost"
-          className="h-10 w-10 p-0"
           onClick={handleClearAll}
           disabled={bulkActionsDisabled}
           title={t("settings.corrections.dictionary.clearAll")}
@@ -534,14 +530,16 @@ export const CorrectionDictionaryView: React.FC<
                         }`}
                       />
                     </button>
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
+                      variant="danger-ghost"
+                      size="icon-sm"
+                      className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
                       onClick={() => handleDeleteGroup(group)}
                       title={t("common.delete")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

@@ -42,12 +42,7 @@ export const DraftActions: React.FC<DraftActionsProps> = ({
         <PlusCircle className="mr-1 h-3 w-3" />
         {t("convo.jotpad.appendToNote")}
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onCopy}
-        className="text-xs"
-      >
+      <Button variant="ghost" size="sm" onClick={onCopy} className="text-xs">
         <Copy className="mr-1 h-3 w-3" />
         {t("convo.jotpad.copyDraft")}
       </Button>

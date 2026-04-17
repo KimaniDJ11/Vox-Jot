@@ -72,8 +72,7 @@ struct HfImportSpec {
 }
 
 const HF_COLLECTION_SLUG_ENV: &str = "VOXJOT_HF_COLLECTION_SLUG";
-const HF_DEFAULT_COLLECTION_SLUG: &str =
-    "IrieDinamik/vox-jot-best-gguf-models-for-custom-import";
+const HF_DEFAULT_COLLECTION_SLUG: &str = "IrieDinamik/vox-jot-best-gguf-models-for-custom-import";
 const HF_DYNAMIC_SEARCH_QUERY: &str = "bartowski GGUF instruct";
 const HF_DYNAMIC_SEARCH_LIMIT: usize = 24;
 const HF_DYNAMIC_SEARCH_MAX_RESULTS: usize = 8;
@@ -638,8 +637,7 @@ async fn build_hf_catalog_models(
             log::warn!("Hugging Face dynamic model discovery failed, using fallback list: {err}");
             (
                 build_hf_fallback_models(settings, ollama_status),
-                "Using bundled verified Hugging Face imports (offline-safe fallback)."
-                    .to_string(),
+                "Using bundled verified Hugging Face imports (offline-safe fallback).".to_string(),
             )
         }
     }

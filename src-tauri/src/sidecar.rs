@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use log::{info, warn};
@@ -13,7 +14,29 @@ const DEFAULT_SPEECH_RUNTIME_PATHS: &[&str] = &[
     "Apps/Speech",
 ];
 const SIDECAR_PORT: u16 = 8008;
-const HEALTH_CHECK_TIMEOUT_SECS: u64 = 3;
+const HEALTH_CHECK_TIMEOUT_MS: u64 = 350;
+const HEALTH_CACHE_TTL_MS: u64 = 1_500;
+
+const HEALTH_UNKNOWN: u8 = 0;
+const HEALTH_NONE: u8 = 1;
+const HEALTH_LEGACY: u8 = 2;
+const HEALTH_MLX: u8 = 3;
+const HEALTH_OTHER: u8 = 4;
+
+fn health_client() -> &'static reqwest::blocking::Client {
+    // Reuse a single blocking client: builds TLS/connection pool once so
+    // repeated health probes don't pay builder/TCP setup cost each call.
+    // Keep health-check timeouts short because these probes run on startup
+    // and model-load paths where multi-second waits feel like app freezes.
+    static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
+            .timeout(Duration::from_millis(HEALTH_CHECK_TIMEOUT_MS))
+            .build()
+            .expect("failed to build sidecar health reqwest client")
+    })
+}
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str = "mlx-audio==0.4.2|torch==2.11.0|patches=voxtral_eos_v1";
@@ -29,6 +52,8 @@ pub struct SidecarManager {
     app_handle: AppHandle,
     child: Mutex<Option<std::process::Child>>,
     backend: SidecarBackend,
+    cached_health: AtomicU8,
+    cached_health_checked_at_ms: AtomicU64,
 }
 
 impl SidecarManager {
@@ -37,11 +62,92 @@ impl SidecarManager {
             app_handle: app_handle.clone(),
             child: Mutex::new(None),
             backend: Self::detect_backend(app_handle),
+            cached_health: AtomicU8::new(HEALTH_UNKNOWN),
+            cached_health_checked_at_ms: AtomicU64::new(0),
         }
     }
 
     pub fn backend(&self) -> SidecarBackend {
         self.backend
+    }
+
+    fn now_ms() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_millis() as u64)
+            .unwrap_or(0)
+    }
+
+    fn set_cached_health(&self, state: u8) {
+        self.cached_health.store(state, Ordering::Relaxed);
+        self.cached_health_checked_at_ms
+            .store(Self::now_ms(), Ordering::Relaxed);
+    }
+
+    fn clear_cached_health(&self) {
+        self.cached_health.store(HEALTH_UNKNOWN, Ordering::Relaxed);
+        self.cached_health_checked_at_ms.store(0, Ordering::Relaxed);
+    }
+
+    fn cached_health_if_fresh(&self) -> Option<u8> {
+        let checked_at = self.cached_health_checked_at_ms.load(Ordering::Relaxed);
+        if checked_at == 0 {
+            return None;
+        }
+
+        let age_ms = Self::now_ms().saturating_sub(checked_at);
+        if age_ms > HEALTH_CACHE_TTL_MS {
+            return None;
+        }
+
+        Some(self.cached_health.load(Ordering::Relaxed))
+    }
+
+    fn probe_health(&self, force_refresh: bool) -> u8 {
+        if !force_refresh {
+            if let Some(cached) = self.cached_health_if_fresh() {
+                return cached;
+            }
+        }
+
+        let client = health_client();
+
+        let legacy_running = client
+            .post(format!("http://127.0.0.1:{SIDECAR_PORT}/listen/prepare"))
+            .header("content-type", "application/json")
+            .body("{}")
+            .send()
+            // Any non-404 response (even 400/422) means the endpoint exists,
+            // so the speech-runtime is the active server.
+            .map(|resp| resp.status().as_u16() != 404)
+            .unwrap_or(false);
+        if legacy_running {
+            self.set_cached_health(HEALTH_LEGACY);
+            return HEALTH_LEGACY;
+        }
+
+        let mlx_running = client
+            .get(format!("http://127.0.0.1:{SIDECAR_PORT}/v1/models"))
+            .send()
+            .map(|resp| resp.status().is_success())
+            .unwrap_or(false);
+        if mlx_running {
+            self.set_cached_health(HEALTH_MLX);
+            return HEALTH_MLX;
+        }
+
+        let any_running = client
+            .get(format!("http://127.0.0.1:{SIDECAR_PORT}/health"))
+            .send()
+            .map(|resp| resp.status().is_success())
+            .unwrap_or(false);
+        let state = if any_running {
+            HEALTH_OTHER
+        } else {
+            HEALTH_NONE
+        };
+        self.set_cached_health(state);
+        state
     }
 
     fn supports_mlx_audio_backend() -> bool {
@@ -207,54 +313,18 @@ impl SidecarManager {
     }
 
     pub fn is_running(&self) -> bool {
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
-            .build();
-        match client {
-            Ok(client) => ["/health", "/v1/models"].iter().any(|path| {
-                client
-                    .get(format!("http://127.0.0.1:{SIDECAR_PORT}{path}"))
-                    .send()
-                    .map(|resp| resp.status().is_success())
-                    .unwrap_or(false)
-            }),
-            Err(_) => false,
-        }
+        !matches!(self.probe_health(false), HEALTH_NONE | HEALTH_UNKNOWN)
     }
 
     pub fn is_mlx_audio_running(&self) -> bool {
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
-            .build();
-        match client {
-            Ok(client) => client
-                .get(format!("http://127.0.0.1:{SIDECAR_PORT}/v1/models"))
-                .send()
-                .map(|resp| resp.status().is_success())
-                .unwrap_or(false),
-            Err(_) => false,
-        }
+        self.probe_health(false) == HEALTH_MLX
     }
 
     /// Check whether the **speech-runtime** (legacy Python runtime) is the
     /// server currently listening on the sidecar port.  The speech-runtime
     /// exposes `/listen/prepare` which `mlx_audio.server` does not.
     pub fn is_speech_runtime_running(&self) -> bool {
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
-            .build();
-        match client {
-            Ok(client) => client
-                .post(format!("http://127.0.0.1:{SIDECAR_PORT}/listen/prepare"))
-                .header("content-type", "application/json")
-                .body("{}")
-                .send()
-                // Any non-404 response (even 400/422) means the endpoint
-                // exists, so the speech-runtime is the active server.
-                .map(|resp| resp.status().as_u16() != 404)
-                .unwrap_or(false),
-            Err(_) => false,
-        }
+        self.probe_health(false) == HEALTH_LEGACY
     }
 
     /// Ensure the speech-runtime (legacy Python runtime) is running on the
@@ -277,8 +347,8 @@ impl SidecarManager {
 
     pub fn ensure_running(&self) -> Result<(), String> {
         let already_running = match self.backend {
-            SidecarBackend::LegacyPythonRuntime => self.is_speech_runtime_running(),
-            SidecarBackend::MlxAudio => self.is_mlx_audio_running(),
+            SidecarBackend::LegacyPythonRuntime => self.probe_health(false) == HEALTH_LEGACY,
+            SidecarBackend::MlxAudio => self.probe_health(false) == HEALTH_MLX,
         };
         if already_running {
             return Ok(());
@@ -347,7 +417,7 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_runtime_probe("Speech runtime", 20, |manager| {
+        self.wait_for_runtime_probe("Speech runtime", HEALTH_LEGACY, 20, |manager| {
             manager.is_speech_runtime_running()
         })
     }
@@ -380,7 +450,7 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_runtime_probe("mlx-audio sidecar", 60, |manager| {
+        self.wait_for_runtime_probe("mlx-audio sidecar", HEALTH_MLX, 60, |manager| {
             manager.is_mlx_audio_running()
         })
     }
@@ -388,6 +458,7 @@ impl SidecarManager {
     fn wait_for_runtime_probe<F>(
         &self,
         runtime_label: &str,
+        healthy_state: u8,
         attempts: usize,
         probe: F,
     ) -> Result<(), String>
@@ -396,8 +467,10 @@ impl SidecarManager {
     {
         for attempt in 0..attempts {
             std::thread::sleep(Duration::from_millis(500));
+            self.clear_cached_health();
             if probe(self) {
                 info!("{runtime_label} is healthy (attempt {})", attempt + 1);
+                self.set_cached_health(healthy_state);
                 return Ok(());
             }
         }
@@ -405,25 +478,22 @@ impl SidecarManager {
         {
             let mut guard = self.child.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(ref mut child) = *guard {
-                match child.try_wait() {
-                    Ok(Some(status)) => {
-                        let stderr = child
-                            .stderr
-                            .take()
-                            .map(|mut stderr| {
-                                use std::io::Read;
-                                let mut buf = String::new();
-                                let _ = stderr.read_to_string(&mut buf);
-                                buf
-                            })
-                            .unwrap_or_default();
-                        *guard = None;
-                        return Err(format!(
-                            "{runtime_label} exited with {status}. Stderr: {}",
-                            stderr.chars().take(500).collect::<String>()
-                        ));
-                    }
-                    _ => {}
+                if let Ok(Some(status)) = child.try_wait() {
+                    let stderr = child
+                        .stderr
+                        .take()
+                        .map(|mut stderr| {
+                            use std::io::Read;
+                            let mut buf = String::new();
+                            let _ = stderr.read_to_string(&mut buf);
+                            buf
+                        })
+                        .unwrap_or_default();
+                    *guard = None;
+                    return Err(format!(
+                        "{runtime_label} exited with {status}. Stderr: {}",
+                        stderr.chars().take(500).collect::<String>()
+                    ));
                 }
             }
         }
@@ -800,6 +870,7 @@ impl SidecarManager {
             let _ = child.kill();
             let _ = child.wait();
         }
+        self.set_cached_health(HEALTH_NONE);
     }
 }
 

@@ -21,7 +21,9 @@ export async function initializeInputServices(
   if (enigoResult.status === "rejected") {
     onWarning(`Failed to initialize Enigo: ${formatError(enigoResult.reason)}`);
   } else if (enigoResult.value.status === "error") {
-    onWarning(`Failed to initialize Enigo: ${formatError(enigoResult.value.error)}`);
+    onWarning(
+      `Failed to initialize Enigo: ${formatError(enigoResult.value.error)}`,
+    );
   }
 
   if (shortcutsResult.status === "rejected") {

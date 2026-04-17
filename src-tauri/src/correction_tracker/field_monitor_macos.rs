@@ -106,10 +106,8 @@ impl FieldTextReader for MacosFieldTextReader {
             if let Some(val_ref) = value_opt {
                 let s = CFString::wrap_under_get_rule(val_ref as _).to_string();
                 if !s.is_empty() {
-                    if !s.is_empty() {
-                        debug!("Read {} chars from AXValue", s.len());
-                        return Ok(Some(s));
-                    }
+                    debug!("Read {} chars from AXValue", s.len());
+                    return Ok(Some(s));
                 }
             } else {
                 debug!("AXValue unavailable (AXError={})", value_err);
@@ -121,10 +119,8 @@ impl FieldTextReader for MacosFieldTextReader {
             if let Some(sel_ref) = sel_opt {
                 let s = CFString::wrap_under_get_rule(sel_ref as _).to_string();
                 if !s.is_empty() {
-                    if !s.is_empty() {
-                        debug!("Read {} chars from AXSelectedText", s.len());
-                        return Ok(Some(s));
-                    }
+                    debug!("Read {} chars from AXSelectedText", s.len());
+                    return Ok(Some(s));
                 }
             } else {
                 debug!("AXSelectedText unavailable (AXError={})", sel_err);
@@ -136,10 +132,8 @@ impl FieldTextReader for MacosFieldTextReader {
             if let Some(title_ref) = title_opt {
                 let s = CFString::wrap_under_get_rule(title_ref as _).to_string();
                 if !s.is_empty() {
-                    if !s.is_empty() {
-                        debug!("Read {} chars from AXTitle", s.len());
-                        return Ok(Some(s));
-                    }
+                    debug!("Read {} chars from AXTitle", s.len());
+                    return Ok(Some(s));
                 }
             } else {
                 debug!("AXTitle unavailable (AXError={})", title_err);

@@ -180,9 +180,10 @@ pub enum RecordingOverlayStyle {
     Detailed,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelUnloadTimeout {
+    #[default]
     Never,
     Immediately,
     Min2,
@@ -204,16 +205,18 @@ pub enum PasteMethod {
     ExternalScript,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ClipboardHandling {
+    #[default]
     DontModify,
     CopyToClipboard,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AutoSubmitKey {
+    #[default]
     Enter,
     CtrlEnter,
     CmdEnter,
@@ -261,12 +264,6 @@ impl Default for KeyboardImplementation {
     }
 }
 
-impl Default for ModelUnloadTimeout {
-    fn default() -> Self {
-        ModelUnloadTimeout::Never
-    }
-}
-
 impl Default for PasteMethod {
     fn default() -> Self {
         // Default to CtrlV for macOS and Windows, Direct for Linux
@@ -274,18 +271,6 @@ impl Default for PasteMethod {
         return PasteMethod::Direct;
         #[cfg(not(target_os = "linux"))]
         return PasteMethod::CtrlV;
-    }
-}
-
-impl Default for ClipboardHandling {
-    fn default() -> Self {
-        ClipboardHandling::DontModify
-    }
-}
-
-impl Default for AutoSubmitKey {
-    fn default() -> Self {
-        AutoSubmitKey::Enter
     }
 }
 
@@ -339,9 +324,10 @@ impl SoundTheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TypingTool {
+    #[default]
     Auto,
     Wtype,
     Kwtype,
@@ -350,29 +336,19 @@ pub enum TypingTool {
     Xdotool,
 }
 
-impl Default for TypingTool {
-    fn default() -> Self {
-        TypingTool::Auto
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationOutputMode {
+    #[default]
     Source,
     Translated,
     Bilingual,
 }
 
-impl Default for TranslationOutputMode {
-    fn default() -> Self {
-        TranslationOutputMode::Source
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationRoutePreference {
+    #[default]
     Auto,
     WhisperEnglish,
     OfflinePack,
@@ -380,106 +356,65 @@ pub enum TranslationRoutePreference {
     RemoteAi,
 }
 
-impl Default for TranslationRoutePreference {
-    fn default() -> Self {
-        TranslationRoutePreference::Auto
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationBilingualLayout {
+    #[default]
     TranslationThenSource,
     SourceThenTranslation,
 }
 
-impl Default for TranslationBilingualLayout {
-    fn default() -> Self {
-        TranslationBilingualLayout::TranslationThenSource
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TranslationDestinationMode {
+    #[default]
     PasteInPlace,
     PreviewThenPaste,
     OpenInJotPad,
 }
 
-impl Default for TranslationDestinationMode {
-    fn default() -> Self {
-        TranslationDestinationMode::PasteInPlace
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SelectionTranslationDestinationMode {
+    #[default]
     ReplaceSelection,
     PreviewThenReplace,
     OpenInJotPad,
 }
 
-impl Default for SelectionTranslationDestinationMode {
-    fn default() -> Self {
-        SelectionTranslationDestinationMode::ReplaceSelection
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TtsEnginePreference {
+    #[default]
     Auto,
     System,
     SherpaOnnx,
     Sidecar,
 }
 
-impl Default for TtsEnginePreference {
-    fn default() -> Self {
-        TtsEnginePreference::Auto
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TtsAutoReadbackMode {
+    #[default]
     Off,
     AfterOutput,
     AfterPreviewConfirm,
 }
 
-impl Default for TtsAutoReadbackMode {
-    fn default() -> Self {
-        TtsAutoReadbackMode::Off
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TtsAutoReadbackScope {
+    #[default]
     DictationOnly,
     DictationAndSelection,
 }
 
-impl Default for TtsAutoReadbackScope {
-    fn default() -> Self {
-        TtsAutoReadbackScope::DictationOnly
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TtsReadbackTextMode {
+    #[default]
     FinalOutput,
     TranslatedBlock,
-}
-
-impl Default for TtsReadbackTextMode {
-    fn default() -> Self {
-        TtsReadbackTextMode::FinalOutput
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Type)]
@@ -2591,9 +2526,11 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
 
                 // Merge default bindings into existing settings
                 for (key, value) in default_settings.bindings {
-                    if !settings.bindings.contains_key(&key) {
+                    if let std::collections::hash_map::Entry::Vacant(entry) =
+                        settings.bindings.entry(key.clone())
+                    {
                         debug!("Adding missing binding: {}", key);
-                        settings.bindings.insert(key, value);
+                        entry.insert(value);
                         updated = true;
                     }
                 }

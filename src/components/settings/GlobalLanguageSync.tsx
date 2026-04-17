@@ -12,12 +12,8 @@ interface GlobalLanguageSyncProps {
 export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
   ({ descriptionMode = "tooltip", grouped = false }) => {
     const { t } = useTranslation();
-    const {
-      settings,
-      updateSetting,
-      applyGlobalLanguageSync,
-      isUpdating,
-    } = useSettings();
+    const { settings, updateSetting, applyGlobalLanguageSync, isUpdating } =
+      useSettings();
     const [isSyncing, setIsSyncing] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -65,7 +61,9 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
               className="h-4 w-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent-glow)]"
               checked={syncEnabled}
               disabled={isUpdating("global_language_sync_enabled")}
-              onChange={(event) => void handleToggleChange(event.target.checked)}
+              onChange={(event) =>
+                void handleToggleChange(event.target.checked)
+              }
             />
             <span className="text-sm font-medium text-[var(--text)]">
               {t("settings.globalLanguageSync.syncAutomatically")}

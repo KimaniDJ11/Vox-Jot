@@ -293,9 +293,7 @@ function mergeResults(dirs: string[], outputDir: string): void {
   lines.push(`| Passed | ${combined.passed} |`);
   lines.push(`| Failed | ${combined.failed} |`);
   lines.push(`| Errors | ${combined.errors} |`);
-  lines.push(
-    `| Pass rate | ${(combined.pass_rate * 100).toFixed(1)}% |`,
-  );
+  lines.push(`| Pass rate | ${(combined.pass_rate * 100).toFixed(1)}% |`);
   lines.push(
     `| Avg similarity | ${(combined.avg_similarity * 100).toFixed(1)}% |`,
   );
@@ -323,10 +321,7 @@ function mergeResults(dirs: string[], outputDir: string): void {
     lines.push(`| ${route} | ${count} |`);
   }
 
-  writeFileSync(
-    resolve(combinedDir, "combined-results.md"),
-    lines.join("\n"),
-  );
+  writeFileSync(resolve(combinedDir, "combined-results.md"), lines.join("\n"));
 
   console.log(`\nCombined results → ${combinedDir}/`);
 }
@@ -342,9 +337,7 @@ async function main() {
   mkdirSync(outputDir, { recursive: true });
 
   console.log(`\n╔${"═".repeat(58)}╗`);
-  console.log(
-    `║  Vox Jot Post-Process Test Bank Evaluation${" ".repeat(14)}║`,
-  );
+  console.log(`║  Vox Jot Post-Process Test Bank Evaluation${" ".repeat(14)}║`);
   console.log(`╠${"═".repeat(58)}╣`);
   console.log(
     `║  Mode:     ${config.live ? "LIVE (LLM)" : "DRY RUN (route only)"}${" ".repeat(config.live ? 27 : 18)}║`,
@@ -378,19 +371,11 @@ async function main() {
       const tmpPath = resolve(outputDir, "_filtered-test-bank-cases.json");
       writeFileSync(
         tmpPath,
-        JSON.stringify(
-          { metadata: file.metadata, cases: filtered },
-          null,
-          2,
-        ),
+        JSON.stringify({ metadata: file.metadata, cases: filtered }, null, 2),
       );
-      resultDirs.push(
-        runEval(tmpPath, outputDir, "test-bank", config),
-      );
+      resultDirs.push(runEval(tmpPath, outputDir, "test-bank", config));
     } else {
-      resultDirs.push(
-        runEval(testBankCases, outputDir, "test-bank", config),
-      );
+      resultDirs.push(runEval(testBankCases, outputDir, "test-bank", config));
     }
   }
 
@@ -407,15 +392,9 @@ async function main() {
         const tmpPath = resolve(outputDir, "_filtered-spelling-cases.json");
         writeFileSync(
           tmpPath,
-          JSON.stringify(
-            { metadata: file.metadata, cases: filtered },
-            null,
-            2,
-          ),
+          JSON.stringify({ metadata: file.metadata, cases: filtered }, null, 2),
         );
-        resultDirs.push(
-          runEval(tmpPath, outputDir, "spelling-corpus", config),
-        );
+        resultDirs.push(runEval(tmpPath, outputDir, "spelling-corpus", config));
       }
     }
   }

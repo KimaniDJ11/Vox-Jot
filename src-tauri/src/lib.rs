@@ -1,3 +1,13 @@
+#![allow(
+    clippy::items_after_test_module,
+    clippy::manual_c_str_literals,
+    clippy::needless_update,
+    clippy::redundant_locals,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::wrong_self_convention
+)]
+
 mod actions;
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod apple_intelligence;
@@ -67,7 +77,6 @@ use signal_hook::consts::{SIGUSR1, SIGUSR2};
 use signal_hook::iterator::Signals;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
-use tauri::image::Image;
 pub use transcription_coordinator::TranscriptionCoordinator;
 
 use tauri::tray::TrayIconBuilder;
@@ -325,10 +334,13 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // This matches the pattern used for Enigo initialization.
 
     #[cfg(unix)]
-    let signals = Signals::new(&[SIGUSR1, SIGUSR2]).unwrap();
+    let signals = Signals::new([SIGUSR1, SIGUSR2]).expect("failed to register signal handlers");
     // Set up signal handlers for toggling transcription
     #[cfg(unix)]
-    signal_handle::setup_signal_handler(app_handle.clone(), signals);
+    {
+        let signal_handler = signal_handle::setup_signal_handler(app_handle.clone(), signals);
+        app_handle.manage(signal_handler);
+    }
 
     // Apply macOS Accessory policy if starting hidden and tray is available.
     // If the tray icon is disabled, keep the dock icon so the user can reopen.
@@ -345,13 +357,22 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     // Choose the appropriate initial icon based on theme
     let initial_icon_path = tray::get_icon_path(initial_theme, tray::TrayIconState::Idle);
 
-    let tray = TrayIconBuilder::new()
-        .icon(
-            Image::from_path(portable::resolve_resource(app_handle, initial_icon_path).unwrap())
-                .unwrap(),
-        )
+    let tray_builder = TrayIconBuilder::new()
         .show_menu_on_left_click(true)
-        .icon_as_template(true)
+        .icon_as_template(true);
+    let tray_builder = if let Some(initial_icon) =
+        tray::load_tray_icon(app_handle, initial_theme, tray::TrayIconState::Idle)
+    {
+        tray_builder.icon(initial_icon)
+    } else {
+        log::warn!(
+            "Failed to load initial tray icon '{}'; building tray without a custom icon",
+            initial_icon_path
+        );
+        tray_builder
+    };
+
+    let tray = tray_builder
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => {
                 navigate_main_window(app, "settings");
@@ -430,7 +451,7 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     // Get the autostart manager and configure based on user setting
     let autostart_manager = app_handle.autolaunch();
-    let settings = settings::get_settings(&app_handle);
+    let settings = settings::get_settings(app_handle);
 
     if settings.autostart_enabled {
         // Enable autostart if user has opted in
@@ -834,7 +855,7 @@ pub fn run(cli_args: CliArgs) {
 
             win_builder.build()?;
 
-            let mut settings = get_settings(&app.handle());
+            let mut settings = get_settings(app.handle());
 
             // CLI --debug flag overrides debug_mode and log level (runtime-only, not persisted)
             if cli_args.debug {
@@ -892,7 +913,7 @@ pub fn run(cli_args: CliArgs) {
                 api.prevent_close();
                 let _res = window.hide();
 
-                let settings = get_settings(&window.app_handle());
+                let settings = get_settings(window.app_handle());
                 let tray_visible =
                     settings.show_tray_icon && !window.app_handle().state::<CliArgs>().no_tray;
 
@@ -913,7 +934,7 @@ pub fn run(cli_args: CliArgs) {
             tauri::WindowEvent::ThemeChanged(theme) => {
                 log::info!("Theme changed to: {:?}", theme);
                 // Update tray icon to match new theme, maintaining idle state
-                utils::change_tray_icon(&window.app_handle(), utils::TrayIconState::Idle);
+                utils::change_tray_icon(window.app_handle(), utils::TrayIconState::Idle);
             }
             _ => {}
         })

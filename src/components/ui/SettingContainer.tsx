@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
-import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetSquareClass,
+} from "@/lib/interactiveFocus";
 
 import { Tooltip } from "./Tooltip";
 

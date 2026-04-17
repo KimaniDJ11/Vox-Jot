@@ -4,15 +4,15 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --ov-bg: var(--overlay-bg, rgba(10, 14, 26, 0.88));
-  --ov-border: var(--overlay-border, rgba(255, 255, 255, 0.08));
-  --ov-text: var(--overlay-text, #f3f4f6);
-  --ov-muted: var(--overlay-muted, rgba(243, 244, 246, 0.55));
-  --ov-accent: var(--accent-2, #7b9ce8);
+  --ov-bg: var(--overlay-bg, rgba(12, 16, 24, 0.9));
+  --ov-border: var(--overlay-border, rgba(255, 255, 255, 0.1));
+  --ov-text: var(--overlay-text, #eef2f8);
+  --ov-muted: var(--overlay-muted, rgba(238, 242, 248, 0.58));
+  --ov-accent: var(--accent-2, #64b5d9);
   --ov-bar: var(--accent-gold, #d89a5c);
-  --ov-recording-glow: var(--accent-gold-glow, rgba(216, 154, 92, 0.22));
-  --ov-cancel-hover: var(--danger-soft, rgba(196, 64, 64, 0.25));
-  --ov-cancel: var(--danger, #e87b7b);
+  --ov-recording-glow: var(--accent-gold-glow, rgba(216, 154, 92, 0.28));
+  --ov-cancel-hover: var(--danger-soft, rgba(226, 130, 130, 0.2));
+  --ov-cancel: var(--danger, #e28282);
   --ov-radius: 14px;
 }
 
@@ -46,6 +46,11 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  pointer-events: none;
+}
+
+.recording-overlay.is-interactive {
+  pointer-events: auto;
 }
 
 .recording-overlay.fade-in {
@@ -74,10 +79,9 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: var(--accent-gold-soft, rgba(216, 154, 92, 0.12));
+  background: var(--accent-gold-soft, rgba(216, 154, 92, 0.2));
   flex-shrink: 0;
 }
-
 
 .overlay-left.is-recording {
   animation: icon-breathe 2.4s ease-in-out infinite;
@@ -86,7 +90,7 @@
 @keyframes icon-breathe {
   0%,
   100% {
-    background: var(--accent-gold-soft, rgba(216, 154, 92, 0.12));
+    background: var(--accent-gold-soft, rgba(216, 154, 92, 0.2));
   }
   50% {
     background: var(--ov-recording-glow);
@@ -204,7 +208,7 @@
 
 .cancel-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px var(--focus-ring, rgba(123, 156, 232, 0.35));
+  box-shadow: 0 0 0 4px var(--accent-glow, rgba(123, 156, 232, 0.25));
 }
 
 /* ---------- reduced motion ----------------------------------- */

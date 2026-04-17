@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Download, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
+import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import OnboardingLayout from "./OnboardingLayout";
 import ModelCard from "./ModelCard";
 
@@ -90,15 +91,11 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
 
   // Build right-side visual
   const rightVisual = isDownloading ? (
-    <div
-      className="ob-visual-card ob-visual-stack"
-      style={{ textAlign: "center" }}
-    >
+    <div className="ob-visual-card ob-visual-center ob-visual-stack">
       <Loader2
         size={48}
-        className="ob-spinner"
+        className="ob-spinner mx-auto mb-4"
         color="var(--ob-primary)"
-        style={{ margin: "0 auto 16px" }}
       />
       <h3 className="ob-card-title">
         {t("onboarding.setup.downloading.title")}
@@ -108,10 +105,7 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
       </p>
     </div>
   ) : (
-    <div
-      className="ob-visual-card ob-visual-stack"
-      style={{ textAlign: "center" }}
-    >
+    <div className="ob-visual-card ob-visual-center ob-visual-stack">
       <div className="ob-hero-badge ob-hero-badge-sm">
         <Download size={28} color="var(--ob-primary)" />
       </div>
@@ -130,7 +124,7 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
           <p className="ob-subtext">{t("onboarding.setup.description")}</p>
 
           {/* Recommended models */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="flex flex-col gap-3">
             {recommendedModels.map((model: ModelInfo) => (
               <ModelCard
                 key={model.id}
@@ -148,20 +142,11 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
 
           {/* Advanced toggle */}
           {otherModels.length > 0 && (
-            <div style={{ marginTop: 16 }}>
+            <div className="mt-4">
               <button
+                type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "none",
-                  border: "none",
-                  color: "var(--ob-text-muted)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
+                className={`inline-flex items-center gap-1.5 rounded-md bg-transparent px-1 py-0.5 text-[13px] text-[var(--ob-text-muted)] transition-colors hover:text-[var(--ob-text)] ${interactiveFocusRingClass}`}
               >
                 {showAdvanced ? (
                   <ChevronUp size={14} />
@@ -174,14 +159,7 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
               </button>
 
               {showAdvanced && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                    marginTop: 12,
-                  }}
-                >
+                <div className="mt-3 flex flex-col gap-3">
                   {otherModels.map((model: ModelInfo) => (
                     <ModelCard
                       key={model.id}

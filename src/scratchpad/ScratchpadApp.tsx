@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { commands } from "@/bindings";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 import { useNotesStore } from "./notesStore";
 
 const AUTO_SAVE_DELAY = 2000;
@@ -378,10 +382,7 @@ const ScratchpadApp: React.FC = () => {
   }
 
   return (
-    <div
-      className="flex flex-col h-screen bg-[var(--bg)] text-[var(--text)] font-body"
-      style={{ paddingTop: "max(36px, env(titlebar-area-height, 36px))" }}
-    >
+    <div className="app-titlebar-safe-top flex h-screen flex-col bg-[var(--bg)] font-body text-[var(--text)]">
       <Toaster />
       {/* Title bar — same pattern as main app */}
       <header className="app-macos-titlebar-overlay" dir="ltr">
@@ -448,50 +449,51 @@ const ScratchpadApp: React.FC = () => {
                     t("jotPad.untitled");
 
                   return (
-                    <button
-                      key={note.id}
-                      type="button"
-                      className={`group relative flex items-center gap-2 w-full rounded-full px-2.5 py-2 text-left text-sm transition-all ${
-                        isActive
-                          ? "bg-[var(--accent)] text-[var(--inverse-text)]"
-                          : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-                      }`}
-                      onClick={() => {
-                        // Flush save before switching
-                        saveNow();
-                        void setEditorArmed(false);
-                        setActiveNote(note.id);
-                      }}
-                    >
-                      <FileText
-                        className={`h-3.5 w-3.5 shrink-0 ${
+                    <div key={note.id} className="group relative">
+                      <button
+                        type="button"
+                        className={`${interactiveFocusRingClass} ${minTapTargetHeightClass} flex w-full items-center gap-2 rounded-full px-2.5 py-2 pr-16 text-left text-sm transition-all ${
                           isActive
-                            ? "text-[var(--inverse-text)]/70"
-                            : "text-[var(--muted)]"
+                            ? "bg-[var(--accent)] text-[var(--inverse-text)]"
+                            : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
                         }`}
-                      />
-                      <span className="truncate flex-1 min-w-0 leading-tight">
-                        {displayTitle}
-                      </span>
-                      {note.is_pinned && (
-                        <Pin
-                          className={`h-3 w-3 shrink-0 ${
+                        onClick={() => {
+                          saveNow();
+                          void setEditorArmed(false);
+                          setActiveNote(note.id);
+                        }}
+                      >
+                        <FileText
+                          className={`h-3.5 w-3.5 shrink-0 ${
                             isActive
-                              ? "text-[var(--inverse-text)]/60"
+                              ? "text-[var(--inverse-text)]/70"
                               : "text-[var(--muted)]"
                           }`}
                         />
-                      )}
+                        <span className="min-w-0 flex-1 truncate leading-tight">
+                          {displayTitle}
+                        </span>
+                        {note.is_pinned && (
+                          <Pin
+                            className={`h-3 w-3 shrink-0 ${
+                              isActive
+                                ? "text-[var(--inverse-text)]/60"
+                                : "text-[var(--muted)]"
+                            }`}
+                          />
+                        )}
+                      </button>
 
-                      {/* Hover actions */}
                       <div
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${
+                        className={`pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 gap-0.5 rounded opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${
                           isActive ? "" : "bg-[var(--sidebar-bg)]"
-                        } rounded`}
+                        }`}
                       >
-                        <button
+                        <Button
                           type="button"
-                          className={`p-0.5 rounded transition-colors ${
+                          variant="ghost"
+                          size="icon-xs"
+                          className={`pointer-events-auto rounded-full border-transparent p-0.5 ${
                             isActive
                               ? "text-[var(--inverse-text)]/60 hover:text-[var(--inverse-text)]"
                               : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -500,6 +502,9 @@ const ScratchpadApp: React.FC = () => {
                             e.stopPropagation();
                             void togglePin(note.id, !note.is_pinned);
                           }}
+                          aria-label={
+                            note.is_pinned ? t("jotPad.unpin") : t("jotPad.pin")
+                          }
                           title={
                             note.is_pinned ? t("jotPad.unpin") : t("jotPad.pin")
                           }
@@ -509,10 +514,12 @@ const ScratchpadApp: React.FC = () => {
                           ) : (
                             <Pin className="h-3 w-3" />
                           )}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className={`p-0.5 rounded transition-colors ${
+                          variant="ghost"
+                          size="icon-xs"
+                          className={`pointer-events-auto rounded-full border-transparent p-0.5 ${
                             isActive
                               ? "text-[var(--inverse-text)]/60 hover:text-[var(--danger)]"
                               : "text-[var(--muted)] hover:text-[var(--danger)]"
@@ -521,12 +528,13 @@ const ScratchpadApp: React.FC = () => {
                             e.stopPropagation();
                             void handleDeleteNote(note.id);
                           }}
+                          aria-label={t("common.delete")}
                           title={t("common.delete")}
                         >
                           <Trash2 className="h-3 w-3" />
-                        </button>
+                        </Button>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -564,13 +572,15 @@ const ScratchpadApp: React.FC = () => {
               <div className="text-center text-[var(--muted)]">
                 <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
-                <button
+                <Button
                   type="button"
                   onClick={() => void handleCreateNote()}
-                  className="mt-3 text-sm text-[var(--accent)] hover:underline"
+                  variant="primary-soft"
+                  size="sm"
+                  className="mt-3"
                 >
                   {t("jotPad.createFirst")}
-                </button>
+                </Button>
               </div>
             </div>
           )}

@@ -1,4 +1,9 @@
 import React from "react";
+import type {
+  TranslationBilingualLayout,
+  TranslationOutputMode,
+  TranslationRoutePreference,
+} from "../../../bindings";
 import { SettingContainer } from "../../ui/SettingContainer";
 import { useSettings } from "../../../hooks/useSettings";
 import { LANGUAGES } from "../../../lib/constants/languages";
@@ -70,7 +75,10 @@ export const TranslationSettingsCard: React.FC = () => {
         <SelectField
           value={translationMode}
           onChange={(value) =>
-            void updateSetting("translation_output_mode", value as any)
+            void updateSetting(
+              "translation_output_mode",
+              value as TranslationOutputMode,
+            )
           }
           disabled={isUpdating("translation_output_mode")}
           options={[
@@ -91,7 +99,7 @@ export const TranslationSettingsCard: React.FC = () => {
         <SelectField
           value={settings.translation_target_language ?? "en"}
           onChange={(value) =>
-            void updateSetting("translation_target_language", value as any)
+            void updateSetting("translation_target_language", value)
           }
           disabled={
             !isTranslatedMode || isUpdating("translation_target_language")
@@ -110,7 +118,10 @@ export const TranslationSettingsCard: React.FC = () => {
         <SelectField
           value={settings.translation_route_preference ?? "auto"}
           onChange={(value) =>
-            void updateSetting("translation_route_preference", value as any)
+            void updateSetting(
+              "translation_route_preference",
+              value as TranslationRoutePreference,
+            )
           }
           disabled={
             !isTranslatedMode || isUpdating("translation_route_preference")
@@ -137,7 +148,10 @@ export const TranslationSettingsCard: React.FC = () => {
               settings.translation_bilingual_layout ?? "translation_then_source"
             }
             onChange={(value) =>
-              void updateSetting("translation_bilingual_layout", value as any)
+              void updateSetting(
+                "translation_bilingual_layout",
+                value as TranslationBilingualLayout,
+              )
             }
             disabled={isUpdating("translation_bilingual_layout")}
             options={[

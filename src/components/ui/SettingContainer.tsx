@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+
+import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+
 import { Tooltip } from "./Tooltip";
 
 interface SettingContainerProps {
@@ -52,7 +55,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     <button
       ref={tooltipRef}
       type="button"
-      className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+      className={`relative inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       onClick={toggleTooltip}

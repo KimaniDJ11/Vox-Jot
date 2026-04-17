@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { type } from "@tauri-apps/plugin-os";
+
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
@@ -128,8 +130,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
     return null;
   }
 
-  const buttonClassName =
-    "rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-60";
+  const buttonClassName = `inline-flex items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`;
 
   const permissionContent = (
     <>
@@ -224,7 +225,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       <div className="relative" ref={containerRef}>
         <button
           type="button"
-          className={`flex shrink-0 min-h-[1.9rem] items-center gap-2 rounded-full border px-3 py-1 text-sm font-bold leading-[1.1] text-[var(--warning)] transition-[background-color,border-color,color] duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)] ${
+          className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold leading-[1.1] text-[var(--warning)] transition-[background-color,border-color,color] duration-200 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
             isOpen
               ? "border-[color-mix(in_srgb,var(--warning),transparent_68%)] bg-[var(--warning-soft)]"
               : "border-transparent bg-transparent hover:border-[color-mix(in_srgb,var(--warning),transparent_78%)] hover:bg-[color-mix(in_srgb,var(--warning),transparent_90%)]"

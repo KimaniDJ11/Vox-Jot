@@ -1,4 +1,7 @@
 import React from "react";
+
+import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+
 import ResetIcon from "../icons/ResetIcon";
 
 interface ResetButtonProps {
@@ -14,10 +17,10 @@ export const ResetButton: React.FC<ResetButtonProps> = React.memo(
     <button
       type="button"
       aria-label={ariaLabel}
-      className={`p-1 rounded-full border border-[var(--border)] transition-all duration-150 ${
+      className={`rounded-full border border-[var(--border)] p-1 transition-all duration-150 ${interactiveFocusRingClass} ${minTapTargetSquareClass} ${
         disabled
-          ? "opacity-50 cursor-not-allowed text-[var(--muted)]"
-          : "hover:bg-[var(--accent-soft)] active:bg-[color-mix(in_srgb,var(--accent),transparent_78%)] active:translate-y-[1px] hover:cursor-pointer hover:border-[var(--accent)] text-[var(--text)]"
+          ? "cursor-not-allowed opacity-50 text-[var(--muted)]"
+          : "cursor-pointer text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] active:translate-y-px active:bg-[color-mix(in_srgb,var(--accent),transparent_78%)]"
       } ${className}`}
       onClick={onClick}
       disabled={disabled}

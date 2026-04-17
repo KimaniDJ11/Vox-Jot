@@ -1,5 +1,7 @@
 import React from "react";
 
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+
 type ModelStatus =
   | "ready"
   | "loading"
@@ -59,7 +61,7 @@ const ModelStatusButton: React.FC<ModelStatusButtonProps> = ({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center hover:text-[var(--text)] transition-colors ${
+      className={`inline-flex min-w-0 items-center rounded-lg px-2.5 transition-colors hover:text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
         isTitleBar ? "gap-2.5" : "gap-2"
       } ${className}`}
       title={`Model status: ${displayText}`}

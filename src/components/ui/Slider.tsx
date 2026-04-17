@@ -1,4 +1,7 @@
 import React, { useRef, useState } from "react";
+
+import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+
 import { SettingContainer } from "./SettingContainer";
 import { Tooltip } from "./Tooltip";
 
@@ -140,7 +143,7 @@ const CompactSlider: React.FC<{
           <button
             ref={tooltipRef}
             type="button"
-            className="relative inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            className={`relative inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_92%)] text-[var(--muted)] transition-colors duration-200 hover:border-[var(--accent)] hover:text-[var(--accent)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
             onClick={() => setShowTooltip(!showTooltip)}

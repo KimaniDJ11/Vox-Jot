@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Info } from "lucide-react";
+
+import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
+
 import Badge from "./Badge";
 import { Tooltip } from "./Tooltip";
 
@@ -42,7 +45,7 @@ const OverflowInfoButton: React.FC<OverflowInfoButtonProps> = ({
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+        className={`inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
         aria-label={label}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}

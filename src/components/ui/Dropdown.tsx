@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+
 export interface DropdownOption {
   value: string;
   label: string;
@@ -63,7 +65,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        className={`flex min-h-11 min-w-[220px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-2 text-start text-base font-semibold text-[var(--text)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] shadow-[var(--shadow-sm)] ${
+        className={`flex min-w-[220px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-2 text-start text-base font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-all duration-150 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
           disabled
             ? "opacity-50 cursor-not-allowed"
             : "hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] cursor-pointer hover:border-[var(--accent)]"
@@ -97,7 +99,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               <button
                 key={option.value}
                 type="button"
-                className={`w-full px-3 py-2 text-start text-[14px] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] transition-colors duration-150 ${
+                className={`w-full px-3 py-2.5 text-start text-[14px] text-[var(--text)] transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                   selectedValue === option.value
                     ? "bg-logo-primary text-[var(--inverse-text)] font-semibold"
                     : ""

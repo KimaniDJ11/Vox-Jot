@@ -17,6 +17,19 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = React.memo(
     const themeOptions = [
       { value: "light", label: t("settings.advanced.theme.options.light") },
       { value: "dark", label: t("settings.advanced.theme.options.dark") },
+      { value: "sepia", label: t("settings.advanced.theme.options.sepia") },
+      { value: "ocean", label: t("settings.advanced.theme.options.ocean") },
+      { value: "forest", label: t("settings.advanced.theme.options.forest") },
+      { value: "rose", label: t("settings.advanced.theme.options.rose") },
+      { value: "slate", label: t("settings.advanced.theme.options.slate") },
+      {
+        value: "solarized",
+        label: t("settings.advanced.theme.options.solarized"),
+      },
+      {
+        value: "graphite",
+        label: t("settings.advanced.theme.options.graphite"),
+      },
       { value: "system", label: t("settings.advanced.theme.options.system") },
     ];
 

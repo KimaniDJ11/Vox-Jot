@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "@/hooks/useSettings";
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
 import ModelSelector from "../model-selector";
 import ModelStatusButton from "../model-selector/ModelStatusButton";
 import { ProviderIcon } from "../ui/ProviderIcon";
@@ -102,7 +103,7 @@ const TitleBarModels: React.FC = () => {
                     type="button"
                     role="option"
                     aria-selected={selectedLlmModel === model}
-                    className={`w-full px-3 py-2 text-start text-sm transition-colors ${
+                    className={`w-full px-3 py-2.5 text-start text-sm transition-colors ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                       selectedLlmModel === model
                         ? "bg-[var(--accent)] text-[var(--inverse-text)] hover:bg-[var(--accent)] hover:brightness-110"
                         : "hover:bg-[var(--accent-soft)]"

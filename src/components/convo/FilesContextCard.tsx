@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { File, FolderOpen, ClipboardPaste, X, Plus } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/Button";
+import { interactiveFocusRingClass, minTapTargetSquareClass } from "@/lib/interactiveFocus";
 import { commands, type ConvoContextItem } from "@/bindings";
 
 interface FilesContextCardProps {
@@ -126,9 +127,9 @@ export const FilesContextCard: React.FC<FilesContextCardProps> = ({
               <button
                 type="button"
                 onClick={() => void handleRemoveItem(item.id)}
-                className="ml-0.5 text-[var(--muted)] hover:text-[var(--text)]"
+                className={`ml-0.5 inline-flex shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </span>
           ))}

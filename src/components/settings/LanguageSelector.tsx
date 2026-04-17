@@ -4,6 +4,7 @@ import { SettingContainer } from "../ui/SettingContainer";
 import { ResetButton } from "../ui/ResetButton";
 import { useSettings } from "../../hooks/useSettings";
 import { LANGUAGES } from "../../lib/constants/languages";
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
 
 interface LanguageSelectorProps {
   descriptionMode?: "inline" | "tooltip";
@@ -109,7 +110,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            className={`flex min-w-[200px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-start text-sm font-semibold shadow-[var(--shadow-sm)] transition-all duration-150 ${
+            className={`flex min-w-[200px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-start text-sm font-semibold shadow-[var(--shadow-sm)] transition-all duration-150 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
               isUpdating("selected_language")
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer hover:border-[var(--accent-soft)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_15%)]"
@@ -160,7 +161,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                     <button
                       key={language.value}
                       type="button"
-                      className={`w-full px-2 py-1 text-sm text-start hover:bg-logo-primary/10 transition-colors duration-150 ${
+                      className={`w-full px-2 py-2.5 text-start text-sm transition-colors duration-150 hover:bg-logo-primary/10 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                         selectedLanguage === language.value
                           ? "bg-logo-primary/20 text-[var(--accent)] font-semibold"
                           : ""

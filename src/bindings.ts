@@ -756,14 +756,6 @@ async getDefaultSettings() : Promise<Result<AppSettings, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getScreenContextDiagnostics() : Promise<Result<ScreenContextDiagnostics, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_screen_context_diagnostics") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async getLogDirPath() : Promise<Result<string, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_log_dir_path") };
@@ -830,6 +822,14 @@ async resolvePostProcessPreview(requestId: string, accepted: boolean, finalText:
 async debugAnalyzePostProcessRoute(text: string) : Promise<Result<PostProcessRouteDebug, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("debug_analyze_post_process_route", { text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getScreenContextDiagnostics() : Promise<Result<ScreenContextDiagnostics, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_screen_context_diagnostics") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1945,7 +1945,7 @@ export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessEdits = { removed_false_starts: boolean; removed_fillers: boolean; added_bullets: boolean; added_paragraphs: boolean }
 export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
-export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
+export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
 export type RecordingOverlayStyle = "compact" | "detailed"
@@ -1956,7 +1956,7 @@ export type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face"
 export type RefineProviderStatus = { id: string; label: string; available: boolean; local_only: boolean; installed: boolean; running: boolean; detail: string }
 export type RuntimeRequirement = { id: string; label: string; engine_family: string; auto_routed: boolean }
 export type ScreenContextDiagnostics = { status: ContextCaptureStatus; has_screen_permission: boolean; cache_size: number; latest_capture_at_ms: number | null; latest_context_age_ms: number | null; latest_display_id: number | null; latest_source: string | null; last_error: string | null }
-export type ScreenContextHistoryMetadata = { source: string | null; status: ContextCaptureStatus; cache_age_ms: number | null; summary: string | null; context_sent_externally: boolean; context_changed_output: boolean }
+export type ScreenContextHistoryMetadata = { source: string | null; capture_status: ContextCaptureStatus; cache_age_ms: number | null; summary: string | null; sent_externally: boolean; changed_output: boolean }
 export type SelectionTranslationDestinationMode = "replace_selection" | "preview_then_replace" | "open_in_jot_pad"
 export type SettingsCatalogEntry = { key: string; label: string; description: string; current_value: string; category: string; setting_section: string }
 export type ShortcutBinding = { id: string; name: string; description: string; default_binding: string; current_binding: string }

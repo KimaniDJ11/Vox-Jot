@@ -1,5 +1,7 @@
 import React from "react";
 
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | "primary"
@@ -8,7 +10,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     | "danger"
     | "danger-ghost"
     | "ghost";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "icon";
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -18,8 +20,12 @@ export const Button: React.FC<ButtonProps> = ({
   size = "md",
   ...props
 }) => {
-  const baseClasses =
-    "cursor-pointer rounded-full border font-medium transition-[background-color,border-color,color,transform] duration-200 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-glow)]";
+  const baseClasses = [
+    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border font-medium",
+    "transition-[background-color,border-color,color,transform] duration-200",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    interactiveFocusRingClass,
+  ].join(" ");
 
   const variantClasses = {
     primary:
@@ -37,9 +43,10 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizeClasses = {
-    sm: "px-2 py-1 text-xs",
-    md: "px-4 py-[5px] text-sm",
-    lg: "px-4 py-2 text-base",
+    sm: `${minTapTargetHeightClass} px-3 py-2 text-xs`,
+    md: `${minTapTargetHeightClass} px-4 py-2 text-sm`,
+    lg: "min-h-[48px] px-5 py-2.5 text-base",
+    icon: "h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 p-0 [&>svg]:shrink-0",
   };
 
   return (

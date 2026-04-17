@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
+
 import { SettingContainer } from "./SettingContainer";
 
 interface TextDisplayProps {
@@ -63,7 +66,7 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
         {copyable && value && (
           <button
             onClick={handleCopy}
-            className="flex items-center justify-center px-2 py-1 w-12 min-h-8 text-xs font-semibold bg-mid-gray/10 hover:bg-logo-primary/10 border border-mid-gray/80 hover:border-logo-primary hover:text-[var(--accent)] rounded-md transition-all duration-150 flex-shrink-0 cursor-pointer"
+            className={`inline-flex min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-mid-gray/80 bg-mid-gray/10 px-3 text-xs font-semibold transition-all duration-150 hover:border-logo-primary hover:bg-logo-primary/10 hover:text-[var(--accent)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
             title="Copy to clipboard"
           >
             {showCopied ? (

@@ -1,28 +1,28 @@
 /* ═══════════════════════════════════════════════════════════════
    Vox Jot — Recording Overlay
-   Detailed: 220 × 44 px  |  Compact: 140 × 38 px
+   Detailed: 234 × 44 px  |  Compact: 140 × 38 px
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --ov-bg: rgba(10, 14, 26, 0.88);
-  --ov-border: rgba(255, 255, 255, 0.08);
-  --ov-text: #f3f4f6;
-  --ov-muted: rgba(243, 244, 246, 0.55);
-  --ov-accent: #7b9ce8;
-  --ov-bar: #d89a5c;
-  --ov-recording-glow: rgba(216, 154, 92, 0.22);
-  --ov-cancel-hover: rgba(196, 64, 64, 0.25);
-  --ov-cancel: #e87b7b;
+  --ov-bg: var(--overlay-bg, rgba(10, 14, 26, 0.88));
+  --ov-border: var(--overlay-border, rgba(255, 255, 255, 0.08));
+  --ov-text: var(--overlay-text, #f3f4f6);
+  --ov-muted: var(--overlay-muted, rgba(243, 244, 246, 0.55));
+  --ov-accent: var(--accent-2, #7b9ce8);
+  --ov-bar: var(--accent-gold, #d89a5c);
+  --ov-recording-glow: var(--accent-gold-glow, rgba(216, 154, 92, 0.22));
+  --ov-cancel-hover: var(--danger-soft, rgba(196, 64, 64, 0.25));
+  --ov-cancel: var(--danger, #e87b7b);
   --ov-radius: 14px;
 }
 
 /* ---------- overlay container -------------------------------- */
 .recording-overlay {
   box-sizing: border-box;
-  width: 220px;
+  width: 234px;
   height: 44px;
   display: grid;
-  grid-template-columns: 34px 1fr 30px;
+  grid-template-columns: 34px 1fr 44px;
   align-items: center;
   gap: 2px;
   padding: 4px;
@@ -74,7 +74,7 @@
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: rgba(216, 154, 92, 0.12);
+  background: var(--accent-gold-soft, rgba(216, 154, 92, 0.12));
   flex-shrink: 0;
 }
 
@@ -86,7 +86,7 @@
 @keyframes icon-breathe {
   0%,
   100% {
-    background: rgba(216, 154, 92, 0.12);
+    background: var(--accent-gold-soft, rgba(216, 154, 92, 0.12));
   }
   50% {
     background: var(--ov-recording-glow);
@@ -178,9 +178,9 @@
 }
 
 .cancel-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   background: transparent;
   border: none;
   display: flex;
@@ -200,6 +200,11 @@
 
 .cancel-button:active {
   transform: scale(0.92);
+}
+
+.cancel-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring, rgba(123, 156, 232, 0.35));
 }
 
 /* ---------- reduced motion ----------------------------------- */

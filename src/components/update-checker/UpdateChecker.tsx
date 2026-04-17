@@ -9,6 +9,7 @@ import {
   openUpdateDownloadUrl,
   type CustomUpdateResult,
 } from "@/lib/utils/customUpdateChecker";
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
 
 interface UpdateCheckerProps {
   className?: string;
@@ -153,7 +154,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({
           <button
             onClick={getUpdateStatusAction()}
             disabled={isUpdateDisabled}
-            className="rounded-md p-1.5 text-[color-mix(in_srgb,var(--color-text),transparent_35%)] transition-colors hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_64%)]"
+            className={`inline-flex items-center justify-center rounded-md text-[color-mix(in_srgb,var(--color-text),transparent_35%)] transition-colors hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)] disabled:opacity-50 ${interactiveFocusRingClass} ${minTapTargetHeightClass} min-w-[44px] p-2`}
             title={iconTitle}
             aria-label={iconTitle}
           >
@@ -178,7 +179,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({
         <button
           onClick={getUpdateStatusAction()}
           disabled={isUpdateDisabled}
-          className={`rounded-md px-2 py-1 text-xs transition-colors tabular-nums disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-logo-primary),transparent_64%)] ${
+          className={`rounded-md px-3 text-xs transition-colors tabular-nums disabled:opacity-50 ${interactiveFocusRingClass} ${minTapTargetHeightClass} inline-flex items-center justify-center ${
             updateInfo?.available
               ? "font-semibold text-[var(--accent)] hover:text-[var(--accent)]"
               : "text-[color-mix(in_srgb,var(--color-text),transparent_35%)] hover:text-[color-mix(in_srgb,var(--color-text),transparent_15%)]"

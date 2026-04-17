@@ -226,13 +226,15 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
 
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-4 py-2">
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => onSpeakRepliesChange(!speakReplies)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg px-2.5 text-xs font-medium shadow-none ${
               speakReplies
-                ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                : "text-[var(--muted)] hover:text-[var(--text)]"
+                ? "border-transparent bg-[var(--accent)]/10 text-[var(--accent)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/15 hover:text-[var(--accent)]"
+                : "border-transparent bg-transparent hover:border-transparent hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)] hover:text-[var(--text)]"
             }`}
           >
             {speakReplies ? (
@@ -241,7 +243,7 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
               <VolumeX className="h-3.5 w-3.5" />
             )}
             {t("convo.common.speakReplies")}
-          </button>
+          </Button>
           {actions}
         </div>
         <Button
@@ -348,15 +350,15 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon"
             onPointerDown={(event) => {
               event.preventDefault();
               void handleStartRecording();
             }}
             disabled={isBusy}
-            className={`shrink-0 rounded-full p-2 ${
+            className={`shrink-0 ${
               isRecording
-                ? "bg-[var(--accent)] text-[var(--inverse-text)]"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--inverse-text)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] hover:text-[var(--inverse-text)]"
                 : "text-[var(--muted)] hover:text-[var(--accent)]"
             }`}
             title={t("convo.common.holdToSpeak")}
@@ -379,10 +381,10 @@ export const ConvoShell: React.FC<ConvoShellProps> = ({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={handleSend}
             disabled={!inputText.trim() || isBusy || isRecording}
-            className="shrink-0 rounded-full p-2 text-[var(--accent)] disabled:opacity-40"
+            className="shrink-0 text-[var(--accent)] disabled:opacity-40"
           >
             <Send className="h-5 w-5" />
           </Button>

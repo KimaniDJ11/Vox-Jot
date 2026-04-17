@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { commands } from "@/bindings";
+import { interactiveFocusRingClass, minTapTargetHeightClass } from "@/lib/interactiveFocus";
 
 interface CappedSectionProps {
   /** The detail-view section ID (e.g. "history", "phrase-keys"). */
@@ -60,7 +61,7 @@ export const CappedSection: React.FC<CappedSectionProps> = ({
         <button
           type="button"
           onClick={() => void commands.showDetailView(section)}
-          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-sm font-medium text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)]"
+          className={`mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3 text-sm font-medium text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
         >
           {showMoreLabel}
           <ArrowRight className="h-3.5 w-3.5" />

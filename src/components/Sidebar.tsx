@@ -2,6 +2,11 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Settings } from "lucide-react";
 
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
+
 type SidebarIcon = React.ComponentType<{
   className?: string;
   width?: number | string;
@@ -33,19 +38,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSettingsClick,
 }) => {
   const { t } = useTranslation();
+  const itemLayoutClass = collapsed
+    ? "justify-center px-0 py-2"
+    : "gap-2.5 px-3 py-2 text-left";
 
   return (
-    <aside className="sidebar flex flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)] transition-all duration-300">
+    <aside className="sidebar flex flex-col transition-all duration-300">
       <div
-        className={`flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-3" : "px-3 py-4"}`}
+        className={`sidebar__panel flex min-h-0 flex-1 flex-col ${collapsed ? "px-2 py-2.5" : "px-2.5 py-2.5"}`}
       >
         <nav
           aria-label={t("sidebar.settingsLabel", {
             defaultValue: "Section navigation",
           })}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="sidebar__nav min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = activeSectionId === item.id;
@@ -55,37 +63,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   type="button"
                   onClick={() => onSectionChange(item.id)}
-                  className={`group relative flex w-full items-center rounded-xl transition-all duration-200 ${
-                    collapsed
-                      ? "justify-center px-0 py-2.5"
-                      : "gap-2.5 px-3 py-2 text-left"
-                  } ${
-                    isActive
-                      ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                      : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-                  }`}
+                  className={`sidebar__nav-button group relative flex w-full items-center rounded-2xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   title={collapsed ? item.label : undefined}
                 >
                   <Icon
-                    width={collapsed ? 19 : 18}
-                    height={collapsed ? 19 : 18}
-                    strokeWidth={isActive ? 2.6 : 2.35}
-                    className={`shrink-0 ${
-                      isActive
-                        ? "text-[var(--inverse-text)]"
-                        : "text-[var(--muted)] group-hover:text-[var(--text)]"
-                    }`}
+                    width={collapsed ? 18 : 17}
+                    height={collapsed ? 18 : 17}
+                    strokeWidth={isActive ? 2.3 : 2.15}
+                    className="sidebar__nav-icon shrink-0"
                   />
                   {!collapsed && (
-                    <span
-                      className={`truncate text-sm font-semibold leading-5 ${
-                        isActive
-                          ? "text-[var(--inverse-text)]"
-                          : "text-[var(--text)]"
-                      }`}
-                    >
+                    <span className="sidebar__nav-label truncate text-[13.5px] font-semibold leading-5">
                       {item.label}
                     </span>
                   )}
@@ -95,41 +85,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </nav>
 
-        <div className="mt-4 border-t border-[var(--border)] pt-4">
+        <div className="sidebar__footer mt-4 pt-3">
           <button
             type="button"
             onClick={onSettingsClick}
-            className={`group relative flex w-full items-center rounded-xl transition-all duration-200 ${
-              collapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-2.5 px-3 py-2 text-left"
-            } ${
-              settingsActive
-                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-            }`}
+            className={`sidebar__nav-button group relative flex w-full items-center rounded-2xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
             aria-current={settingsActive ? "page" : undefined}
             aria-label={collapsed ? "Settings" : undefined}
             title={collapsed ? "Settings" : undefined}
           >
             <Settings
-              width={collapsed ? 19 : 18}
-              height={collapsed ? 19 : 18}
-              strokeWidth={settingsActive ? 2.6 : 2.35}
-              className={`shrink-0 ${
-                settingsActive
-                  ? "text-[var(--inverse-text)]"
-                  : "text-[var(--muted)] group-hover:text-[var(--text)]"
-              }`}
+              width={collapsed ? 18 : 17}
+              height={collapsed ? 18 : 17}
+              strokeWidth={settingsActive ? 2.3 : 2.15}
+              className="sidebar__nav-icon shrink-0"
             />
             {!collapsed && (
-              <span
-                className={`truncate text-sm font-semibold leading-5 ${
-                  settingsActive
-                    ? "text-[var(--inverse-text)]"
-                    : "text-[var(--text)]"
-                }`}
-              >
+              <span className="sidebar__nav-label truncate text-[13.5px] font-semibold leading-5">
                 {t("sidebar.settingsButton", { defaultValue: "Settings" })}
               </span>
             )}

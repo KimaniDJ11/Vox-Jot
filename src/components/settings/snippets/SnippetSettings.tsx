@@ -6,15 +6,18 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
-import { Download, Plus, Trash2, Upload, X, Pencil, Check } from "lucide-react";
+import { Trash2, X, Pencil, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
 import { Button } from "../../ui/Button";
 import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
+import { ListActionButtons } from "../../ui/ListActionButtons";
 import { useSettings } from "../../../hooks/useSettings";
+import { usePortalTarget } from "../../../hooks/usePortalTarget";
 import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
+import { downloadJsonFile, pickJsonFileText } from "@/lib/fileIo";
 
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
@@ -129,13 +132,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     try {
       const result = await commands.exportSnippets();
       if (result.status === "ok") {
-        const blob = new Blob([result.data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "vox-jot-snippets.json";
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJsonFile("vox-jot-snippets.json", result.data);
       }
     } catch (error) {
       console.error("Failed to export snippets:", error);
@@ -143,95 +140,43 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   };
 
   const handleImport = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      if (file.size > 3 * 1024 * 1024) {
-        console.error("Import file too large (max 3MB)");
-        return;
-      }
-      const text = await file.text();
-      try {
-        const result = await commands.importSnippets(text);
-        if (result.status === "ok") {
-          // Refresh settings to pick up imported snippets
-          const settingsResult = await commands.getAppSettings();
-          if (settingsResult.status === "ok") {
-            await updateSetting("snippets", settingsResult.data.snippets);
-          }
+    const text = await pickJsonFileText({ maxBytes: 3 * 1024 * 1024 });
+    if (text === null) return;
+    try {
+      const result = await commands.importSnippets(text);
+      if (result.status === "ok") {
+        const settingsResult = await commands.getAppSettings();
+        if (settingsResult.status === "ok") {
+          await updateSetting("snippets", settingsResult.data.snippets);
         }
-      } catch (error) {
-        console.error("Failed to import snippets:", error);
       }
-    };
-    input.click();
+    } catch (error) {
+      console.error("Failed to import snippets:", error);
+    }
   };
 
   const bulkDisabled = snippets.length === 0;
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!titleActionTargetId) {
-      setPortalTarget(null);
-      return;
-    }
-
-    setPortalTarget(document.getElementById(titleActionTargetId));
-  }, [titleActionTargetId]);
+  const portalTarget = usePortalTarget(titleActionTargetId);
 
   const actionButtons = useMemo(
     () => (
-      <>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => {
-            setAdding(true);
-            setNewTrigger("");
-            setNewExpansion("");
-          }}
-          title={t("settings.snippets.list.add")}
-          aria-label={t("settings.snippets.list.add")}
-        >
-          <Plus aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleImport}
-          title={t("settings.snippets.list.import")}
-          aria-label={t("settings.snippets.list.import")}
-        >
-          <Upload aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleExport}
-          disabled={bulkDisabled}
-          title={t("settings.snippets.list.export")}
-          aria-label={t("settings.snippets.list.export")}
-        >
-          <Download aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="danger-ghost"
-          onClick={handleClearAll}
-          disabled={bulkDisabled}
-          title={t("settings.snippets.list.clearAll")}
-          aria-label={t("settings.snippets.list.clearAll")}
-        >
-          <Trash2 aria-hidden />
-        </Button>
-      </>
+      <ListActionButtons
+        labels={{
+          add: t("settings.snippets.list.add"),
+          import: t("settings.snippets.list.import"),
+          export: t("settings.snippets.list.export"),
+          clearAll: t("settings.snippets.list.clearAll"),
+        }}
+        onAdd={() => {
+          setAdding(true);
+          setNewTrigger("");
+          setNewExpansion("");
+        }}
+        onImport={handleImport}
+        onExport={handleExport}
+        onClear={handleClearAll}
+        bulkDisabled={bulkDisabled}
+      />
     ),
     [bulkDisabled, t],
   );
@@ -339,14 +284,17 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
             </div>
           ) : (
             <div className="divide-y divide-[var(--border)]">
-              {snippets.map((snippet) => (
-                <div
-                  key={snippet.id}
-                  className={`px-5 py-3 space-y-1.5 transition-opacity ${
-                    !snippet.enabled ? "opacity-50" : ""
-                  }`}
-                >
-                  {editingId === snippet.id ? (
+              {snippets.map((snippet) => {
+                const snippetEnabled = snippet.enabled ?? true;
+
+                return (
+                  <div
+                    key={snippet.id}
+                    className={`px-5 py-3 space-y-1.5 transition-opacity ${
+                      !snippetEnabled ? "opacity-50" : ""
+                    }`}
+                  >
+                    {editingId === snippet.id ? (
                     /* Edit mode */
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -404,7 +352,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         </Button>
                       </div>
                     </div>
-                  ) : (
+                    ) : (
                     /* View mode */
                     <>
                       <div className="flex items-center gap-2">
@@ -430,14 +378,14 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                             <Pencil />
                           </Button>
                           <SwitchControl
-                            checked={snippet.enabled}
+                            checked={snippetEnabled}
                             onChange={(checked) =>
                               void handleToggle(snippet.id, checked)
                             }
                             size="compact"
                             frame="icon"
                             title={
-                              snippet.enabled
+                              snippetEnabled
                                 ? t("common.disable", {
                                     defaultValue: "Disable",
                                   })
@@ -446,7 +394,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                                   })
                             }
                             ariaLabel={
-                              snippet.enabled
+                              snippetEnabled
                                 ? t("common.disable", {
                                     defaultValue: "Disable",
                                   })
@@ -476,9 +424,10 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                         </span>
                       </div>
                     </>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

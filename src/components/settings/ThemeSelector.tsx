@@ -1,54 +1,40 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Dropdown } from "../ui/Dropdown";
-import { SettingContainer } from "../ui/SettingContainer";
-import { useSettings } from "../../hooks/useSettings";
+import { SelectorSetting } from "../ui/SelectorSetting";
 
 interface ThemeSelectorProps {
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
 }
 
-export const ThemeSelector: React.FC<ThemeSelectorProps> = React.memo(
-  ({ descriptionMode = "tooltip", grouped = false }) => {
-    const { t } = useTranslation();
-    const { getSetting, updateSetting, isUpdating } = useSettings();
+const THEME_VALUES = [
+  "light",
+  "dark",
+  "sepia",
+  "ocean",
+  "forest",
+  "rose",
+  "slate",
+  "solarized",
+  "graphite",
+  "system",
+] as const;
 
-    const themeOptions = [
-      { value: "light", label: t("settings.advanced.theme.options.light") },
-      { value: "dark", label: t("settings.advanced.theme.options.dark") },
-      { value: "sepia", label: t("settings.advanced.theme.options.sepia") },
-      { value: "ocean", label: t("settings.advanced.theme.options.ocean") },
-      { value: "forest", label: t("settings.advanced.theme.options.forest") },
-      { value: "rose", label: t("settings.advanced.theme.options.rose") },
-      { value: "slate", label: t("settings.advanced.theme.options.slate") },
-      {
-        value: "solarized",
-        label: t("settings.advanced.theme.options.solarized"),
-      },
-      {
-        value: "graphite",
-        label: t("settings.advanced.theme.options.graphite"),
-      },
-      { value: "system", label: t("settings.advanced.theme.options.system") },
-    ];
+export const ThemeSelector: React.FC<ThemeSelectorProps> = (props) => {
+  const { t } = useTranslation();
+  const themeOptions = THEME_VALUES.map((value) => ({
+    value,
+    label: t(`settings.advanced.theme.options.${value}`),
+  }));
 
-    const selectedTheme = (getSetting("app_theme") as string) || "system";
-
-    return (
-      <SettingContainer
-        title={t("settings.advanced.theme.title")}
-        description={t("settings.advanced.theme.description")}
-        descriptionMode={descriptionMode}
-        grouped={grouped}
-      >
-        <Dropdown
-          options={themeOptions}
-          selectedValue={selectedTheme}
-          onSelect={(value) => updateSetting("app_theme", value)}
-          disabled={isUpdating("app_theme")}
-        />
-      </SettingContainer>
-    );
-  },
-);
+  return (
+    <SelectorSetting
+      settingKey="app_theme"
+      title={t("settings.advanced.theme.title")}
+      description={t("settings.advanced.theme.description")}
+      options={themeOptions}
+      defaultValue="system"
+      {...props}
+    />
+  );
+};

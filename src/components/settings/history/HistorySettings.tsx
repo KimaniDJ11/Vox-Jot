@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
+import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import {
   Copy,
@@ -571,7 +572,10 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
-        <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
+        <Badge
+          variant="secondary"
+          className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
+        >
           {postProcessApplied
             ? t("settings.history.badges.postProcessOn", {
                 defaultValue: "Post process on",
@@ -579,19 +583,23 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             : t("settings.history.badges.postProcessOff", {
                 defaultValue: "Raw transcript",
               })}
-        </span>
+        </Badge>
         {dictionaryApplied && (
-          <span className="rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs text-[var(--muted)]">
+          <Badge
+            variant="secondary"
+            className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
+          >
             {t("settings.history.badges.dictionaryOn", {
               defaultValue: "Dictionary applied",
             })}
-          </span>
+          </Badge>
         )}
-        <span
-          className={`rounded-full border px-2.5 py-1 text-xs ${snapshotToneClasses[fieldSnapshotStatus]}`}
+        <Badge
+          variant="secondary"
+          className={`border px-2.5 py-1 ${snapshotToneClasses[fieldSnapshotStatus]}`}
         >
           {fieldStatusLabel}
-        </span>
+        </Badge>
       </div>
 
       {(postProcessApplied ||

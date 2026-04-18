@@ -6,13 +6,17 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { Download, Plus, Trash2, Upload, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
+import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
 import { SwitchControl } from "../../ui/SwitchControl";
+import { ListActionButtons } from "../../ui/ListActionButtons";
+import { usePortalTarget } from "../../../hooks/usePortalTarget";
+import { downloadJsonFile, pickJsonFileText } from "@/lib/fileIo";
 
 /**
  * A group of corrections that share the same corrected word.
@@ -103,7 +107,7 @@ export const CorrectionDictionaryView: React.FC<
   const [manualDraft, setManualDraft] = useState<ManualCorrectionDraft>(
     emptyManualCorrectionDraft,
   );
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const portalTarget = usePortalTarget(titleActionTargetId);
   const addInputRef = useRef<HTMLInputElement>(null);
 
   const loadCorrections = useCallback(async () => {
@@ -128,15 +132,6 @@ export const CorrectionDictionaryView: React.FC<
       addInputRef.current.focus();
     }
   }, [addingTo]);
-
-  useEffect(() => {
-    if (!titleActionTargetId) {
-      setPortalTarget(null);
-      return;
-    }
-
-    setPortalTarget(document.getElementById(titleActionTargetId));
-  }, [titleActionTargetId]);
 
   const handleDelete = async (id: number) => {
     try {
@@ -286,13 +281,7 @@ export const CorrectionDictionaryView: React.FC<
     try {
       const result = await commands.exportCorrections();
       if (result.status === "ok") {
-        const blob = new Blob([result.data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "vox-jot-corrections.json";
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJsonFile("vox-jot-corrections.json", result.data);
       }
     } catch (error) {
       console.error("Failed to export corrections:", error);
@@ -300,81 +289,40 @@ export const CorrectionDictionaryView: React.FC<
   };
 
   const handleImport = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const text = await file.text();
-      try {
-        const result = await commands.importCorrections(text);
-        if (result.status === "ok") {
-          loadCorrections();
-        }
-      } catch (error) {
-        console.error("Failed to import corrections:", error);
+    const text = await pickJsonFileText();
+    if (text === null) return;
+    try {
+      const result = await commands.importCorrections(text);
+      if (result.status === "ok") {
+        loadCorrections();
       }
-    };
-    input.click();
+    } catch (error) {
+      console.error("Failed to import corrections:", error);
+    }
   };
 
   const groups = loading ? [] : groupCorrections(corrections);
   const bulkActionsDisabled = loading || corrections.length === 0;
   const actionButtons = useMemo(
     () => (
-      <>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => {
-            setShowManualEditor(true);
-            setManualDraft(emptyManualCorrectionDraft());
-          }}
-          title={t("settings.postProcessing.dictionary.add", {
+      <ListActionButtons
+        labels={{
+          add: t("settings.postProcessing.dictionary.add", {
             defaultValue: "Add entry",
-          })}
-          aria-label={t("settings.postProcessing.dictionary.add", {
-            defaultValue: "Add entry",
-          })}
-        >
-          <Plus aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleImport}
-          title={t("settings.corrections.dictionary.import")}
-          aria-label={t("settings.corrections.dictionary.import")}
-        >
-          <Upload aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={handleExport}
-          disabled={bulkActionsDisabled}
-          title={t("settings.corrections.dictionary.export")}
-          aria-label={t("settings.corrections.dictionary.export")}
-        >
-          <Download aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="danger-ghost"
-          onClick={handleClearAll}
-          disabled={bulkActionsDisabled}
-          title={t("settings.corrections.dictionary.clearAll")}
-          aria-label={t("settings.corrections.dictionary.clearAll")}
-        >
-          <Trash2 aria-hidden />
-        </Button>
-      </>
+          }),
+          import: t("settings.corrections.dictionary.import"),
+          export: t("settings.corrections.dictionary.export"),
+          clearAll: t("settings.corrections.dictionary.clearAll"),
+        }}
+        onAdd={() => {
+          setShowManualEditor(true);
+          setManualDraft(emptyManualCorrectionDraft());
+        }}
+        onImport={handleImport}
+        onExport={handleExport}
+        onClear={handleClearAll}
+        bulkDisabled={bulkActionsDisabled}
+      />
     ),
     [bulkActionsDisabled, t],
   );
@@ -666,7 +614,10 @@ const OriginalChip: React.FC<{
   }
 
   return (
-    <span className="group inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-mono bg-mid-gray/10 border border-mid-gray/30 rounded-full hover:border-mid-gray/50 transition-colors">
+    <Badge
+      variant="secondary"
+      className="group gap-0.5 border border-mid-gray/30 bg-mid-gray/10 px-2 py-0.5 font-mono text-[var(--text)] hover:border-mid-gray/50"
+    >
       <button
         type="button"
         className="cursor-text"
@@ -682,6 +633,6 @@ const OriginalChip: React.FC<{
       >
         <X className="h-2.5 w-2.5" />
       </button>
-    </span>
+    </Badge>
   );
 };

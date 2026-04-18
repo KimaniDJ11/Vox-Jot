@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import type { AppToneMapping, InstalledApp, ToneDefinition } from "@/bindings";
 import { commands } from "@/bindings";
 
+import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { Dropdown } from "../../ui/Dropdown";
 import { Input } from "../../ui/Input";
@@ -30,6 +31,7 @@ import {
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
 import { useSettings } from "../../../hooks/useSettings";
+import { usePortalTarget } from "../../../hooks/usePortalTarget";
 import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
 
 interface StylesSettingsProps {
@@ -120,9 +122,12 @@ const ToneCard: React.FC<ToneCardProps> = ({
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {tone.label || tone.id}
             </h3>
-            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+            <Badge
+              variant="secondary"
+              className="bg-[var(--accent-soft)] px-2 py-0.5 font-semibold uppercase tracking-[0.12em] text-[var(--accent)]"
+            >
               {badgeLabel}
-            </span>
+            </Badge>
           </div>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
             {tone.instruction}
@@ -162,23 +167,30 @@ const ToneCard: React.FC<ToneCardProps> = ({
         {mappedApps.length > 0 ? (
           <>
             {mappedApps.slice(0, 4).map((mapping) => (
-              <span
+              <Badge
                 key={`${mapping.bundle_id}-${mapping.app_name}`}
-                className="rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-xs text-[var(--text)]"
+                variant="secondary"
+                className="border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[var(--text)]"
               >
                 {mapping.app_name || mapping.bundle_id}
-              </span>
+              </Badge>
             ))}
             {mappedApps.length > 4 && (
-              <span className="rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-xs text-[var(--muted)]">
+              <Badge
+                variant="secondary"
+                className="border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[var(--muted)]"
+              >
                 +{mappedApps.length - 4}
-              </span>
+              </Badge>
             )}
           </>
         ) : (
-          <span className="rounded-full border border-dashed border-[var(--border)] px-2.5 py-1 text-xs text-[var(--muted)]">
+          <Badge
+            variant="secondary"
+            className="border border-dashed border-[var(--border)] bg-transparent px-2.5 py-1 text-[var(--muted)]"
+          >
             {t("settings.styles.tones.unused")}
-          </span>
+          </Badge>
         )}
       </div>
     </div>
@@ -645,16 +657,7 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
       </Button>
     ) : null;
 
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!titleActionTargetId) {
-      setPortalTarget(null);
-      return;
-    }
-
-    setPortalTarget(document.getElementById(titleActionTargetId));
-  }, [titleActionTargetId]);
+  const portalTarget = usePortalTarget(titleActionTargetId);
 
   const shouldPortalActions = !showEnabledToggle && !!portalTarget;
 

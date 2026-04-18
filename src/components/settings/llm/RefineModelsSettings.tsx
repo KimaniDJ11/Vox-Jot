@@ -456,9 +456,12 @@ const RefineModelsSettings: React.FC = () => {
         <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
           {title}
         </h2>
-        <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
+        <Badge
+          variant="secondary"
+          className="bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]"
+        >
           {models.length}
-        </span>
+        </Badge>
       </div>
       <p className="px-5 text-sm leading-6 text-[var(--muted)]">
         {description}

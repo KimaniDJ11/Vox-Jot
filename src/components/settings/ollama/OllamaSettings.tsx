@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, CheckCircle2, Download, Trash2 } from "lucide-react";
 import { useOllamaStore } from "../../../stores/ollamaStore";
 import { useSettings } from "@/hooks/useSettings";
+import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import {
   CompactBadgeRow,
@@ -184,9 +185,12 @@ const OllamaSettings: React.FC = () => {
                 <p className="text-lg font-bold text-[var(--text)]">
                   {activeRefineModel.label}
                 </p>
-                <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
+                <Badge
+                  variant="secondary"
+                  className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
+                >
                   {t("ollama.ollamaBadge")}
-                </span>
+                </Badge>
               </div>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                 {splitDescription(activeRefineModel.description).summary}

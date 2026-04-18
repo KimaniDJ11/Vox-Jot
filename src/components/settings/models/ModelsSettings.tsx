@@ -19,6 +19,8 @@ import {
   type ModelPlatformOverview,
 } from "@/lib/modelPlatform";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import Badge from "@/components/ui/Badge";
+import { usePortalTarget } from "@/hooks/usePortalTarget";
 
 // check if model supports a language based on its supported_languages list
 const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
@@ -38,7 +40,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   const [providerFilter, setProviderFilter] = useState("all");
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [languageSearch, setLanguageSearch] = useState("");
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const portalTarget = usePortalTarget(titleActionTargetId);
   const [platformOverview, setPlatformOverview] =
     useState<ModelPlatformOverview | null>(null);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
@@ -87,15 +89,6 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       languageSearchInputRef.current.focus();
     }
   }, [languageDropdownOpen]);
-
-  useEffect(() => {
-    if (!titleActionTargetId) {
-      setPortalTarget(null);
-      return;
-    }
-
-    setPortalTarget(document.getElementById(titleActionTargetId));
-  }, [titleActionTargetId]);
 
   useEffect(() => {
     void loadPlatformOverview();
@@ -383,9 +376,6 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     </div>
   );
 
-  const countBadgeClassName =
-    "inline-flex min-w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]";
-
   if (loading) {
     return (
       <div className="w-full space-y-4">
@@ -416,21 +406,30 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               {currentModelInfo.name}
             </p>
             {currentModelCatalog ? (
-              <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
+              <Badge
+                variant="secondary"
+                className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
+              >
                 {currentModelCatalog.provider_id
                   .replace(/^stt_/, "")
                   .replace(/_/g, " ")}
-              </span>
+              </Badge>
             ) : null}
             {hasActiveFilter ? (
-              <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
+              <Badge
+                variant="secondary"
+                className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
+              >
                 {selectedLanguageLabel}
-              </span>
+              </Badge>
             ) : null}
             {providerFilter !== "all" ? (
-              <span className="rounded-full bg-[var(--panel-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
+              <Badge
+                variant="secondary"
+                className="bg-[var(--panel-bg)] px-2.5 py-1 font-semibold"
+              >
                 {selectedProviderLabel}
-              </span>
+              </Badge>
             ) : null}
           </div>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
@@ -453,9 +452,12 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
                   {t("settings.models.yourModels")}
                 </h2>
-                <span className={countBadgeClassName}>
+                <Badge
+                  variant="secondary"
+                  className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
+                >
                   {downloadedModels.length}
-                </span>
+                </Badge>
               </div>
               {!portalTarget ? filterAction : <div className="shrink-0" />}
             </div>
@@ -508,9 +510,12 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
                 {t("settings.models.availableModels")}
               </h2>
-              <span className={countBadgeClassName}>
+              <Badge
+                variant="secondary"
+                className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
+              >
                 {availableModels.length}
-              </span>
+              </Badge>
             </div>
             {availableModels.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">

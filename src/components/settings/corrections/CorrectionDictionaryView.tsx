@@ -12,6 +12,7 @@ import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
 import { Button } from "../../ui/Button";
 import { Input } from "../../ui/Input";
+import { SwitchControl } from "../../ui/SwitchControl";
 
 /**
  * A group of corrections that share the same corrected word.
@@ -160,8 +161,10 @@ export const CorrectionDictionaryView: React.FC<
     }
   };
 
-  const handleToggleGroup = async (group: CorrectionGroup) => {
-    const newActive = !group.allActive;
+  const handleToggleGroup = async (
+    group: CorrectionGroup,
+    newActive: boolean,
+  ) => {
     try {
       for (const entry of group.entries) {
         await commands.toggleCorrection(entry.id, newActive);
@@ -324,7 +327,7 @@ export const CorrectionDictionaryView: React.FC<
       <>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           onClick={() => {
             setShowManualEditor(true);
@@ -337,39 +340,39 @@ export const CorrectionDictionaryView: React.FC<
             defaultValue: "Add entry",
           })}
         >
-          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          <Plus aria-hidden />
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           onClick={handleImport}
           title={t("settings.corrections.dictionary.import")}
           aria-label={t("settings.corrections.dictionary.import")}
         >
-          <Upload className="h-4 w-4 shrink-0" aria-hidden />
+          <Upload aria-hidden />
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           onClick={handleExport}
           disabled={bulkActionsDisabled}
           title={t("settings.corrections.dictionary.export")}
           aria-label={t("settings.corrections.dictionary.export")}
         >
-          <Download className="h-4 w-4 shrink-0" aria-hidden />
+          <Download aria-hidden />
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="danger-ghost"
           onClick={handleClearAll}
           disabled={bulkActionsDisabled}
           title={t("settings.corrections.dictionary.clearAll")}
           aria-label={t("settings.corrections.dictionary.clearAll")}
         >
-          <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+          <Trash2 aria-hidden />
         </Button>
       </>
     ),
@@ -508,37 +511,30 @@ export const CorrectionDictionaryView: React.FC<
                     }}
                   />
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      className={`inline-block w-7 h-3.5 rounded-full transition-colors ${
-                        group.allActive
-                          ? "bg-[var(--accent)]"
-                          : "bg-[color-mix(in_srgb,var(--text),transparent_65%)] border border-[color-mix(in_srgb,var(--text),transparent_50%)]"
-                      }`}
-                      onClick={() => handleToggleGroup(group)}
+                    <SwitchControl
+                      checked={group.allActive}
+                      onChange={(checked) => handleToggleGroup(group, checked)}
+                      size="compact"
+                      frame="icon"
                       title={
                         group.allActive
                           ? t("common.disable", { defaultValue: "Disable" })
                           : t("common.enable", { defaultValue: "Enable" })
                       }
-                    >
-                      <span
-                        className={`block w-2.5 h-2.5 rounded-full bg-[var(--card)] shadow transition-transform ${
-                          group.allActive
-                            ? "translate-x-3.5"
-                            : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
+                      ariaLabel={
+                        group.allActive
+                          ? t("common.disable", { defaultValue: "Disable" })
+                          : t("common.enable", { defaultValue: "Enable" })
+                      }
+                    />
                     <Button
                       type="button"
                       variant="danger-ghost"
                       size="icon-sm"
-                      className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
                       onClick={() => handleDeleteGroup(group)}
                       title={t("common.delete")}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 />
                     </Button>
                   </div>
                 </div>

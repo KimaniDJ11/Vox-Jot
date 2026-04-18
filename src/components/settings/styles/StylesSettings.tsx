@@ -28,7 +28,6 @@ import { Textarea } from "../../ui/Textarea";
 import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
-  minTapTargetSquareClass,
 } from "@/lib/interactiveFocus";
 import { useSettings } from "../../../hooks/useSettings";
 import { AppAwareWriteProfilesToggle } from "../AppAwareWriteProfilesToggle";
@@ -136,12 +135,11 @@ const ToneCard: React.FC<ToneCardProps> = ({
             onClick={onEdit}
             disabled={disabled}
             variant="ghost"
-            size="icon"
-            className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+            size="icon-sm"
             title={t("common.edit")}
             aria-label={t("common.edit")}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil />
           </Button>
           {canDelete && (
             <Button
@@ -149,12 +147,12 @@ const ToneCard: React.FC<ToneCardProps> = ({
               onClick={onDelete}
               disabled={disabled}
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+              size="icon-sm"
+              className="hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
               title={t("common.delete")}
               aria-label={t("common.delete")}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 />
             </Button>
           )}
         </div>
@@ -367,7 +365,7 @@ const AppPicker: React.FC<AppPickerProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className={`shrink-0 rounded-md p-1 text-[var(--muted)] hover:text-[var(--text)] ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--text)] ${interactiveFocusRingClass}`}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -449,12 +447,12 @@ const MappingRow: React.FC<MappingRowProps> = ({
           onClick={onDelete}
           disabled={disabled}
           variant="ghost"
-          size="icon"
-          className="h-8 w-8 min-h-8 min-w-8 border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1.5 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+          size="icon-sm"
+          className="hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
           title={t("common.delete")}
           aria-label={t("common.delete")}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 />
         </Button>
       </div>
     </div>

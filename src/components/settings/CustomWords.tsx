@@ -83,14 +83,13 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
           <div className="flex items-center gap-2">
             <Input
               type="text"
-              className="max-w-40"
+              className="max-w-40 min-h-[44px]"
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder={
                 placeholder ?? t("settings.advanced.customWords.placeholder")
               }
-              variant="compact"
               disabled={isUpdating("custom_words")}
             />
             <Button

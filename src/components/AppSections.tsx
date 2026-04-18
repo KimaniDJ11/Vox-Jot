@@ -670,6 +670,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
                   value={modelDraft}
                   onChange={(event) => setModelDraft(event.target.value)}
                   placeholder="Type a custom translation model id"
+                  className="flex-1 min-h-[44px]"
                 />
                 <Button size="sm" onClick={() => void saveModel()}>
                   {saveModelLabel}

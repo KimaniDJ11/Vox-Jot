@@ -133,7 +133,7 @@ const PrimaryModeSwitcher: React.FC<{
 
   return (
     <div className="app-mode-switcher app-no-drag">
-      <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-0.5 shadow-[var(--shadow-sm)]">
+      <div className="flex items-stretch overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]">
         {items.map((item) => {
           const isActive = activeMode === item.id;
           const activate = () => onSelect(item.id);
@@ -156,10 +156,10 @@ const PrimaryModeSwitcher: React.FC<{
                   activate();
                 }
               }}
-              className={`rounded-[9px] px-3.5 py-1.5 text-[13px] font-semibold transition-all duration-150 ${
+              className={`px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-150 ${
                 isActive
-                  ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                  : "text-[var(--muted)] hover:text-[var(--text)]"
+                  ? "bg-[var(--accent)] text-[var(--inverse-text)]"
+                  : "text-[var(--muted)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_90%)] hover:text-[var(--text)]"
               }`}
             >
               {item.label}

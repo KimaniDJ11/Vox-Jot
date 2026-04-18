@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
 import { Button } from "../../ui/Button";
+import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { useSettings } from "../../../hooks/useSettings";
 import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
@@ -91,9 +92,9 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     await saveSnippets(snippets.filter((s) => s.id !== id));
   };
 
-  const handleToggle = async (id: string) => {
+  const handleToggle = async (id: string, enabled: boolean) => {
     await saveSnippets(
-      snippets.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
+      snippets.map((s) => (s.id === id ? { ...s, enabled } : s)),
     );
   };
 
@@ -186,9 +187,8 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
       <>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={() => {
             setAdding(true);
             setNewTrigger("");
@@ -197,42 +197,39 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           title={t("settings.snippets.list.add")}
           aria-label={t("settings.snippets.list.add")}
         >
-          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          <Plus aria-hidden />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={handleImport}
           title={t("settings.snippets.list.import")}
           aria-label={t("settings.snippets.list.import")}
         >
-          <Upload className="h-4 w-4 shrink-0" aria-hidden />
+          <Upload aria-hidden />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="ghost"
-          className="h-10 w-10 p-0"
           onClick={handleExport}
           disabled={bulkDisabled}
           title={t("settings.snippets.list.export")}
           aria-label={t("settings.snippets.list.export")}
         >
-          <Download className="h-4 w-4 shrink-0" aria-hidden />
+          <Download aria-hidden />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon-sm"
           variant="danger-ghost"
-          className="h-10 w-10 p-0"
           onClick={handleClearAll}
           disabled={bulkDisabled}
           title={t("settings.snippets.list.clearAll")}
           aria-label={t("settings.snippets.list.clearAll")}
         >
-          <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+          <Trash2 aria-hidden />
         </Button>
       </>
     ),
@@ -418,24 +415,27 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           {snippet.trigger}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <button
+                          <Button
                             type="button"
-                            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] transition-colors"
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => startEdit(snippet)}
                             title={t("common.edit", {
                               defaultValue: "Edit",
                             })}
+                            aria-label={t("common.edit", {
+                              defaultValue: "Edit",
+                            })}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            className={`inline-block w-7 h-3.5 rounded-full transition-colors ${
-                              snippet.enabled
-                                ? "bg-[var(--accent)]"
-                                : "bg-[color-mix(in_srgb,var(--text),transparent_65%)] border border-[color-mix(in_srgb,var(--text),transparent_50%)]"
-                            }`}
-                            onClick={() => void handleToggle(snippet.id)}
+                            <Pencil />
+                          </Button>
+                          <SwitchControl
+                            checked={snippet.enabled}
+                            onChange={(checked) =>
+                              void handleToggle(snippet.id, checked)
+                            }
+                            size="compact"
+                            frame="icon"
                             title={
                               snippet.enabled
                                 ? t("common.disable", {
@@ -445,23 +445,26 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                                     defaultValue: "Enable",
                                   })
                             }
-                          >
-                            <span
-                              className={`block w-2.5 h-2.5 rounded-full bg-[var(--card)] shadow transition-transform ${
-                                snippet.enabled
-                                  ? "translate-x-3.5"
-                                  : "translate-x-0.5"
-                              }`}
-                            />
-                          </button>
-                          <button
+                            ariaLabel={
+                              snippet.enabled
+                                ? t("common.disable", {
+                                    defaultValue: "Disable",
+                                  })
+                                : t("common.enable", {
+                                    defaultValue: "Enable",
+                                  })
+                            }
+                          />
+                          <Button
                             type="button"
-                            className="rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--text),transparent_94%)] p-1 text-[var(--text)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors"
+                            variant="danger-ghost"
+                            size="icon-sm"
                             onClick={() => void handleDelete(snippet.id)}
                             title={t("common.delete")}
+                            aria-label={t("common.delete")}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                            <Trash2 />
+                          </Button>
                         </div>
                       </div>
                       <div className="flex items-start gap-2">

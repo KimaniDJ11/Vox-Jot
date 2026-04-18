@@ -249,15 +249,15 @@ const ModelCard: React.FC<ModelCardProps> = ({
           {onDelete && (status === "available" || status === "active") && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               onClick={handleDelete}
               title={t("modelSelector.deleteModel", { modelName: displayName })}
               aria-label={t("modelSelector.deleteModel", {
                 modelName: displayName,
               })}
-              className="ml-auto inline-flex h-8 w-8 items-center justify-center p-0 text-[var(--accent)] hover:text-[var(--accent)] hover:bg-logo-primary/10"
+              className="ml-auto text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 />
             </Button>
           )}
         </div>

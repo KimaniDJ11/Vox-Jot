@@ -316,7 +316,7 @@ const OllamaSettings: React.FC = () => {
                             size="icon-sm"
                             className="ml-auto rounded-md border-transparent text-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 />
                           </Button>
                         </div>
                       </div>
@@ -426,7 +426,7 @@ const OllamaSettings: React.FC = () => {
                             size="icon-sm"
                             className="ml-auto rounded-md border-transparent text-[var(--text)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
                           >
-                            <Download className="w-4 h-4" />
+                            <Download />
                           </Button>
                         )}
                       </div>

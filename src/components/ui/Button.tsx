@@ -23,6 +23,9 @@ export const Button: React.FC<ButtonProps> = ({
   size = "md",
   ...props
 }) => {
+  const isIconButtonSize =
+    size === "icon" || size === "icon-sm" || size === "icon-xs";
+
   const baseClasses = [
     "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border font-medium",
     "transition-[background-color,border-color,color,transform] duration-200",
@@ -40,18 +43,24 @@ export const Button: React.FC<ButtonProps> = ({
     danger:
       "border-[var(--danger)] bg-[var(--danger)] text-[var(--inverse-text)] hover:border-[color-mix(in_srgb,var(--danger),black_12%)] hover:bg-[color-mix(in_srgb,var(--danger),black_12%)]",
     "danger-ghost":
-      "border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
+      isIconButtonSize
+        ? "border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+        : "border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]",
     ghost:
-      "border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
+      isIconButtonSize
+        ? "border-transparent bg-transparent text-[var(--muted)] hover:border-transparent hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+        : "border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]",
   };
 
   const sizeClasses = {
     sm: `${minTapTargetHeightClass} px-3 py-2 text-xs`,
     md: `${minTapTargetHeightClass} px-4 py-2 text-sm`,
     lg: "min-h-[48px] px-5 py-2.5 text-base",
-    icon: "h-11 w-11 shrink-0 p-0 [&>svg]:shrink-0",
-    "icon-sm": "h-8 w-8 shrink-0 p-0 [&>svg]:shrink-0",
-    "icon-xs": "h-6 w-6 shrink-0 p-0 [&>svg]:shrink-0",
+    icon: "h-11 w-11 shrink-0 p-0 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0",
+    "icon-sm":
+      "h-8 w-8 shrink-0 p-0 [&>svg]:h-[14px] [&>svg]:w-[14px] [&>svg]:shrink-0",
+    "icon-xs":
+      "h-6 w-6 shrink-0 p-0 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0",
   };
 
   return (

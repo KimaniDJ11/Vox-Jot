@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { SwitchControl } from "@/components/ui/SwitchControl";
 import {
   CompactBadgeRow,
   CompactMetaRow,
@@ -1895,16 +1896,15 @@ const VoiceArchitectSection: React.FC<{
                       <Button
                         type="button"
                         variant="danger-ghost"
-                        size="sm"
+                        size="icon-sm"
                         onClick={() => void speech.removePreset(preset.id)}
                         disabled={
                           !speech.ttsEnabled || speech.presets.length <= 1
                         }
                         title={`Delete ${preset.label}`}
                         aria-label={`Delete ${preset.label}`}
-                        className="inline-flex h-8 w-8 items-center justify-center p-0"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        <Trash2 aria-hidden />
                       </Button>
                     </div>
                   </div>
@@ -2845,29 +2845,16 @@ const VoiceCloningSection: React.FC<{
                     {t("listen.voiceCloning.improveFromDictationsDescription")}
                   </p>
                 </div>
-                <label
-                  className={`inline-flex h-6 w-11 items-center ${
-                    !speech.ttsEnabled || selectedProfile.fully_optimized
-                      ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={selectedProfile.continuous_improvement_enabled}
-                    disabled={
-                      !speech.ttsEnabled || selectedProfile.fully_optimized
-                    }
-                    onChange={(event) => {
-                      void setActiveImprovementProfile(
-                        selectedProfile.id,
-                        event.target.checked,
-                      ).then(() => speech.refreshProfiles());
-                    }}
-                  />
-                  <div className="relative h-6 w-11 overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--text),transparent_50%)] bg-[color-mix(in_srgb,var(--text),transparent_78%)] transition-colors duration-200 peer-checked:border-[var(--accent)] peer-checked:bg-[var(--accent)] peer-checked:after:translate-x-[18px] after:absolute after:start-[2px] after:top-1/2 after:h-5 after:w-5 after:-translate-y-1/2 after:rounded-full after:border after:border-[color-mix(in_srgb,var(--text),transparent_50%)] after:bg-[var(--card)] after:shadow-[0_1px_3px_rgba(0,0,0,0.3)] after:transition-all after:duration-200 after:content-['']" />
-                </label>
+                <SwitchControl
+                  checked={selectedProfile.continuous_improvement_enabled}
+                  disabled={!speech.ttsEnabled || selectedProfile.fully_optimized}
+                  onChange={(checked) => {
+                    void setActiveImprovementProfile(
+                      selectedProfile.id,
+                      checked,
+                    ).then(() => speech.refreshProfiles());
+                  }}
+                />
               </div>
               {(selectedProfile.collected_audio_duration_secs > 0 ||
                 selectedProfile.continuous_improvement_enabled) && (

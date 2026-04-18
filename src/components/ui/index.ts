@@ -1,6 +1,7 @@
 export { Dropdown } from "./Dropdown";
 export { Slider } from "./Slider";
 export { ToggleSwitch } from "./ToggleSwitch";
+export { SwitchControl } from "./SwitchControl";
 export { SettingContainer } from "./SettingContainer";
 export { SettingsGroup } from "./SettingsGroup";
 export { TextDisplay } from "./TextDisplay";

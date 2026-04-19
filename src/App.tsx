@@ -45,6 +45,7 @@ import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
+import { useMinWidth769 } from "@/hooks/useMinWidth769";
 import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
 import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
@@ -261,6 +262,7 @@ function App() {
   }, []);
 
   const macosWindowFullscreen = useMacosWindowFullscreen();
+  const isDesktopLayout = useMinWidth769();
 
   const handleSectionJump = useCallback((sectionId: string) => {
     setActiveSectionId(sectionId);
@@ -1053,6 +1055,7 @@ function App() {
         items={activeSections}
         collapsed={sidebarCollapsed}
         settingsActive={activeRootView === "settings"}
+        showStatusCards={isDesktopLayout}
         onSectionChange={handleSectionJump}
         onSettingsClick={handleSettingsOpen}
       />
@@ -1072,9 +1075,11 @@ function App() {
           </div>
         </div>
 
-        <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
-          <Footer />
-        </div>
+        {!isDesktopLayout && (
+          <div className="mt-auto shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
+            <Footer />
+          </div>
+        )}
       </main>
 
       <CommandMenu

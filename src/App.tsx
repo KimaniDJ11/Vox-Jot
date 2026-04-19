@@ -44,6 +44,7 @@ import { ModelStateEvent } from "./lib/types/events";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
+import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
 import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
@@ -258,6 +259,8 @@ function App() {
       return false;
     }
   }, []);
+
+  const macosWindowFullscreen = useMacosWindowFullscreen();
 
   const handleSectionJump = useCallback((sectionId: string) => {
     setActiveSectionId(sectionId);
@@ -953,7 +956,10 @@ function App() {
       />
 
       {macTitlebarOverlay ? (
-        <header className="app-macos-titlebar-overlay" dir="ltr">
+        <header
+          className={`app-macos-titlebar-overlay${macosWindowFullscreen ? " app-macos-titlebar-overlay--fullscreen" : ""}`}
+          dir="ltr"
+        >
           <div
             className="app-macos-titlebar-overlay__traffic-shim"
             aria-hidden

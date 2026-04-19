@@ -18,6 +18,7 @@ import { HighlightTrack } from "@/motion/HighlightTrack";
 import { Kbd } from "@/components/ui/Kbd";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { crisp } from "@/motion/springs";
+import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { commands } from "@/bindings";
 import {
   interactiveFocusRingClass,
@@ -341,6 +342,8 @@ const ScratchpadApp: React.FC = () => {
     };
   }, [saveNow, setActiveNote, setEditorArmed]);
 
+  const macosWindowFullscreen = useMacosWindowFullscreen();
+
   const handleCreateNote = async () => {
     // Flush any pending save before creating
     saveNow();
@@ -407,7 +410,10 @@ const ScratchpadApp: React.FC = () => {
   return (
     <div className="app-titlebar-safe-top flex h-screen flex-col bg-transparent font-body text-[var(--text)]">
       <Toaster />
-      <header className="app-macos-titlebar-overlay" dir="ltr">
+      <header
+        className={`app-macos-titlebar-overlay${macosWindowFullscreen ? " app-macos-titlebar-overlay--fullscreen" : ""}`}
+        dir="ltr"
+      >
         <div className="app-macos-titlebar-overlay__traffic-shim" aria-hidden />
         <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
           <Button

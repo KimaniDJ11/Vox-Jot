@@ -1062,6 +1062,32 @@ input[type="range"]::-moz-range-thumb:active {
     padding-inline: 0.25rem;
   }
 
+  /* Native fullscreen: traffic lights are not in the strip — zero shim, align with sidebar column */
+  .app-macos-titlebar-overlay.app-macos-titlebar-overlay--fullscreen {
+    --macos-traffic-shim-width: 0px;
+  }
+
+  .app-macos-titlebar-overlay.app-macos-titlebar-overlay--fullscreen
+    .app-macos-titlebar-overlay__leading {
+    justify-content: flex-start;
+    gap: 0.25rem;
+    padding-inline-start: 0.625rem;
+    padding-inline-end: 0.5rem;
+  }
+
+  .shell.shell--sidebar-collapsed
+    .app-macos-titlebar-overlay.app-macos-titlebar-overlay--fullscreen {
+    --macos-traffic-shim-width: 0px;
+    --macos-sidebar-strip-width: 2.75rem;
+  }
+
+  .shell.shell--sidebar-collapsed
+    .app-macos-titlebar-overlay.app-macos-titlebar-overlay--fullscreen
+    .app-macos-titlebar-overlay__leading {
+    justify-content: center;
+    padding-inline: 0.25rem;
+  }
+
   .app-macos-titlebar-overlay::after {
     content: "";
     position: absolute;

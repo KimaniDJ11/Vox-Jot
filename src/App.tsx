@@ -44,6 +44,7 @@ import { ModelStateEvent } from "./lib/types/events";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
+import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
 import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
 import { Sidebar, type SidebarItem } from "./components/Sidebar";
@@ -526,6 +527,20 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.code !== "Backslash") {
+        return;
+      }
+      if (event.repeat) return;
+      if (!window.matchMedia("(min-width: 769px)").matches) return;
+      event.preventDefault();
+      toggleSidebarCollapsed();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleSidebarCollapsed]);
+
+  useEffect(() => {
     const mq = window.matchMedia("(min-width: 769px)");
     const sync = () => {
       if (!mq.matches) {
@@ -947,8 +962,8 @@ function App() {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+              size="icon-sm"
+              className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
               onClick={toggleSidebarCollapsed}
               aria-label={
                 sidebarCollapsed

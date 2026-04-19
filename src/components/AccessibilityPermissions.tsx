@@ -6,6 +6,7 @@ import { type } from "@tauri-apps/plugin-os";
 import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
+  titleBarOverlayWarningFocusClass,
 } from "@/lib/interactiveFocus";
 import {
   checkAccessibilityPermission,
@@ -230,7 +231,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       <div className="relative" ref={containerRef}>
         <button
           type="button"
-          className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold leading-[1.1] text-[var(--warning)] transition-[background-color,border-color,color] duration-200 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+          className={`flex h-8 max-h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0 text-[11px] font-bold leading-none text-[var(--warning)] transition-[background-color,border-color,color] duration-200 ${titleBarOverlayWarningFocusClass} ${
             isOpen
               ? "border-[color-mix(in_srgb,var(--warning),transparent_68%)] bg-[var(--warning-soft)]"
               : "border-transparent bg-transparent hover:border-[color-mix(in_srgb,var(--warning),transparent_78%)] hover:bg-[color-mix(in_srgb,var(--warning),transparent_90%)]"

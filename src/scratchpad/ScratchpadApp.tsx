@@ -21,7 +21,7 @@ import { crisp } from "@/motion/springs";
 import { commands } from "@/bindings";
 import {
   interactiveFocusRingClass,
-  minTapTargetHeightClass,
+  titleBarOverlayButtonFocusClass,
 } from "@/lib/interactiveFocus";
 import { formatTime } from "@/utils/dateFormat";
 import { useNotesStore } from "./notesStore";
@@ -413,8 +413,8 @@ const ScratchpadApp: React.FC = () => {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+            size="icon-sm"
+            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleCreateNote()}
             aria-label={t("jotPad.newNote")}
             title={t("jotPad.newNote")}
@@ -424,8 +424,8 @@ const ScratchpadApp: React.FC = () => {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+            size="icon-sm"
+            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleSpeakNote()}
             aria-label="Play note"
             title="Play note"
@@ -436,8 +436,8 @@ const ScratchpadApp: React.FC = () => {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="border-transparent p-1 text-[var(--muted)] hover:text-[var(--accent)]"
+            size="icon-sm"
+            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleStopSpeaking()}
             aria-label="Stop speaking"
             title="Stop speaking"

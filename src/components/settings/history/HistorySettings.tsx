@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
 import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
+import { Skeleton } from "../../ui/Skeleton";
 import {
   Copy,
   Star,
@@ -279,10 +280,12 @@ export const HistorySettings: React.FC = () => {
       <div className="space-y-5 px-4 py-4" data-testid="history-entries">
         {groupedEntries.map((group) => (
           <section key={group.key} className="space-y-2.5">
-            <p className="px-1 text-sm font-bold uppercase tracking-[0.2em] text-[var(--text)]">
-              {group.label}
-            </p>
-            <div className="flat-card overflow-hidden rounded-[22px] divide-y divide-mid-gray/20">
+            <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+                {group.label}
+              </p>
+            </div>
+            <div className="card-linear overflow-hidden divide-y divide-[var(--ring-hairline,var(--border))]">
               {group.entries.map((entry) => {
                 const fallbackText = entry.transcription_text;
                 const displayText =
@@ -315,18 +318,27 @@ export const HistorySettings: React.FC = () => {
   if (loading) {
     return (
       <div className="w-full space-y-6">
-        <div className="flat-card overflow-visible">
-          <div className="px-5 py-8 text-center">
-            <div className="mx-auto mb-3 h-8 w-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
-            <p className="text-sm font-semibold text-[var(--text)]">
-              {t("settings.history.loading")}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              {t("settings.history.loadingDescription", {
-                defaultValue:
-                  "Loading your recent recordings and pasted output.",
-              })}
-            </p>
+        <div className="card-linear overflow-hidden px-5 py-5">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="space-y-3">
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 rounded-xl border border-[var(--ring-hairline)] px-4 py-4"
+                >
+                  <Skeleton className="h-3.5 w-12" />
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                      <Skeleton className="h-6 w-36 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -464,9 +476,9 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
               });
 
   return (
-    <div className="grid grid-cols-1 gap-y-3 px-4 py-4 md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
+    <div className="group/history-row relative grid grid-cols-1 gap-y-3 px-4 py-4 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
       <div
-        className={`min-w-0 text-[var(--voice)] ${historyEntryPrimaryLineClass}`}
+        className={`min-w-0 tabular text-[12px] font-medium leading-5 text-[var(--muted)]`}
       >
         {formattedTime}
       </div>
@@ -483,7 +495,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           className="min-w-0 flex-1 sm:min-w-[220px]"
         />
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-40 transition-opacity duration-150 group-hover/history-row:opacity-100 focus-within:opacity-100">
           <button
             type="button"
             onClick={handleCopyText}

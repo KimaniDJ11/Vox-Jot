@@ -29,7 +29,9 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = (
       loading={isLoading || audioDevices.length === 0}
       onRefresh={refreshAudioDevices}
       showResetButton
-      valueTransform={(raw) => (raw === "default" ? "Default" : raw || "Default")}
+      valueTransform={(raw) =>
+        raw === "default" ? "Default" : raw || "Default"
+      }
       {...props}
     />
   );

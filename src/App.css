@@ -13,8 +13,9 @@
   --color-logo-stroke: #193165;
   --color-accent-gold: #d89a5c;
 
-  --font-display: "Outfit", "SF Pro Display", sans-serif;
-  --font-body: "DM Sans", "SF Pro Text", sans-serif;
+  --font-display: "Outfit", "Inter", "SF Pro Display", sans-serif;
+  --font-body:
+    "Inter", "SF Pro Text", "DM Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
 }
 
@@ -84,6 +85,27 @@
   --transition-smooth: 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
+  /* Linear-style layered inner-glow tokens.
+   * Defaults below are for LIGHT themes; dark theme blocks override. */
+  --edge-highlight: rgba(255, 255, 255, 0.65);
+  --edge-shadow: rgba(44, 36, 24, 0.04);
+  --ring-hairline: color-mix(in srgb, var(--text), transparent 92%);
+
+  /* Vibrancy-aware overlay tokens — used by floating surfaces that sit
+   * on top of the NSVisualEffectView / Mica layer. */
+  --vibrancy-tint: color-mix(in srgb, var(--bg) 70%, transparent);
+  --vibrancy-border: color-mix(in srgb, var(--text), transparent 90%);
+
+  /* Raycast-style crisp / Arc-style bouncy / modal spring easings.
+   * These are the CSS-timing-function twins of the framer-motion
+   * spring configs in src/motion/springs.ts. */
+  --spring-crisp: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring-settle: cubic-bezier(0.34, 1.26, 0.64, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Solid 2px focus ring — sharp, Linear-style. */
+  --focus-ring-solid: var(--accent);
+
   --scrollbar-thumb: color-mix(in srgb, var(--text), transparent 85%);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--text), transparent 65%);
 
@@ -96,23 +118,23 @@
 
 /* ── Dark Theme Tokens (Midnight Premium) ─────────────────────── */
 :root[data-theme="dark"] {
-  --bg: #0b0f19;
-  --sidebar-bg: #111827;
-  --panel-bg: #151e32;
-  --card: #1f2937;
-  --surface-elevated: #273246;
-  --surface-muted: #1a2338;
-  --input: #374151;
-  --border: #374151;
-  --border-strong: #4b5563;
-  --text: #f3f4f6;
-  --muted: #b7c0cd;
-  --text-subtle: #95a4b8;
+  --bg: #0a0b0d;
+  --sidebar-bg: transparent;
+  --panel-bg: #101113;
+  --card: #1c1d20;
+  --surface-elevated: #26272b;
+  --surface-muted: #141518;
+  --input: #17191c;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.09);
+  --text: #f7f8f8;
+  --muted: #b4b6ba;
+  --text-subtle: #8a8f98;
   --inverse-text: #ffffff;
 
   --accent: #7b9ce8;
   --accent-hover: #93b1f0;
-  --accent-soft: rgba(123, 156, 232, 0.12);
+  --accent-soft: rgba(123, 156, 232, 0.14);
   --accent-glow: rgba(123, 156, 232, 0.25);
   --accent-2: #64b5d9;
   --accent-2-hover: #7bc3e2;
@@ -154,18 +176,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg: #0b0f19;
-    --sidebar-bg: #111827;
-    --panel-bg: #151e32;
-    --card: #1f2937;
-    --surface-elevated: #273246;
-    --surface-muted: #1a2338;
-    --input: #374151;
-    --border: #374151;
-    --border-strong: #4b5563;
-    --text: #f3f4f6;
-    --muted: #b7c0cd;
-    --text-subtle: #95a4b8;
+    --bg: #0a0b0d;
+    --sidebar-bg: transparent;
+    --panel-bg: #101113;
+    --card: #1c1d20;
+    --surface-elevated: #26272b;
+    --surface-muted: #141518;
+    --input: #17191c;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.09);
+    --text: #f7f8f8;
+    --muted: #b4b6ba;
+    --text-subtle: #8a8f98;
     --inverse-text: #ffffff;
 
     --accent: #7b9ce8;
@@ -617,7 +639,37 @@
   --shadow-lg: 0 12px 40px rgba(48, 67, 79, 0.14);
 }
 
+/* ── Dark-theme overrides for inner-glow tokens ───────────────
+ * Light-theme defaults are set on base :root. For dark themes we
+ * need a brighter top catch-light and a stronger bottom edge so
+ * surfaces read as lit from above, per Linear's technique.
+ */
+:root[data-theme="dark"],
+:root[data-theme="graphite"],
+:root[data-theme="slate"] {
+  --edge-highlight: rgba(255, 255, 255, 0.05);
+  --edge-shadow: rgba(0, 0, 0, 0.28);
+  --ring-hairline: rgba(255, 255, 255, 0.06);
+  --vibrancy-border: rgba(255, 255, 255, 0.09);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --edge-highlight: rgba(255, 255, 255, 0.05);
+    --edge-shadow: rgba(0, 0, 0, 0.28);
+    --ring-hairline: rgba(255, 255, 255, 0.06);
+    --vibrancy-border: rgba(255, 255, 255, 0.09);
+  }
+}
+
 /* ── Reset & Base ───────────────────────────────────────────── */
+/*
+ * html / body / #root are kept TRANSPARENT so the native Tauri
+ * vibrancy layer (macOS NSVisualEffectView.sidebar / Windows Mica)
+ * shows through. All visible background colour is painted on the
+ * `.shell` grid and its children using color-mix with alpha, so the
+ * desktop wallpaper tints through at a soft level on every theme.
+ */
 html,
 body,
 #root {
@@ -630,14 +682,22 @@ body,
   font-size: 16px;
   line-height: 1.5;
   color: var(--text);
-  background: var(--bg);
-  /* Apply transition to background for smooth theme switching */
-  transition:
-    background-color var(--transition-smooth),
-    color var(--transition-smooth);
+  background: transparent;
+  /* Enable Inter's contextual alternates + stylistic sets used by
+   * Linear, and always use tabular numerals for timers, counters and
+   * shortcut chips so layouts never jitter. */
+  font-feature-settings: "cv11", "ss01", "ss03";
+  font-variant-numeric: tabular-nums;
+  transition: color var(--transition-smooth);
 }
 
-/* Subtle grain texture on the root background to replace glassmorphism depth */
+.lucide {
+  stroke-width: 1.75;
+}
+
+/* Subtle grain texture on the root background to replace glassmorphism depth.
+ * With vibrancy, grain on top of NSVisualEffectView reads muddy, so we keep
+ * it very light on dark themes (was 0.04 before vibrancy landed). */
 #root::before {
   content: "";
   position: fixed;
@@ -649,22 +709,16 @@ body,
   background-size: 200px 200px;
 }
 
-[data-theme="dark"] #root::before {
-  opacity: 0.04;
-}
-
-[data-theme="graphite"] #root::before {
-  opacity: 0.04;
-}
-
+[data-theme="dark"] #root::before,
+[data-theme="graphite"] #root::before,
 [data-theme="slate"] #root::before {
-  opacity: 0.04;
+  opacity: 0.015;
 }
 
 /* ── Custom Scrollbar ────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -801,6 +855,113 @@ input[type="range"]::-moz-range-thumb:active {
     padding-top: max(36px, env(titlebar-area-height, 36px));
   }
 
+  /* ── Linear-style layered card ────────────────────────────────
+   * Three light-layers: 1px hairline border + inset top catch-light +
+   * inset bottom shadow + soft contact shadow. The edge-highlight and
+   * edge-shadow tokens flip polarity between light and dark themes, so
+   * the same class renders correctly under any palette.
+   */
+  .card-linear {
+    background: var(--card);
+    border: 1px solid var(--ring-hairline);
+    border-radius: var(--radius-md);
+    box-shadow:
+      inset 0 1px 0 var(--edge-highlight),
+      inset 0 -1px 0 var(--edge-shadow),
+      0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+
+  .card-linear--elevated {
+    background: var(--surface-elevated);
+    box-shadow:
+      inset 0 1px 0 var(--edge-highlight),
+      inset 0 -1px 0 var(--edge-shadow),
+      0 8px 24px rgba(0, 0, 0, 0.28);
+  }
+
+  /* ── Shared tabular numerals ────────────────────────────────── */
+  .tabular,
+  time,
+  kbd {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* ── Glowing status dot (model state, live process) ─────────── */
+  .status-dot-glow {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 35%, transparent);
+    position: relative;
+  }
+  .status-dot-glow.is-ready {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent);
+  }
+  .status-dot-glow.is-error {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 24%, transparent);
+  }
+  .status-dot-glow.is-live {
+    animation: status-dot-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes status-dot-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+  }
+
+  /* ── Focus ring — sharp 2px solid, not a soft glow ──────────── */
+  .focus-ring-solid:focus-visible {
+    outline: 2px solid var(--focus-ring-solid);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Kbd chip (used in Cmd+K, shortcut rows, tooltips) ──────── */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    min-width: 18px;
+    padding: 2px 5px;
+    font-size: 11px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: color-mix(in srgb, var(--text), transparent 30%);
+    background: color-mix(in srgb, var(--text), transparent 92%);
+    border: 1px solid var(--ring-hairline);
+    border-radius: 4px;
+  }
+
+  /* ── Skeleton shimmer ───────────────────────────────────────── */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--text), transparent 92%);
+    border-radius: var(--radius-sm);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--text), transparent 94%) 50%,
+      transparent 100%
+    );
+    animation: skeleton-shimmer 1.4s infinite linear;
+  }
+  @keyframes skeleton-shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
   /* Core App Shell Grid layout */
   .shell {
     --sidebar-float-inset-inline: 0.9rem;
@@ -813,7 +974,8 @@ input[type="range"]::-moz-range-thumb:active {
     height: 100vh;
     width: 100vw;
     transition: grid-template-columns var(--transition-smooth);
-    background: var(--bg);
+    /* Translucent so NSVisualEffectView / Mica shows through. */
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
   }
 
   @media (min-width: 769px) {
@@ -822,9 +984,12 @@ input[type="range"]::-moz-range-thumb:active {
       grid-template-columns: 4.5rem minmax(0, 1fr);
     }
 
-    /* macOS overlay needs extra collapsed width so the toggle clears traffic lights */
+    /* macOS overlay: widen collapsed column so traffic lights fit entirely inside */
     .shell.shell--macos-titlebar-overlay.shell--sidebar-collapsed {
-      grid-template-columns: 4.5rem minmax(0, 1fr);
+      grid-template-columns: max(5.5rem, calc(env(titlebar-area-x, 78px) + 16px)) minmax(
+          0,
+          1fr
+        );
     }
 
     .shell.shell--sidebar-collapsed .sidebar {
@@ -863,20 +1028,24 @@ input[type="range"]::-moz-range-thumb:active {
     box-sizing: border-box;
     height: var(--macos-titlebar-height);
     padding-inline-end: 12px;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg) 90%, transparent 10%) 0%,
-      color-mix(in srgb, var(--bg) 70%, transparent 30%) 100%
-    );
+    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
     overflow: hidden;
     pointer-events: none;
   }
 
   .shell.shell--sidebar-collapsed .app-macos-titlebar-overlay {
-    --macos-sidebar-strip-width: max(
-      8rem,
-      calc(env(titlebar-area-x, 68px) + 64px)
-    );
+    --macos-sidebar-strip-width: max(5.5rem, calc(env(titlebar-area-x, 78px) + 16px));
+    --macos-traffic-shim-width: max(5.5rem, calc(env(titlebar-area-x, 78px) + 16px));
+  }
+
+  .shell.shell--sidebar-collapsed .app-macos-titlebar-overlay__leading {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    justify-content: flex-start;
+    padding-inline-start: 0.5rem;
+    padding-inline-end: 0;
   }
 
   .app-macos-titlebar-overlay::after {
@@ -886,13 +1055,8 @@ input[type="range"]::-moz-range-thumb:active {
     right: 0;
     bottom: 0;
     left: var(--macos-sidebar-strip-width);
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg) 94%, transparent 6%) 0%,
-      color-mix(in srgb, var(--bg) 78%, transparent 22%) 100%
-    );
-    backdrop-filter: blur(10px) saturate(1.02);
-    -webkit-backdrop-filter: blur(10px) saturate(1.02);
+    background: var(--panel-bg);
+    border-left: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
     pointer-events: none;
   }
 
@@ -908,15 +1072,24 @@ input[type="range"]::-moz-range-thumb:active {
     flex: 0 0 auto;
     align-self: stretch;
     width: var(--macos-traffic-shim-width);
-    background: var(--sidebar-bg);
+    background: transparent;
   }
 
   .app-macos-titlebar-overlay__leading {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
-    padding-top: 0;
-    transform: translateY(-2px);
+    justify-content: flex-end;
+    min-width: 0;
+    width: calc(
+      var(--macos-sidebar-strip-width) - var(--macos-traffic-shim-width)
+    );
+    max-width: calc(
+      var(--macos-sidebar-strip-width) - var(--macos-traffic-shim-width)
+    );
+    align-self: stretch;
+    padding-inline-end: 0.5rem;
+    background: transparent;
   }
 
   /* Match macOS traffic-light control size (~12×12pt) */
@@ -1023,7 +1196,7 @@ input[type="range"]::-moz-range-thumb:active {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    background: var(--sidebar-bg);
+    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
     border-right: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
     overflow: visible;
   }
@@ -1085,7 +1258,9 @@ input[type="range"]::-moz-range-thumb:active {
     height: 100%;
     min-height: 0;
     padding: 0.45rem 0 0.65rem;
-    background: var(--sidebar-bg);
+    /* Translucent so vibrancy shows through on dark themes and the sidebar
+     * inherits the colour of the wallpaper behind the window. */
+    background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
     border-right: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
   }
 
@@ -1104,32 +1279,16 @@ input[type="range"]::-moz-range-thumb:active {
     border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent 28%);
   }
 
+  /* Hover + active backgrounds are painted by framer-motion shared
+   * elements (HighlightTrack + sidebar-active pill) — the button itself
+   * stays transparent so the spring pill owns the visual state. */
   .sidebar__nav-button {
     position: relative;
     border: 1px solid transparent;
     background: transparent;
     color: var(--text);
     box-shadow: none;
-    transition:
-      transform var(--transition-fast),
-      border-color var(--transition-smooth),
-      background-color var(--transition-smooth),
-      color var(--transition-smooth);
-  }
-
-  .sidebar__nav-button:hover {
-    transform: none;
-    background: color-mix(in srgb, var(--text) 5%, transparent 95%);
-  }
-
-  .sidebar__nav-button[aria-current="page"] {
-    border-color: transparent;
-    background: color-mix(in srgb, var(--text) 10%, transparent 90%);
-  }
-
-  .sidebar__nav-button:focus-visible,
-  .sidebar__nav-button[aria-current="page"]:focus-visible {
-    transform: none;
+    transition: color var(--transition-smooth);
   }
 
   .sidebar__nav-icon {
@@ -1174,6 +1333,7 @@ input[type="range"]::-moz-range-thumb:active {
     grid-column: 2;
     height: 100%;
     min-height: 0;
+    background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
   }
 
   .shell.shell--macos-titlebar-overlay .sidebar {

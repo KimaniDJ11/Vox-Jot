@@ -2,7 +2,7 @@
   <path
     d="M18 16H42C48 16 52 20 52 26V31C52 37 48 41 42 41H22L12 47V26C12 20 14 16 18 16Z"
     stroke="#111111"
-    stroke-width="5"
+    stroke-width="4"
     stroke-linecap="round"
     stroke-linejoin="round"
   />

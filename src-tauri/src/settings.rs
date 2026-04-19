@@ -1981,6 +1981,25 @@ pub fn get_default_settings() -> AppSettings {
             current_binding: default_stop_speaking_shortcut.to_string(),
         },
     );
+    #[cfg(target_os = "windows")]
+    let default_command_menu_shortcut = "ctrl+k";
+    #[cfg(target_os = "macos")]
+    let default_command_menu_shortcut = "command+k";
+    #[cfg(target_os = "linux")]
+    let default_command_menu_shortcut = "ctrl+k";
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    let default_command_menu_shortcut = "ctrl+k";
+
+    bindings.insert(
+        "toggle_command_menu".to_string(),
+        ShortcutBinding {
+            id: "toggle_command_menu".to_string(),
+            name: "Command Menu".to_string(),
+            description: "Opens the command menu from anywhere.".to_string(),
+            default_binding: default_command_menu_shortcut.to_string(),
+            current_binding: default_command_menu_shortcut.to_string(),
+        },
+    );
     bindings.insert(
         "cancel".to_string(),
         ShortcutBinding {

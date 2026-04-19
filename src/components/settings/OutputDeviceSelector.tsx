@@ -31,7 +31,9 @@ export const OutputDeviceSelector: React.FC<OutputDeviceSelectorProps> = (
       loading={isLoading || outputDevices.length === 0}
       onRefresh={refreshOutputDevices}
       showResetButton
-      valueTransform={(raw) => (raw === "default" ? "Default" : raw || "Default")}
+      valueTransform={(raw) =>
+        raw === "default" ? "Default" : raw || "Default"
+      }
       {...props}
     />
   );

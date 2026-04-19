@@ -69,7 +69,7 @@ const TitleBarOllamaReady: React.FC = () => {
       title={title}
       aria-label={title}
     >
-      <Icon className="h-5 w-5 shrink-0" aria-hidden strokeWidth={2.5} />
+      <Icon className="h-5 w-5 shrink-0" aria-hidden strokeWidth={1.75} />
     </Button>
   );
 };

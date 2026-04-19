@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { toast, Toaster } from "sonner";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import {
   Plus,
   Trash2,
@@ -13,11 +14,16 @@ import {
   Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { HighlightTrack } from "@/motion/HighlightTrack";
+import { Kbd } from "@/components/ui/Kbd";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { crisp } from "@/motion/springs";
 import { commands } from "@/bindings";
 import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
+import { formatTime } from "@/utils/dateFormat";
 import { useNotesStore } from "./notesStore";
 
 const AUTO_SAVE_DELAY = 2000;
@@ -59,6 +65,7 @@ const ScratchpadApp: React.FC = () => {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [hoveredNoteId, setHoveredNoteId] = useState<number | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -375,16 +382,31 @@ const ScratchpadApp: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[var(--bg)] text-[var(--muted)]">
-        {t("common.loading")}
+      <div className="app-titlebar-safe-top flex h-screen flex-col bg-transparent text-[var(--muted)]">
+        <div className="flex flex-1 gap-4 px-4 pb-4">
+          <div className="card-linear w-56 p-3">
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-full rounded-2xl" />
+              <Skeleton className="h-9 w-full rounded-2xl" />
+              <Skeleton className="h-9 w-4/5 rounded-2xl" />
+            </div>
+          </div>
+          <div className="card-linear flex-1 p-5">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="app-titlebar-safe-top flex h-screen flex-col bg-[var(--bg)] font-body text-[var(--text)]">
+    <div className="app-titlebar-safe-top flex h-screen flex-col bg-transparent font-body text-[var(--text)]">
       <Toaster />
-      {/* Title bar — same pattern as main app */}
       <header className="app-macos-titlebar-overlay" dir="ltr">
         <div className="app-macos-titlebar-overlay__traffic-shim" aria-hidden />
         <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
@@ -423,6 +445,14 @@ const ScratchpadApp: React.FC = () => {
             <Square className="shrink-0" aria-hidden />
           </Button>
         </div>
+        <div className="app-macos-titlebar-overlay__center">
+          <div className="card-linear--elevated app-no-drag flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--text)]">
+            <span>{t("jotPad.title")}</span>
+            <span className="text-[var(--muted)]">{t("common.save")}</span>
+            <Kbd>{navigator.platform.includes("Mac") ? "⌘" : "ctrl"}</Kbd>
+            <Kbd>S</Kbd>
+          </div>
+        </div>
         <div
           className="app-macos-titlebar-overlay__drag"
           data-tauri-drag-region
@@ -430,123 +460,165 @@ const ScratchpadApp: React.FC = () => {
         />
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        {/* Note list sidebar */}
-        <div className="flex min-h-0 w-52 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar-bg)]">
-          {/* Notes list */}
+      <div className="flex flex-1 min-h-0 gap-3 px-3 pb-3">
+        <div className="card-linear flex min-h-0 w-[260px] shrink-0 flex-col overflow-hidden bg-[color-mix(in_srgb,var(--sidebar-bg)_72%,transparent)]">
           <div className="min-h-0 flex-1 overflow-y-auto">
             {notes.length === 0 ? (
               <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
                 {t("jotPad.empty")}
               </div>
             ) : (
-              <div className="flex flex-col gap-0.5 p-1.5">
-                {notes.map((note) => {
-                  const isActive = note.id === activeNoteId;
-                  const displayTitle =
-                    note.title ||
-                    note.content.slice(0, 30) ||
-                    t("jotPad.untitled");
+              <LayoutGroup id="scratchpad-notes">
+                <div className="flex flex-col gap-1 p-2">
+                  {notes.map((note) => {
+                    const isActive = note.id === activeNoteId;
+                    const displayTitle =
+                      note.title ||
+                      note.content.slice(0, 42) ||
+                      t("jotPad.untitled");
+                    const displayPreview =
+                      note.content.trim() || t("jotPad.contentPlaceholder");
+                    const noteTime = formatTime(
+                      String(note.updated_at),
+                      navigator.language,
+                    );
 
-                  return (
-                    <div key={note.id} className="group relative">
-                      <button
-                        type="button"
-                        className={`${interactiveFocusRingClass} ${minTapTargetHeightClass} flex w-full items-center gap-2 rounded-full px-2.5 py-2 pr-16 text-left text-sm transition-all ${
-                          isActive
-                            ? "bg-[var(--accent)] text-[var(--inverse-text)]"
-                            : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_93%)]"
-                        }`}
-                        onClick={() => {
-                          saveNow();
-                          void setEditorArmed(false);
-                          setActiveNote(note.id);
-                        }}
-                      >
-                        <FileText
-                          className={`h-3.5 w-3.5 shrink-0 ${
-                            isActive
-                              ? "text-[var(--inverse-text)]/70"
-                              : "text-[var(--muted)]"
-                          }`}
-                        />
-                        <span className="min-w-0 flex-1 truncate leading-tight">
-                          {displayTitle}
-                        </span>
-                        {note.is_pinned && (
-                          <Pin
-                            className={`h-3 w-3 shrink-0 ${
-                              isActive
-                                ? "text-[var(--inverse-text)]/60"
-                                : "text-[var(--muted)]"
-                            }`}
-                          />
-                        )}
-                      </button>
-
-                      <div
-                        className={`pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 gap-0.5 rounded opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${
-                          isActive ? "" : "bg-[var(--sidebar-bg)]"
-                        }`}
-                      >
-                        <Button
+                    return (
+                      <div key={note.id} className="group relative">
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          className={`pointer-events-auto rounded-full border-transparent p-0.5 ${
-                            isActive
-                              ? "text-[var(--inverse-text)]/60 hover:text-[var(--inverse-text)]"
-                              : "text-[var(--muted)] hover:text-[var(--text)]"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void togglePin(note.id, !note.is_pinned);
+                          onPointerEnter={() => setHoveredNoteId(note.id)}
+                          onFocus={() => setHoveredNoteId(note.id)}
+                          className={`${interactiveFocusRingClass} relative flex min-h-[56px] w-full items-start gap-3 rounded-2xl px-3 py-3 pr-20 text-left text-sm text-[var(--text)]`}
+                          onClick={() => {
+                            saveNow();
+                            void setEditorArmed(false);
+                            setActiveNote(note.id);
                           }}
-                          aria-label={
-                            note.is_pinned ? t("jotPad.unpin") : t("jotPad.pin")
-                          }
-                          title={
-                            note.is_pinned ? t("jotPad.unpin") : t("jotPad.pin")
-                          }
                         >
-                          {note.is_pinned ? (
-                            <PinOff className="h-3 w-3" />
+                          {isActive ? (
+                            <motion.span
+                              layoutId="scratchpad-note-active"
+                              transition={crisp}
+                              className="absolute inset-0 rounded-2xl bg-[color-mix(in_srgb,var(--accent)_13%,transparent)] ring-1 ring-[var(--ring-hairline)]"
+                            />
                           ) : (
-                            <Pin className="h-3 w-3" />
+                            <HighlightTrack
+                              active={hoveredNoteId === note.id}
+                              layoutId="scratchpad-note-hover"
+                              variant="surface"
+                              insetClass="inset-0"
+                              radiusClass="rounded-2xl"
+                            />
                           )}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          className={`pointer-events-auto rounded-full border-transparent p-0.5 ${
-                            isActive
-                              ? "text-[var(--inverse-text)]/60 hover:text-[var(--danger)]"
-                              : "text-[var(--muted)] hover:text-[var(--danger)]"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleDeleteNote(note.id);
+                          {isActive && (
+                            <motion.span
+                              layoutId="scratchpad-note-rail"
+                              transition={crisp}
+                              className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-[var(--accent)]"
+                            />
+                          )}
+                          <FileText className="relative z-10 mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />
+                          <div className="relative z-10 min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-[13px] font-semibold leading-5">
+                                {displayTitle}
+                              </span>
+                              {note.is_pinned && (
+                                <Pin className="h-3 w-3 shrink-0 text-[var(--muted)]" />
+                              )}
+                            </div>
+                            <p className="mt-0.5 line-clamp-2 text-[12px] leading-4 text-[var(--muted)]">
+                              {displayPreview}
+                            </p>
+                          </div>
+                          <span className="relative z-10 shrink-0 text-[11px] text-[var(--text-subtle)] tabular">
+                            {noteTime}
+                          </span>
+                        </button>
+
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            opacity:
+                              hoveredNoteId === note.id || isActive ? 1 : 0,
+                            x: hoveredNoteId === note.id || isActive ? 0 : 6,
                           }}
-                          aria-label={t("common.delete")}
-                          title={t("common.delete")}
+                          transition={crisp}
+                          className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1"
                         >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="pointer-events-auto rounded-full border-transparent bg-[color-mix(in_srgb,var(--bg)_88%,transparent)]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void togglePin(note.id, !note.is_pinned);
+                            }}
+                            aria-label={
+                              note.is_pinned
+                                ? t("jotPad.unpin")
+                                : t("jotPad.pin")
+                            }
+                            title={
+                              note.is_pinned
+                                ? t("jotPad.unpin")
+                                : t("jotPad.pin")
+                            }
+                          >
+                            {note.is_pinned ? (
+                              <PinOff className="h-3 w-3" />
+                            ) : (
+                              <Pin className="h-3 w-3" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="pointer-events-auto rounded-full border-transparent bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] hover:text-[var(--danger)]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDeleteNote(note.id);
+                            }}
+                            aria-label={t("common.delete")}
+                            title={t("common.delete")}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </motion.div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </LayoutGroup>
             )}
           </div>
         </div>
 
-        {/* Editor area */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="card-linear flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[color-mix(in_srgb,var(--panel-bg)_84%,transparent)]">
           {activeNote ? (
-            <div className="flex-1 flex flex-col px-5 pb-4 min-h-0">
-              {/* Title input */}
+            <div className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.08em] text-[var(--text-subtle)]">
+                  <span>
+                    {t("jotPad.lastEdited", { defaultValue: "Last edited" })}
+                  </span>
+                  <Kbd>
+                    {formatTime(
+                      String(activeNote.updated_at),
+                      navigator.language,
+                    )}
+                  </Kbd>
+                </div>
+                <div className="text-[12px] text-[var(--muted)]">
+                  {t("jotPad.charCount", {
+                    count: content.trim().length,
+                    defaultValue: "{{count}} chars",
+                  })}
+                </div>
+              </div>
               <input
                 ref={titleInputRef}
                 type="text"
@@ -554,17 +626,16 @@ const ScratchpadApp: React.FC = () => {
                 onChange={(e) => handleTitleChange(e.target.value)}
                 onFocus={() => void setEditorArmed(true)}
                 placeholder={t("jotPad.titlePlaceholder")}
-                className="w-full text-xl font-display font-bold bg-transparent border-none outline-none placeholder:text-[var(--muted)]/40 mb-2"
+                className="mb-3 w-full border-none bg-transparent text-[24px] font-display font-semibold tracking-[-0.01em] outline-none placeholder:text-[var(--muted)]/40"
               />
 
-              {/* Content textarea */}
               <textarea
                 ref={contentRef}
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
                 onFocus={() => void setEditorArmed(true)}
                 placeholder={t("jotPad.contentPlaceholder")}
-                className="flex-1 w-full bg-transparent border-none outline-none resize-none text-sm leading-relaxed font-body placeholder:text-[var(--muted)]/40"
+                className="flex-1 w-full resize-none border-none bg-transparent text-[14px] leading-7 outline-none placeholder:text-[var(--muted)]/40"
               />
             </div>
           ) : (

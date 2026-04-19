@@ -456,6 +456,7 @@ export const ShortcutsSettingsSection: React.FC = () => {
           shortcutId="transcribe_with_post_process"
           grouped={true}
         />
+        <ShortcutInput shortcutId="toggle_command_menu" grouped={true} />
         <PushToTalk descriptionMode="tooltip" grouped={true} />
         <ShortcutInput shortcutId="cancel" grouped={true} />
       </SettingsGroup>
@@ -530,10 +531,8 @@ const CustomFillerWordsSetting: React.FC = () => {
 };
 
 export const RecordingDevicesSettingsSection: React.FC = () => {
-  const {
-    audio_feedback: audioFeedbackEnabled,
-    tts_enabled: ttsEnabled,
-  } = useSettingsSlice(["audio_feedback", "tts_enabled"] as const);
+  const { audio_feedback: audioFeedbackEnabled, tts_enabled: ttsEnabled } =
+    useSettingsSlice(["audio_feedback", "tts_enabled"] as const);
 
   return (
     <div className="space-y-6">
@@ -780,15 +779,13 @@ const ScreenContextSettingsCard: React.FC = () => {
     screen_context_ocr_timeout_ms: ocrTimeoutValue,
     screen_context_token_budget: tokenBudgetValue,
     screen_context_stale_threshold_ms: staleThresholdValue,
-  } = useSettingsSlice(
-    [
-      "context_capture_mode",
-      "screen_context_ocr_quality",
-      "screen_context_ocr_timeout_ms",
-      "screen_context_token_budget",
-      "screen_context_stale_threshold_ms",
-    ] as const,
-  );
+  } = useSettingsSlice([
+    "context_capture_mode",
+    "screen_context_ocr_quality",
+    "screen_context_ocr_timeout_ms",
+    "screen_context_token_budget",
+    "screen_context_stale_threshold_ms",
+  ] as const);
   const [diagnostics, setDiagnostics] =
     useState<ScreenContextDiagnostics | null>(null);
 

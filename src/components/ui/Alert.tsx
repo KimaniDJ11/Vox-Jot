@@ -59,10 +59,12 @@ export const Alert: React.FC<AlertProps> = ({
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 ${styles.container} ${contained ? "" : "rounded-2xl"} ${className}`}
+      className={`card-linear flex items-start gap-3 p-4 ${styles.container} ${contained ? "" : "rounded-2xl"} ${className}`}
     >
       <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${styles.icon}`} />
       <div className={`text-sm ${styles.text} min-w-0`}>{children}</div>
     </div>
   );
 };
+
+export const Banner = Alert;

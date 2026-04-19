@@ -1,4 +1,8 @@
 import React, { useState, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+
+import { modal } from "@/motion/springs";
+
 import WelcomeStep from "./WelcomeStep";
 import PermissionsStep from "./PermissionsStep";
 import ModelStep from "./ModelStep";
@@ -46,23 +50,40 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     });
   }, []);
 
-  switch (step) {
-    case "welcome":
-      return <WelcomeStep onContinue={goToPermissions} />;
-    case "permissions":
-      return (
-        <PermissionsStep
-          onComplete={handlePermissionsComplete}
-          onBack={skipToPermissions ? undefined : goBack}
-        />
-      );
-    case "model":
-      return <ModelStep onModelSelected={goToTutorial} onBack={goBack} />;
-    case "tutorial":
-      return <TutorialStep onComplete={onComplete} onBack={goBack} />;
-    default:
-      return null;
-  }
+  const renderStep = () => {
+    switch (step) {
+      case "welcome":
+        return <WelcomeStep onContinue={goToPermissions} />;
+      case "permissions":
+        return (
+          <PermissionsStep
+            onComplete={handlePermissionsComplete}
+            onBack={skipToPermissions ? undefined : goBack}
+          />
+        );
+      case "model":
+        return <ModelStep onModelSelected={goToTutorial} onBack={goBack} />;
+      case "tutorial":
+        return <TutorialStep onComplete={onComplete} onBack={goBack} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={modal}
+        className="h-full w-full"
+      >
+        {renderStep()}
+      </motion.div>
+    </AnimatePresence>
+  );
 };
 
 export default OnboardingWizard;

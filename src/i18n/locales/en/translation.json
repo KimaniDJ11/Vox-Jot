@@ -423,6 +423,10 @@
           "transcribe_with_post_process": {
             "name": "Post-Processing Hotkey",
             "description": "Optional: A dedicated hotkey that always applies AI post-processing to your transcription."
+          },
+          "toggle_command_menu": {
+            "name": "Command Menu",
+            "description": "Open the command palette from anywhere."
           }
         },
         "errors": {

@@ -7,6 +7,8 @@ use tauri::WebviewWindowBuilder;
 
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
+#[cfg(target_os = "macos")]
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
 
 const SCRATCHPAD_LABEL: &str = "scratchpad";
 /// Default Jot Pad window size (logical pixels).
@@ -150,9 +152,11 @@ fn create_scratchpad_window(app: &AppHandle) {
                 .closable(true)
                 .always_on_top(true)
                 .focused(true)
-                .visible(true)
-                .title_bar_style(tauri::TitleBarStyle::Overlay)
-                .hidden_title(true);
+                .visible(false)
+                .transparent(true)
+                .title_bar_style(tauri::TitleBarStyle::Transparent)
+                .hidden_title(true)
+                .accept_first_mouse(true);
 
             if let Some(data_dir) = webview_data_dir.clone() {
                 w.data_directory(data_dir)
@@ -163,7 +167,17 @@ fn create_scratchpad_window(app: &AppHandle) {
 
     match builder.build() {
         Ok(panel) => {
-            panel.show();
+            if let Some(window) = app.get_webview_window(SCRATCHPAD_LABEL) {
+                let _ = apply_vibrancy(
+                    &window,
+                    NSVisualEffectMaterial::HudWindow,
+                    Some(NSVisualEffectState::FollowsWindowActiveState),
+                    Some(22.0),
+                );
+                let _ = window.show();
+            } else {
+                panel.show();
+            }
             debug!("Scratchpad panel created");
             attach_scratchpad_close_handler(app);
         }

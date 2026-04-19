@@ -1,4 +1,5 @@
-import React from "react";
+import React, { createContext, useContext, useId } from "react";
+import { LayoutGroup } from "framer-motion";
 
 interface SettingsGroupProps {
   title?: string;
@@ -8,34 +9,56 @@ interface SettingsGroupProps {
   children: React.ReactNode;
 }
 
+type SettingsGroupContextValue = {
+  groupId: string;
+  grouped: boolean;
+};
+
+const SettingsGroupContext = createContext<SettingsGroupContextValue | null>(
+  null,
+);
+
+/** Used by SettingContainer to share a single hover highlight track per group. */
+export const useSettingsGroupContext = () => useContext(SettingsGroupContext);
+
 export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   title,
   description,
   titleAction,
   children,
 }) => {
+  const groupId = useId();
+
   return (
-    <section className="space-y-2">
-      {title && (
-        <div className="px-1 mb-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {title}
-              </h3>
-              {description && (
-                <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">
-                  {description}
-                </p>
-              )}
+    <SettingsGroupContext.Provider value={{ groupId, grouped: true }}>
+      <LayoutGroup id={`settings-group-${groupId}`}>
+        <section className="space-y-2">
+          {title && (
+            <div className="px-1 mb-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+                    {title}
+                  </h3>
+                  {description && (
+                    <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                      {description}
+                    </p>
+                  )}
+                </div>
+                {titleAction ? (
+                  <div className="shrink-0">{titleAction}</div>
+                ) : null}
+              </div>
             </div>
-            {titleAction ? <div className="shrink-0">{titleAction}</div> : null}
+          )}
+          <div className="card-linear overflow-visible">
+            <div className="divide-y divide-[var(--ring-hairline,var(--border))]">
+              {children}
+            </div>
           </div>
-        </div>
-      )}
-      <div className="flat-card overflow-visible">
-        <div className="divide-y divide-[var(--border)]">{children}</div>
-      </div>
-    </section>
+        </section>
+      </LayoutGroup>
+    </SettingsGroupContext.Provider>
   );
 };

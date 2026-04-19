@@ -2851,7 +2851,9 @@ const VoiceCloningSection: React.FC<{
                 </div>
                 <SwitchControl
                   checked={selectedProfile.continuous_improvement_enabled}
-                  disabled={!speech.ttsEnabled || selectedProfile.fully_optimized}
+                  disabled={
+                    !speech.ttsEnabled || selectedProfile.fully_optimized
+                  }
                   onChange={(checked) => {
                     void setActiveImprovementProfile(
                       selectedProfile.id,

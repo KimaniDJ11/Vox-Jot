@@ -70,9 +70,10 @@ const ModelStatusButton: React.FC<ModelStatusButtonProps> = ({
       title={`Model status: ${displayText}`}
     >
       <div
-        className={`rounded-full shrink-0 ${getStatusColor(status)} ${
-          isTitleBar ? "h-2.5 w-2.5" : "h-2 w-2"
-        }`}
+        className={`status-dot-glow rounded-full shrink-0 ${getStatusColor(status)} ${
+          isTitleBar ? "h-2 w-2" : "h-[7px] w-[7px]"
+        } ${status === "downloading" || status === "loading" || status === "extracting" ? "is-live" : ""} ${status === "ready" ? "is-ready" : ""} ${status === "error" || status === "none" ? "is-error" : ""}`}
+        aria-hidden
       />
       {leading}
       <span

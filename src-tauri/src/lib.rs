@@ -842,18 +842,63 @@ pub fn run(cli_args: CliArgs) {
                     .maximizable(true)
                     .visible(false);
 
+            // Enable transparent + vibrancy-ready chrome on macOS and Windows.
+            // Overlay lets the webview extend under the traffic lights so the in-app
+            // header can host them seamlessly as part of the sidebar column.
             #[cfg(target_os = "macos")]
             {
                 win_builder = win_builder
+                    .transparent(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .hidden_title(true);
+                    .hidden_title(true)
+                    .accept_first_mouse(true);
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                win_builder = win_builder.transparent(true).decorations(true);
             }
 
             if let Some(data_dir) = portable::data_dir() {
                 win_builder = win_builder.data_directory(data_dir.join("webview"));
             }
 
-            win_builder.build()?;
+            let main_window = win_builder.build()?;
+
+            // Apply OS-level translucency. macOS uses NSVisualEffectView with the
+            // Sidebar material; Windows 11 uses Mica. We pass the corner radius to
+            // window-vibrancy directly — CSS border-radius does not clip the
+            // vibrancy layer, so it must be configured here.
+            #[cfg(target_os = "macos")]
+            {
+                use window_vibrancy::{
+                    apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+                };
+                if let Err(e) = apply_vibrancy(
+                    &main_window,
+                    NSVisualEffectMaterial::Sidebar,
+                    Some(NSVisualEffectState::FollowsWindowActiveState),
+                    Some(12.0),
+                ) {
+                    log::warn!("Failed to apply macOS vibrancy to main window: {}", e);
+                }
+            }
+
+            #[cfg(target_os = "windows")]
+            {
+                use window_vibrancy::{apply_acrylic, apply_mica};
+                if apply_mica(&main_window, Some(true)).is_err() {
+                    // Mica requires Win11 22000+. Fall back to acrylic (Win10+).
+                    if let Err(e) = apply_acrylic(&main_window, Some((18, 18, 22, 160))) {
+                        log::warn!(
+                            "Failed to apply Mica or Acrylic vibrancy to main window: {}",
+                            e
+                        );
+                    }
+                }
+            }
+
+            let _ = main_window;
 
             let mut settings = get_settings(app.handle());
 

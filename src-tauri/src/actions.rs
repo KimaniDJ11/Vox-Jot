@@ -76,6 +76,7 @@ struct TranslateSelectionAction;
 struct SpeakSelectionAction;
 struct SpeakLastOutputAction;
 struct StopSpeakingAction;
+struct ToggleCommandPaletteAction;
 
 /// Field name for structured output JSON schema
 const TRANSCRIPTION_FIELD: &str = "transcription";
@@ -3694,6 +3695,15 @@ impl ShortcutAction for StopSpeakingAction {
     fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
 }
 
+impl ShortcutAction for ToggleCommandPaletteAction {
+    fn start(&self, app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {
+        crate::show_main_window(app);
+        let _ = app.emit("toggle-command-menu", ());
+    }
+
+    fn stop(&self, _app: &AppHandle, _binding_id: &str, _shortcut_str: &str) {}
+}
+
 // Cancel Action
 struct CancelAction;
 
@@ -4444,6 +4454,10 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
     map.insert(
         "stop_speaking".to_string(),
         Arc::new(StopSpeakingAction) as Arc<dyn ShortcutAction>,
+    );
+    map.insert(
+        "toggle_command_menu".to_string(),
+        Arc::new(ToggleCommandPaletteAction) as Arc<dyn ShortcutAction>,
     );
     map.insert(
         "cancel".to_string(),

@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 
+import { HighlightTrack } from "@/motion/HighlightTrack";
 import {
   interactiveFocusRingClass,
   minTapTargetSquareClass,
 } from "@/lib/interactiveFocus";
 
 import { Tooltip } from "./Tooltip";
+import { useSettingsGroupContext } from "./SettingsGroup";
 
 interface SettingContainerProps {
   /** When omitted, no heading row is shown (tooltip still shown if description is set). */
@@ -13,6 +15,10 @@ interface SettingContainerProps {
   description: string;
   children: React.ReactNode;
   descriptionMode?: "inline" | "tooltip";
+  /**
+   * @deprecated Grouping is now inferred automatically from a parent `<SettingsGroup>`.
+   * Kept for backwards source compatibility — the prop is ignored.
+   */
   grouped?: boolean;
   layout?: "horizontal" | "stacked" | "compact";
   disabled?: boolean;
@@ -24,13 +30,19 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   description,
   children,
   descriptionMode = "tooltip",
-  grouped = false,
   layout = "horizontal",
   disabled = false,
   tooltipPosition = "top",
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
+  const rowId = useId();
+  const groupContext = useSettingsGroupContext();
+  const grouped = Boolean(groupContext);
+  const hoverLayoutId = groupContext
+    ? `settings-hover-${groupContext.groupId}`
+    : `settings-hover-solo-${rowId}`;
 
   // Handle click outside to close tooltip
   useEffect(() => {
@@ -75,7 +87,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth={2.5}
+          strokeWidth={2}
           d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
       </svg>
@@ -87,95 +99,89 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     </button>
   ) : null;
 
-  const containerClasses = grouped
-    ? "px-4 py-3.5"
-    : "rounded-2xl border border-[var(--border)] px-4 py-3.5";
+  const rowWrapperClasses = grouped
+    ? "relative group/row"
+    : "relative group/row card-linear overflow-visible";
+
+  const hoverHandlers = {
+    onPointerEnter: () => setHovered(true),
+    onPointerLeave: () => {
+      setHovered(false);
+      setShowTooltip(false);
+    },
+    onFocus: () => setHovered(true),
+    onBlur: () => setHovered(false),
+  };
+
+  const hoverTrack = (
+    <HighlightTrack
+      active={hovered}
+      layoutId={hoverLayoutId}
+      variant="surface"
+      insetClass="inset-0"
+      radiusClass={grouped ? "rounded-none" : "rounded-[inherit]"}
+    />
+  );
+
+  const titleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] truncate ${
+    disabled ? "opacity-50" : ""
+  }`;
+  const descriptionClass = `text-[12px] leading-5 text-[var(--muted)] line-clamp-2 ${
+    disabled ? "opacity-50" : ""
+  }`;
+  const stackedTitleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] ${
+    disabled ? "opacity-50" : ""
+  }`;
+  const stackedDescriptionClass = `text-[12px] leading-5 text-[var(--muted)] ${
+    disabled ? "opacity-50" : ""
+  }`;
 
   if (layout === "stacked" || layout === "compact") {
-    if (descriptionMode === "tooltip") {
-      return (
-        <div className={containerClasses}>
+    const stackedPadding = grouped ? "px-4 py-3" : "px-4 py-3.5";
+    return (
+      <div className={rowWrapperClasses} {...hoverHandlers}>
+        {hoverTrack}
+        <div className={`relative ${stackedPadding}`}>
           {(title || description) && (
             <div className="mb-2 flex items-center gap-2">
-              {title ? (
-                <h3
-                  className={`text-[16px] font-semibold leading-6 tracking-tight ${disabled ? "opacity-50" : ""}`}
-                >
-                  {title}
-                </h3>
-              ) : null}
-              {tooltipTrigger}
+              {title ? <h3 className={stackedTitleClass}>{title}</h3> : null}
+              {descriptionMode === "tooltip" ? tooltipTrigger : null}
             </div>
           )}
+          {descriptionMode === "inline" && description ? (
+            <p className={`mb-2 ${stackedDescriptionClass}`}>{description}</p>
+          ) : null}
           <div className="w-full">{children}</div>
         </div>
-      );
-    }
-
-    return (
-      <div className={containerClasses}>
-        <div className="mb-2">
-          {title ? (
-            <h3
-              className={`text-[16px] font-semibold leading-6 tracking-tight ${disabled ? "opacity-50" : ""}`}
-            >
-              {title}
-            </h3>
-          ) : null}
-          <p
-            className={`text-[14px] leading-6 text-[var(--muted)] ${disabled ? "opacity-50" : ""}`}
-          >
-            {description}
-          </p>
-        </div>
-        <div className="w-full">{children}</div>
       </div>
     );
   }
 
-  // Horizontal layout (default)
-  const horizontalContainerClasses = grouped
-    ? "flex items-center justify-between gap-6 px-5 py-4"
-    : "flex items-center justify-between gap-6 rounded-xl border border-[var(--border)] px-6 py-4";
-
-  if (descriptionMode === "tooltip") {
-    return (
-      <div className={horizontalContainerClasses}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {title ? (
-              <h3
-                className={`text-[16px] font-semibold leading-6 tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
-              >
-                {title}
-              </h3>
-            ) : null}
-            {tooltipTrigger}
-          </div>
-        </div>
-        <div className="relative shrink-0 self-center">{children}</div>
-      </div>
-    );
-  }
+  // Horizontal layout (default) — 56px minimum row height
+  const horizontalPadding = grouped ? "px-4 py-3" : "px-5 py-3";
 
   return (
-    <div className={horizontalContainerClasses}>
-      <div className="flex-1 pr-6 min-w-0">
-        {title ? (
-          <h3
-            className={`text-[16px] font-semibold leading-6 tracking-tight truncate ${disabled ? "opacity-50" : ""}`}
-          >
-            {title}
-          </h3>
-        ) : null}
-        <p
-          className={`mt-1 text-[14px] leading-6 text-[var(--muted)] line-clamp-2 ${disabled ? "opacity-50" : ""}`}
-        >
-          {description}
-        </p>
-      </div>
-      <div className="relative shrink-0 self-center whitespace-nowrap">
-        {children}
+    <div className={rowWrapperClasses} {...hoverHandlers}>
+      {hoverTrack}
+      <div
+        className={`relative flex min-h-[56px] items-center justify-between gap-6 ${horizontalPadding}`}
+      >
+        <div className="flex-1 min-w-0">
+          {descriptionMode === "tooltip" ? (
+            <div className="flex items-center gap-2">
+              {title ? <h3 className={titleClass}>{title}</h3> : null}
+              {tooltipTrigger}
+            </div>
+          ) : (
+            <>
+              {title ? <h3 className={titleClass}>{title}</h3> : null}
+              <p className={`mt-0.5 ${descriptionClass}`}>{description}</p>
+            </>
+          )}
+        </div>
+        <div className="relative shrink-0 self-center whitespace-nowrap">
+          {children}
+        </div>
       </div>
     </div>
   );

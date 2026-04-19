@@ -1,6 +1,8 @@
 import React from "react";
+import { motion } from "framer-motion";
 
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
+import { press } from "@/motion/springs";
 
 interface SwitchControlProps {
   checked: boolean;
@@ -30,25 +32,20 @@ export const SwitchControl: React.FC<SwitchControlProps> = ({
       ? `inline-flex h-8 w-8 items-center justify-center rounded-full ${interactiveFocusRingClass}`
       : "inline-flex items-center";
 
+  // Default: 28×16 track / 12×12 thumb (Linear/Raycast feel).
+  // Compact: 22×12 track / 8×8 thumb.
   const trackClasses = isCompact
-    ? "relative h-3.5 w-7 overflow-hidden rounded-full border transition-colors duration-200"
-    : "relative h-6 w-11 overflow-hidden rounded-full border transition-colors duration-200";
+    ? "relative h-[12px] w-[22px] overflow-visible rounded-full border transition-colors duration-150"
+    : "relative h-[16px] w-[28px] overflow-visible rounded-full border transition-colors duration-150";
 
   const trackStateClasses = checked
     ? "border-[var(--accent)] bg-[var(--accent)]"
-    : isCompact
-      ? "border-[color-mix(in_srgb,var(--text),transparent_50%)] bg-[color-mix(in_srgb,var(--text),transparent_65%)]"
-      : "border-[color-mix(in_srgb,var(--text),transparent_50%)] bg-[color-mix(in_srgb,var(--text),transparent_78%)]";
+    : "border-[color-mix(in_srgb,var(--text),transparent_70%)] bg-[color-mix(in_srgb,var(--text),transparent_82%)]";
 
-  const thumbClasses = isCompact
-    ? "absolute left-[2px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border bg-[var(--card)] shadow-[0_1px_2px_rgba(0,0,0,0.25)] transition-all duration-200"
-    : "absolute left-[2px] top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border bg-[var(--card)] shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-200";
+  const thumbSizeClasses = isCompact ? "h-[8px] w-[8px]" : "h-[12px] w-[12px]";
 
-  const thumbStateClasses = checked
-    ? isCompact
-      ? "translate-x-[14px] border-[var(--inverse-text)]/30"
-      : "translate-x-[18px] border-[var(--inverse-text)]/30"
-    : "border-[color-mix(in_srgb,var(--text),transparent_50%)]";
+  // Thumb travel: (track - 2*inset - thumb)
+  const thumbTravel = isCompact ? 10 : 12;
 
   return (
     <label
@@ -64,9 +61,15 @@ export const SwitchControl: React.FC<SwitchControlProps> = ({
         onChange={(event) => onChange(event.target.checked)}
       />
       <span
-        className={`${trackClasses} ${trackStateClasses} peer-focus-visible:ring-4 peer-focus-visible:ring-[var(--accent-glow)] peer-disabled:opacity-60`}
+        className={`${trackClasses} ${trackStateClasses} peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--bg)] peer-disabled:opacity-60 shadow-[inset_0_1px_1px_rgba(0,0,0,0.18)]`}
       >
-        <span className={`${thumbClasses} ${thumbStateClasses}`} />
+        <motion.span
+          aria-hidden
+          initial={false}
+          animate={{ x: checked ? thumbTravel : 0 }}
+          transition={press}
+          className={`absolute left-[2px] top-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.35),0_0_0_0.5px_rgba(0,0,0,0.08)] ${thumbSizeClasses}`}
+        />
       </span>
     </label>
   );

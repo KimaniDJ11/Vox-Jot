@@ -295,135 +295,137 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     }`}
                   >
                     {editingId === snippet.id ? (
-                    /* Edit mode */
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
-                          {t("settings.snippets.list.trigger")}
-                        </span>
-                        <input
-                          ref={triggerInputRef}
-                          type="text"
-                          value={editTrigger}
-                          onChange={(e) =>
-                            setEditTrigger(e.target.value.slice(0, TRIGGER_MAX))
-                          }
-                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") setEditingId(null);
-                            if (e.key === "Enter") void commitEdit();
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
-                          {t("settings.snippets.list.expansion")}
-                        </span>
-                        <textarea
-                          value={editExpansion}
-                          onChange={(e) =>
-                            setEditExpansion(
-                              e.target.value.slice(0, EXPANSION_MAX),
-                            )
-                          }
-                          rows={2}
-                          className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                        />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setEditingId(null)}
-                        >
-                          {t("common.cancel")}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => void commitEdit()}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          {t("common.save")}
-                        </Button>
-                      </div>
-                    </div>
-                    ) : (
-                    /* View mode */
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
-                          {t("settings.snippets.list.trigger")}
-                        </span>
-                        <span className="text-sm font-semibold truncate flex-1 min-w-0">
-                          {snippet.trigger}
-                        </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => startEdit(snippet)}
-                            title={t("common.edit", {
-                              defaultValue: "Edit",
-                            })}
-                            aria-label={t("common.edit", {
-                              defaultValue: "Edit",
-                            })}
-                          >
-                            <Pencil />
-                          </Button>
-                          <SwitchControl
-                            checked={snippetEnabled}
-                            onChange={(checked) =>
-                              void handleToggle(snippet.id, checked)
+                      /* Edit mode */
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
+                            {t("settings.snippets.list.trigger")}
+                          </span>
+                          <input
+                            ref={triggerInputRef}
+                            type="text"
+                            value={editTrigger}
+                            onChange={(e) =>
+                              setEditTrigger(
+                                e.target.value.slice(0, TRIGGER_MAX),
+                              )
                             }
-                            size="compact"
-                            frame="icon"
-                            title={
-                              snippetEnabled
-                                ? t("common.disable", {
-                                    defaultValue: "Disable",
-                                  })
-                                : t("common.enable", {
-                                    defaultValue: "Enable",
-                                  })
-                            }
-                            ariaLabel={
-                              snippetEnabled
-                                ? t("common.disable", {
-                                    defaultValue: "Disable",
-                                  })
-                                : t("common.enable", {
-                                    defaultValue: "Enable",
-                                  })
-                            }
+                            className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditingId(null);
+                              if (e.key === "Enter") void commitEdit();
+                            }}
                           />
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
+                            {t("settings.snippets.list.expansion")}
+                          </span>
+                          <textarea
+                            value={editExpansion}
+                            onChange={(e) =>
+                              setEditExpansion(
+                                e.target.value.slice(0, EXPANSION_MAX),
+                              )
+                            }
+                            rows={2}
+                            className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
                           <Button
                             type="button"
-                            variant="danger-ghost"
-                            size="icon-sm"
-                            onClick={() => void handleDelete(snippet.id)}
-                            title={t("common.delete")}
-                            aria-label={t("common.delete")}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingId(null)}
                           >
-                            <Trash2 />
+                            {t("common.cancel")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => void commitEdit()}
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            {t("common.save")}
                           </Button>
                         </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
-                          {t("settings.snippets.list.expansion")}
-                        </span>
-                        <span className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2 min-w-0">
-                          {snippet.expansion}
-                        </span>
-                      </div>
-                    </>
+                    ) : (
+                      /* View mode */
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
+                            {t("settings.snippets.list.trigger")}
+                          </span>
+                          <span className="text-sm font-semibold truncate flex-1 min-w-0">
+                            {snippet.trigger}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => startEdit(snippet)}
+                              title={t("common.edit", {
+                                defaultValue: "Edit",
+                              })}
+                              aria-label={t("common.edit", {
+                                defaultValue: "Edit",
+                              })}
+                            >
+                              <Pencil />
+                            </Button>
+                            <SwitchControl
+                              checked={snippetEnabled}
+                              onChange={(checked) =>
+                                void handleToggle(snippet.id, checked)
+                              }
+                              size="compact"
+                              frame="icon"
+                              title={
+                                snippetEnabled
+                                  ? t("common.disable", {
+                                      defaultValue: "Disable",
+                                    })
+                                  : t("common.enable", {
+                                      defaultValue: "Enable",
+                                    })
+                              }
+                              ariaLabel={
+                                snippetEnabled
+                                  ? t("common.disable", {
+                                      defaultValue: "Disable",
+                                    })
+                                  : t("common.enable", {
+                                      defaultValue: "Enable",
+                                    })
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="danger-ghost"
+                              size="icon-sm"
+                              onClick={() => void handleDelete(snippet.id)}
+                              title={t("common.delete")}
+                              aria-label={t("common.delete")}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
+                            {t("settings.snippets.list.expansion")}
+                          </span>
+                          <span className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2 min-w-0">
+                            {snippet.expansion}
+                          </span>
+                        </div>
+                      </>
                     )}
                   </div>
                 );

@@ -38,10 +38,13 @@ import {
   checkMicrophonePermission,
   checkScreenRecordingPermission,
 } from "tauri-plugin-macos-permissions-api";
+import { LayoutGroup, motion } from "framer-motion";
+import { press } from "./motion/springs";
 import { ModelStateEvent } from "./lib/types/events";
 import "./App.css";
 import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
+import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
 import { Sidebar, type SidebarItem } from "./components/Sidebar";
 import { Button } from "./components/ui/Button";
@@ -133,40 +136,61 @@ const PrimaryModeSwitcher: React.FC<{
 
   return (
     <div className="app-mode-switcher app-no-drag">
-      <div className="flex items-stretch overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]">
-        {items.map((item) => {
-          const isActive = activeMode === item.id;
-          const activate = () => onSelect(item.id);
+      <LayoutGroup id="primary-mode-switcher">
+        <div
+          className="relative flex items-stretch overflow-hidden rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] shadow-[inset_0_1px_0_var(--edge-highlight),0_1px_2px_rgba(0,0,0,0.12)]"
+          role="tablist"
+        >
+          {items.map((item) => {
+            const isActive = activeMode === item.id;
+            const activate = () => onSelect(item.id);
 
-          return (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={isActive}
-              onPointerDown={(event) => {
-                if (event.button !== 0) {
-                  return;
-                }
-                event.preventDefault();
-                activate();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
+            return (
+              <motion.button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                whileTap={{ scale: 0.97 }}
+                transition={press}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) {
+                    return;
+                  }
                   event.preventDefault();
                   activate();
-                }
-              }}
-              className={`px-3.5 py-1.5 text-[13px] font-semibold transition-colors duration-150 ${
-                isActive
-                  ? "bg-[var(--accent)] text-[var(--inverse-text)]"
-                  : "text-[var(--muted)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_90%)] hover:text-[var(--text)]"
-              }`}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    activate();
+                  }
+                }}
+                className="relative px-3.5 py-1.5 text-[13px] font-semibold outline-none focus-visible:z-10"
+                style={{
+                  color: isActive ? "var(--inverse-text)" : "var(--muted)",
+                  transition: "color 160ms var(--spring-crisp)",
+                }}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="primary-mode-indicator"
+                    transition={{
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 32,
+                      mass: 0.9,
+                    }}
+                    className="absolute inset-0 rounded-[10px] bg-[var(--accent)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+                    aria-hidden
+                  />
+                )}
+                <span className="relative z-10">{item.label}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </LayoutGroup>
     </div>
   );
 };
@@ -177,6 +201,7 @@ function App() {
     null,
   );
   const [isReturningUser, setIsReturningUser] = useState(false);
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<PrimaryMode>("dictate");
   const [activeRootView, setActiveRootView] = useState<RootView>("dictate");
   const [activeSectionId, setActiveSectionId] = useState("history");
@@ -204,18 +229,19 @@ function App() {
   const {
     app_theme: appTheme,
     debug_mode: debugMode,
+    post_process_enabled: postProcessEnabled,
     selected_language: selectedLanguage,
     translation_target_language: translationTargetLanguage,
-  } = useSettingsSlice(
-    [
-      "app_theme",
-      "debug_mode",
-      "selected_language",
-      "translation_target_language",
-    ] as const,
-  );
+  } = useSettingsSlice([
+    "app_theme",
+    "debug_mode",
+    "post_process_enabled",
+    "selected_language",
+    "translation_target_language",
+  ] as const);
   const direction = getLanguageDirection(i18n.language);
   const modalRef = useRef<HTMLDivElement>(null);
+  const lastCommandMenuToggleAtRef = useRef(0);
   const refreshAudioDevices = useSettingsStore(
     (state) => state.refreshAudioDevices,
   );
@@ -459,6 +485,34 @@ function App() {
     checkOnboardingStatus();
   }, []);
 
+  useEffect(() => {
+    const toggleCommandMenu = () => {
+      const now = Date.now();
+      if (now - lastCommandMenuToggleAtRef.current < 150) {
+        return;
+      }
+      lastCommandMenuToggleAtRef.current = now;
+      setCommandMenuOpen((prev) => !prev);
+    };
+
+    const unlisten = listen("toggle-command-menu", () => {
+      toggleCommandMenu();
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        toggleCommandMenu();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
@@ -666,9 +720,7 @@ function App() {
     }
 
     const sourceLocale =
-      selectedLanguage && selectedLanguage !== "auto"
-        ? selectedLanguage
-        : null;
+      selectedLanguage && selectedLanguage !== "auto" ? selectedLanguage : null;
 
     if (pendingPreview.origin?.startsWith("translation")) {
       return translationTargetLanguage ?? sourceLocale;
@@ -988,11 +1040,7 @@ function App() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (
-              <section
-                key={activeSection.id}
-                id={activeSection.id}
-                className="space-y-4 section-enter"
-              >
+              <section id={activeSection.id} className="space-y-4">
                 <SectionHeader
                   id={activeSection.id}
                   title={activeSection.title}
@@ -1007,6 +1055,34 @@ function App() {
           <Footer />
         </div>
       </main>
+
+      <CommandMenu
+        open={commandMenuOpen}
+        onClose={() => setCommandMenuOpen(false)}
+        onNavigate={(view) => {
+          if (view === "settings") {
+            handleSettingsOpen();
+          } else {
+            handleModeSelect(view);
+          }
+        }}
+        onSelectTheme={(theme) => {
+          void updateSetting("app_theme", theme);
+        }}
+        postProcessEnabled={postProcessEnabled ?? false}
+        onTogglePostProcess={() => {
+          void updateSetting(
+            "post_process_enabled",
+            !(postProcessEnabled ?? false),
+          );
+        }}
+        sectionJumps={activeSections.map((s) => ({
+          id: s.id,
+          label: s.title,
+          view: activeRootView,
+        }))}
+        onJumpToSection={(id) => handleSectionJump(id)}
+      />
 
       {pendingPreview && (
         <div

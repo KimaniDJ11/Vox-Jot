@@ -145,12 +145,18 @@ const WorkflowLinkCard: React.FC<{
 export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
-}> = ({ titleActionTargetId, showActiveModelBanner = true }) => {
+  hubSearchQuery?: string;
+}> = ({
+  titleActionTargetId,
+  showActiveModelBanner = true,
+  hubSearchQuery,
+}) => {
   return (
     <div className="space-y-6">
       <ModelsSettings
         titleActionTargetId={titleActionTargetId}
         showActiveModelBanner={showActiveModelBanner}
+        hubSearchQuery={hubSearchQuery}
       />
     </div>
   );
@@ -205,10 +211,16 @@ export const AppMappingsSection: React.FC = () => {
   );
 };
 
-export const RefineModelsSection: React.FC = () => {
+export const RefineModelsSection: React.FC<{
+  hubSearchQuery?: string;
+  onHubSearchQueryChange?: (value: string) => void;
+}> = ({ hubSearchQuery, onHubSearchQueryChange }) => {
   return (
     <div className="space-y-6">
-      <RefineModelsSettings />
+      <RefineModelsSettings
+        hubSearchQuery={hubSearchQuery}
+        onHubSearchQueryChange={onHubSearchQueryChange}
+      />
     </div>
   );
 };

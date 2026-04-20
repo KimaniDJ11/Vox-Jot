@@ -58,7 +58,7 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
     component: JotPadSection,
   },
   "model-hub": {
-    title: "Models & voices",
+    title: "",
     component: ModelHubSection,
   },
 };
@@ -122,21 +122,38 @@ const DetailApp: React.FC = () => {
     <div className="flex h-full flex-col bg-[var(--bg)]">
       {/* Title bar drag region */}
       <div
-        className="flex h-12 shrink-0 items-center px-5"
+        className={`flex shrink-0 items-center px-5 ${
+          sectionId === "model-hub" ? "min-h-[3.25rem] py-2" : "h-12"
+        }`}
         data-tauri-drag-region=""
       >
-        <div className="flex w-full items-center justify-between gap-4 pl-16">
-          <h1
-            className="text-sm font-bold text-[var(--text)]"
-            data-tauri-drag-region=""
-          >
-            {entry.title}
-          </h1>
+        {sectionId === "model-hub" ? (
+          <div className="flex w-full min-w-0 items-center gap-3">
+            <div
+              id="model-hub-search-slot"
+              className="app-no-drag min-w-0 flex-1"
+            />
+          </div>
+        ) : (
           <div
-            id={`${sectionId}-section-actions`}
-            className="app-no-drag flex shrink-0 items-center gap-1"
-          />
-        </div>
+            className={`flex w-full items-center gap-4 pl-16 ${
+              entry.title ? "justify-between" : "justify-end"
+            }`}
+          >
+            {entry.title ? (
+              <h1
+                className="text-sm font-bold text-[var(--text)]"
+                data-tauri-drag-region=""
+              >
+                {entry.title}
+              </h1>
+            ) : null}
+            <div
+              id={`${sectionId}-section-actions`}
+              className="app-no-drag flex shrink-0 items-center gap-1"
+            />
+          </div>
+        )}
       </div>
 
       {/* Scrollable content */}

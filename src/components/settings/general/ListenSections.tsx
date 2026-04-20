@@ -2284,11 +2284,14 @@ const EngineLibraryPanel: React.FC<{
   titleActionTargetId?: string;
   /** When false, hides the "Active listen model" summary card (e.g. model hub). */
   showActiveModelBanner?: boolean;
+  /** Optional text filter from model hub search (applied with provider/language filters). */
+  hubSearchQuery?: string;
 }> = ({
   speech,
   showTitle = true,
   titleActionTargetId,
   showActiveModelBanner = true,
+  hubSearchQuery = "",
 }) => {
   const { t } = useTranslation();
   const [providerFilter, setProviderFilter] = useState("all");
@@ -2338,9 +2341,33 @@ const EngineLibraryPanel: React.FC<{
           return false;
         }
 
+        const q = hubSearchQuery.trim().toLowerCase();
+        if (q) {
+          const providerLabel =
+            speech.visibleProviders.find((p) => p.id === model.provider_id)
+              ?.label ?? "";
+          const haystack = [
+            model.label,
+            model.id,
+            model.description,
+            model.source_label,
+            providerLabel,
+            model.locale ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+
         return true;
       }),
-    [languageFilter, providerFilter, speech.visibleModels],
+    [
+      hubSearchQuery,
+      languageFilter,
+      providerFilter,
+      speech.visibleModels,
+      speech.visibleProviders,
+    ],
   );
   const downloadedModels = useMemo(
     () => filteredModels.filter((model) => model.installed),
@@ -3178,10 +3205,12 @@ export const EngineLibrarySection: React.FC<{
   showGroupTitle?: boolean;
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
+  hubSearchQuery?: string;
 }> = ({
   showGroupTitle = true,
   titleActionTargetId,
   showActiveModelBanner = true,
+  hubSearchQuery,
 }) => {
   const speech = useListenSpeechState();
   return (
@@ -3190,6 +3219,7 @@ export const EngineLibrarySection: React.FC<{
       showTitle={showGroupTitle}
       titleActionTargetId={titleActionTargetId}
       showActiveModelBanner={showActiveModelBanner}
+      hubSearchQuery={hubSearchQuery}
     />
   );
 };

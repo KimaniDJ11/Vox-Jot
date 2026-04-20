@@ -31,11 +31,14 @@ interface ModelsSettingsProps {
   titleActionTargetId?: string;
   /** When false, hides the "Active speech model" summary card at the top (e.g. model hub). */
   showActiveModelBanner?: boolean;
+  /** Optional text filter from model hub search (applied with language/provider filters). */
+  hubSearchQuery?: string;
 }
 
 export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
+  hubSearchQuery = "",
 }) => {
   const { t } = useTranslation();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
@@ -219,6 +222,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
 
   // Filter models based on language filter
   const filteredModels = useMemo(() => {
+    const q = hubSearchQuery.trim().toLowerCase();
     return models.filter((model: ModelInfo) => {
       const modelCatalog = sttCatalogById.get(model.id);
       if (
@@ -230,9 +234,26 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       if (languageFilter !== "all") {
         if (!modelSupportsLanguage(model, languageFilter)) return false;
       }
+      if (q) {
+        const haystack = [
+          model.name,
+          model.id,
+          model.description ?? "",
+          modelCatalog?.provider_id ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       return true;
     });
-  }, [models, languageFilter, providerFilter, sttCatalogById]);
+  }, [
+    models,
+    languageFilter,
+    providerFilter,
+    sttCatalogById,
+    hubSearchQuery,
+  ]);
 
   // Split filtered models into downloaded (including custom) and available sections
   const { downloadedModels, availableModels } = useMemo(() => {

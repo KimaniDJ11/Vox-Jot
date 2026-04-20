@@ -79,13 +79,28 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
-const RefineModelsSettings: React.FC = () => {
+type RefineModelsSettingsProps = {
+  /** When both are set, search is controlled by the parent (e.g. model hub) and the inline search card is hidden. */
+  hubSearchQuery?: string;
+  onHubSearchQueryChange?: (value: string) => void;
+};
+
+const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
+  hubSearchQuery,
+  onHubSearchQueryChange,
+}) => {
   const { t } = useTranslation();
   const { refreshSettings } = useSettings();
   const [catalog, setCatalog] = useState<RefineModelCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const useHubSearch =
+    hubSearchQuery !== undefined && onHubSearchQueryChange !== undefined;
+  const query = useHubSearch ? (hubSearchQuery ?? "") : localQuery;
+  const setQuery: (value: string) => void = useHubSearch
+    ? (value) => onHubSearchQueryChange?.(value)
+    : setLocalQuery;
   const [busyModelIds, setBusyModelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<
     Record<string, RefineDownloadProgress>
@@ -624,27 +639,29 @@ const RefineModelsSettings: React.FC = () => {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Search className="h-4 w-4" />
+          {!useHubSearch ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <Search className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[var(--text)]">
+                    {t("settings.refineModels.search.title")}
+                  </p>
+                  <p className="text-xs leading-5 text-[var(--muted)]">
+                    {t("settings.refineModels.search.description")}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--text)]">
-                  {t("settings.refineModels.search.title")}
-                </p>
-                <p className="text-xs leading-5 text-[var(--muted)]">
-                  {t("settings.refineModels.search.description")}
-                </p>
-              </div>
+              <Input
+                className="mt-3 w-full"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("settings.refineModels.search.placeholder")}
+              />
             </div>
-            <Input
-              className="mt-3 w-full"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("settings.refineModels.search.placeholder")}
-            />
-          </div>
+          ) : null}
 
           {error ? (
             <div className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">

@@ -9,9 +9,8 @@ import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
-import { TitleBarLlmSelector } from "@/components/title-bar";
-import ModelSelector from "@/components/model-selector";
 import SidebarStatsGrid from "@/components/sidebar/SidebarStatsGrid";
+import SidebarModelLaunchers from "@/components/sidebar/SidebarModelLaunchers";
 
 type SidebarIcon = React.ComponentType<{
   className?: string;
@@ -166,18 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {showStatusCards && !collapsed && (
             <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
               <SidebarStatsGrid />
-              <div className="flat-card overflow-visible rounded-2xl px-3 py-2.5">
-                <ModelSelector
-                  statusButtonLabelClassName="font-bold"
-                  statusButtonDensity="titleBar"
-                />
-              </div>
-              <div className="flat-card overflow-visible rounded-2xl px-3 py-2.5">
-                <TitleBarLlmSelector
-                  density="titleBar"
-                  labelClassName="font-bold"
-                />
-              </div>
+              <SidebarModelLaunchers />
             </div>
           )}
 

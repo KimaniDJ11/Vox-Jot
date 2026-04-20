@@ -71,11 +71,9 @@ import {
   CorrectionsSection,
   DictateHistorySection,
   DiagnosticsSettingsSection,
-  DictateModelsSection,
   GeneralAppSettingsSection,
   JotPadSection,
   ListenAutoReadbackSection,
-  ListenEngineLibrarySection,
   ListenMyVoicesSection,
   ListenOutputSection,
   ListenVoiceCloningSection,
@@ -83,7 +81,6 @@ import {
   PrivacyStorageSettingsSection,
   RefineProfilesSection,
   RecordingDevicesSettingsSection,
-  RefineModelsSection,
   RefinePhraseKeysSection,
   RefineTranslationSection,
   ShortcutsSettingsSection,
@@ -227,6 +224,15 @@ function App() {
       return false;
     }
   });
+  const [modelHubVisible, setModelHubVisible] = useState(false);
+  useEffect(() => {
+    const unlisten = listen<boolean>("model-hub-visibility", (event) => {
+      setModelHubVisible(!!event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
   const updateSetting = useUpdateSetting();
   const refreshSettings = useRefreshSettings();
   const {
@@ -269,18 +275,6 @@ function App() {
     lastSectionByView.current[activeRootViewRef.current] = sectionId;
   }, []);
 
-  const handleWorkflowSectionNavigate = useCallback(
-    (mode: PrimaryMode, sectionId: string) => {
-      lastSectionByView.current[activeRootViewRef.current] =
-        activeSectionIdRef.current;
-      setActiveMode(mode);
-      setActiveRootView(mode);
-      setActiveSectionId(sectionId);
-      lastSectionByView.current[mode] = sectionId;
-    },
-    [],
-  );
-
   const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
     () => ({
       dictate: [
@@ -305,15 +299,6 @@ function App() {
           title: "Jot Pad",
           content: <JotPadSection />,
         },
-        {
-          id: "models",
-          label: "Speech Models",
-          icon: Cpu,
-          title: "Speech Models",
-          content: (
-            <DictateModelsSection titleActionTargetId="models-section-actions" />
-          ),
-        },
       ],
       refine: [
         {
@@ -337,13 +322,6 @@ function App() {
           title: "Translation",
           content: <RefineTranslationSection />,
         },
-        {
-          id: "models",
-          label: "Refine Models",
-          icon: Cpu,
-          title: "Refine Models",
-          content: <RefineModelsSection />,
-        },
       ],
       listen: [
         {
@@ -352,17 +330,6 @@ function App() {
           icon: Volume2,
           title: "My Voices",
           content: <ListenMyVoicesSection />,
-        },
-        {
-          id: "engine-library",
-          label: "Engine Library",
-          icon: Cpu,
-          title: "Engine Library",
-          content: (
-            <ListenEngineLibrarySection
-              onNavigateToSection={handleWorkflowSectionNavigate}
-            />
-          ),
         },
         {
           id: "voice-cloning",
@@ -482,7 +449,7 @@ function App() {
         },
       ],
     }),
-    [handleWorkflowSectionNavigate],
+    [],
   );
 
   const activeSections = sectionsByView[activeRootView];
@@ -941,7 +908,7 @@ function App() {
   return (
     <div
       dir={direction}
-      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}`}
+      className={`shell relative select-none cursor-default overflow-hidden font-[var(--font-body)] text-[var(--text)] bg-[var(--bg)] transition-colors duration-200${sidebarCollapsed ? " shell--sidebar-collapsed" : ""}${macTitlebarOverlay ? " shell--macos-titlebar-overlay" : ""}${modelHubVisible ? " shell--dimmed" : ""}`}
     >
       <Toaster
         theme="system"

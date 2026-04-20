@@ -2282,7 +2282,14 @@ const EngineLibraryPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
   titleActionTargetId?: string;
-}> = ({ speech, showTitle = true, titleActionTargetId }) => {
+  /** When false, hides the "Active listen model" summary card (e.g. model hub). */
+  showActiveModelBanner?: boolean;
+}> = ({
+  speech,
+  showTitle = true,
+  titleActionTargetId,
+  showActiveModelBanner = true,
+}) => {
   const { t } = useTranslation();
   const [providerFilter, setProviderFilter] = useState("all");
   const [languageFilter, setLanguageFilter] = useState("all");
@@ -2473,40 +2480,42 @@ const EngineLibraryPanel: React.FC<{
     <div className="space-y-3">
       {portalTarget ? createPortal(filterAction, portalTarget) : null}
 
-      {speech.activeModel ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            {t("listen.engineLibrary.activeListenModel")}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="text-lg font-bold text-[var(--text)]">
-              {speech.activeModel.label}
+      {showActiveModelBanner ? (
+        speech.activeModel ? (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+              {t("listen.engineLibrary.activeListenModel")}
             </p>
-            <Badge
-              variant="secondary"
-              className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
-            >
-              {speech.activeProvider?.label ?? "Provider"}
-            </Badge>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-lg font-bold text-[var(--text)]">
+                {speech.activeModel.label}
+              </p>
+              <Badge
+                variant="secondary"
+                className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
+              >
+                {speech.activeProvider?.label ?? "Provider"}
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              {speech.activeModel.description}
+            </p>
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+              {speech.activeProvider?.runtime.label ??
+                speech.activeModel.runtime.label}
+            </p>
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {speech.activeModel.description}
-          </p>
-          <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
-            {speech.activeProvider?.runtime.label ??
-              speech.activeModel.runtime.label}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-            {t("listen.engineLibrary.activeListenModel")}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {t("listen.engineLibrary.chooseProviderModel")}
-          </p>
-        </div>
-      )}
+        ) : (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
+              {t("listen.engineLibrary.activeListenModel")}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+              {t("listen.engineLibrary.chooseProviderModel")}
+            </p>
+          </div>
+        )
+      ) : null}
 
       <div className="space-y-4">
         {!portalTarget ? (
@@ -3168,13 +3177,19 @@ export const MyVoicesSection: React.FC<{
 export const EngineLibrarySection: React.FC<{
   showGroupTitle?: boolean;
   titleActionTargetId?: string;
-}> = ({ showGroupTitle = true, titleActionTargetId }) => {
+  showActiveModelBanner?: boolean;
+}> = ({
+  showGroupTitle = true,
+  titleActionTargetId,
+  showActiveModelBanner = true,
+}) => {
   const speech = useListenSpeechState();
   return (
     <EngineLibraryPanel
       speech={speech}
       showTitle={showGroupTitle}
       titleActionTargetId={titleActionTargetId}
+      showActiveModelBanner={showActiveModelBanner}
     />
   );
 };

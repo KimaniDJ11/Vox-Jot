@@ -144,10 +144,14 @@ const WorkflowLinkCard: React.FC<{
 
 export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
-}> = ({ titleActionTargetId }) => {
+  showActiveModelBanner?: boolean;
+}> = ({ titleActionTargetId, showActiveModelBanner = true }) => {
   return (
     <div className="space-y-6">
-      <ModelsSettings titleActionTargetId={titleActionTargetId} />
+      <ModelsSettings
+        titleActionTargetId={titleActionTargetId}
+        showActiveModelBanner={showActiveModelBanner}
+      />
     </div>
   );
 };

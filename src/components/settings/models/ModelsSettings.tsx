@@ -29,10 +29,13 @@ const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
 
 interface ModelsSettingsProps {
   titleActionTargetId?: string;
+  /** When false, hides the "Active speech model" summary card at the top (e.g. model hub). */
+  showActiveModelBanner?: boolean;
 }
 
 export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   titleActionTargetId,
+  showActiveModelBanner = true,
 }) => {
   const { t } = useTranslation();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
@@ -390,7 +393,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     <div className="w-full space-y-6">
       {portalTarget ? createPortal(filterAction, portalTarget) : null}
 
-      {currentModelInfo ? (
+      {showActiveModelBanner && currentModelInfo ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
             {t("settings.models.activeSpeechModel")}

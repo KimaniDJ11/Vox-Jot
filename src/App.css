@@ -973,9 +973,16 @@ input[type="range"]::-moz-range-thumb:active {
     grid-template-rows: auto 1fr;
     height: 100vh;
     width: 100vw;
-    transition: grid-template-columns var(--transition-smooth);
+    transition:
+      grid-template-columns var(--transition-smooth),
+      filter 220ms ease;
     /* Translucent so NSVisualEffectView / Mica shows through. */
     background: color-mix(in srgb, var(--bg) 82%, transparent);
+  }
+
+  .shell.shell--dimmed {
+    filter: blur(6px) brightness(0.82);
+    pointer-events: none;
   }
 
   @media (min-width: 769px) {

@@ -11,6 +11,7 @@ import {
   RefinePhraseKeysSection,
   RefineProfilesSection,
 } from "@/components/AppSections";
+import ModelHubSection from "@/components/model-hub/ModelHubSection";
 
 /** Map of section IDs to their title + component. */
 const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
@@ -55,6 +56,10 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   "jot-pad": {
     title: "Jot Pad",
     component: JotPadSection,
+  },
+  "model-hub": {
+    title: "Models & voices",
+    component: ModelHubSection,
   },
 };
 

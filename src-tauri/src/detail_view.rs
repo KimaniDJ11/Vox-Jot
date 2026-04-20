@@ -6,11 +6,13 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri::WebviewWindowBuilder;
 
 #[cfg(target_os = "macos")]
-use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
+use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
 
 const DETAIL_LABEL: &str = "detail-view";
+const MODEL_HUB_LABEL: &str = "model-hub-view";
+const MODEL_HUB_SECTION: &str = "model-hub";
 const DETAIL_PATH: &str = "src/detail/index.html";
-/// Default detail / “show all” window size (logical pixels).
+/// Default detail / "show all" window size (logical pixels).
 const DETAIL_WIDTH: f64 = 800.0;
 const DETAIL_HEIGHT: f64 = 900.0;
 const DETAIL_MIN_WIDTH: f64 = 560.0;
@@ -37,23 +39,73 @@ impl DetailViewRoutingState {
 }
 
 #[cfg(target_os = "macos")]
-tauri_panel! {
-    panel!(DetailViewPanel {
-        config: {
-            can_become_key_window: true,
-            is_floating_panel: true
-        }
-    })
+mod detail_panel {
+    use tauri::Manager;
+    use tauri_nspanel::tauri_panel;
+    tauri_panel! {
+        panel!(DetailViewPanel {
+            config: {
+                can_become_key_window: true,
+                is_floating_panel: true
+            }
+        })
+    }
 }
 
-fn attach_close_handler(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(DETAIL_LABEL) {
+#[cfg(target_os = "macos")]
+mod model_hub_panel {
+    use tauri::Manager;
+    use tauri_nspanel::tauri_panel;
+    tauri_panel! {
+        panel!(ModelHubPanel {
+            config: {
+                can_become_key_window: true,
+                is_floating_panel: true
+            }
+        })
+    }
+}
+
+#[cfg(target_os = "macos")]
+use detail_panel::DetailViewPanel;
+#[cfg(target_os = "macos")]
+use model_hub_panel::ModelHubPanel;
+
+fn emit_model_hub_visibility(app: &AppHandle, visible: bool) {
+    if let Err(e) = app.emit_to("main", "model-hub-visibility", visible) {
+        error!("Failed to emit model-hub-visibility: {}", e);
+    }
+}
+
+fn attach_close_handler(app: &AppHandle, label: &'static str) {
+    if let Some(window) = app.get_webview_window(label) {
         let app_clone = app.clone();
         window.on_window_event(move |event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                if let Some(w) = app_clone.get_webview_window(DETAIL_LABEL) {
+                if let Some(w) = app_clone.get_webview_window(label) {
                     let _ = w.hide();
+                    if label == MODEL_HUB_LABEL {
+                        emit_model_hub_visibility(&app_clone, false);
+                    }
+                }
+            }
+        });
+    }
+}
+
+fn attach_blur_hide_handler(app: &AppHandle, label: &'static str) {
+    if let Some(window) = app.get_webview_window(label) {
+        let app_clone = app.clone();
+        window.on_window_event(move |event| {
+            if let tauri::WindowEvent::Focused(focused) = event {
+                if !*focused {
+                    if let Some(w) = app_clone.get_webview_window(label) {
+                        let _ = w.hide();
+                        if label == MODEL_HUB_LABEL {
+                            emit_model_hub_visibility(&app_clone, false);
+                        }
+                    }
                 }
             }
         });
@@ -61,8 +113,8 @@ fn attach_close_handler(app: &AppHandle) {
 }
 
 /// Tell the detail-view frontend to switch sections via an event.
-fn emit_section(app: &AppHandle, section: &str) {
-    if let Err(e) = app.emit_to(DETAIL_LABEL, "detail-navigate", section) {
+fn emit_section_to(app: &AppHandle, label: &str, section: &str) {
+    if let Err(e) = app.emit_to(label, "detail-navigate", section) {
         error!(
             "Failed to emit detail-navigate for section '{}': {}",
             section, e
@@ -117,7 +169,7 @@ fn create_detail_window(app: &AppHandle, section: &str) {
                 .hidden_title(true)
                 .on_page_load(move |window, payload| {
                     if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-                        emit_section(window.app_handle(), &section_owned);
+                        emit_section_to(window.app_handle(), DETAIL_LABEL, &section_owned);
                     }
                 });
 
@@ -132,7 +184,7 @@ fn create_detail_window(app: &AppHandle, section: &str) {
         Ok(panel) => {
             panel.show();
             debug!("Detail view panel created for section: {}", section);
-            attach_close_handler(&app_clone);
+            attach_close_handler(&app_clone, DETAIL_LABEL);
         }
         Err(e) => {
             error!("Failed to create detail view panel: {}", e);
@@ -161,7 +213,7 @@ fn create_detail_window(app: &AppHandle, section: &str) {
     .visible(true)
     .on_page_load(move |window, payload| {
         if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-            emit_section(window.app_handle(), &section_owned);
+            emit_section_to(window.app_handle(), DETAIL_LABEL, &section_owned);
         }
     });
 
@@ -172,10 +224,142 @@ fn create_detail_window(app: &AppHandle, section: &str) {
     match builder.build() {
         Ok(_window) => {
             debug!("Detail view window created for section: {}", section);
-            attach_close_handler(app);
+            attach_close_handler(app, DETAIL_LABEL);
         }
         Err(e) => {
             error!("Failed to create detail view window: {}", e);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn create_model_hub_window(app: &AppHandle) {
+    let webview_data_dir = crate::portable::data_dir().map(|dir| dir.join("webview"));
+    let app_clone = app.clone();
+
+    let builder = PanelBuilder::<_, ModelHubPanel>::new(app, MODEL_HUB_LABEL)
+        .url(tauri::WebviewUrl::App(DETAIL_PATH.into()))
+        .title("Vox Jot")
+        .size(tauri::Size::Logical(tauri::LogicalSize {
+            width: DETAIL_WIDTH,
+            height: DETAIL_HEIGHT,
+        }))
+        .content_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: DETAIL_WIDTH,
+            height: DETAIL_HEIGHT,
+        }))
+        .level(PanelLevel::Floating)
+        .floating(true)
+        .hides_on_deactivate(true)
+        .collection_behavior(
+            CollectionBehavior::new()
+                .can_join_all_spaces()
+                .full_screen_auxiliary(),
+        )
+        // Keep `.titled()` (WKWebView requires it for `contentLayoutRect` KVO);
+        // traffic lights are hidden natively below so the window looks chromeless.
+        .style_mask(
+            StyleMask::empty()
+                .titled()
+                .resizable()
+                .full_size_content_view(),
+        )
+        .with_window(move |w| {
+            let w = w
+                .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
+                .resizable(true)
+                .always_on_top(true)
+                .focused(true)
+                .visible(true)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .on_page_load(move |window, payload| {
+                    if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                        emit_section_to(
+                            window.app_handle(),
+                            MODEL_HUB_LABEL,
+                            MODEL_HUB_SECTION,
+                        );
+                    }
+                });
+
+            if let Some(data_dir) = webview_data_dir.clone() {
+                w.data_directory(data_dir)
+            } else {
+                w
+            }
+        });
+
+    match builder.build() {
+        Ok(panel) => {
+            hide_traffic_lights(&app_clone, MODEL_HUB_LABEL);
+            panel.show();
+            debug!("Model hub panel created");
+            attach_close_handler(&app_clone, MODEL_HUB_LABEL);
+            attach_blur_hide_handler(&app_clone, MODEL_HUB_LABEL);
+        }
+        Err(e) => {
+            error!("Failed to create model hub panel: {}", e);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn hide_traffic_lights(app: &AppHandle, label: &str) {
+    use objc::{msg_send, sel, sel_impl};
+    use objc::runtime::Object;
+
+    let Some(window) = app.get_webview_window(label) else {
+        return;
+    };
+    let Ok(ns_window) = window.ns_window() else {
+        return;
+    };
+    unsafe {
+        let ns_window = ns_window as *mut Object;
+        // NSWindowButton: close = 0, miniaturize = 1, zoom = 2
+        for idx in 0u64..=2 {
+            let btn: *mut Object = msg_send![ns_window, standardWindowButton: idx];
+            if !btn.is_null() {
+                let _: () = msg_send![btn, setHidden: true];
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn create_model_hub_window(app: &AppHandle) {
+    let mut builder = WebviewWindowBuilder::new(
+        app,
+        MODEL_HUB_LABEL,
+        tauri::WebviewUrl::App(DETAIL_PATH.into()),
+    )
+    .title("Vox Jot")
+    .inner_size(DETAIL_WIDTH, DETAIL_HEIGHT)
+    .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
+    .resizable(true)
+    .decorations(false)
+    .always_on_top(true)
+    .focused(true)
+    .visible(true)
+    .on_page_load(move |window, payload| {
+        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+            emit_section_to(window.app_handle(), MODEL_HUB_LABEL, MODEL_HUB_SECTION);
+        }
+    });
+
+    if let Some(data_dir) = crate::portable::data_dir() {
+        builder = builder.data_directory(data_dir.join("webview"));
+    }
+
+    match builder.build() {
+        Ok(_window) => {
+            debug!("Model hub window created");
+            attach_close_handler(app, MODEL_HUB_LABEL);
+            attach_blur_hide_handler(app, MODEL_HUB_LABEL);
+        }
+        Err(e) => {
+            error!("Failed to create model hub window: {}", e);
         }
     }
 }
@@ -186,8 +370,24 @@ pub fn show_detail_view(app: &AppHandle, section: &str) {
     let state = app.state::<DetailViewRoutingState>();
     state.set_target_section(section);
 
+    if section == MODEL_HUB_SECTION {
+        if let Some(window) = app.get_webview_window(MODEL_HUB_LABEL) {
+            emit_section_to(app, MODEL_HUB_LABEL, section);
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+            emit_model_hub_visibility(app, true);
+            debug!("Model hub shown");
+            return;
+        }
+
+        create_model_hub_window(app);
+        emit_model_hub_visibility(app, true);
+        return;
+    }
+
     if let Some(window) = app.get_webview_window(DETAIL_LABEL) {
-        emit_section(app, section);
+        emit_section_to(app, DETAIL_LABEL, section);
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();

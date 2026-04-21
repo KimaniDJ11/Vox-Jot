@@ -20,6 +20,7 @@ import {
   Keyboard,
   Languages,
   MessageCircle,
+  Monitor,
   NotebookPen,
   PanelLeft,
   PanelLeftClose,
@@ -85,6 +86,7 @@ import {
   RefineTranslationSection,
   ShortcutsSettingsSection,
 } from "@/components/AppSections";
+import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 
 type OnboardingStep = "onboarding" | "done";
 type PrimaryMode = "dictate" | "refine" | "listen" | "convo";
@@ -418,6 +420,13 @@ function App() {
           icon: Cpu,
           title: "Models & AI",
           content: <AISetupSettingsSection />,
+        },
+        {
+          id: "screen-context",
+          label: "Screen Context",
+          icon: Monitor,
+          title: "Screen Context",
+          content: <ScreenContextSettingsSection />,
         },
         {
           id: "corrections",
@@ -1022,7 +1031,7 @@ function App() {
         items={activeSections}
         collapsed={sidebarCollapsed}
         settingsActive={activeRootView === "settings"}
-        showStatusCards={isDesktopLayout}
+        showStatusCards={isDesktopLayout && activeRootView !== "settings"}
         onSectionChange={handleSectionJump}
         onSettingsClick={handleSettingsOpen}
       />

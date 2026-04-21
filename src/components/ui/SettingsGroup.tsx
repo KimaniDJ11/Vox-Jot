@@ -6,6 +6,8 @@ interface SettingsGroupProps {
   description?: string;
   /** Rendered on the trailing side of the heading row (outside the card). */
   titleAction?: React.ReactNode;
+  /** When true, skips the bordered `card-linear` wrapper (children render flush). */
+  noCard?: boolean;
   children: React.ReactNode;
 }
 
@@ -25,6 +27,7 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   title,
   description,
   titleAction,
+  noCard = false,
   children,
 }) => {
   const groupId = useId();
@@ -52,11 +55,15 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
               </div>
             </div>
           )}
-          <div className="card-linear overflow-visible">
-            <div className="divide-y divide-[var(--ring-hairline,var(--border))]">
-              {children}
+          {noCard ? (
+            <div className="overflow-visible">{children}</div>
+          ) : (
+            <div className="card-linear overflow-visible">
+              <div className="divide-y divide-[var(--ring-hairline,var(--border))]">
+                {children}
+              </div>
             </div>
-          </div>
+          )}
         </section>
       </LayoutGroup>
     </SettingsGroupContext.Provider>

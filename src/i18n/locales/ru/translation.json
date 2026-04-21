@@ -259,7 +259,7 @@
         "description": "Expand short spoken triggers into full text while you dictate. Say your trigger and Vox Jot inserts the saved text."
       },
       "list": {
-        "title": "Phrase keys",
+        "title": "Trigger Phrases",
         "empty": "No phrase keys yet. Add a trigger and the text it should expand to.",
         "add": "Add phrase key",
         "import": "Import",
@@ -362,6 +362,10 @@
           "transcribe_with_post_process": {
             "name": "Горячая клавиша постобработки",
             "description": "Специальное сочетание клавиш для ИИ-постобработки вашей транскрипции."
+          },
+          "toggle_command_menu": {
+            "name": "Command Menu",
+            "description": "Open the command palette from anywhere."
           }
         },
         "errors": {
@@ -534,7 +538,14 @@
         "options": {
           "light": "Light",
           "dark": "Dark",
-          "system": "System"
+          "system": "System",
+          "sepia": "Sepia",
+          "ocean": "Ocean",
+          "forest": "Forest",
+          "rose": "Rose",
+          "slate": "Slate",
+          "solarized": "Solarized",
+          "graphite": "Graphite"
         }
       }
     },
@@ -998,15 +1009,42 @@
       }
     },
     "screenContext": {
+      "title": "Screen Context",
+      "intro": "When you dictate, Vox Jot can glance at what's on screen and run on-device OCR so the refine pass understands names, tabs, and field labels you were looking at. Captures stay on your Mac.",
+      "enableLabel": "Screen context",
+      "enableDescription": "Take periodic on-device screenshots and feed the OCR text into refine passes.",
+      "permissionCtaLabel": "Screen Recording permission required",
+      "permissionCtaDescription": "macOS hasn't granted Vox Jot permission to capture the screen. Open System Settings to allow it.",
+      "permissionCtaButton": "Open Screen Recording Settings",
+      "captureCadenceTitle": "Capture cadence",
+      "contextBudgetTitle": "Context budget",
+      "pauseOnIdleLabel": "Pause when idle",
+      "pauseOnIdleDescription": "Stop capturing after you haven't dictated for a while; resumes automatically on your next dictation.",
+      "idleThresholdLabel": "Idle threshold",
+      "idleThresholdDescription": "How long without dictation before Vox Jot pauses screen captures.",
+      "idleThresholdValue": "{{seconds}}s",
+      "exclusionsTitle": "Excluded apps",
+      "exclusionsDescription": "Vox Jot will never capture the screen while one of these apps is frontmost. Great for password managers, banking, or any app you want kept private.",
+      "exclusionsEmpty": "No excluded apps yet.",
+      "addCurrentAppLabel": "Add current app",
+      "addCurrentAppResolving": "Detecting frontmost app...",
+      "addCurrentAppFailed": "Couldn't detect a frontmost app to exclude.",
+      "addCurrentAppAlreadyExcluded": "{{name}} is already excluded.",
+      "removeExclusionLabel": "Remove",
       "statusLabel": "Status:",
       "statusUnknown": "unknown",
+      "statusDisabled": "Disabled",
+      "statusExcluded": "Paused — excluded app",
+      "statusPausedIdle": "Paused — idle",
       "screenRecordingLabel": "Screen Recording permission:",
       "screenRecordingGranted": "Granted",
       "screenRecordingMissing": "Missing",
       "cacheSizeLabel": "Cache size:",
       "latestContextAgeLabel": "Latest context age:",
       "latestContextAgeValue": "{{ms}} ms",
-      "latestContextAgeUnavailable": "Unavailable"
+      "latestContextAgeUnavailable": "Unavailable",
+      "debugPreviewTitle": "Latest OCR preview (debug)",
+      "debugPreviewEmpty": "No cached OCR snippet yet."
     }
   },
   "footer": {

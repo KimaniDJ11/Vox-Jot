@@ -13,6 +13,8 @@ export interface CompactBadgeItem {
   label: string;
   variant?: BadgeVariant;
   icon?: React.ReactNode;
+  /** Plain-language description shown on hover / keyboard focus (tooltip + overflow popover lines). */
+  detail?: string;
 }
 
 interface OverflowInfoButtonProps {
@@ -83,22 +85,31 @@ export const CompactBadgeRow: React.FC<{
 
   return (
     <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-      {visibleItems.map((item) => (
-        <Badge
-          key={item.id}
-          variant={item.variant ?? "secondary"}
-          className="max-w-[9.5rem] shrink-0 truncate"
-        >
-          {item.icon ? (
-            <span className="mr-1 shrink-0">{item.icon}</span>
-          ) : null}
-          <span className="truncate">{item.label}</span>
-        </Badge>
-      ))}
+      {visibleItems.map((item) => {
+        const tooltip = item.detail
+          ? `${item.label} — ${item.detail}`
+          : item.label;
+        return (
+          <Badge
+            key={item.id}
+            variant={item.variant ?? "secondary"}
+            className="max-w-[9.5rem] shrink-0 truncate"
+          >
+            <span className="inline-flex items-center" title={tooltip}>
+              {item.icon ? (
+                <span className="mr-1 shrink-0">{item.icon}</span>
+              ) : null}
+              <span className="truncate">{item.label}</span>
+            </span>
+          </Badge>
+        );
+      })}
       {hiddenItems.length > 0 ? (
         <OverflowInfoButton
           label={overflowLabel}
-          lines={hiddenItems.map((item) => item.label)}
+          lines={hiddenItems.map((item) =>
+            item.detail ? `${item.label} — ${item.detail}` : item.label,
+          )}
         />
       ) : null}
     </div>

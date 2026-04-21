@@ -275,11 +275,7 @@ fn create_model_hub_window(app: &AppHandle) {
                 .hidden_title(true)
                 .on_page_load(move |window, payload| {
                     if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-                        emit_section_to(
-                            window.app_handle(),
-                            MODEL_HUB_LABEL,
-                            MODEL_HUB_SECTION,
-                        );
+                        emit_section_to(window.app_handle(), MODEL_HUB_LABEL, MODEL_HUB_SECTION);
                     }
                 });
 
@@ -306,8 +302,8 @@ fn create_model_hub_window(app: &AppHandle) {
 
 #[cfg(target_os = "macos")]
 fn hide_traffic_lights(app: &AppHandle, label: &str) {
-    use objc::{msg_send, sel, sel_impl};
     use objc::runtime::Object;
+    use objc::{msg_send, sel, sel_impl};
 
     let Some(window) = app.get_webview_window(label) else {
         return;

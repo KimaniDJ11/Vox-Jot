@@ -49,6 +49,10 @@ impl TranscriptionManager {
         None
     }
 
+    pub fn last_activity_ms(&self) -> u64 {
+        0
+    }
+
     pub fn transcribe(&self, _audio: Vec<f32>) -> Result<String> {
         Ok(String::new())
     }

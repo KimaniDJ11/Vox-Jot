@@ -1,3 +1,4 @@
+use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::ActiveAppContext;
 use crate::settings::{get_settings, AppSettings, ContextCaptureMode, OcrQualityMode};
 use log::{debug, warn};
@@ -12,7 +13,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(target_os = "macos")]
 use crate::correction_tracker::field_monitor::FieldTextReader;
@@ -24,6 +25,9 @@ pub enum ContextCaptureStatus {
     Pending,
     Stale,
     PermissionDenied,
+    Disabled,
+    ExcludedApp,
+    PausedIdle,
     #[default]
     Failed,
 }
@@ -64,6 +68,7 @@ pub struct ScreenContextDiagnostics {
     pub latest_context_age_ms: Option<u64>,
     pub latest_display_id: Option<u32>,
     pub latest_source: Option<String>,
+    pub latest_preview_text: Option<String>,
     pub last_error: Option<String>,
 }
 
@@ -77,6 +82,7 @@ impl Default for ScreenContextDiagnostics {
             latest_context_age_ms: None,
             latest_display_id: None,
             latest_source: None,
+            latest_preview_text: None,
             last_error: None,
         }
     }
@@ -105,6 +111,11 @@ impl Default for ManagerState {
             next_capture_allowed_at_ms: 0,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ScreenContextCaptureEvent {
+    captured_at_ms: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -169,6 +180,8 @@ impl ContextCaptureManager {
                 .map(|packet| now_millis().saturating_sub(packet.captured_at_ms).max(0) as u64),
             latest_display_id: latest.map(|packet| packet.display_id),
             latest_source: latest.map(|packet| packet.source.clone()),
+            latest_preview_text: latest
+                .and_then(|packet| packet.snippets.first().map(|snippet| snippet.text.clone())),
             last_error: state.last_error.clone(),
         }
     }
@@ -181,6 +194,30 @@ impl ContextCaptureManager {
         let desired_app_context = active_app_context.or_else(current_frontmost_app_context);
         let current_field_text = read_ax_field_text(desired_app_context.as_ref());
         let now_ms = now_millis();
+
+        if !settings.screen_context_enabled {
+            return build_ax_only_packet(
+                desired_app_context,
+                current_field_text,
+                now_ms,
+                !settings.local_privacy_mode,
+            );
+        }
+
+        let frontmost_excluded = desired_app_context.as_ref().is_some_and(|ctx| {
+            settings
+                .screen_context_excluded_bundle_ids
+                .iter()
+                .any(|bundle| bundle.eq_ignore_ascii_case(&ctx.bundle_id))
+        });
+        if frontmost_excluded {
+            return build_ax_only_packet(
+                desired_app_context,
+                current_field_text,
+                now_ms,
+                !settings.local_privacy_mode,
+            );
+        }
         let stale_threshold_ms = settings.screen_context_stale_threshold_ms as u64;
         let fresh_relevant_packet = {
             let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -233,6 +270,23 @@ impl ContextCaptureManager {
             && !provider_is_local
     }
 
+    fn transcription_last_activity_ms(&self) -> Option<u64> {
+        self.app_handle
+            .try_state::<Arc<TranscriptionManager>>()
+            .map(|manager| manager.last_activity_ms())
+    }
+
+    fn emit_status(&self, status: ContextCaptureStatus) {
+        let _ = self.app_handle.emit("screen-context-status", status);
+    }
+
+    fn emit_capture(&self, captured_at_ms: i64) {
+        let _ = self.app_handle.emit(
+            "screen-context-capture",
+            ScreenContextCaptureEvent { captured_at_ms },
+        );
+    }
+
     fn spawn_background_worker(&self) {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         {
@@ -247,7 +301,50 @@ impl ContextCaptureManager {
                     let frontmost_app = current_frontmost_bundle();
                     let now_ms = now_millis();
 
-                    let should_capture = {
+                    if !settings.screen_context_enabled {
+                        let status_changed = {
+                            let mut state = manager.state.lock().unwrap_or_else(|e| e.into_inner());
+                            let changed = state.status != ContextCaptureStatus::Disabled;
+                            state.status = ContextCaptureStatus::Disabled;
+                            state.immediate_requested = false;
+                            changed
+                        };
+                        if status_changed {
+                            manager.emit_status(ContextCaptureStatus::Disabled);
+                        }
+                        thread::sleep(Duration::from_millis(500));
+                        continue;
+                    }
+
+                    let excluded = frontmost_app
+                        .as_ref()
+                        .map(|bundle| {
+                            settings
+                                .screen_context_excluded_bundle_ids
+                                .iter()
+                                .any(|excluded_bundle| excluded_bundle.eq_ignore_ascii_case(bundle))
+                        })
+                        .unwrap_or(false);
+                    if excluded {
+                        let status_changed = {
+                            let mut state = manager.state.lock().unwrap_or_else(|e| e.into_inner());
+                            let changed = state.status != ContextCaptureStatus::ExcludedApp;
+                            state.status = ContextCaptureStatus::ExcludedApp;
+                            state.immediate_requested = false;
+                            changed
+                        };
+                        if status_changed {
+                            manager.emit_status(ContextCaptureStatus::ExcludedApp);
+                        }
+                        last_frontmost_app = frontmost_app;
+                        thread::sleep(Duration::from_millis(500));
+                        continue;
+                    }
+
+                    let last_transcription_activity_ms =
+                        manager.transcription_last_activity_ms().unwrap_or(0);
+
+                    let (should_capture, idle_status_changed) = {
                         let mut state = manager.state.lock().unwrap_or_else(|e| e.into_inner());
                         let due = last_tick.elapsed() >= interval;
                         let app_changed = settings.context_capture_mode
@@ -255,15 +352,27 @@ impl ContextCaptureManager {
                             && frontmost_app != last_frontmost_app;
                         let requested = state.immediate_requested;
                         let backoff_active = now_ms < state.next_capture_allowed_at_ms;
-                        if backoff_active {
-                            false
+                        let idle_paused = settings.screen_context_pause_on_idle
+                            && !requested
+                            && last_transcription_activity_ms > 0
+                            && now_ms.saturating_sub(last_transcription_activity_ms as i64)
+                                > settings.screen_context_idle_threshold_ms as i64;
+                        if idle_paused {
+                            let changed = state.status != ContextCaptureStatus::PausedIdle;
+                            state.status = ContextCaptureStatus::PausedIdle;
+                            (false, changed)
+                        } else if backoff_active {
+                            (false, false)
                         } else {
                             if requested {
                                 state.immediate_requested = false;
                             }
-                            requested || due || app_changed
+                            (requested || due || app_changed, false)
                         }
                     };
+                    if idle_status_changed {
+                        manager.emit_status(ContextCaptureStatus::PausedIdle);
+                    }
 
                     if should_capture {
                         let reason = if last_tick.elapsed() >= interval {
@@ -297,30 +406,47 @@ impl ContextCaptureManager {
         ) {
             Ok(native_payload) => {
                 let packet = rank_context_packet(native_payload, settings, source.to_string());
-                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                state.has_permission = true;
-                state.last_error = None;
-                state.status = ContextCaptureStatus::Ready;
-                state.consecutive_failures = 0;
-                state.next_capture_allowed_at_ms = 0;
-                state.cache.push_back(packet.clone());
-                while state.cache.len() > 3 {
-                    state.cache.pop_front();
+                let captured_at_ms = packet.captured_at_ms;
+                let status_changed = {
+                    let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+                    let changed = state.status != ContextCaptureStatus::Ready;
+                    state.has_permission = true;
+                    state.last_error = None;
+                    state.status = ContextCaptureStatus::Ready;
+                    state.consecutive_failures = 0;
+                    state.next_capture_allowed_at_ms = 0;
+                    state.cache.push_back(packet.clone());
+                    while state.cache.len() > 3 {
+                        state.cache.pop_front();
+                    }
+                    changed
+                };
+                if status_changed {
+                    self.emit_status(ContextCaptureStatus::Ready);
                 }
+                self.emit_capture(captured_at_ms);
                 Some(packet)
             }
             Err(err) => {
-                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                state.has_permission = !err.contains("permission");
-                state.last_error = Some(err.clone());
-                state.status = if err.contains("permission") {
+                let next_status = if err.contains("permission") {
                     ContextCaptureStatus::PermissionDenied
                 } else {
                     ContextCaptureStatus::Failed
                 };
-                state.consecutive_failures = state.consecutive_failures.saturating_add(1);
-                state.next_capture_allowed_at_ms =
-                    now_millis() + failure_backoff_ms(&err, state.consecutive_failures);
+                let status_changed = {
+                    let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+                    let changed = state.status != next_status;
+                    state.has_permission = !err.contains("permission");
+                    state.last_error = Some(err.clone());
+                    state.status = next_status;
+                    state.consecutive_failures = state.consecutive_failures.saturating_add(1);
+                    state.next_capture_allowed_at_ms =
+                        now_millis() + failure_backoff_ms(&err, state.consecutive_failures);
+                    changed
+                };
+                if status_changed {
+                    self.emit_status(next_status);
+                }
                 warn!("Screen context capture failed: {}", err);
                 None
             }

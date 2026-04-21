@@ -927,6 +927,10 @@ impl TranscriptionManager {
         current_model.clone()
     }
 
+    pub fn last_activity_ms(&self) -> u64 {
+        self.last_activity.load(Ordering::Relaxed)
+    }
+
     pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
@@ -1102,19 +1106,30 @@ impl TranscriptionManager {
 
 impl Drop for TranscriptionManager {
     fn drop(&mut self) {
-        debug!("Shutting down TranscriptionManager");
-        self.stop_partial_session_internal();
+        // `TranscriptionManager` is `Clone` (shared `Arc` state), so every cloned
+        // copy runs this Drop when it goes out of scope — including the clone
+        // captured by the watcher thread itself. We must release the
+        // `watcher_handle` mutex BEFORE joining, otherwise the watcher thread's
+        // own Drop will block on that same mutex while we wait on `join()`.
 
-        // Signal the watcher thread to shutdown
+        // Signal the watcher thread to shut down. Do this first so it can make
+        // progress while we release locks.
         self.shutdown_signal.store(true, Ordering::Relaxed);
 
-        // Wait for the thread to finish gracefully
-        if let Some(handle) = self
+        self.stop_partial_session_internal();
+
+        // Take the handle out of the mutex and drop the guard immediately.
+        // Only the first clone to race here will observe `Some(handle)` and
+        // perform the join; subsequent drops see `None` and return quickly.
+        let watcher_handle = self
             .watcher_handle
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .take()
-        {
+            .take();
+
+        if let Some(handle) = watcher_handle {
+            // Lock guard has been dropped above — the watcher thread can now
+            // finish cleanly even though its own clone runs Drop on exit.
             if let Err(e) = handle.join() {
                 warn!("Failed to join idle watcher thread: {:?}", e);
             } else {

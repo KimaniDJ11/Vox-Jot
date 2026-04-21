@@ -5,12 +5,8 @@ import { listen } from "@tauri-apps/api/event";
 import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
 import { ConvoModeView } from "@/components/convo";
 
-import { commands, type Note, type ScreenContextDiagnostics } from "@/bindings";
-import {
-  useSettings,
-  useSettingsSlice,
-  useUpdateSetting,
-} from "@/hooks/useSettings";
+import { commands, type Note } from "@/bindings";
+import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
@@ -58,11 +54,11 @@ import { SoundPicker } from "@/components/settings/SoundPicker";
 import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
 import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
+import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { StylesSettings } from "@/components/settings/styles/StylesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
-import { useSettingsStore } from "@/stores/settingsStore";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
 import {
@@ -100,7 +96,6 @@ const routeDebuggerEmptyInput = "Enter some text to inspect.";
 const routeDebuggerFailed = "Analysis failed.";
 const analyzeRouteLabel = "Analyze Route";
 const analyzingRouteLabel = "Analyzing...";
-const refreshContextStatusLabel = "Refresh Status";
 const aboutSummaryPrimary =
   "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
 const aboutSummarySecondary =
@@ -146,10 +141,12 @@ export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
+  hubFilterLabels?: boolean;
 }> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery,
+  hubFilterLabels,
 }) => {
   return (
     <div className="space-y-6">
@@ -157,6 +154,7 @@ export const DictateModelsSection: React.FC<{
         titleActionTargetId={titleActionTargetId}
         showActiveModelBanner={showActiveModelBanner}
         hubSearchQuery={hubSearchQuery}
+        hubFilterLabels={hubFilterLabels}
       />
     </div>
   );
@@ -212,14 +210,23 @@ export const AppMappingsSection: React.FC = () => {
 };
 
 export const RefineModelsSection: React.FC<{
+  titleActionTargetId?: string;
   hubSearchQuery?: string;
   onHubSearchQueryChange?: (value: string) => void;
-}> = ({ hubSearchQuery, onHubSearchQueryChange }) => {
+  hubFilterLabels?: boolean;
+}> = ({
+  titleActionTargetId,
+  hubSearchQuery,
+  onHubSearchQueryChange,
+  hubFilterLabels,
+}) => {
   return (
     <div className="space-y-6">
       <RefineModelsSettings
+        titleActionTargetId={titleActionTargetId}
         hubSearchQuery={hubSearchQuery}
         onHubSearchQueryChange={onHubSearchQueryChange}
+        hubFilterLabels={hubFilterLabels}
       />
     </div>
   );
@@ -442,6 +449,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       <SettingsGroup title="App">
+        <ThemeSelector descriptionMode="tooltip" grouped={true} />
         <StartHidden descriptionMode="tooltip" grouped={true} />
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
         <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
@@ -761,8 +769,6 @@ export const DiagnosticsSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <ScreenContextSettingsCard />
-
       <SettingsGroup title="Experimental">
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
         <KeyboardImplementationSelector
@@ -781,184 +787,6 @@ export const DiagnosticsSettingsSection: React.FC = () => {
       ) : (
         <Alert variant="info">{debugRevealNotice}</Alert>
       )}
-    </div>
-  );
-};
-
-const ScreenContextSettingsCard: React.FC = () => {
-  const { t } = useTranslation();
-  const updateSetting = useUpdateSetting();
-  const isUpdating = useSettingsStore((state) => state.isUpdatingKey);
-  const {
-    context_capture_mode: captureModeValue,
-    screen_context_ocr_quality: ocrQualityValue,
-    screen_context_ocr_timeout_ms: ocrTimeoutValue,
-    screen_context_token_budget: tokenBudgetValue,
-    screen_context_stale_threshold_ms: staleThresholdValue,
-  } = useSettingsSlice([
-    "context_capture_mode",
-    "screen_context_ocr_quality",
-    "screen_context_ocr_timeout_ms",
-    "screen_context_token_budget",
-    "screen_context_stale_threshold_ms",
-  ] as const);
-  const [diagnostics, setDiagnostics] =
-    useState<ScreenContextDiagnostics | null>(null);
-
-  const refreshDiagnostics = useCallback(async () => {
-    const result = await commands.getScreenContextDiagnostics();
-    if (result.status === "ok") {
-      setDiagnostics(result.data);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshDiagnostics();
-    const id = window.setInterval(() => {
-      void refreshDiagnostics();
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [refreshDiagnostics]);
-
-  const captureMode = captureModeValue ?? "always_frequent";
-  const ocrQuality = ocrQualityValue ?? "balanced";
-  const ocrTimeout = ocrTimeoutValue ?? 700;
-  const tokenBudget = tokenBudgetValue ?? 400;
-  const staleThreshold = staleThresholdValue ?? 2500;
-
-  return (
-    <div className="space-y-6">
-      <SettingsGroup title="Screen Context Cache">
-        <SettingContainer
-          title="Capture Mode"
-          description="Choose how often Vox Jot refreshes the screenshot OCR cache while the app is running."
-          grouped={true}
-        >
-          <Dropdown
-            selectedValue={captureMode as string}
-            onSelect={(value) =>
-              void updateSetting("context_capture_mode", value as never)
-            }
-            options={[
-              { value: "always_frequent", label: "Always frequent" },
-              { value: "adaptive_cache", label: "Adaptive cache" },
-              { value: "mostly_on_demand", label: "Mostly on-demand" },
-            ]}
-            disabled={isUpdating("context_capture_mode")}
-          />
-        </SettingContainer>
-        <SettingContainer
-          title="OCR Quality"
-          description="Trade speed for OCR fidelity when building screenshot context."
-          grouped={true}
-        >
-          <Dropdown
-            selectedValue={ocrQuality as string}
-            onSelect={(value) =>
-              void updateSetting("screen_context_ocr_quality", value as never)
-            }
-            options={[
-              { value: "fast", label: "Fast" },
-              { value: "balanced", label: "Balanced" },
-              { value: "accurate", label: "Accurate" },
-            ]}
-            disabled={isUpdating("screen_context_ocr_quality")}
-          />
-        </SettingContainer>
-        <Slider
-          value={ocrTimeout as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_ocr_timeout_ms",
-              Math.round(value) as never,
-            )
-          }
-          min={200}
-          max={2000}
-          step={50}
-          label="OCR Timeout"
-          description="Maximum time budget for a single screenshot OCR pass before Vox Jot falls back."
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} ms`}
-        />
-        <Slider
-          value={tokenBudget as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_token_budget",
-              Math.round(value) as never,
-            )
-          }
-          min={100}
-          max={1200}
-          step={25}
-          label="Context Budget"
-          description="Maximum amount of ranked screenshot context Vox Jot carries into dictation cleanup."
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} tokens`}
-        />
-        <Slider
-          value={staleThreshold as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_stale_threshold_ms",
-              Math.round(value) as never,
-            )
-          }
-          min={500}
-          max={5000}
-          step={100}
-          label="Freshness Window"
-          description="How old the newest cached OCR packet can be before Vox Jot treats it as stale."
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} ms`}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup
-        title="Context Status"
-        titleAction={
-          <Button onClick={() => void refreshDiagnostics()} size="sm">
-            {refreshContextStatusLabel}
-          </Button>
-        }
-      >
-        <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
-          <p>
-            {t("settings.screenContext.statusLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.status ?? t("settings.screenContext.statusUnknown")}
-            </span>
-          </p>
-          <p>
-            {t("settings.screenContext.screenRecordingLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.has_screen_permission
-                ? t("settings.screenContext.screenRecordingGranted")
-                : t("settings.screenContext.screenRecordingMissing")}
-            </span>
-          </p>
-          <p>
-            {t("settings.screenContext.cacheSizeLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.cache_size ?? 0}
-            </span>
-          </p>
-          <p>
-            {t("settings.screenContext.latestContextAgeLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.latest_context_age_ms != null
-                ? t("settings.screenContext.latestContextAgeValue", {
-                    ms: diagnostics.latest_context_age_ms,
-                  })
-                : t("settings.screenContext.latestContextAgeUnavailable")}
-            </span>
-          </p>
-          {diagnostics?.last_error ? (
-            <Alert variant="info">{diagnostics.last_error}</Alert>
-          ) : null}
-        </div>
-      </SettingsGroup>
     </div>
   );
 };

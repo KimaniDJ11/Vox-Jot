@@ -9,7 +9,7 @@ import React, {
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
-import { commands } from "@/bindings";
+import { commands, type ContextCaptureStatus } from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
@@ -22,11 +22,21 @@ interface ShowOverlayPayload {
   style: OverlayStyle;
 }
 
+interface SettingsChangedPayload {
+  setting?: string;
+  value?: unknown;
+}
+
+interface ScreenContextCapturePayload {
+  captured_at_ms: number;
+}
+
 const BAR_COUNT_DETAILED = 64;
 const BAR_COUNT_COMPACT = 9;
 const ATTACK = 0.35;
 const RELEASE = 0.12;
 const MIN_BAR_PX = 2;
+const SCREEN_CONTEXT_PULSE_MS = 800;
 
 /** Organic center-weighted waveform with attack/release envelope + ring buffer. */
 function useWaveform(
@@ -188,6 +198,11 @@ const RecordingOverlay: React.FC = () => {
   const [state, setState] = useState<OverlayState>("recording");
   const [style, setStyle] = useState<OverlayStyle>("compact");
   const [partialText, setPartialText] = useState("");
+  const [screenContextEnabled, setScreenContextEnabled] = useState(true);
+  const [screenContextStatus, setScreenContextStatus] =
+    useState<ContextCaptureStatus | null>(null);
+  const [screenContextPulseVisible, setScreenContextPulseVisible] =
+    useState(false);
   const direction = getLanguageDirection(i18n.language);
 
   const isCompact = style === "compact";
@@ -203,9 +218,39 @@ const RecordingOverlay: React.FC = () => {
     state,
     state === "recording",
   );
+  const screenContextPulseTimeoutRef = useRef<number | null>(null);
+
+  const clearScreenContextPulse = useCallback(() => {
+    if (screenContextPulseTimeoutRef.current !== null) {
+      window.clearTimeout(screenContextPulseTimeoutRef.current);
+      screenContextPulseTimeoutRef.current = null;
+    }
+    setScreenContextPulseVisible(false);
+  }, []);
+
+  const pulseScreenContextCapture = useCallback(() => {
+    clearScreenContextPulse();
+    setScreenContextPulseVisible(true);
+    screenContextPulseTimeoutRef.current = window.setTimeout(() => {
+      setScreenContextPulseVisible(false);
+      screenContextPulseTimeoutRef.current = null;
+    }, SCREEN_CONTEXT_PULSE_MS);
+  }, [clearScreenContextPulse]);
 
   useEffect(() => {
     const setup = async () => {
+      const settingsResult = await commands.getAppSettings();
+      if (settingsResult.status === "ok") {
+        setScreenContextEnabled(
+          settingsResult.data.screen_context_enabled ?? true,
+        );
+      }
+
+      const diagnosticsResult = await commands.getScreenContextDiagnostics();
+      if (diagnosticsResult.status === "ok") {
+        setScreenContextStatus(diagnosticsResult.data.status);
+      }
+
       const unShow = await listen<ShowOverlayPayload>(
         "show-overlay",
         async (event) => {
@@ -220,6 +265,7 @@ const RecordingOverlay: React.FC = () => {
       const unHide = await listen("hide-overlay", () => {
         setIsVisible(false);
         setPartialText("");
+        clearScreenContextPulse();
       });
 
       const unLevel = await listen<number[]>("mic-level", (event) => {
@@ -233,16 +279,75 @@ const RecordingOverlay: React.FC = () => {
         },
       );
 
+      const unSettingsChanged = await listen<SettingsChangedPayload>(
+        "settings-changed",
+        (event) => {
+          if (event.payload.setting !== "screen_context_enabled") {
+            return;
+          }
+          const nextEnabled = event.payload.value !== false;
+          setScreenContextEnabled(nextEnabled);
+          if (!nextEnabled) {
+            setScreenContextStatus("disabled");
+            clearScreenContextPulse();
+          }
+        },
+      );
+
+      const unScreenContextStatus = await listen<ContextCaptureStatus>(
+        "screen-context-status",
+        (event) => {
+          const nextStatus = event.payload;
+          setScreenContextStatus(nextStatus);
+          if (nextStatus === "disabled" || nextStatus === "excluded_app") {
+            clearScreenContextPulse();
+          }
+        },
+      );
+
+      const unScreenContextCapture = await listen<ScreenContextCapturePayload>(
+        "screen-context-capture",
+        () => {
+          if (
+            !screenContextEnabled ||
+            screenContextStatus === "disabled" ||
+            screenContextStatus === "excluded_app"
+          ) {
+            return;
+          }
+          pulseScreenContextCapture();
+        },
+      );
+
       return () => {
         unShow();
         unHide();
         unLevel();
         unPartial();
+        unSettingsChanged();
+        unScreenContextStatus();
+        unScreenContextCapture();
       };
     };
 
-    setup();
-  }, [writeLevels]);
+    const teardownPromise = setup();
+    return () => {
+      void teardownPromise.then((teardown) => teardown());
+      clearScreenContextPulse();
+    };
+  }, [
+    clearScreenContextPulse,
+    pulseScreenContextCapture,
+    screenContextEnabled,
+    screenContextStatus,
+    writeLevels,
+  ]);
+
+  const showScreenContextPulse =
+    screenContextEnabled &&
+    screenContextPulseVisible &&
+    screenContextStatus !== "disabled" &&
+    screenContextStatus !== "excluded_app";
 
   return (
     <AnimatePresence>
@@ -278,18 +383,26 @@ const RecordingOverlay: React.FC = () => {
                       className="waveform-canvas"
                       aria-hidden
                     />
-                    {partialText.trim().length > 0 && (
-                      <div className="partial-text" title={partialText}>
-                        {partialText}
-                      </div>
-                    )}
+                    <div className="overlay-meta-row">
+                      {partialText.trim().length > 0 ? (
+                        <div className="partial-text" title={partialText}>
+                          {partialText}
+                        </div>
+                      ) : (
+                        <div className="overlay-meta-spacer" />
+                      )}
+                      <ScreenContextPulse visible={showScreenContextPulse} />
+                    </div>
                   </div>
                 ) : (
-                  <div className="status-text">
-                    <span className="status-dot" />
-                    {state === "transcribing"
-                      ? t("overlay.transcribing")
-                      : t("overlay.processing")}
+                  <div className="overlay-meta-row">
+                    <div className="status-text">
+                      <span className="status-dot" />
+                      {state === "transcribing"
+                        ? t("overlay.transcribing")
+                        : t("overlay.processing")}
+                    </div>
+                    <ScreenContextPulse visible={showScreenContextPulse} />
                   </div>
                 )}
               </div>
@@ -320,6 +433,14 @@ const CompactBody: React.FC<{
     return <canvas ref={canvasRef} className="waveform-canvas" aria-hidden />;
   }
   return <span className="status-dot" />;
+};
+
+const ScreenContextPulse: React.FC<{ visible: boolean }> = ({ visible }) => {
+  if (!visible) {
+    return null;
+  }
+
+  return <span className="screen-context-pulse" aria-hidden />;
 };
 
 /* ── Inline SVG icons (no external deps in the overlay bundle) ── */

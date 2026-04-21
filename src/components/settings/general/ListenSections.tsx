@@ -43,6 +43,9 @@ import {
   CompactMetaRow,
   type CompactBadgeItem,
 } from "@/components/ui/CompactOverflow";
+import HubModelCard, {
+  type HubTrailing,
+} from "@/components/model-hub/HubModelCard";
 import { Trans, useTranslation } from "react-i18next";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
@@ -2036,6 +2039,7 @@ const SpeechModelLibraryCard: React.FC<{
           label: "Active",
           variant: "primary",
           icon: <Check className="h-3.5 w-3.5" />,
+          detail: "Currently the active TTS voice.",
         }
       : null,
     !active && selected
@@ -2043,110 +2047,71 @@ const SpeechModelLibraryCard: React.FC<{
           id: "selected",
           label: "Selected",
           variant: "primary",
+          detail: "Chosen in settings — click card to activate.",
         }
       : null,
     {
       id: `provider-${provider?.id ?? model.provider_id}`,
       label: provider?.label ?? "Provider",
       variant: "secondary",
+      detail: "Provider that ships / runs this voice.",
     },
     {
       id: `source-${model.source_kind}`,
       label: sourceKindLabel(model.source_kind),
       variant: "secondary",
+      detail:
+        model.source_kind === "runtime"
+          ? "Runs through a downloaded runtime pack."
+          : "Built into the operating system.",
     },
     model.installed
       ? {
           id: "downloaded",
           label: "Downloaded",
           variant: "secondary",
+          detail: "Voice pack is installed locally.",
         }
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
+
   const detailItems = [
     ...getModelLanguageItems(model),
     provider?.runtime.label ?? model.runtime.label,
+    ...capabilityTags,
   ];
-  const capabilityBadgeItems: CompactBadgeItem[] = capabilityTags.map(
-    (tag) => ({
-      id: tag,
-      label: tag,
-      variant: "secondary",
-      icon:
-        tag === "Voice cloning" ? (
-          <Sparkles className="h-3.5 w-3.5" />
-        ) : undefined,
-    }),
-  );
+
   const clickable = !active && speech.ttsEnabled && !speech.loadingPlatform;
-  const cardStateClassName = active
-    ? "border-[var(--accent)] shadow-[var(--shadow-md)]"
-    : selected
-      ? "border-logo-primary/40 bg-logo-primary/5 shadow-[var(--shadow-sm)]"
-      : clickable
-        ? "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
-        : "";
+
+  let trailing: HubTrailing = null;
+  if (!active && model.downloadable && !model.installed) {
+    trailing = {
+      kind: "acquire",
+      onClick: () => void speech.activateModel(model.provider_id, model.id),
+      disabled: !speech.ttsEnabled || speech.loadingPlatform,
+      label: `Download ${model.label}`,
+    };
+  }
 
   return (
-    <div className={`${speechLibraryCardClassName} ${cardStateClassName}`}>
-      <div className="flex h-full flex-col gap-3">
-        <div className="min-w-0 space-y-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <ProviderIcon providerId={model.provider_id} size="sm" />
-            <h3
-              className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text)]"
-              title={model.label}
-            >
-              {model.label}
-            </h3>
-            <CompactBadgeRow
-              items={headerBadges}
-              maxVisible={2}
-              overflowLabel={`${model.label} badges`}
-            />
-          </div>
-
-          <p
-            className="truncate text-sm text-[var(--muted)]"
-            title={model.description}
-          >
-            {model.description}
-          </p>
-
-          <CompactMetaRow
-            items={detailItems}
-            maxVisible={4}
-            icon={<Globe className="h-4 w-4" />}
-            overflowLabel={`${model.label} details`}
-          />
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-          <CompactBadgeRow
-            items={capabilityBadgeItems}
-            maxVisible={2}
-            overflowLabel={`${model.label} capabilities`}
-          />
-          {!active ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                void speech.activateModel(model.provider_id, model.id)
-              }
-              disabled={!speech.ttsEnabled || speech.loadingPlatform}
-            >
-              {selected
-                ? "Selected"
-                : model.downloadable && !model.installed
-                  ? "Download & Use"
-                  : "Set Active"}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </div>
+    <HubModelCard
+      title={model.label}
+      providerId={model.provider_id}
+      headerBadges={headerBadges}
+      description={model.description}
+      footerMetaItems={detailItems}
+      footerMetaMaxVisible={4}
+      footerMetaIcon={<Globe className="h-3.5 w-3.5" />}
+      footerOverflowLabel={`${model.label} details`}
+      trailing={trailing}
+      onClick={
+        clickable
+          ? () => void speech.activateModel(model.provider_id, model.id)
+          : undefined
+      }
+      disabled={!speech.ttsEnabled || speech.loadingPlatform}
+      active={active}
+    />
   );
 };
 
@@ -2156,21 +2121,25 @@ const SpeechModelList: React.FC<{
   models: CatalogModelDescriptor[];
   speech: ListenSpeechState;
   emptyMessage: string;
-}> = ({ title, count, models, speech, emptyMessage }) => (
+  /** When false, omits the section title and count badge (e.g. downloaded list in model hub). */
+  showHeader?: boolean;
+}> = ({ title, count, models, speech, emptyMessage, showHeader = true }) => (
   <div className="space-y-3">
-    <div className="flex items-center gap-2">
-      <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
-        {title}
-      </h3>
-      <Badge
-        variant="secondary"
-        className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
-      >
-        {count}
-      </Badge>
-    </div>
+    {showHeader ? (
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+          {title}
+        </h3>
+        <Badge
+          variant="secondary"
+          className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
+        >
+          {count}
+        </Badge>
+      </div>
+    ) : null}
     {models.length > 0 ? (
-      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="flex flex-col gap-3">
         {models.map((model) => (
           <SpeechModelLibraryCard
             key={model.id}
@@ -2286,12 +2255,15 @@ const EngineLibraryPanel: React.FC<{
   showActiveModelBanner?: boolean;
   /** Optional text filter from model hub search (applied with provider/language filters). */
   hubSearchQuery?: string;
+  /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
+  hubFilterLabels?: boolean;
 }> = ({
   speech,
   showTitle = true,
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery = "",
+  hubFilterLabels = false,
 }) => {
   const { t } = useTranslation();
   const [providerFilter, setProviderFilter] = useState("all");
@@ -2303,13 +2275,16 @@ const EngineLibraryPanel: React.FC<{
   const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const providerOptions = useMemo(
     () => [
-      { value: "all", label: "All providers" },
+      {
+        value: "all",
+        label: hubFilterLabels ? "Provider" : "All providers",
+      },
       ...speech.visibleProviders.map((provider) => ({
         value: provider.id,
         label: provider.label,
       })),
     ],
-    [speech.visibleProviders],
+    [hubFilterLabels, speech.visibleProviders],
   );
   const filteredLanguages = useMemo(
     () =>
@@ -2322,10 +2297,10 @@ const EngineLibraryPanel: React.FC<{
   );
   const selectedLanguageLabel = useMemo(() => {
     if (languageFilter === "all") {
-      return "All Languages";
+      return hubFilterLabels ? "Language" : "All Languages";
     }
     return LANGUAGES.find((lang) => lang.value === languageFilter)?.label ?? "";
-  }, [languageFilter]);
+  }, [hubFilterLabels, languageFilter]);
   const hasActiveLanguageFilter = languageFilter !== "all";
   const filteredModels = useMemo(
     () =>
@@ -2369,10 +2344,18 @@ const EngineLibraryPanel: React.FC<{
       speech.visibleProviders,
     ],
   );
-  const downloadedModels = useMemo(
-    () => filteredModels.filter((model) => model.installed),
-    [filteredModels],
-  );
+  const downloadedModels = useMemo(() => {
+    const list = filteredModels.filter((model) => model.installed);
+    const ap = speech.activePreset;
+    if (!ap) return list;
+    const idx = list.findIndex(
+      (m) => m.provider_id === ap.provider_id && m.id === ap.model_id,
+    );
+    if (idx <= 0) return list;
+    const next = [...list];
+    const [activeRow] = next.splice(idx, 1);
+    return [activeRow, ...next];
+  }, [filteredModels, speech.activePreset]);
   const availableModels = useMemo(
     () => filteredModels.filter((model) => !model.installed),
     [filteredModels],
@@ -2403,11 +2386,11 @@ const EngineLibraryPanel: React.FC<{
 
   const filterAction = (
     <div className="flex items-center gap-2">
-      <div className="relative inline-flex">
+      <div className="relative inline-flex w-36">
         <select
           value={providerFilter}
           onChange={(event) => setProviderFilter(event.target.value)}
-          className="min-h-11 appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-2 pe-10 ps-4 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          className="min-h-9 w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-1.5 pe-9 ps-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
         >
           {providerOptions.map((provider) => (
             <option key={provider.value} value={provider.value}>
@@ -2415,13 +2398,13 @@ const EngineLibraryPanel: React.FC<{
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
       </div>
       <div className="relative" ref={languageDropdownRef}>
         <button
           type="button"
           onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 text-sm font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+          className={`flex min-h-9 w-36 items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
             hasActiveLanguageFilter
               ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
               : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
@@ -2429,12 +2412,12 @@ const EngineLibraryPanel: React.FC<{
           aria-haspopup="listbox"
           aria-expanded={languageDropdownOpen}
         >
-          <Globe className="h-3.5 w-3.5" />
-          <span className="max-w-[140px] truncate">
+          <Globe className="h-3 w-3" />
+          <span className="min-w-0 flex-1 truncate text-left">
             {selectedLanguageLabel}
           </span>
           <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${
+            className={`h-3 w-3 transition-transform ${
               languageDropdownOpen ? "rotate-180" : ""
             }`}
           />
@@ -2476,7 +2459,9 @@ const EngineLibraryPanel: React.FC<{
                     : "hover:bg-mid-gray/10"
                 }`}
               >
-                {t("listen.engineLibrary.allLanguages")}
+                {hubFilterLabels
+                  ? "Language"
+                  : t("listen.engineLibrary.allLanguages")}
               </button>
               {filteredLanguages.map((language) => (
                 <button
@@ -2553,6 +2538,7 @@ const EngineLibraryPanel: React.FC<{
           count={downloadedModels.length}
           models={downloadedModels}
           speech={speech}
+          showHeader={false}
           emptyMessage={
             providerFilter !== "all" || languageFilter !== "all"
               ? "No downloaded speech models match the current filters."
@@ -3206,11 +3192,13 @@ export const EngineLibrarySection: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
+  hubFilterLabels?: boolean;
 }> = ({
   showGroupTitle = true,
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery,
+  hubFilterLabels,
 }) => {
   const speech = useListenSpeechState();
   return (
@@ -3220,6 +3208,7 @@ export const EngineLibrarySection: React.FC<{
       titleActionTargetId={titleActionTargetId}
       showActiveModelBanner={showActiveModelBanner}
       hubSearchQuery={hubSearchQuery}
+      hubFilterLabels={hubFilterLabels}
     />
   );
 };

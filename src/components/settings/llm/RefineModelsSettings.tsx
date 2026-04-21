@@ -5,16 +5,31 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
-import { Cpu, Download, RefreshCcw, Search, Sparkles } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Cpu,
+  Download,
+  Globe,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import Badge from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import HubModelCard, {
+  type HubTrailing,
+} from "@/components/model-hub/HubModelCard";
+import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
+import { LANGUAGES } from "@/lib/constants/languages";
+import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
 
 type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face";
@@ -80,20 +95,29 @@ const formatBytes = (bytes: number): string => {
 };
 
 type RefineModelsSettingsProps = {
+  titleActionTargetId?: string;
   /** When both are set, search is controlled by the parent (e.g. model hub) and the inline search card is hidden. */
   hubSearchQuery?: string;
   onHubSearchQueryChange?: (value: string) => void;
+  /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
+  hubFilterLabels?: boolean;
 };
 
 const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
+  titleActionTargetId,
   hubSearchQuery,
   onHubSearchQueryChange,
+  hubFilterLabels = false,
 }) => {
   const { t } = useTranslation();
   const { refreshSettings } = useSettings();
   const [catalog, setCatalog] = useState<RefineModelCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [languageFilter, setLanguageFilter] = useState("all");
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState("");
   const [localQuery, setLocalQuery] = useState("");
   const useHubSearch =
     hubSearchQuery !== undefined && onHubSearchQueryChange !== undefined;
@@ -101,6 +125,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const setQuery: (value: string) => void = useHubSearch
     ? (value) => onHubSearchQueryChange?.(value)
     : setLocalQuery;
+  const portalTarget = usePortalTarget(titleActionTargetId);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const [busyModelIds, setBusyModelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<
     Record<string, RefineDownloadProgress>
@@ -220,8 +247,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       .catch(() => {});
   }, []);
 
-  const loadCatalog = async () => {
-    setIsLoading(true);
+  const loadCatalog = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const nextCatalog = await invoke<RefineModelCatalog>(
@@ -233,32 +263,153 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         err instanceof Error ? err.message : "Failed to load refine models.";
       setError(message);
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadCatalog();
+  }, [loadCatalog]);
+
+  /** Keep provider “ready” state fresh without a manual refresh control. */
+  useEffect(() => {
+    const lastFetchRef = { at: 0 };
+    const throttleMs = 4000;
+    const runSilent = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastFetchRef.at < throttleMs) return;
+      lastFetchRef.at = now;
+      void loadCatalog({ silent: true });
+    };
+    document.addEventListener("visibilitychange", runSilent);
+    window.addEventListener("focus", runSilent);
+    const intervalId = window.setInterval(runSilent, 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", runSilent);
+      window.removeEventListener("focus", runSilent);
+      window.clearInterval(intervalId);
+    };
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        languageDropdownRef.current &&
+        !languageDropdownRef.current.contains(event.target as Node)
+      ) {
+        setLanguageDropdownOpen(false);
+        setLanguageSearch("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (languageDropdownOpen && languageSearchInputRef.current) {
+      languageSearchInputRef.current.focus();
+    }
+  }, [languageDropdownOpen]);
+
+  const filteredLanguages = useMemo(
+    () =>
+      LANGUAGES.filter(
+        (language) =>
+          language.value !== "auto" &&
+          language.label.toLowerCase().includes(languageSearch.toLowerCase()),
+      ),
+    [languageSearch],
+  );
+
+  const allRefineLanguageLabels = useMemo(
+    () =>
+      LANGUAGES.filter((language) => language.value !== "auto").map(
+        (language) => `${language.value} ${language.label}`,
+      ),
+    [],
+  );
+
+  const refineProviderOptions = useMemo(() => {
+    const idle = hubFilterLabels ? "Provider" : "All providers";
+    return [
+      { value: "all", label: idle },
+      ...(catalog?.providers ?? []).map((provider) => ({
+        value: provider.id,
+        label: provider.label,
+      })),
+    ];
+  }, [catalog?.providers, hubFilterLabels]);
+
+  const idleLanguageLabel = hubFilterLabels ? "Language" : "All languages";
+  const selectedLanguageLabel = useMemo(() => {
+    if (languageFilter === "all") {
+      return idleLanguageLabel;
+    }
+    return (
+      LANGUAGES.find((language) => language.value === languageFilter)?.label ??
+      idleLanguageLabel
+    );
+  }, [idleLanguageLabel, languageFilter]);
+  const hasActiveLanguageFilter = languageFilter !== "all";
+
+  const getProviderFilterId = useCallback((model: RefineModelDescriptor) => {
+    if (model.source_kind === "hugging_face") {
+      return "huggingface";
+    }
+    return model.runtime_provider_id;
   }, []);
 
   const filteredModels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     const models = catalog?.models ?? [];
-    if (!normalized) return models;
     return models.filter((model) => {
+      if (
+        providerFilter !== "all" &&
+        getProviderFilterId(model) !== providerFilter
+      ) {
+        return false;
+      }
+
+      if (languageFilter !== "all") {
+        // Refine models in the hub are general post-processing models, so we
+        // treat them as multilingual rather than hiding the language control.
+      }
+
+      if (!normalized) {
+        return true;
+      }
+
+      const providerLabel =
+        refineProviderOptions.find(
+          (provider) => provider.value === getProviderFilterId(model),
+        )?.label ?? "";
       const haystack = [
         model.title,
         model.description,
         model.source_label,
+        providerLabel,
         model.runtime_label,
         model.runtime_model_id,
         model.source_repo_id ?? "",
+        ...allRefineLanguageLabels,
       ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [catalog?.models, query]);
+  }, [
+    allRefineLanguageLabels,
+    catalog?.models,
+    getProviderFilterId,
+    languageFilter,
+    providerFilter,
+    query,
+    refineProviderOptions,
+  ]);
 
   const activeModels = filteredModels.filter((model) => model.active);
   const readyModels = filteredModels.filter(
@@ -290,7 +441,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         modelId: model.runtime_model_id,
       });
       await refreshSettings();
-      await loadCatalog();
+      await loadCatalog({ silent: true });
       toast.success(
         t("settings.refineModels.toast.activated", { title: model.title }),
       );
@@ -322,7 +473,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         sourceFileName: model.source_file_name ?? null,
       });
       await refreshSettings();
-      await loadCatalog();
+      await loadCatalog({ silent: true });
       toast.success(
         t("settings.refineModels.toast.installed", { title: model.title }),
       );
@@ -360,7 +511,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         sourceFileName: customFileName.trim() || null,
       });
       await refreshSettings();
-      await loadCatalog();
+      await loadCatalog({ silent: true });
       setCustomFileName("");
       setCustomModelId(modelId);
       toast.success(
@@ -377,7 +528,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }
   };
 
-  const renderAction = (model: RefineModelDescriptor) => {
+  const getTrailing = (model: RefineModelDescriptor): HubTrailing => {
     const isBusy = busyModelIds.has(model.runtime_model_id);
     const progress = progressMap[model.runtime_model_id];
     const needsOllamaInstall =
@@ -387,77 +538,256 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       model.runtime_provider_id === "ollama" &&
       ollamaProvider?.installed !== false &&
       ollamaProvider?.running === false;
-    if (model.active) {
-      return (
-        <Button
-          size="sm"
-          variant="primary-soft"
-          disabled
-          className="disabled:cursor-default"
-        >
-          {t("settings.refineModels.actions.active")}
-        </Button>
-      );
-    }
 
-    if (model.installed && model.runnable) {
-      return (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => void handleUse(model)}
-          disabled={isBusy}
-          className="disabled:cursor-default"
-        >
-          {isBusy
-            ? t("settings.refineModels.actions.switching")
-            : t("settings.refineModels.actions.use")}
-        </Button>
-      );
-    }
+    if (model.active) return null;
+    if (model.installed && model.runnable) return null;
 
     if (model.downloadable) {
-      let busyLabel = t("settings.refineModels.actions.preparing");
-      if (progress) {
-        if (progress.stage === "downloading") {
-          const pct = Math.round(progress.percentage ?? 0);
-          busyLabel = t("settings.refineModels.actions.downloading", {
-            percent: pct,
-          });
-        } else if (progress.stage === "importing") {
-          busyLabel = t("settings.refineModels.actions.importing");
-        }
+      let label: string;
+      if (isBusy && progress?.stage === "downloading") {
+        label = t("settings.refineModels.actions.downloading", {
+          percent: Math.round(progress.percentage ?? 0),
+        });
+      } else if (isBusy && progress?.stage === "importing") {
+        label = t("settings.refineModels.actions.importing");
+      } else if (needsOllamaInstall) {
+        label = t("settings.refineModels.actions.installOllama");
+      } else if (needsOllamaStart) {
+        label = t("settings.refineModels.actions.startOllama");
+      } else {
+        label = t("settings.refineModels.actions.downloadAndUse");
       }
+      return {
+        kind: "acquire",
+        onClick: () => void handleInstall(model),
+        disabled: isBusy,
+        busy: isBusy,
+        label,
+      };
+    }
+
+    return {
+      kind: "acquire",
+      onClick: undefined,
+      disabled: true,
+      label: t("settings.refineModels.actions.unavailable"),
+    };
+  };
+
+  const handleCardClick = (model: RefineModelDescriptor) => {
+    if (busyModelIds.has(model.runtime_model_id)) return;
+    if (model.active) return;
+    if (model.installed && model.runnable) {
+      void handleUse(model);
+      return;
+    }
+    if (model.downloadable) {
+      void handleInstall(model);
+    }
+  };
+
+  const buildHeaderBadges = (
+    model: RefineModelDescriptor,
+  ): CompactBadgeItem[] => {
+    const items: CompactBadgeItem[] = [];
+    if (model.active) {
+      items.push({
+        id: "active",
+        label: t("settings.refineModels.badges.active"),
+        variant: "primary",
+        icon: <Check className="h-3 w-3" />,
+        detail: "Currently used to refine dictated text.",
+      });
+    } else if (model.installed) {
+      items.push({
+        id: "ready",
+        label: t("settings.refineModels.badges.ready"),
+        variant: "success",
+        detail: "Installed locally — click card to use.",
+      });
+    } else {
+      items.push({
+        id: "needs-download",
+        label: t("settings.refineModels.badges.needsDownload"),
+        variant: "secondary",
+        detail: "Click the download icon to fetch this model.",
+      });
+    }
+    items.push({
+      id: `source-${model.source_kind}`,
+      label: model.source_label,
+      variant: "secondary",
+      detail: "Where this model comes from.",
+    });
+    items.push({
+      id: `runtime-${model.runtime_provider_id}`,
+      label: model.runtime_label,
+      variant: "secondary",
+      detail: "Runtime that executes this model.",
+    });
+    return items;
+  };
+
+  const buildMetaItems = (model: RefineModelDescriptor): string[] => {
+    const items: string[] = [];
+    items.push(model.runtime_label);
+    if (model.runtime_model_id && model.runtime_model_id !== model.title) {
+      items.push(model.runtime_model_id);
+    }
+    if (model.source_repo_id) {
+      items.push(model.source_repo_id);
+    }
+    return items;
+  };
+
+  const renderProgressExtra = (
+    model: RefineModelDescriptor,
+  ): React.ReactNode => {
+    const progress = progressMap[model.runtime_model_id];
+    if (!progress) return null;
+
+    if (progress.stage === "downloading") {
       return (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => void handleInstall(model)}
-          disabled={isBusy}
-          className="disabled:cursor-default"
-        >
-          {isBusy
-            ? busyLabel
-            : needsOllamaInstall
-              ? t("settings.refineModels.actions.installOllama")
-              : needsOllamaStart
-                ? t("settings.refineModels.actions.startOllama")
-                : t("settings.refineModels.actions.downloadAndUse")}
-        </Button>
+        <div>
+          <div className="flex items-center gap-2">
+            <progress
+              value={progress.percentage ?? 0}
+              max={100}
+              className="h-1.5 flex-1 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-mid-gray/20 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-logo-primary"
+            />
+            <span className="min-w-fit text-xs tabular-nums text-[var(--muted)]">
+              {Math.round(progress.percentage ?? 0)}%
+            </span>
+          </div>
+          <p className="mt-1 text-xs tabular-nums text-[var(--muted)]">
+            {formatBytes(progress.downloaded ?? 0)}
+            {(progress.total ?? 0) > 0 &&
+              ` / ${formatBytes(progress.total ?? 0)}`}
+            {(speedMapRef.current[model.runtime_model_id]?.speed ?? 0) > 0 &&
+              ` \u2022 ${speedMapRef.current[model.runtime_model_id].speed.toFixed(1)} MB/s`}
+          </p>
+        </div>
       );
     }
 
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled
-        className="disabled:cursor-default"
-      >
-        {t("settings.refineModels.actions.unavailable")}
-      </Button>
-    );
+    if (progress.stage === "importing") {
+      return (
+        <p className="text-xs font-medium text-[var(--accent)]">
+          {t("settings.refineModels.actions.installingIntoOllama")}
+        </p>
+      );
+    }
+
+    return null;
   };
+
+  const filterAction = (
+    <div className="flex items-center gap-2">
+      <div className="relative inline-flex w-36">
+        <select
+          value={providerFilter}
+          onChange={(event) => setProviderFilter(event.target.value)}
+          className="min-h-9 w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-1.5 pe-9 ps-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+        >
+          {refineProviderOptions.map((provider) => (
+            <option key={provider.value} value={provider.value}>
+              {provider.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+      </div>
+
+      <div className="relative" ref={languageDropdownRef}>
+        <button
+          type="button"
+          onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
+          className={`flex min-h-9 w-36 items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+            hasActiveLanguageFilter
+              ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
+              : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
+          }`}
+          aria-haspopup="listbox"
+          aria-expanded={languageDropdownOpen}
+        >
+          <Globe className="h-3 w-3" />
+          <span className="min-w-0 flex-1 truncate text-left">
+            {selectedLanguageLabel}
+          </span>
+          <ChevronDown
+            className={`h-3 w-3 transition-transform ${
+              languageDropdownOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {languageDropdownOpen && (
+          <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
+            <div className="border-b border-mid-gray/40 p-2">
+              <input
+                ref={languageSearchInputRef}
+                type="text"
+                value={languageSearch}
+                onChange={(event) => setLanguageSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && filteredLanguages.length > 0) {
+                    setLanguageFilter(filteredLanguages[0].value);
+                    setLanguageDropdownOpen(false);
+                    setLanguageSearch("");
+                  } else if (event.key === "Escape") {
+                    setLanguageDropdownOpen(false);
+                    setLanguageSearch("");
+                  }
+                }}
+                placeholder={t("settings.general.language.searchPlaceholder")}
+                className="w-full rounded-md border border-mid-gray/40 bg-mid-gray/10 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-logo-primary"
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setLanguageFilter("all");
+                  setLanguageDropdownOpen(false);
+                  setLanguageSearch("");
+                }}
+                className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
+                  languageFilter === "all"
+                    ? "bg-logo-primary font-semibold text-[var(--inverse-text)]"
+                    : "hover:bg-mid-gray/10"
+                }`}
+              >
+                {idleLanguageLabel}
+              </button>
+              {filteredLanguages.map((language) => (
+                <button
+                  key={language.value}
+                  type="button"
+                  onClick={() => {
+                    setLanguageFilter(language.value);
+                    setLanguageDropdownOpen(false);
+                    setLanguageSearch("");
+                  }}
+                  className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
+                    languageFilter === language.value
+                      ? "bg-logo-primary font-semibold text-[var(--inverse-text)]"
+                      : "hover:bg-mid-gray/10"
+                  }`}
+                >
+                  {language.label}
+                </button>
+              ))}
+              {filteredLanguages.length === 0 ? (
+                <div className="px-3 py-2 text-center text-sm text-[var(--muted)]">
+                  {t("settings.general.language.noResults")}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   const renderSection = (
     title: string,
@@ -465,127 +795,65 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     models: RefineModelDescriptor[],
     emptyTitle: string,
     emptyDescription: string,
+    hideIntro = false,
   ) => (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 px-5">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
-          {title}
-        </h2>
-        <Badge
-          variant="secondary"
-          className="bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]"
-        >
-          {models.length}
-        </Badge>
-      </div>
-      <p className="px-5 text-sm leading-6 text-[var(--muted)]">
-        {description}
-      </p>
+      {!hideIntro ? (
+        <>
+          <div className="flex items-center gap-2 px-5">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+              {title}
+            </h2>
+            <Badge
+              variant="secondary"
+              className="bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]"
+            >
+              {models.length}
+            </Badge>
+          </div>
+          {description.trim().length > 0 ? (
+            <p className="px-5 text-sm leading-6 text-[var(--muted)]">
+              {description}
+            </p>
+          ) : null}
+        </>
+      ) : null}
       {models.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
           <p className="font-semibold text-[var(--text)]">{emptyTitle}</p>
           <p className="mt-1 leading-6">{emptyDescription}</p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {models.map((model) => (
-            <article
-              key={model.id}
-              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ProviderIcon
-                      providerId={model.runtime_provider_id}
-                      size="sm"
-                    />
-                    <h3 className="min-w-0 truncate text-base font-semibold leading-6 text-[var(--text)]">
-                      {model.title}
-                    </h3>
-                  </div>
-                  {model.runtime_model_id !== model.title && (
-                    <p className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
-                      {model.runtime_model_id}
-                    </p>
-                  )}
-                </div>
-                {renderAction(model)}
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                {model.description}
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Badge variant="secondary">{model.source_label}</Badge>
-                <Badge variant="secondary">{model.runtime_label}</Badge>
-                {model.installed ? (
-                  <Badge variant={model.active ? "primary" : "success"}>
-                    {model.active
-                      ? t("settings.refineModels.badges.active")
-                      : t("settings.refineModels.badges.ready")}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">
-                    {t("settings.refineModels.badges.needsDownload")}
-                  </Badge>
-                )}
-              </div>
-
-              {progressMap[model.runtime_model_id]?.stage === "downloading" && (
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <progress
-                      value={
-                        progressMap[model.runtime_model_id].percentage ?? 0
-                      }
-                      max={100}
-                      className="h-1.5 flex-1 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-mid-gray/20 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-logo-primary"
-                    />
-                    <span className="min-w-fit text-xs tabular-nums text-[var(--muted)]">
-                      {Math.round(
-                        progressMap[model.runtime_model_id].percentage ?? 0,
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs tabular-nums text-[var(--muted)]">
-                    {formatBytes(
-                      progressMap[model.runtime_model_id].downloaded ?? 0,
-                    )}
-                    {(progressMap[model.runtime_model_id].total ?? 0) > 0 &&
-                      ` / ${formatBytes(progressMap[model.runtime_model_id].total ?? 0)}`}
-                    {(speedMapRef.current[model.runtime_model_id]?.speed ?? 0) >
-                      0 &&
-                      ` \u2022 ${speedMapRef.current[model.runtime_model_id].speed.toFixed(1)} MB/s`}
-                  </p>
-                </div>
-              )}
-
-              {progressMap[model.runtime_model_id]?.stage === "importing" && (
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-[var(--accent)]">
-                    {t("settings.refineModels.actions.installingIntoOllama")}
-                  </p>
-                </div>
-              )}
-
-              {model.note && (
-                <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                  {model.note}
-                </p>
-              )}
-
-              {model.source_repo_id && (
-                <p className="mt-2 break-all text-xs leading-5 text-[var(--muted)]">
-                  {t("settings.refineModels.source", {
-                    repoId: model.source_repo_id,
-                  })}
-                </p>
-              )}
-            </article>
-          ))}
+        <div className="flex flex-col gap-3">
+          {models.map((model) => {
+            const description =
+              model.note && model.note.trim().length > 0
+                ? `${model.description} — ${model.note}`
+                : model.description;
+            const isBusy = busyModelIds.has(model.runtime_model_id);
+            return (
+              <HubModelCard
+                key={model.id}
+                title={model.title}
+                providerId={model.runtime_provider_id}
+                headerBadges={buildHeaderBadges(model)}
+                description={description}
+                footerMetaItems={buildMetaItems(model)}
+                footerMetaIcon={<Cpu className="h-3.5 w-3.5" />}
+                footerMetaMaxVisible={3}
+                footerOverflowLabel={`${model.title} runtime details`}
+                trailing={getTrailing(model)}
+                footerExtra={renderProgressExtra(model)}
+                onClick={
+                  model.active || isBusy
+                    ? undefined
+                    : () => handleCardClick(model)
+                }
+                disabled={isBusy}
+                active={model.active}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -593,51 +861,43 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
   return (
     <div className="space-y-6">
-      <SettingsGroup
-        title={t("settings.refineModels.title")}
-        description={t("settings.refineModels.description")}
-        titleAction={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void loadCatalog()}
-            disabled={isLoading || customBusy || busyModelIds.size > 0}
-          >
-            <RefreshCcw className="mr-1 h-3.5 w-3.5" />
-            {t("settings.refineModels.refresh")}
-          </Button>
-        }
-      >
-        <div className="space-y-5 px-5 py-5">
-          <div className="grid gap-3 md:grid-cols-3">
-            {(catalog?.providers ?? []).map((provider) => (
-              <div
-                key={provider.id}
-                className={`rounded-2xl border px-4 py-4 ${
-                  provider.available
-                    ? "border-[var(--success)]/25 bg-[var(--success-soft)]/40"
-                    : "border-[var(--border)] bg-[var(--panel-bg)]"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ProviderIcon providerId={provider.id} size="sm" />
-                    <p className="truncate text-sm font-semibold text-[var(--text)]">
-                      {provider.label}
-                    </p>
+      {portalTarget ? createPortal(filterAction, portalTarget) : null}
+
+      <SettingsGroup noCard>
+        <div className="space-y-5">
+          {!useHubSearch ? (
+            <div className="grid gap-3 md:grid-cols-3">
+              {(catalog?.providers ?? []).map((provider) => (
+                <div
+                  key={provider.id}
+                  className={`rounded-2xl border px-4 py-4 ${
+                    provider.available
+                      ? "border-[var(--success)]/25 bg-[var(--success-soft)]/40"
+                      : "border-[var(--border)] bg-[var(--panel-bg)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ProviderIcon providerId={provider.id} size="sm" />
+                      <p className="truncate text-sm font-semibold text-[var(--text)]">
+                        {provider.label}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={provider.available ? "success" : "secondary"}
+                    >
+                      {provider.available
+                        ? t("settings.refineModels.badges.ready")
+                        : t("settings.refineModels.badges.needsSetup")}
+                    </Badge>
                   </div>
-                  <Badge variant={provider.available ? "success" : "secondary"}>
-                    {provider.available
-                      ? t("settings.refineModels.badges.ready")
-                      : t("settings.refineModels.badges.needsSetup")}
-                  </Badge>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                    {provider.detail}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  {provider.detail}
-                </p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null}
 
           {!useHubSearch ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
@@ -669,6 +929,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             </div>
           ) : null}
 
+          {!portalTarget ? (
+            <div className="flex justify-end">{filterAction}</div>
+          ) : null}
+
           {isLoading ? (
             <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-8 text-sm text-[var(--muted)]">
               {t("settings.refineModels.loading")}
@@ -681,11 +945,12 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 [...activeModels, ...readyModels],
                 t("settings.refineModels.sections.readyNowEmpty"),
                 t("settings.refineModels.sections.readyNowEmptyDescription"),
+                true,
               )}
 
               {renderSection(
                 t("settings.refineModels.sections.availableToAdd"),
-                t("settings.refineModels.sections.availableToAddDescription"),
+                "",
                 downloadableModels,
                 t("settings.refineModels.sections.availableToAddEmpty"),
                 t(
@@ -697,102 +962,104 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         </div>
       </SettingsGroup>
 
-      <SettingsGroup
-        title={t("settings.refineModels.customImport.title")}
-        description={t("settings.refineModels.customImport.description")}
-      >
-        <div className="space-y-4 px-5 py-5">
-          <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4">
-            <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[var(--text)]">
-                {t("settings.refineModels.customImport.importDescription")}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                {t("settings.refineModels.customImport.importHint")}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                {t("settings.refineModels.customImport.repoLabel")}
-              </label>
-              <Input
-                value={customRepoId}
-                onChange={(event) => {
-                  const nextRepo = event.target.value;
-                  setCustomRepoId(nextRepo);
-                  if (!customModelId.trim()) {
-                    setCustomModelId(defaultModelIdFromRepo(nextRepo));
-                  }
-                }}
-                placeholder={t(
-                  "settings.refineModels.customImport.repoPlaceholder",
-                )}
-                disabled={customBusy}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                {t("settings.refineModels.customImport.modelNameLabel")}
-              </label>
-              <Input
-                value={customModelId}
-                onChange={(event) => setCustomModelId(event.target.value)}
-                placeholder={t(
-                  "settings.refineModels.customImport.modelNamePlaceholder",
-                )}
-                disabled={customBusy}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                {t("settings.refineModels.customImport.fileLabel")}
-              </label>
-              <Input
-                value={customFileName}
-                onChange={(event) => setCustomFileName(event.target.value)}
-                placeholder={t(
-                  "settings.refineModels.customImport.filePlaceholder",
-                )}
-                disabled={customBusy}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Cpu className="h-4 w-4" />
+      {!useHubSearch ? (
+        <SettingsGroup
+          title={t("settings.refineModels.customImport.title")}
+          description={t("settings.refineModels.customImport.description")}
+        >
+          <div className="space-y-4 px-5 py-5">
+            <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4">
+              <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                <Sparkles className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[var(--text)]">
-                  {t("settings.refineModels.customImport.runtimeTarget")}
+                  {t("settings.refineModels.customImport.importDescription")}
                 </p>
-                <p className="text-sm leading-6 text-[var(--muted)]">
-                  {t("settings.refineModels.customImport.runtimeDescription")}
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                  {t("settings.refineModels.customImport.importHint")}
                 </p>
               </div>
             </div>
 
-            <Button
-              onClick={() => void handleCustomImport()}
-              disabled={customBusy}
-            >
-              <Download className="mr-1 h-3.5 w-3.5" />
-              {customBusy
-                ? t("settings.refineModels.customImport.importingCustom")
-                : t("settings.refineModels.customImport.importAndUse")}
-            </Button>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  {t("settings.refineModels.customImport.repoLabel")}
+                </label>
+                <Input
+                  value={customRepoId}
+                  onChange={(event) => {
+                    const nextRepo = event.target.value;
+                    setCustomRepoId(nextRepo);
+                    if (!customModelId.trim()) {
+                      setCustomModelId(defaultModelIdFromRepo(nextRepo));
+                    }
+                  }}
+                  placeholder={t(
+                    "settings.refineModels.customImport.repoPlaceholder",
+                  )}
+                  disabled={customBusy}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  {t("settings.refineModels.customImport.modelNameLabel")}
+                </label>
+                <Input
+                  value={customModelId}
+                  onChange={(event) => setCustomModelId(event.target.value)}
+                  placeholder={t(
+                    "settings.refineModels.customImport.modelNamePlaceholder",
+                  )}
+                  disabled={customBusy}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  {t("settings.refineModels.customImport.fileLabel")}
+                </label>
+                <Input
+                  value={customFileName}
+                  onChange={(event) => setCustomFileName(event.target.value)}
+                  placeholder={t(
+                    "settings.refineModels.customImport.filePlaceholder",
+                  )}
+                  disabled={customBusy}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <Cpu className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text)]">
+                    {t("settings.refineModels.customImport.runtimeTarget")}
+                  </p>
+                  <p className="text-sm leading-6 text-[var(--muted)]">
+                    {t("settings.refineModels.customImport.runtimeDescription")}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => void handleCustomImport()}
+                disabled={customBusy}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" />
+                {customBusy
+                  ? t("settings.refineModels.customImport.importingCustom")
+                  : t("settings.refineModels.customImport.importAndUse")}
+              </Button>
+            </div>
           </div>
-        </div>
-      </SettingsGroup>
+        </SettingsGroup>
+      ) : null}
     </div>
   );
 };

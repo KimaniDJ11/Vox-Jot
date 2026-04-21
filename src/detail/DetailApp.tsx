@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
+import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
 import {
   AppMappingsSection,
   DictateHistorySection,
@@ -76,6 +77,26 @@ function getSectionFromUrl(): string {
 
 const DetailApp: React.FC = () => {
   const [sectionId, setSectionId] = useState(getSectionFromUrl);
+  const { app_theme: appTheme } = useSettingsSlice(["app_theme"] as const);
+  const refreshSettings = useRefreshSettings();
+
+  useEffect(() => {
+    const theme = appTheme ?? "system";
+    if (theme === "system") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }, [appTheme]);
+
+  /** Detail is a separate WebView; re-fetch when focused so theme matches the main window. */
+  useEffect(() => {
+    const onFocus = () => {
+      void refreshSettings();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshSettings]);
 
   useEffect(() => {
     void (async () => {

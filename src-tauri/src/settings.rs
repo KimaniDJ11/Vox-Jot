@@ -680,6 +680,14 @@ pub struct AppSettings {
     pub post_process_enabled: bool,
     #[serde(default = "default_local_privacy_mode")]
     pub local_privacy_mode: bool,
+    #[serde(default = "default_screen_context_enabled")]
+    pub screen_context_enabled: bool,
+    #[serde(default)]
+    pub screen_context_excluded_bundle_ids: Vec<String>,
+    #[serde(default = "default_screen_context_pause_on_idle")]
+    pub screen_context_pause_on_idle: bool,
+    #[serde(default = "default_screen_context_idle_threshold_ms")]
+    pub screen_context_idle_threshold_ms: u32,
     #[serde(default = "default_context_capture_mode")]
     pub context_capture_mode: ContextCaptureMode,
     #[serde(default = "default_screen_context_ocr_quality")]
@@ -947,6 +955,18 @@ fn default_screen_context_token_budget() -> u32 {
 
 fn default_screen_context_stale_threshold_ms() -> u32 {
     2_500
+}
+
+fn default_screen_context_enabled() -> bool {
+    true
+}
+
+fn default_screen_context_pause_on_idle() -> bool {
+    true
+}
+
+fn default_screen_context_idle_threshold_ms() -> u32 {
+    60_000
 }
 
 fn default_post_process_mode() -> PostProcessMode {
@@ -2073,6 +2093,10 @@ pub fn get_default_settings() -> AppSettings {
         auto_submit_key: AutoSubmitKey::default(),
         post_process_enabled: default_post_process_enabled(),
         local_privacy_mode: default_local_privacy_mode(),
+        screen_context_enabled: default_screen_context_enabled(),
+        screen_context_excluded_bundle_ids: Vec::new(),
+        screen_context_pause_on_idle: default_screen_context_pause_on_idle(),
+        screen_context_idle_threshold_ms: default_screen_context_idle_threshold_ms(),
         context_capture_mode: default_context_capture_mode(),
         screen_context_ocr_quality: default_screen_context_ocr_quality(),
         screen_context_ocr_timeout_ms: default_screen_context_ocr_timeout_ms(),

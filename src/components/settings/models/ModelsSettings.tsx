@@ -33,12 +33,15 @@ interface ModelsSettingsProps {
   showActiveModelBanner?: boolean;
   /** Optional text filter from model hub search (applied with language/provider filters). */
   hubSearchQuery?: string;
+  /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
+  hubFilterLabels?: boolean;
 }
 
 export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery = "",
+  hubFilterLabels = false,
 }) => {
   const { t } = useTranslation();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
@@ -110,34 +113,40 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   }, [languageSearch]);
 
   // Get selected language label
+  const idleLanguageFilterLabel = hubFilterLabels
+    ? "Language"
+    : t("settings.models.filters.allLanguages");
+
   const selectedLanguageLabel = useMemo(() => {
     if (languageFilter === "all") {
-      return t("settings.models.filters.allLanguages");
+      return idleLanguageFilterLabel;
     }
     return LANGUAGES.find((lang) => lang.value === languageFilter)?.label || "";
-  }, [languageFilter, t]);
+  }, [languageFilter, idleLanguageFilterLabel]);
   const hasActiveFilter = languageFilter !== "all";
 
   const sttProviderOptions = useMemo(() => {
     const providers = platformOverview?.stt.providers ?? [];
+    const idle = hubFilterLabels ? "Provider" : "All providers";
     return [
-      { value: "all", label: "All providers" },
+      { value: "all", label: idle },
       ...providers.map((provider) => ({
         value: provider.id,
         label: provider.label,
       })),
     ];
-  }, [platformOverview]);
+  }, [hubFilterLabels, platformOverview]);
 
   const selectedProviderLabel = useMemo(() => {
+    const idle = hubFilterLabels ? "Provider" : "All providers";
     if (providerFilter === "all") {
-      return "All providers";
+      return idle;
     }
     return (
       sttProviderOptions.find((provider) => provider.value === providerFilter)
-        ?.label || "All providers"
+        ?.label || idle
     );
-  }, [providerFilter, sttProviderOptions]);
+  }, [hubFilterLabels, providerFilter, sttProviderOptions]);
 
   const sttCatalogById = useMemo(() => {
     return new Map(
@@ -247,13 +256,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       }
       return true;
     });
-  }, [
-    models,
-    languageFilter,
-    providerFilter,
-    sttCatalogById,
-    hubSearchQuery,
-  ]);
+  }, [models, languageFilter, providerFilter, sttCatalogById, hubSearchQuery]);
 
   // Split filtered models into downloaded (including custom) and available sections
   const { downloadedModels, availableModels } = useMemo(() => {
@@ -295,11 +298,11 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
 
   const filterAction = (
     <div className="flex items-center gap-2">
-      <div className="relative inline-flex">
+      <div className="relative inline-flex w-36">
         <select
           value={providerFilter}
           onChange={(event) => setProviderFilter(event.target.value)}
-          className="min-h-11 appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-2 pe-10 ps-4 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          className="min-h-9 w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-1.5 pe-9 ps-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
         >
           {sttProviderOptions.map((provider) => (
             <option key={provider.value} value={provider.value}>
@@ -307,13 +310,13 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
       </div>
       <div className="relative" ref={languageDropdownRef}>
         <button
           type="button"
           onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 text-sm font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+          className={`flex min-h-9 w-36 items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
             hasActiveFilter
               ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
               : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
@@ -321,12 +324,12 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
           aria-haspopup="listbox"
           aria-expanded={languageDropdownOpen}
         >
-          <Globe className="h-3.5 w-3.5" />
-          <span className="max-w-[140px] truncate">
+          <Globe className="h-3 w-3" />
+          <span className="min-w-0 flex-1 truncate text-left">
             {selectedLanguageLabel}
           </span>
           <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${
+            className={`h-3 w-3 transition-transform ${
               languageDropdownOpen ? "rotate-180" : ""
             }`}
           />
@@ -368,7 +371,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                     : "hover:bg-mid-gray/10"
                 }`}
               >
-                {t("settings.models.filters.allLanguages")}
+                {idleLanguageFilterLabel}
               </button>
               {filteredLanguages.map((lang) => (
                 <button
@@ -469,22 +472,11 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
 
       {filteredModels.length > 0 ? (
         <div className="space-y-6">
-          {/* Downloaded Models Section — header always visible so filter stays accessible */}
+          {/* Downloaded Models Section — filters inline when not portaled to model hub */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between px-5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
-                  {t("settings.models.yourModels")}
-                </h2>
-                <Badge
-                  variant="secondary"
-                  className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
-                >
-                  {downloadedModels.length}
-                </Badge>
-              </div>
-              {!portalTarget ? filterAction : <div className="shrink-0" />}
-            </div>
+            {!portalTarget ? (
+              <div className="flex justify-end px-5">{filterAction}</div>
+            ) : null}
             {downloadedModels.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
                 <p className="font-semibold text-[var(--text)]">
@@ -499,7 +491,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="flex flex-col gap-3">
                 {downloadedModels.map((model: ModelInfo) => {
                   const catalog = sttCatalogById.get(model.id);
                   return (
@@ -555,7 +547,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+              <div className="flex flex-col gap-3">
                 {availableModels.map((model: ModelInfo) => {
                   const catalog = sttCatalogById.get(model.id);
                   return (

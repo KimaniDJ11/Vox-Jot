@@ -165,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {showStatusCards && !collapsed && (
             <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
               <SidebarStatsGrid />
-              <SidebarModelLaunchers />
+              <SidebarModelLaunchers variant="stats" />
             </div>
           )}
 

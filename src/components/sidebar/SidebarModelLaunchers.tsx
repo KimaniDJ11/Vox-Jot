@@ -9,13 +9,15 @@ import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
+import {
+  MODEL_HUB_TAB_DEFS,
+  type ModelHubTabId,
+} from "@/components/model-hub/modelHubTabs";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
 export const MODEL_HUB_SECTION_ID = "model-hub";
 
-type HubTab = "stt" | "llm" | "tts";
-
-async function openModelHub(tab: HubTab) {
+async function openModelHub(tab: ModelHubTabId) {
   try {
     localStorage.setItem(MODEL_HUB_TAB_STORAGE_KEY, tab);
   } catch {
@@ -35,6 +37,7 @@ interface LauncherRowProps {
   label: string;
   value: string;
   ariaLabel?: string;
+  variant?: "default" | "stats";
   onClick: () => void;
 }
 
@@ -45,38 +48,77 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
   label,
   value,
   ariaLabel,
+  variant = "default",
   onClick,
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    aria-label={ariaLabel ?? `${label}: ${value}`}
-    title={value}
-    className={`flat-card group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-start transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-  >
-    <span
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-      style={{ backgroundColor: iconBg, color: iconColor }}
-      aria-hidden
-    >
-      {icon}
-    </span>
-    <span className="flex min-w-0 flex-1 flex-col">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-        {label}
-      </span>
-      <span className="truncate text-[13px] font-semibold leading-tight text-[var(--text)]">
-        {value}
-      </span>
-    </span>
-    <ChevronRight
-      className="h-4 w-4 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
-      aria-hidden
-    />
-  </button>
-);
+}) => {
+  const isStatsVariant = variant === "stats";
 
-const SidebarModelLaunchers: React.FC = () => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel ?? `${label}: ${value}`}
+      title={value}
+      className={`flat-card group w-full rounded-2xl px-3 py-2.5 text-start transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] ${interactiveFocusRingClass} ${isStatsVariant ? "flex flex-col gap-2" : `flex items-center gap-3 ${minTapTargetHeightClass}`}`}
+    >
+      {isStatsVariant ? (
+        <>
+          <span className="flex items-center justify-between gap-2">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: iconBg, color: iconColor }}
+              aria-hidden
+            >
+              {icon}
+            </span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                {label}
+              </span>
+              <ChevronRight
+                className="h-4 w-4 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </span>
+          </span>
+          <span className="truncate text-[13px] font-semibold leading-tight text-[var(--text)]">
+            {value}
+          </span>
+        </>
+      ) : (
+        <>
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: iconBg, color: iconColor }}
+            aria-hidden
+          >
+            {icon}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              {label}
+            </span>
+            <span className="truncate text-[13px] font-semibold leading-tight text-[var(--text)]">
+              {value}
+            </span>
+          </span>
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </>
+      )}
+    </button>
+  );
+};
+
+interface SidebarModelLaunchersProps {
+  variant?: "default" | "stats";
+}
+
+const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
+  variant = "default",
+}) => {
   const { t } = useTranslation();
   const { models, currentModel } = useModelStore();
   const { getSetting } = useSettings();
@@ -120,30 +162,38 @@ const SidebarModelLaunchers: React.FC = () => {
     return modelId;
   }, [ttsSettings, t]);
 
+  const hubTabLabel = (id: ModelHubTabId) => {
+    const def = MODEL_HUB_TAB_DEFS.find((d) => d.id === id)!;
+    return t(def.labelKey, { defaultValue: def.defaultLabel });
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <LauncherRow
         icon={<Mic className="h-4 w-4" strokeWidth={2} aria-hidden />}
         iconBg="color-mix(in srgb, var(--accent) 16%, transparent)"
         iconColor="var(--accent)"
-        label={t("sidebar.launchers.stt", { defaultValue: "Speech model" })}
+        label={hubTabLabel("stt")}
         value={sttLabel}
+        variant={variant}
         onClick={() => void openModelHub("stt")}
       />
       <LauncherRow
         icon={<Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />}
         iconBg="color-mix(in srgb, var(--voice) 16%, transparent)"
         iconColor="var(--voice)"
-        label={t("sidebar.launchers.llm", { defaultValue: "LLM" })}
+        label={hubTabLabel("llm")}
         value={llmLabel}
+        variant={variant}
         onClick={() => void openModelHub("llm")}
       />
       <LauncherRow
         icon={<Volume2 className="h-4 w-4" strokeWidth={2} aria-hidden />}
         iconBg="color-mix(in srgb, var(--success, #22c55e) 16%, transparent)"
         iconColor="var(--success, #22c55e)"
-        label={t("sidebar.launchers.tts", { defaultValue: "TTS" })}
+        label={hubTabLabel("tts")}
         value={ttsLabel}
+        variant={variant}
         onClick={() => void openModelHub("tts")}
       />
     </div>

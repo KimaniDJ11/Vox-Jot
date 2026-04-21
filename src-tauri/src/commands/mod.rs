@@ -9,7 +9,7 @@ pub mod transcription;
 pub mod tts;
 
 use crate::actions::PostProcessRouteDebug;
-use crate::post_processing::{InstalledApp, PostProcessResult, PreviewManager};
+use crate::post_processing::{ActiveAppContext, InstalledApp, PostProcessResult, PreviewManager};
 use crate::screen_context::{ContextCaptureManager, ScreenContextDiagnostics};
 use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
 use crate::utils::cancel_current_operation;
@@ -176,6 +176,36 @@ pub fn debug_analyze_post_process_route(text: String) -> Result<PostProcessRoute
 pub fn get_screen_context_diagnostics(app: AppHandle) -> Result<ScreenContextDiagnostics, String> {
     let manager = app.state::<Arc<ContextCaptureManager>>();
     Ok(manager.diagnostics())
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn get_frontmost_app_for_exclusion() -> Result<ActiveAppContext, String> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        crate::apple_intelligence::get_frontmost_app_context()
+    }
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    {
+        Err("Frontmost app detection is only available on Apple silicon Macs.".to_string())
+    }
+}
+
+#[specta::specta]
+#[tauri::command]
+pub fn open_screen_recording_settings() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("Failed to open Screen Recording settings: {}", err))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Screen Recording permission UI is only available on macOS.".to_string())
+    }
 }
 
 /// Try to initialize Enigo (keyboard/mouse simulation).

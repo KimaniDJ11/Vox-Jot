@@ -541,12 +541,24 @@ pub fn change_sound_theme_setting(app: AppHandle, theme: String) -> Result<(), S
 #[tauri::command]
 #[specta::specta]
 pub fn change_app_theme_setting(app: AppHandle, theme: String) -> Result<(), String> {
+    const VALID_APP_THEMES: &[&str] = &[
+        "system",
+        "light",
+        "dark",
+        "sepia",
+        "ocean",
+        "forest",
+        "rose",
+        "slate",
+        "solarized",
+        "graphite",
+    ];
     let mut settings = settings::get_settings(&app);
-    if !["light", "dark", "system"].contains(&theme.as_str()) {
+    if VALID_APP_THEMES.contains(&theme.as_str()) {
+        settings.app_theme = theme;
+    } else {
         warn!("Invalid app theme '{}', defaulting to system", theme);
         settings.app_theme = "system".to_string();
-    } else {
-        settings.app_theme = theme;
     }
     settings::write_settings(&app, settings);
     Ok(())
@@ -1202,6 +1214,90 @@ pub fn change_local_privacy_mode_setting(app: AppHandle, enabled: bool) -> Resul
     let mut settings = settings::get_settings(&app);
     settings.local_privacy_mode = enabled;
     settings.enforce_local_privacy_mode();
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_enabled = enabled;
+    settings::write_settings(&app, settings);
+
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "screen_context_enabled",
+            "value": enabled
+        }),
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_excluded_bundle_ids_setting(
+    app: AppHandle,
+    bundle_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_excluded_bundle_ids = bundle_ids
+        .into_iter()
+        .map(|bundle_id| bundle_id.trim().to_string())
+        .filter(|bundle_id| !bundle_id.is_empty())
+        .fold(Vec::<String>::new(), |mut acc, bundle_id| {
+            if !acc
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(&bundle_id))
+            {
+                acc.push(bundle_id);
+            }
+            acc
+        });
+    settings::write_settings(&app, settings.clone());
+
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "screen_context_excluded_bundle_ids",
+            "value": settings.screen_context_excluded_bundle_ids
+        }),
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_pause_on_idle_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_pause_on_idle = enabled;
+    settings::write_settings(&app, settings);
+
+    let _ = app.emit(
+        "settings-changed",
+        serde_json::json!({
+            "setting": "screen_context_pause_on_idle",
+            "value": enabled
+        }),
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_idle_threshold_ms_setting(
+    app: AppHandle,
+    threshold_ms: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_idle_threshold_ms = threshold_ms.clamp(10_000, 600_000);
     settings::write_settings(&app, settings);
     Ok(())
 }

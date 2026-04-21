@@ -243,6 +243,14 @@ const settingUpdaters: {
     commands.changePostProcessEnabledSetting(value as boolean),
   local_privacy_mode: (value) =>
     commands.changeLocalPrivacyModeSetting(value as boolean),
+  screen_context_enabled: (value) =>
+    commands.changeScreenContextEnabledSetting(value as boolean),
+  screen_context_excluded_bundle_ids: (value) =>
+    commands.changeScreenContextExcludedBundleIdsSetting(value as string[]),
+  screen_context_pause_on_idle: (value) =>
+    commands.changeScreenContextPauseOnIdleSetting(value as boolean),
+  screen_context_idle_threshold_ms: (value) =>
+    commands.changeScreenContextIdleThresholdMsSetting(value as number),
   context_capture_mode: (value) =>
     commands.changeContextCaptureModeSetting(value as string),
   screen_context_ocr_quality: (value) =>

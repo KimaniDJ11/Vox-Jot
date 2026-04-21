@@ -1613,12 +1613,15 @@ impl TtsManager {
                 .map_err(|err| format!("Failed to start speech runtime: {err}"))??;
         }
 
+        let prepare_url = self
+            .sidecar_request_url("listen/prepare")
+            .ok_or_else(|| "Failed to resolve the local speech runtime URL.".to_string())?;
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(600))
             .build()
             .map_err(|err| format!("Failed to create HTTP client: {err}"))?;
         let response = client
-            .post("http://127.0.0.1:8008/listen/prepare")
+            .post(prepare_url)
             .json(&serde_json::json!({
                 "provider_id": provider_id,
                 "model_id": model_id,
@@ -3088,11 +3091,11 @@ impl TtsManager {
     }
 
     fn sidecar_root_url(&self) -> Option<reqwest::Url> {
-        let mut url = reqwest::Url::parse(&self.sidecar_base_url()).ok()?;
-        url.set_path("/");
-        url.set_query(None);
-        url.set_fragment(None);
-        Some(url)
+        self.sidecar_request_url("/")
+    }
+
+    fn sidecar_request_url(&self, path: &str) -> Option<reqwest::Url> {
+        sidecar_request_url_from_base(&self.sidecar_base_url(), path)
     }
 
     fn ensure_sidecar_running_blocking(&self) -> Result<(), String> {
@@ -4426,14 +4429,14 @@ fn managed_speech_runtime_definition() -> Option<ManagedSpeechRuntimeDefinition>
             archive_name: "speech-runtime-macos-x64.tar.gz",
         });
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         return Some(ManagedSpeechRuntimeDefinition {
             platform_id: "linux-x64",
             archive_name: "speech-runtime-linux-x64.tar.gz",
         });
     }
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     {
         return Some(ManagedSpeechRuntimeDefinition {
             platform_id: "windows-x64",
@@ -5343,6 +5346,17 @@ fn sidecar_audio_extension(content_type: Option<&str>, bytes: &[u8]) -> &'static
     }
 }
 
+fn sidecar_request_url_from_base(base_url: &str, path: &str) -> Option<reqwest::Url> {
+    let mut url = reqwest::Url::parse(base_url).ok()?;
+    url.set_path("/");
+    url.set_query(None);
+    url.set_fragment(None);
+    if path.is_empty() || path == "/" {
+        return Some(url);
+    }
+    url.join(path).ok()
+}
+
 fn sidecar_runtime_target(provider_id: &str, model_id: Option<&str>) -> String {
     match (provider_id.trim(), model_id) {
         ("", Some(model_id)) => format!("Speech model '{model_id}'"),
@@ -6075,6 +6089,17 @@ mod tests {
             payload["extra_controls"]["model_id"],
             "mlx-community/pocket-tts-4bit"
         );
+    }
+
+    #[test]
+    fn sidecar_request_url_uses_resolved_base_url() {
+        let url = sidecar_request_url_from_base(
+            "http://127.0.0.1:9123/v1/audio/speech?token=abc#fragment",
+            "listen/prepare",
+        )
+        .expect("sidecar URL should resolve");
+
+        assert_eq!(url.as_str(), "http://127.0.0.1:9123/listen/prepare");
     }
 
     #[test]

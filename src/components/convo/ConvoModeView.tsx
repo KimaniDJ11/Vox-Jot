@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -51,6 +57,11 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
   );
   const [selectionText, setSelectionText] = useState<string | null>(null);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
+  const sessionGenerationRef = useRef(0);
+  const sessionInitRef = useRef<{
+    generation: number;
+    promise: Promise<string | null>;
+  } | null>(null);
 
   const activeNoteId = activeNote?.id ?? null;
   const noteContent = activeNote?.content ?? null;
@@ -163,21 +174,41 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
         return sessionId;
       }
 
-      try {
-        const result = await commands.convoPrepareSession(
-          mode,
-          null,
-          initialContext ?? null,
-        );
-        if (result.status === "ok") {
-          setSessionId(result.data.session_id);
-          return result.data.session_id;
-        }
-      } catch (error) {
-        console.error("Failed to prepare convo session:", error);
+      const generation = sessionGenerationRef.current;
+      const inFlight = sessionInitRef.current;
+      if (inFlight && inFlight.generation === generation) {
+        return inFlight.promise;
       }
 
-      return null;
+      const promise = (async () => {
+        try {
+          const result = await commands.convoPrepareSession(
+            mode,
+            null,
+            initialContext ?? null,
+          );
+          if (result.status === "ok") {
+            if (sessionGenerationRef.current === generation) {
+              setSessionId(result.data.session_id);
+            }
+            return result.data.session_id;
+          }
+        } catch (error) {
+          console.error("Failed to prepare convo session:", error);
+        }
+
+        return null;
+      })();
+
+      sessionInitRef.current = { generation, promise };
+
+      try {
+        return await promise;
+      } finally {
+        if (sessionInitRef.current?.promise === promise) {
+          sessionInitRef.current = null;
+        }
+      }
     },
     [mode, sessionId],
   );
@@ -237,6 +268,9 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
   );
 
   const handleReset = useCallback(async () => {
+    sessionGenerationRef.current += 1;
+    sessionInitRef.current = null;
+
     if (sessionId) {
       try {
         await commands.convoResetSession(sessionId);

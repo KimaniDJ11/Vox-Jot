@@ -94,10 +94,17 @@ impl TranscriptionCoordinator {
                         Command::Cancel {
                             recording_was_active,
                         } => {
-                            // Don't reset during processing — wait for the pipeline to finish.
-                            if !matches!(stage, Stage::Processing)
-                                && (recording_was_active || matches!(stage, Stage::Recording(_)))
-                            {
+                            if matches!(stage, Stage::Processing) {
+                                // Pipeline is still running (transcribe → post-process → paste).
+                                // Stay in Processing so new input is ignored until the pipeline's
+                                // FinishGuard drops and sends ProcessingFinished. This prevents a
+                                // new dictation from racing the old one's in-flight paste and
+                                // clobbering the clipboard.
+                                debug!(
+                                    "Cancel during Processing; waiting for pipeline to finish \
+                                     before accepting new input"
+                                );
+                            } else if recording_was_active || !matches!(stage, Stage::Idle) {
                                 stage = Stage::Idle;
                             }
                         }

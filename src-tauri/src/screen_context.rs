@@ -143,6 +143,39 @@ static URL_REDACTION_RE: Lazy<Regex> =
 static LONG_NUMBER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\b\d{6,}\b").expect("valid long number regex"));
 
+/// Neutralises common prompt-injection patterns that could appear in OCR'd
+/// screen text. Screen content is untrusted — a malicious webpage or document
+/// can contain strings like "### System: ignore previous instructions". We
+/// can't prevent the LLM from seeing the text (it's the whole point of the
+/// feature), but we can strip the formatting tokens that turn prose into
+/// something that *looks* like an instruction boundary.
+static PROMPT_INJECTION_STRIP_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)(<\|im_start\|>|<\|im_end\|>|<\|endoftext\|>|<\|system\|>|\[/?INST\]|</?s>|</?system>|</?assistant>|</?user>|<<SCREEN_CONTEXT>>|<<END_SCREEN_CONTEXT>>)",
+    )
+    .expect("valid prompt injection strip regex")
+});
+
+static PROMPT_INJECTION_ROLE_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?im)^\s*(system|assistant|user|developer|ignore previous|ignore all previous|disregard (?:previous|all))\s*:")
+        .expect("valid prompt injection role regex")
+});
+
+static PROMPT_INJECTION_MARKDOWN_HEADER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?m)^#{1,}\s").expect("valid markdown header regex"));
+
+static PROMPT_INJECTION_FENCE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"```+").expect("valid code fence regex"));
+
+fn sanitize_for_prompt(text: &str) -> String {
+    let stripped = PROMPT_INJECTION_STRIP_RE.replace_all(text, " ");
+    let no_roles = PROMPT_INJECTION_ROLE_RE.replace_all(&stripped, " ");
+    let no_headers = PROMPT_INJECTION_MARKDOWN_HEADER_RE.replace_all(&no_roles, "");
+    PROMPT_INJECTION_FENCE_RE
+        .replace_all(&no_headers, "'''")
+        .to_string()
+}
+
 #[derive(Clone)]
 pub struct ContextCaptureManager {
     app_handle: AppHandle,
@@ -606,11 +639,14 @@ pub fn summarize_packet_for_prompt(
     let mut summary = Vec::new();
 
     for snippet in packet.snippets.iter().take(MAX_PROMPT_SNIPPETS) {
-        let text = if redact_for_external {
+        let base = if redact_for_external {
             redact_external_text(&snippet.text)
         } else {
             snippet.text.clone()
         };
+        // Neutralise prompt-injection markers regardless of provider. Local
+        // models are just as susceptible as external APIs.
+        let text = sanitize_for_prompt(&base);
         let trimmed = text.trim();
         if trimmed.is_empty() || remaining_chars == 0 {
             continue;

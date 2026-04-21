@@ -111,6 +111,7 @@ class WorkerProcess:
     process: subprocess.Popen[str]
     lock: threading.Lock
     engine: str
+    stderr_path: Path | None = None
 
 
 class WorkerHost:
@@ -122,6 +123,7 @@ class WorkerHost:
         self.engines_dir = self.config.state_dir / "engines"
         self._workers: dict[str, WorkerProcess] = {}
         self._global_lock = threading.Lock()
+        self._fish_sidecar_lock = threading.Lock()
 
     def _child_env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -303,6 +305,10 @@ except Exception:
                 return worker
 
             env_python = self.prepare(spec, model_dir)
+            worker_logs_dir = self.engines_dir / "worker-logs"
+            worker_logs_dir.mkdir(parents=True, exist_ok=True)
+            stderr_path = worker_logs_dir / f"{key.replace(':', '_')}.stderr.log"
+            stderr_handle = stderr_path.open("a", encoding="utf-8")
             process = subprocess.Popen(
                 [
                     str(env_python),
@@ -320,12 +326,18 @@ except Exception:
                 ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=stderr_handle,
                 text=True,
                 bufsize=1,
                 env=self._child_env(),
             )
-            worker = WorkerProcess(process=process, lock=threading.Lock(), engine=key)
+            stderr_handle.close()
+            worker = WorkerProcess(
+                process=process,
+                lock=threading.Lock(),
+                engine=key,
+                stderr_path=stderr_path,
+            )
             self._workers[key] = worker
             return worker
 
@@ -370,8 +382,11 @@ except Exception:
             line = worker.process.stdout.readline()
             if not line:
                 stderr = ""
-                if worker.process.stderr is not None:
-                    stderr = worker.process.stderr.read().strip()
+                if worker.stderr_path is not None and worker.stderr_path.exists():
+                    try:
+                        stderr = worker.stderr_path.read_text(encoding="utf-8")[-4000:].strip()
+                    except Exception:
+                        stderr = ""
                 ignored = "\n".join(ignored_lines).strip()
                 detail = stderr or ignored
                 raise RuntimeError(
@@ -397,65 +412,76 @@ except Exception:
         spec: EngineSpec,
         model_dir: Path,
     ) -> str:
-        runtime_dir = self.engines_dir / spec.provider_id
-        runtime_dir.mkdir(parents=True, exist_ok=True)
-        state_path = runtime_dir / "fish_server.json"
-        if state_path.exists():
-            try:
-                data = json.loads(state_path.read_text(encoding="utf-8"))
-                url = data.get("url")
-                if url and self._url_healthy(url):
+        with self._fish_sidecar_lock:
+            runtime_dir = self.engines_dir / spec.provider_id
+            runtime_dir.mkdir(parents=True, exist_ok=True)
+            state_path = runtime_dir / "fish_server.json"
+            cached_url = self._load_fish_sidecar_url(state_path)
+            if cached_url and self._url_healthy(cached_url):
+                return cached_url
+
+            env_python = self.prepare(spec, model_dir)
+            port = _free_port()
+            url = f"http://127.0.0.1:{port}"
+            checkpoint_dir = self._fish_checkpoint_dir(model_dir)
+            decoder_path = self._fish_decoder_checkpoint_path(checkpoint_dir)
+            log_path = runtime_dir / "fish_server.log"
+            log_handle = log_path.open("w", encoding="utf-8")
+            process = subprocess.Popen(
+                [
+                    str(env_python),
+                    str(model_dir / "tools" / "api_server.py"),
+                    "--listen",
+                    f"127.0.0.1:{port}",
+                    "--llama-checkpoint-path",
+                    str(checkpoint_dir),
+                    "--decoder-checkpoint-path",
+                    str(decoder_path),
+                    "--decoder-config-name",
+                    "modded_dac_vq",
+                    "--device",
+                    "cpu",
+                ],
+                cwd=str(model_dir),
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=self._child_env(),
+            )
+
+            for _ in range(60):
+                if self._url_healthy(url):
+                    state_path.write_text(
+                        json.dumps({"url": url, "pid": process.pid}, indent=2),
+                        encoding="utf-8",
+                    )
                     return url
-            except Exception:
-                pass
+                if process.poll() is not None:
+                    break
+                time.sleep(1)
 
-        env_python = self.prepare(spec, model_dir)
-        port = _free_port()
-        url = f"http://127.0.0.1:{port}"
-        checkpoint_dir = self._fish_checkpoint_dir(model_dir)
-        decoder_path = self._fish_decoder_checkpoint_path(checkpoint_dir)
-        log_path = runtime_dir / "fish_server.log"
-        log_handle = log_path.open("w", encoding="utf-8")
-        process = subprocess.Popen(
-            [
-                str(env_python),
-                str(model_dir / "tools" / "api_server.py"),
-                "--listen",
-                f"127.0.0.1:{port}",
-                "--llama-checkpoint-path",
-                str(checkpoint_dir),
-                "--decoder-checkpoint-path",
-                str(decoder_path),
-                "--decoder-config-name",
-                "modded_dac_vq",
-                "--device",
-                "cpu",
-            ],
-            cwd=str(model_dir),
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=self._child_env(),
-        )
+            detail = ""
+            if log_path.exists():
+                try:
+                    detail = log_path.read_text(encoding="utf-8")[-4000:].strip()
+                except Exception:
+                    detail = ""
+            raise RuntimeError(detail or "Fish Speech server did not become healthy.")
 
-        for _ in range(60):
-            if self._url_healthy(url):
-                state_path.write_text(
-                    json.dumps({"url": url, "pid": process.pid}, indent=2),
-                    encoding="utf-8",
-                )
+    def _load_fish_sidecar_url(self, state_path: Path) -> str | None:
+        if not state_path.exists():
+            return None
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+        url = data.get("url")
+        if isinstance(url, str):
+            url = url.strip()
+            if url:
                 return url
-            if process.poll() is not None:
-                break
-            time.sleep(1)
-
-        detail = ""
-        if log_path.exists():
-            try:
-                detail = log_path.read_text(encoding="utf-8")[-4000:].strip()
-            except Exception:
-                detail = ""
-        raise RuntimeError(detail or "Fish Speech server did not become healthy.")
+        return None
 
     def _fish_checkpoint_dir(self, model_dir: Path) -> Path:
         for candidate in (

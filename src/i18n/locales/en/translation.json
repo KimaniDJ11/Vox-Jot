@@ -365,12 +365,12 @@
         "description": "Start with built-in presets, adjust their instructions as needed, and add custom profiles only when you want something extra.",
         "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
         "columns": {
-          "id": "Profile ID",
+          "id": "Profile key",
           "label": "Display name",
           "instruction": "Instruction"
         },
         "placeholders": {
-          "id": "casual",
+          "id": "friendly-chat",
           "label": "Casual",
           "instruction": "Use a casual, conversational tone suitable for chat messages."
         },
@@ -379,14 +379,14 @@
         "starterBadge": "Starter",
         "customBadge": "Custom",
         "unused": "No apps mapped yet",
-        "editId": "Edit profile ID"
+        "editId": "Edit profile key"
       },
       "mappings": {
         "title": "App mappings",
-        "description": "Assign apps to a profile. Bundle IDs are the most reliable match key.",
+        "description": "Assign apps to a profile so tone switches automatically while you dictate.",
         "columns": {
           "appName": "App",
-          "bundleId": "Bundle ID",
+          "bundleId": "App identifier",
           "tone": "Profile"
         },
         "placeholders": {
@@ -496,7 +496,7 @@
         "description": "Play sound when recording starts and stops"
       },
       "audioEnhancement": {
-        "label": "Noise Reduction (RNNoise)",
+        "label": "Noise Reduction",
         "description": "Denoise microphone audio before speech detection and transcription."
       },
       "outputDevice": {
@@ -568,7 +568,7 @@
       },
       "pasteMethod": {
         "title": "Paste Method",
-        "description": "Choose how text is inserted. Direct: simulates typing via system input. None: skips paste, only updates history/clipboard.",
+        "description": "Choose how text is inserted. Direct types text directly. None saves results without pasting.",
         "options": {
           "clipboard": "Clipboard ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Clipboard (Ctrl+Shift+V)",
@@ -611,8 +611,8 @@
         "descriptionUnsupported": "Translation is not supported by the {{model}} model."
       },
       "modelUnload": {
-        "title": "Unload Model",
-        "description": "Automatically free GPU/CPU memory when the model hasn't been used for the specified time",
+        "title": "Free Up Model Memory",
+        "description": "Automatically free memory when speech models have been idle for a while.",
         "options": {
           "never": "Never",
           "immediately": "Immediately",
@@ -621,7 +621,7 @@
           "min10": "After 10 minutes",
           "min15": "After 15 minutes",
           "hour1": "After 1 hour",
-          "sec5": "After 5 seconds (Debug)"
+          "sec5": "After 5 seconds"
         }
       },
       "customWords": {
@@ -945,13 +945,13 @@
       "showRecordingInFolder": "Show recording in folder",
       "revealError": "Could not show recording: {{error}}",
       "loading": "Loading history...",
-      "empty": "No transcriptions yet. Start recording to build your history!",
+      "empty": "No dictations yet. Start speaking to build your recent history.",
       "fieldObservation": {
-        "title": "Field observation",
-        "copyPair": "Copy pair",
+        "title": "On-screen hint",
+        "copyPair": "Copy correction",
         "copied": "Copied correction pair",
-        "timestamp": "Observed at {{time}}",
-        "failed": "Could not read field text for observation: {{error}}"
+        "timestamp": "Captured at {{time}}",
+        "failed": "Could not capture on-screen text: {{error}}"
       },
       "correctionsApplied": "Corrections applied",
       "promptUsed": "Prompt used",
@@ -1068,17 +1068,17 @@
     },
     "screenContext": {
       "title": "Screen Context",
-      "intro": "When you dictate, Vox Jot can glance at what's on screen and run on-device OCR so the refine pass understands names, tabs, and field labels you were looking at. Captures stay on your Mac.",
+      "intro": "When you dictate, Vox Jot can read visible screen text to improve names, labels, and context. Captures stay on your Mac.",
       "enableLabel": "Screen context",
-      "enableDescription": "Take periodic on-device screenshots and feed the OCR text into refine passes.",
+      "enableDescription": "Capture screen text in the background to improve dictation cleanup.",
       "permissionCtaLabel": "Screen Recording permission required",
       "permissionCtaDescription": "macOS hasn't granted Vox Jot permission to capture the screen. Open System Settings to allow it.",
       "permissionCtaButton": "Open Screen Recording Settings",
-      "captureCadenceTitle": "Capture cadence",
-      "contextBudgetTitle": "Context budget",
+      "captureCadenceTitle": "Update frequency",
+      "contextBudgetTitle": "Context amount",
       "pauseOnIdleLabel": "Pause when idle",
       "pauseOnIdleDescription": "Stop capturing after you haven't dictated for a while; resumes automatically on your next dictation.",
-      "idleThresholdLabel": "Idle threshold",
+      "idleThresholdLabel": "Pause after",
       "idleThresholdDescription": "How long without dictation before Vox Jot pauses screen captures.",
       "idleThresholdValue": "{{seconds}}s",
       "exclusionsTitle": "Excluded apps",
@@ -1097,12 +1097,12 @@
       "screenRecordingLabel": "Screen Recording permission:",
       "screenRecordingGranted": "Granted",
       "screenRecordingMissing": "Missing",
-      "cacheSizeLabel": "Cache size:",
-      "latestContextAgeLabel": "Latest context age:",
+      "cacheSizeLabel": "Stored snapshots:",
+      "latestContextAgeLabel": "Last update:",
       "latestContextAgeValue": "{{ms}} ms",
       "latestContextAgeUnavailable": "Unavailable",
-      "debugPreviewTitle": "Latest OCR preview (debug)",
-      "debugPreviewEmpty": "No cached OCR snippet yet."
+      "debugPreviewTitle": "Latest screen-text preview (debug)",
+      "debugPreviewEmpty": "No captured preview text yet."
     }
   },
   "titleBar": {
@@ -1217,7 +1217,7 @@
   },
   "listen": {
     "tuning": {
-      "styleInstructions": "Style Instructions"
+      "styleInstructions": "Style notes"
     },
     "myVoices": {
       "active": "Active",
@@ -1226,7 +1226,7 @@
       "previewText": "Preview Text",
       "preview": "Preview",
       "stop": "Stop",
-      "draftModeHint": "Provider and model changes stay in draft mode until you save them as a new voice profile.",
+      "draftModeHint": "Changes stay as a draft until you save this as a new voice profile.",
       "savedProfiles": "Profiles",
       "saveCurrent": "Save Current",
       "new": "New",
@@ -1235,7 +1235,7 @@
       "useThisVoice": "Use This Voice"
     },
     "soundTuning": {
-      "tuneTitle": "Tune the active profile and listen immediately",
+      "tuneTitle": "Adjust this voice and hear changes right away",
       "activeProfileIs": "The active profile is",
       "previewFromHere": ". Preview from here while you adjust the delivery sliders below.",
       "preview": "Preview",
@@ -1250,8 +1250,8 @@
     },
     "engineLibrary": {
       "allLanguages": "All Languages",
-      "activeListenModel": "Active Listen Model",
-      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+      "activeListenModel": "Current voice model",
+      "chooseProviderModel": "Choose a voice source and model for this profile."
     },
     "voiceCloning": {
       "cloneProfiles": "Clone Profiles",
@@ -1261,12 +1261,12 @@
       "importWav": "Import WAV",
       "deleteProfile": "Delete profile",
       "transcriptHint": "Transcript: Optional, but helpful for clone quality.",
-      "improveFromDictations": "Improve from my dictations",
-      "improveFromDictationsDescription": "Uses your speech-to-text dictations to refine this clone locally.",
+      "improveFromDictations": "Learn from my dictations",
+      "improveFromDictationsDescription": "Use your past dictations to improve this cloned voice on this device.",
       "clearCollectedData": "Clear collected data",
-      "cloningInactiveHint": "Voice cloning becomes active when a preset or model uses `Qwen3 0.6B Base`.",
+      "cloningInactiveHint": "Voice cloning is available only for supported voice models.",
       "createProfile": "Create Profile",
-      "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
+      "createProfileDescription": "Give the profile a name, then import one clear reference clip.",
       "createProfileButton": "Create profile",
       "importWavIntoLatest": "Import WAV into latest",
       "cloneTarget": "Clone Target",

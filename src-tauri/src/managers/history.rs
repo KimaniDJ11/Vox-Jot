@@ -128,9 +128,16 @@ pub struct ScreenContextHistoryMetadata {
 /// Parse a database row into a HistoryEntry, deserializing the dictionary_hits JSON column.
 fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
     let hits_json: Option<String> = row.get("dictionary_hits").unwrap_or(None);
-    let dictionary_hits = hits_json
-        .and_then(|json| serde_json::from_str::<Vec<String>>(&json).ok())
-        .unwrap_or_default();
+    let dictionary_hits = match hits_json.as_deref() {
+        Some("") | None => vec![],
+        Some(json) => match serde_json::from_str::<Vec<String>>(json) {
+            Ok(hits) => hits,
+            Err(e) => {
+                log::error!("Failed to parse dictionary_hits JSON '{}': {}", json, e);
+                vec![]
+            }
+        },
+    };
     let field_snapshot_text: Option<String> = row.get("field_snapshot_text").unwrap_or(None);
     let field_snapshot_at: Option<i64> = row.get("field_snapshot_at").unwrap_or(None);
     let field_snapshot_error: Option<String> = row.get("field_snapshot_error").unwrap_or(None);

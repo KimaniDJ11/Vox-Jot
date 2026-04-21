@@ -84,6 +84,7 @@ import {
   RecordingDevicesSettingsSection,
   RefinePhraseKeysSection,
   RefineTranslationSection,
+  SettingsCorrectionsSection,
   ShortcutsSettingsSection,
 } from "@/components/AppSections";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
@@ -277,6 +278,18 @@ function App() {
     lastSectionByView.current[activeRootViewRef.current] = sectionId;
   }, []);
 
+  const handleWorkflowSectionOpen = useCallback(
+    (mode: "dictate" | "refine" | "listen", sectionId: string) => {
+      lastSectionByView.current[activeRootViewRef.current] =
+        activeSectionIdRef.current;
+      lastSectionByView.current[mode] = sectionId;
+      setActiveMode(mode);
+      setActiveRootView(mode);
+      setActiveSectionId(sectionId);
+    },
+    [],
+  );
+
   const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
     () => ({
       dictate: [
@@ -292,7 +305,11 @@ function App() {
           label: "Corrections",
           icon: SpellCheck,
           title: "Corrections",
-          content: <CorrectionsSection />,
+          content: (
+            <SettingsCorrectionsSection
+              onNavigateToSection={handleWorkflowSectionOpen}
+            />
+          ),
         },
         {
           id: "jot-pad",
@@ -458,7 +475,7 @@ function App() {
         },
       ],
     }),
-    [],
+    [handleWorkflowSectionOpen],
   );
 
   const activeSections = sectionsByView[activeRootView];

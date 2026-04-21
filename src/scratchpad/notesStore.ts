@@ -94,6 +94,8 @@ export const useNotesStore = create<NotesStore>()((set, get) => ({
   },
 
   updateNote: async (id, title, content) => {
+    const previousNote = get().notes.find((note) => note.id === id) ?? null;
+
     try {
       // Optimistic update
       set((state) => ({
@@ -101,9 +103,27 @@ export const useNotesStore = create<NotesStore>()((set, get) => ({
           n.id === id ? { ...n, title, content } : n,
         ),
       }));
-      await commands.updateNote(id, title, content);
+      const result = await commands.updateNote(id, title, content);
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error("Failed to update note:", error);
+      if (previousNote) {
+        set((state) => ({
+          notes: state.notes.some((note) => note.id === id)
+            ? state.notes.map((note) =>
+                note.id === id ? previousNote : note,
+              )
+            : [...state.notes, previousNote],
+        }));
+      }
+
+      try {
+        await get().refresh();
+      } catch (refreshError) {
+        console.error("Failed to refetch notes after update error:", refreshError);
+      }
     }
   },
 

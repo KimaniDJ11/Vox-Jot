@@ -493,17 +493,37 @@ class EngineWorker:
                 output_path.write_bytes(raw_path.read_bytes())
 
     def _ensure_fish_server(self) -> str:
+        state_path = self._fish_state_path()
+
         if self.fish_url is not None:
-            return self.fish_url
-        state_path = self.state_dir / "engines" / "fish_speech" / "fish_server.json"
-        if state_path.exists():
-            try:
-                state = json.loads(state_path.read_text(encoding="utf-8"))
-                self.fish_url = state["url"]
+            if self._url_healthy(self.fish_url):
                 return self.fish_url
-            except Exception:
-                pass
+            self.fish_url = None
+
+        refreshed_url = self._load_fish_server_url(state_path)
+        if refreshed_url is not None and self._url_healthy(refreshed_url):
+            self.fish_url = refreshed_url
+            return refreshed_url
+
         raise RuntimeError("Fish Speech server is not running.")
+
+    def _fish_state_path(self) -> Path:
+        return self.state_dir / "engines" / "fish_speech" / "fish_server.json"
+
+    def _load_fish_server_url(self, state_path: Path) -> str | None:
+        if not state_path.exists():
+            return None
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+        url = state.get("url")
+        if isinstance(url, str):
+            url = url.strip()
+            if url:
+                return url
+        return None
 
     def _synthesize_fish(self, payload: dict[str, Any], output_path: Path) -> None:
         import base64
@@ -537,6 +557,13 @@ class EngineWorker:
         with request.urlopen(req, timeout=240) as response:
             output_path.write_bytes(response.read())
 
+    def _url_healthy(self, url: str) -> bool:
+        try:
+            with request.urlopen(f"{url}/v1/health", timeout=3) as response:
+                return int(response.status) < 400
+        except Exception:
+            return False
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -559,12 +586,7 @@ def main() -> None:
     )
 
     if worker.provider_id == "fish_speech":
-        state_path = worker.state_dir / "engines" / "fish_speech" / "fish_server.json"
-        if state_path.exists():
-            try:
-                worker.fish_url = json.loads(state_path.read_text(encoding="utf-8")).get("url")
-            except Exception:
-                worker.fish_url = None
+        worker.fish_url = worker._load_fish_server_url(worker._fish_state_path())
 
     for line in sys.stdin:
         line = line.strip()

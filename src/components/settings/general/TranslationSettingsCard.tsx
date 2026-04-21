@@ -109,8 +109,8 @@ export const TranslationSettingsCard: React.FC = () => {
       </SettingContainer>
 
       <SettingContainer
-        title="Translation Route"
-        description="Auto prefers local routes first. Whisper English is only used for direct dictation-to-English output."
+        title="Translation Method"
+        description="Automatic works for most people. Choose a specific method only if you need one."
         descriptionMode="tooltip"
         grouped={true}
         disabled={!isTranslatedMode}
@@ -127,11 +127,11 @@ export const TranslationSettingsCard: React.FC = () => {
             !isTranslatedMode || isUpdating("translation_route_preference")
           }
           options={[
-            { value: "auto", label: "Auto" },
-            { value: "whisper_english", label: "Whisper English" },
-            { value: "local_ai", label: "Local AI" },
-            { value: "remote_ai", label: "Remote AI" },
-            { value: "offline_pack", label: "Offline pack" },
+            { value: "auto", label: "Automatic (recommended)" },
+            { value: "whisper_english", label: "Fast on-device to English" },
+            { value: "local_ai", label: "Local AI on this Mac" },
+            { value: "remote_ai", label: "Online AI service" },
+            { value: "offline_pack", label: "Offline language pack" },
           ]}
         />
       </SettingContainer>

@@ -41,6 +41,7 @@ interface SettingsStore {
   settings: Settings | null;
   defaultSettings: Settings | null;
   isLoading: boolean;
+  initializePromise: Promise<void> | null;
   isUpdating: Record<string, boolean>;
   audioDevices: AudioDevice[];
   outputDevices: AudioDevice[];
@@ -303,6 +304,7 @@ export const useSettingsStore = create<SettingsStore>()(
     settings: null,
     defaultSettings: null,
     isLoading: true,
+    initializePromise: null,
     isUpdating: {},
     audioDevices: [],
     outputDevices: [],
@@ -428,14 +430,23 @@ export const useSettingsStore = create<SettingsStore>()(
 
         const updater = settingUpdaters[key];
         if (updater) {
-          await updater(value);
+          await unwrapCommandResult(
+            updater(value) as Promise<CommandResult<unknown>>,
+          );
         } else if (key !== "bindings" && key !== "selected_model") {
           console.warn(`No handler for setting: ${String(key)}`);
         }
       } catch (error) {
         console.error(`Failed to update setting ${String(key)}:`, error);
         if (settings) {
-          set({ settings: { ...settings, [key]: originalValue } });
+          set((state) => ({
+            settings: state.settings
+              ? {
+                  ...state.settings,
+                  [key]: state.settings[key] === value ? originalValue : state.settings[key],
+                }
+              : null,
+          }));
         }
       } finally {
         setUpdating(updateKey, false);
@@ -966,17 +977,39 @@ export const useSettingsStore = create<SettingsStore>()(
 
     // Initialize everything
     initialize: async () => {
-      const { refreshSettings, checkCustomSounds, loadDefaultSettings } = get();
+      const existingPromise = get().initializePromise;
+      if (existingPromise) {
+        return existingPromise;
+      }
 
-      // Note: Audio devices are NOT refreshed here. The frontend (App.tsx)
-      // is responsible for calling refreshAudioDevices/refreshOutputDevices
-      // after onboarding completes. This avoids triggering permission dialogs
-      // on macOS before the user is ready.
-      await Promise.all([
-        loadDefaultSettings(),
-        refreshSettings(),
-        checkCustomSounds(),
-      ]);
+      if (get().settings && get().defaultSettings && !get().isLoading) {
+        return;
+      }
+
+      const initializePromise = (async () => {
+        const { refreshSettings, checkCustomSounds, loadDefaultSettings } =
+          get();
+
+        // Note: Audio devices are NOT refreshed here. The frontend (App.tsx)
+        // is responsible for calling refreshAudioDevices/refreshOutputDevices
+        // after onboarding completes. This avoids triggering permission dialogs
+        // on macOS before the user is ready.
+        await Promise.all([
+          loadDefaultSettings(),
+          refreshSettings(),
+          checkCustomSounds(),
+        ]);
+      })();
+
+      set({ initializePromise });
+
+      try {
+        await initializePromise;
+      } finally {
+        if (get().initializePromise === initializePromise) {
+          set({ initializePromise: null });
+        }
+      }
     },
   })),
 );

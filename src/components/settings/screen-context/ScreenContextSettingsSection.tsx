@@ -260,7 +260,7 @@ const ScreenContextSettingsSection: React.FC = () => {
       <SettingsGroup title={t("settings.screenContext.captureCadenceTitle")}>
         <SettingContainer
           title="Capture Mode"
-          description="Choose how often Vox Jot refreshes the screenshot OCR cache while the app is running."
+          description="Choose how often Vox Jot updates screen text while the app is open."
           grouped={true}
         >
           <Dropdown
@@ -269,16 +269,16 @@ const ScreenContextSettingsSection: React.FC = () => {
               void updateSetting("context_capture_mode", value as never)
             }
             options={[
-              { value: "always_frequent", label: "Always frequent" },
-              { value: "adaptive_cache", label: "Adaptive cache" },
-              { value: "mostly_on_demand", label: "Mostly on-demand" },
+              { value: "always_frequent", label: "Live updates" },
+              { value: "adaptive_cache", label: "Balanced" },
+              { value: "mostly_on_demand", label: "On-demand first" },
             ]}
             disabled={controlsDisabled || isUpdating("context_capture_mode")}
           />
         </SettingContainer>
         <SettingContainer
-          title="OCR Quality"
-          description="Trade speed for OCR fidelity when building screenshot context."
+          title="Text Recognition Quality"
+          description="Choose faster capture or more accurate text recognition."
           grouped={true}
         >
           <Dropdown
@@ -307,8 +307,8 @@ const ScreenContextSettingsSection: React.FC = () => {
           min={200}
           max={2000}
           step={50}
-          label="OCR Timeout"
-          description="Maximum time budget for a single screenshot OCR pass before Vox Jot falls back."
+          label="Recognition Timeout"
+          description="How long Vox Jot waits when reading text from one screen capture."
           grouped={true}
           formatValue={(value) => `${Math.round(value)} ms`}
           disabled={controlsDisabled}
@@ -324,8 +324,8 @@ const ScreenContextSettingsSection: React.FC = () => {
           min={500}
           max={5000}
           step={100}
-          label="Freshness Window"
-          description="How old the newest cached OCR packet can be before Vox Jot treats it as stale."
+          label="Recency Window"
+          description="How recent captured screen text must be before Vox Jot refreshes it."
           grouped={true}
           formatValue={(value) => `${Math.round(value)} ms`}
           disabled={controlsDisabled}
@@ -344,10 +344,10 @@ const ScreenContextSettingsSection: React.FC = () => {
           min={100}
           max={1200}
           step={25}
-          label="Context Budget"
-          description="Maximum amount of ranked screenshot context Vox Jot carries into dictation cleanup."
+          label="Context Amount"
+          description="How much recent screen text Vox Jot can use during dictation cleanup."
           grouped={true}
-          formatValue={(value) => `${Math.round(value)} tokens`}
+          formatValue={(value) => `${Math.round(value)} units`}
           disabled={controlsDisabled}
         />
         <SettingContainer
@@ -424,9 +424,11 @@ const ScreenContextSettingsSection: React.FC = () => {
                     <div className="truncate font-medium text-[var(--text)]">
                       {entry.name || entry.bundle_id}
                     </div>
-                    <div className="truncate text-xs text-[var(--muted)]">
-                      {entry.bundle_id}
-                    </div>
+                    {debugMode ? (
+                      <div className="truncate text-xs text-[var(--muted)]">
+                        {entry.bundle_id}
+                      </div>
+                    ) : null}
                   </div>
                   <Button
                     onClick={() => void removeExcludedApp(entry.bundle_id)}
@@ -447,11 +449,13 @@ const ScreenContextSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       <SettingsGroup
-        title="Context Status"
+        title="Screen Context Status"
         titleAction={
-          <Button onClick={() => void refreshDiagnostics()} size="sm">
-            {t("settings.refineModels.refresh")}
-          </Button>
+          debugMode ? (
+            <Button onClick={() => void refreshDiagnostics()} size="sm">
+              {t("settings.refineModels.refresh")}
+            </Button>
+          ) : undefined
         }
       >
         <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
@@ -469,24 +473,28 @@ const ScreenContextSettingsSection: React.FC = () => {
                 : t("settings.screenContext.screenRecordingMissing")}
             </span>
           </p>
-          <p>
-            {t("settings.screenContext.cacheSizeLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.cache_size ?? 0}
-            </span>
-          </p>
-          <p>
-            {t("settings.screenContext.latestContextAgeLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.latest_context_age_ms != null
-                ? t("settings.screenContext.latestContextAgeValue", {
-                    ms: diagnostics.latest_context_age_ms,
-                  })
-                : t("settings.screenContext.latestContextAgeUnavailable")}
-            </span>
-          </p>
-          {diagnostics?.last_error ? (
-            <Alert variant="info">{diagnostics.last_error}</Alert>
+          {debugMode ? (
+            <>
+              <p>
+                {t("settings.screenContext.cacheSizeLabel")} {" "}
+                <span className="font-semibold text-[var(--text)]">
+                  {diagnostics?.cache_size ?? 0}
+                </span>
+              </p>
+              <p>
+                {t("settings.screenContext.latestContextAgeLabel")} {" "}
+                <span className="font-semibold text-[var(--text)]">
+                  {diagnostics?.latest_context_age_ms != null
+                    ? t("settings.screenContext.latestContextAgeValue", {
+                        ms: diagnostics.latest_context_age_ms,
+                      })
+                    : t("settings.screenContext.latestContextAgeUnavailable")}
+                </span>
+              </p>
+              {diagnostics?.last_error ? (
+                <Alert variant="info">{diagnostics.last_error}</Alert>
+              ) : null}
+            </>
           ) : null}
           {debugMode ? (
             <details className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">

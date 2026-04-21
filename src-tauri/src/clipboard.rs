@@ -12,6 +12,64 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 #[cfg(target_os = "linux")]
 use crate::utils::{is_kde_wayland, is_wayland};
 
+/// Mark the macOS general pasteboard as transient so clipboard-history tools
+/// (Paste, Alfred, Pastebot, Maccy, etc.) skip logging our dictated text.
+/// See http://nspasteboard.org/ — setting `org.nspasteboard.TransientType` is
+/// the de-facto opt-out convention. The marker is added *without* clearing
+/// the text we just wrote, by using `-addTypes:owner:`.
+#[cfg(target_os = "macos")]
+fn mark_pasteboard_transient() {
+    use objc::runtime::{Class, Object};
+    use objc::{msg_send, sel, sel_impl};
+    use std::ffi::CString;
+
+    unsafe {
+        let Some(pasteboard_class) = Class::get("NSPasteboard") else {
+            return;
+        };
+        let pasteboard: *mut Object = msg_send![pasteboard_class, generalPasteboard];
+        if pasteboard.is_null() {
+            return;
+        }
+        let Some(ns_string_class) = Class::get("NSString") else {
+            return;
+        };
+        let Some(ns_array_class) = Class::get("NSArray") else {
+            return;
+        };
+
+        let Ok(type_cstr) = CString::new("org.nspasteboard.TransientType") else {
+            return;
+        };
+        let transient_type: *mut Object =
+            msg_send![ns_string_class, stringWithUTF8String: type_cstr.as_ptr()];
+        if transient_type.is_null() {
+            return;
+        }
+
+        let types_array: *mut Object =
+            msg_send![ns_array_class, arrayWithObject: transient_type];
+        if types_array.is_null() {
+            return;
+        }
+
+        let _: i64 = msg_send![pasteboard, addTypes: types_array owner: std::ptr::null::<Object>()];
+
+        let Ok(empty_cstr) = CString::new("") else {
+            return;
+        };
+        let empty_string: *mut Object =
+            msg_send![ns_string_class, stringWithUTF8String: empty_cstr.as_ptr()];
+        if !empty_string.is_null() {
+            let _: bool =
+                msg_send![pasteboard, setString: empty_string forType: transient_type];
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn mark_pasteboard_transient() {}
+
 const SCRATCHPAD_WINDOW_LABEL: &str = "scratchpad";
 const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
 const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
@@ -140,6 +198,10 @@ fn paste_via_clipboard(
         .map_err(|e| format!("Failed to write to clipboard: {}", e));
 
     write_result?;
+
+    // Mark the pasteboard as transient so clipboard-history managers skip
+    // logging the dictated text. No-op on non-macOS.
+    mark_pasteboard_transient();
 
     std::thread::sleep(Duration::from_millis(paste_delay_ms));
 

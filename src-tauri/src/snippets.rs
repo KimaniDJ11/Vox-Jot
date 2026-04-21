@@ -95,22 +95,51 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
                     continue;
                 }
                 if normalized_phrase == *norm_trigger {
-                    // Preserve leading punctuation from first word and trailing from last
+                    // Preserve only *extra* edge punctuation the speaker added
+                    // around the trigger — e.g., a trailing sentence period.
+                    // Punctuation that was part of the trigger itself (e.g.,
+                    // the leading apostrophe in "'tis") must not be re-added
+                    // in front of the expansion.
                     let first = phrase_words[0];
                     let last = phrase_words[window - 1];
+                    let trigger_words: Vec<&str> = snippet.trigger.split_whitespace().collect();
+                    let trigger_first = trigger_words.first().copied().unwrap_or("");
+                    let trigger_last = trigger_words.last().copied().unwrap_or("");
 
-                    let leading: String = first
+                    let trigger_leading_count = trigger_first
                         .chars()
                         .take_while(|c| c.is_ascii_punctuation())
-                        .collect();
-                    let trailing: String = last
+                        .count();
+                    let trigger_trailing_count = trigger_last
                         .chars()
                         .rev()
                         .take_while(|c| c.is_ascii_punctuation())
-                        .collect::<String>()
+                        .count();
+
+                    // Input leading punct = user-added extras prepended *before*
+                    // the trigger's own leading punct. Keep only (total - trigger)
+                    // chars from the start.
+                    let input_leading_count = first
+                        .chars()
+                        .take_while(|c| c.is_ascii_punctuation())
+                        .count();
+                    let user_leading_count =
+                        input_leading_count.saturating_sub(trigger_leading_count);
+                    let leading: String = first.chars().take(user_leading_count).collect();
+
+                    let input_trailing_count = last
                         .chars()
                         .rev()
+                        .take_while(|c| c.is_ascii_punctuation())
+                        .count();
+                    let user_trailing_count =
+                        input_trailing_count.saturating_sub(trigger_trailing_count);
+                    let trailing_rev: String = last
+                        .chars()
+                        .rev()
+                        .take(user_trailing_count)
                         .collect();
+                    let trailing: String = trailing_rev.chars().rev().collect();
 
                     output.push(format!("{}{}{}", leading, snippet.expansion, trailing));
                     hits.push(snippet.trigger.clone());
@@ -203,6 +232,27 @@ mod tests {
         let result = apply_snippets("", &snippets);
         assert_eq!(result.text, "");
         assert!(result.hits.is_empty());
+    }
+
+    #[test]
+    fn trigger_with_leading_punct_does_not_reprepend_it() {
+        // Trigger '"tis" → expansion "it is". The leading apostrophe is part
+        // of the trigger itself and must NOT be preserved in front of the
+        // expansion.
+        let snippets = vec![snippet("'tis", "it is")];
+        let result = apply_snippets("'tis the season", &snippets);
+        assert_eq!(result.text, "it is the season");
+        assert_eq!(result.hits.len(), 1);
+    }
+
+    #[test]
+    fn extra_edge_punct_still_preserved_when_trigger_also_has_some() {
+        // Trigger "'tis" already starts with an apostrophe. If the speaker
+        // adds an extra opening bracket before it and a period after, those
+        // extras should survive.
+        let snippets = vec![snippet("'tis", "it is")];
+        let result = apply_snippets("('tis the season.", &snippets);
+        assert_eq!(result.text, "(it is the season.");
     }
 
     #[test]

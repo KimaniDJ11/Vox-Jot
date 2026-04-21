@@ -238,7 +238,7 @@ export const HistorySettings: React.FC = () => {
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
               {t("settings.history.emptyDescription", {
                 defaultValue:
-                  "Recordings, pasted output, and observed field changes will appear here after you dictate.",
+                  "Your recordings and final text will appear here after you dictate.",
               })}
             </p>
           </div>

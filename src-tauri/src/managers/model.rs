@@ -170,6 +170,29 @@ impl ModelManager {
         Ok(())
     }
 
+    fn set_model_downloading(&self, model_id: &str, is_downloading: bool) {
+        let mut models = self
+            .available_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if let Some(model) = models.get_mut(model_id) {
+            model.is_downloading = is_downloading;
+        }
+    }
+
+    fn clear_download_cancel_flag(&self, model_id: &str) {
+        let mut flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
+        flags.remove(model_id);
+    }
+
+    fn remove_extracting_model(&self, model_id: &str) {
+        let mut extracting = self
+            .extracting_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        extracting.remove(model_id);
+    }
+
     fn migrate_local_mlx_stt_assets(app_handle: &AppHandle, models_dir: &Path) -> Result<()> {
         let Some(home) = dirs::home_dir() else {
             return Ok(());
@@ -1292,6 +1315,37 @@ impl ModelManager {
     }
 
     pub async fn download_model(&self, model_id: &str) -> Result<()> {
+        struct DownloadStateGuard<'a> {
+            manager: &'a ModelManager,
+            model_id: String,
+            clear_extracting: bool,
+            active: bool,
+        }
+
+        impl DownloadStateGuard<'_> {
+            fn mark_extracting(&mut self) {
+                self.clear_extracting = true;
+            }
+
+            fn disarm(&mut self) {
+                self.active = false;
+            }
+        }
+
+        impl Drop for DownloadStateGuard<'_> {
+            fn drop(&mut self) {
+                if !self.active {
+                    return;
+                }
+
+                self.manager.set_model_downloading(&self.model_id, false);
+                self.manager.clear_download_cancel_flag(&self.model_id);
+                if self.clear_extracting {
+                    self.manager.remove_extracting_model(&self.model_id);
+                }
+            }
+        }
+
         let model_info = {
             let models = self
                 .available_models
@@ -1348,6 +1402,12 @@ impl ModelManager {
             let mut flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
             flags.insert(model_id.to_string(), cancel_flag.clone());
         }
+        let mut download_guard = DownloadStateGuard {
+            manager: self,
+            model_id: model_id.to_string(),
+            clear_extracting: false,
+            active: true,
+        };
 
         // Create HTTP client with range request for resuming
         let client = reqwest::Client::new();
@@ -1552,6 +1612,7 @@ impl ModelManager {
                     .unwrap_or_else(|e| e.into_inner());
                 extracting.insert(model_id.to_string());
             }
+            download_guard.mark_extracting();
 
             // Emit extraction started event
             let _ = self.app_handle.emit("model-extraction-started", model_id);
@@ -1714,11 +1775,6 @@ impl ModelManager {
         }
 
         // Remove cancel flag on successful completion
-        {
-            let mut flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
-            flags.remove(model_id);
-        }
-
         // Emit completion event
         let _ = self.app_handle.emit("model-download-complete", model_id);
 
@@ -1726,6 +1782,13 @@ impl ModelManager {
             "Successfully downloaded model {} to {:?}",
             model_id, model_path
         );
+
+        self.set_model_downloading(model_id, false);
+        self.clear_download_cancel_flag(model_id);
+        if download_guard.clear_extracting {
+            self.remove_extracting_model(model_id);
+        }
+        download_guard.disarm();
 
         Ok(())
     }

@@ -16,7 +16,7 @@ export const AudioEnhancement: React.FC<AudioEnhancementProps> = (props) => {
     <BooleanSetting
       settingKey="audio_enhancement_enabled"
       label={t("settings.sound.audioEnhancement.label", {
-        defaultValue: "Noise Reduction (RNNoise)",
+        defaultValue: "Noise Reduction",
       })}
       description={t("settings.sound.audioEnhancement.description", {
         defaultValue:

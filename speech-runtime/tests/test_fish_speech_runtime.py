@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+import tempfile
+import threading
+import time
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from runtime.config import ENGINE_SPECS, RuntimeConfig
+from runtime.engine_worker import EngineWorker
+from runtime.worker_host import WorkerHost
+
+
+def _fish_spec():
+    return next(spec for spec in ENGINE_SPECS if spec.provider_id == "fish_speech")
+
+
+class DummyProcess:
+    def __init__(self, pid: int = 12345):
+        self.pid = pid
+
+    def poll(self):
+        return None
+
+
+class FishSpeechRuntimeTest(unittest.TestCase):
+    def make_config(self) -> RuntimeConfig:
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-fish-runtime-"))
+        return RuntimeConfig(
+            model_store=temp_root / "models",
+            state_dir=temp_root / "state",
+            profiles_dir=None,
+            listen_host="127.0.0.1",
+            listen_port=8008,
+        )
+
+    def make_model_dir(self) -> Path:
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-fish-model-"))
+        model_dir = temp_root / "Fish Speech"
+        checkpoint_dir = model_dir / "checkpoints" / "fish-speech-1.5"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        (checkpoint_dir / "model.pth").write_text("", encoding="utf-8")
+        (checkpoint_dir / "codec.pth").write_text("", encoding="utf-8")
+        (model_dir / "tools").mkdir(parents=True, exist_ok=True)
+        return model_dir
+
+    def test_worker_host_serializes_fish_sidecar_startup(self):
+        host = WorkerHost(self.make_config())
+        spec = _fish_spec()
+        model_dir = self.make_model_dir()
+
+        prepare_started = threading.Event()
+        release_prepare = threading.Event()
+        prepare_calls: list[int] = []
+
+        def fake_prepare(_spec, _model_dir):
+            prepare_calls.append(threading.get_ident())
+            prepare_started.set()
+            release_prepare.wait(timeout=5)
+            return Path("/usr/bin/python3")
+
+        results: list[str] = []
+        errors: list[BaseException] = []
+
+        def run_startup():
+            try:
+                results.append(host.ensure_fish_sidecar(spec, model_dir))
+            except BaseException as exc:  # pragma: no cover - failure path
+                errors.append(exc)
+
+        with mock.patch.object(host, "prepare", side_effect=fake_prepare), mock.patch.object(
+            host,
+            "_url_healthy",
+            return_value=True,
+        ), mock.patch("runtime.worker_host.subprocess.Popen", return_value=DummyProcess()):
+            thread_one = threading.Thread(target=run_startup)
+            thread_one.start()
+            self.assertTrue(prepare_started.wait(timeout=2))
+
+            thread_two = threading.Thread(target=run_startup)
+            thread_two.start()
+            try:
+                time.sleep(0.2)
+                self.assertEqual(len(prepare_calls), 1)
+            finally:
+                release_prepare.set()
+                thread_one.join(timeout=5)
+                thread_two.join(timeout=5)
+
+        self.assertFalse(errors)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0], results[1])
+
+    def test_engine_worker_reloads_fish_server_url_when_cache_goes_stale(self):
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-fish-worker-"))
+        state_dir = temp_root / "state"
+        model_dir = temp_root / "model"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        worker = EngineWorker(
+            provider_id="fish_speech",
+            model_id="fish-speech-1.5",
+            model_dir=model_dir,
+            state_dir=state_dir,
+            profiles_dir=None,
+        )
+
+        cached_url = "http://127.0.0.1:9123"
+        refreshed_url = "http://127.0.0.1:9124"
+        state_path = worker._fish_state_path()
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            f'{{"url": "{refreshed_url}"}}',
+            encoding="utf-8",
+        )
+        worker.fish_url = cached_url
+
+        with mock.patch.object(
+            worker,
+            "_url_healthy",
+            side_effect=lambda url: url == refreshed_url,
+        ):
+            resolved_url = worker._ensure_fish_server()
+
+        self.assertEqual(resolved_url, refreshed_url)
+        self.assertEqual(worker.fish_url, refreshed_url)
+
+
+if __name__ == "__main__":
+    unittest.main()

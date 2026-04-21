@@ -9,7 +9,8 @@ This spec keeps the existing strengths and fills the frontend logic gap with fas
 - `bun run test:unit`
 - `bun run test:playwright`
 - `cd src-tauri && cargo test`
-- `python -m pytest speech-runtime/tests`
+- `cd speech-runtime && python3 -m unittest discover -s tests -p 'test_*.py'`
+- `cd speech-runtime && python3 -m runtime.app`
 
 ## Existing Coverage Already In Repo
 

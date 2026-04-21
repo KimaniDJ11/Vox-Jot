@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
 import type {
@@ -66,13 +66,6 @@ interface UseSettingsReturn {
 
 export const useSettings = (): UseSettingsReturn => {
   const store = useSettingsStore();
-
-  // Initialize on first mount
-  useEffect(() => {
-    if (store.isLoading) {
-      store.initialize();
-    }
-  }, [store.initialize, store.isLoading]);
 
   return useMemo(
     () => ({

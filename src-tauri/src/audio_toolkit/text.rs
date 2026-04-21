@@ -172,24 +172,23 @@ fn preserve_case_pattern(original: &str, replacement: &str) -> String {
 
 /// Extracts punctuation prefix and suffix from a word
 fn extract_punctuation(word: &str) -> (&str, &str) {
-    let prefix_end = word.chars().take_while(|c| !c.is_alphanumeric()).count();
-    let suffix_start = word
-        .char_indices()
+    let prefix_end: usize = word
+        .chars()
+        .take_while(|c| !c.is_alphanumeric())
+        .map(char::len_utf8)
+        .sum();
+    let suffix_len: usize = word
+        .chars()
         .rev()
-        .take_while(|(_, c)| !c.is_alphanumeric())
-        .count();
+        .take_while(|c| !c.is_alphanumeric())
+        .map(char::len_utf8)
+        .sum();
 
-    let prefix = if prefix_end > 0 {
-        &word[..prefix_end]
-    } else {
-        ""
-    };
+    // Guard against overlap when the entire word is punctuation.
+    let suffix_start = word.len().saturating_sub(suffix_len).max(prefix_end);
 
-    let suffix = if suffix_start > 0 {
-        &word[word.len() - suffix_start..]
-    } else {
-        ""
-    };
+    let prefix = &word[..prefix_end];
+    let suffix = &word[suffix_start..];
 
     (prefix, suffix)
 }

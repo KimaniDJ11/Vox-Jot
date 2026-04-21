@@ -341,7 +341,7 @@ function formatSelectableLabel(label: string, detail: string | null) {
 
 function previewPreparationMessage(model: CatalogModelDescriptor) {
   if (model.source_kind === "runtime") {
-    return `Preparing ${model.label} runtime for first preview…`;
+    return `Getting ${model.label} ready for first preview…`;
   }
   return `Preparing ${model.label} preview…`;
 }
@@ -361,7 +361,7 @@ function previewErrorMessage(
   }
 
   if (model?.source_kind === "runtime") {
-    return `Speech runtime preview failed: ${raw}`;
+    return `Preview failed while starting ${model.label}: ${raw}`;
   }
   if (model && isMlxProvider(model.provider_id)) {
     return `MLX preview failed: ${raw}`;
@@ -1079,7 +1079,7 @@ const VoiceTuningCard: React.FC<{
             label={tuningNumberLabel(descriptors.get("guidance"), "Guidance")}
             description={tuningDescription(
               descriptors.get("guidance"),
-              "Higher values make the engine adhere more tightly to the intended delivery.",
+              "Higher values keep delivery more consistent with your chosen style.",
             )}
             descriptionMode="tooltip"
             grouped={true}
@@ -1100,7 +1100,7 @@ const VoiceTuningCard: React.FC<{
             label={tuningNumberLabel(descriptors.get("stability"), "Stability")}
             description={tuningDescription(
               descriptors.get("stability"),
-              "Use this only for engines that expose a real stability control.",
+              "Only available for voice models that support a stability control.",
             )}
             descriptionMode="tooltip"
             grouped={true}

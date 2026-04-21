@@ -219,6 +219,7 @@ fn trim_partial_audio(mut samples: Vec<f32>, max_samples: Option<usize>) -> Vec<
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
     transcribe_lock: Arc<Mutex<()>>,
+    lifecycle_lock: Arc<Mutex<()>>,
     model_manager: Arc<ModelManager>,
     app_handle: AppHandle,
     current_model_id: Arc<Mutex<Option<String>>>,
@@ -229,6 +230,8 @@ pub struct TranscriptionManager {
     loading_condvar: Arc<Condvar>,
     partial_session: Arc<Mutex<Option<PartialProviderSession>>>,
     partial_generation: Arc<AtomicU64>,
+    processing_generation: Arc<AtomicU64>,
+    canceled_processing_generation: Arc<AtomicU64>,
 }
 
 impl TranscriptionManager {
@@ -236,6 +239,7 @@ impl TranscriptionManager {
         let manager = Self {
             engine: Arc::new(Mutex::new(None)),
             transcribe_lock: Arc::new(Mutex::new(())),
+            lifecycle_lock: Arc::new(Mutex::new(())),
             model_manager,
             app_handle: app_handle.clone(),
             current_model_id: Arc::new(Mutex::new(None)),
@@ -251,6 +255,8 @@ impl TranscriptionManager {
             loading_condvar: Arc::new(Condvar::new()),
             partial_session: Arc::new(Mutex::new(None)),
             partial_generation: Arc::new(AtomicU64::new(0)),
+            processing_generation: Arc::new(AtomicU64::new(0)),
+            canceled_processing_generation: Arc::new(AtomicU64::new(0)),
         };
 
         // Start the idle watcher
@@ -327,12 +333,32 @@ impl TranscriptionManager {
         })
     }
 
+    fn lock_lifecycle(&self) -> MutexGuard<'_, ()> {
+        self.lifecycle_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn next_partial_generation(&self) -> u64 {
         self.partial_generation.fetch_add(1, Ordering::Relaxed) + 1
     }
 
     fn partial_generation_is_current(&self, generation: u64) -> bool {
         self.partial_generation.load(Ordering::Relaxed) == generation
+    }
+
+    pub fn begin_processing_run(&self) -> u64 {
+        self.processing_generation.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn cancel_active_processing(&self) {
+        let active_generation = self.processing_generation.load(Ordering::Relaxed);
+        self.canceled_processing_generation
+            .store(active_generation, Ordering::Relaxed);
+    }
+
+    pub fn is_processing_cancelled(&self, generation: u64) -> bool {
+        self.canceled_processing_generation.load(Ordering::Relaxed) >= generation
     }
 
     fn stop_partial_session_internal(&self) {
@@ -771,6 +797,7 @@ impl TranscriptionManager {
         let unload_start = std::time::Instant::now();
         debug!("Starting to unload model");
         self.stop_partial_session_internal();
+        let _lifecycle_guard = self.lock_lifecycle();
 
         {
             let mut engine = self.lock_engine();
@@ -861,6 +888,7 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
+        let _lifecycle_guard = self.lock_lifecycle();
         let loaded_engine = self.create_loaded_engine(model_id, &model_info, true)?;
 
         // Update the current engine and model ID
@@ -986,6 +1014,7 @@ impl TranscriptionManager {
         // We use catch_unwind to prevent engine panics from poisoning the mutex,
         // which would make the app hang indefinitely on subsequent operations.
         let result = {
+            let _lifecycle_guard = self.lock_lifecycle();
             let mut engine_guard = self.lock_engine();
 
             // Take the engine out so we own it during transcription.

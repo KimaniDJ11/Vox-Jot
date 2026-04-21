@@ -236,6 +236,26 @@ export const CorrectionsSection: React.FC = () => {
   return <CorrectionSettings showTrackingToggle={false} />;
 };
 
+export const SettingsCorrectionsSection: React.FC<WorkflowSectionProps> = ({
+  onNavigateToSection,
+}) => {
+  return (
+    <div className="space-y-6">
+      <Alert variant="info">
+        Corrections now live in Dictate to avoid duplicated settings pages.
+      </Alert>
+
+      <WorkflowLinkCard
+        eyebrow="Canonical Home"
+        title="Manage Corrections in Dictate"
+        description="Use Dictate > Corrections for learned corrections, custom words, and correction behavior."
+        actionLabel="Open Dictate Corrections"
+        onAction={() => onNavigateToSection("dictate", "corrections")}
+      />
+    </div>
+  );
+};
+
 export const LearnedCorrectionsSection: React.FC<{
   titleActionTargetId?: string;
 }> = ({ titleActionTargetId }) => {
@@ -591,6 +611,9 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
 };
 
 export const OutputPasteSettingsSection: React.FC = () => {
+  const { getSetting } = useSettings();
+  const debugMode = getSetting("debug_mode") ?? false;
+
   return (
     <div className="space-y-6">
       <SettingsGroup>
@@ -599,7 +622,7 @@ export const OutputPasteSettingsSection: React.FC = () => {
         <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
         <AutoSubmit descriptionMode="tooltip" grouped={true} />
         <AppendTrailingSpace descriptionMode="tooltip" grouped={true} />
-        <PasteDelay descriptionMode="tooltip" grouped={true} />
+        {debugMode ? <PasteDelay descriptionMode="tooltip" grouped={true} /> : null}
       </SettingsGroup>
     </div>
   );
@@ -732,6 +755,7 @@ export const AISetupSettingsSection: React.FC = () => {
 export const PrivacyStorageSettingsSection: React.FC = () => {
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
+  const debugMode = getSetting("debug_mode") ?? false;
 
   return (
     <div className="space-y-6">
@@ -753,7 +777,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           grouped={true}
         />
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />
-        <LogDirectory grouped={true} />
+        {debugMode ? <LogDirectory grouped={true} /> : null}
       </SettingsGroup>
 
       {localPrivacyMode && (
@@ -769,21 +793,24 @@ export const DiagnosticsSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Experimental">
+      <SettingsGroup title="Labs">
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
-        <KeyboardImplementationSelector
-          descriptionMode="tooltip"
-          grouped={true}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup>
-        <LogLevelSelector grouped={true} />
-        <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
+        {debugMode ? (
+          <KeyboardImplementationSelector
+            descriptionMode="tooltip"
+            grouped={true}
+          />
+        ) : null}
       </SettingsGroup>
 
       {debugMode ? (
-        <DebugDiagnosticsPanel />
+        <>
+          <SettingsGroup>
+            <LogLevelSelector grouped={true} />
+            <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
+          </SettingsGroup>
+          <DebugDiagnosticsPanel />
+        </>
       ) : (
         <Alert variant="info">{debugRevealNotice}</Alert>
       )}

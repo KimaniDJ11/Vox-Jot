@@ -7,9 +7,9 @@ use crate::model_platform::{
 };
 use crate::settings::{
     get_settings, write_settings, AppSettings, TTS_PROVIDER_CHATTERBOX_ID,
-    TTS_PROVIDER_FISH_SPEECH_ID, TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
-    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID,
+    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_XTTS_ID,
 };
 use crate::tts::TtsManager;
 use once_cell::sync::Lazy;
@@ -1017,8 +1017,7 @@ pub async fn set_tts_platform_selection(
         | TTS_PROVIDER_OPENVOICE_ID
         | TTS_PROVIDER_CHATTERBOX_ID
         | TTS_PROVIDER_KOKORO_ID
-        | TTS_PROVIDER_XTTS_ID
-        | TTS_PROVIDER_FISH_SPEECH_ID => crate::settings::TtsEnginePreference::Sidecar,
+        | TTS_PROVIDER_XTTS_ID => crate::settings::TtsEnginePreference::Sidecar,
         _ => {
             if model.source_kind == CatalogSourceKind::Runtime {
                 crate::settings::TtsEnginePreference::Sidecar

@@ -149,8 +149,6 @@ const PROVIDER_BRAND: Record<string, string> = {
   chatterbox: "resemble",
   kokoro: "kokoro",
   xtts: "coqui",
-  fish_speech: "fish_audio",
-  fish_speech_local: "fish_audio",
   // TTS MLX Audio providers
   mlx_kokoro: "kokoro",
   mlx_chatterbox: "resemble",

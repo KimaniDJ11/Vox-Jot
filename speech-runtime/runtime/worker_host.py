@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import socket
 import subprocess
 import sys
 import threading
@@ -10,7 +9,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib import request
 
 from .config import EngineSpec, RuntimeConfig
 
@@ -18,8 +16,6 @@ KOKORO_SPACY_MODEL_URL = (
     "https://github.com/explosion/spacy-models/releases/download/"
     "en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 )
-FISH_SPEECH_1_5_CODEC_URL = "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/firefly-gan-vq-fsq-8x1024-21hz-generator.pth"
-FISH_SPEECH_S2_CODEC_URL = "https://huggingface.co/fishaudio/s2-pro/resolve/main/codec.pth"
 MELOTTS_GIT_URL = "git+https://github.com/myshell-ai/MeloTTS.git"
 OPENVOICE_RUNTIME_DEPENDENCIES = (
     "numpy==1.26.4",
@@ -40,56 +36,8 @@ XTTS_RUNTIME_DEPENDENCIES = (
     XTTS_TRANSFORMERS_PIN,
     "torchcodec",
 )
-FISH_SPEECH_RUNTIME_DEPENDENCIES = (
-    "numpy",
-    "torch==2.8.0",
-    "torchaudio==2.8.0",
-    "transformers<=4.57.3",
-    "lightning>=2.1.0",
-    "hydra-core>=1.3.2",
-    "natsort>=8.4.0",
-    "einops>=0.7.0",
-    "librosa>=0.10.1",
-    "rich>=13.5.3",
-    "kui>=1.6.0",
-    "uvicorn>=0.30.0",
-    "loguru>=0.6.0",
-    "loralib>=0.1.2",
-    "pyrootutils>=1.0.4",
-    "resampy>=0.4.3",
-    "einx[torch]==0.2.2",
-    "ormsgpack",
-    "tiktoken>=0.8.0",
-    "pydantic==2.9.2",
-    "cachetools==6.2.0",
-    "safetensors",
-    "protobuf>=3.20.0,<6.0.0",
-    "click",
-    "soundfile",
-    "tqdm",
-)
-FISH_SPEECH_CODEC_SUPPORT_DEPENDENCIES = (
-    "argbind==0.3.9",
-    "ffmpy",
-    "flatten-dict",
-    "importlib-resources",
-    "ipython",
-    "julius",
-    "markdown2",
-    "matplotlib",
-    "pyloudnorm",
-    "pystoi",
-    "randomname",
-    "tensorboard>=2.14.1",
-    "torch-stoi",
-)
-FISH_SPEECH_CODEC_PACKAGES = (
-    "descript-audiotools==0.7.2",
-    "descript-audio-codec==1.0.0",
-)
 WORKER_RESPONSE_TIMEOUT_SECS = 120
 PROCESS_SHUTDOWN_TIMEOUT_SECS = 5
-FISH_VISUALIZE_PATCH_MARKER = "# Vox Jot patch: guard visualize decode failures"
 
 
 def _bin_dir(env_dir: Path) -> Path:
@@ -102,12 +50,6 @@ def _python_path(env_dir: Path) -> Path:
     if os.name == "nt":
         return _bin_dir(env_dir) / "python.exe"
     return _bin_dir(env_dir) / "python"
-
-
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
 
 
 @dataclass
@@ -127,7 +69,6 @@ class WorkerHost:
         self.engines_dir = self.config.state_dir / "engines"
         self._workers: dict[str, WorkerProcess] = {}
         self._global_lock = threading.Lock()
-        self._fish_sidecar_lock = threading.Lock()
 
     def _child_env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -167,8 +108,6 @@ class WorkerHost:
             return self._env_has_module(env_python, "chatterbox")
         if spec.provider_id == "xtts":
             return self._env_has_module(env_python, "TTS")
-        if spec.provider_id == "fish_speech":
-            return self._env_has_module(env_python, "fish_speech")
         return True
 
     def _pip_install(self, env_python: Path, *args: str) -> None:
@@ -188,17 +127,6 @@ class WorkerHost:
             [str(env_python), "-c", code],
             env=self._child_env(),
         )
-
-    def _download_file(self, url: str, destination: Path) -> None:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = destination.with_suffix(f"{destination.suffix}.part")
-        with request.urlopen(url, timeout=60) as response, temp_path.open("wb") as handle:
-            while True:
-                chunk = response.read(1024 * 1024)
-                if not chunk:
-                    break
-                handle.write(chunk)
-        temp_path.replace(destination)
 
     def _bootstrap_unidic(self, env_python: Path) -> None:
         script = """
@@ -243,13 +171,6 @@ except Exception:
         if spec.provider_id == "xtts":
             self._pip_install(env_python, "-e", str(model_dir))
             self._pip_install(env_python, *XTTS_RUNTIME_DEPENDENCIES)
-            return
-
-        if spec.provider_id == "fish_speech":
-            self._pip_install(env_python, *FISH_SPEECH_RUNTIME_DEPENDENCIES)
-            self._pip_install(env_python, *FISH_SPEECH_CODEC_SUPPORT_DEPENDENCIES)
-            self._pip_install(env_python, "--no-deps", *FISH_SPEECH_CODEC_PACKAGES)
-            self._pip_install(env_python, "--no-deps", "-e", str(model_dir))
             return
 
         self._pip_install(env_python, "-e", str(model_dir))
@@ -358,7 +279,11 @@ except Exception:
     ) -> bytes:
         worker = self.ensure_worker(spec, model_dir)
         with worker.lock:
-            response = self._send(worker, {"action": "synthesize", "payload": payload})
+            response = self._send(
+                worker,
+                {"action": "synthesize", "payload": payload},
+                response_timeout_secs=WORKER_RESPONSE_TIMEOUT_SECS,
+            )
         output_path = Path(response["output_path"])
         try:
             return output_path.read_bytes()
@@ -447,9 +372,20 @@ except Exception:
             raise RuntimeError(str(error_holder["error"]))
         return result.get("line", "")
 
-    def _send(self, worker: WorkerProcess, message: dict[str, Any]) -> dict[str, Any]:
+    def _send(
+        self,
+        worker: WorkerProcess,
+        message: dict[str, Any],
+        *,
+        response_timeout_secs: float | None = None,
+    ) -> dict[str, Any]:
         if worker.process.stdin is None or worker.process.stdout is None:
             raise RuntimeError("Speech worker pipes are not available.")
+        deadline = float(
+            response_timeout_secs
+            if response_timeout_secs is not None
+            else WORKER_RESPONSE_TIMEOUT_SECS
+        )
         try:
             worker.process.stdin.write(json.dumps(message) + "\n")
             worker.process.stdin.flush()
@@ -461,7 +397,7 @@ except Exception:
 
         ignored_lines: list[str] = []
         while True:
-            line = self._readline_with_timeout(worker, WORKER_RESPONSE_TIMEOUT_SECS)
+            line = self._readline_with_timeout(worker, deadline)
             if line is None:
                 detail = self._collect_worker_detail(worker, ignored_lines)
                 self._drop_worker(worker)
@@ -490,165 +426,3 @@ except Exception:
                 self._drop_worker(worker)
                 raise RuntimeError(response.get("error") or "Speech worker failed.")
             return response
-
-    def ensure_fish_sidecar(
-        self,
-        spec: EngineSpec,
-        model_dir: Path,
-    ) -> str:
-        with self._fish_sidecar_lock:
-            runtime_dir = self.engines_dir / spec.provider_id
-            runtime_dir.mkdir(parents=True, exist_ok=True)
-            state_path = runtime_dir / "fish_server.json"
-            cached_url = self._load_fish_sidecar_url(state_path)
-            if cached_url and self._url_healthy(cached_url):
-                return cached_url
-
-            env_python = self.prepare(spec, model_dir)
-            port = _free_port()
-            url = f"http://127.0.0.1:{port}"
-            checkpoint_dir = self._fish_checkpoint_dir(model_dir)
-            decoder_path = self._fish_decoder_checkpoint_path(checkpoint_dir)
-            self._patch_fish_visualize_decode_crash(model_dir)
-            log_path = runtime_dir / "fish_server.log"
-            log_handle = log_path.open("w", encoding="utf-8")
-            process: subprocess.Popen[str] | None = None
-            try:
-                process = subprocess.Popen(
-                    [
-                        str(env_python),
-                        str(model_dir / "tools" / "api_server.py"),
-                        "--listen",
-                        f"127.0.0.1:{port}",
-                        "--llama-checkpoint-path",
-                        str(checkpoint_dir),
-                        "--decoder-checkpoint-path",
-                        str(decoder_path),
-                        "--decoder-config-name",
-                        "modded_dac_vq",
-                        "--device",
-                        "cpu",
-                    ],
-                    cwd=str(model_dir),
-                    stdout=log_handle,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    env=self._child_env(),
-                )
-            finally:
-                log_handle.close()
-
-            for _ in range(60):
-                if self._url_healthy(url):
-                    state_path.write_text(
-                        json.dumps({"url": url, "pid": process.pid}, indent=2),
-                        encoding="utf-8",
-                    )
-                    return url
-                if process.poll() is not None:
-                    break
-                time.sleep(1)
-
-            detail = ""
-            if log_path.exists():
-                try:
-                    detail = log_path.read_text(encoding="utf-8")[-4000:].strip()
-                except Exception:
-                    detail = ""
-            state_path.unlink(missing_ok=True)
-            self._terminate_process(process)
-            raise RuntimeError(detail or "Fish Speech server did not become healthy.")
-
-    def _load_fish_sidecar_url(self, state_path: Path) -> str | None:
-        if not state_path.exists():
-            return None
-        try:
-            data = json.loads(state_path.read_text(encoding="utf-8"))
-        except Exception:
-            return None
-
-        url = data.get("url")
-        if isinstance(url, str):
-            url = url.strip()
-            if url:
-                return url
-        return None
-
-    def _fish_checkpoint_dir(self, model_dir: Path) -> Path:
-        for candidate in (
-            model_dir / "checkpoints" / "s2-pro",
-            model_dir / "checkpoints" / "openaudio-s1-mini",
-            model_dir / "checkpoints" / "fish-speech-1.5",
-        ):
-            if candidate.exists() and (
-                (candidate / "model.pth").exists()
-                or (candidate / "model.safetensors.index.json").exists()
-            ):
-                return candidate
-        raise RuntimeError("Fish Speech checkpoints are missing.")
-
-    def _fish_decoder_checkpoint_path(self, checkpoint_dir: Path) -> Path:
-        codec_path = checkpoint_dir / "codec.pth"
-        if codec_path.exists():
-            return codec_path
-
-        if checkpoint_dir.name == "fish-speech-1.5":
-            self._download_file(FISH_SPEECH_1_5_CODEC_URL, codec_path)
-            return codec_path
-        elif checkpoint_dir.name == "s2-pro":
-            self._download_file(FISH_SPEECH_S2_CODEC_URL, codec_path)
-            return codec_path
-
-        raise RuntimeError(
-            "Fish Speech codec.pth is missing from the checkpoint bundle."
-        )
-
-    def _patch_fish_visualize_decode_crash(self, model_dir: Path) -> None:
-        inference_path = (
-            model_dir
-            / "fish_speech"
-            / "models"
-            / "text2semantic"
-            / "inference.py"
-        )
-        if not inference_path.exists():
-            return
-
-        source = inference_path.read_text(encoding="utf-8")
-        if FISH_VISUALIZE_PATCH_MARKER in source:
-            return
-
-        original = (
-            '            logger.info("Visualizing prompt structure:")\n'
-            "            conversation_gen.visualize(\n"
-            "                tokenizer,\n"
-            "                merge_audio_tokens=True,\n"
-            "                merge_semantic_tokens=True,\n"
-            "            )\n"
-        )
-        replacement = (
-            '            logger.info("Visualizing prompt structure:")\n'
-            f"            {FISH_VISUALIZE_PATCH_MARKER}\n"
-            "            try:\n"
-            "                conversation_gen.visualize(\n"
-            "                    tokenizer,\n"
-            "                    merge_audio_tokens=True,\n"
-            "                    merge_semantic_tokens=True,\n"
-            "                )\n"
-            "            except Exception as exc:\n"
-            "                logger.warning(\n"
-            '                    f"Skipping prompt visualization due to tokenizer decode error: {exc}"\n'
-            "                )\n"
-        )
-
-        if original not in source:
-            return
-
-        inference_path.write_text(source.replace(original, replacement, 1), encoding="utf-8")
-
-    def _url_healthy(self, url: str) -> bool:
-        try:
-            with request.urlopen(f"{url}/v1/health", timeout=3) as response:
-                return int(response.status) < 400
-        except Exception:
-            return False

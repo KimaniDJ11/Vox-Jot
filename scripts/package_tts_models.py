@@ -1,6 +1,7 @@
 import os
 import subprocess
 import shutil
+from pathlib import Path
 
 # Make sure huggingface_hub is installed:
 # pip install huggingface_hub
@@ -16,7 +17,6 @@ MODELS = [
     ("Qwen/Qwen3-TTS-12Hz-0.6B-Base", "qwen3-0.6b-base", "qwen3-0.6b-base.tar.gz"),
     ("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", "qwen3-0.6b-customvoice", "qwen3-0.6b-customvoice.tar.gz"),
     ("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "qwen3-1.7b-customvoice", "qwen3-1.7b-customvoice.tar.gz"),
-    ("fishaudio/fish-speech-1.5", "fish-speech", "tts-fish-speech-1.5.tar.gz")
 ]
 
 GH_RELEASE = "v0.3.0-tts-models"
@@ -33,6 +33,23 @@ subprocess.run([
     "-n", "Offline model packages for Text-to-Speech."
 ], env=env, stderr=subprocess.DEVNULL)
 
+
+def upload_and_cleanup(folder: str, tar_name: str) -> None:
+    print(f"Compressing {folder} into {tar_name}...")
+    subprocess.run(["tar", "-czf", tar_name, folder], check=True)
+
+    print(f"Uploading {tar_name} to GitHub release {GH_RELEASE}...")
+    subprocess.run(
+        ["gh", "release", "upload", GH_RELEASE, tar_name, "--clobber"],
+        env=env,
+        check=True,
+    )
+
+    print(f"Cleaning up local files for {folder}...")
+    shutil.rmtree(folder, ignore_errors=True)
+    if os.path.exists(tar_name):
+        os.remove(tar_name)
+
 for repo_id, folder, tar_name in MODELS:
     print(f"\n--- Processing {repo_id} ---")
     print(f"Downloading weights to {folder}...")
@@ -41,24 +58,11 @@ for repo_id, folder, tar_name in MODELS:
     except Exception as e:
         print(f"Failed to download {repo_id}: {e}")
         continue
-    
-    print(f"Compressing {folder} into {tar_name}...")
+
     try:
-        subprocess.run(["tar", "-czf", tar_name, folder], check=True)
+        upload_and_cleanup(folder, tar_name)
     except subprocess.CalledProcessError as e:
-        print(f"Compression failed for {folder}: {e}")
+        print(f"Packaging failed for {folder}: {e}")
         continue
-    
-    print(f"Uploading {tar_name} to GitHub release {GH_RELEASE}...")
-    try:
-        subprocess.run(["gh", "release", "upload", GH_RELEASE, tar_name, "--clobber"], env=env, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Upload failed for {tar_name}: {e}")
-        continue
-    
-    print(f"Cleaning up local files for {folder}...")
-    shutil.rmtree(folder, ignore_errors=True)
-    if os.path.exists(tar_name):
-        os.remove(tar_name)
 
 print("\n--- All models packaged and uploaded successfully! ---")

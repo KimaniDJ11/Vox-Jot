@@ -183,41 +183,6 @@ ENGINE_SPECS: tuple[EngineSpec, ...] = (
             },
         ),
     ),
-    EngineSpec(
-        provider_id="fish_speech",
-        model_id="fish-speech-1.5",
-        label="Fish Speech 1.5",
-        description="Multilingual expressive local speech generation with voice cloning.",
-        engine_family="fish_speech",
-        license_label="Fish Audio Research License",
-        model_dirs=("Fish Speech", "fish-speech"),
-        supported_languages=("mul",),
-        supports_voice_cloning=True,
-        supports_instruction_prompt=False,
-        default_voice=None,
-        style_controls=(
-            {
-                "id": "randomness",
-                "group": "sampler",
-                "label": "Randomness",
-                "description": "Controls how stable or adventurous Fish Speech sounds.",
-                "kind": "slider",
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.05,
-            },
-            {
-                "id": "repetition_penalty",
-                "group": "guidance",
-                "label": "Repetition Penalty",
-                "description": "Helps reduce repeated words or loops in longer reads.",
-                "kind": "slider",
-                "min": 1.0,
-                "max": 2.0,
-                "step": 0.05,
-            },
-        ),
-    ),
 )
 
 

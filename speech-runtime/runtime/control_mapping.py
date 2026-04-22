@@ -54,12 +54,4 @@ def map_controls_for_engine(provider_id: str, controls: dict[str, Any]) -> dict[
         mapped["top_p"] = top_p
         mapped["top_k"] = int(round(20 + (randomness * 80)))
 
-    if provider_id == "fish_speech":
-        mapped["temperature"] = max(0.1, randomness)
-        mapped["top_p"] = top_p
-        mapped["repetition_penalty"] = max(
-            1.0,
-            min(2.0, float(controls.get("repetition_penalty", 1.2))),
-        )
-
     return mapped

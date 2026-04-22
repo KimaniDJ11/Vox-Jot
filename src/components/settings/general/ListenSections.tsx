@@ -161,13 +161,9 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "chatterbox",
   "kokoro",
   "xtts",
-  "fish_speech",
 ]);
 
-function emptyVoiceInventoryLabel(providerId: string) {
-  if (providerId === "fish_speech") {
-    return "No built-in voices";
-  }
+function emptyVoiceInventoryLabel(_providerId: string) {
   return "No preset voices";
 }
 
@@ -328,7 +324,6 @@ function formatEngineFamilyLabel(engineFamily: string | null | undefined) {
 
   const normalized = engineFamily.trim().toLowerCase();
   const knownLabels: Record<string, string> = {
-    fish_speech: "Fish Speech",
     kokoro: "Kokoro",
     chatterbox: "Chatterbox",
     openvoice: "OpenVoice",
@@ -1451,9 +1446,7 @@ const VoiceArchitectSection: React.FC<{
       value: profile.id,
       label: !profile.ready
         ? `${profile.label} (Needs audio)`
-        : draftProviderIdForControls === "fish_speech" && !profile.transcript
-          ? `${profile.label} (Needs transcript)`
-          : profile.label,
+        : profile.label,
     })),
   ];
   const controls =

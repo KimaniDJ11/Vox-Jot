@@ -9,7 +9,6 @@ import tempfile
 import wave
 from pathlib import Path
 from typing import Any
-from urllib import error, request
 
 KOKORO_VOICE_PREFIX_LOCALES = {
     "af": "en-US",
@@ -80,56 +79,6 @@ def write_wav(path: Path, samples, sample_rate: int) -> None:
         wav_file.writeframes(pcm.tobytes())
 
 
-def _format_validation_errors(items: list[object]) -> str:
-    messages: list[str] = []
-    for item in items:
-        if isinstance(item, dict):
-            message = str(item.get("msg", "")).strip()
-            if not message:
-                continue
-            location = item.get("loc")
-            if isinstance(location, list) and location:
-                path = ".".join(str(part) for part in location)
-                messages.append(f"{path}: {message}")
-            else:
-                messages.append(message)
-            continue
-        text = str(item).strip()
-        if text:
-            messages.append(text)
-    return "; ".join(messages)
-
-
-def http_error_detail(exc: error.HTTPError) -> str:
-    try:
-        raw_body = exc.read().decode("utf-8", errors="replace").strip()
-    except Exception:
-        return ""
-
-    if not raw_body:
-        return ""
-
-    try:
-        payload = json.loads(raw_body)
-    except Exception:
-        return raw_body
-
-    if isinstance(payload, dict):
-        raw_detail = payload.get("detail")
-        if isinstance(raw_detail, str):
-            return raw_detail.strip()
-        if isinstance(raw_detail, list):
-            return _format_validation_errors(raw_detail) or json.dumps(raw_detail)
-        if raw_detail is not None:
-            return json.dumps(raw_detail)
-        return ""
-
-    if isinstance(payload, list):
-        return _format_validation_errors(payload) or json.dumps(payload)
-
-    return str(payload).strip()
-
-
 class EngineWorker:
     def __init__(self, provider_id: str, model_id: str, model_dir: Path, state_dir: Path, profiles_dir: Path | None):
         self.provider_id = provider_id
@@ -139,7 +88,6 @@ class EngineWorker:
         self.profiles_dir = profiles_dir
         self.device = None
         self.engine = None
-        self.fish_url = None
 
     def warm(self) -> None:
         self._ensure_engine()
@@ -155,8 +103,6 @@ class EngineWorker:
             self._synthesize_xtts(payload, output_path)
         elif self.provider_id == "openvoice":
             self._synthesize_openvoice(payload, output_path)
-        elif self.provider_id == "fish_speech":
-            self._synthesize_fish(payload, output_path)
         else:
             raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
         return output_path
@@ -164,8 +110,6 @@ class EngineWorker:
     def list_voices(self) -> list[dict[str, Any]]:
         if self.provider_id == "kokoro":
             return self._list_kokoro_voices()
-        if self.provider_id == "fish_speech":
-            return self._list_fish_reference_voices()
         if self.provider_id == "openvoice":
             self._ensure_engine()
             return self._list_openvoice_voices()
@@ -174,7 +118,7 @@ class EngineWorker:
         return []
 
     def _ensure_engine(self):
-        if self.engine is not None or self.provider_id == "fish_speech":
+        if self.engine is not None:
             return
         self.device = detect_device()
 
@@ -544,228 +488,6 @@ class EngineWorker:
             else:
                 output_path.write_bytes(raw_path.read_bytes())
 
-    def _ensure_fish_server(self) -> str:
-        state_path = self._fish_state_path()
-
-        if self.fish_url is not None:
-            if self._url_healthy(self.fish_url):
-                return self.fish_url
-            self.fish_url = None
-
-        refreshed_url = self._load_fish_server_url(state_path)
-        if refreshed_url is not None and self._url_healthy(refreshed_url):
-            self.fish_url = refreshed_url
-            return refreshed_url
-
-        raise RuntimeError("Fish Speech server is not running.")
-
-    def _fish_state_path(self) -> Path:
-        return self.state_dir / "engines" / "fish_speech" / "fish_server.json"
-
-    def _load_fish_server_url(self, state_path: Path) -> str | None:
-        if not state_path.exists():
-            return None
-        try:
-            state = json.loads(state_path.read_text(encoding="utf-8"))
-        except Exception:
-            return None
-
-        url = state.get("url")
-        if isinstance(url, str):
-            url = url.strip()
-            if url:
-                return url
-        return None
-
-    def _fish_reference_id_for_clone(self, audio_path: str, transcript: str) -> str:
-        import hashlib
-
-        digest = hashlib.md5(
-            f"v2|{self.model_id}|{audio_path}|{transcript.strip()}".encode("utf-8")
-        ).hexdigest()
-        return f"clone_{digest[:16]}"
-
-    def _fish_list_reference_ids(self, fish_url: str) -> list[str]:
-        req = request.Request(
-            f"{fish_url}/v1/references/list?format=json",
-            method="GET",
-            headers={"Accept": "application/json"},
-        )
-        with request.urlopen(req, timeout=15) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-
-        reference_ids = payload.get("reference_ids")
-        if not isinstance(reference_ids, list):
-            return []
-        return [
-            reference_id.strip()
-            for reference_id in reference_ids
-            if isinstance(reference_id, str) and reference_id.strip()
-        ]
-
-    def _fish_add_reference(
-        self,
-        fish_url: str,
-        reference_id: str,
-        audio_path: str,
-        transcript: str,
-    ) -> None:
-        import uuid
-
-        boundary = "----VoxJotBoundary" + uuid.uuid4().hex
-        audio_bytes = Path(audio_path).read_bytes()
-
-        lines = []
-        lines.append(f"--{boundary}")
-        lines.append('Content-Disposition: form-data; name="id"')
-        lines.append("")
-        lines.append(reference_id)
-
-        lines.append(f"--{boundary}")
-        lines.append('Content-Disposition: form-data; name="text"')
-        lines.append("")
-        lines.append(transcript)
-
-        lines.append(f"--{boundary}")
-        lines.append('Content-Disposition: form-data; name="audio"; filename="reference.wav"')
-        lines.append("Content-Type: audio/wav")
-        lines.append("")
-
-        body_head = "\r\n".join(lines) + "\r\n"
-        body_tail = f"\r\n--{boundary}--\r\n"
-
-        add_req = request.Request(
-            f"{fish_url}/v1/references/add",
-            data=body_head.encode("utf-8") + audio_bytes + body_tail.encode("utf-8"),
-            method="POST",
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-        )
-        try:
-            with request.urlopen(add_req, timeout=120):
-                return
-        except error.HTTPError as exc:
-            if exc.code == 409:
-                return
-            detail = http_error_detail(exc)
-            raise RuntimeError(
-                detail or f"Failed to register clone profile with Fish Speech (HTTP {exc.code})."
-            ) from exc
-
-    def _fish_delete_reference(self, fish_url: str, reference_id: str) -> None:
-        body = json.dumps({"reference_id": reference_id}).encode("utf-8")
-        delete_req = request.Request(
-            f"{fish_url}/v1/references/delete",
-            data=body,
-            method="DELETE",
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with request.urlopen(delete_req, timeout=30):
-                return
-        except error.HTTPError as exc:
-            # 404 is safe to ignore for refresh flow.
-            if exc.code == 404:
-                return
-            detail = http_error_detail(exc)
-            raise RuntimeError(
-                detail or f"Failed to delete stale Fish reference '{reference_id}' (HTTP {exc.code})."
-            ) from exc
-
-    def _synthesize_fish(self, payload: dict[str, Any], output_path: Path) -> None:
-        fish_url = self._ensure_fish_server()
-        controls = payload.get("controls", {})
-        references = []
-
-        reference_id = payload.get("voice")
-        if isinstance(reference_id, str):
-            reference_id = reference_id.strip() or None
-
-        clone_audio_path = payload.get("reference_audio_path")
-        clone_transcript = payload.get("reference_transcript")
-        if payload.get("reference_audio_path") and payload.get("reference_transcript"):
-            audio_path = str(clone_audio_path)
-            transcript = str(clone_transcript)
-            clone_id = self._fish_reference_id_for_clone(audio_path, transcript)
-            existing_ids = set(self._fish_list_reference_ids(fish_url))
-            if clone_id not in existing_ids:
-                self._fish_add_reference(fish_url, clone_id, audio_path, transcript)
-            reference_id = clone_id
-            references = []  # Omit inline references completely
-
-        body = json.dumps(
-            {
-                "text": payload["text"],
-                "format": "wav",
-                "reference_id": reference_id,
-                "references": references,
-                "top_p": float(controls.get("top_p", 0.8)),
-                "temperature": float(controls.get("temperature", 0.7)),
-                "repetition_penalty": float(controls.get("repetition_penalty", 1.2)),
-            }
-        ).encode("utf-8")
-        req = request.Request(
-            f"{fish_url}/v1/tts",
-            data=body,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with request.urlopen(req, timeout=240) as response:
-                output_path.write_bytes(response.read())
-        except error.HTTPError as exc:
-            detail = http_error_detail(exc)
-
-            # Some Fish servers keep stale references with incompatible codebook
-            # dimensions. Refreshing the reference resolves shape-mismatch 500s.
-            if (
-                reference_id
-                and clone_audio_path
-                and clone_transcript
-                and "shape mismatch" in detail.lower()
-            ):
-                self._fish_delete_reference(fish_url, reference_id)
-                self._fish_add_reference(
-                    fish_url,
-                    reference_id,
-                    str(clone_audio_path),
-                    str(clone_transcript),
-                )
-                with request.urlopen(req, timeout=240) as retry_response:
-                    output_path.write_bytes(retry_response.read())
-                return
-
-            if detail:
-                raise RuntimeError(detail) from exc
-            raise RuntimeError(
-                "Fish Speech request failed with HTTP "
-                f"{exc.code} (reference_id={'set' if reference_id else 'none'}, "
-                f"inline_references={len(references)})."
-            ) from exc
-
-    def _list_fish_reference_voices(self) -> list[dict[str, Any]]:
-        fish_url = self._ensure_fish_server()
-        reference_ids = self._fish_list_reference_ids(fish_url)
-
-        voices = []
-        for reference_id in reference_ids:
-            voices.append(
-                {
-                    "id": reference_id,
-                    "label": reference_id.replace("_", " ").replace("-", " ").title(),
-                    "locale": None,
-                    "installed": True,
-                    "available": True,
-                }
-            )
-        return voices
-
-    def _url_healthy(self, url: str) -> bool:
-        try:
-            with request.urlopen(f"{url}/v1/health", timeout=3) as response:
-                return int(response.status) < 400
-        except Exception:
-            return False
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -786,9 +508,6 @@ def main() -> None:
         state_dir=Path(args.state_dir),
         profiles_dir=Path(args.profiles_dir) if args.profiles_dir else None,
     )
-
-    if worker.provider_id == "fish_speech":
-        worker.fish_url = worker._load_fish_server_url(worker._fish_state_path())
 
     for line in sys.stdin:
         line = line.strip()

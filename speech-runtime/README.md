@@ -1,7 +1,7 @@
 ## Vox Jot Speech Runtime
 
 This bundle is the managed local runtime used by Vox Jot for Python-based TTS
-engines such as OpenVoice, Chatterbox, Kokoro, XTTS, and Fish Speech.
+engines such as OpenVoice, Chatterbox, Kokoro, and XTTS.
 
 The runtime exposes:
 

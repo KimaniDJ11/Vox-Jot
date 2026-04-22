@@ -13,8 +13,8 @@ const sidebarState = vi.hoisted(() => ({
   llmModels: {
     openai: "gpt-4.1-mini",
   } as Record<string, string>,
-  selectedTtsModelId: "fish-speech-1.5",
-  selectedTtsProviderId: "fish",
+  selectedTtsModelId: "xtts-v2",
+  selectedTtsProviderId: "xtts",
 }));
 
 vi.mock("react-i18next", () => ({
@@ -67,8 +67,8 @@ describe("SidebarModelLaunchers", () => {
       { id: "apple_intelligence", label: "Apple Intelligence" },
     ];
     sidebarState.llmModels = { openai: "gpt-4.1-mini" };
-    sidebarState.selectedTtsModelId = "fish-speech-1.5";
-    sidebarState.selectedTtsProviderId = "fish";
+    sidebarState.selectedTtsModelId = "xtts-v2";
+    sidebarState.selectedTtsProviderId = "xtts";
   });
 
   it("refreshes the LLM launcher label when the active model changes", async () => {

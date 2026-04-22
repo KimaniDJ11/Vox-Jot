@@ -19,7 +19,6 @@ const EXCLUDED_AUTO_TTS_PROVIDER_IDS = new Set([
   "local_sidecar_api",
   "tada_local",
   "hf_s2s_local",
-  "fish_speech_local",
 ]);
 
 export function appLanguageToSttLanguage(

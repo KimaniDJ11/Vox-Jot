@@ -282,11 +282,15 @@ impl SidecarManager {
             }
         }
 
-        if let Some(runtime_root) = self.managed_runtime_path() {
+        // Prefer the repository checkout (next to `src-tauri`) before the managed install so
+        // `cargo run` / dev builds pick up local `speech-runtime` changes. Release bundles
+        // bake a compile-time path that typically does not exist on end-user machines, so
+        // `repo_runtime_path` is None there and the managed runtime is used.
+        if let Some(runtime_root) = self.repo_runtime_path() {
             return Some(runtime_root);
         }
 
-        if let Some(runtime_root) = self.repo_runtime_path() {
+        if let Some(runtime_root) = self.managed_runtime_path() {
             return Some(runtime_root);
         }
 

@@ -221,8 +221,8 @@ describe("languageSync", () => {
       supported_languages: ["fr"],
     });
     const excludedModel = createModel({
-      id: "fish-fr",
-      provider_id: "fish_speech_local",
+      id: "tada-fr",
+      provider_id: "tada_local",
       supported_languages: ["fr"],
     });
     const localeFallback = createModel({

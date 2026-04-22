@@ -1,6 +1,7 @@
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{
-    get_settings, write_settings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
+    get_settings, sanitize_tts_voice_tuning_for_target, write_settings, TtsVoicePreset,
+    TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
@@ -24,14 +25,14 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
     })
 }
 
-fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings) {
+fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings, provider_id: &str, model_id: &str) {
     tuning.tempo_rate = tuning.tempo_rate.clamp(0.5, 2.0);
     tuning.expressiveness = tuning.expressiveness.clamp(0.0, 1.0);
     tuning.exaggeration = tuning.exaggeration.clamp(0.0, 1.0);
     tuning.randomness = tuning.randomness.clamp(0.0, 1.0);
     tuning.guidance = tuning.guidance.clamp(0.0, 1.0);
     tuning.stability = tuning.stability.clamp(0.0, 1.0);
-    tuning.repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
+    let _ = sanitize_tts_voice_tuning_for_target(tuning, provider_id, model_id);
     tuning.style_instructions = normalize_optional_string(tuning.style_instructions.clone());
 }
 
@@ -83,7 +84,7 @@ fn preset_from_input(
 
     let label = fallback_preset_label(&input);
     let mut tuning = input.tuning;
-    sanitize_tuning(&mut tuning);
+    sanitize_tuning(&mut tuning, &input.provider_id, &input.model_id);
 
     Ok(TtsVoicePreset {
         id: preset_id.unwrap_or_else(|| format!("tts-preset-{}", Uuid::new_v4())),

@@ -6,10 +6,11 @@ use crate::model_platform::{
 };
 use crate::settings::{
     default_tts_model_store_dir, get_settings, is_local_base_url, AppSettings, TtsAutoReadbackMode,
-    TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue,
-    TtsVoicePreset, TtsVoiceTuningSettings, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
-    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_FISH_SPEECH_ID,
-    TTS_PROVIDER_FISH_SPEECH_LOCAL_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID, TTS_PROVIDER_KOKORO_ID,
+    TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
+    TtsStyleControlValue, TtsVoicePreset, TtsVoiceTuningSettings,
+    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
+    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
+    TTS_PROVIDER_KOKORO_ID,
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
     TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
     TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID,
@@ -17,7 +18,7 @@ use crate::settings::{
     TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
     TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
     TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
-    TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_XTTS_ID, sanitize_tts_voice_tuning_for_target,
 };
 use crate::sidecar::SidecarBackend;
 use crate::translation::TranslationOrigin;
@@ -42,11 +43,6 @@ static SAY_VOICE_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|
 
 const DEFAULT_SIDECAR_URL: &str = "http://127.0.0.1:8008/v1/audio/speech";
 const PREVIEW_SAMPLE_TEXT: &str = "Vox Jot is ready.";
-/// Fish Speech 1.5 produces empty audio for very short inputs.
-/// A longer preview sentence ensures reliable generation.
-const FISH_SPEECH_PREVIEW_TEXT: &str =
-    "Vox Jot is ready. You can start speaking now and your words will appear on screen.";
-const FISH_SPEECH_PREVIEW_MIN_CHARS: usize = 24;
 const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
 const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
@@ -470,22 +466,6 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supports_instruction_prompt: false,
         hf_repo_id: Some("coqui/XTTS-v2"),
     },
-    ManagedRuntimeModelDefinition {
-        provider_id: TTS_PROVIDER_FISH_SPEECH_ID,
-        model_id: "fish-speech-1.5",
-        label: "Fish Speech 1.5",
-        description: "Multilingual expressive local speech generation with voice cloning.",
-        archive_name: "tts-fish-speech-1.5.tar.gz",
-        install_subdir: "Fish Speech",
-        source_repo_dir: Some("fish-speech"),
-        engine_family: "fish_speech",
-        license_label: Some("Fish Audio Research License"),
-        locale: Some("mul"),
-        supported_languages: &["mul"],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: false,
-        hf_repo_id: None,
-    },
 ];
 
 #[derive(Debug, Clone)]
@@ -827,9 +807,7 @@ fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
         provider_id,
         TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
-            | TTS_PROVIDER_KOKORO_ID
-            | TTS_PROVIDER_XTTS_ID
-            | TTS_PROVIDER_FISH_SPEECH_ID
+            |         TTS_PROVIDER_KOKORO_ID | TTS_PROVIDER_XTTS_ID
     )
 }
 
@@ -2026,13 +2004,13 @@ impl TtsManager {
     ) -> Vec<TtsAdvancedControlDescriptor> {
         let provider_id = provider_id.to_ascii_lowercase();
 
-        if provider_id.contains("fish") {
+        if provider_id == TTS_PROVIDER_MLX_FISH_AUDIO_ID {
             return vec![
                 Self::slider_advanced_control(
                     "randomness",
                     TtsControlGroup::Sampler,
                     "Randomness",
-                    "Controls how stable or adventurous Fish Speech sounds.",
+                    "Balances stable reads with more expressive sampling.",
                     0.0,
                     1.0,
                     0.05,
@@ -2045,7 +2023,7 @@ impl TtsManager {
                     "Repetition Penalty",
                     "Helps reduce repeated words or loops in longer reads.",
                     1.0,
-                    2.0,
+                    3.0,
                     0.05,
                     1.2,
                     None,
@@ -3418,33 +3396,7 @@ impl TtsManager {
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
 
-        if provider_uses_fish_speech_min_chars(&selected_provider_id) {
-            self.maybe_backfill_selected_profile_transcript(selected_profile_id.as_deref())
-                .await;
-        }
-
-        let preview_effective_text = expanded_preview_text_for_sidecar(
-            request.trigger.as_deref(),
-            &selected_provider_id,
-            trimmed,
-        );
-        let effective_text = preview_effective_text.as_deref().unwrap_or_else(|| {
-            normalized_preview_text_for_provider(
-                request.trigger.as_deref(),
-                &selected_provider_id,
-                trimmed,
-            )
-        });
-        if provider_uses_fish_speech_min_chars(&selected_provider_id) {
-            if let Some(error) = fish_speech_min_chars_error(effective_text) {
-                self.current_stop_flag
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .take();
-                return Err(error);
-            }
-        }
-        let chunks = chunk_text(effective_text);
+        let chunks = chunk_text(trimmed);
         if engine == TtsEngineKind::Sidecar {
             if is_preview_trigger(request.trigger.as_deref())
                 && provider_uses_managed_speech_runtime(&selected_provider_id)
@@ -3645,62 +3597,6 @@ impl TtsManager {
         std::env::var("VOX_JOT_TTS_SIDECAR_URL").unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string())
     }
 
-    async fn maybe_backfill_selected_profile_transcript(&self, profile_id: Option<&str>) {
-        let Some(profile_id) = profile_id
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(|value| value.to_string())
-        else {
-            return;
-        };
-
-        let Some(transcription_manager_state) = self
-            .app_handle
-            .try_state::<Arc<crate::managers::transcription::TranscriptionManager>>()
-        else {
-            return;
-        };
-
-        let profile_id_for_log = profile_id.clone();
-        let app_handle = self.app_handle.clone();
-        let transcription_manager = Arc::clone(&*transcription_manager_state);
-        let join_result = tokio::task::spawn_blocking(move || {
-            tts_profiles::maybe_backfill_profile_transcript(&app_handle, &profile_id, |reference_audio_path| {
-                transcription_manager.initiate_model_load();
-                let audio_16k = tts_profiles::read_wav_as_mono_16k(reference_audio_path)?;
-                if audio_16k.is_empty() {
-                    return Ok(None);
-                }
-
-                let transcript = transcription_manager
-                    .transcribe(audio_16k)
-                    .map_err(|err| format!("Failed to auto-transcribe selected voice profile: {err}"))?;
-                let trimmed = transcript.trim();
-                if trimmed.is_empty() {
-                    return Ok(None);
-                }
-                Ok(Some(trimmed.to_string()))
-            })
-        })
-        .await;
-
-        match join_result {
-            Ok(Ok(_)) => {}
-            Ok(Err(err)) => {
-                warn!(
-                    "Failed to backfill transcript for voice profile '{}': {}",
-                    profile_id_for_log, err
-                );
-            }
-            Err(err) => {
-                warn!(
-                    "Auto-transcription task failed for voice profile '{}': {}",
-                    profile_id_for_log, err
-                );
-            }
-        }
-    }
-
     fn tts_asset_base_url(&self) -> String {
         std::env::var("VOX_JOT_TTS_MODELS_BASE_URL")
             .unwrap_or_else(|_| DEFAULT_TTS_ASSET_BASE_URL.to_string())
@@ -3722,9 +3618,7 @@ impl TtsManager {
             TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
-            | TTS_PROVIDER_XTTS_ID
-            | TTS_PROVIDER_FISH_SPEECH_ID => return self.ensure_sidecar_supported(settings),
-            TTS_PROVIDER_FISH_SPEECH_LOCAL_ID => return self.ensure_sidecar_supported(settings),
+            | TTS_PROVIDER_XTTS_ID => return self.ensure_sidecar_supported(settings),
             TTS_PROVIDER_TADA_LOCAL_ID => {
                 return Err(
                     "TADA local TTS is planned but not available in this build yet.".to_string(),
@@ -3738,7 +3632,7 @@ impl TtsManager {
             }
             other if !other.is_empty() => {
                 // Unknown provider IDs are assumed to be runtime-managed providers
-                // served through the sidecar (e.g. "fish_speech" from the Speech runtime).
+                // served through the sidecar.
                 return self.ensure_sidecar_supported(settings);
             }
             _ => {}
@@ -5535,9 +5429,11 @@ fn speak_sidecar_chunk(
         tuning,
     );
 
+    let http_timeout_secs = RUNTIME_TTS_REQUEST_TIMEOUT_SECS;
+
     let (bytes, content_type) = runtime.block_on(async {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(RUNTIME_TTS_REQUEST_TIMEOUT_SECS))
+            .timeout(Duration::from_secs(http_timeout_secs))
             .build()
             .map_err(|err| format!("Failed to create TTS sidecar client: {err}"))?;
         let response = client
@@ -5549,7 +5445,7 @@ fn speak_sidecar_chunk(
                 if err.is_timeout() {
                     format!(
                         "{runtime_target} timed out after {}s while waiting for the local speech runtime to return audio.",
-                        RUNTIME_TTS_REQUEST_TIMEOUT_SECS
+                        http_timeout_secs
                     )
                 } else {
                     format!(
@@ -5726,6 +5622,12 @@ fn build_sidecar_request_payload(
     } else {
         model_id
     };
+    let mut sanitized_tuning = tuning.clone();
+    let _ = sanitize_tts_voice_tuning_for_target(
+        &mut sanitized_tuning,
+        provider_id,
+        effective_model.unwrap_or_default(),
+    );
 
     serde_json::json!({
         "input": text,
@@ -5740,13 +5642,13 @@ fn build_sidecar_request_payload(
         "profile_id": profile_id,
         "extra_controls": if provider_id.is_empty() || provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
             serde_json::json!({
-                "tuning": tuning,
+                "tuning": sanitized_tuning,
             })
         } else {
             serde_json::json!({
                 "provider_id": provider_id,
                 "model_id": effective_model,
-                "tuning": tuning,
+                "tuning": sanitized_tuning,
             })
         }
     })
@@ -5773,8 +5675,6 @@ fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
             | TTS_PROVIDER_XTTS_ID
-            | TTS_PROVIDER_FISH_SPEECH_ID
-            | TTS_PROVIDER_FISH_SPEECH_LOCAL_ID
             | TTS_PROVIDER_TADA_LOCAL_ID
             | TTS_PROVIDER_HF_S2S_LOCAL_ID
             | TTS_PROVIDER_MLX_KOKORO_ID
@@ -5869,65 +5769,6 @@ pub fn chunk_text(text: &str) -> Vec<String> {
 
 fn is_preview_trigger(trigger: Option<&str>) -> bool {
     matches!(trigger, Some(value) if value.starts_with("preview_tts_voice"))
-}
-
-fn provider_uses_fish_speech_min_chars(provider_id: &str) -> bool {
-    matches!(
-        provider_id,
-        TTS_PROVIDER_FISH_SPEECH_ID | TTS_PROVIDER_FISH_SPEECH_LOCAL_ID
-    )
-}
-
-fn fish_speech_min_chars_error(text: &str) -> Option<String> {
-    let text_len = text.trim().chars().count();
-    if text_len >= FISH_SPEECH_PREVIEW_MIN_CHARS {
-        return None;
-    }
-
-    Some(format!(
-        "Fish Speech 1.5 requires at least {FISH_SPEECH_PREVIEW_MIN_CHARS} characters of input text. Got {text_len}."
-    ))
-}
-
-fn normalized_preview_text_for_provider<'a>(
-    trigger: Option<&str>,
-    provider_id: &str,
-    trimmed_text: &'a str,
-) -> &'a str {
-    if provider_uses_fish_speech_min_chars(provider_id)
-        && is_preview_trigger(trigger)
-        && trimmed_text == PREVIEW_SAMPLE_TEXT
-    {
-        return FISH_SPEECH_PREVIEW_TEXT;
-    }
-
-    trimmed_text
-}
-
-fn expanded_preview_text_for_sidecar(
-    trigger: Option<&str>,
-    provider_id: &str,
-    trimmed_text: &str,
-) -> Option<String> {
-    if !provider_uses_fish_speech_min_chars(provider_id) || !is_preview_trigger(trigger) {
-        return None;
-    }
-
-    if trimmed_text == PREVIEW_SAMPLE_TEXT {
-        return Some(FISH_SPEECH_PREVIEW_TEXT.to_string());
-    }
-
-    if trimmed_text.chars().count() >= FISH_SPEECH_PREVIEW_MIN_CHARS {
-        return None;
-    }
-
-    let sentence = trimmed_text
-        .trim_end_matches(|ch: char| ch.is_whitespace() || matches!(ch, '.' | '!' | '?'));
-    if sentence.is_empty() {
-        return Some(FISH_SPEECH_PREVIEW_TEXT.to_string());
-    }
-
-    Some(format!("{sentence}. {FISH_SPEECH_PREVIEW_TEXT}"))
 }
 
 fn split_sentences(text: &str) -> Vec<String> {
@@ -6462,28 +6303,6 @@ mod tests {
         .expect("sidecar URL should resolve");
 
         assert_eq!(url.as_str(), "http://127.0.0.1:9123/listen/prepare");
-    }
-
-    #[test]
-    fn fish_speech_preview_text_expands_for_short_custom_preview() {
-        let expanded = expanded_preview_text_for_sidecar(
-            Some("preview_tts_voice_preset_draft"),
-            TTS_PROVIDER_FISH_SPEECH_ID,
-            "Hi there",
-        )
-        .expect("short fish speech preview should expand");
-
-        assert!(expanded.starts_with("Hi there."));
-        assert!(expanded.contains("Vox Jot is ready."));
-    }
-
-    #[test]
-    fn fish_speech_short_text_validation_applies_beyond_previews() {
-        let error = fish_speech_min_chars_error("Too short")
-            .expect("short fish speech text should be rejected");
-
-        assert!(error.contains("requires at least 24 characters"));
-        assert!(fish_speech_min_chars_error(FISH_SPEECH_PREVIEW_TEXT).is_none());
     }
 
     #[test]

@@ -54,6 +54,64 @@ find "${TARGET_DIR}" \
   rm -rf "${build_dir}"
 done || true
 
+echo "Cleaning stale Tauri permission build artifacts..."
+stale_tauri_dirs=()
+while IFS= read -r -d '' tauri_output; do
+  permission_paths=()
+  while IFS= read -r permission_path; do
+    permission_paths+=("${permission_path}")
+  done < <(
+    /usr/bin/awk -F= '/_PERMISSION_FILES_PATH=/{print $2}' "${tauri_output}" 2>/dev/null
+  )
+
+  if [[ "${#permission_paths[@]}" -eq 0 ]]; then
+    continue
+  fi
+
+  missing_permissions=false
+  for permission_path in "${permission_paths[@]}"; do
+    if [[ ! -f "${permission_path}" ]]; then
+      missing_permissions=true
+      break
+    fi
+  done
+
+  if [[ "${missing_permissions}" == true ]]; then
+    stale_tauri_dirs+=("$(dirname "${tauri_output}")")
+  fi
+done < <(
+  find "${TARGET_DIR}/release/build" \
+    -maxdepth 2 \
+    -type f \
+    -path '*/tauri-*/output' \
+    -print0 2>/dev/null
+)
+
+if [[ "${#stale_tauri_dirs[@]}" -gt 0 ]]; then
+  for stale_dir in "${stale_tauri_dirs[@]}"; do
+    echo "Removing stale Tauri build dir: ${stale_dir}"
+    rm -rf "${stale_dir}"
+  done
+
+  find "${TARGET_DIR}/release/.fingerprint" \
+    -maxdepth 1 \
+    -type d \
+    -name 'tauri-*' \
+    -print0 2>/dev/null | while IFS= read -r -d '' stale_dir; do
+    echo "Removing stale Tauri fingerprint dir: ${stale_dir}"
+    rm -rf "${stale_dir}"
+  done
+
+  find "${TARGET_DIR}/release/deps" \
+    -maxdepth 1 \
+    -type f \
+    \( -name 'libtauri*.rlib' -o -name 'libtauri*.rmeta' -o -name 'tauri-*.d' \) \
+    -print0 2>/dev/null | while IFS= read -r -d '' stale_file; do
+    echo "Removing stale Tauri dep artifact: ${stale_file}"
+    rm -f "${stale_file}"
+  done
+fi
+
 echo "Building signed macOS bundle..."
 export CARGO_TARGET_DIR="${TARGET_DIR}"
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"

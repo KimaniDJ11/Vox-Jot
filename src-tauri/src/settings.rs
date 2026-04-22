@@ -23,8 +23,6 @@ pub const TTS_PROVIDER_OPENVOICE_ID: &str = "openvoice";
 pub const TTS_PROVIDER_CHATTERBOX_ID: &str = "chatterbox";
 pub const TTS_PROVIDER_KOKORO_ID: &str = "kokoro";
 pub const TTS_PROVIDER_XTTS_ID: &str = "xtts";
-pub const TTS_PROVIDER_FISH_SPEECH_ID: &str = "fish_speech";
-pub const TTS_PROVIDER_FISH_SPEECH_LOCAL_ID: &str = "fish_speech_local";
 pub const TTS_PROVIDER_TADA_LOCAL_ID: &str = "tada_local";
 pub const TTS_PROVIDER_HF_S2S_LOCAL_ID: &str = "hf_s2s_local";
 pub const TTS_PROVIDER_MLX_KOKORO_ID: &str = "mlx_kokoro";
@@ -1625,7 +1623,11 @@ fn ensure_tts_defaults(settings: &mut AppSettings) -> bool {
             changed = true;
         }
 
-        if sanitize_tts_voice_tuning(&mut preset.tuning) {
+        if sanitize_tts_voice_tuning_for_target(
+            &mut preset.tuning,
+            &preset.provider_id,
+            &preset.model_id,
+        ) {
             changed = true;
         }
     }
@@ -2426,7 +2428,11 @@ fn fallback_tts_preset_label(
     "Voice Preset".to_string()
 }
 
-fn sanitize_tts_voice_tuning(tuning: &mut TtsVoiceTuningSettings) -> bool {
+pub(crate) fn sanitize_tts_voice_tuning_for_target(
+    tuning: &mut TtsVoiceTuningSettings,
+    _provider_id: &str,
+    _model_id: &str,
+) -> bool {
     let mut changed = false;
     let next_tempo_rate = tuning.tempo_rate.clamp(0.5, 2.0);
     if (tuning.tempo_rate - next_tempo_rate).abs() > f32::EPSILON {
@@ -2458,7 +2464,10 @@ fn sanitize_tts_voice_tuning(tuning: &mut TtsVoiceTuningSettings) -> bool {
         tuning.stability = next_stability;
         changed = true;
     }
-    let next_repetition_penalty = tuning.repetition_penalty.clamp(1.0, 3.0);
+    let repetition_penalty_max = 3.0;
+    let next_repetition_penalty = tuning
+        .repetition_penalty
+        .clamp(1.0, repetition_penalty_max);
     if (tuning.repetition_penalty - next_repetition_penalty).abs() > f32::EPSILON {
         tuning.repetition_penalty = next_repetition_penalty;
         changed = true;

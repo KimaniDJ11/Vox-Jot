@@ -45,6 +45,7 @@ def load_model_config(model_source: str) -> dict:
 
 
 def detect_model_type(model, model_source: str) -> str | None:
+    """Best-effort ``model_type`` from the loaded module, else ``config.json``."""
     model_type = getattr(model, "model_type", None)
     if callable(model_type):
         try:
@@ -52,13 +53,31 @@ def detect_model_type(model, model_source: str) -> str | None:
         except Exception:
             model_type = None
     if isinstance(model_type, str) and model_type.strip():
-        return model_type
+        return model_type.strip()
 
     config = load_model_config(model_source)
     config_model_type = config.get("model_type")
     if isinstance(config_model_type, str) and config_model_type.strip():
-        return config_model_type
+        return config_model_type.strip()
 
+    return None
+
+
+# VoiceDesign (e.g. Qwen3-TTS-*-VoiceDesign) requires non-empty ``instruct`` in mlx-audio.
+VOICE_DESIGN_DEFAULT_INSTRUCT = (
+    "A clear, natural adult voice with neutral tone and moderate pacing."
+)
+
+
+def effective_instruct_for_model(model, args: argparse.Namespace) -> str | None:
+    """Return generation instruct, supplying a safe default for VoiceDesign when omitted."""
+    raw = args.instruct
+    if raw is not None and str(raw).strip():
+        return str(raw).strip()
+    config = getattr(model, "config", None)
+    tts_model_type = getattr(config, "tts_model_type", None) if config is not None else None
+    if tts_model_type == "voice_design":
+        return VOICE_DESIGN_DEFAULT_INSTRUCT
     return None
 
 
@@ -146,7 +165,7 @@ def build_generation_kwargs(
         "voice": args.voice,
         "speed": args.speed,
         "lang_code": args.lang_code,
-        "instruct": args.instruct,
+        "instruct": effective_instruct_for_model(model, args),
         "ref_audio": effective_ref_audio,
         "ref_text": ref_text,
         "temperature": args.temperature,

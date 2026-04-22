@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from runtime.engine_worker import EngineWorker
 
@@ -79,6 +80,49 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(voice_ids, ["sample:en", "sample:zh-cn", "sample:ja"])
         self.assertEqual(worker._xtts_reference_for_voice("sample:zh-cn", "en"), str(samples / "zh-cn-sample.wav"))
         self.assertEqual(worker._xtts_reference_for_voice(None, "zh"), str(samples / "zh-cn-sample.wav"))
+
+    def test_fish_voice_inventory_uses_reference_ids_from_sidecar(self):
+        worker = self.make_worker("fish_speech", "fish-speech-1.5")
+
+        class DummyResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"success":true,"reference_ids":["host_narrator","calm-guide"]}'
+
+        with mock.patch.object(
+            worker,
+            "_ensure_fish_server",
+            return_value="http://127.0.0.1:9123",
+        ), mock.patch(
+            "runtime.engine_worker.request.urlopen",
+            return_value=DummyResponse(),
+        ):
+            voices = worker.list_voices()
+
+        self.assertEqual(
+            voices,
+            [
+                {
+                    "id": "host_narrator",
+                    "label": "Host Narrator",
+                    "locale": None,
+                    "installed": True,
+                    "available": True,
+                },
+                {
+                    "id": "calm-guide",
+                    "label": "Calm Guide",
+                    "locale": None,
+                    "installed": True,
+                    "available": True,
+                },
+            ],
+        )
 
 
 if __name__ == "__main__":

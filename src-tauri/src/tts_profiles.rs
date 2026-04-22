@@ -291,6 +291,43 @@ pub fn resolve_voice_profile(
     })
 }
 
+pub fn maybe_backfill_profile_transcript(
+    app_handle: &AppHandle,
+    profile_id: &str,
+    mut transcribe_reference: impl FnMut(&Path) -> Result<Option<String>, String>,
+) -> Result<TtsVoiceProfileDescriptor, String> {
+    let profile_dir = profile_dir(app_handle, profile_id)?;
+    if !profile_dir.exists() {
+        return Err("Voice profile not found.".to_string());
+    }
+
+    let mut metadata = read_profile_metadata(&profile_dir)?;
+    let has_transcript = metadata
+        .transcript
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty());
+    if has_transcript {
+        return Ok(metadata.into_descriptor(&profile_dir));
+    }
+
+    let Some(reference_audio_file_name) = metadata.reference_audio_file_name.clone() else {
+        return Ok(metadata.into_descriptor(&profile_dir));
+    };
+    let reference_audio_path = profile_dir.join(reference_audio_file_name);
+    if !reference_audio_path.exists() {
+        return Ok(metadata.into_descriptor(&profile_dir));
+    }
+
+    if let Some(transcript) = transcribe_reference(&reference_audio_path)? {
+        if let Some(cleaned_transcript) = clean_optional_text(Some(transcript)) {
+            metadata.transcript = Some(cleaned_transcript);
+            write_profile_metadata(&profile_dir, &metadata)?;
+        }
+    }
+
+    Ok(metadata.into_descriptor(&profile_dir))
+}
+
 pub fn set_continuous_improvement(
     app_handle: &AppHandle,
     profile_id: &str,
@@ -480,7 +517,7 @@ fn clean_optional_text(value: Option<String>) -> Option<String> {
     })
 }
 
-fn read_wav_as_mono_f32(path: &Path) -> Result<(Vec<f32>, u32), String> {
+pub fn read_wav_as_mono_f32(path: &Path) -> Result<(Vec<f32>, u32), String> {
     let mut reader = hound::WavReader::open(path)
         .map_err(|err| format!("Failed to open WAV file '{}': {err}", path.display()))?;
     let spec = reader.spec();
@@ -517,6 +554,11 @@ fn read_wav_as_mono_f32(path: &Path) -> Result<(Vec<f32>, u32), String> {
     }
 
     Ok((mono, spec.sample_rate))
+}
+
+pub fn read_wav_as_mono_16k(path: &Path) -> Result<Vec<f32>, String> {
+    let (mono, sample_rate) = read_wav_as_mono_f32(path)?;
+    Ok(resample_linear(&mono, sample_rate, 16_000))
 }
 
 pub fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {

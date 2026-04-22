@@ -44,6 +44,8 @@ host = WorkerHost(config)
 selection_file = config.state_dir / "selection.json"
 
 app = FastAPI(title="Vox Jot Speech Runtime", version="0.1.0")
+FISH_SPEECH_MIN_CHARS = 24
+FISH_AUTO_VOICE_SENTINELS = {"__auto__", "auto", "automatic", "default"}
 
 
 def discover_model(spec: EngineSpec) -> Path | None:
@@ -84,6 +86,44 @@ def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
     if reference_audio.exists():
         return str(reference_audio), transcript
     return None, transcript
+
+
+def fish_speech_reference_error(
+    selected_voice: str | None,
+    reference_audio_path: str | None,
+    reference_transcript: str | None,
+) -> str | None:
+    if selected_voice and selected_voice.strip():
+        return None
+    if not reference_audio_path:
+        return (
+            "Fish Speech 1.5 currently needs a clone profile with reference audio in Vox Jot. "
+            "This runtime does not ship built-in Fish preset voices."
+        )
+    if not (reference_transcript or "").strip():
+        return (
+            "Fish Speech 1.5 needs a transcript for the selected clone profile before Vox Jot "
+            "can synthesize intelligible speech."
+        )
+    return None
+
+
+def normalized_fish_voice(selected_voice: str | None) -> str | None:
+    if selected_voice is None:
+        return None
+    normalized = selected_voice.strip()
+    if not normalized:
+        return None
+    if normalized.lower() in FISH_AUTO_VOICE_SENTINELS:
+        return None
+    return normalized
+
+
+def fish_profile_is_conditioned(
+    reference_audio_path: str | None,
+    reference_transcript: str | None,
+) -> bool:
+    return bool(reference_audio_path and (reference_transcript or "").strip())
 
 
 def selection_payload(selection: RuntimeSelection) -> dict[str, Any]:
@@ -219,6 +259,8 @@ async def listen_voices(
         raise HTTPException(status_code=404, detail=f"{spec.label} is not installed in the model store.")
 
     try:
+        if spec.provider_id == "fish_speech":
+            await asyncio.to_thread(host.ensure_fish_sidecar, spec, model_dir)
         voices = await asyncio.to_thread(host.list_voices, spec, model_dir)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -285,8 +327,57 @@ async def audio_speech(body: SpeechRequest) -> Response:
         raise HTTPException(status_code=400, detail="Only WAV output is supported by the managed runtime.")
 
     spec, model_dir, selection = resolve_target(body)
+    selected_voice = body.voice
+    selected_voice_was_invalid = False
+    if spec.provider_id == "fish_speech":
+        selected_voice = normalized_fish_voice(body.voice)
+    if spec.provider_id == "fish_speech" and len(text) < FISH_SPEECH_MIN_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Fish Speech 1.5 requires at least {FISH_SPEECH_MIN_CHARS} characters of input text. "
+                f"Got {len(text)}."
+            ),
+        )
     profile_id = body.profile_id or selection.profile_id
     reference_audio_path, reference_transcript = load_profile(profile_id)
+    if spec.provider_id == "fish_speech":
+        # Avoid sending conflicting Fish conditioning inputs. If a valid clone
+        # reference is available, prefer it and omit reference_id.
+        if fish_profile_is_conditioned(reference_audio_path, reference_transcript):
+            selected_voice = None
+        elif selected_voice:
+            try:
+                await asyncio.to_thread(host.ensure_fish_sidecar, spec, model_dir)
+                available_voices = await asyncio.to_thread(host.list_voices, spec, model_dir)
+                voice_ids = {
+                    str(voice.get("id", "")).strip()
+                    for voice in available_voices
+                    if isinstance(voice, dict)
+                }
+                if selected_voice not in voice_ids:
+                    selected_voice_was_invalid = True
+                    selected_voice = None
+            except Exception:
+                selected_voice_was_invalid = True
+                selected_voice = None
+
+        if selected_voice_was_invalid and not fish_profile_is_conditioned(reference_audio_path, reference_transcript):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Selected Fish voice is not available. Choose a Fish built-in voice from the list "
+                    "or select a clone profile with reference audio and transcript."
+                ),
+            )
+
+        reference_error = fish_speech_reference_error(
+            selected_voice,
+            reference_audio_path,
+            reference_transcript,
+        )
+        if reference_error:
+            raise HTTPException(status_code=422, detail=reference_error)
     controls = normalize_controls(body.extra_controls)
     engine_controls = map_controls_for_engine(spec.provider_id, controls)
 
@@ -300,7 +391,7 @@ async def audio_speech(body: SpeechRequest) -> Response:
             model_dir,
             {
                 "text": text,
-                "voice": body.voice or spec.default_voice,
+                "voice": selected_voice or spec.default_voice,
                 "locale": body.locale or body.language,
                 "speed": float(controls.get("tempo_rate", 1.0)),
                 "controls": engine_controls,

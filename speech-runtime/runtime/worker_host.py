@@ -18,6 +18,7 @@ KOKORO_SPACY_MODEL_URL = (
     "https://github.com/explosion/spacy-models/releases/download/"
     "en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
 )
+FISH_SPEECH_1_5_CODEC_URL = "https://huggingface.co/fishaudio/fish-speech-1.5/resolve/main/firefly-gan-vq-fsq-8x1024-21hz-generator.pth"
 FISH_SPEECH_S2_CODEC_URL = "https://huggingface.co/fishaudio/s2-pro/resolve/main/codec.pth"
 MELOTTS_GIT_URL = "git+https://github.com/myshell-ai/MeloTTS.git"
 OPENVOICE_RUNTIME_DEPENDENCIES = (
@@ -88,6 +89,7 @@ FISH_SPEECH_CODEC_PACKAGES = (
 )
 WORKER_RESPONSE_TIMEOUT_SECS = 120
 PROCESS_SHUTDOWN_TIMEOUT_SECS = 5
+FISH_VISUALIZE_PATCH_MARKER = "# Vox Jot patch: guard visualize decode failures"
 
 
 def _bin_dir(env_dir: Path) -> Path:
@@ -507,6 +509,7 @@ except Exception:
             url = f"http://127.0.0.1:{port}"
             checkpoint_dir = self._fish_checkpoint_dir(model_dir)
             decoder_path = self._fish_decoder_checkpoint_path(checkpoint_dir)
+            self._patch_fish_visualize_decode_crash(model_dir)
             log_path = runtime_dir / "fish_server.log"
             log_handle = log_path.open("w", encoding="utf-8")
             process: subprocess.Popen[str] | None = None
@@ -590,12 +593,58 @@ except Exception:
             return codec_path
 
         if checkpoint_dir.name == "fish-speech-1.5":
+            self._download_file(FISH_SPEECH_1_5_CODEC_URL, codec_path)
+            return codec_path
+        elif checkpoint_dir.name == "s2-pro":
             self._download_file(FISH_SPEECH_S2_CODEC_URL, codec_path)
             return codec_path
 
         raise RuntimeError(
             "Fish Speech codec.pth is missing from the checkpoint bundle."
         )
+
+    def _patch_fish_visualize_decode_crash(self, model_dir: Path) -> None:
+        inference_path = (
+            model_dir
+            / "fish_speech"
+            / "models"
+            / "text2semantic"
+            / "inference.py"
+        )
+        if not inference_path.exists():
+            return
+
+        source = inference_path.read_text(encoding="utf-8")
+        if FISH_VISUALIZE_PATCH_MARKER in source:
+            return
+
+        original = (
+            '            logger.info("Visualizing prompt structure:")\n'
+            "            conversation_gen.visualize(\n"
+            "                tokenizer,\n"
+            "                merge_audio_tokens=True,\n"
+            "                merge_semantic_tokens=True,\n"
+            "            )\n"
+        )
+        replacement = (
+            '            logger.info("Visualizing prompt structure:")\n'
+            f"            {FISH_VISUALIZE_PATCH_MARKER}\n"
+            "            try:\n"
+            "                conversation_gen.visualize(\n"
+            "                    tokenizer,\n"
+            "                    merge_audio_tokens=True,\n"
+            "                    merge_semantic_tokens=True,\n"
+            "                )\n"
+            "            except Exception as exc:\n"
+            "                logger.warning(\n"
+            '                    f"Skipping prompt visualization due to tokenizer decode error: {exc}"\n'
+            "                )\n"
+        )
+
+        if original not in source:
+            return
+
+        inference_path.write_text(source.replace(original, replacement, 1), encoding="utf-8")
 
     def _url_healthy(self, url: str) -> bool:
         try:

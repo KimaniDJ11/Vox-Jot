@@ -1,14 +1,16 @@
+use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{
     get_settings, write_settings, TtsVoicePreset, TtsVoicePresetInput, TtsVoiceTuningSettings,
 };
 use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo, VoiceInfo};
 use crate::tts_profiles::{
     clear_collected_data, create_voice_profile, delete_voice_profile, get_profile_progress,
-    import_profile_reference_audio, list_voice_profiles, set_continuous_improvement,
-    TtsVoiceProfileDescriptor,
+    import_profile_reference_audio, list_voice_profiles, maybe_backfill_profile_transcript,
+    read_wav_as_mono_16k, set_continuous_improvement, TtsVoiceProfileDescriptor,
 };
+use log::warn;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -329,11 +331,45 @@ pub fn create_tts_voice_profile(
 #[specta::specta]
 pub fn import_tts_voice_profile_sample(
     app: AppHandle,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
     profile_id: String,
     source_path: String,
     transcript: Option<String>,
 ) -> Result<TtsVoiceProfileDescriptor, String> {
-    import_profile_reference_audio(&app, &profile_id, &source_path, transcript)
+    let descriptor = import_profile_reference_audio(&app, &profile_id, &source_path, transcript)?;
+    let has_transcript = descriptor
+        .transcript
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty());
+    if has_transcript {
+        return Ok(descriptor);
+    }
+
+    let manager = Arc::clone(&*transcription_manager);
+    match maybe_backfill_profile_transcript(&app, &profile_id, |reference_audio_path| {
+        manager.initiate_model_load();
+        let audio_16k = read_wav_as_mono_16k(reference_audio_path)?;
+        if audio_16k.is_empty() {
+            return Ok(None);
+        }
+        let transcript = manager
+            .transcribe(audio_16k)
+            .map_err(|err| format!("Failed to auto-transcribe voice reference audio: {err}"))?;
+        let trimmed = transcript.trim();
+        if trimmed.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(trimmed.to_string()))
+    }) {
+        Ok(updated) => Ok(updated),
+        Err(err) => {
+            warn!(
+                "Could not auto-transcribe reference audio for profile '{}': {}",
+                profile_id, err
+            );
+            Ok(descriptor)
+        }
+    }
 }
 
 #[tauri::command]

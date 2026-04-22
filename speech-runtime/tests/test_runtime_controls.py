@@ -54,6 +54,17 @@ class RuntimeControlsTest(unittest.TestCase):
         self.assertEqual(mapped["top_p"], 0.7)
         self.assertEqual(mapped["repetition_penalty"], 1.5)
 
+    def test_fish_speech_mapping_clamps_repetition_penalty(self):
+        mapped = map_controls_for_engine(
+            "fish_speech",
+            {
+                "randomness": 0.4,
+                "repetition_penalty": 3.0,
+            },
+        )
+
+        self.assertEqual(mapped["repetition_penalty"], 2.0)
+
     def test_unsupported_fields_are_ignored_for_openvoice(self):
         mapped = map_controls_for_engine(
             "openvoice",

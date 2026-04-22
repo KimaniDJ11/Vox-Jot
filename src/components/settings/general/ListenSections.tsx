@@ -163,6 +163,14 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "xtts",
   "fish_speech",
 ]);
+
+function emptyVoiceInventoryLabel(providerId: string) {
+  if (providerId === "fish_speech") {
+    return "No built-in voices";
+  }
+  return "No preset voices";
+}
+
 const DEFAULT_TTS_PREVIEW_TEXT =
   "The morning light fell softly across the old stone bridge. She paused, took a breath, and said — quite simply — that she'd never felt more alive. Was it the crisp air? The silence? Perhaps both. Either way, something had shifted, quietly and for good.";
 
@@ -1441,7 +1449,11 @@ const VoiceArchitectSection: React.FC<{
     { value: "__none__", label: "No clone profile" },
     ...draftCompatibleProfiles.map((profile) => ({
       value: profile.id,
-      label: profile.ready ? profile.label : `${profile.label} (Needs audio)`,
+      label: !profile.ready
+        ? `${profile.label} (Needs audio)`
+        : draftProviderIdForControls === "fish_speech" && !profile.transcript
+          ? `${profile.label} (Needs transcript)`
+          : profile.label,
     })),
   ];
   const controls =
@@ -1515,12 +1527,14 @@ const VoiceArchitectSection: React.FC<{
           ? `${draftVoiceInventory.length} voices`
           : draftVoiceInventory.length === 1
             ? "1 voice"
-            : "No preset voices";
+            : emptyVoiceInventoryLabel(draftProviderIdForControls);
   const draftVoiceOptions = [
     {
       value: "__auto__",
       label:
-        draftVoiceInventory.length > 0 ? "Automatic voice" : "No preset voices",
+        draftVoiceInventory.length > 0
+          ? "Automatic voice"
+          : emptyVoiceInventoryLabel(draftProviderIdForControls),
       disabled: draftVoiceInventory.length === 0,
     },
     ...draftVoiceInventory.map((voice) => ({

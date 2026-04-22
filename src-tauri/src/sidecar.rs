@@ -819,6 +819,24 @@ impl SidecarManager {
             )
         })?;
 
+        let kugel_model_file = site_packages
+            .join("mlx_audio")
+            .join("tts")
+            .join("models")
+            .join("kugelaudio")
+            .join("kugelaudio.py");
+
+        if kugel_model_file.exists() {
+            let kugel_contents = std::fs::read_to_string(&kugel_model_file).unwrap_or_default();
+            let kugel_patched = kugel_contents.replace(
+                "AutoTokenizer.from_pretrained(\n            qwen_model, trust_remote_code=False\n        )",
+                "AutoTokenizer.from_pretrained(\n            str(model_path), trust_remote_code=False\n        )",
+            );
+            if kugel_patched != kugel_contents {
+                let _ = std::fs::write(&kugel_model_file, kugel_patched);
+            }
+        }
+
         Ok(())
     }
 

@@ -6,6 +6,7 @@ import math
 import os
 import sys
 import traceback
+import types
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,22 @@ def load_model_config(model_source: str) -> dict:
         return json.loads(config_path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def voxcpm2_output_sample_rate_from_config(model_source: str) -> int | None:
+    """
+    VoxCPM2 uses AudioVAE v2: encode at 16kHz, decode to ``out_sample_rate`` (typically 48kHz).
+    mlx-audio 0.4.x still reports ``GenerationResult.sample_rate`` from the encoder rate; writing
+    WAVs with that value makes playback sound garbled. Prefer ``out_sample_rate`` from config.
+    """
+    av = (load_model_config(model_source) or {}).get("audio_vae_config") or {}
+    out_sr = av.get("out_sample_rate")
+    if out_sr is not None:
+        try:
+            return int(out_sr)
+        except (TypeError, ValueError):
+            pass
+    return None
 
 
 def detect_model_type(model, model_source: str) -> str | None:
@@ -121,6 +138,8 @@ def display_model_name(model_name: str) -> str:
         return "Qwen3 TTS 0.6B 4-bit"
     if "qwen3-tts-0.6b" in model_name:
         return "Qwen3 TTS 0.6B"
+    if "kugelaudio" in model_name or "kugel-audio" in model_name:
+        return "KugelAudio"
     return Path(model_name).name or "the selected MLX model"
 
 
@@ -276,18 +295,20 @@ def _filter_dataclass_kwargs(values: dict, data_class):
 
 
 def load_voxcpm2_model(model_source: str):
+    # Tokenizer load triggers a harmless HF "wrong architecture" warning for voxcpm2.
+    try:
+        from transformers import logging as hf_logging
+
+        hf_logging.set_verbosity_error()
+    except Exception:
+        pass
     import mlx.core as mx
     import mlx.nn as nn
     import mlx_audio.tts.models.voxcpm.config as cfgmod
     import mlx_audio.tts.models.voxcpm.minicpm as minicpm
     import mlx_audio.tts.models.voxcpm.voxcpm as voxcpm_mod
     from mlx_audio.tts.models.voxcpm import Model, ModelArgs
-    from mlx_audio.tts.models.voxcpm.config import (
-        AudioVAEConfig,
-        CFMConfig,
-        DiTConfig,
-        EncoderConfig,
-    )
+    from mlx_audio.tts.models.voxcpm.config import CFMConfig
     from mlx_audio.utils import apply_quantization, load_weights
 
     class CompatibleLMConfig(cfgmod.LMConfig):
@@ -296,6 +317,44 @@ def load_voxcpm2_model(model_source: str):
             self.kv_channels = kv_channels or (
                 self.hidden_size // self.num_attention_heads
             )
+
+    @dataclasses.dataclass
+    class CompatibleEncoderConfig:
+        hidden_dim: int = 1024
+        ffn_dim: int = 4096
+        num_heads: int = 16
+        num_layers: int = 8
+        kv_channels: int | None = None
+
+    @dataclasses.dataclass
+    class CompatibleDiTConfig:
+        hidden_dim: int = 1024
+        ffn_dim: int = 4096
+        num_heads: int = 16
+        num_layers: int = 8
+        kv_channels: int | None = None
+        mean_mode: bool = False
+        cfm_config: CFMConfig = dataclasses.field(default_factory=CFMConfig)
+
+    @dataclasses.dataclass
+    class CompatibleAudioVAEConfig:
+        encoder_dim: int = 64
+        encoder_rates: list[int] = dataclasses.field(
+            default_factory=lambda: [2, 3, 6, 7, 7]
+        )
+        latent_dim: int = 64
+        decoder_dim: int = 2048
+        decoder_rates: list[int] = dataclasses.field(
+            default_factory=lambda: [7, 7, 6, 3, 2]
+        )
+        sample_rate: int = 44100
+        out_sample_rate: int | None = None
+        sr_bin_boundaries: list[int] | None = None
+        cond_type: str = "scale_bias"
+        cond_dim: int = 128
+        cond_out_layer: bool = False
+        depthwise: bool = True
+        use_noise_block: bool = False
 
     def patched_attention_init(self, config):
         nn.Module.__init__(self)
@@ -368,12 +427,18 @@ def load_voxcpm2_model(model_source: str):
     model_path = Path(model_source).expanduser()
     args = ModelArgs(
         lm_config=CompatibleLMConfig(**lm_config),
-        encoder_config=EncoderConfig(
-            **_filter_dataclass_kwargs(config.get("encoder_config", {}), EncoderConfig)
+        encoder_config=CompatibleEncoderConfig(
+            **_filter_dataclass_kwargs(
+                config.get("encoder_config", {}), CompatibleEncoderConfig
+            )
         ),
-        dit_config=DiTConfig(**_filter_dataclass_kwargs(dit_config, DiTConfig)),
-        audio_vae_config=AudioVAEConfig(
-            **_filter_dataclass_kwargs(config.get("audio_vae_config", {}), AudioVAEConfig)
+        dit_config=CompatibleDiTConfig(
+            **_filter_dataclass_kwargs(dit_config, CompatibleDiTConfig)
+        ),
+        audio_vae_config=CompatibleAudioVAEConfig(
+            **_filter_dataclass_kwargs(
+                config.get("audio_vae_config", {}), CompatibleAudioVAEConfig
+            )
         ),
         patch_size=config.get("patch_size", 4),
         feat_dim=config.get("feat_dim", 64),
@@ -387,6 +452,11 @@ def load_voxcpm2_model(model_source: str):
     )
 
     model = Model(args)
+    if not hasattr(model, "fusion_concat_proj"):
+        model.fusion_concat_proj = nn.Linear(
+            args.lm_config.hidden_size * 2,
+            args.lm_config.hidden_size,
+        )
     weights = load_weights(model_path)
     if hasattr(model, "sanitize"):
         weights = model.sanitize(weights)
@@ -394,21 +464,461 @@ def load_voxcpm2_model(model_source: str):
     model.load_weights(list(weights.items()), strict=False)
     mx.eval(model.parameters())
     model.eval()
-    return Model.post_load_hook(model, model_path)
+    model = Model.post_load_hook(model, model_path)
+    model.audio_start_token = 101
+    model.audio_end_token = 102
+    model.ref_audio_start_token = 103
+    model.ref_audio_end_token = 104
+    model._multichar_chinese_tokens = {
+        token
+        for token in getattr(model.tokenizer, "vocab", {}).keys()
+        if len(token) >= 2 and all("\u4e00" <= ch <= "\u9fff" for ch in token)
+    }
+    model._encode_sample_rate = getattr(model.audio_vae, "sample_rate", args.audio_vae_config.sample_rate)
+    model._decode_sample_rate = (
+        args.audio_vae_config.out_sample_rate or model._encode_sample_rate
+    )
+    model._voxcpm2_mean_mode = bool(getattr(args.dit_config, "mean_mode", False))
+    model._voxcpm2_residual_no_rope = bool(config.get("residual_lm_no_rope", False))
+    return model
+
+
+def voxcpm2_embed_text_instruction(text: str, instruct: str | None) -> str:
+    if instruct is None:
+        return text
+    clean = instruct.strip()
+    if not clean:
+        return text
+    clean = clean.replace("(", "").replace(")", "")
+    return f"({clean}){text}"
+
+
+def voxcpm2_tokenize(model, text: str) -> list[int]:
+    tokens = model.tokenizer.tokenize(text)
+    processed = []
+    multichar_tokens = getattr(model, "_multichar_chinese_tokens", set())
+    for token in tokens:
+        clean = token.replace("▁", "")
+        if clean in multichar_tokens:
+            processed.extend(list(clean))
+        else:
+            processed.append(token)
+    return model.tokenizer.convert_tokens_to_ids(processed)
+
+
+def voxcpm2_patch_len(model) -> int:
+    chunk = getattr(model, "chunk_size", None) or getattr(model.audio_vae, "chunk_size", None)
+    if chunk is None:
+        chunk = getattr(model.audio_vae, "hop_length")
+    return int(model.patch_size) * int(chunk)
+
+
+def voxcpm2_encode_audio_with_padding(model, audio, padding_mode: str):
+    import mlx.core as mx
+
+    patch_len = voxcpm2_patch_len(model)
+    remainder = int(audio.shape[0]) % patch_len
+    if remainder:
+        padding = patch_len - remainder
+        if padding_mode == "left":
+            audio = mx.pad(audio, [(padding, 0)])
+        else:
+            audio = mx.pad(audio, [(0, padding)])
+
+    audio_input = audio[None, None, :]
+    sample_rate = getattr(model, "_encode_sample_rate", model.sample_rate)
+    audio_feat = model.audio_vae.encode(audio_input, sample_rate).squeeze(0)
+    audio_length = int(audio_feat.shape[0]) // int(model.patch_size)
+    audio_feat = audio_feat[: audio_length * int(model.patch_size), :]
+    return audio_feat.reshape(audio_length, int(model.patch_size), -1)
+
+
+def voxcpm2_make_ref_prefix(model, ref_audio_feat):
+    import mlx.core as mx
+
+    ref_len = int(ref_audio_feat.shape[0])
+    zeros_patch = mx.zeros((1, model.patch_size, model.feat_dim), dtype=mx.float32)
+    tokens = mx.concatenate(
+        [
+            mx.array([model.ref_audio_start_token], dtype=mx.int32),
+            mx.zeros(ref_len, dtype=mx.int32),
+            mx.array([model.ref_audio_end_token], dtype=mx.int32),
+        ]
+    )
+    feats = mx.concatenate([zeros_patch, ref_audio_feat, zeros_patch], axis=0)
+    text_mask = mx.concatenate(
+        [
+            mx.array([1], dtype=mx.float32),
+            mx.zeros(ref_len, dtype=mx.float32),
+            mx.array([1], dtype=mx.float32),
+        ]
+    )
+    audio_mask = mx.concatenate(
+        [
+            mx.array([0], dtype=mx.float32),
+            mx.ones(ref_len, dtype=mx.float32),
+            mx.array([0], dtype=mx.float32),
+        ]
+    )
+    return tokens, feats, text_mask, audio_mask
+
+
+def voxcpm2_run_minicpm(module, inputs_embeds, *, cache=None, is_causal=True, use_rope=True):
+    import mlx.core as mx
+
+    batch_size, seq_len, _ = inputs_embeds.shape
+    offset = 0
+    if cache is not None:
+        offset = int(cache[0][0].shape[1])
+
+    if use_rope:
+        position_ids = mx.arange(offset, offset + seq_len).astype(mx.int32)
+        cos, sin = module.rope(position_ids)
+        cos = cos[None, :, :]
+        sin = sin[None, :, :]
+    else:
+        head_dim = module.layers[0].self_attn.head_dim
+        cos = mx.ones((1, seq_len, head_dim), dtype=inputs_embeds.dtype)
+        sin = mx.zeros((1, seq_len, head_dim), dtype=inputs_embeds.dtype)
+
+    mask = None
+    if is_causal and seq_len > 1:
+        causal_mask = mx.triu(mx.full((seq_len, seq_len), float("-inf")), k=1)
+        mask = causal_mask[None, None, :, :]
+
+    hidden = inputs_embeds
+    new_caches = []
+    for index, layer in enumerate(module.layers):
+        layer_cache = cache[index] if cache is not None else None
+        hidden, next_cache = layer(hidden, cos, sin, mask=mask, cache=layer_cache)
+        new_caches.append(next_cache)
+
+    return module.norm(hidden), new_caches
+
+
+def voxcpm2_estimator_v2(estimator, x, mu, t, cond, dt):
+    import mlx.core as mx
+
+    x = estimator.in_proj(x.transpose(0, 2, 1))
+    cond = estimator.cond_proj(cond.transpose(0, 2, 1))
+    prefix = int(cond.shape[1])
+
+    t_embed = estimator.time_mlp(estimator.time_embeddings(t))
+    dt_embed = estimator.delta_time_mlp(estimator.time_embeddings(dt))
+    time_token = (t_embed + dt_embed)[:, None, :]
+
+    mu_tokens = mu.reshape(mu.shape[0], -1, x.shape[-1])
+    hidden = mx.concatenate([mu_tokens, time_token, cond, x], axis=1)
+    hidden, _ = estimator.decoder(inputs_embeds=hidden, is_causal=False)
+    hidden = hidden[:, prefix + int(mu_tokens.shape[1]) + 1 :, :]
+    hidden = estimator.out_proj(hidden)
+    return hidden.transpose(0, 2, 1)
+
+
+def voxcpm2_sample(model, mu, cond, *, inference_timesteps: int, cfg_value: float):
+    import mlx.core as mx
+
+    feat_decoder = model.feat_decoder
+    batch = int(mu.shape[0])
+    z = mx.random.normal((batch, feat_decoder.in_channels, model.patch_size))
+
+    t_span = mx.linspace(1, 0, inference_timesteps + 1)
+    sway_coef = 1.0
+    t_span = t_span + sway_coef * (mx.cos(math.pi / 2 * t_span) - 1 + t_span)
+    current = z
+    timestep = t_span[0]
+    delta = t_span[0] - t_span[1]
+    zero_init_steps = max(1, int(len(t_span) * 0.04))
+    mean_mode = bool(getattr(model, "_voxcpm2_mean_mode", False))
+
+    for step in range(1, len(t_span)):
+        if step <= zero_init_steps:
+            derivative = mx.zeros_like(current)
+        else:
+            x_in = mx.concatenate([current, current], axis=0)
+            mu_in = mx.concatenate([mu, mx.zeros_like(mu)], axis=0)
+            t_val = mx.full((x_in.shape[0],), timestep)
+            if mean_mode:
+                dt_val = mx.full((x_in.shape[0],), delta)
+            else:
+                dt_val = mx.zeros((x_in.shape[0],))
+            cond_in = mx.concatenate([cond, cond], axis=0)
+            estimate = voxcpm2_estimator_v2(
+                feat_decoder.estimator,
+                x_in,
+                mu_in,
+                t_val,
+                cond_in,
+                dt_val,
+            )
+            chunk = int(current.shape[0])
+            derivative = estimate[:chunk]
+            unguided = estimate[chunk:]
+            positive = derivative.reshape(chunk, -1)
+            negative = unguided.reshape(chunk, -1)
+            dot = mx.sum(positive * negative, axis=1, keepdims=True)
+            norm = mx.sum(negative**2, axis=1, keepdims=True) + 1e-8
+            scale = (dot / norm).reshape(chunk, 1, 1)
+            derivative = unguided * scale + cfg_value * (derivative - unguided * scale)
+
+        current = current - delta * derivative
+        timestep = timestep - delta
+        if step < len(t_span) - 1:
+            delta = timestep - t_span[step + 1]
+
+    return current
+
+
+def generate_voxcpm2_official(
+    model,
+    *,
+    target_text: str,
+    reference_audio=None,
+    prompt_audio=None,
+    prompt_text: str | None = None,
+    inference_timesteps: int = 10,
+    cfg_value: float = 2.0,
+    min_len: int = 2,
+    max_len: int = 2000,
+):
+    import mlx.core as mx
+    import mlx.nn as nn
+
+    if prompt_audio is not None and prompt_text is None:
+        raise ValueError("VoxCPM2 prompt audio needs prompt text.")
+
+    if reference_audio is not None and prompt_audio is not None:
+        text = f"{prompt_text or ''}{target_text}"
+        text_token = mx.array(voxcpm2_tokenize(model, text), dtype=mx.int32)
+        text_token = mx.concatenate([text_token, mx.array([model.audio_start_token], dtype=mx.int32)])
+        text_length = int(text_token.shape[0])
+
+        ref_feat = voxcpm2_encode_audio_with_padding(model, reference_audio, "right")
+        prompt_feat = voxcpm2_encode_audio_with_padding(model, prompt_audio, "left")
+        prompt_audio_length = int(prompt_feat.shape[0])
+
+        ref_tokens, ref_feats, ref_text_mask, ref_audio_mask = voxcpm2_make_ref_prefix(
+            model,
+            ref_feat,
+        )
+
+        prompt_pad_token = mx.zeros(prompt_audio_length, dtype=mx.int32)
+        text_pad_feat = mx.zeros(
+            (text_length, model.patch_size, model.feat_dim),
+            dtype=mx.float32,
+        )
+        text_token = mx.concatenate([ref_tokens, text_token, prompt_pad_token], axis=0)
+        audio_feat = mx.concatenate([ref_feats, text_pad_feat, prompt_feat], axis=0)
+        text_mask = mx.concatenate(
+            [
+                ref_text_mask,
+                mx.ones(text_length, dtype=mx.float32),
+                mx.zeros(prompt_audio_length, dtype=mx.float32),
+            ],
+            axis=0,
+        )
+        audio_mask = mx.concatenate(
+            [
+                ref_audio_mask,
+                mx.zeros(text_length, dtype=mx.float32),
+                mx.ones(prompt_audio_length, dtype=mx.float32),
+            ],
+            axis=0,
+        )
+    elif reference_audio is not None:
+        text_token = mx.array(voxcpm2_tokenize(model, target_text), dtype=mx.int32)
+        text_token = mx.concatenate([text_token, mx.array([model.audio_start_token], dtype=mx.int32)])
+        text_length = int(text_token.shape[0])
+
+        ref_feat = voxcpm2_encode_audio_with_padding(model, reference_audio, "right")
+        ref_tokens, ref_feats, ref_text_mask, ref_audio_mask = voxcpm2_make_ref_prefix(
+            model,
+            ref_feat,
+        )
+
+        text_pad_feat = mx.zeros(
+            (text_length, model.patch_size, model.feat_dim),
+            dtype=mx.float32,
+        )
+        text_token = mx.concatenate([ref_tokens, text_token], axis=0)
+        audio_feat = mx.concatenate([ref_feats, text_pad_feat], axis=0)
+        text_mask = mx.concatenate(
+            [ref_text_mask, mx.ones(text_length, dtype=mx.float32)],
+            axis=0,
+        )
+        audio_mask = mx.concatenate(
+            [ref_audio_mask, mx.zeros(text_length, dtype=mx.float32)],
+            axis=0,
+        )
+    elif prompt_audio is not None:
+        text = f"{prompt_text or ''}{target_text}"
+        text_token = mx.array(voxcpm2_tokenize(model, text), dtype=mx.int32)
+        text_token = mx.concatenate([text_token, mx.array([model.audio_start_token], dtype=mx.int32)])
+        text_length = int(text_token.shape[0])
+
+        prompt_feat = voxcpm2_encode_audio_with_padding(model, prompt_audio, "left")
+        prompt_audio_length = int(prompt_feat.shape[0])
+        prompt_pad_token = mx.zeros(prompt_audio_length, dtype=mx.int32)
+        text_pad_feat = mx.zeros(
+            (text_length, model.patch_size, model.feat_dim),
+            dtype=mx.float32,
+        )
+        text_token = mx.concatenate([text_token, prompt_pad_token], axis=0)
+        audio_feat = mx.concatenate([text_pad_feat, prompt_feat], axis=0)
+        text_mask = mx.concatenate(
+            [
+                mx.ones(text_length, dtype=mx.float32),
+                mx.zeros(prompt_audio_length, dtype=mx.float32),
+            ],
+            axis=0,
+        )
+        audio_mask = mx.concatenate(
+            [
+                mx.zeros(text_length, dtype=mx.float32),
+                mx.ones(prompt_audio_length, dtype=mx.float32),
+            ],
+            axis=0,
+        )
+    else:
+        text_token = mx.array(voxcpm2_tokenize(model, target_text), dtype=mx.int32)
+        text_token = mx.concatenate([text_token, mx.array([model.audio_start_token], dtype=mx.int32)])
+        text_length = int(text_token.shape[0])
+        audio_feat = mx.zeros(
+            (text_length, model.patch_size, model.feat_dim),
+            dtype=mx.float32,
+        )
+        text_mask = mx.ones(text_length, dtype=mx.float32)
+        audio_mask = mx.zeros(text_length, dtype=mx.float32)
+
+    text_token = text_token[None, :]
+    text_mask = text_mask[None, :]
+    audio_feat = audio_feat[None, :, :, :]
+    audio_mask = audio_mask[None, :]
+
+    feat_embed = model.feat_encoder(audio_feat)
+    feat_embed = model.enc_to_lm_proj(feat_embed)
+
+    if getattr(model.args.lm_config, "use_mup", False):
+        scale_emb = model.args.lm_config.scale_emb
+    else:
+        scale_emb = 1.0
+    text_embed = model.base_lm.embed_tokens(text_token) * scale_emb
+    combined_embed = text_mask[:, :, None] * text_embed + audio_mask[:, :, None] * feat_embed
+
+    prefix_feat_cond = audio_feat[:, -1, :, :]
+    target_token_count = len(voxcpm2_tokenize(model, target_text))
+    max_steps = min(int(target_token_count * 6.0 + 10), max_len, max_tokens if (max_tokens := 4096) else max_len)
+    context_len = 0
+    pred_feat_seq = []
+    if int(audio_mask[0, -1].item()) == 1:
+        audio_indices = np.flatnonzero(np.array(audio_mask[0]))
+        context_len = min(3, int(audio_indices.shape[0]))
+        if context_len > 0:
+            pred_feat_seq = [
+                audio_feat[:, int(index), :, :] for index in audio_indices[-context_len:]
+            ]
+
+    enc_outputs, lm_cache = voxcpm2_run_minicpm(
+        model.base_lm,
+        combined_embed,
+        is_causal=True,
+        use_rope=True,
+    )
+    enc_outputs = model.fsq_layer(enc_outputs) * audio_mask[:, :, None] + enc_outputs * text_mask[:, :, None]
+    lm_hidden = enc_outputs[:, -1, :]
+
+    residual_inputs = model.fusion_concat_proj(
+        mx.concatenate([enc_outputs, audio_mask[:, :, None] * feat_embed], axis=-1)
+    )
+    residual_outputs, res_cache = voxcpm2_run_minicpm(
+        model.residual_lm,
+        residual_inputs,
+        is_causal=True,
+        use_rope=not getattr(model, "_voxcpm2_residual_no_rope", False),
+    )
+    residual_hidden = residual_outputs[:, -1, :]
+
+    for step in range(max_steps):
+        dit_hidden = mx.concatenate(
+            [
+                model.lm_to_dit_proj(lm_hidden),
+                model.res_to_dit_proj(residual_hidden),
+            ],
+            axis=-1,
+        )
+        pred_feat = voxcpm2_sample(
+            model,
+            dit_hidden,
+            prefix_feat_cond.transpose(0, 2, 1),
+            inference_timesteps=inference_timesteps,
+            cfg_value=cfg_value,
+        ).transpose(0, 2, 1)
+        pred_feat_seq.append(pred_feat)
+
+        curr_embed = model.feat_encoder(pred_feat[:, None, :, :])
+        curr_embed = model.enc_to_lm_proj(curr_embed)
+
+        stop_logits = model.stop_head(nn.silu(model.stop_proj(lm_hidden)))
+        stop_flag = int(mx.argmax(stop_logits, axis=-1).item())
+        if step > min_len and stop_flag == 1:
+            break
+
+        lm_out, lm_cache = voxcpm2_run_minicpm(
+            model.base_lm,
+            curr_embed,
+            cache=lm_cache,
+            is_causal=True,
+            use_rope=True,
+        )
+        lm_hidden = model.fsq_layer(lm_out[:, -1, :])
+
+        residual_step = model.fusion_concat_proj(
+            mx.concatenate([lm_hidden, curr_embed[:, 0, :]], axis=-1)
+        )[:, None, :]
+        res_out, res_cache = voxcpm2_run_minicpm(
+            model.residual_lm,
+            residual_step,
+            cache=res_cache,
+            is_causal=True,
+            use_rope=not getattr(model, "_voxcpm2_residual_no_rope", False),
+        )
+        residual_hidden = res_out[:, -1, :]
+        prefix_feat_cond = pred_feat
+
+    if not pred_feat_seq:
+        raise ValueError("VoxCPM2 returned no audio.")
+
+    all_feats = mx.concatenate(pred_feat_seq, axis=1)
+    if context_len > 0:
+        all_feats = all_feats[:, context_len:, :]
+    audio = model.audio_vae.decode(all_feats).flatten()
+    sample_rate = getattr(model, "_decode_sample_rate", model.sample_rate)
+    return np.array(audio), int(sample_rate)
 
 
 def generate_voxcpm2_audio(args: argparse.Namespace):
-    if args.ref_audio and not args.ref_text:
-        raise ValueError("VoxCPM2 voice cloning needs both reference audio and reference text.")
-
     model = load_voxcpm2_model(args.model)
-    kwargs = {
-        "max_tokens": args.max_tokens,
-        "ref_audio": args.ref_audio,
-        "ref_text": args.ref_text,
-    }
-    audio, sample_rate = generate_audio(model, args.text, kwargs)
-    return audio, sample_rate
+    reference_audio = None
+    prompt_audio = None
+    if args.ref_audio:
+        reference_audio = load_reference_audio(model, "voxcpm2", args.ref_audio)
+        if args.ref_text and args.ref_text.strip():
+            prompt_audio = reference_audio
+
+    final_text = voxcpm2_embed_text_instruction(args.text, args.instruct)
+    audio, sample_rate = generate_voxcpm2_official(
+        model,
+        target_text=final_text,
+        reference_audio=reference_audio,
+        prompt_audio=prompt_audio,
+        prompt_text=args.ref_text.strip() if args.ref_text else None,
+        inference_timesteps=10,
+        cfg_value=2.0,
+    )
+    out_sr = voxcpm2_output_sample_rate_from_config(args.model)
+    if out_sr is not None and out_sr > 0:
+        sample_rate = out_sr
+    return audio, int(sample_rate)
 
 
 def generate_lfm_audio(args: argparse.Namespace):
@@ -477,7 +987,7 @@ def main() -> int:
     try:
         model_name = Path(args.model).name.lower()
         config = load_model_config(args.model)
-        model_type = config.get("model_type")
+        model_type = config.get("model_type") or config.get("architecture")
         used_conditioning_retry = False
 
         if model_type == "lfm_audio":

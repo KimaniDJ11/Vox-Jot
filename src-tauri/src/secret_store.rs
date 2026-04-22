@@ -52,7 +52,9 @@ impl SecretStore for KeyringSecretStore {
         match self.entry(account)?.get_password() {
             Ok(secret) => Ok(Some(secret)),
             Err(keyring::Error::NoEntry) => Ok(None),
-            Err(error) => Err(format!("Failed to read credential for '{account}': {error}")),
+            Err(error) => Err(format!(
+                "Failed to read credential for '{account}': {error}"
+            )),
         }
     }
 
@@ -116,7 +118,6 @@ impl TestSecretStore {
             fail_clears: Mutex::new(HashSet::new()),
         }
     }
-
 }
 
 #[cfg(test)]

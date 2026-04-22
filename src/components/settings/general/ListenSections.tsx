@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Check,
   Globe,
+  Loader2,
   Play,
   Sparkles,
   Square,
@@ -1628,7 +1629,11 @@ const VoiceArchitectSection: React.FC<{
                 disabled={speech.previewingPresetId === "__draft__"}
                 className="inline-flex items-center justify-center gap-1.5"
               >
-                <Play className="h-3.5 w-3.5" />
+                {speech.previewingPresetId === "__draft__" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
                 {t("listen.myVoices.preview")}
               </Button>
               <Button
@@ -1641,6 +1646,14 @@ const VoiceArchitectSection: React.FC<{
                 <Square className="h-3.5 w-3.5" />
                 {t("listen.myVoices.stop")}
               </Button>
+              {speech.previewingPresetId === "__draft__" ? (
+                <div className="flex items-center justify-center gap-1.5 pt-1">
+                  <Loader2 className="h-3 w-3 animate-[spin_1s_linear_infinite] text-[var(--muted)]" />
+                  <span className="text-xs text-[var(--muted)]">
+                    Generating…
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1729,6 +1742,7 @@ const VoiceArchitectSection: React.FC<{
                         (model) => model.provider_id === value,
                       )?.id ?? "";
                     lastDraftSelectionKeyRef.current = null;
+                    setDraftVoiceErrorMessage(null);
                     setDraftProviderId(value);
                     setDraftModelId(nextModelId);
                   }}
@@ -1742,6 +1756,7 @@ const VoiceArchitectSection: React.FC<{
                   value={draftModelIdForControls}
                   onChange={(value) => {
                     lastDraftSelectionKeyRef.current = null;
+                    setDraftVoiceErrorMessage(null);
                     setDraftModelId(value);
                   }}
                   disabled={
@@ -2167,13 +2182,13 @@ const SpeechModelList: React.FC<{
       </div>
     ) : null}
     {models.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {models.map((model) => (
-            <SpeechModelLibraryCard
-              key={`${model.provider_id}::${model.id}`}
-              model={model}
-              provider={
-                speech.visibleProviders.find(
+      <div className="flex flex-col gap-3">
+        {models.map((model) => (
+          <SpeechModelLibraryCard
+            key={`${model.provider_id}::${model.id}`}
+            model={model}
+            provider={
+              speech.visibleProviders.find(
                 (provider) => provider.id === model.provider_id,
               ) ?? null
             }

@@ -871,12 +871,34 @@ fn mlx_audio_tts_model_definition(model_id: &str) -> Option<&'static MlxAudioTts
         .find(|definition| definition.model_id == model_id)
 }
 
+fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str> {
+    match model_id {
+        "outetts-0.6b" => Some(
+            "OuteTTS 0.6B is temporarily disabled because the current mlx-audio runtime does not generate usable audio for this checkpoint.",
+        ),
+        _ => None,
+    }
+}
+
+fn mlx_audio_definition_available(definition: &MlxAudioTtsModelDefinition) -> bool {
+    mlx_audio_model_unavailable_reason(definition.model_id).is_none()
+}
+
+fn ensure_mlx_audio_definition_available(
+    definition: &MlxAudioTtsModelDefinition,
+) -> Result<(), String> {
+    match mlx_audio_model_unavailable_reason(definition.model_id) {
+        Some(reason) => Err(reason.to_string()),
+        None => Ok(()),
+    }
+}
+
 fn first_mlx_audio_model_for_provider(
     provider_id: &str,
 ) -> Option<&'static MlxAudioTtsModelDefinition> {
-    MLX_AUDIO_TTS_MODEL_DEFINITIONS
-        .iter()
-        .find(|definition| definition.provider_id == provider_id)
+    MLX_AUDIO_TTS_MODEL_DEFINITIONS.iter().find(|definition| {
+        definition.provider_id == provider_id && mlx_audio_definition_available(definition)
+    })
 }
 
 pub(crate) fn supported_voice_profile_compatibility() -> VoiceProfileCompatibility {
@@ -894,6 +916,7 @@ pub(crate) fn supported_voice_profile_compatibility() -> VoiceProfileCompatibili
 
     for definition in MLX_AUDIO_TTS_MODEL_DEFINITIONS
         .iter()
+        .filter(|definition| mlx_audio_definition_available(definition))
         .filter(|definition| definition.supports_voice_cloning)
     {
         provider_ids.insert(definition.provider_id.to_string());
@@ -1069,10 +1092,64 @@ impl TtsManager {
         candidates
     }
 
-    fn resolve_mlx_audio_model_source(&self, definition: &MlxAudioTtsModelDefinition) -> String {
+    fn resolved_mlx_audio_model_root(
+        &self,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Option<PathBuf> {
         self.mlx_audio_model_candidate_paths(definition)
             .into_iter()
-            .find(|candidate| candidate.exists())
+            .find_map(|candidate| {
+                if !candidate.exists() {
+                    return None;
+                }
+
+                if candidate.is_dir() && candidate.join("config.json").exists() {
+                    return Some(candidate);
+                }
+
+                resolve_extracted_root(&candidate).and_then(|root| {
+                    if root.join("config.json").exists() {
+                        Some(root)
+                    } else {
+                        None
+                    }
+                })
+            })
+    }
+
+    fn mlx_audio_model_install_dir(&self, definition: &MlxAudioTtsModelDefinition) -> PathBuf {
+        let repo_basename = definition
+            .hf_model_id
+            .rsplit('/')
+            .next()
+            .unwrap_or(definition.model_id);
+        let directory_name = definition
+            .local_dir_names
+            .first()
+            .copied()
+            .unwrap_or(repo_basename);
+        self.tts_model_store_root().join("MLX").join(directory_name)
+    }
+
+    fn mlx_audio_model_installed(&self, definition: &MlxAudioTtsModelDefinition) -> bool {
+        self.resolved_mlx_audio_model_root(definition).is_some()
+    }
+
+    fn ensure_mlx_audio_model_root(
+        &self,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Result<PathBuf, String> {
+        self.resolved_mlx_audio_model_root(definition)
+            .ok_or_else(|| {
+                format!(
+                    "{} is not installed yet. Download it from Speech Output settings first.",
+                    definition.label
+                )
+            })
+    }
+
+    fn resolve_mlx_audio_model_source(&self, definition: &MlxAudioTtsModelDefinition) -> String {
+        self.resolved_mlx_audio_model_root(definition)
             .unwrap_or_else(|| PathBuf::from(definition.hf_model_id))
             .to_string_lossy()
             .to_string()
@@ -1264,6 +1341,15 @@ impl TtsManager {
         provider_id: &str,
         model_id: Option<&str>,
     ) -> Result<Vec<VoiceInfo>, String> {
+        if provider_is_mlx_audio(provider_id) {
+            if let Some(definition) = model_id
+                .and_then(mlx_audio_tts_model_definition)
+                .or_else(|| first_mlx_audio_model_for_provider(provider_id))
+            {
+                ensure_mlx_audio_definition_available(definition)?;
+            }
+        }
+
         let settings = self.settings_for_voice_selection(provider_id, model_id);
         match self.resolve_engine_kind(&settings, None)? {
             TtsEngineKind::System => self.system_voices(),
@@ -1732,6 +1818,17 @@ impl TtsManager {
         }
     }
 
+    async fn install_mlx_audio_model(
+        &self,
+        definition: &MlxAudioTtsModelDefinition,
+    ) -> Result<(), String> {
+        let install_dir = self.mlx_audio_model_install_dir(definition);
+        let label = format!("{} MLX model assets", definition.label);
+
+        self.download_hf_snapshot_into_exact_dir(definition.hf_model_id, &install_dir, &label)
+            .await
+    }
+
     pub fn stop(&self) {
         if let Some(flag) = self
             .current_stop_flag
@@ -2135,60 +2232,75 @@ impl TtsManager {
     }
 
     fn mlx_audio_runtime_state(&self) -> RuntimeListenState {
-        let providers =
-            MLX_AUDIO_TTS_MODEL_DEFINITIONS
-                .iter()
-                .fold(Vec::new(), |mut entries, definition| {
-                    if entries
-                        .iter()
-                        .any(|entry: &RuntimeListenProviderCatalogEntry| {
-                            entry.id == definition.provider_id
-                        })
-                    {
-                        return entries;
-                    }
+        let providers = MLX_AUDIO_TTS_MODEL_DEFINITIONS
+            .iter()
+            .filter(|definition| mlx_audio_definition_available(definition))
+            .fold(Vec::new(), |mut entries, definition| {
+                if entries
+                    .iter()
+                    .any(|entry: &RuntimeListenProviderCatalogEntry| {
+                        entry.id == definition.provider_id
+                    })
+                {
+                    return entries;
+                }
 
-                    entries.push(RuntimeListenProviderCatalogEntry {
+                entries.push(RuntimeListenProviderCatalogEntry {
+                    id: definition.provider_id.to_string(),
+                    label: definition.provider_label.to_string(),
+                    description: definition.provider_description.to_string(),
+                    source_label: "mlx-audio runtime".to_string(),
+                    provider: RuntimeListenProviderDefinition {
                         id: definition.provider_id.to_string(),
                         label: definition.provider_label.to_string(),
-                        description: definition.provider_description.to_string(),
-                        source_label: "mlx-audio runtime".to_string(),
-                        provider: RuntimeListenProviderDefinition {
-                            id: definition.provider_id.to_string(),
-                            label: definition.provider_label.to_string(),
-                            engine_family: definition.engine_family.to_string(),
-                            supported_platforms: vec!["darwin".to_string()],
-                            license_label: definition.license_label.map(str::to_string),
-                        },
-                    });
-                    entries
+                        engine_family: definition.engine_family.to_string(),
+                        supported_platforms: vec!["darwin".to_string()],
+                        license_label: definition.license_label.map(str::to_string),
+                    },
                 });
+                entries
+            });
 
         let models = MLX_AUDIO_TTS_MODEL_DEFINITIONS
             .iter()
-            .map(|definition| RuntimeListenModelCatalogEntry {
-                id: definition.model_id.to_string(),
-                provider_id: definition.provider_id.to_string(),
-                label: definition.label.to_string(),
-                description: definition.description.to_string(),
-                source_label: "mlx-audio runtime".to_string(),
-                capabilities: RuntimeListenCapabilities {
-                    supports_basic_tts: true,
-                    supports_voice_cloning: definition.supports_voice_cloning,
-                    supports_instruction_prompt: definition.supports_instruction_prompt,
-                    supports_streaming: false,
-                },
-                readiness: RuntimeListenReadiness {
-                    status: "ready".to_string(),
-                    runtime_label: "mlx-audio runtime".to_string(),
-                    issues: Vec::new(),
-                },
-                supported_languages: definition
-                    .supported_languages
-                    .iter()
-                    .map(|value| value.to_string())
-                    .collect(),
-                style_controls: Vec::new(),
+            .filter(|definition| mlx_audio_definition_available(definition))
+            .map(|definition| {
+                let installed = self.mlx_audio_model_installed(definition);
+                RuntimeListenModelCatalogEntry {
+                    id: definition.model_id.to_string(),
+                    provider_id: definition.provider_id.to_string(),
+                    label: definition.label.to_string(),
+                    description: definition.description.to_string(),
+                    source_label: "mlx-audio runtime".to_string(),
+                    capabilities: RuntimeListenCapabilities {
+                        supports_basic_tts: true,
+                        supports_voice_cloning: definition.supports_voice_cloning,
+                        supports_instruction_prompt: definition.supports_instruction_prompt,
+                        supports_streaming: false,
+                    },
+                    readiness: RuntimeListenReadiness {
+                        status: if installed {
+                            "ready".to_string()
+                        } else {
+                            "missing".to_string()
+                        },
+                        runtime_label: "mlx-audio runtime".to_string(),
+                        issues: if installed {
+                            Vec::new()
+                        } else {
+                            vec![format!(
+                                "{} is available from Hugging Face but is not installed locally yet.",
+                                definition.label
+                            )]
+                        },
+                    },
+                    supported_languages: definition
+                        .supported_languages
+                        .iter()
+                        .map(|value| value.to_string())
+                        .collect(),
+                    style_controls: Vec::new(),
+                }
             })
             .collect();
 
@@ -2898,7 +3010,7 @@ impl TtsManager {
                     coming_soon: false,
                     license_label: provider.provider.license_label.clone(),
                     capabilities: CapabilityFlags {
-                        downloadable: false,
+                        downloadable: provider_is_mlx_audio(&provider.id),
                         loadable: true,
                         local_only: true,
                         supports_translation: false,
@@ -2933,6 +3045,8 @@ impl TtsManager {
                 let provider = runtime_provider_map.get(&model.provider_id)?;
                 let selected = selected_provider_id == model.provider_id
                     && selected_model_id.as_deref() == Some(model.id.as_str());
+                let is_mlx_runtime_model = provider_is_mlx_audio(&model.provider_id);
+                let installed = !model.readiness.status.eq_ignore_ascii_case("missing");
                 let runnable = model.readiness.status.eq_ignore_ascii_case("ready");
                 Some(CatalogModelDescriptor {
                     id: model.id.clone(),
@@ -2941,11 +3055,11 @@ impl TtsManager {
                     source_kind: CatalogSourceKind::Runtime,
                     label: model.label.clone(),
                     description: model.description.clone(),
-                    installed: true,
+                    installed,
                     selected,
                     active: selected && runnable,
                     runnable,
-                    downloadable: false,
+                    downloadable: is_mlx_runtime_model,
                     source_label: model.source_label.clone(),
                     runtime: RuntimeRequirement {
                         id: provider.runtime.id.clone(),
@@ -2959,7 +3073,7 @@ impl TtsManager {
                     readiness_status: Some(model.readiness.status.clone()),
                     readiness_issues: model.readiness.issues.clone(),
                     capabilities: CapabilityFlags {
-                        downloadable: false,
+                        downloadable: is_mlx_runtime_model,
                         loadable: true,
                         local_only: true,
                         supports_translation: false,
@@ -3098,12 +3212,14 @@ impl TtsManager {
         sidecar_request_url_from_base(&self.sidecar_base_url(), path)
     }
 
-    fn ensure_sidecar_running_blocking(&self) -> Result<(), String> {
+    fn ensure_sidecar_running_blocking(&self, provider_id: &str) -> Result<(), String> {
         if let Some(sidecar) = self
             .app_handle
             .try_state::<Arc<crate::sidecar::SidecarManager>>()
         {
-            if sidecar.backend() == SidecarBackend::MlxAudio {
+            if provider_uses_managed_speech_runtime(provider_id) {
+                sidecar.ensure_speech_runtime()?;
+            } else if sidecar.backend() == SidecarBackend::MlxAudio {
                 sidecar.ensure_running()?;
             } else {
                 sidecar.ensure_running_if_available()?;
@@ -3123,7 +3239,7 @@ impl TtsManager {
             return Ok(Vec::new());
         }
 
-        self.ensure_sidecar_running_blocking()?;
+        self.ensure_sidecar_running_blocking(provider_id)?;
 
         let root_url = self
             .sidecar_root_url()
@@ -3226,6 +3342,10 @@ impl TtsManager {
             .find(|definition| definition.id == pack_id)
         {
             return self.install_qwen3_pack(definition).await;
+        }
+
+        if let Some(definition) = mlx_audio_tts_model_definition(pack_id) {
+            return self.install_mlx_audio_model(definition).await;
         }
 
         if let Some(definition) = self.managed_runtime_model_definition(pack_id) {
@@ -3847,6 +3967,8 @@ impl TtsManager {
             })
             .or_else(|| first_mlx_audio_model_for_provider(&provider_id))
             .ok_or_else(|| format!("No MLX model is configured for provider '{provider_id}'."))?;
+        ensure_mlx_audio_definition_available(definition)?;
+        let model_root = self.ensure_mlx_audio_model_root(definition)?;
 
         let sidecar = self
             .app_handle
@@ -3873,7 +3995,7 @@ impl TtsManager {
             model_label: definition.label.to_string(),
             python_path,
             bridge_script_path,
-            model_source: self.resolve_mlx_audio_model_source(definition),
+            model_source: model_root.to_string_lossy().to_string(),
             clone_profile: self.resolve_mlx_audio_clone_profile(settings, definition)?,
             language: mlx_audio_language_for_locale(locale),
             supports_instruction_prompt: definition.supports_instruction_prompt,
@@ -4053,6 +4175,80 @@ impl TtsManager {
                 sibling.rfilename
             );
             let dest = inner_dir.join(&sibling.rfilename);
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent).map_err(|e| {
+                    format!("Failed to create directory for {}: {e}", sibling.rfilename)
+                })?;
+            }
+            info!("HF snapshot: downloading {}", sibling.rfilename);
+            let response = client
+                .get(&file_url)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to download {}: {e}", sibling.rfilename))?;
+            if !response.status().is_success() {
+                return Err(format!(
+                    "Failed to download {}: HTTP {}",
+                    sibling.rfilename,
+                    response.status()
+                ));
+            }
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
+            fs::write(&dest, bytes)
+                .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+        }
+
+        info!(
+            "HF snapshot: completed {label} ({} files)",
+            model_info.siblings.len()
+        );
+        Ok(())
+    }
+
+    async fn download_hf_snapshot_into_exact_dir(
+        &self,
+        repo_id: &str,
+        install_dir: &Path,
+        label: &str,
+    ) -> Result<(), String> {
+        #[derive(Deserialize)]
+        struct HfSibling {
+            rfilename: String,
+        }
+        #[derive(Deserialize)]
+        struct HfModelInfo {
+            siblings: Vec<HfSibling>,
+        }
+
+        let client = reqwest::Client::new();
+        let api_url = format!("https://huggingface.co/api/models/{repo_id}");
+        info!("HF snapshot: listing files from {api_url}");
+
+        let model_info: HfModelInfo = client
+            .get(&api_url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
+
+        if install_dir.exists() {
+            fs::remove_dir_all(install_dir)
+                .map_err(|e| format!("Failed to clear install dir for {label}: {e}"))?;
+        }
+        fs::create_dir_all(install_dir)
+            .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
+
+        for sibling in &model_info.siblings {
+            let file_url = format!(
+                "https://huggingface.co/{repo_id}/resolve/main/{}",
+                sibling.rfilename
+            );
+            let dest = install_dir.join(&sibling.rfilename);
             if let Some(parent) = dest.parent() {
                 fs::create_dir_all(parent).map_err(|e| {
                     format!("Failed to create directory for {}: {e}", sibling.rfilename)
@@ -5978,6 +6174,22 @@ mod tests {
 
         assert_eq!(base_pack.label, "Qwen3 0.6B Base");
         assert_eq!(base_pack.locale, "mul");
+    }
+
+    #[test]
+    fn outetts_checkpoint_is_marked_unavailable() {
+        let definition = mlx_audio_tts_model_definition("outetts-0.6b")
+            .expect("OuteTTS model definition should remain discoverable");
+
+        assert!(!mlx_audio_definition_available(definition));
+        assert!(mlx_audio_model_unavailable_reason(definition.model_id)
+            .expect("blocked MLX checkpoints should explain why")
+            .contains("temporarily disabled"));
+    }
+
+    #[test]
+    fn unavailable_mlx_provider_has_no_default_model() {
+        assert!(first_mlx_audio_model_for_provider(TTS_PROVIDER_MLX_OUTE_ID).is_none());
     }
 
     #[test]

@@ -134,11 +134,8 @@ pub fn apply_snippets(text: &str, snippets: &[Snippet]) -> SnippetExpansionResul
                         .count();
                     let user_trailing_count =
                         input_trailing_count.saturating_sub(trigger_trailing_count);
-                    let trailing_rev: String = last
-                        .chars()
-                        .rev()
-                        .take(user_trailing_count)
-                        .collect();
+                    let trailing_rev: String =
+                        last.chars().rev().take(user_trailing_count).collect();
                     let trailing: String = trailing_rev.chars().rev().collect();
 
                     output.push(format!("{}{}{}", leading, snippet.expansion, trailing));

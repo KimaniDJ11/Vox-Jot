@@ -180,6 +180,17 @@ def is_empty_generation_error(exc: BaseException) -> bool:
     return "No audio generated" in text or "[concatenate] No arrays provided" in text
 
 
+def is_numeric_only_error(exc: BaseException) -> bool:
+    text = str(exc).strip()
+    if not text:
+        return False
+    try:
+        float(text)
+        return True
+    except ValueError:
+        return False
+
+
 def supports_conditioning_retry(model_type: str | None, model_name: str) -> bool:
     return model_type == "spark" or "spark" in model_name or "chatterbox" in model_name
 
@@ -218,6 +229,13 @@ def describe_bridge_error(
                 "This VoiceDesign checkpoint is more demanding than 0.6B; "
                 "try a shorter preview or switch models."
             )
+
+    if "spark" in model_name and is_numeric_only_error(exc):
+        return (
+            "Spark TTS surfaced an opaque sampler error from mlx-audio. "
+            "This checkpoint is not usable with the current bridge/runtime build; "
+            "switch to another MLX voice model for now."
+        )
 
     if supports_conditioning_retry(None, model_name) and is_empty_generation_error(exc):
         if used_conditioning_retry:

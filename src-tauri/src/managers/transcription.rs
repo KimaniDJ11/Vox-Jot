@@ -966,9 +966,8 @@ impl TranscriptionManager {
                 Arc::clone(&self_clone.loading_condvar),
             );
 
-            let load_result = catch_unwind(AssertUnwindSafe(|| {
-                self_clone.load_model(&selected_model)
-            }));
+            let load_result =
+                catch_unwind(AssertUnwindSafe(|| self_clone.load_model(&selected_model)));
 
             match load_result {
                 Ok(Ok(())) => {}
@@ -976,7 +975,8 @@ impl TranscriptionManager {
                     error!("Failed to load model '{}': {}", selected_model, error);
                 }
                 Err(panic_payload) => {
-                    let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>() {
+                    let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>()
+                    {
                         (*message).to_string()
                     } else if let Some(message) = panic_payload.downcast_ref::<String>() {
                         message.clone()
@@ -993,10 +993,7 @@ impl TranscriptionManager {
                             event_type: "loading_failed".to_string(),
                             model_id: Some(selected_model.clone()),
                             model_name: None,
-                            error: Some(format!(
-                                "Model load panicked: {}",
-                                panic_message
-                            )),
+                            error: Some(format!("Model load panicked: {}", panic_message)),
                         },
                     );
                 }

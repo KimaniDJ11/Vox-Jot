@@ -3046,9 +3046,8 @@ impl ShortcutAction for TranscribeAction {
                         // can hallucinate punctuation-only strings (".", "?")
                         // on silent audio or short noise — pasting those is
                         // worse than a no-op.
-                        let has_meaningful_text = transcription
-                            .chars()
-                            .any(|c| c.is_alphanumeric());
+                        let has_meaningful_text =
+                            transcription.chars().any(|c| c.is_alphanumeric());
                         if has_meaningful_text {
                             if dictation_run_cancelled(
                                 &tm,

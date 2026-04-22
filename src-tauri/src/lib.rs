@@ -245,7 +245,8 @@ async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
         .unwrap_or_else(|error| {
             log::warn!(
                 "Failed to load secure warm-up API key for provider '{}': {}",
-                provider.id, error
+                provider.id,
+                error
             );
             None
         })

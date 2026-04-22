@@ -169,10 +169,7 @@ fn find_provider<'a>(
         .find(|provider| provider.id == provider_id)
 }
 
-fn configured_model_id(
-    settings: &settings::AppSettings,
-    provider_id: &str,
-) -> String {
+fn configured_model_id(settings: &settings::AppSettings, provider_id: &str) -> String {
     settings
         .post_process_models
         .get(provider_id)
@@ -233,12 +230,12 @@ fn make_managed_provider_model(
         return None;
     }
 
-    let title = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID || runtime_model_id.trim().is_empty()
-    {
-        provider.label.clone()
-    } else {
-        runtime_model_id.clone()
-    };
+    let title =
+        if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID || runtime_model_id.trim().is_empty() {
+            provider.label.clone()
+        } else {
+            runtime_model_id.clone()
+        };
 
     let description = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         "Built-in Apple Intelligence cleanup and refinement on supported Macs.".to_string()

@@ -763,11 +763,10 @@ impl HistoryManager {
     ) -> Result<HistoryEntriesPage> {
         let offset = offset.min(i64::MAX as usize);
         let limit = limit.min(i64::MAX as usize);
-        let total: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM transcription_history",
-            [],
-            |row| row.get(0),
-        )?;
+        let total: i64 =
+            conn.query_row("SELECT COUNT(*) FROM transcription_history", [], |row| {
+                row.get(0)
+            })?;
         let mut stmt = conn.prepare(
             "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
         )?;

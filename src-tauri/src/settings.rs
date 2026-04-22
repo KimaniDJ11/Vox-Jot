@@ -1793,7 +1793,10 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
             }
         }
 
-        if !settings.post_process_api_key_status.contains_key(&provider.id) {
+        if !settings
+            .post_process_api_key_status
+            .contains_key(&provider.id)
+        {
             settings
                 .post_process_api_key_status
                 .insert(provider.id.clone(), false);
@@ -3171,8 +3174,7 @@ mod tests {
 
         assert!(migrate_legacy_post_process_api_keys(&settings));
         assert_eq!(
-            secret_store::get_post_process_api_key("openai")
-                .expect("read migrated API key"),
+            secret_store::get_post_process_api_key("openai").expect("read migrated API key"),
             Some("sk-test-key".to_string())
         );
 

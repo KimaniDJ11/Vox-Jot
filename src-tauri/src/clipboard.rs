@@ -47,8 +47,7 @@ fn mark_pasteboard_transient() {
             return;
         }
 
-        let types_array: *mut Object =
-            msg_send![ns_array_class, arrayWithObject: transient_type];
+        let types_array: *mut Object = msg_send![ns_array_class, arrayWithObject: transient_type];
         if types_array.is_null() {
             return;
         }
@@ -61,8 +60,7 @@ fn mark_pasteboard_transient() {
         let empty_string: *mut Object =
             msg_send![ns_string_class, stringWithUTF8String: empty_cstr.as_ptr()];
         if !empty_string.is_null() {
-            let _: bool =
-                msg_send![pasteboard, setString: empty_string forType: transient_type];
+            let _: bool = msg_send![pasteboard, setString: empty_string forType: transient_type];
         }
     }
 }

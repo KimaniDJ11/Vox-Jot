@@ -2,6 +2,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, write_settings, ModelUnloadTimeout};
 use serde::Serialize;
 use specta::Type;
+use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
@@ -86,7 +87,7 @@ pub fn set_model_unload_timeout(app: AppHandle, timeout: ModelUnloadTimeout) {
 #[tauri::command]
 #[specta::specta]
 pub fn get_model_load_status(
-    transcription_manager: State<TranscriptionManager>,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
 ) -> Result<ModelLoadStatus, String> {
     Ok(ModelLoadStatus {
         is_loaded: transcription_manager.is_model_loaded(),
@@ -97,7 +98,7 @@ pub fn get_model_load_status(
 #[tauri::command]
 #[specta::specta]
 pub fn unload_model_manually(
-    transcription_manager: State<TranscriptionManager>,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
 ) -> Result<(), String> {
     transcription_manager
         .unload_model()
@@ -107,7 +108,7 @@ pub fn unload_model_manually(
 #[tauri::command]
 #[specta::specta]
 pub fn transcribe_file(
-    transcription_manager: State<TranscriptionManager>,
+    transcription_manager: State<'_, Arc<TranscriptionManager>>,
     path: String,
 ) -> Result<String, String> {
     if !path.to_ascii_lowercase().ends_with(".wav") {

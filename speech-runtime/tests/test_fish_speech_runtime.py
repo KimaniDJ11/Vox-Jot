@@ -19,9 +19,62 @@ def _fish_spec():
 class DummyProcess:
     def __init__(self, pid: int = 12345):
         self.pid = pid
+        self.stdin = None
+        self.stdout = None
+        self._terminated = False
+        self.terminate_calls = 0
+        self.kill_calls = 0
+        self.wait_calls = 0
 
     def poll(self):
+        return 0 if self._terminated else None
+
+    def terminate(self):
+        self.terminate_calls += 1
+        self._terminated = True
+
+    def kill(self):
+        self.kill_calls += 1
+        self._terminated = True
+
+    def wait(self, timeout=None):
+        self.wait_calls += 1
+        self._terminated = True
+        return 0
+
+
+class DummyPipe:
+    def __init__(self):
+        self.closed = False
+        self.writes: list[str] = []
+
+    def write(self, value: str):
+        self.writes.append(value)
+
+    def flush(self):
         return None
+
+    def close(self):
+        self.closed = True
+
+
+class BlockingStdout(DummyPipe):
+    def __init__(self, process: DummyProcess):
+        super().__init__()
+        self.process = process
+
+    def readline(self):
+        while not self.process._terminated:
+            time.sleep(0.01)
+        return ""
+
+
+class FakeLogHandle:
+    def __init__(self):
+        self.closed = False
+
+    def close(self):
+        self.closed = True
 
 
 class FishSpeechRuntimeTest(unittest.TestCase):
@@ -124,6 +177,49 @@ class FishSpeechRuntimeTest(unittest.TestCase):
 
         self.assertEqual(resolved_url, refreshed_url)
         self.assertEqual(worker.fish_url, refreshed_url)
+
+    def test_send_timeout_drops_stuck_worker(self):
+        host = WorkerHost(self.make_config())
+        process = DummyProcess()
+        process.stdin = DummyPipe()
+        process.stdout = BlockingStdout(process)
+        worker = type("WorkerRecord", (), {})()
+        worker.process = process
+        worker.lock = threading.Lock()
+        worker.engine = "fish_speech:test-model"
+        worker.stderr_path = None
+        host._workers[worker.engine] = worker
+
+        with self.assertRaisesRegex(RuntimeError, "timed out waiting for a response"):
+            with mock.patch("runtime.worker_host.WORKER_RESPONSE_TIMEOUT_SECS", 0.05):
+                host._send(worker, {"action": "warm"})
+
+        self.assertGreaterEqual(process.terminate_calls, 1)
+        self.assertTrue(process.stdin.closed)
+        self.assertTrue(process.stdout.closed)
+        self.assertNotIn(worker.engine, host._workers)
+
+    def test_failed_fish_sidecar_startup_cleans_up_process_and_log_handle(self):
+        host = WorkerHost(self.make_config())
+        spec = _fish_spec()
+        model_dir = self.make_model_dir()
+        process = DummyProcess()
+        log_handle = FakeLogHandle()
+
+        with mock.patch.object(host, "prepare", return_value=Path("/usr/bin/python3")), mock.patch.object(
+            host,
+            "_url_healthy",
+            return_value=False,
+        ), mock.patch("runtime.worker_host.subprocess.Popen", return_value=process), mock.patch(
+            "runtime.worker_host.time.sleep",
+            return_value=None,
+        ), mock.patch.object(Path, "open", return_value=log_handle):
+            with self.assertRaisesRegex(RuntimeError, "did not become healthy"):
+                host.ensure_fish_sidecar(spec, model_dir)
+
+        self.assertTrue(log_handle.closed)
+        self.assertGreaterEqual(process.terminate_calls, 1)
+        self.assertGreaterEqual(process.wait_calls, 1)
 
 
 if __name__ == "__main__":

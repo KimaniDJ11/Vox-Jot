@@ -86,6 +86,8 @@ FISH_SPEECH_CODEC_PACKAGES = (
     "descript-audiotools==0.7.2",
     "descript-audio-codec==1.0.0",
 )
+WORKER_RESPONSE_TIMEOUT_SECS = 120
+PROCESS_SHUTDOWN_TIMEOUT_SECS = 5
 
 
 def _bin_dir(env_dir: Path) -> Path:
@@ -371,24 +373,103 @@ except Exception:
             response = self._send(worker, {"action": "list_voices"})
         return list(response.get("voices") or [])
 
+    def _collect_worker_detail(
+        self,
+        worker: WorkerProcess,
+        ignored_lines: list[str] | None = None,
+    ) -> str:
+        stderr = ""
+        if worker.stderr_path is not None and worker.stderr_path.exists():
+            try:
+                stderr = worker.stderr_path.read_text(encoding="utf-8")[-4000:].strip()
+            except Exception:
+                stderr = ""
+        ignored = "\n".join(ignored_lines or []).strip()
+        return stderr or ignored
+
+    def _terminate_process(self, process: subprocess.Popen[str]) -> None:
+        if process.poll() is not None:
+            return
+        try:
+            process.terminate()
+            process.wait(timeout=PROCESS_SHUTDOWN_TIMEOUT_SECS)
+        except Exception:
+            try:
+                process.kill()
+                process.wait(timeout=PROCESS_SHUTDOWN_TIMEOUT_SECS)
+            except Exception:
+                pass
+
+    def _drop_worker(self, worker: WorkerProcess) -> None:
+        with self._global_lock:
+            current = self._workers.get(worker.engine)
+            if current is worker:
+                self._workers.pop(worker.engine, None)
+
+        try:
+            if worker.process.stdin is not None:
+                worker.process.stdin.close()
+        except Exception:
+            pass
+        try:
+            if worker.process.stdout is not None:
+                worker.process.stdout.close()
+        except Exception:
+            pass
+
+        self._terminate_process(worker.process)
+
+    def _readline_with_timeout(
+        self,
+        worker: WorkerProcess,
+        timeout_secs: float,
+    ) -> str | None:
+        if worker.process.stdout is None:
+            raise RuntimeError("Speech worker stdout pipe is not available.")
+
+        result: dict[str, str] = {}
+        error_holder: dict[str, BaseException] = {}
+
+        def read_line() -> None:
+            try:
+                result["line"] = worker.process.stdout.readline()
+            except BaseException as exc:  # pragma: no cover - pipe failure path
+                error_holder["error"] = exc
+
+        reader = threading.Thread(target=read_line, daemon=True)
+        reader.start()
+        reader.join(timeout_secs)
+        if reader.is_alive():
+            return None
+        if "error" in error_holder:
+            raise RuntimeError(str(error_holder["error"]))
+        return result.get("line", "")
+
     def _send(self, worker: WorkerProcess, message: dict[str, Any]) -> dict[str, Any]:
         if worker.process.stdin is None or worker.process.stdout is None:
             raise RuntimeError("Speech worker pipes are not available.")
-        worker.process.stdin.write(json.dumps(message) + "\n")
-        worker.process.stdin.flush()
+        try:
+            worker.process.stdin.write(json.dumps(message) + "\n")
+            worker.process.stdin.flush()
+        except Exception as exc:
+            self._drop_worker(worker)
+            raise RuntimeError(
+                f"Failed to send request to speech worker '{worker.engine}': {exc}"
+            ) from exc
 
         ignored_lines: list[str] = []
         while True:
-            line = worker.process.stdout.readline()
+            line = self._readline_with_timeout(worker, WORKER_RESPONSE_TIMEOUT_SECS)
+            if line is None:
+                detail = self._collect_worker_detail(worker, ignored_lines)
+                self._drop_worker(worker)
+                raise RuntimeError(
+                    detail
+                    or f"Speech worker '{worker.engine}' timed out waiting for a response."
+                )
             if not line:
-                stderr = ""
-                if worker.stderr_path is not None and worker.stderr_path.exists():
-                    try:
-                        stderr = worker.stderr_path.read_text(encoding="utf-8")[-4000:].strip()
-                    except Exception:
-                        stderr = ""
-                ignored = "\n".join(ignored_lines).strip()
-                detail = stderr or ignored
+                detail = self._collect_worker_detail(worker, ignored_lines)
+                self._drop_worker(worker)
                 raise RuntimeError(
                     detail or f"Speech worker '{worker.engine}' exited unexpectedly."
                 )
@@ -404,6 +485,7 @@ except Exception:
                 continue
 
             if not response.get("ok"):
+                self._drop_worker(worker)
                 raise RuntimeError(response.get("error") or "Speech worker failed.")
             return response
 
@@ -427,27 +509,31 @@ except Exception:
             decoder_path = self._fish_decoder_checkpoint_path(checkpoint_dir)
             log_path = runtime_dir / "fish_server.log"
             log_handle = log_path.open("w", encoding="utf-8")
-            process = subprocess.Popen(
-                [
-                    str(env_python),
-                    str(model_dir / "tools" / "api_server.py"),
-                    "--listen",
-                    f"127.0.0.1:{port}",
-                    "--llama-checkpoint-path",
-                    str(checkpoint_dir),
-                    "--decoder-checkpoint-path",
-                    str(decoder_path),
-                    "--decoder-config-name",
-                    "modded_dac_vq",
-                    "--device",
-                    "cpu",
-                ],
-                cwd=str(model_dir),
-                stdout=log_handle,
-                stderr=subprocess.STDOUT,
-                text=True,
-                env=self._child_env(),
-            )
+            process: subprocess.Popen[str] | None = None
+            try:
+                process = subprocess.Popen(
+                    [
+                        str(env_python),
+                        str(model_dir / "tools" / "api_server.py"),
+                        "--listen",
+                        f"127.0.0.1:{port}",
+                        "--llama-checkpoint-path",
+                        str(checkpoint_dir),
+                        "--decoder-checkpoint-path",
+                        str(decoder_path),
+                        "--decoder-config-name",
+                        "modded_dac_vq",
+                        "--device",
+                        "cpu",
+                    ],
+                    cwd=str(model_dir),
+                    stdout=log_handle,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=self._child_env(),
+                )
+            finally:
+                log_handle.close()
 
             for _ in range(60):
                 if self._url_healthy(url):
@@ -466,6 +552,8 @@ except Exception:
                     detail = log_path.read_text(encoding="utf-8")[-4000:].strip()
                 except Exception:
                     detail = ""
+            state_path.unlink(missing_ok=True)
+            self._terminate_process(process)
             raise RuntimeError(detail or "Fish Speech server did not become healthy.")
 
     def _load_fish_sidecar_url(self, state_path: Path) -> str | None:

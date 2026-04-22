@@ -129,6 +129,32 @@ function SelectField({
 const speechLibraryCardClassName =
   "group h-full min-w-0 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)] transition-all duration-200";
 const HIDDEN_TTS_PROVIDER_IDS = new Set<string>();
+
+function scoreCatalogModel(model: CatalogModelDescriptor): number {
+  return (
+    Number(model.active) * 16 +
+    Number(model.selected) * 8 +
+    Number(model.installed) * 4 +
+    Number(model.runnable) * 2 +
+    Number(model.source_kind === "runtime")
+  );
+}
+
+function dedupeCatalogModels(
+  models: CatalogModelDescriptor[],
+): CatalogModelDescriptor[] {
+  const deduped = new Map<string, CatalogModelDescriptor>();
+
+  for (const model of models) {
+    const key = `${model.provider_id}::${model.id}`;
+    const existing = deduped.get(key);
+    if (!existing || scoreCatalogModel(model) > scoreCatalogModel(existing)) {
+      deduped.set(key, model);
+    }
+  }
+
+  return Array.from(deduped.values());
+}
 const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "openvoice",
   "chatterbox",
@@ -541,10 +567,12 @@ function useListenSpeechState() {
   );
   const allModels = useMemo(
     () =>
-      (platformOverview?.tts.models ?? []).filter(
-        (model) =>
-          !model.capabilities.coming_soon &&
-          allProviders.some((provider) => provider.id === model.provider_id),
+      dedupeCatalogModels(
+        (platformOverview?.tts.models ?? []).filter(
+          (model) =>
+            !model.capabilities.coming_soon &&
+            allProviders.some((provider) => provider.id === model.provider_id),
+        ),
       ),
     [allProviders, platformOverview],
   );
@@ -2139,13 +2167,13 @@ const SpeechModelList: React.FC<{
       </div>
     ) : null}
     {models.length > 0 ? (
-      <div className="flex flex-col gap-3">
-        {models.map((model) => (
-          <SpeechModelLibraryCard
-            key={model.id}
-            model={model}
-            provider={
-              speech.visibleProviders.find(
+        <div className="flex flex-col gap-3">
+          {models.map((model) => (
+            <SpeechModelLibraryCard
+              key={`${model.provider_id}::${model.id}`}
+              model={model}
+              provider={
+                speech.visibleProviders.find(
                 (provider) => provider.id === model.provider_id,
               ) ?? null
             }

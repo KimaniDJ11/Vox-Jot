@@ -34,6 +34,7 @@ mod refine_models;
 mod regression;
 mod scratchpad;
 mod screen_context;
+mod secret_store;
 mod settings;
 mod shortcut;
 mod sidecar;
@@ -240,10 +241,14 @@ async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
     else {
         return;
     };
-    let api_key = settings
-        .post_process_api_keys
-        .get(&provider.id)
-        .cloned()
+    let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
+        .unwrap_or_else(|error| {
+            log::warn!(
+                "Failed to load secure warm-up API key for provider '{}': {}",
+                provider.id, error
+            );
+            None
+        })
         .unwrap_or_default();
 
     let mut status = ollama::get_ollama_status().await;
@@ -674,6 +679,8 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::unload_model_manually,
         commands::transcription::transcribe_file,
         commands::history::get_history_entries,
+        commands::history::get_history_entries_page,
+        commands::history::get_latest_history_entry,
         commands::history::toggle_history_entry_saved,
         commands::history::get_audio_file_path,
         commands::history::reveal_history_recording_in_folder,

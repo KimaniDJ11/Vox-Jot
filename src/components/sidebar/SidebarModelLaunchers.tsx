@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronRight, Mic, Sparkles, Volume2 } from "lucide-react";
 import { commands } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
-import { useSettings } from "@/hooks/useSettings";
-import { useSettingsStore } from "@/stores/settingsStore";
+import { useSettingsSlice } from "@/hooks/useSettings";
 import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
@@ -121,8 +120,19 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
 }) => {
   const { t } = useTranslation();
   const { models, currentModel } = useModelStore();
-  const { getSetting } = useSettings();
-  const ttsSettings = useSettingsStore((state) => state.settings);
+  const {
+    post_process_provider_id: llmProviderId,
+    post_process_providers: llmProviders,
+    post_process_models: llmModels,
+    selected_tts_model_id: selectedTtsModelId,
+    selected_tts_provider_id: selectedTtsProviderId,
+  } = useSettingsSlice([
+    "post_process_provider_id",
+    "post_process_providers",
+    "post_process_models",
+    "selected_tts_model_id",
+    "selected_tts_provider_id",
+  ] as const);
 
   const sttLabel = useMemo(() => {
     const match = models.find((m) => m.id === currentModel);
@@ -134,11 +144,10 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
   }, [models, currentModel, t]);
 
   const llmLabel = useMemo(() => {
-    const providerId = getSetting("post_process_provider_id") || "";
-    const providers = getSetting("post_process_providers") ?? [];
-    const provider = providers.find((p) => p.id === providerId) || null;
-    const models = getSetting("post_process_models") ?? {};
-    const selectedModel = models[providerId] || "";
+    const providerId = llmProviderId || "";
+    const provider =
+      llmProviders?.find((candidate) => candidate.id === providerId) || null;
+    const selectedModel = llmModels?.[providerId] || "";
 
     if (!provider) {
       return t("footer.llmNotSet", { defaultValue: "Not set" });
@@ -149,18 +158,15 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     return (
       selectedModel || t("footer.modelNotSet", { defaultValue: "Not set" })
     );
-  }, [getSetting, t]);
+  }, [llmModels, llmProviderId, llmProviders, t]);
 
   const ttsLabel = useMemo(() => {
-    const modelId =
-      ttsSettings?.selected_tts_model_id ??
-      ttsSettings?.selected_tts_provider_id ??
-      null;
+    const modelId = selectedTtsModelId ?? selectedTtsProviderId ?? null;
     if (!modelId) {
       return t("footer.ttsModelNotSet", { defaultValue: "Not set" });
     }
     return modelId;
-  }, [ttsSettings, t]);
+  }, [selectedTtsModelId, selectedTtsProviderId, t]);
 
   const hubTabLabel = (id: ModelHubTabId) => {
     const def = MODEL_HUB_TAB_DEFS.find((d) => d.id === id)!;

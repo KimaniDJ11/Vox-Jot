@@ -4,10 +4,12 @@ import { platform } from "@tauri-apps/plugin-os";
 import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
+  checkScreenRecordingPermission,
   requestAccessibilityPermission,
   requestInputMonitoringPermission,
   checkMicrophonePermission,
   requestMicrophonePermission,
+  requestScreenRecordingPermission,
 } from "tauri-plugin-macos-permissions-api";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
@@ -29,6 +31,7 @@ interface PermissionsState {
   accessibility: PermissionStatus;
   microphone: PermissionStatus;
   inputMonitoring: PermissionStatus;
+  screenRecording: PermissionStatus;
 }
 
 const PermissionsStep: React.FC<PermissionsStepProps> = ({
@@ -48,6 +51,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     accessibility: "checking",
     microphone: "checking",
     inputMonitoring: "checking",
+    screenRecording: "checking",
   });
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,16 +63,18 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const showMicrophonePermission = isMacOS || isWindows;
   const showAccessibilityPermission = isMacOS;
   const showInputMonitoringPermission = isMacOS;
-  const showDevBypass =
-    import.meta.env.DEV && isMacOS && permissions.accessibility !== "granted";
+  const showScreenRecordingPermission = isMacOS;
 
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
       permissions.microphone === "granted" &&
-      permissions.inputMonitoring === "granted"
+      permissions.inputMonitoring === "granted" &&
+      permissions.screenRecording === "granted"
     : isWindows
       ? permissions.microphone === "granted"
       : true;
+
+  const showDevBypass = import.meta.env.DEV && isMacOS && !allGranted;
 
   const completeOnboarding = useCallback(async () => {
     await Promise.all([refreshAudioDevices(), refreshOutputDevices()]);
@@ -106,10 +112,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             accessibilityGranted,
             microphoneGranted,
             inputMonitoringGranted,
+            screenRecordingGranted,
           ] = await Promise.all([
             checkAccessibilityPermission(),
             checkMicrophonePermission(),
             checkInputMonitoringPermission(),
+            checkScreenRecordingPermission(),
           ]);
 
           if (accessibilityGranted) {
@@ -124,13 +132,15 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             accessibility: accessibilityGranted ? "granted" : "needed",
             microphone: microphoneGranted ? "granted" : "needed",
             inputMonitoring: inputMonitoringGranted ? "granted" : "needed",
+            screenRecording: screenRecordingGranted ? "granted" : "needed",
           };
           setPermissions(newState);
 
           if (
             accessibilityGranted &&
             microphoneGranted &&
-            inputMonitoringGranted
+            inputMonitoringGranted &&
+            screenRecordingGranted
           ) {
             await completeOnboarding();
           }
@@ -141,6 +151,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             accessibility: "needed",
             microphone: "needed",
             inputMonitoring: "needed",
+            screenRecording: "needed",
           });
         }
         return;
@@ -153,6 +164,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           accessibility: "granted",
           microphone: microphoneGranted ? "granted" : "needed",
           inputMonitoring: "granted",
+          screenRecording: "granted",
         });
         if (microphoneGranted) await completeOnboarding();
       } catch (error) {
@@ -161,6 +173,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           accessibility: "granted",
           microphone: "granted",
           inputMonitoring: "granted",
+          screenRecording: "granted",
         });
         await completeOnboarding();
       }
@@ -193,10 +206,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           accessibilityGranted,
           microphoneGranted,
           inputMonitoringGranted,
+          screenRecordingGranted,
         ] = await Promise.all([
           checkAccessibilityPermission(),
           checkMicrophonePermission(),
           checkInputMonitoringPermission(),
+          checkScreenRecordingPermission(),
         ]);
 
         setPermissions((prev) => {
@@ -215,13 +230,17 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           if (inputMonitoringGranted && prev.inputMonitoring !== "granted") {
             newState.inputMonitoring = "granted";
           }
+          if (screenRecordingGranted && prev.screenRecording !== "granted") {
+            newState.screenRecording = "granted";
+          }
           return newState;
         });
 
         if (
           accessibilityGranted &&
           microphoneGranted &&
-          inputMonitoringGranted
+          inputMonitoringGranted &&
+          screenRecordingGranted
         ) {
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
@@ -289,12 +308,24 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     }
   };
 
+  const handleGrantScreenRecording = async () => {
+    try {
+      await requestScreenRecordingPermission();
+      setPermissions((prev) => ({ ...prev, screenRecording: "waiting" }));
+      startPolling();
+    } catch (error) {
+      console.error("Failed to request screen recording permission:", error);
+      toast.error(t("onboarding.permissions.errors.requestFailed"));
+    }
+  };
+
   const isChecking =
     permissionPlatform === null ||
     (isMacOS &&
       permissions.accessibility === "checking" &&
       permissions.microphone === "checking" &&
-      permissions.inputMonitoring === "checking") ||
+      permissions.inputMonitoring === "checking" &&
+      permissions.screenRecording === "checking") ||
     (isWindows && permissions.microphone === "checking");
 
   if (isChecking) {
@@ -406,6 +437,30 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               {renderPermissionStatus(
                 permissions.inputMonitoring,
                 handleGrantInputMonitoring,
+                false,
+                t("accessibility.openSettings"),
+              )}
+            </div>
+          )}
+
+          {showScreenRecordingPermission && (
+            <div
+              className={`ob-perm-card ${permissions.screenRecording === "granted" ? "ob-perm-card-granted" : ""}`}
+            >
+              <p className="ob-perm-title">
+                {t("onboarding.permissions.screenRecording.title", {
+                  defaultValue: "Screen Recording",
+                })}
+              </p>
+              <p className="ob-perm-desc">
+                {t("onboarding.permissions.screenRecording.cardDescription", {
+                  defaultValue:
+                    "Vox Jot uses periodic local OCR from the active display to improve names, jargon, and phrase-key accuracy during dictation.",
+                })}
+              </p>
+              {renderPermissionStatus(
+                permissions.screenRecording,
+                handleGrantScreenRecording,
                 false,
                 t("accessibility.openSettings"),
               )}

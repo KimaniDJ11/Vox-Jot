@@ -1,6 +1,6 @@
 use crate::llm_client;
 use crate::ollama;
-use crate::settings::{self, OLLAMA_PROVIDER_ID};
+use crate::settings::{self, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID};
 use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,7 @@ pub enum RefineModelSourceKind {
     Ollama,
     LmStudio,
     HuggingFace,
+    ManagedProvider,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -166,6 +167,116 @@ fn find_provider<'a>(
         .post_process_providers
         .iter()
         .find(|provider| provider.id == provider_id)
+}
+
+fn configured_model_id(
+    settings: &settings::AppSettings,
+    provider_id: &str,
+) -> String {
+    settings
+        .post_process_models
+        .get(provider_id)
+        .cloned()
+        .unwrap_or_else(|| settings::default_model_for_provider(provider_id))
+}
+
+fn provider_detail(provider: &settings::PostProcessProvider) -> String {
+    if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        if crate::apple_intelligence::check_apple_intelligence_availability() {
+            return "Built into macOS on supported Apple Silicon Macs.".to_string();
+        }
+        return "Requires an Apple Silicon Mac with Apple Intelligence enabled.".to_string();
+    }
+
+    if provider.base_url.trim().is_empty() {
+        return "Managed provider configured inside Vox Jot.".to_string();
+    }
+
+    if settings::post_process_provider_is_local(provider) {
+        return format!("Local endpoint: {}", provider.base_url);
+    }
+
+    format!("Provider endpoint: {}", provider.base_url)
+}
+
+fn make_managed_provider_status(provider: &settings::PostProcessProvider) -> RefineProviderStatus {
+    let available = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        crate::apple_intelligence::check_apple_intelligence_availability()
+    } else {
+        true
+    };
+
+    RefineProviderStatus {
+        id: provider.id.clone(),
+        label: provider.label.clone(),
+        available,
+        local_only: settings::post_process_provider_is_local(provider),
+        installed: true,
+        running: available,
+        detail: provider_detail(provider),
+    }
+}
+
+fn make_managed_provider_model(
+    settings: &settings::AppSettings,
+    provider: &settings::PostProcessProvider,
+) -> Option<RefineModelDescriptor> {
+    let runtime_model_id = configured_model_id(settings, &provider.id);
+    let is_active = is_active_model(settings, &provider.id, &runtime_model_id);
+    let available = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        crate::apple_intelligence::check_apple_intelligence_availability()
+    } else {
+        true
+    };
+
+    if runtime_model_id.trim().is_empty() && !is_active {
+        return None;
+    }
+
+    let title = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID || runtime_model_id.trim().is_empty()
+    {
+        provider.label.clone()
+    } else {
+        runtime_model_id.clone()
+    };
+
+    let description = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
+        "Built-in Apple Intelligence cleanup and refinement on supported Macs.".to_string()
+    } else if runtime_model_id.trim().is_empty() {
+        format!(
+            "Managed {} provider ready for Vox Jot cleanup once a model is selected.",
+            provider.label
+        )
+    } else {
+        format!("Current configured model for {}.", provider.label)
+    };
+
+    Some(RefineModelDescriptor {
+        id: format!("provider:{}", provider.id),
+        title,
+        description,
+        source_kind: RefineModelSourceKind::ManagedProvider,
+        source_label: if provider.base_url.trim().is_empty() {
+            "Managed provider".to_string()
+        } else {
+            provider.base_url.clone()
+        },
+        runtime_provider_id: provider.id.clone(),
+        runtime_model_id,
+        runtime_label: format!("{} runtime", provider.label),
+        installed: true,
+        active: is_active,
+        runnable: available,
+        downloadable: false,
+        source_repo_id: None,
+        source_file_name: None,
+        source_url: None,
+        note: if available {
+            None
+        } else {
+            Some("This provider is configured but unavailable on this machine.".to_string())
+        },
+    })
 }
 
 fn is_active_model(
@@ -699,6 +810,42 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
     providers.push(lmstudio_status);
     models.extend(lmstudio_models);
     models.extend(hf_models);
+
+    let mut seen_provider_ids = providers
+        .iter()
+        .map(|provider| provider.id.clone())
+        .collect::<HashSet<_>>();
+    for provider in &settings.post_process_providers {
+        if seen_provider_ids.insert(provider.id.clone()) {
+            providers.push(make_managed_provider_status(provider));
+        }
+    }
+
+    let mut seen_runtime_keys = models
+        .iter()
+        .map(|model| {
+            (
+                model.runtime_provider_id.clone(),
+                model.runtime_model_id.clone(),
+            )
+        })
+        .collect::<HashSet<_>>();
+
+    for provider in &settings.post_process_providers {
+        if provider.id == OLLAMA_PROVIDER_ID || provider.id == "lmstudio" {
+            continue;
+        }
+        let Some(model) = make_managed_provider_model(&settings, provider) else {
+            continue;
+        };
+        let key = (
+            model.runtime_provider_id.clone(),
+            model.runtime_model_id.clone(),
+        );
+        if seen_runtime_keys.insert(key) {
+            models.push(model);
+        }
+    }
 
     models.sort_by(|a, b| {
         let a_rank = (

@@ -239,10 +239,15 @@ export const CorrectionsSection: React.FC = () => {
 export const SettingsCorrectionsSection: React.FC<WorkflowSectionProps> = ({
   onNavigateToSection,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <Alert variant="info">
-        Corrections now live in Dictate to avoid duplicated settings pages.
+        {t("settings.correctionsSection.movedNotice", {
+          defaultValue:
+            "Corrections now live in Dictate to avoid duplicated settings pages.",
+        })}
       </Alert>
 
       <WorkflowLinkCard

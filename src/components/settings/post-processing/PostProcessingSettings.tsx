@@ -121,14 +121,29 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
           >
             <div className="flex items-center gap-2">
               <ApiKeyField
-                value={state.apiKey}
                 onBlur={state.handleApiKeyChange}
-                placeholder={t(
-                  "settings.postProcessing.api.apiKey.placeholder",
-                )}
+                resetKey={state.selectedProviderId}
+                hasSavedValue={state.hasApiKey}
+                placeholder={
+                  state.hasApiKey
+                    ? t("settings.postProcessing.api.apiKey.savedPlaceholder", {
+                        defaultValue:
+                          "Stored in system keychain. Enter a new value to replace it, or leave blank to clear it.",
+                      })
+                    : t("settings.postProcessing.api.apiKey.placeholder")
+                }
                 disabled={disabled || state.isApiKeyUpdating}
                 className="min-w-[320px]"
               />
+              <span className="text-xs text-muted-foreground">
+                {state.hasApiKey
+                  ? t("settings.postProcessing.api.apiKey.savedStatus", {
+                      defaultValue: "Saved",
+                    })
+                  : t("settings.postProcessing.api.apiKey.missingStatus", {
+                      defaultValue: "Missing",
+                    })}
+              </span>
             </div>
           </SettingContainer>
 
@@ -486,9 +501,10 @@ const PostProcessSetupStatus: React.FC<{
   const selectedPromptExists = prompts.some(
     (prompt) => prompt.id === selectedPromptId,
   );
-  const apiKey = getSetting("post_process_api_keys")?.[
-    providerState.selectedProviderId
-  ];
+  const hasApiKey =
+    getSetting("post_process_api_key_status")?.[
+      providerState.selectedProviderId
+    ] ?? false;
   const selectedModel = getSetting("post_process_models")?.[
     providerState.selectedProviderId
   ];
@@ -532,7 +548,7 @@ const PostProcessSetupStatus: React.FC<{
       ) {
         issues.push(t("settings.postProcessing.status.missingBaseUrl"));
       }
-      if (!providerAllowsNoApiKey && !apiKey?.trim()) {
+      if (!providerAllowsNoApiKey && !hasApiKey) {
         issues.push(t("settings.postProcessing.status.missingApiKey"));
       }
       if (!selectedModel?.trim()) {
@@ -566,7 +582,7 @@ const PostProcessSetupStatus: React.FC<{
       message: t("settings.postProcessing.status.ready"),
     };
   }, [
-    apiKey,
+    hasApiKey,
     postProcessEnabled,
     providerState.appleIntelligenceUnavailable,
     providerState.baseUrl,

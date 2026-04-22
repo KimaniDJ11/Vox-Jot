@@ -22,6 +22,7 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::managers::audio::AudioRecordingManager;
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
+use crate::secret_store;
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
     KeyboardImplementation, LLMPrompt, OcrQualityMode, OverlayPosition, PasteMethod,
@@ -1529,9 +1530,15 @@ pub fn change_post_process_api_key_setting(
     provider_id: String,
     api_key: String,
 ) -> Result<(), String> {
-    let mut settings = settings::get_settings(&app);
+    let settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
-    settings.post_process_api_keys.insert(provider_id, api_key);
+
+    if api_key.trim().is_empty() {
+        secret_store::clear_post_process_api_key(&provider_id)?;
+    } else {
+        secret_store::set_post_process_api_key(&provider_id, api_key.trim())?;
+    }
+
     settings::write_settings(&app, settings);
     Ok(())
 }
@@ -1716,10 +1723,14 @@ pub async fn fetch_post_process_models(
     }
 
     // Get API key
-    let api_key = settings
-        .post_process_api_keys
-        .get(&provider_id)
-        .cloned()
+    let api_key = secret_store::get_post_process_api_key(&provider_id)
+        .unwrap_or_else(|error| {
+            warn!(
+                "Failed to load secure API key for provider '{}': {}",
+                provider_id, error
+            );
+            None
+        })
         .unwrap_or_default();
 
     // Skip fetching if no API key for providers that typically need one

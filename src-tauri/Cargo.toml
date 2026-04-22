@@ -83,6 +83,7 @@ specta-typescript = "0.0.9"
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
 tauri-plugin-dialog = "2.7.0"
 base64 = "0.22"
+keyring = { version = "3.6.3", features = ["apple-native", "windows-native", "linux-native-sync-persistent", "crypto-rust"] }
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.3"

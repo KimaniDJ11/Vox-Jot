@@ -11,6 +11,25 @@ vi.mock("@/bindings", () => ({
 
 import { useNotesStore } from "@/scratchpad/notesStore";
 
+function installLocalStorageMock() {
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => {
+        store.clear();
+      }),
+    },
+  });
+}
+
 function resetStoreState() {
   useNotesStore.setState({
     notes: [],
@@ -23,6 +42,18 @@ describe("notes store", () => {
   beforeEach(() => {
     resetStoreState();
     vi.clearAllMocks();
+    installLocalStorageMock();
+    localStorage.clear();
+  });
+
+  it("ignores invalid persisted active note ids", async () => {
+    localStorage.setItem("scratchpad_active_note_id", "Infinity");
+
+    vi.resetModules();
+    const { useNotesStore: freshStore } = await import("@/scratchpad/notesStore");
+
+    expect(freshStore.getState().activeNoteId).toBeNull();
+    expect(localStorage.getItem("scratchpad_active_note_id")).toBeNull();
   });
 
   it("restores the previous note and refetches when updateNote fails", async () => {

@@ -293,10 +293,14 @@ pub async fn translate_text(
             );
         }
     } else {
-        let api_key = settings
-            .post_process_api_keys
-            .get(&provider.id)
-            .cloned()
+        let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
+            .unwrap_or_else(|error| {
+                warn!(
+                    "Failed to load secure translation API key for provider '{}': {}",
+                    provider.id, error
+                );
+                None
+            })
             .unwrap_or_default();
         crate::llm_client::send_chat_completion_with_schema(
             &provider,

@@ -1,13 +1,14 @@
 use crate::portable;
 use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
+use crate::secret_store;
 use crate::snippets::Snippet;
-use log::{debug, warn};
+use log::{debug, error, warn};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use specta::Type;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
 
@@ -704,8 +705,11 @@ pub struct AppSettings {
     pub post_process_provider_id: String,
     #[serde(default = "default_post_process_providers")]
     pub post_process_providers: Vec<PostProcessProvider>,
-    #[serde(default = "default_post_process_api_keys")]
+    #[serde(default = "default_post_process_api_keys", skip_serializing)]
+    #[specta(skip)]
     pub post_process_api_keys: HashMap<String, String>,
+    #[serde(default)]
+    pub post_process_api_key_status: HashMap<String, bool>,
     #[serde(default = "default_post_process_models")]
     pub post_process_models: HashMap<String, String>,
     #[serde(default = "default_selected_llm_provider_id")]
@@ -1424,7 +1428,15 @@ fn default_post_process_api_keys() -> HashMap<String, String> {
     map
 }
 
-fn default_model_for_provider(provider_id: &str) -> String {
+fn default_post_process_api_key_status() -> HashMap<String, bool> {
+    let mut map = HashMap::new();
+    for provider in default_post_process_providers() {
+        map.insert(provider.id, false);
+    }
+    map
+}
+
+pub(crate) fn default_model_for_provider(provider_id: &str) -> String {
     if provider_id == APPLE_INTELLIGENCE_PROVIDER_ID {
         return APPLE_INTELLIGENCE_DEFAULT_MODEL_ID.to_string();
     }
@@ -1765,13 +1777,6 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
             }
         }
 
-        if !settings.post_process_api_keys.contains_key(&provider.id) {
-            settings
-                .post_process_api_keys
-                .insert(provider.id.clone(), String::new());
-            changed = true;
-        }
-
         let default_model = default_model_for_provider(&provider.id);
         match settings.post_process_models.get_mut(&provider.id) {
             Some(existing) => {
@@ -1786,6 +1791,13 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
                     .insert(provider.id.clone(), default_model);
                 changed = true;
             }
+        }
+
+        if !settings.post_process_api_key_status.contains_key(&provider.id) {
+            settings
+                .post_process_api_key_status
+                .insert(provider.id.clone(), false);
+            changed = true;
         }
     }
 
@@ -2106,6 +2118,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_provider_id: default_post_process_provider_id(),
         post_process_providers: default_post_process_providers(),
         post_process_api_keys: default_post_process_api_keys(),
+        post_process_api_key_status: default_post_process_api_key_status(),
         post_process_models: default_post_process_models(),
         selected_llm_provider_id: default_selected_llm_provider_id(),
         selected_llm_model_id: default_selected_llm_model_id(),
@@ -2553,6 +2566,95 @@ pub fn post_process_provider_is_local(provider: &PostProcessProvider) -> bool {
     is_local_base_url(&provider.base_url)
 }
 
+fn post_process_provider_ids(settings: &AppSettings) -> Vec<String> {
+    settings
+        .post_process_providers
+        .iter()
+        .map(|provider| provider.id.clone())
+        .collect()
+}
+
+fn sync_post_process_api_key_statuses(settings: &mut AppSettings) {
+    let provider_ids = post_process_provider_ids(settings);
+    settings
+        .post_process_api_key_status
+        .retain(|provider_id, _| provider_ids.iter().any(|id| id == provider_id));
+
+    for provider_id in provider_ids {
+        let has_api_key = settings
+            .post_process_api_keys
+            .get(&provider_id)
+            .is_some_and(|value| !value.trim().is_empty());
+        settings
+            .post_process_api_key_status
+            .insert(provider_id, has_api_key);
+    }
+}
+
+fn migrate_legacy_post_process_api_keys(settings: &AppSettings) -> bool {
+    let legacy_entries: Vec<(String, String)> = settings
+        .post_process_api_keys
+        .iter()
+        .filter_map(|(provider_id, api_key)| {
+            let trimmed = api_key.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some((provider_id.clone(), trimmed.to_string()))
+            }
+        })
+        .collect();
+
+    if legacy_entries.is_empty() {
+        return false;
+    }
+
+    for (provider_id, api_key) in legacy_entries {
+        match secret_store::get_post_process_api_key(&provider_id) {
+            Ok(Some(existing)) if !existing.trim().is_empty() => continue,
+            Ok(_) => {
+                if let Err(secret_error) =
+                    secret_store::set_post_process_api_key(&provider_id, &api_key)
+                {
+                    error!(
+                        "Failed to migrate legacy API key for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
+                        provider_id, secret_error
+                    );
+                }
+            }
+            Err(secret_error) => {
+                error!(
+                    "Failed to inspect secure credential for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
+                    provider_id, secret_error
+                );
+            }
+        }
+    }
+
+    true
+}
+
+pub fn hydrate_post_process_api_keys(_app: &AppHandle, settings: &mut AppSettings) {
+    settings.post_process_api_keys.clear();
+
+    for provider_id in post_process_provider_ids(settings) {
+        match secret_store::get_post_process_api_key(&provider_id) {
+            Ok(Some(api_key)) if !api_key.trim().is_empty() => {
+                settings.post_process_api_keys.insert(provider_id, api_key);
+            }
+            Ok(_) => {}
+            Err(secret_error) => {
+                warn!(
+                    "Failed to load secure API key for provider '{}': {}",
+                    provider_id, secret_error
+                );
+            }
+        }
+    }
+
+    sync_post_process_api_key_statuses(settings);
+}
+
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     // Initialize store
     let store = app
@@ -2563,7 +2665,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         // Parse the entire settings object
         match serde_json::from_value::<AppSettings>(settings_value) {
             Ok(mut settings) => {
-                debug!("Found existing settings: {:?}", settings);
+                debug!("Found existing settings in store");
                 let default_settings = get_default_settings();
                 let mut updated = false;
 
@@ -2603,9 +2705,16 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
+    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
+    hydrate_post_process_api_keys(app, &mut settings);
 
-    if translation_changed || tts_changed || post_process_changed || model_platform_changed {
-        store.set("settings", serde_json::to_value(&settings).unwrap());
+    if translation_changed
+        || tts_changed
+        || post_process_changed
+        || model_platform_changed
+        || migrated_legacy_keys
+    {
+        write_settings(app, settings.clone());
     }
 
     settings
@@ -2632,20 +2741,32 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
+    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
+    hydrate_post_process_api_keys(app, &mut settings);
 
-    if translation_changed || tts_changed || post_process_changed || model_platform_changed {
-        store.set("settings", serde_json::to_value(&settings).unwrap());
+    if translation_changed
+        || tts_changed
+        || post_process_changed
+        || model_platform_changed
+        || migrated_legacy_keys
+    {
+        write_settings(app, settings.clone());
     }
 
     settings
 }
 
 pub fn write_settings(app: &AppHandle, settings: AppSettings) {
+    let mut settings = settings;
+    hydrate_post_process_api_keys(app, &mut settings);
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
         .expect("Failed to initialize store");
 
     store.set("settings", serde_json::to_value(&settings).unwrap());
+
+    // Notify all WebViews so each window's settings store stays in sync.
+    let _ = app.emit("settings-changed", ());
 }
 
 pub fn get_bindings(app: &AppHandle) -> HashMap<String, ShortcutBinding> {
@@ -2675,6 +2796,8 @@ pub fn get_recording_retention_period(app: &AppHandle) -> RecordingRetentionPeri
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::secret_store::{install_test_secret_store, TestSecretStore};
+    use std::sync::Arc;
 
     #[test]
     fn default_settings_disable_auto_submit() {
@@ -3035,5 +3158,25 @@ mod tests {
                 .id,
             "preset-2"
         );
+    }
+
+    #[test]
+    fn legacy_api_keys_migrate_to_secret_store_and_stop_serializing() {
+        let test_store = Arc::new(TestSecretStore::new());
+        let _guard = install_test_secret_store(test_store);
+        let mut settings = get_default_settings();
+        settings
+            .post_process_api_keys
+            .insert("openai".to_string(), "sk-test-key".to_string());
+
+        assert!(migrate_legacy_post_process_api_keys(&settings));
+        assert_eq!(
+            secret_store::get_post_process_api_key("openai")
+                .expect("read migrated API key"),
+            Some("sk-test-key".to_string())
+        );
+
+        let serialized = serde_json::to_value(&settings).expect("serialize settings");
+        assert!(serialized.get("post_process_api_keys").is_none());
     }
 }

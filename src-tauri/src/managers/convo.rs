@@ -752,11 +752,15 @@ impl ConvoController {
                 "No post-process provider configured. Please set up an LLM provider in Settings > Models & AI.".to_string()
             })?;
 
-        let api_key = settings
-            .post_process_api_keys
-            .get(&settings.post_process_provider_id)
-            .cloned()
-            .unwrap_or_default();
+        let api_key =
+            crate::secret_store::get_post_process_api_key(&settings.post_process_provider_id)
+                .map_err(|error| {
+                    format!(
+                        "Failed to load secure API key for provider '{}': {}",
+                        settings.post_process_provider_id, error
+                    )
+                })?
+                .unwrap_or_default();
 
         let model = settings
             .post_process_models

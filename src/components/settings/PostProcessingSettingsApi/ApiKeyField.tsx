@@ -2,21 +2,21 @@ import React, { useState } from "react";
 import { Input } from "../../ui/Input";
 
 interface ApiKeyFieldProps {
-  value: string;
   onBlur: (value: string) => void;
   disabled: boolean;
+  resetKey: string;
+  hasSavedValue?: boolean;
   placeholder?: string;
   className?: string;
 }
 
 export const ApiKeyField: React.FC<ApiKeyFieldProps> = React.memo(
-  ({ value, onBlur, disabled, placeholder, className = "" }) => {
-    const [localValue, setLocalValue] = useState(value);
+  ({ onBlur, disabled, resetKey, hasSavedValue = false, placeholder, className = "" }) => {
+    const [localValue, setLocalValue] = useState("");
 
-    // Sync with prop changes
     React.useEffect(() => {
-      setLocalValue(value);
-    }, [value]);
+      setLocalValue("");
+    }, [resetKey, hasSavedValue]);
 
     return (
       <Input

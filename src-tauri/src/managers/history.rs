@@ -103,6 +103,13 @@ pub struct HistoryEntry {
     pub screen_context_metadata: Option<ScreenContextHistoryMetadata>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+pub struct HistoryEntriesPage {
+    pub entries: Vec<HistoryEntry>,
+    pub total: usize,
+    pub has_more: bool,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct TranslationHistoryContext {
     pub source_language_detected: Option<String>,
@@ -734,19 +741,54 @@ impl HistoryManager {
     }
 
     pub async fn get_history_entries(&self) -> Result<Vec<HistoryEntry>> {
+        Ok(self
+            .get_history_entries_page(0, i64::MAX as usize)
+            .await?
+            .entries)
+    }
+
+    pub async fn get_history_entries_page(
+        &self,
+        offset: usize,
+        limit: usize,
+    ) -> Result<HistoryEntriesPage> {
         let conn = self.get_connection()?;
+        Self::get_history_entries_page_with_conn(&conn, offset, limit)
+    }
+
+    fn get_history_entries_page_with_conn(
+        conn: &Connection,
+        offset: usize,
+        limit: usize,
+    ) -> Result<HistoryEntriesPage> {
+        let offset = offset.min(i64::MAX as usize);
+        let limit = limit.min(i64::MAX as usize);
+        let total: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM transcription_history",
+            [],
+            |row| row.get(0),
+        )?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata FROM transcription_history ORDER BY timestamp DESC"
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
         )?;
 
-        let rows = stmt.query_map([], |row| Ok(row_to_history_entry(row)))?;
+        let rows = stmt.query_map(params![limit as i64, offset as i64], |row| {
+            Ok(row_to_history_entry(row))
+        })?;
 
         let mut entries = Vec::new();
         for row in rows {
             entries.push(row?);
         }
 
-        Ok(entries)
+        let next_offset = offset.saturating_add(entries.len());
+        let total = total.max(0) as usize;
+
+        Ok(HistoryEntriesPage {
+            has_more: next_offset < total,
+            entries,
+            total,
+        })
     }
 
     pub fn get_latest_entry(&self) -> Result<Option<HistoryEntry>> {
@@ -989,5 +1031,30 @@ mod tests {
             Some("auto_readback_dictation")
         );
         assert_eq!(entry.tts_status.as_deref(), Some("pending"));
+    }
+
+    #[test]
+    fn get_history_entries_page_respects_limit_and_offset() {
+        let conn = setup_conn();
+        insert_entry(&conn, 100, "first", None);
+        insert_entry(&conn, 200, "second", None);
+        insert_entry(&conn, 300, "third", None);
+
+        let page = HistoryManager::get_history_entries_page_with_conn(&conn, 0, 2)
+            .expect("fetch first page");
+
+        assert_eq!(page.total, 3);
+        assert!(page.has_more);
+        assert_eq!(page.entries.len(), 2);
+        assert_eq!(page.entries[0].timestamp, 300);
+        assert_eq!(page.entries[1].timestamp, 200);
+
+        let next_page = HistoryManager::get_history_entries_page_with_conn(&conn, 2, 2)
+            .expect("fetch second page");
+
+        assert_eq!(next_page.total, 3);
+        assert!(!next_page.has_more);
+        assert_eq!(next_page.entries.len(), 1);
+        assert_eq!(next_page.entries[0].timestamp, 100);
     }
 }

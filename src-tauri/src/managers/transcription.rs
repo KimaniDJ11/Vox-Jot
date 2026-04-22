@@ -75,6 +75,31 @@ struct PartialProviderSession {
     cancel: Arc<AtomicBool>,
 }
 
+struct ModelLoadGuard {
+    is_loading: Arc<Mutex<bool>>,
+    loading_condvar: Arc<Condvar>,
+}
+
+impl ModelLoadGuard {
+    fn new(is_loading: Arc<Mutex<bool>>, loading_condvar: Arc<Condvar>) -> Self {
+        Self {
+            is_loading,
+            loading_condvar,
+        }
+    }
+}
+
+impl Drop for ModelLoadGuard {
+    fn drop(&mut self) {
+        let mut is_loading = self
+            .is_loading
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *is_loading = false;
+        self.loading_condvar.notify_all();
+    }
+}
+
 impl MlxAudioSttEngine {
     fn transcribe(
         &self,
@@ -935,15 +960,47 @@ impl TranscriptionManager {
         let self_clone = self.clone();
         thread::spawn(move || {
             let settings = get_settings(&self_clone.app_handle);
-            if let Err(e) = self_clone.load_model(&settings.selected_model) {
-                error!("Failed to load model: {}", e);
+            let selected_model = settings.selected_model.clone();
+            let _guard = ModelLoadGuard::new(
+                Arc::clone(&self_clone.is_loading),
+                Arc::clone(&self_clone.loading_condvar),
+            );
+
+            let load_result = catch_unwind(AssertUnwindSafe(|| {
+                self_clone.load_model(&selected_model)
+            }));
+
+            match load_result {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    error!("Failed to load model '{}': {}", selected_model, error);
+                }
+                Err(panic_payload) => {
+                    let panic_message = if let Some(message) = panic_payload.downcast_ref::<&str>() {
+                        (*message).to_string()
+                    } else if let Some(message) = panic_payload.downcast_ref::<String>() {
+                        message.clone()
+                    } else {
+                        "unknown panic".to_string()
+                    };
+                    error!(
+                        "Model load panicked for '{}': {}",
+                        selected_model, panic_message
+                    );
+                    let _ = self_clone.app_handle.emit(
+                        "model-state-changed",
+                        ModelStateEvent {
+                            event_type: "loading_failed".to_string(),
+                            model_id: Some(selected_model.clone()),
+                            model_name: None,
+                            error: Some(format!(
+                                "Model load panicked: {}",
+                                panic_message
+                            )),
+                        },
+                    );
+                }
             }
-            let mut is_loading = self_clone
-                .is_loading
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            *is_loading = false;
-            self_clone.loading_condvar.notify_all();
         });
     }
 
@@ -994,11 +1051,17 @@ impl TranscriptionManager {
         {
             // If the model is loading, wait for it to complete.
             let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
-            while *is_loading {
-                is_loading = self
+            if *is_loading {
+                let (guard, wait_result) = self
                     .loading_condvar
-                    .wait(is_loading)
+                    .wait_timeout_while(is_loading, Duration::from_secs(120), |loading| *loading)
                     .unwrap_or_else(|poisoned| poisoned.into_inner());
+                is_loading = guard;
+                if *is_loading && wait_result.timed_out() {
+                    return Err(anyhow::anyhow!(
+                        "Timed out waiting for the transcription model to finish loading."
+                    ));
+                }
             }
 
             let engine_guard = self.lock_engine();

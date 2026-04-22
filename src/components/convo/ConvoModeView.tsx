@@ -39,7 +39,15 @@ interface ConvoModeViewProps {
 function getPersistedActiveNoteId(): number | null {
   try {
     const raw = localStorage.getItem(ACTIVE_NOTE_KEY);
-    return raw ? Number(raw) : null;
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+    localStorage.removeItem(ACTIVE_NOTE_KEY);
+    return null;
   } catch {
     return null;
   }
@@ -296,8 +304,14 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
       return;
     }
 
-    void navigator.clipboard.writeText(lastAssistant.text);
-    toast.success(t("convo.selection.copiedReply"));
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(lastAssistant.text);
+        toast.success(t("convo.selection.copiedReply"));
+      } catch {
+        toast.error(t("convo.common.copyFailed", { defaultValue: "Copy failed" }));
+      }
+    })();
   }, [t, transcript]);
 
   const handleReplaceDraft = useCallback(
@@ -340,8 +354,14 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
 
   const handleCopyDraft = useCallback(
     (draftContent: string) => {
-      void navigator.clipboard.writeText(draftContent);
-      toast.success(t("convo.jotpad.draftCopied"));
+      void (async () => {
+        try {
+          await navigator.clipboard.writeText(draftContent);
+          toast.success(t("convo.jotpad.draftCopied"));
+        } catch {
+          toast.error(t("convo.common.copyFailed", { defaultValue: "Copy failed" }));
+        }
+      })();
     },
     [t],
   );

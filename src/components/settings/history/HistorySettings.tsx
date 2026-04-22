@@ -65,17 +65,34 @@ const formatHistoryGroupLabel = (
   return formatDate(String(timestamp), locale);
 };
 
+const HISTORY_PAGE_SIZE = 50;
+
 export const HistorySettings: React.FC = () => {
   const { t, i18n } = useTranslation();
   const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
-  const loadHistoryEntries = useCallback(async () => {
+  const loadHistoryEntries = useCallback(async (reset = true) => {
+    const offset = reset ? 0 : historyEntries.length;
+    if (reset) {
+      setLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     try {
-      const result = await commands.getHistoryEntries();
+      const result = await commands.getHistoryEntriesPage(
+        offset,
+        HISTORY_PAGE_SIZE,
+      );
       if (result.status === "ok") {
-        setHistoryEntries(result.data);
+        setHistoryEntries((current) =>
+          reset ? result.data.entries : [...current, ...result.data.entries],
+        );
+        setHasMore(result.data.has_more);
       } else {
         console.error("Failed to load history entries:", result.error);
         toast.error(
@@ -94,17 +111,21 @@ export const HistorySettings: React.FC = () => {
         }),
       );
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
     }
-  }, [t]);
+  }, [historyEntries.length, t]);
 
   useEffect(() => {
-    loadHistoryEntries();
+    void loadHistoryEntries(true);
 
     // Listen for history update events
     const setupListeners = async () => {
       const unlistenUpdated = await listen("history-updated", () => {
-        loadHistoryEntries();
+        void loadHistoryEntries(true);
       });
 
       // Listen for save failures so the user knows when history couldn't be saved
@@ -348,6 +369,23 @@ export const HistorySettings: React.FC = () => {
   return (
     <div className="w-full">
       {renderEntries(historyEntries, t("settings.history.empty"))}
+      {hasMore ? (
+        <div className="mt-5 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => void loadHistoryEntries(false)}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore
+              ? t("settings.history.loadingMore", {
+                  defaultValue: "Loading…",
+                })
+              : t("settings.history.loadMore", {
+                  defaultValue: "Load more",
+                })}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 };

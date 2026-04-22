@@ -32,7 +32,11 @@ import { LANGUAGES } from "@/lib/constants/languages";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
 
-type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face";
+type RefineModelSourceKind =
+  | "ollama"
+  | "lm_studio"
+  | "hugging_face"
+  | "managed_provider";
 
 type RefineProviderStatus = {
   id: string;
@@ -833,7 +837,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             const isBusy = busyModelIds.has(model.runtime_model_id);
             return (
               <HubModelCard
-                key={model.id}
+                key={`${model.runtime_provider_id}::${model.runtime_model_id}`}
                 title={model.title}
                 providerId={model.runtime_provider_id}
                 headerBadges={buildHeaderBadges(model)}

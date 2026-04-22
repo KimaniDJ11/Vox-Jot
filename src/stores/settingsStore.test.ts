@@ -5,6 +5,7 @@ const commandMocks = vi.hoisted(() => ({
   getDefaultSettings: vi.fn(),
   checkCustomSounds: vi.fn(),
   changeAppThemeSetting: vi.fn(),
+  changePostProcessApiKeySetting: vi.fn(),
 }));
 
 vi.mock("@/bindings", () => ({
@@ -129,5 +130,29 @@ describe("settings store", () => {
     expect(settings?.app_theme).toBe("dark");
     expect(settings?.selected_language).toBe("fr");
     expect(useSettingsStore.getState().isUpdatingKey("app_theme")).toBe(false);
+  });
+
+  it("preserves secure API key status from backend settings", async () => {
+    commandMocks.getAppSettings.mockResolvedValue({
+      status: "ok",
+      data: {
+        app_theme: "dark",
+        selected_language: "en",
+        audio_feedback: false,
+        always_on_microphone: false,
+        selected_microphone: "Default",
+        clamshell_microphone: "Default",
+        selected_output_device: "Default",
+        post_process_api_key_status: {
+          openai: true,
+        },
+      },
+    });
+
+    await useSettingsStore.getState().refreshSettings();
+
+    expect(
+      useSettingsStore.getState().settings?.post_process_api_key_status?.openai,
+    ).toBe(true);
   });
 });

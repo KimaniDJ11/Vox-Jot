@@ -15,6 +15,7 @@ export type PostProcessProviderState = {
   handleBaseUrlChange: (value: string) => void;
   isBaseUrlUpdating: boolean;
   apiKey: string;
+  hasApiKey: boolean;
   handleApiKeyChange: (value: string) => void;
   isApiKeyUpdating: boolean;
   model: string;
@@ -119,7 +120,9 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
 
   // Use settings directly as single source of truth
   const baseUrl = selectedProvider?.base_url ?? "";
-  const apiKey = settings?.post_process_api_keys?.[selectedProviderId] ?? "";
+  const apiKey = "";
+  const hasApiKey =
+    settings?.post_process_api_key_status?.[selectedProviderId] ?? false;
   const model = settings?.post_process_models?.[selectedProviderId] ?? "";
 
   const providerOptions = useMemo<DropdownOption[]>(() => {
@@ -155,9 +158,9 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
       // to avoid unnecessary backend errors.
       if (providerId !== APPLE_PROVIDER_ID) {
         const provider = visibleProviders.find((p) => p.id === providerId);
-        const apiKey = settings?.post_process_api_keys?.[providerId] ?? "";
         const hasBaseUrl = (provider?.base_url ?? "").trim() !== "";
-        const hasApiKey = apiKey.trim() !== "";
+        const hasApiKey =
+          settings?.post_process_api_key_status?.[providerId] ?? false;
         const allowsEmptyApiKey =
           provider?.id === "custom" ||
           provider?.id === "lmstudio" ||
@@ -193,11 +196,12 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
   const handleApiKeyChange = useCallback(
     (value: string) => {
       const trimmed = value.trim();
-      if (trimmed !== apiKey) {
-        void updatePostProcessApiKey(selectedProviderId, trimmed);
+      if (!trimmed && !hasApiKey) {
+        return;
       }
+      void updatePostProcessApiKey(selectedProviderId, trimmed);
     },
-    [apiKey, selectedProviderId, updatePostProcessApiKey],
+    [hasApiKey, selectedProviderId, updatePostProcessApiKey],
   );
 
   const handleModelChange = useCallback(
@@ -320,6 +324,7 @@ export const usePostProcessProviderState = (): PostProcessProviderState => {
     handleBaseUrlChange,
     isBaseUrlUpdating,
     apiKey,
+    hasApiKey,
     handleApiKeyChange,
     isApiKeyUpdating,
     model,

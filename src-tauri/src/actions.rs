@@ -1922,10 +1922,14 @@ pub(crate) async fn post_process_transcription(
         provider.id, model
     );
 
-    let api_key = settings
-        .post_process_api_keys
-        .get(&provider.id)
-        .cloned()
+    let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
+        .unwrap_or_else(|error| {
+            warn!(
+                "Failed to load secure post-process API key for provider '{}': {}",
+                provider.id, error
+            );
+            None
+        })
         .unwrap_or_default();
 
     // Apply personal dictionary before sending to LLM (for all providers)
@@ -2246,10 +2250,14 @@ async fn rewrite_selected_text(
         return None;
     }
 
-    let api_key = settings
-        .post_process_api_keys
-        .get(&provider.id)
-        .cloned()
+    let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
+        .unwrap_or_else(|error| {
+            warn!(
+                "Failed to load secure rewrite API key for provider '{}': {}",
+                provider.id, error
+            );
+            None
+        })
         .unwrap_or_default();
 
     crate::llm_client::send_chat_completion(&provider, api_key, &model, user_prompt)
@@ -3030,9 +3038,9 @@ impl ShortcutAction for TranscribeAction {
                 match tm.transcribe(samples) {
                     Ok(transcription) => {
                         debug!(
-                            "Transcription completed in {:?}: '{}'",
+                            "Transcription completed in {:?} ({} chars)",
                             transcription_time.elapsed(),
-                            transcription
+                            transcription.chars().count()
                         );
                         // Require at least one alphanumeric character. Whisper
                         // can hallucinate punctuation-only strings (".", "?")

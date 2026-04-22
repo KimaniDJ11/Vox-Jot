@@ -1,4 +1,4 @@
-use crate::managers::history::{HistoryEntry, HistoryManager};
+use crate::managers::history::{HistoryEntriesPage, HistoryEntry, HistoryManager};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 use tauri_plugin_opener::OpenerExt;
@@ -12,6 +12,31 @@ pub async fn get_history_entries(
     history_manager
         .get_history_entries()
         .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_history_entries_page(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    offset: usize,
+    limit: usize,
+) -> Result<HistoryEntriesPage, String> {
+    history_manager
+        .get_history_entries_page(offset, limit)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_latest_history_entry(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+) -> Result<Option<HistoryEntry>, String> {
+    history_manager
+        .get_latest_entry()
         .map_err(|e| e.to_string())
 }
 

@@ -40,8 +40,10 @@ pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_default_settings() -> Result<AppSettings, String> {
-    Ok(crate::settings::get_default_settings())
+pub fn get_default_settings(app: AppHandle) -> Result<AppSettings, String> {
+    let mut settings = crate::settings::get_default_settings();
+    crate::settings::hydrate_post_process_api_keys(&app, &mut settings);
+    Ok(settings)
 }
 
 #[tauri::command]

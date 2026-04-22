@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import { listen } from "@tauri-apps/api/event";
 import type {
   AppSettings as Settings,
   AppToneMapping,
@@ -1013,3 +1014,19 @@ export const useSettingsStore = create<SettingsStore>()(
     },
   })),
 );
+
+/**
+ * Auto-sync settings when the backend writes to the store from any window.
+ * Debounced to coalesce rapid-fire writes (e.g., language sync) into one refresh.
+ */
+let _settingsChangedDebounce: ReturnType<typeof setTimeout> | null = null;
+
+listen("settings-changed", () => {
+  if (_settingsChangedDebounce) clearTimeout(_settingsChangedDebounce);
+  _settingsChangedDebounce = setTimeout(() => {
+    _settingsChangedDebounce = null;
+    void useSettingsStore.getState().refreshSettings();
+  }, 150);
+}).catch(() => {
+  /* listener setup may fail in test / non-Tauri environments */
+});

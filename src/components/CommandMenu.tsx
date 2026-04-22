@@ -163,13 +163,11 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
         group: "Actions",
         keywords: ["clipboard", "recent", "latest"],
         onRun: async () => {
-          const result = await commands.getHistoryEntries();
-          if (result.status !== "ok" || result.data.length === 0) {
+          const result = await commands.getLatestHistoryEntry();
+          if (result.status !== "ok" || !result.data) {
             return;
           }
-          const latest = [...result.data].sort(
-            (left, right) => right.timestamp - left.timestamp,
-          )[0];
+          const latest = result.data;
           const text =
             latest.pasted_text?.trim() ||
             latest.post_processed_text?.trim() ||

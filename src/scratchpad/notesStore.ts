@@ -7,7 +7,15 @@ const ACTIVE_NOTE_KEY = "scratchpad_active_note_id";
 function loadPersistedActiveNote(): number | null {
   try {
     const stored = localStorage.getItem(ACTIVE_NOTE_KEY);
-    return stored ? Number(stored) : null;
+    if (!stored) {
+      return null;
+    }
+    const parsed = Number(stored);
+    if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+    localStorage.removeItem(ACTIVE_NOTE_KEY);
+    return null;
   } catch {
     return null;
   }

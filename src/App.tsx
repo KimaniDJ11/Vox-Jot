@@ -305,11 +305,7 @@ function App() {
           label: "Corrections",
           icon: SpellCheck,
           title: "Corrections",
-          content: (
-            <SettingsCorrectionsSection
-              onNavigateToSection={handleWorkflowSectionOpen}
-            />
-          ),
+          content: <CorrectionsSection />,
         },
         {
           id: "jot-pad",
@@ -321,18 +317,18 @@ function App() {
       ],
       refine: [
         {
-          id: "phrase-keys",
-          label: "Phrase Keys",
-          icon: WholeWord,
-          title: "Phrase Keys",
-          content: <RefinePhraseKeysSection />,
-        },
-        {
           id: "write-profiles",
           label: "Write Profiles",
           icon: WandSparkles,
           title: "Write Profiles",
           content: <RefineProfilesSection />,
+        },
+        {
+          id: "phrase-keys",
+          label: "Phrase Keys",
+          icon: WholeWord,
+          title: "Phrase Keys",
+          content: <RefinePhraseKeysSection />,
         },
         {
           id: "translation",
@@ -450,7 +446,11 @@ function App() {
           label: "Corrections",
           icon: SpellCheck,
           title: "Corrections",
-          content: <CorrectionsSection />,
+          content: (
+            <SettingsCorrectionsSection
+              onNavigateToSection={handleWorkflowSectionOpen}
+            />
+          ),
         },
         {
           id: "privacy",

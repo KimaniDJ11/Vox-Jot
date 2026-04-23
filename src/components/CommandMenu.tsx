@@ -240,17 +240,6 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
 
     base.push(
       {
-        id: "jump.refine.phrase-keys",
-        title: "Insert phrase key → Phrase Keys",
-        subtitle: "Jump to phrase key settings",
-        icon: ArrowRight,
-        group: "Jump to",
-        onRun: () => {
-          onNavigate("refine");
-          onJumpToSection?.("phrase-keys");
-        },
-      },
-      {
         id: "jump.refine.write-profiles",
         title: "Apply write profile → Write Profiles",
         subtitle: "Jump to write profiles",
@@ -259,6 +248,17 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
         onRun: () => {
           onNavigate("refine");
           onJumpToSection?.("write-profiles");
+        },
+      },
+      {
+        id: "jump.refine.phrase-keys",
+        title: "Insert phrase key → Phrase Keys",
+        subtitle: "Jump to phrase key settings",
+        icon: ArrowRight,
+        group: "Jump to",
+        onRun: () => {
+          onNavigate("refine");
+          onJumpToSection?.("phrase-keys");
         },
       },
     );

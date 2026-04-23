@@ -684,35 +684,7 @@ impl TranscriptionManager {
         config: PartialProviderConfig,
         cancel: Arc<AtomicBool>,
         recording_manager: Arc<AudioRecordingManager>,
-        model_id: String,
     ) {
-        let Some(model_info) = self.model_manager.get_model_info(&model_id) else {
-            debug!(
-                "Skipping partial transcription for binding {} because model {} is unknown",
-                binding_id, model_id
-            );
-            return;
-        };
-
-        if !model_is_available(&model_info) {
-            debug!(
-                "Skipping partial transcription for binding {} because model {} is not available",
-                binding_id, model_id
-            );
-            return;
-        }
-
-        let mut engine = match self.create_loaded_engine(&model_id, &model_info, false) {
-            Ok(engine) => engine,
-            Err(err) => {
-                warn!(
-                    "Failed to start partial transcription provider for binding {}: {}",
-                    binding_id, err
-                );
-                return;
-            }
-        };
-
         let mut last_snapshot_len = 0usize;
         let mut last_emitted = String::new();
 
@@ -741,8 +713,38 @@ impl TranscriptionManager {
 
             let settings = get_settings(&self.app_handle);
             let partial_audio = trim_partial_audio(snapshot, config.max_samples);
-            let partial_text =
-                match self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings) {
+
+            // Reuse the already-warmed main engine instead of spawning a second
+            // loaded instance per recording. Serialize with final transcribe via
+            // `transcribe_lock` so a long-running partial cannot race the final
+            // stop-triggered transcription for the engine.
+            let partial_text = {
+                let _transcribe_guard = self
+                    .transcribe_lock
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+                if cancel.load(Ordering::Relaxed) || !self.partial_generation_is_current(generation)
+                {
+                    break;
+                }
+
+                let mut engine_guard = self.lock_engine();
+                let Some(mut engine) = engine_guard.take() else {
+                    // Model was unloaded mid-recording; stop emitting partials.
+                    break;
+                };
+                drop(engine_guard);
+
+                let inference_result =
+                    self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings);
+
+                // Always return the engine to the shared slot.
+                let mut engine_guard = self.lock_engine();
+                *engine_guard = Some(engine);
+                drop(engine_guard);
+
+                match inference_result {
                     Ok(text) => text,
                     Err(err) => {
                         warn!(
@@ -751,7 +753,8 @@ impl TranscriptionManager {
                         );
                         continue;
                     }
-                };
+                }
+            };
 
             if !self.partial_generation_is_current(generation) {
                 break;
@@ -785,6 +788,24 @@ impl TranscriptionManager {
             return;
         }
 
+        // Partials now reuse the main loaded engine. If no engine is loaded,
+        // skip the provider — starting a second engine here (as we used to)
+        // added hundreds of ms per recording and wasted memory.
+        if !self.is_model_loaded() {
+            debug!(
+                "Skipping partial transcription for binding {}: no model loaded",
+                binding_id
+            );
+            return;
+        }
+        if self.model_manager.get_model_info(&model_id).is_none() {
+            debug!(
+                "Skipping partial transcription for binding {} because model {} is unknown",
+                binding_id, model_id
+            );
+            return;
+        }
+
         let generation = self.next_partial_generation();
         let cancel = Arc::new(AtomicBool::new(false));
         *self
@@ -803,14 +824,7 @@ impl TranscriptionManager {
             if cancel.load(Ordering::Relaxed) {
                 return;
             }
-            manager.run_partial_provider(
-                generation,
-                binding_id,
-                config,
-                cancel,
-                recording_manager,
-                model_id,
-            );
+            manager.run_partial_provider(generation, binding_id, config, cancel, recording_manager);
         });
     }
 
@@ -1013,7 +1027,7 @@ impl TranscriptionManager {
         self.last_activity.load(Ordering::Relaxed)
     }
 
-    pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
+    pub fn transcribe(&self, audio: Arc<Vec<f32>>) -> Result<String> {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
         // and cause the final full transcription to fail or return nothing.
@@ -1041,8 +1055,10 @@ impl TranscriptionManager {
             return Ok(String::new());
         }
 
-        // Keep a copy of the audio for continuous voice cloning (before it's consumed by the engine)
-        let audio_for_cloning = audio.clone();
+        // Retain a cheap ref to the same buffer for continuous voice cloning.
+        // Arc clone is a refcount bump — no audio copy. The engine requires
+        // owned samples, so only one Vec clone happens (at the engine call).
+        let audio_for_cloning = Arc::clone(&audio);
 
         // Check if model is loaded, if not try to load it
         {
@@ -1092,8 +1108,13 @@ impl TranscriptionManager {
             // Release the lock before transcribing — no mutex held during the engine call
             drop(engine_guard);
 
+            // The engine consumes `Vec<f32>` by value, so we pay exactly one
+            // owned copy here. The caller and the voice-cloning thread keep
+            // their cheap `Arc` handles to the original buffer.
+            let audio_for_engine = (*audio).clone();
+            drop(audio);
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| {
-                Self::transcribe_with_loaded_engine(&mut engine, audio, &settings)
+                Self::transcribe_with_loaded_engine(&mut engine, audio_for_engine, &settings)
             }));
 
             match transcribe_result {
@@ -1177,14 +1198,17 @@ impl TranscriptionManager {
 
         self.maybe_unload_immediately("transcription");
 
-        // Feed audio to continuous voice cloning (async, non-blocking)
+        // Feed audio to continuous voice cloning (async, non-blocking).
+        // `audio_for_cloning` is an Arc clone — the thread borrows a slice
+        // from it; no Vec copy is made for this path.
         if !final_result.is_empty() {
             let app = self.app_handle.clone();
             let transcript_for_cloning = final_result.clone();
             thread::spawn(move || {
                 use tauri::Manager;
                 if let Some(cloning_manager) = app.try_state::<Arc<ContinuousCloningManager>>() {
-                    cloning_manager.process_stt_result(audio_for_cloning, &transcript_for_cloning);
+                    cloning_manager
+                        .process_stt_result(audio_for_cloning.as_slice(), &transcript_for_cloning);
                 }
             });
         }

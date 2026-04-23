@@ -29,7 +29,7 @@ impl ContinuousCloningManager {
     /// Process a successful STT result for continuous voice improvement.
     /// `audio_16k` is the audio buffer at 16kHz (post-STT resample).
     /// `transcript` is the text produced by STT.
-    pub fn process_stt_result(&self, audio_16k: Vec<f32>, transcript: &str) {
+    pub fn process_stt_result(&self, audio_16k: &[f32], transcript: &str) {
         // Quick check: is there an active improvement profile?
         let active_profile_id = match find_active_improvement_profile(&self.app_handle) {
             Ok(Some(id)) => id,
@@ -63,9 +63,9 @@ impl ContinuousCloningManager {
             // For now, we still receive 16kHz and upsample — the HQ path
             // requires audio.rs changes to retain the raw buffer, which
             // will be connected when that setting is enabled.
-            resample_linear(&audio_16k, STT_SAMPLE_RATE, TTS_SAMPLE_RATE)
+            resample_linear(audio_16k, STT_SAMPLE_RATE, TTS_SAMPLE_RATE)
         } else {
-            resample_linear(&audio_16k, STT_SAMPLE_RATE, TTS_SAMPLE_RATE)
+            resample_linear(audio_16k, STT_SAMPLE_RATE, TTS_SAMPLE_RATE)
         };
 
         if samples_24k.is_empty() {

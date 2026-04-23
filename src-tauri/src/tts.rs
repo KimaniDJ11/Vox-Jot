@@ -5,12 +5,11 @@ use crate::model_platform::{
     TtsControlGroup, TtsDeliverySupport, TtsExpressivenessMode,
 };
 use crate::settings::{
-    default_tts_model_store_dir, get_settings, is_local_base_url, AppSettings, TtsAutoReadbackMode,
-    TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
-    TtsStyleControlValue, TtsVoicePreset, TtsVoiceTuningSettings,
-    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
-    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
-    TTS_PROVIDER_KOKORO_ID,
+    default_tts_model_store_dir, get_settings, is_local_base_url,
+    sanitize_tts_voice_tuning_for_target, AppSettings, TtsAutoReadbackMode, TtsAutoReadbackScope,
+    TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue, TtsVoicePreset,
+    TtsVoiceTuningSettings, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
+    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID, TTS_PROVIDER_KOKORO_ID,
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
     TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
     TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID,
@@ -18,7 +17,7 @@ use crate::settings::{
     TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
     TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
     TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
-    TTS_PROVIDER_XTTS_ID, sanitize_tts_voice_tuning_for_target,
+    TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
 use crate::translation::TranslationOrigin;
@@ -807,7 +806,8 @@ fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
         provider_id,
         TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
-            |         TTS_PROVIDER_KOKORO_ID | TTS_PROVIDER_XTTS_ID
+            | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_XTTS_ID
     )
 }
 

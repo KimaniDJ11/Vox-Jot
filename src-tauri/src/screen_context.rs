@@ -1,6 +1,8 @@
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::ActiveAppContext;
-use crate::settings::{get_settings, AppSettings, ContextCaptureMode, OcrQualityMode};
+use crate::settings::{
+    get_settings_without_secrets, AppSettings, ContextCaptureMode, OcrQualityMode,
+};
 use log::{debug, warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -224,18 +226,15 @@ impl ContextCaptureManager {
         settings: &AppSettings,
         active_app_context: Option<ActiveAppContext>,
     ) -> Option<DictationContextPacket> {
-        let desired_app_context = active_app_context.or_else(current_frontmost_app_context);
-        let current_field_text = read_ax_field_text(desired_app_context.as_ref());
-        let now_ms = now_millis();
-
+        // When screen context is fully disabled, avoid cross-process
+        // Accessibility IPC on the paste-critical path — the user opted out
+        // of every context-aware feature, so there is nothing to feed.
         if !settings.screen_context_enabled {
-            return build_ax_only_packet(
-                desired_app_context,
-                current_field_text,
-                now_ms,
-                !settings.local_privacy_mode,
-            );
+            return None;
         }
+
+        let desired_app_context = active_app_context.or_else(current_frontmost_app_context);
+        let now_ms = now_millis();
 
         let frontmost_excluded = desired_app_context.as_ref().is_some_and(|ctx| {
             settings
@@ -244,6 +243,7 @@ impl ContextCaptureManager {
                 .any(|bundle| bundle.eq_ignore_ascii_case(&ctx.bundle_id))
         });
         if frontmost_excluded {
+            let current_field_text = read_ax_field_text(desired_app_context.as_ref());
             return build_ax_only_packet(
                 desired_app_context,
                 current_field_text,
@@ -251,6 +251,8 @@ impl ContextCaptureManager {
                 !settings.local_privacy_mode,
             );
         }
+
+        let current_field_text = read_ax_field_text(desired_app_context.as_ref());
         let stale_threshold_ms = settings.screen_context_stale_threshold_ms as u64;
         let fresh_relevant_packet = {
             let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -328,10 +330,17 @@ impl ContextCaptureManager {
                 let mut last_tick = Instant::now() - Duration::from_secs(60);
                 let mut last_frontmost_app: Option<String> = None;
 
+                // Idle / disabled / excluded paths can sleep longer — there is
+                // nothing changing that requires sub-second responsiveness.
+                const IDLE_SLEEP: Duration = Duration::from_millis(2_000);
+                const ACTIVE_SLEEP: Duration = Duration::from_millis(750);
+
                 loop {
-                    let settings = get_settings(&manager.app_handle);
+                    // Skip API-key hydration on every tick — the worker only
+                    // reads plain settings fields, and keychain decrypts were
+                    // burning cycles 4×/sec for no reason.
+                    let settings = get_settings_without_secrets(&manager.app_handle);
                     let interval = capture_interval(settings.context_capture_mode);
-                    let frontmost_app = current_frontmost_bundle();
                     let now_ms = now_millis();
 
                     if !settings.screen_context_enabled {
@@ -345,9 +354,13 @@ impl ContextCaptureManager {
                         if status_changed {
                             manager.emit_status(ContextCaptureStatus::Disabled);
                         }
-                        thread::sleep(Duration::from_millis(500));
+                        thread::sleep(IDLE_SLEEP);
                         continue;
                     }
+
+                    // Only query the frontmost-app bundle once we know the
+                    // feature is enabled — this is a cross-process call.
+                    let frontmost_app = current_frontmost_bundle();
 
                     let excluded = frontmost_app
                         .as_ref()
@@ -370,7 +383,7 @@ impl ContextCaptureManager {
                             manager.emit_status(ContextCaptureStatus::ExcludedApp);
                         }
                         last_frontmost_app = frontmost_app;
-                        thread::sleep(Duration::from_millis(500));
+                        thread::sleep(IDLE_SLEEP);
                         continue;
                     }
 
@@ -418,9 +431,14 @@ impl ContextCaptureManager {
                         let _ = manager.capture_now(&settings, reason);
                         last_tick = Instant::now();
                         last_frontmost_app = frontmost_app;
+                    } else {
+                        last_frontmost_app = frontmost_app;
                     }
 
-                    thread::sleep(Duration::from_millis(250));
+                    // 750ms strikes a balance: adaptive-app-change detection
+                    // still feels responsive, and we go from 4 → ~1.3 wake-ups
+                    // per second while idle between captures.
+                    thread::sleep(ACTIVE_SLEEP);
                 }
             });
         }

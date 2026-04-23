@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
 use crate::audio_toolkit::save_wav_file;
@@ -392,7 +393,7 @@ impl HistoryManager {
     /// Returns the database row ID of the new entry.
     pub async fn save_transcription(
         &self,
-        audio_samples: Vec<f32>,
+        audio_samples: Arc<Vec<f32>>,
         transcription_text: String,
         post_processed_text: Option<String>,
         post_process_prompt: Option<String>,
@@ -408,7 +409,7 @@ impl HistoryManager {
 
         // Save WAV file
         let file_path = self.recordings_dir.join(&file_name);
-        save_wav_file(file_path, &audio_samples).await?;
+        save_wav_file(file_path, audio_samples.as_slice()).await?;
 
         // Save to database
         let id = self.save_to_database(

@@ -119,6 +119,6 @@ pub fn transcribe_file(
     let audio_16k = resample_linear(&mono, sample_rate, 16_000);
 
     transcription_manager
-        .transcribe(audio_16k)
+        .transcribe(Arc::new(audio_16k))
         .map_err(|e| format!("Failed to transcribe file: {}", e))
 }

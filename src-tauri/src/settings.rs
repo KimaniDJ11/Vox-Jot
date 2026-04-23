@@ -2465,9 +2465,7 @@ pub(crate) fn sanitize_tts_voice_tuning_for_target(
         changed = true;
     }
     let repetition_penalty_max = 3.0;
-    let next_repetition_penalty = tuning
-        .repetition_penalty
-        .clamp(1.0, repetition_penalty_max);
+    let next_repetition_penalty = tuning.repetition_penalty.clamp(1.0, repetition_penalty_max);
     if (tuning.repetition_penalty - next_repetition_penalty).abs() > f32::EPSILON {
         tuning.repetition_penalty = next_repetition_penalty;
         changed = true;
@@ -2764,6 +2762,32 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     {
         write_settings(app, settings.clone());
     }
+
+    settings
+}
+
+/// Read settings without hydrating provider API keys from the OS keychain.
+///
+/// `get_settings` decrypts every configured API key on every call. Background
+/// pollers (e.g. the screen-context worker) only need plain-data fields, so
+/// hitting the keychain N times per second wastes cycles and can thrash
+/// credential-store caches. Use this variant when API keys are not needed.
+pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
+    let store = app
+        .store(crate::portable::store_path(SETTINGS_STORE_PATH))
+        .expect("Failed to initialize store");
+
+    let mut settings = if let Some(settings_value) = store.get("settings") {
+        serde_json::from_value::<AppSettings>(settings_value)
+            .unwrap_or_else(|_| get_default_settings())
+    } else {
+        get_default_settings()
+    };
+
+    ensure_translation_defaults(&mut settings);
+    ensure_post_process_defaults(&mut settings);
+    ensure_model_platform_defaults(&mut settings);
+    ensure_tts_defaults(&mut settings);
 
     settings
 }

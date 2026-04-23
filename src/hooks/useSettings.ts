@@ -65,16 +65,15 @@ interface UseSettingsReturn {
 }
 
 export const useSettings = (): UseSettingsReturn => {
-  const store = useSettingsStore();
-
-  return useMemo(
-    () => ({
+  const storeProps = useSettingsStore(
+    useShallow((store) => ({
       settings: store.settings,
       isLoading: store.isLoading,
-      isUpdating: store.isUpdatingKey,
+      /** Drives re-renders when any key’s updating flag toggles; `isUpdatingKey` is a stable function ref. */
+      isUpdating: store.isUpdating,
+      isUpdatingKey: store.isUpdatingKey,
       audioDevices: store.audioDevices,
       outputDevices: store.outputDevices,
-      audioFeedbackEnabled: store.settings?.audio_feedback || false,
       postProcessModelOptions: store.postProcessModelOptions,
       updateSetting: store.updateSetting,
       resetSetting: store.resetSetting,
@@ -93,33 +92,17 @@ export const useSettings = (): UseSettingsReturn => {
       setAppLanguageWithSync: store.setAppLanguageWithSync,
       applyGlobalLanguageSync: store.applyGlobalLanguageSync,
       setTtsVoiceSelection: store.setTtsVoiceSelection,
-    }),
-    [
-      store.settings,
-      store.isLoading,
-      store.isUpdatingKey,
-      store.audioDevices,
-      store.outputDevices,
-      store.postProcessModelOptions,
-      store.updateSetting,
-      store.resetSetting,
-      store.refreshSettings,
-      store.refreshAudioDevices,
-      store.refreshOutputDevices,
-      store.updateBinding,
-      store.resetBinding,
-      store.getSetting,
-      store.setPostProcessProvider,
-      store.updatePostProcessBaseUrl,
-      store.updatePostProcessApiKey,
-      store.updatePostProcessModel,
-      store.fetchPostProcessModels,
-      store.previewPostProcessText,
-      store.setAppLanguageWithSync,
-      store.applyGlobalLanguageSync,
-      store.setTtsVoiceSelection,
-    ],
+    })),
   );
+
+  return useMemo(() => {
+    const { isUpdating: updatingByKey, isUpdatingKey, ...rest } = storeProps;
+    return {
+      ...rest,
+      isUpdating: isUpdatingKey,
+      audioFeedbackEnabled: storeProps.settings?.audio_feedback || false,
+    };
+  }, [storeProps]);
 };
 
 /**

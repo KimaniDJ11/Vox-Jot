@@ -354,7 +354,7 @@ pub fn import_tts_voice_profile_sample(
             return Ok(None);
         }
         let transcript = manager
-            .transcribe(audio_16k)
+            .transcribe(Arc::new(audio_16k))
             .map_err(|err| format!("Failed to auto-transcribe voice reference audio: {err}"))?;
         let trimmed = transcript.trim();
         if trimmed.is_empty() {

@@ -2353,7 +2353,7 @@ async fn run_translate_selection(app: AppHandle) {
     if let Some(history_manager) = app.try_state::<Arc<HistoryManager>>() {
         match history_manager
             .save_transcription(
-                Vec::new(),
+                Arc::new(Vec::new()),
                 selected_text.clone(),
                 Some(execution.final_text.clone()),
                 None,
@@ -2607,7 +2607,7 @@ fn tts_history_context_from_plan(plan: &crate::tts::TtsAutoSpeakPlan) -> TtsHist
 
 #[derive(Clone)]
 struct DeferredHistorySave {
-    audio_samples: Vec<f32>,
+    audio_samples: Arc<Vec<f32>>,
     transcription_text: String,
     post_processed_text: Option<String>,
     post_process_prompt: Option<String>,
@@ -3034,7 +3034,10 @@ impl ShortcutAction for TranscribeAction {
                 }
 
                 let transcription_time = Instant::now();
-                let samples_clone = samples.clone(); // Clone for history saving
+                // Wrap once and share via Arc so history + voice-cloning +
+                // transcribe don't each pay a full Vec copy of the buffer.
+                let samples = Arc::new(samples);
+                let samples_for_history = Arc::clone(&samples);
                 match tm.transcribe(samples) {
                     Ok(transcription) => {
                         debug!(
@@ -3561,7 +3564,7 @@ impl ShortcutAction for TranscribeAction {
                                 })
                                 .unwrap_or_default();
                             let history_save_request = DeferredHistorySave {
-                                audio_samples: samples_clone,
+                                audio_samples: samples_for_history,
                                 transcription_text: transcription.clone(),
                                 post_processed_text: post_processed_text.clone(),
                                 post_process_prompt: post_process_prompt.clone(),

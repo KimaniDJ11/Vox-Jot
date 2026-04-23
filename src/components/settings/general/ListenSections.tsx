@@ -1867,12 +1867,10 @@ const VoiceArchitectSection: React.FC<{
           surfaceClassName={whiteWorkflowCardClassName}
         />
 
-        <div className={whiteWorkflowCardClassName}>
-          <div className="mb-2">
-            <p className="text-sm font-semibold text-[var(--text)]">
-              {t("listen.myVoices.savedProfiles")}
-            </p>
-          </div>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {t("listen.myVoices.savedProfiles")}
+          </p>
 
           <div className="grid max-h-[320px] gap-2 overflow-y-auto pe-1 lg:grid-cols-2">
             {speech.presets.map((preset) => {
@@ -1883,11 +1881,11 @@ const VoiceArchitectSection: React.FC<{
               return (
                 <div
                   key={preset.id}
-                  className={`rounded-xl border px-3 py-2.5 transition-all duration-150 ${
+                  className={
                     isActive
-                      ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent),transparent_91%)] shadow-[0_0_0_1px_var(--accent-glow)]"
-                      : "border-[var(--border)] bg-[var(--bg)] hover:border-[color-mix(in_srgb,var(--accent),transparent_55%)] hover:bg-[var(--panel-bg)]"
-                  }`}
+                      ? "rounded-xl border border-[var(--accent)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-md)]"
+                      : "rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
+                  }
                 >
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <div className="min-w-0 space-y-1.5">

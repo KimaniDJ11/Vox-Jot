@@ -3590,6 +3590,12 @@ impl ShortcutAction for TranscribeAction {
                                             .as_ref()
                                             .map(packet_age_ms),
                                         summary: screen_context_summary.clone(),
+                                        active_app_bundle_id: active_app_context
+                                            .as_ref()
+                                            .map(|context| context.bundle_id.clone()),
+                                        active_app_name: active_app_context.as_ref().map(
+                                            |context| app_display_name(context).to_string(),
+                                        ),
                                         sent_externally: should_post_process
                                             && context_manager.context_sent_externally(
                                                 &settings,

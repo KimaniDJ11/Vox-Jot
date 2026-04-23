@@ -115,7 +115,7 @@ const ToneCard: React.FC<ToneCardProps> = ({
     : t("settings.styles.tones.starterBadge");
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 shadow-sm transition-colors hover:border-[var(--accent-soft)]">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -695,39 +695,35 @@ export const StylesSettings: React.FC<StylesSettingsProps> = ({
             </div>
           ) : null}
 
-          <div className="flat-card overflow-visible">
-            <div className="px-5 py-4">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {sortedToneDefinitions.map((tone) => (
-                  <ToneCard
-                    key={tone.id}
-                    tone={tone}
-                    mappedApps={mappedAppsByToneId[tone.id] || []}
-                    disabled={toneControlsDisabled}
-                    canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
-                    onEdit={() => {
-                      setAddingTone(false);
-                      setEditingToneId(tone.id);
-                    }}
-                    onDelete={() => handleDeleteTone(tone.id)}
-                  />
-                ))}
-              </div>
+          <div className="flex flex-col gap-3">
+            {sortedToneDefinitions.map((tone) => (
+              <ToneCard
+                key={tone.id}
+                tone={tone}
+                mappedApps={mappedAppsByToneId[tone.id] || []}
+                disabled={toneControlsDisabled}
+                canDelete={!DEFAULT_STYLE_IDS.has(tone.id)}
+                onEdit={() => {
+                  setAddingTone(false);
+                  setEditingToneId(tone.id);
+                }}
+                onDelete={() => handleDeleteTone(tone.id)}
+              />
+            ))}
 
-              {(editingTone || addingTone) && (
-                <div className="mt-4">
-                  <ToneEditor
-                    initial={editingTone}
-                    existingIds={toneDefinitions.map((tone) => tone.id)}
-                    onSave={handleSaveTone}
-                    onCancel={() => {
-                      setEditingToneId(null);
-                      setAddingTone(false);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+            {(editingTone || addingTone) && (
+              <div>
+                <ToneEditor
+                  initial={editingTone}
+                  existingIds={toneDefinitions.map((tone) => tone.id)}
+                  onSave={handleSaveTone}
+                  onCancel={() => {
+                    setEditingToneId(null);
+                    setAddingTone(false);
+                  }}
+                />
+              </div>
+            )}
           </div>
         </section>
       )}

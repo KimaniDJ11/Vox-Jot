@@ -36,7 +36,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import Badge from "@/components/ui/Badge";
-import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { SwitchControl } from "@/components/ui/SwitchControl";
 import {
@@ -3191,45 +3190,6 @@ const AutoReadbackPanel: React.FC<{
   return <SettingsGroup title="Auto-Readback">{content}</SettingsGroup>;
 };
 
-const OutputPanel: React.FC<{
-  speech: ListenSpeechState;
-  showTitle?: boolean;
-}> = ({ speech, showTitle = true }) => {
-  const settings = speech.settings;
-  if (!settings) return null;
-
-  const content = (
-    <div className={whiteFlatSectionSurfaceClassName}>
-      <OutputDeviceSelector
-        descriptionMode="tooltip"
-        grouped={true}
-        disabled={!(settings.tts_enabled || settings.audio_feedback)}
-      />
-      <div className="border-t border-[var(--border)]">
-        <Slider
-          value={settings.tts_volume ?? 1}
-          onChange={(value) => void speech.updateSetting("tts_volume", value)}
-          min={0}
-          max={1}
-          step={0.05}
-          label="Speech Volume"
-          description="Global playback volume for spoken output on the selected output device."
-          descriptionMode="tooltip"
-          grouped={true}
-          formatValue={(value) => `${Math.round(value * 100)}%`}
-          disabled={!speech.ttsEnabled}
-        />
-      </div>
-    </div>
-  );
-
-  if (!showTitle) {
-    return content;
-  }
-
-  return <SettingsGroup title="Output">{content}</SettingsGroup>;
-};
-
 export const MyVoicesSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
@@ -3290,13 +3250,6 @@ export const AutoReadbackSection: React.FC<{
   return <AutoReadbackPanel speech={speech} showTitle={showGroupTitle} />;
 };
 
-export const ListenOutputSection: React.FC<{
-  showGroupTitle?: boolean;
-}> = ({ showGroupTitle = true }) => {
-  const speech = useListenSpeechState();
-  return <OutputPanel speech={speech} showTitle={showGroupTitle} />;
-};
-
 export const ListenAllSections: React.FC = () => {
   const speech = useListenSpeechState();
   return (
@@ -3305,7 +3258,6 @@ export const ListenAllSections: React.FC = () => {
       <EngineLibraryPanel speech={speech} />
       <VoiceCloningSection speech={speech} />
       <AutoReadbackPanel speech={speech} />
-      <OutputPanel speech={speech} />
     </div>
   );
 };

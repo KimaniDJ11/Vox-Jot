@@ -14,7 +14,6 @@ import {
   Cpu,
   FileText,
   FlaskConical,
-  Headphones,
   History,
   Info,
   Keyboard,
@@ -76,7 +75,6 @@ import {
   JotPadSection,
   ListenAutoReadbackSection,
   ListenMyVoicesSection,
-  ListenOutputSection,
   ListenVoiceCloningSection,
   OutputPasteSettingsSection,
   PrivacyStorageSettingsSection,
@@ -84,7 +82,6 @@ import {
   RecordingDevicesSettingsSection,
   RefinePhraseKeysSection,
   RefineTranslationSection,
-  SettingsCorrectionsSection,
   ShortcutsSettingsSection,
 } from "@/components/AppSections";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
@@ -278,18 +275,6 @@ function App() {
     lastSectionByView.current[activeRootViewRef.current] = sectionId;
   }, []);
 
-  const handleWorkflowSectionOpen = useCallback(
-    (mode: "dictate" | "refine" | "listen", sectionId: string) => {
-      lastSectionByView.current[activeRootViewRef.current] =
-        activeSectionIdRef.current;
-      lastSectionByView.current[mode] = sectionId;
-      setActiveMode(mode);
-      setActiveRootView(mode);
-      setActiveSectionId(sectionId);
-    },
-    [],
-  );
-
   const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
     () => ({
       dictate: [
@@ -359,13 +344,6 @@ function App() {
           icon: Play,
           title: "Auto-Readback",
           content: <ListenAutoReadbackSection />,
-        },
-        {
-          id: "output",
-          label: "Output",
-          icon: Headphones,
-          title: "Output",
-          content: <ListenOutputSection />,
         },
       ],
       convo: [
@@ -442,17 +420,6 @@ function App() {
           content: <ScreenContextSettingsSection />,
         },
         {
-          id: "corrections",
-          label: "Corrections",
-          icon: SpellCheck,
-          title: "Corrections",
-          content: (
-            <SettingsCorrectionsSection
-              onNavigateToSection={handleWorkflowSectionOpen}
-            />
-          ),
-        },
-        {
           id: "privacy",
           label: "Privacy & Storage",
           icon: Shield,
@@ -475,7 +442,7 @@ function App() {
         },
       ],
     }),
-    [handleWorkflowSectionOpen],
+    [],
   );
 
   const activeSections = sectionsByView[activeRootView];

@@ -65,7 +65,6 @@ import {
   AutoReadbackSection as AutoReadbackPanel,
   MyVoicesSection as MyVoicesPanel,
   EngineLibrarySection as EngineLibraryPanel,
-  ListenOutputSection as OutputPanel,
   SpeechPackManagerSection,
   ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
@@ -236,31 +235,6 @@ export const CorrectionsSection: React.FC = () => {
   return <CorrectionSettings showTrackingToggle={false} />;
 };
 
-export const SettingsCorrectionsSection: React.FC<WorkflowSectionProps> = ({
-  onNavigateToSection,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="space-y-6">
-      <Alert variant="info">
-        {t("settings.correctionsSection.movedNotice", {
-          defaultValue:
-            "Corrections now live in Dictate to avoid duplicated settings pages.",
-        })}
-      </Alert>
-
-      <WorkflowLinkCard
-        eyebrow="Canonical Home"
-        title="Manage Corrections in Dictate"
-        description="Use Dictate > Corrections for learned corrections, custom words, and correction behavior."
-        actionLabel="Open Dictate Corrections"
-        onAction={() => onNavigateToSection("dictate", "corrections")}
-      />
-    </div>
-  );
-};
-
 export const LearnedCorrectionsSection: React.FC<{
   titleActionTargetId?: string;
 }> = ({ titleActionTargetId }) => {
@@ -316,14 +290,6 @@ export const ListenAutoReadbackSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <AutoReadbackPanel showGroupTitle={false} />
-    </div>
-  );
-};
-
-export const ListenOutputSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <OutputPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -580,8 +546,14 @@ const CustomFillerWordsSetting: React.FC = () => {
 };
 
 export const RecordingDevicesSettingsSection: React.FC = () => {
-  const { audio_feedback: audioFeedbackEnabled, tts_enabled: ttsEnabled } =
-    useSettingsSlice(["audio_feedback", "tts_enabled"] as const);
+  const { updateSetting } = useSettings();
+  const {
+    audio_feedback: audioFeedbackEnabled,
+    tts_enabled: ttsEnabled,
+    tts_volume: ttsVolume,
+  } = useSettingsSlice(
+    ["audio_feedback", "tts_enabled", "tts_volume"] as const,
+  );
 
   return (
     <div className="space-y-6">
@@ -605,6 +577,21 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
           grouped={true}
           disabled={!((audioFeedbackEnabled ?? false) || (ttsEnabled ?? false))}
         />
+        <div className="border-t border-[var(--border)]">
+          <Slider
+            value={ttsVolume ?? 1}
+            onChange={(value) => void updateSetting("tts_volume", value)}
+            min={0}
+            max={1}
+            step={0.05}
+            label="Speech Volume"
+            description="Global playback volume for spoken output on the selected output device."
+            descriptionMode="tooltip"
+            grouped={true}
+            formatValue={(value) => `${Math.round(value * 100)}%`}
+            disabled={!ttsEnabled}
+          />
+        </div>
       </SettingsGroup>
 
       <SettingsGroup title="Speech Cleanup">

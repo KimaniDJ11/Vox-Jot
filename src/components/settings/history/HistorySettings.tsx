@@ -75,49 +75,52 @@ export const HistorySettings: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
-  const loadHistoryEntries = useCallback(async (reset = true) => {
-    const offset = reset ? 0 : historyEntries.length;
-    if (reset) {
-      setLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const result = await commands.getHistoryEntriesPage(
-        offset,
-        HISTORY_PAGE_SIZE,
-      );
-      if (result.status === "ok") {
-        setHistoryEntries((current) =>
-          reset ? result.data.entries : [...current, ...result.data.entries],
-        );
-        setHasMore(result.data.has_more);
+  const loadHistoryEntries = useCallback(
+    async (reset = true) => {
+      const offset = reset ? 0 : historyEntries.length;
+      if (reset) {
+        setLoading(true);
       } else {
-        console.error("Failed to load history entries:", result.error);
+        setIsLoadingMore(true);
+      }
+
+      try {
+        const result = await commands.getHistoryEntriesPage(
+          offset,
+          HISTORY_PAGE_SIZE,
+        );
+        if (result.status === "ok") {
+          setHistoryEntries((current) =>
+            reset ? result.data.entries : [...current, ...result.data.entries],
+          );
+          setHasMore(result.data.has_more);
+        } else {
+          console.error("Failed to load history entries:", result.error);
+          toast.error(
+            t("settings.history.loadError", {
+              defaultValue: "Failed to load history: {{error}}",
+              error: result.error,
+            }),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load history entries:", error);
         toast.error(
           t("settings.history.loadError", {
             defaultValue: "Failed to load history: {{error}}",
-            error: result.error,
+            error: String(error),
           }),
         );
+      } finally {
+        if (reset) {
+          setLoading(false);
+        } else {
+          setIsLoadingMore(false);
+        }
       }
-    } catch (error) {
-      console.error("Failed to load history entries:", error);
-      toast.error(
-        t("settings.history.loadError", {
-          defaultValue: "Failed to load history: {{error}}",
-          error: String(error),
-        }),
-      );
-    } finally {
-      if (reset) {
-        setLoading(false);
-      } else {
-        setIsLoadingMore(false);
-      }
-    }
-  }, [historyEntries.length, t]);
+    },
+    [historyEntries.length, t],
+  );
 
   useEffect(() => {
     void loadHistoryEntries(true);
@@ -438,6 +441,14 @@ const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
     "border-[var(--danger)]/25 bg-[var(--danger-soft)] text-[var(--danger)]",
 };
 
+const getHistoryEntryAppLabel = (entry: HistoryEntry): string | null => {
+  const metadata = entry.screen_context_metadata;
+  const appName = metadata?.active_app_name?.trim();
+  const bundleId = metadata?.active_app_bundle_id?.trim();
+
+  return appName || bundleId || null;
+};
+
 const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   entry,
   displayText,
@@ -482,6 +493,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const observedText = entry.field_snapshot_text?.trim() || "";
   const dictionaryApplied = entry.dictionary_hits.length > 0;
   const postProcessApplied = polishedText.length > 0;
+  const appLabel = getHistoryEntryAppLabel(entry);
   const fieldSnapshotStatus = entry.field_snapshot_status;
   const fieldCheckChanged =
     fieldSnapshotStatus === "captured" &&
@@ -622,6 +634,23 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
+        {appLabel && (
+          <span
+            title={
+              entry.screen_context_metadata?.active_app_bundle_id ?? appLabel
+            }
+          >
+            <Badge
+              variant="secondary"
+              className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
+            >
+              {t("settings.history.badges.app", {
+                appName: appLabel,
+                defaultValue: "App: {{appName}}",
+              })}
+            </Badge>
+          </span>
+        )}
         <Badge
           variant="secondary"
           className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"

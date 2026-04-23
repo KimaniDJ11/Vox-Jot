@@ -5,6 +5,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Latency Policy
+
+Vox Jot is a latency-sensitive dictation app. All agents and AI coding tools must treat latency as a hard product constraint.
+
+- Do not make changes that increase recording start latency, stop-to-transcript latency, post-processing latency, paste latency, overlay responsiveness latency, or settings UI responsiveness without explicit approval.
+- Before implementing a change on a hot path, identify whether it runs during recording, transcription, post-processing, paste/output, overlay updates, or app startup.
+- If a proposed change would add network calls, disk I/O, model loads, database work, blocking locks, extra awaits, heavy serialization, large React re-renders, or expensive computation to a hot path, do not implement it by default. Explain why it would increase latency and propose alternatives that keep the work cached, deferred, incremental, backgrounded, or outside the hot path.
+- Prefer deferred/background persistence, cached metadata, precomputed state, and UI-only rendering over synchronous work in the dictation pipeline.
+- When completing a change, report whether latency is expected to be unchanged, improved, or at risk, and mention any validation performed.
+
 ## macOS Installed-App Workflow
 
 On macOS, the standard validation path for any solid app change is to update the already-installed `/Applications/Vox Jot.app` in place instead of relying on a fresh `tauri dev` app instance.

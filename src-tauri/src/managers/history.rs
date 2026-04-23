@@ -128,6 +128,8 @@ pub struct ScreenContextHistoryMetadata {
     pub capture_status: ContextCaptureStatus,
     pub cache_age_ms: Option<u64>,
     pub summary: Option<String>,
+    pub active_app_bundle_id: Option<String>,
+    pub active_app_name: Option<String>,
     pub sent_externally: bool,
     pub changed_output: bool,
 }

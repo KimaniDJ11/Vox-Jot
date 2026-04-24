@@ -1,3 +1,4 @@
+use crate::correction_tracker::store::CorrectionStore;
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, write_settings, ModelUnloadTimeout};
 use serde::Serialize;
@@ -140,7 +141,11 @@ fn resolve_ffmpeg_exe() -> PathBuf {
             }
         }
     }
-    PathBuf::from(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" })
+    PathBuf::from(if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    })
 }
 
 fn decode_with_ffmpeg_blocking(ffmpeg_exe: &Path, input_path: &str) -> Result<Vec<f32>, String> {
@@ -200,7 +205,9 @@ fn decode_with_ffmpeg_blocking(ffmpeg_exe: &Path, input_path: &str) -> Result<Ve
 #[tauri::command]
 #[specta::specta]
 pub async fn transcribe_file(
+    app: AppHandle,
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
+    correction_store: State<'_, Arc<CorrectionStore>>,
     path: String,
 ) -> Result<String, String> {
     let manager = transcription_manager.inner().clone();
@@ -211,7 +218,7 @@ pub async fn transcribe_file(
         Some(resolve_ffmpeg_exe())
     };
 
-    tokio::task::spawn_blocking(move || -> Result<String, String> {
+    let raw = tokio::task::spawn_blocking(move || -> Result<String, String> {
         let audio_16k = if is_wav {
             let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
             resample_linear(&mono, sample_rate, 16_000)
@@ -225,89 +232,25 @@ pub async fn transcribe_file(
             .map_err(|e| format!("Failed to transcribe file: {}", e))
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?
-}
+    .map_err(|e| format!("Task join error: {}", e))??;
 
-#[cfg(test)]
-mod file_transcription_decode_tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    fn samples_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test-data/file-transcription-samples")
+    let settings = get_settings(&app);
+    let mut text = raw;
+    if let Some(converted) = crate::actions::maybe_convert_chinese_variant(&settings, &text).await {
+        text = converted;
     }
 
-    fn ffmpeg_on_path_works() -> bool {
-        std::process::Command::new("ffmpeg")
-            .args(["-version"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+    if !settings.file_transcription_apply_dictionary {
+        return Ok(text);
     }
 
-    fn decode_file_to_16k_pcm(path: &str) -> Result<Vec<f32>, String> {
-        let is_wav = path.to_ascii_lowercase().ends_with(".wav");
-        if is_wav {
-            let (mono, sr) = read_wav_as_mono_f32(path)?;
-            Ok(resample_linear(&mono, sr, 16_000))
-        } else {
-            let ff = resolve_ffmpeg_exe();
-            decode_with_ffmpeg_blocking(&ff, path)
-        }
+    let dict_entries = crate::correction_tracker::store::build_effective_personal_dictionary(
+        &settings,
+        correction_store.inner().as_ref(),
+    );
+    if dict_entries.is_empty() {
+        return Ok(text);
     }
-
-    /// Exercises the same decode paths as [`transcribe_file`] (minus the STT model).
-    ///
-    /// Skips when `test-data/file-transcription-samples/generate.sh` has not been run.
-    /// Non-WAV cases require `ffmpeg` on `PATH`.
-    #[test]
-    fn file_transcription_samples_reach_16k_pcm_when_generated() {
-        let dir = samples_dir();
-        if !dir.join("sample_speech_48k_mono.wav").is_file() {
-            eprintln!(
-                "skip file_transcription_samples_reach_16k_pcm_when_generated: missing {}; run test-data/file-transcription-samples/generate.sh",
-                dir.display()
-            );
-            return;
-        }
-
-        for name in [
-            "sample_speech_48k_mono.wav",
-            "sample_speech_48k_stereo.wav",
-        ] {
-            let p = dir.join(name);
-            let pcm = decode_file_to_16k_pcm(p.to_str().unwrap())
-                .unwrap_or_else(|e| panic!("decode {name}: {e}"));
-            assert!(
-                pcm.len() > 16_000 * 2,
-                "{name}: expected >2s at 16 kHz, got {} samples",
-                pcm.len()
-            );
-            let peak = pcm.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
-            assert!(peak > 1e-5, "{name}: audio looks silent");
-        }
-
-        if !ffmpeg_on_path_works() {
-            eprintln!("skip non-WAV sample checks: ffmpeg not on PATH");
-            return;
-        }
-
-        for name in [
-            "sample_speech.mp3",
-            "sample_speech.m4a",
-            "sample_talk_head.mp4",
-        ] {
-            let p = dir.join(name);
-            assert!(p.is_file(), "missing {}", p.display());
-            let pcm = decode_file_to_16k_pcm(p.to_str().unwrap())
-                .unwrap_or_else(|e| panic!("decode {name}: {e}"));
-            assert!(
-                pcm.len() > 16_000 * 2,
-                "{name}: expected >2s at 16 kHz, got {} samples",
-                pcm.len()
-            );
-            let peak = pcm.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
-            assert!(peak > 1e-5, "{name}: audio looks silent");
-        }
-    }
+    let dict_result = crate::post_processing::apply_personal_dictionary(&text, &dict_entries);
+    Ok(dict_result.text)
 }

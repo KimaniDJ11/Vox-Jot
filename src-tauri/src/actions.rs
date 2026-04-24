@@ -10,8 +10,8 @@ use crate::managers::history::{HistoryManager, TranslationHistoryContext};
 use crate::managers::notes::NotesManager;
 use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::{
-    apply_personal_dictionary, detect_post_process_edits, get_merged_dictionary, ActiveAppContext,
-    DictionaryEntry, PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
+    apply_personal_dictionary, detect_post_process_edits, ActiveAppContext, DictionaryEntry,
+    PostProcessMode, PostProcessPreviewPayload, PostProcessResult, PreviewManager,
 };
 use crate::screen_context::{
     packet_age_ms, summarize_packet_for_prompt, ContextCaptureManager, ContextImpactMetadata,
@@ -3108,28 +3108,16 @@ impl ShortcutAction for TranscribeAction {
                             // from the corrections store.
                             let mut effective_settings = settings.clone();
                             if let Some(correction_store) = ah.try_state::<Arc<CorrectionStore>>() {
-                                use crate::settings::correction_defaults;
-                                match correction_store.get_dictionary_entries(
-                                    settings.correction_tracking_enabled,
-                                    correction_defaults::MIN_FREQUENCY,
-                                    correction_defaults::MIN_CONFIDENCE,
-                                ) {
-                                    Ok(store_entries) if !store_entries.is_empty() => {
-                                        debug!(
-                                            "Merging {} correction-store entries into personal dictionary",
-                                            store_entries.len()
-                                        );
-                                        effective_settings.personal_dictionary =
-                                            get_merged_dictionary(
-                                                &settings.personal_dictionary,
-                                                &store_entries,
-                                            );
-                                    }
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        warn!("Failed to load corrections from store: {}", e);
-                                    }
+                                let merged = crate::correction_tracker::store::build_effective_personal_dictionary(
+                                    &settings,
+                                    correction_store.as_ref(),
+                                );
+                                if merged != settings.personal_dictionary {
+                                    debug!(
+                                        "Merged correction-store entries into personal dictionary"
+                                    );
                                 }
+                                effective_settings.personal_dictionary = merged;
                             }
 
                             // Always apply personal dictionary (including learned corrections)

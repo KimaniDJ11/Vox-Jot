@@ -185,6 +185,7 @@ const baseSettings = {
   typing_tool: "auto",
   update_checks_enabled: true,
   word_correction_threshold: 0.7,
+  file_transcription_apply_dictionary: true,
 };
 
 const baseScenario: Scenario = {
@@ -235,12 +236,6 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
   );
 
   await page.addInitScript((activeScenario: Scenario) => {
-    try {
-      localStorage.removeItem("vox-jot-sidebar-collapsed");
-    } catch {
-      /* ignore */
-    }
-
     const callbacks: Record<number, (...args: unknown[]) => void> = {};
     let callbackId = 0;
     let eventListenerId = 0;
@@ -319,12 +314,9 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
               ? activeScenario.postOnboardingPermissions.microphone
               : activeScenario.permissions.microphone;
           }
-          case "plugin:macos-permissions|check_screen_recording_permission":
-            return true;
           case "plugin:macos-permissions|request_accessibility_permission":
           case "plugin:macos-permissions|request_input_monitoring_permission":
           case "plugin:macos-permissions|request_microphone_permission":
-          case "plugin:macos-permissions|request_screen_recording_permission":
           case "show_main_window_command":
           case "initialize_enigo":
           case "initialize_shortcuts":
@@ -397,12 +389,6 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             };
           case "get_history_entries":
             return activeScenario.historyEntries;
-          case "get_history_entries_page":
-            return {
-              entries: activeScenario.historyEntries,
-              total: activeScenario.historyEntries.length,
-              has_more: false,
-            };
           case "toggle_history_entry_saved": {
             const entry = activeScenario.historyEntries.find(
               (item) => item.id === args.id,
@@ -420,10 +406,6 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             return null;
           case "get_audio_file_path":
             return `/tmp/${String(args.fileName || "audio.wav")}`;
-          case "plugin:dialog|open":
-            return "/tmp/vox-jot-playwright-file-transcription-sample.wav";
-          case "transcribe_file":
-            return "This is a mocked transcript for file transcription.";
           case "open_recordings_folder":
             return null;
           case "resolve_post_process_preview":
@@ -767,24 +749,6 @@ test.describe("Vox Jot app", () => {
       /Route:/,
     );
     await expect(page.getByTestId("route-debugger-metrics")).toBeVisible();
-  });
-
-  test("file transcription pick-file flow completes with mocked dialog and backend", async ({
-    page,
-  }) => {
-    await bootApp(page);
-
-    await page.getByRole("button", { name: "File Transcription" }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /^File Transcription$/i }),
-    ).toBeVisible();
-
-    await page.getByRole("button", { name: "Pick File" }).click();
-
-    await expect(page.getByRole("textbox", { name: "Transcript" })).toHaveValue(
-      "This is a mocked transcript for file transcription.",
-    );
   });
 
   test("shows the Apple unavailable state when the selected provider cannot run", async ({

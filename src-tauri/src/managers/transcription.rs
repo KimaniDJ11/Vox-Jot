@@ -451,7 +451,9 @@ impl TranscriptionManager {
                 };
                 let engine = match WhisperEngine::load_with_params(&model_path, params.clone()) {
                     Ok(engine) => engine,
-                    Err(err) if params.use_gpu && is_metal_backend_load_failure(&err.to_string()) => {
+                    Err(err)
+                        if params.use_gpu && is_metal_backend_load_failure(&err.to_string()) =>
+                    {
                         warn!(
                             "Whisper Metal load failed for '{}', retrying on CPU: {}",
                             model_id, err
@@ -481,9 +483,13 @@ impl TranscriptionManager {
             }
             EngineType::Parakeet => {
                 let model_path = self.model_manager.get_model_path(model_id)?;
-                let engine = ParakeetModel::load(&model_path, &Quantization::Int8).map_err(|e| {
-                    emit_loading_failure(format!("Failed to load parakeet model {}: {}", model_id, e))
-                })?;
+                let engine =
+                    ParakeetModel::load(&model_path, &Quantization::Int8).map_err(|e| {
+                        emit_loading_failure(format!(
+                            "Failed to load parakeet model {}: {}",
+                            model_id, e
+                        ))
+                    })?;
                 LoadedEngine::Parakeet(engine)
             }
             EngineType::Moonshine => {
@@ -500,26 +506,24 @@ impl TranscriptionManager {
             }
             EngineType::MoonshineStreaming => {
                 let model_path = self.model_manager.get_model_path(model_id)?;
-                let engine = StreamingModel::load(&model_path, 1, &Quantization::FP32).map_err(
-                    |e| {
+                let engine =
+                    StreamingModel::load(&model_path, 1, &Quantization::FP32).map_err(|e| {
                         emit_loading_failure(format!(
                             "Failed to load moonshine streaming model {}: {}",
                             model_id, e
                         ))
-                    },
-                )?;
+                    })?;
                 LoadedEngine::MoonshineStreaming(engine)
             }
             EngineType::SenseVoice => {
                 let model_path = self.model_manager.get_model_path(model_id)?;
-                let engine = SenseVoiceModel::load(&model_path, &Quantization::Int8).map_err(
-                    |e| {
+                let engine =
+                    SenseVoiceModel::load(&model_path, &Quantization::Int8).map_err(|e| {
                         emit_loading_failure(format!(
                             "Failed to load SenseVoice model {}: {}",
                             model_id, e
                         ))
-                    },
-                )?;
+                    })?;
                 LoadedEngine::SenseVoice(engine)
             }
             EngineType::GigaAM => {

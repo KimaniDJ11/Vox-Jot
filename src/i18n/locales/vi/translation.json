@@ -1223,7 +1223,8 @@
       "new": "New",
       "refresh": "Refresh",
       "clone": "Clone",
-      "useThisVoice": "Use This Voice"
+      "useThisVoice": "Use This Voice",
+      "generating": "Generating…"
     },
     "soundTuning": {
       "tuneTitle": "Tune the active profile and listen immediately",
@@ -1281,6 +1282,8 @@
       "selectedLabel": "Selected:",
       "outputLabel": "Transcript",
       "fileDialogLabel": "Audio / Video",
+      "applyDictionary": "Apply dictionary & learned corrections",
+      "applyDictionaryDescription": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output.",
       "errors": {
         "heading": "Transcription failed",
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",

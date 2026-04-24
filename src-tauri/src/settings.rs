@@ -757,6 +757,8 @@ pub struct AppSettings {
     pub app_tone_mappings: Vec<AppToneMapping>,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
+    #[serde(default = "default_file_transcription_apply_dictionary")]
+    pub file_transcription_apply_dictionary: bool,
     #[serde(default = "default_snippets_enabled")]
     pub snippets_enabled: bool,
     #[serde(default)]
@@ -1494,6 +1496,10 @@ fn default_correction_tracking_enabled() -> bool {
     true
 }
 
+fn default_file_transcription_apply_dictionary() -> bool {
+    true
+}
+
 fn default_snippets_enabled() -> bool {
     true
 }
@@ -2151,6 +2157,7 @@ pub fn get_default_settings() -> AppSettings {
         tone_definitions: default_tone_definitions(),
         app_tone_mappings: default_app_tone_mappings(),
         correction_tracking_enabled: default_correction_tracking_enabled(),
+        file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
         snippets_enabled: default_snippets_enabled(),
         snippets: Vec::new(),
         app_theme: default_app_theme(),

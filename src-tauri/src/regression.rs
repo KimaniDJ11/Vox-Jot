@@ -581,15 +581,16 @@ fn transcribe_audio(
                 MoonshineVariant::Base,
                 &Quantization::FP32,
             )
-                .map_err(|err| anyhow!("Failed to load Moonshine model: {}", err))?;
+            .map_err(|err| anyhow!("Failed to load Moonshine model: {}", err))?;
             let result = engine
                 .transcribe(&audio, &TranscribeOptions::default())
                 .map_err(|err| anyhow!("Moonshine transcription failed: {}", err))?;
             result.text
         }
         EngineType::MoonshineStreaming => {
-            let mut engine = StreamingModel::load(&model_runtime.model_path, 1, &Quantization::FP32)
-                .map_err(|err| anyhow!("Failed to load Moonshine streaming model: {}", err))?;
+            let mut engine =
+                StreamingModel::load(&model_runtime.model_path, 1, &Quantization::FP32)
+                    .map_err(|err| anyhow!("Failed to load Moonshine streaming model: {}", err))?;
             let result = engine
                 .transcribe_with(&audio, &MoonshineStreamingParams::default())
                 .map_err(|err| anyhow!("Moonshine streaming transcription failed: {}", err))?;

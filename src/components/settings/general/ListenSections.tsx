@@ -1656,7 +1656,7 @@ const VoiceArchitectSection: React.FC<{
                 <div className="flex items-center justify-center gap-1.5 pt-1">
                   <Loader2 className="h-3 w-3 animate-[spin_1s_linear_infinite] text-[var(--muted)]" />
                   <span className="text-xs text-[var(--muted)]">
-                    Generating…
+                    {t("listen.myVoices.generating")}
                   </span>
                 </div>
               ) : null}

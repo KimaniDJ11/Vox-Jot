@@ -608,6 +608,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
         shortcut::change_correction_tracking_enabled_setting,
+        shortcut::change_file_transcription_apply_dictionary_setting,
         shortcut::change_snippets_enabled_setting,
         shortcut::update_snippets,
         shortcut::import_snippets,

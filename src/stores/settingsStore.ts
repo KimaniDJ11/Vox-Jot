@@ -295,6 +295,8 @@ const settingUpdaters: {
     commands.changeShowTrayIconSetting(value as boolean),
   correction_tracking_enabled: (value) =>
     commands.changeCorrectionTrackingEnabledSetting(value as boolean),
+  file_transcription_apply_dictionary: (value) =>
+    commands.changeFileTranscriptionApplyDictionarySetting(value as boolean),
   snippets_enabled: (value) =>
     commands.changeSnippetsEnabledSetting(value as boolean),
   snippets: (value) => commands.updateSnippets(value as Snippet[]),

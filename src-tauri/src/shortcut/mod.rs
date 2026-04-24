@@ -1833,6 +1833,18 @@ pub fn change_correction_tracking_enabled_setting(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_file_transcription_apply_dictionary_setting(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.file_transcription_apply_dictionary = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_snippets_enabled_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.snippets_enabled = enabled;

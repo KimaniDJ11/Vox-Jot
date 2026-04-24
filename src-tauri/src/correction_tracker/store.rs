@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::{debug, info};
+use log::{debug, info, warn};
 use rusqlite::{params, Connection};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
@@ -439,6 +439,31 @@ impl CorrectionStore {
 
         info!("Imported {} corrections", imported);
         Ok(imported)
+    }
+}
+
+/// Merge manual [`crate::settings::AppSettings::personal_dictionary`] with correction-store
+/// entries using the same rules as live dictation.
+pub fn build_effective_personal_dictionary(
+    settings: &crate::settings::AppSettings,
+    store: &CorrectionStore,
+) -> Vec<crate::post_processing::DictionaryEntry> {
+    use crate::post_processing::get_merged_dictionary;
+    use crate::settings::correction_defaults;
+
+    match store.get_dictionary_entries(
+        settings.correction_tracking_enabled,
+        correction_defaults::MIN_FREQUENCY,
+        correction_defaults::MIN_CONFIDENCE,
+    ) {
+        Ok(store_entries) if !store_entries.is_empty() => {
+            get_merged_dictionary(&settings.personal_dictionary, &store_entries)
+        }
+        Ok(_) => settings.personal_dictionary.clone(),
+        Err(e) => {
+            warn!("Failed to load corrections from store: {}", e);
+            settings.personal_dictionary.clone()
+        }
     }
 }
 

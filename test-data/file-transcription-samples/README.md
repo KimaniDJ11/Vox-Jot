@@ -1,8 +1,10 @@
 # File transcription samples (Dictate)
 
 Small **spoken-English** clips to drag into **Dictate → File Transcription**.
+The generated files are checked into the repo so manual testing works without
+re-running the generator.
 
-## Generate (macOS)
+## Regenerate (macOS)
 
 Requires **ffmpeg** on your `PATH` (Homebrew: `brew install ffmpeg`).
 
@@ -22,7 +24,8 @@ This uses the built-in **`say`** voice synthesizer, then writes:
 | `sample_speech.m4a` | FFmpeg decode path (AAC) |
 | `sample_talk_head.mp4` | FFmpeg decode path (audio inside video) |
 
-Artifacts are **gitignored**; keep them locally or re-run the script anytime.
+The script overwrites the committed copies — re-run it any time you want to
+refresh the samples.
 
 ## Other sources
 

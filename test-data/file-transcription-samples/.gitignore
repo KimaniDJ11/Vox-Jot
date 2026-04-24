@@ -1,7 +1,0 @@
-# Generated locally — run ./generate.sh
-*.aiff
-*.wav
-*.mp3
-*.m4a
-*.mp4
-_tmp*

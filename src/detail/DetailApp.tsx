@@ -6,6 +6,7 @@ import {
   AppMappingsSection,
   DictateHistorySection,
   DictateModelsSection,
+  FileTranscriptionSection,
   JotPadSection,
   LearnedCorrectionsSection,
   RefineModelsSection,
@@ -57,6 +58,10 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   "jot-pad": {
     title: "Jot Pad",
     component: JotPadSection,
+  },
+  "file-transcription": {
+    title: "File Transcription",
+    component: FileTranscriptionSection,
   },
   "model-hub": {
     title: "",

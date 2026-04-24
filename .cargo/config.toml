@@ -2,3 +2,7 @@
 
 [target.aarch64-apple-darwin]
 runner = "scripts/codesign-runner.sh"
+
+[env]
+MACOSX_DEPLOYMENT_TARGET = "10.15"
+CMAKE_OSX_DEPLOYMENT_TARGET = "10.15"

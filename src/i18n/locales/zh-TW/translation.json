@@ -367,16 +367,7 @@
         "description": "按住錄製，放開停止"
       },
       "fileTranscription": {
-        "title": "Audio File Transcription",
-        "description": "Transcribe a local WAV file using your current local model.",
-        "pickFile": "Choose WAV File",
-        "transcribing": "Transcribing...",
-        "copy": "Copy Result",
-        "placeholder": "Transcription output will appear here.",
-        "errors": {
-          "failed": "Failed to transcribe file.",
-          "copyFailed": "Failed to copy transcription."
-        }
+        "movedHint": "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it."
       }
     },
     "models": {
@@ -1276,6 +1267,25 @@
       "needsReferenceAudio": "Needs reference audio",
       "audioFile": "Audio file",
       "transcript": "Transcript"
+    }
+  },
+  "dictate": {
+    "fileTranscription": {
+      "title": "File Transcription",
+      "dropHint": "Drag & drop an audio or video file here",
+      "orLabel": "or",
+      "pickFile": "Pick File",
+      "transcribing": "Transcribing…",
+      "copy": "Copy",
+      "placeholder": "Transcript appears here after processing.",
+      "selectedLabel": "Selected:",
+      "outputLabel": "Transcript",
+      "fileDialogLabel": "Audio / Video",
+      "errors": {
+        "heading": "Transcription failed",
+        "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
+        "copyFailed": "Failed to copy transcription."
+      }
     }
   }
 }

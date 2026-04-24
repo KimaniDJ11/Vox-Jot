@@ -60,7 +60,7 @@ import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { StylesSettings } from "@/components/settings/styles/StylesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
-import { FileTranscriptionCard } from "@/components/settings/general/FileTranscriptionCard";
+import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
 import {
   AutoReadbackSection as AutoReadbackPanel,
   MyVoicesSection as MyVoicesPanel,
@@ -75,9 +75,9 @@ import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledTogg
 import { AppAwareWriteProfilesToggle } from "@/components/settings/AppAwareWriteProfilesToggle";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 import UpdateChecker from "@/components/update-checker";
+import { subtleCardClassName } from "@/components/ui/subtleCard";
 
-const subtleCardClassName =
-  "rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-4 shadow-[var(--shadow-sm)]";
+export { subtleCardClassName };
 const jotPadEmptyTitle = "Start your first note";
 const jotPadEmptyDescription =
   "Dictate or type into the Jot Pad to keep thoughts handy.";
@@ -163,6 +163,14 @@ export const DictateHistorySection: React.FC = () => {
   return (
     <div className="space-y-6">
       <HistorySettings />
+    </div>
+  );
+};
+
+export const FileTranscriptionSection: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <FileTranscriptionPanel />
     </div>
   );
 };
@@ -733,13 +741,25 @@ const TranslationProviderSettingsCard: React.FC = () => {
   );
 };
 
+const FileTranscriptionHint: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className={`${subtleCardClassName} text-sm text-[var(--muted)]`}>
+      {t("settings.general.fileTranscription.movedHint", {
+        defaultValue:
+          "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it.",
+      })}
+    </div>
+  );
+};
+
 export const AISetupSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <RefineModelsSettings />
       <PostProcessingSettings omitLocalPrivacy />
       <TranslationProviderSettingsCard />
-      <FileTranscriptionCard />
+      <FileTranscriptionHint />
     </div>
   );
 };

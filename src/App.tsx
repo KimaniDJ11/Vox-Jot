@@ -12,6 +12,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import {
   AppWindow,
   Cpu,
+  FileAudio,
   FileText,
   FlaskConical,
   History,
@@ -70,6 +71,7 @@ import {
   ConvoSettingsCoachSection,
   CorrectionsSection,
   DictateHistorySection,
+  FileTranscriptionSection,
   DiagnosticsSettingsSection,
   GeneralAppSettingsSection,
   JotPadSection,
@@ -298,6 +300,13 @@ function App() {
           icon: NotebookPen,
           title: "Jot Pad",
           content: <JotPadSection />,
+        },
+        {
+          id: "file-transcription",
+          label: "File Transcription",
+          icon: FileAudio,
+          title: "File Transcription",
+          content: <FileTranscriptionSection />,
         },
       ],
       refine: [

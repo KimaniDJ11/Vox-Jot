@@ -14,22 +14,15 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use transcribe_rs::{
-    engines::{
-        gigaam::GigaAMEngine,
-        moonshine::{
-            ModelVariant, MoonshineEngine, MoonshineModelParams, MoonshineStreamingEngine,
-            StreamingModelParams,
-        },
-        parakeet::{
-            ParakeetEngine, ParakeetInferenceParams, ParakeetModelParams, TimestampGranularity,
-        },
-        sense_voice::{
-            Language as SenseVoiceLanguage, SenseVoiceEngine, SenseVoiceInferenceParams,
-            SenseVoiceModelParams,
-        },
-        whisper::{WhisperEngine, WhisperInferenceParams},
+    onnx::{
+        gigaam::GigaAMModel,
+        moonshine::{MoonshineModel, MoonshineStreamingParams, MoonshineVariant, StreamingModel},
+        parakeet::{ParakeetModel, ParakeetParams, TimestampGranularity},
+        sense_voice::{SenseVoiceModel, SenseVoiceParams},
+        Quantization,
     },
-    TranscriptionEngine,
+    whisper_cpp::{WhisperEngine, WhisperInferenceParams},
+    SpeechModel, TranscribeOptions,
 };
 
 const APP_DIR_NAME: &str = "com.iriedinamik.voxjot";
@@ -553,92 +546,79 @@ fn transcribe_audio(
 ) -> Result<String> {
     let mut result_text = match model_runtime.engine_type {
         EngineType::Whisper => {
-            let mut engine = WhisperEngine::new();
-            engine
-                .load_model(&model_runtime.model_path)
+            let mut engine = WhisperEngine::load(&model_runtime.model_path)
                 .map_err(|err| anyhow!("Failed to load Whisper model: {}", err))?;
             let result = engine
-                .transcribe_samples(
-                    audio,
-                    Some(WhisperInferenceParams {
-                        language: Some(settings.selected_language.clone()),
+                .transcribe_with(
+                    &audio,
+                    &WhisperInferenceParams {
+                        language: (settings.selected_language != "auto")
+                            .then(|| settings.selected_language.clone()),
                         translate: settings.translate_to_english,
                         ..Default::default()
-                    }),
+                    },
                 )
                 .map_err(|err| anyhow!("Whisper transcription failed: {}", err))?;
             result.text
         }
         EngineType::Parakeet => {
-            let mut engine = ParakeetEngine::new();
-            engine
-                .load_model_with_params(&model_runtime.model_path, ParakeetModelParams::int8())
+            let mut engine = ParakeetModel::load(&model_runtime.model_path, &Quantization::Int8)
                 .map_err(|err| anyhow!("Failed to load Parakeet model: {}", err))?;
             let result = engine
-                .transcribe_samples(
-                    audio,
-                    Some(ParakeetInferenceParams {
-                        timestamp_granularity: TimestampGranularity::Segment,
+                .transcribe_with(
+                    &audio,
+                    &ParakeetParams {
+                        timestamp_granularity: Some(TimestampGranularity::Segment),
                         ..Default::default()
-                    }),
+                    },
                 )
                 .map_err(|err| anyhow!("Parakeet transcription failed: {}", err))?;
             result.text
         }
         EngineType::Moonshine => {
-            let mut engine = MoonshineEngine::new();
-            engine
-                .load_model_with_params(
-                    &model_runtime.model_path,
-                    MoonshineModelParams::variant(ModelVariant::Base),
-                )
+            let mut engine = MoonshineModel::load(
+                &model_runtime.model_path,
+                MoonshineVariant::Base,
+                &Quantization::FP32,
+            )
                 .map_err(|err| anyhow!("Failed to load Moonshine model: {}", err))?;
             let result = engine
-                .transcribe_samples(audio, None)
+                .transcribe(&audio, &TranscribeOptions::default())
                 .map_err(|err| anyhow!("Moonshine transcription failed: {}", err))?;
             result.text
         }
         EngineType::MoonshineStreaming => {
-            let mut engine = MoonshineStreamingEngine::new();
-            engine
-                .load_model_with_params(&model_runtime.model_path, StreamingModelParams::default())
+            let mut engine = StreamingModel::load(&model_runtime.model_path, 1, &Quantization::FP32)
                 .map_err(|err| anyhow!("Failed to load Moonshine streaming model: {}", err))?;
             let result = engine
-                .transcribe_samples(audio, None)
+                .transcribe_with(&audio, &MoonshineStreamingParams::default())
                 .map_err(|err| anyhow!("Moonshine streaming transcription failed: {}", err))?;
             result.text
         }
         EngineType::SenseVoice => {
-            let mut engine = SenseVoiceEngine::new();
-            engine
-                .load_model_with_params(&model_runtime.model_path, SenseVoiceModelParams::int8())
+            let mut engine = SenseVoiceModel::load(&model_runtime.model_path, &Quantization::Int8)
                 .map_err(|err| anyhow!("Failed to load SenseVoice model: {}", err))?;
             let language = match settings.selected_language.as_str() {
-                "zh" | "zh-Hans" | "zh-Hant" => SenseVoiceLanguage::Chinese,
-                "en" => SenseVoiceLanguage::English,
-                "ja" => SenseVoiceLanguage::Japanese,
-                "ko" => SenseVoiceLanguage::Korean,
-                "yue" => SenseVoiceLanguage::Cantonese,
-                _ => SenseVoiceLanguage::Auto,
+                "zh" | "zh-Hans" | "zh-Hant" => Some("zh".to_string()),
+                "en" | "ja" | "ko" | "yue" => Some(settings.selected_language.clone()),
+                _ => None,
             };
             let result = engine
-                .transcribe_samples(
-                    audio,
-                    Some(SenseVoiceInferenceParams {
+                .transcribe_with(
+                    &audio,
+                    &SenseVoiceParams {
                         language,
-                        use_itn: true,
-                    }),
+                        use_itn: Some(true),
+                    },
                 )
                 .map_err(|err| anyhow!("SenseVoice transcription failed: {}", err))?;
             result.text
         }
         EngineType::GigaAM => {
-            let mut engine = GigaAMEngine::new();
-            engine
-                .load_model(&model_runtime.model_path)
+            let mut engine = GigaAMModel::load(&model_runtime.model_path, &Quantization::Int8)
                 .map_err(|err| anyhow!("Failed to load GigaAM model: {}", err))?;
             let result = engine
-                .transcribe_samples(audio, None)
+                .transcribe(&audio, &TranscribeOptions::default())
                 .map_err(|err| anyhow!("GigaAM transcription failed: {}", err))?;
             result.text
         }

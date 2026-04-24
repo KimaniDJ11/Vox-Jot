@@ -7,6 +7,9 @@ edition = "2021"
 license = "MIT"
 default-run = "vox_jot"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
+
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.
 
@@ -74,7 +77,6 @@ tar = "0.4.45"
 flate2 = "1.0"
 bzip2 = "0.5"
 zip = "0.6"
-transcribe-rs = { version = "0.2.8", features = ["whisper", "parakeet", "moonshine", "sense_voice", "gigaam"] }
 handy-keys = "0.2.2"
 ferrous-opencc = "0.3.1"
 clap = { version = "4", features = ["derive"] }
@@ -107,6 +109,7 @@ uiautomation = "0.10"
 window-vibrancy = "0.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+transcribe-rs = { version = "0.3.11", default-features = false, features = ["onnx", "whisper-cpp", "whisper-metal"] }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 accessibility = "0.1"
 accessibility-sys = "0.1"
@@ -116,9 +119,13 @@ window-vibrancy = "0.5"
 objc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+transcribe-rs = { version = "0.3.11", default-features = false, features = ["onnx", "whisper-cpp"] }
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
 gtk = "0.18"
 # atspi is not used yet (Linux field monitor is a stub)
+
+[target.'cfg(not(any(target_os = "macos", target_os = "linux")))'.dependencies]
+transcribe-rs = { version = "0.3.11", default-features = false, features = ["onnx", "whisper-cpp"] }
 
 [dev-dependencies]
 tempfile = "3"

@@ -3,6 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 
+// `baseline-browser-mapping` warns when its published data is older than two
+// months even if the project is already pinned to the latest available release.
+process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= "true";
+process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= "true";
+
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/

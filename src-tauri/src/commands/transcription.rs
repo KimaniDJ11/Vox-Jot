@@ -2,6 +2,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, write_settings, ModelUnloadTimeout};
 use serde::Serialize;
 use specta::Type;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -105,20 +106,124 @@ pub fn unload_model_manually(
         .map_err(|e| format!("Failed to unload model: {}", e))
 }
 
+fn target_triple_str() -> &'static str {
+    if cfg!(all(target_arch = "x86_64", target_os = "macos")) {
+        "x86_64-apple-darwin"
+    } else if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
+        "aarch64-apple-darwin"
+    } else if cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        "x86_64-unknown-linux-gnu"
+    } else if cfg!(all(target_arch = "aarch64", target_os = "linux")) {
+        "aarch64-unknown-linux-gnu"
+    } else if cfg!(all(target_arch = "x86_64", target_os = "windows")) {
+        "x86_64-pc-windows-msvc"
+    } else if cfg!(all(target_arch = "aarch64", target_os = "windows")) {
+        "aarch64-pc-windows-msvc"
+    } else {
+        ""
+    }
+}
+
+fn resolve_ffmpeg_exe() -> PathBuf {
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let triple = target_triple_str();
+            for name in [
+                format!("vox-jot-ffmpeg-{}{}", triple, exe_ext),
+                format!("vox-jot-ffmpeg{}", exe_ext),
+            ] {
+                let candidate = dir.join(&name);
+                if candidate.exists() {
+                    return candidate;
+                }
+            }
+        }
+    }
+    PathBuf::from(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" })
+}
+
+fn decode_with_ffmpeg_blocking(ffmpeg_exe: &Path, input_path: &str) -> Result<Vec<f32>, String> {
+    let output = std::process::Command::new(ffmpeg_exe)
+        .args([
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            input_path,
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-",
+        ])
+        .output()
+        .map_err(|e| {
+            format!(
+                "Could not run ffmpeg ({}): {}. Install ffmpeg on your PATH or bundle the sidecar.",
+                ffmpeg_exe.display(),
+                e
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "ffmpeg exited with status {:?}: {}",
+            output.status.code(),
+            stderr.trim()
+        ));
+    }
+
+    let bytes = output.stdout;
+    if bytes.is_empty() {
+        return Err("ffmpeg produced no audio data".into());
+    }
+    if bytes.len() % 4 != 0 {
+        return Err(format!(
+            "ffmpeg output byte length {} is not a multiple of 4 (f32le)",
+            bytes.len()
+        ));
+    }
+    let mut samples = Vec::with_capacity(bytes.len() / 4);
+    for chunk in bytes.chunks_exact(4) {
+        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    Ok(samples)
+}
+
 #[tauri::command]
 #[specta::specta]
-pub fn transcribe_file(
+pub async fn transcribe_file(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
     path: String,
 ) -> Result<String, String> {
-    if !path.to_ascii_lowercase().ends_with(".wav") {
-        return Err("Only WAV files are currently supported for local file transcription".into());
-    }
+    let manager = transcription_manager.inner().clone();
+    let is_wav = path.to_ascii_lowercase().ends_with(".wav");
+    let ffmpeg_exe = if is_wav {
+        None
+    } else {
+        Some(resolve_ffmpeg_exe())
+    };
 
-    let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
-    let audio_16k = resample_linear(&mono, sample_rate, 16_000);
+    tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let audio_16k = if is_wav {
+            let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
+            resample_linear(&mono, sample_rate, 16_000)
+        } else {
+            let ff = ffmpeg_exe.expect("ffmpeg path resolved for non-wav");
+            decode_with_ffmpeg_blocking(&ff, &path)?
+        };
 
-    transcription_manager
-        .transcribe(Arc::new(audio_16k))
-        .map_err(|e| format!("Failed to transcribe file: {}", e))
+        manager
+            .transcribe(Arc::new(audio_16k))
+            .map_err(|e| format!("Failed to transcribe file: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }

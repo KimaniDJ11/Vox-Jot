@@ -400,9 +400,9 @@ impl ContextCaptureManager {
                         let backoff_active = now_ms < state.next_capture_allowed_at_ms;
                         let idle_paused = settings.screen_context_pause_on_idle
                             && !requested
-                            && last_transcription_activity_ms > 0
-                            && now_ms.saturating_sub(last_transcription_activity_ms as i64)
-                                > settings.screen_context_idle_threshold_ms as i64;
+                            && (last_transcription_activity_ms == 0
+                                || now_ms.saturating_sub(last_transcription_activity_ms as i64)
+                                    > settings.screen_context_idle_threshold_ms as i64);
                         if idle_paused {
                             let changed = state.status != ContextCaptureStatus::PausedIdle;
                             state.status = ContextCaptureStatus::PausedIdle;

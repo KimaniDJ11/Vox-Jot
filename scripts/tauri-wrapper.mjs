@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
 
+process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= "true";
+process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= "true";
+
 const args = process.argv.slice(2);
 const isBuildLikeCommand = args.some(
   (arg) => arg === "build" || arg === "bundle",

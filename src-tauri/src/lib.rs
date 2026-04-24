@@ -278,6 +278,18 @@ async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
         }
     }
 
+    if !status
+        .models
+        .iter()
+        .any(|candidate| candidate.eq_ignore_ascii_case(&model))
+    {
+        log::info!(
+            "Skipping Ollama warm-up for '{}': model is not installed locally",
+            model
+        );
+        return;
+    }
+
     if let Err(e) = llm_client::warm_ollama_model(&provider, api_key, &model).await {
         log::warn!("Failed to warm Ollama model '{}': {}", model, e);
     }

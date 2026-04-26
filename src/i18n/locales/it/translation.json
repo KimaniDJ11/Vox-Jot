@@ -865,6 +865,10 @@
       "pasteDelay": {
         "title": "Ritardo incolla",
         "description": "Ritardo prima dell'invio del tasto incolla (in millisecondi). Aumentare se viene incollato il testo sbagliato."
+      },
+      "audioDucking": {
+        "label": "Audio Ducking",
+        "description": "Lower other apps' volume while recording, then restore it when recording stops."
       }
     },
     "about": {

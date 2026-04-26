@@ -1075,6 +1075,10 @@
       "pasteDelay": {
         "title": "Paste Delay",
         "description": "Delay before sending paste keystroke (in milliseconds). Increase if wrong text is being pasted."
+      },
+      "audioDucking": {
+        "label": "Audio Ducking",
+        "description": "Lower other apps' volume while recording, then restore it when recording stops."
       }
     },
     "about": {

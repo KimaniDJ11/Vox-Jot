@@ -865,6 +865,10 @@
       "pasteDelay": {
         "title": "Retraso de pegado",
         "description": "Retraso antes de enviar la pulsación de tecla de pegar (en milisegundos). Aumente si se está pegando texto incorrecto."
+      },
+      "audioDucking": {
+        "label": "Audio Ducking",
+        "description": "Lower other apps' volume while recording, then restore it when recording stops."
       }
     },
     "about": {

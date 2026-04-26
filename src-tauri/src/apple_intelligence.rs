@@ -1,6 +1,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
+use crate::helpers::subtitles::TimedSegment;
 use crate::post_processing::ActiveAppContext;
 
 // Define the response structure from Swift
@@ -19,17 +20,124 @@ pub struct FrontmostAppResponse {
     pub error_message: *mut c_char,
 }
 
+#[repr(C)]
+pub struct AppleSpeechTranscriptionResponse {
+    pub json_payload: *mut c_char,
+    pub success: c_int,
+    pub error_message: *mut c_char,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct AppleSpeechTranscriptionPayload {
+    pub text: String,
+    #[serde(default)]
+    pub segments: Vec<TimedSegment>,
+}
+
 // Link to the Swift functions
 extern "C" {
     pub fn is_apple_intelligence_available() -> c_int;
     pub fn free_apple_llm_response(response: *mut AppleLLMResponse);
     pub fn get_frontmost_app_context_apple() -> *mut FrontmostAppResponse;
     pub fn free_frontmost_app_response(response: *mut FrontmostAppResponse);
+    pub fn is_apple_speech_analyzer_available() -> c_int;
+    pub fn is_apple_speech_locale_installed(locale_identifier: *const c_char) -> c_int;
+    pub fn transcribe_with_apple_speech(
+        samples: *const f32,
+        sample_count: c_int,
+        sample_rate: c_int,
+        locale_identifier: *const c_char,
+        progressive: c_int,
+    ) -> *mut AppleSpeechTranscriptionResponse;
+    pub fn free_apple_speech_transcription_response(
+        response: *mut AppleSpeechTranscriptionResponse,
+    );
 }
 
 // Safe wrapper functions
 pub fn check_apple_intelligence_availability() -> bool {
     unsafe { is_apple_intelligence_available() == 1 }
+}
+
+pub fn check_apple_speech_analyzer_availability() -> bool {
+    unsafe { is_apple_speech_analyzer_available() == 1 }
+}
+
+/// Returns true if Apple's on-device speech model for `locale` is
+/// already installed. The Swift bridge wraps `AssetInventory` which
+/// is the only authoritative source — `SpeechTranscriber.isAvailable`
+/// is a global flag and lies for uninstalled locales (the cause of
+/// the EXC_BREAKPOINT crash we hit in production).
+pub fn is_apple_speech_locale_ready(locale_identifier: Option<&str>) -> bool {
+    let cstr = match CString::new(locale_identifier.unwrap_or("")) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    unsafe { is_apple_speech_locale_installed(cstr.as_ptr()) == 1 }
+}
+
+pub fn transcribe_with_apple_speech_analyzer(
+    audio: &[f32],
+    sample_rate: u32,
+    locale_identifier: Option<&str>,
+    progressive: bool,
+) -> Result<AppleSpeechTranscriptionPayload, String> {
+    if audio.is_empty() {
+        return Err("Apple SpeechAnalyzer received empty audio.".to_string());
+    }
+    let locale = CString::new(locale_identifier.unwrap_or(""))
+        .map_err(|err| format!("Invalid Apple Speech locale: {err}"))?;
+
+    // The Swift bridge will lazily install the language pack on the
+    // first call, which can take a long time on a slow connection.
+    // Log it so the user / debug logs make the wait visible instead of
+    // the call appearing to hang.
+    if !is_apple_speech_locale_ready(locale_identifier) {
+        log::info!(
+            "Apple Speech model for locale {:?} is not installed; the first transcription will download it (cap: 5 minutes).",
+            locale_identifier.unwrap_or("(default)")
+        );
+    }
+
+    let response_ptr = unsafe {
+        transcribe_with_apple_speech(
+            audio.as_ptr(),
+            audio.len().min(c_int::MAX as usize) as c_int,
+            sample_rate.min(c_int::MAX as u32) as c_int,
+            locale.as_ptr(),
+            if progressive { 1 } else { 0 },
+        )
+    };
+
+    if response_ptr.is_null() {
+        return Err("Null response from Apple SpeechAnalyzer".to_string());
+    }
+
+    let response = unsafe { &*response_ptr };
+    let result = if response.success == 1 {
+        if response.json_payload.is_null() {
+            Err("Apple SpeechAnalyzer returned an empty payload.".to_string())
+        } else {
+            let json = unsafe { CStr::from_ptr(response.json_payload) }
+                .to_string_lossy()
+                .into_owned();
+            serde_json::from_str::<AppleSpeechTranscriptionPayload>(&json)
+                .map_err(|err| format!("Failed to parse Apple Speech payload: {err}"))
+        }
+    } else {
+        let error_msg = if !response.error_message.is_null() {
+            unsafe { CStr::from_ptr(response.error_message) }
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            "Unknown Apple SpeechAnalyzer error".to_string()
+        };
+        Err(error_msg)
+    };
+
+    unsafe { free_apple_speech_transcription_response(response_ptr) };
+
+    result
 }
 
 pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {

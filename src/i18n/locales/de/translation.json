@@ -865,6 +865,10 @@
       "pasteDelay": {
         "title": "Einfügeverzögerung",
         "description": "Verzögerung vor dem Senden des Einfüge-Tastendrucks (in Millisekunden). Erhöhen Sie den Wert, wenn falscher Text eingefügt wird."
+      },
+      "audioDucking": {
+        "label": "Audio Ducking",
+        "description": "Lower other apps' volume while recording, then restore it when recording stops."
       }
     },
     "about": {

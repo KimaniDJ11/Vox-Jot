@@ -115,11 +115,15 @@ fn build_apple_intelligence_bridge() {
 
     const REAL_SWIFT_FILE: &str = "swift/apple_intelligence.swift";
     const STUB_SWIFT_FILE: &str = "swift/apple_intelligence_stub.swift";
+    const APPLE_SPEECH_SWIFT_FILE: &str = "swift/apple_speech.swift";
+    const APPLE_SPEECH_STUB_SWIFT_FILE: &str = "swift/apple_speech_stub.swift";
     const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
     const BRIDGE_HEADER: &str = "swift/apple_intelligence_bridge.h";
 
     println!("cargo:rerun-if-changed={REAL_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={APPLE_SPEECH_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={APPLE_SPEECH_STUB_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
@@ -127,6 +131,7 @@ fn build_apple_intelligence_bridge() {
     let object_paths = [
         out_dir.join("apple_intelligence.o"),
         out_dir.join("screen_context.o"),
+        out_dir.join("apple_speech.o"),
     ];
     let static_lib_path = out_dir.join("libapple_intelligence.a");
 
@@ -145,14 +150,20 @@ fn build_apple_intelligence_bridge() {
     let framework_path =
         Path::new(&sdk_path).join("System/Library/Frameworks/FoundationModels.framework");
     let has_foundation_models = framework_path.exists();
+    let has_speech_analyzer = sdk_supports_speech_analyzer(Path::new(&sdk_path));
 
     let source_file = if has_foundation_models {
         REAL_SWIFT_FILE
     } else {
         STUB_SWIFT_FILE
     };
+    let speech_source_file = if has_speech_analyzer {
+        APPLE_SPEECH_SWIFT_FILE
+    } else {
+        APPLE_SPEECH_STUB_SWIFT_FILE
+    };
 
-    for source in [source_file, SCREEN_CONTEXT_SWIFT_FILE] {
+    for source in [source_file, SCREEN_CONTEXT_SWIFT_FILE, speech_source_file] {
         if !Path::new(source).exists() {
             panic!("Source file {} is missing!", source);
         }
@@ -182,6 +193,7 @@ fn build_apple_intelligence_bridge() {
     for (source, object_path) in [
         (source_file, &object_paths[0]),
         (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
+        (speech_source_file, &object_paths[2]),
     ] {
         let status = Command::new("xcrun")
             .args([
@@ -245,6 +257,29 @@ fn build_apple_intelligence_bridge() {
         println!("cargo:rustc-link-arg=-weak_framework");
         println!("cargo:rustc-link-arg=FoundationModels");
     }
+    if has_speech_analyzer {
+        println!("cargo:rustc-link-arg=-weak_framework");
+        println!("cargo:rustc-link-arg=Speech");
+        println!("cargo:rustc-link-lib=framework=AVFoundation");
+    }
 
     println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn sdk_supports_speech_analyzer(sdk_path: &std::path::Path) -> bool {
+    let swiftmodule_dir =
+        sdk_path.join("System/Library/Frameworks/Speech.framework/Modules/Speech.swiftmodule");
+    let candidates = [
+        swiftmodule_dir.join("arm64-apple-macos.swiftinterface"),
+        swiftmodule_dir.join("arm64e-apple-macos.swiftinterface"),
+        swiftmodule_dir.join("Project/arm64-apple-macos.swiftsourceinfo"),
+    ];
+    candidates.iter().any(|path| {
+        std::fs::read_to_string(path)
+            .map(|content| {
+                content.contains("SpeechAnalyzer") && content.contains("SpeechTranscriber")
+            })
+            .unwrap_or(false)
+    })
 }

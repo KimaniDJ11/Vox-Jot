@@ -1,5 +1,6 @@
 use crate::audio_toolkit::{
-    list_input_devices, vad::SmoothedVad, AudioEnhancementConfig, AudioRecorder, SileroVad,
+    ducking::AudioDucker, list_input_devices, vad::SmoothedVad, AudioEnhancementConfig,
+    AudioRecorder, SileroVad,
 };
 use crate::helpers::clamshell;
 use crate::settings::{get_settings, AppSettings};
@@ -160,6 +161,7 @@ pub struct AudioRecordingManager {
     recorder: Arc<Mutex<Option<AudioRecorder>>>,
     is_open: Arc<AtomicBool>,
     is_recording: Arc<AtomicBool>,
+    audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
 }
 
@@ -182,6 +184,7 @@ impl AudioRecordingManager {
             recorder: Arc::new(Mutex::new(None)),
             is_open: Arc::new(AtomicBool::new(false)),
             is_recording: Arc::new(AtomicBool::new(false)),
+            audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
         };
 
@@ -224,9 +227,18 @@ impl AudioRecordingManager {
 
     /* ---------- microphone life-cycle -------------------------------------- */
 
-    /// Applies mute if mute_while_recording is enabled and an active recording is still running.
+    /// Applies configured output effects if an active recording is still running.
     pub fn apply_mute(&self) {
         let settings = get_settings(&self.app_handle);
+
+        if settings.audio_ducking_enabled
+            && self.is_open.load(Ordering::SeqCst)
+            && self.is_recording()
+        {
+            self.audio_ducker
+                .duck_if_recording_async(Arc::clone(&self.is_recording));
+        }
+
         if settings.mute_while_recording
             && self.is_open.load(Ordering::SeqCst)
             && self.is_recording()
@@ -237,8 +249,10 @@ impl AudioRecordingManager {
         }
     }
 
-    /// Removes mute if it was applied
+    /// Removes configured output effects if they were applied.
     pub fn remove_mute(&self) {
+        self.audio_ducker.restore_async();
+
         if self.did_mute.swap(false, Ordering::SeqCst) {
             set_mute(false);
             debug!("Mute removed");
@@ -297,6 +311,8 @@ impl AudioRecordingManager {
         if !self.is_open.load(Ordering::SeqCst) {
             return;
         }
+
+        self.audio_ducker.restore_async();
 
         if self.did_mute.swap(false, Ordering::SeqCst) {
             set_mute(false);
@@ -439,6 +455,7 @@ impl AudioRecordingManager {
                 };
 
                 self.is_recording.store(false, Ordering::SeqCst);
+                self.remove_mute();
 
                 // In on-demand mode turn the mic off again
                 if matches!(
@@ -509,6 +526,7 @@ impl AudioRecordingManager {
             }
 
             self.is_recording.store(false, Ordering::SeqCst);
+            self.remove_mute();
 
             // In on-demand mode turn the mic off again
             if matches!(

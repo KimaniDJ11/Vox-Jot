@@ -283,6 +283,8 @@ const settingUpdaters: {
     commands.updateAppToneMappings(value as AppToneMapping[]),
   mute_while_recording: (value) =>
     commands.changeMuteWhileRecordingSetting(value as boolean),
+  audio_ducking_enabled: (value) =>
+    commands.changeAudioDuckingSetting(value as boolean),
   append_trailing_space: (value) =>
     commands.changeAppendTrailingSpaceSetting(value as boolean),
   log_level: (value) => commands.setLogLevel((value ?? "info") as LogLevel),

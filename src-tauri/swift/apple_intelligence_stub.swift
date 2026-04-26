@@ -80,3 +80,4 @@ public func freeFrontmostAppResponse(_ response: UnsafeMutablePointer<FrontmostA
 
     response.deallocate()
 }
+

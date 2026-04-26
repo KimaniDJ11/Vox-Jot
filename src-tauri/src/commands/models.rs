@@ -272,6 +272,18 @@ fn stt_provider_meta(
             "mlx-audio",
             "Shared mlx-audio sidecar",
         ),
+        EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => (
+            "stt_apple_speech",
+            "Apple Speech",
+            "macOS Speech framework",
+            "Apple SpeechAnalyzer",
+        ),
+        EngineType::WhisperKitStreaming => (
+            "stt_whisperkit",
+            "WhisperKit",
+            "WhisperKit helper",
+            "WhisperKit streaming runtime",
+        ),
     }
 }
 
@@ -315,6 +327,8 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
         "stt_parakeet",
         "stt_moonshine",
         "stt_moonshine_streaming",
+        "stt_apple_speech",
+        "stt_whisperkit",
         "stt_sensevoice",
         "stt_gigaam",
         "stt_qwen",
@@ -348,7 +362,12 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     loadable: true,
                     local_only: true,
                     supports_translation: model.supports_translation,
-                    supports_streaming: matches!(model.engine_type, EngineType::MoonshineStreaming),
+                    supports_streaming: matches!(
+                        model.engine_type,
+                        EngineType::MoonshineStreaming
+                            | EngineType::AppleSpeechStreaming
+                            | EngineType::WhisperKitStreaming
+                    ),
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,
@@ -395,7 +414,12 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     loadable: true,
                     local_only: true,
                     supports_translation: model.supports_translation,
-                    supports_streaming: matches!(model.engine_type, EngineType::MoonshineStreaming),
+                    supports_streaming: matches!(
+                        model.engine_type,
+                        EngineType::MoonshineStreaming
+                            | EngineType::AppleSpeechStreaming
+                            | EngineType::WhisperKitStreaming
+                    ),
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
                     supports_inline_tags: false,

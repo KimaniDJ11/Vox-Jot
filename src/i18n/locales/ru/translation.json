@@ -865,6 +865,10 @@
       "pasteDelay": {
         "title": "Задержка вставки",
         "description": "Задержка перед отправкой нажатия клавиши вставки (в миллисекундах). Увеличьте, если вставляется неправильный текст."
+      },
+      "audioDucking": {
+        "label": "Audio Ducking",
+        "description": "Lower other apps' volume while recording, then restore it when recording stops."
       }
     },
     "about": {

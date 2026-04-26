@@ -190,6 +190,9 @@ const ENGINE_TO_PROVIDER: Record<EngineType, string> = {
   GigaAM: "stt_gigaam",
   QwenAudio: "stt_qwen",
   MlxAudioStt: "stt_mlx_audio",
+  AppleSpeech: "apple",
+  AppleSpeechStreaming: "apple",
+  WhisperKitStreaming: "stt_whisperkit",
 };
 
 export function engineTypeToProviderId(engineType: EngineType): string {

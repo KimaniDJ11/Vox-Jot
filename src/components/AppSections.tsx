@@ -53,6 +53,7 @@ import { PasteDelay } from "@/components/settings/debug/PasteDelay";
 import { WordCorrectionThreshold } from "@/components/settings/debug/WordCorrectionThreshold";
 import { SoundPicker } from "@/components/settings/SoundPicker";
 import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
+import { AudioDucking } from "@/components/settings/AudioDucking";
 import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
@@ -571,6 +572,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
         <MuteWhileRecording descriptionMode="tooltip" grouped={true} />
+        <AudioDucking descriptionMode="tooltip" grouped={true} />
         <AudioFeedback descriptionMode="tooltip" grouped={true} />
         <VolumeSlider disabled={!audioFeedbackEnabled} />
         <ShowOverlay descriptionMode="tooltip" grouped={true} />

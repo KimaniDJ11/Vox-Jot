@@ -27,10 +27,19 @@ pub enum EngineType {
     GigaAM,
     QwenAudio,
     MlxAudioStt,
+    AppleSpeech,
+    AppleSpeechStreaming,
+    WhisperKitStreaming,
 }
 
 pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
-    matches!(engine_type, EngineType::MlxAudioStt)
+    matches!(
+        engine_type,
+        EngineType::MlxAudioStt
+            | EngineType::AppleSpeech
+            | EngineType::AppleSpeechStreaming
+            | EngineType::WhisperKitStreaming
+    )
 }
 
 pub fn model_is_available(model: &ModelInfo) -> bool {
@@ -85,6 +94,8 @@ impl ModelManager {
             EngineType::GigaAM => "stt_gigaam",
             EngineType::QwenAudio => "stt_qwen",
             EngineType::MlxAudioStt => "stt_mlx_audio",
+            EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => "stt_apple_speech",
+            EngineType::WhisperKitStreaming => "stt_whisperkit",
         }
     }
 
@@ -259,6 +270,81 @@ impl ModelManager {
         .into_iter()
         .map(String::from)
         .collect();
+
+        available_models.insert(
+            "apple-speech-analyzer".to_string(),
+            ModelInfo {
+                id: "apple-speech-analyzer".to_string(),
+                name: "Apple Speech".to_string(),
+                description:
+                    "Built-in Apple SpeechAnalyzer engine. Requires macOS 26 and no Vox Jot model download."
+                        .to_string(),
+                filename: "apple-speech-analyzer".to_string(),
+                url: None,
+                size_mb: 0,
+                is_downloaded: cfg!(target_os = "macos"),
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::AppleSpeech,
+                accuracy_score: 0.78,
+                speed_score: 0.85,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "apple-speech-progressive".to_string(),
+            ModelInfo {
+                id: "apple-speech-progressive".to_string(),
+                name: "Apple Speech (Progressive)".to_string(),
+                description:
+                    "Built-in Apple SpeechAnalyzer progressive preset for faster partial-style results. Requires macOS 26."
+                        .to_string(),
+                filename: "apple-speech-progressive".to_string(),
+                url: None,
+                size_mb: 0,
+                is_downloaded: cfg!(target_os = "macos"),
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::AppleSpeechStreaming,
+                accuracy_score: 0.76,
+                speed_score: 0.90,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
+            "whisperkit-streaming".to_string(),
+            ModelInfo {
+                id: "whisperkit-streaming".to_string(),
+                name: "WhisperKit Streaming".to_string(),
+                description:
+                    "WhisperKit-compatible streaming engine. Requires a bundled helper or VOX_JOT_WHISPERKIT_HELPER."
+                        .to_string(),
+                filename: "whisperkit-streaming".to_string(),
+                url: None,
+                size_mb: 0,
+                is_downloaded: cfg!(target_os = "macos"),
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::WhisperKitStreaming,
+                accuracy_score: 0.82,
+                speed_score: 0.78,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
 
         // TODO this should be read from a JSON file or something..
         available_models.insert(
@@ -1070,11 +1156,15 @@ impl ModelManager {
 
         for model in models.values_mut() {
             if engine_uses_remote_runtime(&model.engine_type) {
-                let model_path = self.models_dir.join(&model.filename);
-                model.is_downloaded = if model.is_directory {
-                    model_path.is_dir()
+                model.is_downloaded = if model.url.is_none() && model.size_mb == 0 {
+                    true
                 } else {
-                    model_path.is_file()
+                    let model_path = self.models_dir.join(&model.filename);
+                    if model.is_directory {
+                        model_path.is_dir()
+                    } else {
+                        model_path.is_file()
+                    }
                 };
                 model.is_downloading = false;
                 model.partial_size = 0;

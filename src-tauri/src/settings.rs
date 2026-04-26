@@ -723,6 +723,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
+    pub audio_ducking_enabled: bool,
+    #[serde(default)]
     pub append_trailing_space: bool,
     #[serde(default = "default_app_language")]
     pub app_language: String,
@@ -2198,6 +2200,7 @@ pub fn get_default_settings() -> AppSettings {
             .map(|prompt| prompt.id.clone()),
         post_process_prompt_policy_version: default_post_process_prompt_policy_version(),
         mute_while_recording: false,
+        audio_ducking_enabled: false,
         append_trailing_space: false,
         app_language: default_app_language(),
         global_language_sync_enabled: default_global_language_sync_enabled(),

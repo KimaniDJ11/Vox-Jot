@@ -26,6 +26,12 @@ typedef struct {
     char* error_message; // Only valid when success = 0
 } ScreenContextCaptureResponse;
 
+typedef struct {
+    char* json_payload;
+    int success; // 0 for failure, 1 for success
+    char* error_message; // Only valid when success = 0
+} AppleSpeechTranscriptionResponse;
+
 // Check if Apple Intelligence is available on the device
 int is_apple_intelligence_available(void);
 
@@ -49,6 +55,21 @@ ScreenContextCaptureResponse* capture_screen_context_apple(const char* quality_m
 
 // Free memory allocated by the screen context capture response.
 void free_screen_context_capture_response(ScreenContextCaptureResponse* response);
+
+// Check whether Apple SpeechAnalyzer transcription is available.
+int is_apple_speech_analyzer_available(void);
+
+// Transcribe mono f32 PCM audio with Apple's SpeechAnalyzer.
+AppleSpeechTranscriptionResponse* transcribe_with_apple_speech(
+    const float* samples,
+    int sample_count,
+    int sample_rate,
+    const char* locale_identifier,
+    int progressive
+);
+
+// Free memory allocated by an Apple Speech transcription response.
+void free_apple_speech_transcription_response(AppleSpeechTranscriptionResponse* response);
 
 #ifdef __cplusplus
 }

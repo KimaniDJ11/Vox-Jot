@@ -594,6 +594,14 @@ impl ConvoController {
             "recording_devices_settings"
         );
         entry!(
+            "audio_ducking_enabled",
+            "Audio Ducking",
+            "Lower other apps' volume while recording.",
+            settings.audio_ducking_enabled,
+            "Recording",
+            "recording_devices_settings"
+        );
+        entry!(
             "start_hidden",
             "Start Hidden",
             "Launch the app without showing the main window.",

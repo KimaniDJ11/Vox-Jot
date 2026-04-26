@@ -767,6 +767,65 @@ pub struct AppSettings {
     pub app_theme: String,
     #[serde(default)]
     pub continuous_improvement_hq_capture: bool,
+    /// Folders Vox Jot watches; new audio files dropped into these are
+    /// auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
+    #[serde(default)]
+    pub watch_folders: Vec<WatchFolderConfig>,
+    /// Whether the loopback HTTP API server is enabled. Off by default;
+    /// flipping this on starts an `axum` server on `127.0.0.1` so the
+    /// `vox-jot` CLI and other tools can drive transcription externally.
+    #[serde(default)]
+    pub http_api_enabled: bool,
+    /// Port the loopback API binds to when `http_api_enabled` is true.
+    #[serde(default = "default_http_api_port")]
+    pub http_api_port: u16,
+}
+
+fn default_http_api_port() -> u16 {
+    8978
+}
+
+/// Output format for files written by the watch-folder service.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum WatchFolderOutputFormat {
+    /// Plain transcript next to the source file as `<basename>.txt`.
+    Text,
+    /// SubRip subtitles (`.srt`); only meaningful when the engine
+    /// produced timed segments (Whisper / Parakeet today).
+    Srt,
+    /// WebVTT subtitles (`.vtt`); same caveat as SRT.
+    Vtt,
+}
+
+impl Default for WatchFolderOutputFormat {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+/// One watched folder entry. The `id` is generated client-side (uuid)
+/// so settings writes from the UI never collide with concurrent watcher
+/// events for the same folder.
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+pub struct WatchFolderConfig {
+    pub id: String,
+    pub path: String,
+    #[serde(default)]
+    pub output_format: WatchFolderOutputFormat,
+    /// When true, the source audio file is deleted after a successful
+    /// transcription. Defaults to false because losing recordings to a
+    /// silent typo would be very bad.
+    #[serde(default)]
+    pub delete_after: bool,
+    /// Soft on/off for the row in the UI. The watcher service skips
+    /// disabled rows entirely so users can pause without removing them.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_app_theme() -> String {
@@ -2162,6 +2221,9 @@ pub fn get_default_settings() -> AppSettings {
         snippets: Vec::new(),
         app_theme: default_app_theme(),
         continuous_improvement_hq_capture: false,
+        watch_folders: Vec::new(),
+        http_api_enabled: false,
+        http_api_port: default_http_api_port(),
     }
 }
 

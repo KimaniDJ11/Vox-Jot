@@ -1,13 +1,17 @@
 use crate::correction_tracker::store::CorrectionStore;
+use crate::helpers::subtitles::{to_srt, to_vtt, TimedSegment};
 use crate::managers::transcription::TranscriptionManager;
-use crate::settings::{get_settings, write_settings, ModelUnloadTimeout};
+use crate::managers::watch_folders::WatchFolderManager;
+use crate::settings::{
+    get_settings, write_settings, ModelUnloadTimeout, WatchFolderConfig, WatchFolderOutputFormat,
+};
 use serde::Serialize;
 use specta::Type;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
-fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
+pub(crate) fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
     if samples.is_empty() || source_rate == target_rate {
         return samples.to_vec();
     }
@@ -33,7 +37,7 @@ fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f
     output
 }
 
-fn read_wav_as_mono_f32(path: &str) -> Result<(Vec<f32>, u32), String> {
+pub(crate) fn read_wav_as_mono_f32(path: &str) -> Result<(Vec<f32>, u32), String> {
     let mut reader = hound::WavReader::open(path)
         .map_err(|e| format!("Failed to open WAV file '{}': {}", path, e))?;
     let spec = reader.spec();
@@ -125,7 +129,7 @@ fn target_triple_str() -> &'static str {
     }
 }
 
-fn resolve_ffmpeg_exe() -> PathBuf {
+pub(crate) fn resolve_ffmpeg_exe() -> PathBuf {
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
@@ -148,7 +152,10 @@ fn resolve_ffmpeg_exe() -> PathBuf {
     })
 }
 
-fn decode_with_ffmpeg_blocking(ffmpeg_exe: &Path, input_path: &str) -> Result<Vec<f32>, String> {
+pub(crate) fn decode_with_ffmpeg_blocking(
+    ffmpeg_exe: &Path,
+    input_path: &str,
+) -> Result<Vec<f32>, String> {
     let output = std::process::Command::new(ffmpeg_exe)
         .args([
             "-nostdin",
@@ -202,6 +209,16 @@ fn decode_with_ffmpeg_blocking(ffmpeg_exe: &Path, input_path: &str) -> Result<Ve
     Ok(samples)
 }
 
+/// Return type for `transcribe_file`. `segments` is empty when the
+/// underlying engine did not expose timestamps (Moonshine/GigaAM/MLX
+/// today). The frontend uses an empty list as the signal to disable
+/// SRT/WebVTT export buttons.
+#[derive(Serialize, Type)]
+pub struct TranscriptionFileResult {
+    pub text: String,
+    pub segments: Vec<TimedSegment>,
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn transcribe_file(
@@ -209,7 +226,7 @@ pub async fn transcribe_file(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
     correction_store: State<'_, Arc<CorrectionStore>>,
     path: String,
-) -> Result<String, String> {
+) -> Result<TranscriptionFileResult, String> {
     let manager = transcription_manager.inner().clone();
     let is_wav = path.to_ascii_lowercase().ends_with(".wav");
     let ffmpeg_exe = if is_wav {
@@ -218,39 +235,167 @@ pub async fn transcribe_file(
         Some(resolve_ffmpeg_exe())
     };
 
-    let raw = tokio::task::spawn_blocking(move || -> Result<String, String> {
-        let audio_16k = if is_wav {
-            let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
-            resample_linear(&mono, sample_rate, 16_000)
-        } else {
-            let ff = ffmpeg_exe.expect("ffmpeg path resolved for non-wav");
-            decode_with_ffmpeg_blocking(&ff, &path)?
-        };
+    let (raw_text, raw_segments) =
+        tokio::task::spawn_blocking(move || -> Result<(String, Vec<TimedSegment>), String> {
+            let audio_16k = if is_wav {
+                let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
+                resample_linear(&mono, sample_rate, 16_000)
+            } else {
+                let ff = ffmpeg_exe.expect("ffmpeg path resolved for non-wav");
+                decode_with_ffmpeg_blocking(&ff, &path)?
+            };
 
-        manager
-            .transcribe(Arc::new(audio_16k))
-            .map_err(|e| format!("Failed to transcribe file: {}", e))
-    })
-    .await
-    .map_err(|e| format!("Task join error: {}", e))??;
+            manager
+                .transcribe_with_segments(Arc::new(audio_16k))
+                .map_err(|e| format!("Failed to transcribe file: {}", e))
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
 
     let settings = get_settings(&app);
-    let mut text = raw;
+    let mut text = raw_text;
     if let Some(converted) = crate::actions::maybe_convert_chinese_variant(&settings, &text).await {
         text = converted;
     }
 
-    if !settings.file_transcription_apply_dictionary {
-        return Ok(text);
+    if settings.file_transcription_apply_dictionary {
+        let dict_entries = crate::correction_tracker::store::build_effective_personal_dictionary(
+            &settings,
+            correction_store.inner().as_ref(),
+        );
+        if !dict_entries.is_empty() {
+            let dict_result =
+                crate::post_processing::apply_personal_dictionary(&text, &dict_entries);
+            text = dict_result.text;
+        }
     }
 
-    let dict_entries = crate::correction_tracker::store::build_effective_personal_dictionary(
-        &settings,
-        correction_store.inner().as_ref(),
-    );
-    if dict_entries.is_empty() {
-        return Ok(text);
+    Ok(TranscriptionFileResult {
+        text,
+        segments: raw_segments,
+    })
+}
+
+/// Render `segments` as SubRip (`.srt`) text and write it to `path`.
+///
+/// The frontend chooses the path via the standard save dialog so the user
+/// retains full control over where files land. Returns the byte count
+/// written for the in-app toast message.
+#[tauri::command]
+#[specta::specta]
+pub fn export_subtitles_srt(segments: Vec<TimedSegment>, path: String) -> Result<usize, String> {
+    let body = to_srt(&segments);
+    std::fs::write(&path, &body)
+        .map_err(|e| format!("Failed to write SRT file '{}': {}", path, e))?;
+    Ok(body.len())
+}
+
+/// Render `segments` as WebVTT (`.vtt`) text and write it to `path`.
+#[tauri::command]
+#[specta::specta]
+pub fn export_subtitles_vtt(segments: Vec<TimedSegment>, path: String) -> Result<usize, String> {
+    let body = to_vtt(&segments);
+    std::fs::write(&path, &body)
+        .map_err(|e| format!("Failed to write VTT file '{}': {}", path, e))?;
+    Ok(body.len())
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Watch folders (auto-transcribe files dropped into chosen folders).
+// All commands persist via `write_settings`, then ask the manager to
+// rebuild its watch list on the next tick. The watcher itself runs on a
+// background supervisor thread spun up at startup in `lib.rs`.
+// ─────────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_watch_folders(app: AppHandle) -> Result<Vec<WatchFolderConfig>, String> {
+    Ok(get_settings(&app).watch_folders)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn add_watch_folder(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    path: String,
+    output_format: WatchFolderOutputFormat,
+    delete_after: bool,
+) -> Result<WatchFolderConfig, String> {
+    if !Path::new(&path).is_dir() {
+        return Err(format!("'{}' is not a folder", path));
     }
-    let dict_result = crate::post_processing::apply_personal_dictionary(&text, &dict_entries);
-    Ok(dict_result.text)
+    let mut settings = get_settings(&app);
+    if settings.watch_folders.iter().any(|f| f.path == path) {
+        return Err(format!("'{}' is already being watched", path));
+    }
+    let cfg = WatchFolderConfig {
+        id: uuid::Uuid::new_v4().to_string(),
+        path,
+        output_format,
+        delete_after,
+        enabled: true,
+    };
+    settings.watch_folders.push(cfg.clone());
+    write_settings(&app, settings);
+    watch_manager.reload_from_settings();
+    Ok(cfg)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn remove_watch_folder(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    id: String,
+) -> Result<(), String> {
+    let mut settings = get_settings(&app);
+    let before = settings.watch_folders.len();
+    settings.watch_folders.retain(|f| f.id != id);
+    if settings.watch_folders.len() == before {
+        return Err(format!("watch folder {} not found", id));
+    }
+    write_settings(&app, settings);
+    watch_manager.reload_from_settings();
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_watch_folder_enabled(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = get_settings(&app);
+    let folder = settings
+        .watch_folders
+        .iter_mut()
+        .find(|f| f.id == id)
+        .ok_or_else(|| format!("watch folder {} not found", id))?;
+    folder.enabled = enabled;
+    write_settings(&app, settings);
+    watch_manager.reload_from_settings();
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_watch_folder_format(
+    app: AppHandle,
+    watch_manager: State<'_, Arc<WatchFolderManager>>,
+    id: String,
+    output_format: WatchFolderOutputFormat,
+) -> Result<(), String> {
+    let mut settings = get_settings(&app);
+    let folder = settings
+        .watch_folders
+        .iter_mut()
+        .find(|f| f.id == id)
+        .ok_or_else(|| format!("watch folder {} not found", id))?;
+    folder.output_format = output_format;
+    write_settings(&app, settings);
+    watch_manager.reload_from_settings();
+    Ok(())
 }

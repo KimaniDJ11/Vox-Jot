@@ -19,7 +19,7 @@
     "dataPrivacy": "隱私與資料",
     "experimental": "實驗室",
     "ollama": "LLM Models",
-    "corrections": "Dictionary",
+    "corrections": "Corrections",
     "snippets": "片語快速鍵",
     "styles": "寫作設定",
     "history": "歷史紀錄",
@@ -897,7 +897,7 @@
       }
     },
     "corrections": {
-      "title": "Dictionary",
+      "title": "Auto-Corrections",
       "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
       "tracking": {
         "label": "Correction Tracking",
@@ -1036,6 +1036,17 @@
       "latestContextAgeUnavailable": "Unavailable",
       "debugPreviewTitle": "Latest OCR preview (debug)",
       "debugPreviewEmpty": "No cached OCR snippet yet."
+    },
+    "diagnostics": {
+      "localApi": {
+        "label": "Enable local API",
+        "description": "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — never reachable from the network.",
+        "copyUrl": "Copy URL",
+        "port": "Port",
+        "portHint": "Restart applies on blur.",
+        "errorPrefix": "API error:",
+        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt"
+      }
     }
   },
   "footer": {
@@ -1287,8 +1298,25 @@
       "errors": {
         "heading": "Transcription failed",
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
-        "copyFailed": "Failed to copy transcription."
-      }
+        "copyFailed": "Failed to copy transcription.",
+        "exportFailed": "Failed to export subtitles."
+      },
+      "exportSrt": "Save .srt",
+      "exportVtt": "Save .vtt",
+      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export."
+    },
+    "watchFolders": {
+      "title": "Watched folders",
+      "description": "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
+      "add": "Add folder",
+      "empty": "No folders yet. Add one to get started.",
+      "remove": "Remove folder",
+      "toggleAria": "Enable or disable this watched folder",
+      "formatText": "Text",
+      "formatSrt": "SRT",
+      "formatVtt": "VTT",
+      "formatAria": "Output format",
+      "recentActivity": "Recent activity"
     }
   }
 }

@@ -1,8 +1,18 @@
-use clap::Parser;
+use clap::{Parser, Subcommand, ValueEnum};
 
+/// Top-level CLI for Vox Jot.
+///
+/// Without a subcommand the binary launches the GUI as before. With a
+/// subcommand it acts as a thin HTTP client that talks to the loopback
+/// API (see `http_api/`) on the running app instance and exits without
+/// ever opening a window.
 #[derive(Parser, Debug, Clone, Default)]
 #[command(name = "vox_jot", about = "Vox Jot - Speech to Text")]
 pub struct CliArgs {
+    /// Optional subcommand. Omit to launch the GUI.
+    #[command(subcommand)]
+    pub command: Option<CliCommand>,
+
     /// Start with the main window hidden
     #[arg(long)]
     pub start_hidden: bool,
@@ -50,4 +60,50 @@ pub struct CliArgs {
     /// Skip LLM post-processing during regression runs
     #[arg(long)]
     pub regression_skip_post_process: bool,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum CliCommand {
+    /// Transcribe an audio file via the running Vox Jot instance.
+    ///
+    /// Requires the local API to be enabled in
+    /// Settings → Diagnostics. Use `-` as the path to read WAV from
+    /// stdin (e.g. `cat audio.wav | vox-jot transcribe -`).
+    Transcribe {
+        /// Path to a WAV file, or `-` to read WAV from stdin.
+        path: String,
+
+        /// Output format. Defaults to plain text on stdout.
+        #[arg(long, value_enum, default_value_t = CliOutputFormat::Text)]
+        format: CliOutputFormat,
+
+        /// ISO language code hint (currently informational; honored when
+        /// the server-side engine supports it).
+        #[arg(long)]
+        language: Option<String>,
+    },
+
+    /// List the speech-to-text models the running app currently knows
+    /// about, plus which one is loaded.
+    Models {
+        /// Emit JSON instead of human-readable text.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Probe the local API and print version + status. Useful as a
+    /// quick "is the app running with the API on?" check from scripts.
+    Health,
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+pub enum CliOutputFormat {
+    /// Plain transcript on stdout.
+    Text,
+    /// Full JSON `{ text, segments }` payload on stdout.
+    Json,
+    /// SubRip subtitles on stdout.
+    Srt,
+    /// WebVTT subtitles on stdout.
+    Vtt,
 }

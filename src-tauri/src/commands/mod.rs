@@ -2,6 +2,7 @@ pub mod audio;
 pub mod convo;
 pub mod corrections;
 pub mod history;
+pub mod http_api;
 pub mod models;
 pub mod notes;
 pub mod stats;

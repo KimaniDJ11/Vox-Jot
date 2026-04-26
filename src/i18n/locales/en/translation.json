@@ -65,6 +65,9 @@
       "pickFile": "Pick File",
       "transcribing": "Transcribing…",
       "copy": "Copy",
+      "exportSrt": "Save .srt",
+      "exportVtt": "Save .vtt",
+      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export.",
       "placeholder": "Transcript appears here after processing.",
       "selectedLabel": "Selected:",
       "outputLabel": "Transcript",
@@ -74,8 +77,22 @@
       "errors": {
         "heading": "Transcription failed",
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
-        "copyFailed": "Failed to copy transcription."
+        "copyFailed": "Failed to copy transcription.",
+        "exportFailed": "Failed to export subtitles."
       }
+    },
+    "watchFolders": {
+      "title": "Watched folders",
+      "description": "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
+      "add": "Add folder",
+      "empty": "No folders yet. Add one to get started.",
+      "remove": "Remove folder",
+      "toggleAria": "Enable or disable this watched folder",
+      "formatText": "Text",
+      "formatSrt": "SRT",
+      "formatVtt": "VTT",
+      "formatAria": "Output format",
+      "recentActivity": "Recent activity"
     }
   },
   "tray": {
@@ -331,6 +348,17 @@
     }
   },
   "settings": {
+    "diagnostics": {
+      "localApi": {
+        "label": "Enable local API",
+        "description": "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — never reachable from the network.",
+        "copyUrl": "Copy URL",
+        "port": "Port",
+        "portHint": "Restart applies on blur.",
+        "errorPrefix": "API error:",
+        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt"
+      }
+    },
     "corrections": {
       "title": "Dictionary",
       "description": "Manage the words, spellings, and learned corrections that shape how Vox Jot transcribes for you.",

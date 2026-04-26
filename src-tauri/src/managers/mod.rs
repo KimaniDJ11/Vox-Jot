@@ -5,3 +5,4 @@ pub mod history;
 pub mod model;
 pub mod notes;
 pub mod transcription;
+pub mod watch_folders;

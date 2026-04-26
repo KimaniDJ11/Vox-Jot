@@ -44,6 +44,7 @@ import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
 import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
+import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
 import { CorrectionTrackingToggle } from "@/components/settings/CorrectionTrackingToggle";
 import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
 import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
@@ -813,6 +814,10 @@ export const DiagnosticsSettingsSection: React.FC = () => {
             grouped={true}
           />
         ) : null}
+      </SettingsGroup>
+
+      <SettingsGroup title="Local API">
+        <LocalApiToggle grouped={true} />
       </SettingsGroup>
 
       {debugMode ? (

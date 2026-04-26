@@ -15,6 +15,7 @@ mod audio_feedback;
 mod audio_playback;
 pub mod audio_toolkit;
 pub mod cli;
+pub mod cli_client;
 mod clipboard;
 mod commands;
 mod convo;
@@ -22,6 +23,7 @@ mod correction_tracker;
 mod detail_view;
 mod github_release;
 mod helpers;
+mod http_api;
 mod input;
 mod llm_client;
 mod managers;
@@ -64,6 +66,7 @@ use correction_tracker::recent_input::RecentInputTracker;
 use correction_tracker::store::CorrectionStore;
 use correction_tracker::InsertedSpanTracker;
 use env_filter::Builder as EnvFilterBuilder;
+use http_api::HttpApiManager;
 use managers::audio::AudioRecordingManager;
 use managers::continuous_cloning::ContinuousCloningManager;
 use managers::convo::ConvoController;
@@ -71,6 +74,7 @@ use managers::history::HistoryManager;
 use managers::model::ModelManager;
 use managers::notes::NotesManager;
 use managers::transcription::TranscriptionManager;
+use managers::watch_folders::WatchFolderManager;
 use post_processing::PreviewManager;
 #[cfg(unix)]
 use signal_hook::consts::{SIGUSR1, SIGUSR2};
@@ -320,6 +324,8 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     let sidecar_manager = Arc::new(SidecarManager::new(app_handle));
     let convo_controller = Arc::new(ConvoController::new(app_handle));
     let context_capture_manager = Arc::new(ContextCaptureManager::new(app_handle));
+    let watch_folder_manager = WatchFolderManager::new(app_handle);
+    let http_api_manager = HttpApiManager::new(app_handle);
 
     // Pre-warm the system voice cache in a background thread so the first
     // UI request returns instantly instead of spawning a subprocess.
@@ -341,8 +347,48 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     app_handle.manage(sidecar_manager.clone());
     app_handle.manage(convo_controller.clone());
     app_handle.manage(context_capture_manager.clone());
+    app_handle.manage(watch_folder_manager.clone());
+    app_handle.manage(http_api_manager.clone());
     app_handle.manage(ScratchpadRoutingState::default());
     app_handle.manage(DetailViewRoutingState::default());
+
+    // The watch-folders supervisor reads `settings.watch_folders` lazily
+    // when its config_version bumps. We bump it once at startup so it
+    // picks up any folders persisted from a previous session, and again
+    // on every `settings-changed` event so the UI's Add/Remove
+    // operations take effect without needing a restart.
+    watch_folder_manager.reload_from_settings();
+    {
+        let watch_clone = watch_folder_manager.clone();
+        let http_api_clone = http_api_manager.clone();
+        let app_for_listener = app_handle.clone();
+        app_handle.listen("settings-changed", move |_| {
+            watch_clone.reload_from_settings();
+            // The HTTP API toggle lives in settings; sync the running
+            // server with the current setting whenever the user flips it.
+            let http_api = http_api_clone.clone();
+            let app = app_for_listener.clone();
+            tauri::async_runtime::spawn(async move {
+                let s = settings::get_settings(&app);
+                if s.http_api_enabled {
+                    http_api.start(s.http_api_port).await;
+                } else {
+                    http_api.stop().await;
+                }
+            });
+        });
+    }
+
+    // Honor the saved http_api_enabled preference at boot.
+    {
+        let http_api = http_api_manager.clone();
+        let startup_settings = settings::get_settings(app_handle);
+        if startup_settings.http_api_enabled {
+            tauri::async_runtime::spawn(async move {
+                http_api.start(startup_settings.http_api_port).await;
+            });
+        }
+    }
 
     warm_selected_stt_engine(app_handle, &model_manager, &transcription_manager);
 
@@ -692,6 +738,16 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::get_model_load_status,
         commands::transcription::unload_model_manually,
         commands::transcription::transcribe_file,
+        commands::transcription::export_subtitles_srt,
+        commands::transcription::export_subtitles_vtt,
+        commands::transcription::list_watch_folders,
+        commands::transcription::add_watch_folder,
+        commands::transcription::remove_watch_folder,
+        commands::transcription::set_watch_folder_enabled,
+        commands::transcription::update_watch_folder_format,
+        commands::http_api::set_http_api_enabled,
+        commands::http_api::set_http_api_port,
+        commands::http_api::get_http_api_status,
         commands::history::get_history_entries,
         commands::history::get_history_entries_page,
         commands::history::get_latest_history_entry,

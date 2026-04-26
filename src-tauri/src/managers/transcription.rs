@@ -1,4 +1,5 @@
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
+use crate::helpers::subtitles::TimedSegment;
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::continuous_cloning::ContinuousCloningManager;
 use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
@@ -567,12 +568,56 @@ impl TranscriptionManager {
         Ok(loaded_engine)
     }
 
+    /// Run the engine and return ONLY the final post-processed text.
+    ///
+    /// This is the dictation hot path — it must stay free of any extra
+    /// allocations (e.g. segments) so per-recording latency does not change.
+    /// File transcription that needs SRT/WebVTT calls
+    /// `transcribe_with_loaded_engine_segments` instead.
     fn transcribe_with_loaded_engine(
         engine: &mut LoadedEngine,
         audio: Vec<f32>,
         settings: &AppSettings,
     ) -> Result<String> {
-        let result = match engine {
+        Self::transcribe_with_loaded_engine_inner(engine, audio, settings, false)
+            .map(|(text, _)| text)
+    }
+
+    /// Same as `transcribe_with_loaded_engine` but ALSO returns timed
+    /// segments when the underlying engine produced any. Engines that do
+    /// not expose timestamps (Moonshine, GigaAM, MLX sidecar today) return
+    /// an empty `Vec`, in which case callers should fall back to text-only
+    /// export with a UI hint.
+    fn transcribe_with_loaded_engine_segments(
+        engine: &mut LoadedEngine,
+        audio: Vec<f32>,
+        settings: &AppSettings,
+    ) -> Result<(String, Vec<TimedSegment>)> {
+        Self::transcribe_with_loaded_engine_inner(engine, audio, settings, true)
+    }
+
+    fn transcribe_with_loaded_engine_inner(
+        engine: &mut LoadedEngine,
+        audio: Vec<f32>,
+        settings: &AppSettings,
+        want_segments: bool,
+    ) -> Result<(String, Vec<TimedSegment>)> {
+        // Helper to convert engine-side `TranscriptionSegment` (seconds)
+        // to our shared `TimedSegment` (milliseconds). When the caller did
+        // not request segments, returns an empty Vec so we never allocate
+        // on the hot path.
+        let convert_segments =
+            |segs: Option<Vec<transcribe_rs::TranscriptionSegment>>| -> Vec<TimedSegment> {
+                if !want_segments {
+                    return Vec::new();
+                }
+                segs.unwrap_or_default()
+                    .into_iter()
+                    .map(|s| TimedSegment::from_seconds(s.start, s.end, s.text))
+                    .collect()
+            };
+
+        let (result, segments) = match engine {
             LoadedEngine::Whisper(whisper_engine) => {
                 let whisper_language = if settings.selected_language == "auto" {
                     None
@@ -602,35 +647,39 @@ impl TranscriptionManager {
                     ..Default::default()
                 };
 
-                whisper_engine
+                let r = whisper_engine
                     .transcribe_with(&audio, &params)
-                    .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("Whisper transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::Parakeet(parakeet_engine) => {
                 let params = ParakeetParams {
                     timestamp_granularity: Some(TimestampGranularity::Segment),
                     ..Default::default()
                 };
-                parakeet_engine
+                let r = parakeet_engine
                     .transcribe_with(&audio, &params)
-                    .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("Parakeet transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::Moonshine(moonshine_engine) => {
-                moonshine_engine
+                let r = moonshine_engine
                     .transcribe(&audio, &TranscribeOptions::default())
-                    .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("Moonshine transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::MoonshineStreaming(streaming_engine) => {
                 let params = MoonshineStreamingParams::default();
-                streaming_engine
+                let r = streaming_engine
                     .transcribe_with(&audio, &params)
                     .map_err(|e| {
                         anyhow::anyhow!("Moonshine streaming transcription failed: {}", e)
-                    })?
-                    .text
+                    })?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::SenseVoice(sense_voice_engine) => {
                 let language = match settings.selected_language.as_str() {
@@ -642,22 +691,25 @@ impl TranscriptionManager {
                     language,
                     use_itn: Some(true),
                 };
-                sense_voice_engine
+                let r = sense_voice_engine
                     .transcribe_with(&audio, &params)
-                    .map_err(|e| anyhow::anyhow!("SenseVoice transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("SenseVoice transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::GigaAM(gigaam_engine) => {
-                gigaam_engine
+                let r = gigaam_engine
                     .transcribe(&audio, &TranscribeOptions::default())
-                    .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("GigaAM transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
             LoadedEngine::MlxAudioStt(mlx_engine) => {
-                mlx_engine
+                let r = mlx_engine
                     .transcribe(audio, 16_000)
-                    .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?
-                    .text
+                    .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?;
+                let segs = convert_segments(r.segments);
+                (r.text, segs)
             }
         };
 
@@ -677,11 +729,12 @@ impl TranscriptionManager {
             lang => lang,
         };
 
-        Ok(filter_transcription_output(
+        let cleaned = filter_transcription_output(
             &corrected_result,
             filter_language,
             &settings.custom_filler_words,
-        ))
+        );
+        Ok((cleaned, segments))
     }
 
     fn transcribe_partial_snapshot(
@@ -1047,6 +1100,111 @@ impl TranscriptionManager {
 
     pub fn last_activity_ms(&self) -> u64 {
         self.last_activity.load(Ordering::Relaxed)
+    }
+
+    /// Run a one-shot file transcription and return text PLUS timed segments.
+    ///
+    /// This is intentionally separate from `transcribe()` so the dictation
+    /// hot path stays untouched. It does not feed into continuous voice
+    /// cloning (file imports aren't the user's live mic) and skips the
+    /// "feed STT result back" branch.
+    pub fn transcribe_with_segments(
+        &self,
+        audio: Arc<Vec<f32>>,
+    ) -> Result<(String, Vec<TimedSegment>)> {
+        let _transcribe_guard = self
+            .transcribe_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        self.last_activity.store(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+            Ordering::Relaxed,
+        );
+
+        if audio.is_empty() {
+            return Ok((String::new(), Vec::new()));
+        }
+
+        // Wait for any in-progress load.
+        {
+            let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
+            if *is_loading {
+                let (guard, wait_result) = self
+                    .loading_condvar
+                    .wait_timeout_while(is_loading, Duration::from_secs(120), |loading| *loading)
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                is_loading = guard;
+                if *is_loading && wait_result.timed_out() {
+                    return Err(anyhow::anyhow!(
+                        "Timed out waiting for the transcription model to finish loading."
+                    ));
+                }
+            }
+
+            let engine_guard = self.lock_engine();
+            if engine_guard.is_none() {
+                return Err(anyhow::anyhow!("Model is not loaded for transcription."));
+            }
+        }
+
+        let settings = get_settings(&self.app_handle);
+
+        let result = {
+            let _lifecycle_guard = self.lock_lifecycle();
+            let mut engine_guard = self.lock_engine();
+            let mut engine = match engine_guard.take() {
+                Some(e) => e,
+                None => return Err(anyhow::anyhow!("Model failed to load.")),
+            };
+            drop(engine_guard);
+
+            let audio_for_engine = (*audio).clone();
+            drop(audio);
+
+            let r = catch_unwind(AssertUnwindSafe(|| {
+                Self::transcribe_with_loaded_engine_segments(
+                    &mut engine,
+                    audio_for_engine,
+                    &settings,
+                )
+            }));
+
+            match r {
+                Ok(inner) => {
+                    let mut engine_guard = self.lock_engine();
+                    *engine_guard = Some(engine);
+                    inner?
+                }
+                Err(panic_payload) => {
+                    let panic_msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
+                        s.to_string()
+                    } else if let Some(s) = panic_payload.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "unknown panic".to_string()
+                    };
+                    error!("File transcription engine panicked: {}", panic_msg);
+                    {
+                        let mut current_model = self
+                            .current_model_id
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner());
+                        *current_model = None;
+                    }
+                    return Err(anyhow::anyhow!(
+                        "Transcription engine panicked: {}",
+                        panic_msg
+                    ));
+                }
+            }
+        };
+
+        self.maybe_unload_immediately("file transcription");
+        Ok(result)
     }
 
     pub fn transcribe(&self, audio: Arc<Vec<f32>>) -> Result<String> {

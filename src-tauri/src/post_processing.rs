@@ -68,10 +68,64 @@ pub struct ToneDefinition {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
+#[deprecated(note = "Use WriteRule for app-aware routing.")]
 pub struct AppToneMapping {
     pub bundle_id: String,
     pub app_name: String,
     pub tone_id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
+pub struct WriteRule {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub priority: i32,
+    pub matchers: WriteRuleMatchers,
+    pub overrides: WriteRuleOverrides,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type, Default)]
+pub struct WriteRuleMatchers {
+    /// Empty means the rule can match any app.
+    #[serde(default)]
+    pub bundle_ids: Vec<String>,
+    /// Empty means no URL constraint. Patterns match normalized host+path.
+    #[serde(default)]
+    pub url_patterns: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type, Default)]
+pub struct WriteRuleOverrides {
+    #[serde(default)]
+    pub stt_model_id: Option<String>,
+    #[serde(default)]
+    pub stt_language: Option<String>,
+    #[serde(default)]
+    pub translate_to_english: Option<bool>,
+    #[serde(default)]
+    pub tone_id: Option<String>,
+    #[serde(default)]
+    pub post_process_prompt_id: Option<String>,
+    #[serde(default)]
+    pub auto_submit: Option<bool>,
+    #[serde(default)]
+    pub paste_method: Option<crate::settings::PasteMethod>,
+    #[serde(default)]
+    pub append_trailing_space: Option<bool>,
+    #[serde(default)]
+    pub mute_while_recording: Option<bool>,
+}
+
+#[derive(Serialize, Debug, Clone, Type)]
+pub struct ResolvedWriteRule {
+    pub rule_id: String,
+    pub rule_name: String,
+    pub matched_bundle_id: Option<String>,
+    pub matched_app_name: Option<String>,
+    pub matched_url: Option<String>,
+    pub matched_url_pattern: Option<String>,
+    pub overrides: WriteRuleOverrides,
 }
 
 /// An application discovered on the user's system.

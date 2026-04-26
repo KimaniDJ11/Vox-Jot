@@ -60,6 +60,7 @@ import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { StylesSettings } from "@/components/settings/styles/StylesSettings";
+import { WriteRulesSettings } from "@/components/settings/write-rules/WriteRulesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
 import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
@@ -199,10 +200,7 @@ export const RefinePhraseKeysSection: React.FC = () => {
 export const RefineProfilesSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <StylesSettings
-        showEnabledToggle={false}
-        titleActionTargetId="write-profiles-section-actions"
-      />
+      <WriteRulesSettings />
     </div>
   );
 };
@@ -561,9 +559,11 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
     audio_feedback: audioFeedbackEnabled,
     tts_enabled: ttsEnabled,
     tts_volume: ttsVolume,
-  } = useSettingsSlice(
-    ["audio_feedback", "tts_enabled", "tts_volume"] as const,
-  );
+  } = useSettingsSlice([
+    "audio_feedback",
+    "tts_enabled",
+    "tts_volume",
+  ] as const);
 
   return (
     <div className="space-y-6">
@@ -625,7 +625,9 @@ export const OutputPasteSettingsSection: React.FC = () => {
         <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
         <AutoSubmit descriptionMode="tooltip" grouped={true} />
         <AppendTrailingSpace descriptionMode="tooltip" grouped={true} />
-        {debugMode ? <PasteDelay descriptionMode="tooltip" grouped={true} /> : null}
+        {debugMode ? (
+          <PasteDelay descriptionMode="tooltip" grouped={true} />
+        ) : null}
       </SettingsGroup>
     </div>
   );

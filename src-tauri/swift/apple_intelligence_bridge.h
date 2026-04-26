@@ -71,6 +71,9 @@ AppleSpeechTranscriptionResponse* transcribe_with_apple_speech(
 // Free memory allocated by an Apple Speech transcription response.
 void free_apple_speech_transcription_response(AppleSpeechTranscriptionResponse* response);
 
+// Return active browser URL for whitelisted browser bundle IDs, or NULL.
+char* active_browser_url_for_bundle_id(const char* bundle_id);
+
 #ifdef __cplusplus
 }
 #endif

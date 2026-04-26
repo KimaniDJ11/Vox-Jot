@@ -117,6 +117,8 @@ fn build_apple_intelligence_bridge() {
     const STUB_SWIFT_FILE: &str = "swift/apple_intelligence_stub.swift";
     const APPLE_SPEECH_SWIFT_FILE: &str = "swift/apple_speech.swift";
     const APPLE_SPEECH_STUB_SWIFT_FILE: &str = "swift/apple_speech_stub.swift";
+    const ACTIVE_BROWSER_URL_SWIFT_FILE: &str = "swift/active_browser_url.swift";
+    const ACTIVE_BROWSER_URL_STUB_SWIFT_FILE: &str = "swift/active_browser_url_stub.swift";
     const SCREEN_CONTEXT_SWIFT_FILE: &str = "swift/screen_context.swift";
     const BRIDGE_HEADER: &str = "swift/apple_intelligence_bridge.h";
 
@@ -124,6 +126,8 @@ fn build_apple_intelligence_bridge() {
     println!("cargo:rerun-if-changed={STUB_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={APPLE_SPEECH_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={APPLE_SPEECH_STUB_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_SWIFT_FILE}");
+    println!("cargo:rerun-if-changed={ACTIVE_BROWSER_URL_STUB_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={SCREEN_CONTEXT_SWIFT_FILE}");
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
@@ -132,6 +136,7 @@ fn build_apple_intelligence_bridge() {
         out_dir.join("apple_intelligence.o"),
         out_dir.join("screen_context.o"),
         out_dir.join("apple_speech.o"),
+        out_dir.join("active_browser_url.o"),
     ];
     let static_lib_path = out_dir.join("libapple_intelligence.a");
 
@@ -162,8 +167,14 @@ fn build_apple_intelligence_bridge() {
     } else {
         APPLE_SPEECH_STUB_SWIFT_FILE
     };
+    let browser_url_source_file = ACTIVE_BROWSER_URL_SWIFT_FILE;
 
-    for source in [source_file, SCREEN_CONTEXT_SWIFT_FILE, speech_source_file] {
+    for source in [
+        source_file,
+        SCREEN_CONTEXT_SWIFT_FILE,
+        speech_source_file,
+        browser_url_source_file,
+    ] {
         if !Path::new(source).exists() {
             panic!("Source file {} is missing!", source);
         }
@@ -194,6 +205,7 @@ fn build_apple_intelligence_bridge() {
         (source_file, &object_paths[0]),
         (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
         (speech_source_file, &object_paths[2]),
+        (browser_url_source_file, &object_paths[3]),
     ] {
         let status = Command::new("xcrun")
             .args([

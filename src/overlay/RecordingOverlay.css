@@ -145,6 +145,28 @@
   flex: 1;
 }
 
+.rule-badge {
+  max-width: 100%;
+  border: 1px solid var(--ov-border);
+  border-radius: 999px;
+  background: var(--accent-soft, rgba(100, 181, 217, 0.16));
+  color: var(--ov-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 2px 7px;
+  pointer-events: auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rule-badge:hover {
+  color: var(--ov-text);
+  border-color: var(--ov-accent);
+}
+
 /* -- transcribing / processing state -- */
 .status-text {
   display: flex;

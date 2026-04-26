@@ -9,7 +9,11 @@ import React, {
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
-import { commands, type ContextCaptureStatus } from "@/bindings";
+import {
+  commands,
+  type ContextCaptureStatus,
+  type ResolvedWriteRule,
+} from "@/bindings";
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
@@ -37,6 +41,7 @@ const ATTACK = 0.35;
 const RELEASE = 0.12;
 const MIN_BAR_PX = 2;
 const SCREEN_CONTEXT_PULSE_MS = 800;
+const ruleBadgePrefix = "▸";
 
 /** Organic center-weighted waveform with attack/release envelope + ring buffer. */
 function useWaveform(
@@ -203,6 +208,9 @@ const RecordingOverlay: React.FC = () => {
     useState<ContextCaptureStatus | null>(null);
   const [screenContextPulseVisible, setScreenContextPulseVisible] =
     useState(false);
+  const [matchedRule, setMatchedRule] = useState<ResolvedWriteRule | null>(
+    null,
+  );
   const direction = getLanguageDirection(i18n.language);
 
   const isCompact = style === "compact";
@@ -265,6 +273,7 @@ const RecordingOverlay: React.FC = () => {
       const unHide = await listen("hide-overlay", () => {
         setIsVisible(false);
         setPartialText("");
+        setMatchedRule(null);
         clearScreenContextPulse();
       });
 
@@ -278,6 +287,17 @@ const RecordingOverlay: React.FC = () => {
           setPartialText((event.payload as string) || "");
         },
       );
+
+      const unRuleMatched = await listen<ResolvedWriteRule>(
+        "write-rule-matched",
+        (event) => {
+          setMatchedRule(event.payload);
+        },
+      );
+
+      const unRuleCleared = await listen("write-rule-cleared", () => {
+        setMatchedRule(null);
+      });
 
       const unSettingsChanged = await listen<SettingsChangedPayload>(
         "settings-changed",
@@ -324,6 +344,8 @@ const RecordingOverlay: React.FC = () => {
         unHide();
         unLevel();
         unPartial();
+        unRuleMatched();
+        unRuleCleared();
         unSettingsChanged();
         unScreenContextStatus();
         unScreenContextCapture();
@@ -384,13 +406,26 @@ const RecordingOverlay: React.FC = () => {
                       aria-hidden
                     />
                     <div className="overlay-meta-row">
-                      {partialText.trim().length > 0 ? (
-                        <div className="partial-text" title={partialText}>
-                          {partialText}
-                        </div>
-                      ) : (
-                        <div className="overlay-meta-spacer" />
-                      )}
+                      <div className="min-w-0 flex-1">
+                        {partialText.trim().length > 0 ? (
+                          <div className="partial-text" title={partialText}>
+                            {partialText}
+                          </div>
+                        ) : matchedRule ? (
+                          <button
+                            type="button"
+                            className="rule-badge"
+                            onClick={() =>
+                              void commands.showDetailView("write-profiles")
+                            }
+                            title={t("refine.writeRules.overlayBadgeOpen")}
+                          >
+                            {ruleBadgePrefix} {matchedRule.rule_name}
+                          </button>
+                        ) : (
+                          <div className="overlay-meta-spacer" />
+                        )}
+                      </div>
                       <ScreenContextPulse visible={showScreenContextPulse} />
                     </div>
                   </div>

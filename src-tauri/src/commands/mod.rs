@@ -8,6 +8,7 @@ pub mod notes;
 pub mod stats;
 pub mod transcription;
 pub mod tts;
+pub mod write_rules;
 
 use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{ActiveAppContext, InstalledApp, PostProcessResult, PreviewManager};

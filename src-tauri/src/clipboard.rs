@@ -781,6 +781,15 @@ pub fn paste_with_submit_override(
     submit_override: Option<AutoSubmitKey>,
 ) -> Result<(), String> {
     let settings = get_settings(&app_handle);
+    paste_with_settings_and_submit_override(text, app_handle, &settings, submit_override)
+}
+
+pub fn paste_with_settings_and_submit_override(
+    text: String,
+    app_handle: AppHandle,
+    settings: &crate::settings::AppSettings,
+    submit_override: Option<AutoSubmitKey>,
+) -> Result<(), String> {
     let requested_paste_method = settings.paste_method;
     let paste_method = effective_paste_method(requested_paste_method);
     let paste_delay_ms = settings.paste_delay_ms;

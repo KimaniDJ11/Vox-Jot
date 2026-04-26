@@ -1285,6 +1285,34 @@
       "transcript": "Transcript"
     }
   },
+  "refine": {
+    "writeRules": {
+      "title": "Write Profiles",
+      "description": "Pick the right tone, engine, and shortcuts based on which app or website you're dictating into.",
+      "newRule": "New profile",
+      "edit": "Edit",
+      "delete": "Delete",
+      "enabled": "Enabled",
+      "priority": "Priority",
+      "matchers": {
+        "appsLabel": "Apps",
+        "urlsLabel": "URLs",
+        "addUrlPattern": "Add URL pattern (e.g. *.gmail.com)"
+      },
+      "overrides": {
+        "speech": "Speech",
+        "refine": "Refine",
+        "output": "Output",
+        "noOverride": "Use global setting"
+      },
+      "test": {
+        "button": "Test against current app",
+        "result": "Matched: {{rule}}",
+        "noMatch": "No rule matches."
+      },
+      "overlayBadgeOpen": "Open profile in settings"
+    }
+  },
   "dictate": {
     "fileTranscription": {
       "title": "File Transcription",

@@ -1075,16 +1075,30 @@ impl TranscriptionManager {
 
     /// Kicks off the model loading in a background thread if it's not already loaded
     pub fn initiate_model_load(&self) {
+        let settings = get_settings(&self.app_handle);
+        self.initiate_model_load_for_model(settings.selected_model);
+    }
+
+    /// Kicks off loading a specific model without persisting it as the global selection.
+    pub fn initiate_model_load_for_model(&self, model_id: String) {
+        let selected_model = model_id.trim().to_string();
+        if selected_model.is_empty() {
+            return;
+        }
+        if self.get_current_model().as_deref() == Some(selected_model.as_str())
+            && self.is_model_loaded()
+        {
+            return;
+        }
+
         let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
-        if *is_loading || self.is_model_loaded() {
+        if *is_loading {
             return;
         }
 
         *is_loading = true;
         let self_clone = self.clone();
         thread::spawn(move || {
-            let settings = get_settings(&self_clone.app_handle);
-            let selected_model = settings.selected_model.clone();
             let _guard = ModelLoadGuard::new(
                 Arc::clone(&self_clone.is_loading),
                 Arc::clone(&self_clone.loading_condvar),
@@ -1243,6 +1257,15 @@ impl TranscriptionManager {
     }
 
     pub fn transcribe(&self, audio: Arc<Vec<f32>>) -> Result<String> {
+        let settings = get_settings(&self.app_handle);
+        self.transcribe_with_settings(audio, settings)
+    }
+
+    pub fn transcribe_with_settings(
+        &self,
+        audio: Arc<Vec<f32>>,
+        settings: AppSettings,
+    ) -> Result<String> {
         // Live partials and the final stop-triggered transcription share one engine.
         // Serialize transcribe calls so a long-running partial cannot steal the engine
         // and cause the final full transcription to fail or return nothing.
@@ -1275,7 +1298,13 @@ impl TranscriptionManager {
         // owned samples, so only one Vec clone happens (at the engine call).
         let audio_for_cloning = Arc::clone(&audio);
 
-        // Check if model is loaded, if not try to load it
+        let selected_model = settings.selected_model.trim().to_string();
+        if selected_model.is_empty() {
+            return Err(anyhow::anyhow!("No transcription model is selected."));
+        }
+
+        // Check if the requested model is loaded, loading it if a rule selected
+        // a different engine for this recording.
         {
             // If the model is loading, wait for it to complete.
             let mut is_loading = self.is_loading.lock().unwrap_or_else(|e| e.into_inner());
@@ -1292,14 +1321,13 @@ impl TranscriptionManager {
                 }
             }
 
-            let engine_guard = self.lock_engine();
-            if engine_guard.is_none() {
-                return Err(anyhow::anyhow!("Model is not loaded for transcription."));
+            let current_model = self.get_current_model();
+            let engine_loaded = self.lock_engine().is_some();
+            if !engine_loaded || current_model.as_deref() != Some(selected_model.as_str()) {
+                drop(is_loading);
+                self.load_model(&selected_model)?;
             }
         }
-
-        // Get current settings for configuration
-        let settings = get_settings(&self.app_handle);
 
         // Perform transcription with the appropriate engine.
         // We use catch_unwind to prevent engine panics from poisoning the mutex,

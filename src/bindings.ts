@@ -1817,6 +1817,54 @@ async getDetailTargetSection() : Promise<Result<string | null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async listWriteRules() : Promise<Result<WriteRule[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_write_rules") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertWriteRule(rule: WriteRule) : Promise<Result<WriteRule, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upsert_write_rule", { rule }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteWriteRule(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_write_rule", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async reorderWriteRules(orderedIds: string[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reorder_write_rules", { orderedIds }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async testResolveWriteRule(bundleId: string | null, appName: string | null, url: string | null) : Promise<Result<ResolvedWriteRule | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("test_resolve_write_rule", { bundleId, appName, url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeWriteRulesUrlCaptureEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * List GUI applications installed on the user's system.
  * 
@@ -2021,7 +2069,7 @@ async convoIsAudioCapturing() : Promise<Result<ConvoAudioCaptureStatus, string>>
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; watch_folders?: WatchFolderConfig[]; http_api_enabled?: boolean; http_api_port?: number }
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; watch_folders?: WatchFolderConfig[]; http_api_enabled?: boolean; http_api_port?: number }
 export type AppToneMapping = { bundle_id: string; app_name: string; tone_id: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
@@ -2050,6 +2098,10 @@ export type TranscriptionFileResult = { text: string; segments: TimedSegment[] }
 export type WatchFolderOutputFormat = "text" | "srt" | "vtt"
 export type WatchFolderConfig = { id: string; path: string; output_format: WatchFolderOutputFormat; delete_after: boolean; enabled: boolean }
 export type HttpApiStatus = { enabled: boolean; port: number }
+export type WriteRule = { id: string; name: string; enabled: boolean; priority: number; matchers: WriteRuleMatchers; overrides: WriteRuleOverrides }
+export type WriteRuleMatchers = { bundle_ids?: string[]; url_patterns?: string[] }
+export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null }
+export type ResolvedWriteRule = { rule_id: string; rule_name: string; matched_bundle_id: string | null; matched_app_name: string | null; matched_url: string | null; matched_url_pattern: string | null; overrides: WriteRuleOverrides }
 /**
  * Aggregated dictation statistics computed from history entries.
  */

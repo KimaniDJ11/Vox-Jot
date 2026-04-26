@@ -163,6 +163,7 @@ pub struct AudioRecordingManager {
     is_recording: Arc<AtomicBool>,
     audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
+    temporary_mute_override: Arc<Mutex<Option<bool>>>,
 }
 
 impl AudioRecordingManager {
@@ -186,6 +187,7 @@ impl AudioRecordingManager {
             is_recording: Arc::new(AtomicBool::new(false)),
             audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
+            temporary_mute_override: Arc::new(Mutex::new(None)),
         };
 
         // Always-on?  Open immediately.
@@ -230,6 +232,11 @@ impl AudioRecordingManager {
     /// Applies configured output effects if an active recording is still running.
     pub fn apply_mute(&self) {
         let settings = get_settings(&self.app_handle);
+        let mute_while_recording = self
+            .temporary_mute_override
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or(settings.mute_while_recording);
 
         if settings.audio_ducking_enabled
             && self.is_open.load(Ordering::SeqCst)
@@ -239,7 +246,7 @@ impl AudioRecordingManager {
                 .duck_if_recording_async(Arc::clone(&self.is_recording));
         }
 
-        if settings.mute_while_recording
+        if mute_while_recording
             && self.is_open.load(Ordering::SeqCst)
             && self.is_recording()
             && !self.did_mute.swap(true, Ordering::SeqCst)
@@ -251,12 +258,23 @@ impl AudioRecordingManager {
 
     /// Removes configured output effects if they were applied.
     pub fn remove_mute(&self) {
+        *self
+            .temporary_mute_override
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = None;
         self.audio_ducker.restore_async();
 
         if self.did_mute.swap(false, Ordering::SeqCst) {
             set_mute(false);
             debug!("Mute removed");
         }
+    }
+
+    pub fn set_temporary_mute_override(&self, enabled: Option<bool>) {
+        *self
+            .temporary_mute_override
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = enabled;
     }
 
     pub fn start_microphone_stream(&self) -> Result<(), anyhow::Error> {

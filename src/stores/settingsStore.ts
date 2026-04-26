@@ -281,6 +281,8 @@ const settingUpdaters: {
     commands.updateToneDefinitions(value as ToneDefinition[]),
   app_tone_mappings: (value) =>
     commands.updateAppToneMappings(value as AppToneMapping[]),
+  write_rules_url_capture_enabled: (value) =>
+    commands.changeWriteRulesUrlCaptureEnabledSetting(value as boolean),
   mute_while_recording: (value) =>
     commands.changeMuteWhileRecordingSetting(value as boolean),
   audio_ducking_enabled: (value) =>
@@ -448,7 +450,10 @@ export const useSettingsStore = create<SettingsStore>()(
             settings: state.settings
               ? {
                   ...state.settings,
-                  [key]: state.settings[key] === value ? originalValue : state.settings[key],
+                  [key]:
+                    state.settings[key] === value
+                      ? originalValue
+                      : state.settings[key],
                 }
               : null,
           }));

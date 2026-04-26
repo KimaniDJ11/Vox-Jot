@@ -14,6 +14,7 @@ mod apple_intelligence;
 mod audio_feedback;
 mod audio_playback;
 pub mod audio_toolkit;
+mod browser_url;
 pub mod cli;
 pub mod cli_client;
 mod clipboard;
@@ -50,6 +51,7 @@ mod tray_i18n;
 mod tts;
 mod tts_profiles;
 mod utils;
+mod write_rules;
 
 /// Main settings window default / minimum size (logical pixels).
 const MAIN_WINDOW_DEFAULT_W: f64 = 1200.0;
@@ -746,6 +748,12 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::remove_watch_folder,
         commands::transcription::set_watch_folder_enabled,
         commands::transcription::update_watch_folder_format,
+        commands::write_rules::list_write_rules,
+        commands::write_rules::upsert_write_rule,
+        commands::write_rules::delete_write_rule,
+        commands::write_rules::reorder_write_rules,
+        commands::write_rules::test_resolve_write_rule,
+        commands::write_rules::change_write_rules_url_capture_enabled_setting,
         commands::http_api::set_http_api_enabled,
         commands::http_api::set_http_api_port,
         commands::http_api::get_http_api_status,

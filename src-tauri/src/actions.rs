@@ -36,6 +36,7 @@ use crate::tts::{
 use crate::utils::{
     self, show_processing_overlay, show_recording_overlay, show_transcribing_overlay,
 };
+use crate::write_rules::{apply_resolved_rule_to_settings, RuleResolver};
 use crate::TranscriptionCoordinator;
 use ferrous_opencc::{config::BuiltinConfig, OpenCC};
 use log::{debug, error, info, warn};
@@ -144,25 +145,31 @@ struct ResolvedToneContext {
     instruction: String,
 }
 
-static PREPARED_ACTIVE_APP_CONTEXTS: Lazy<Mutex<HashMap<String, Option<ActiveAppContext>>>> =
+#[derive(Debug, Clone, Default)]
+struct PreparedActiveAppContext {
+    active_app_context: Option<ActiveAppContext>,
+    active_url: Option<String>,
+}
+
+static PREPARED_ACTIVE_APP_CONTEXTS: Lazy<Mutex<HashMap<String, PreparedActiveAppContext>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn remember_prepared_active_app_context(
     binding_id: &str,
-    active_app_context: Option<ActiveAppContext>,
+    prepared_context: PreparedActiveAppContext,
 ) {
     let mut prepared = PREPARED_ACTIVE_APP_CONTEXTS
         .lock()
         .unwrap_or_else(|e| e.into_inner());
-    prepared.insert(binding_id.to_string(), active_app_context);
+    prepared.insert(binding_id.to_string(), prepared_context);
 }
 
-fn take_prepared_active_app_context(binding_id: &str) -> Option<ActiveAppContext> {
+fn take_prepared_active_app_context(binding_id: &str) -> PreparedActiveAppContext {
     PREPARED_ACTIVE_APP_CONTEXTS
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .remove(binding_id)
-        .flatten()
+        .unwrap_or_default()
 }
 
 fn clear_prepared_active_app_context(binding_id: &str) {
@@ -1651,6 +1658,57 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
     None
 }
 
+fn capture_active_browser_url(
+    settings: &AppSettings,
+    active_app_context: Option<&ActiveAppContext>,
+) -> Option<String> {
+    if !settings.write_rules_url_capture_enabled {
+        return None;
+    }
+
+    let bundle_id = active_app_context?.bundle_id.trim();
+    if bundle_id.is_empty() {
+        return None;
+    }
+
+    crate::browser_url::active_browser_url(bundle_id)
+}
+
+fn capture_prepared_write_context(settings: &AppSettings) -> PreparedActiveAppContext {
+    let active_app_context = capture_active_app_context(settings);
+    let active_url = capture_active_browser_url(settings, active_app_context.as_ref());
+    PreparedActiveAppContext {
+        active_app_context,
+        active_url,
+    }
+}
+
+fn resolve_active_write_rule(
+    settings: &AppSettings,
+    prepared: &PreparedActiveAppContext,
+) -> Option<crate::post_processing::ResolvedWriteRule> {
+    if !settings.app_aware_tone_enabled {
+        return None;
+    }
+
+    RuleResolver::resolve(
+        &settings.write_rules,
+        prepared.active_app_context.as_ref(),
+        prepared.active_url.as_deref(),
+    )
+}
+
+fn emit_write_rule_resolution(
+    app: &AppHandle,
+    resolved: Option<&crate::post_processing::ResolvedWriteRule>,
+) {
+    if let Some(resolved) = resolved {
+        let _ = app.emit("write-rule-matched", resolved);
+    } else {
+        let _ = app.emit("write-rule-cleared", ());
+    }
+}
+
 fn preview_app_context_from_override(
     settings: &AppSettings,
     app_bundle_id_override: Option<&str>,
@@ -2889,12 +2947,8 @@ impl ShortcutAction for TranscribeAction {
             }
         }
 
-        let prepared_active_app_context = capture_active_app_context(&settings);
-        remember_prepared_active_app_context(binding_id, prepared_active_app_context);
-
-        // Load model in the background
+        // Load after recording starts so rule URL capture cannot add start latency.
         let tm = app.state::<Arc<TranscriptionManager>>();
-        tm.initiate_model_load();
         crate::scratchpad::snapshot_pending_insert_target(app);
         if let Some(context_manager) = app.try_state::<Arc<ContextCaptureManager>>() {
             context_manager.request_immediate_capture("dictation_start");
@@ -2955,6 +3009,18 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
+            let prepared_context = capture_prepared_write_context(&settings);
+            let resolved_rule = resolve_active_write_rule(&settings, &prepared_context);
+            emit_write_rule_resolution(app, resolved_rule.as_ref());
+            let effective_settings =
+                apply_resolved_rule_to_settings(&settings, resolved_rule.as_ref());
+            rm.set_temporary_mute_override(
+                resolved_rule
+                    .as_ref()
+                    .and_then(|rule| rule.overrides.mute_while_recording),
+            );
+            tm.initiate_model_load_for_model(effective_settings.selected_model.clone());
+            remember_prepared_active_app_context(&binding_id, prepared_context);
             tm.start_partial_provider(&binding_id, Arc::clone(&rm));
             // Live partial STT currently shares the same engine as the final
             // Dynamically register the cancel shortcut in a separate task to avoid deadlock
@@ -3015,7 +3081,7 @@ impl ShortcutAction for TranscribeAction {
             let _scratchpad_guard = crate::scratchpad::PendingScratchpadInsertGuard::new(&ah);
             crate::overlay::emit_partial_transcription(&ah, "");
             let binding_id = binding_id.clone(); // Clone for the inner async task
-            let prepared_active_app_context = take_prepared_active_app_context(&binding_id);
+            let prepared_write_context = take_prepared_active_app_context(&binding_id);
             debug!(
                 "Starting async transcription task for binding: {}",
                 binding_id
@@ -3038,7 +3104,29 @@ impl ShortcutAction for TranscribeAction {
                 // transcribe don't each pay a full Vec copy of the buffer.
                 let samples = Arc::new(samples);
                 let samples_for_history = Arc::clone(&samples);
-                match tm.transcribe(samples) {
+                let settings = get_settings(&ah);
+                let fallback_context = if prepared_write_context.active_app_context.is_some() {
+                    None
+                } else {
+                    capture_active_app_context(&settings)
+                };
+                let active_app_context = prepared_write_context
+                    .active_app_context
+                    .clone()
+                    .or(fallback_context);
+                let prepared_for_resolution = PreparedActiveAppContext {
+                    active_app_context: active_app_context.clone(),
+                    active_url: prepared_write_context.active_url.clone(),
+                };
+                let resolved_rule = resolve_active_write_rule(&settings, &prepared_for_resolution);
+                emit_write_rule_resolution(&ah, resolved_rule.as_ref());
+                let mut effective_settings =
+                    apply_resolved_rule_to_settings(&settings, resolved_rule.as_ref());
+                if resolved_rule.is_none() && !settings.write_rules.is_empty() {
+                    effective_settings.app_aware_tone_enabled = false;
+                }
+
+                match tm.transcribe_with_settings(samples, effective_settings.clone()) {
                     Ok(transcription) => {
                         debug!(
                             "Transcription completed in {:?} ({} chars)",
@@ -3059,7 +3147,6 @@ impl ShortcutAction for TranscribeAction {
                             ) {
                                 return;
                             }
-                            let settings = get_settings(&ah);
                             let mut final_text = transcription.clone();
                             let mut post_processed_text: Option<String> = None;
                             let mut post_process_prompt: Option<String> = None;
@@ -3068,7 +3155,8 @@ impl ShortcutAction for TranscribeAction {
 
                             // First, check if Chinese variant conversion is needed
                             if let Some(converted_text) =
-                                maybe_convert_chinese_variant(&settings, &transcription).await
+                                maybe_convert_chinese_variant(&effective_settings, &transcription)
+                                    .await
                             {
                                 final_text = converted_text;
                             }
@@ -3083,15 +3171,13 @@ impl ShortcutAction for TranscribeAction {
 
                             // Then apply LLM post-processing if this is the post-process hotkey
                             // Uses final_text which may already have Chinese conversion applied
-                            let should_post_process =
-                                post_process && settings.post_process_enabled && !rewrite_selection;
+                            let should_post_process = post_process
+                                && effective_settings.post_process_enabled
+                                && !rewrite_selection;
                             // Always capture app context — needed for correction tracking
                             // and field snapshots, not just post-processing.
-                            let active_app_context = prepared_active_app_context
-                                .clone()
-                                .or_else(|| capture_active_app_context(&settings));
                             let screen_context = context_manager.resolve_context_for_dictation(
-                                &settings,
+                                &effective_settings,
                                 active_app_context.clone(),
                             );
                             let mut context_impact = ContextImpactMetadata::default();
@@ -3106,13 +3192,12 @@ impl ShortcutAction for TranscribeAction {
                             // Merge auto-learned corrections into the personal dictionary
                             // and always include user-approved manual corrections
                             // from the corrections store.
-                            let mut effective_settings = settings.clone();
                             if let Some(correction_store) = ah.try_state::<Arc<CorrectionStore>>() {
                                 let merged = crate::correction_tracker::store::build_effective_personal_dictionary(
-                                    &settings,
+                                    &effective_settings,
                                     correction_store.as_ref(),
                                 );
-                                if merged != settings.personal_dictionary {
+                                if merged != effective_settings.personal_dictionary {
                                     debug!(
                                         "Merged correction-store entries into personal dictionary"
                                     );
@@ -3150,15 +3235,17 @@ impl ShortcutAction for TranscribeAction {
                             }
 
                             // Apply snippet expansions (after dictionary, before post-processing)
-                            if settings.snippets_enabled && !settings.snippets.is_empty() {
+                            if effective_settings.snippets_enabled
+                                && !effective_settings.snippets.is_empty()
+                            {
                                 let snippet_result =
-                                    apply_snippets(&final_text, &settings.snippets);
+                                    apply_snippets(&final_text, &effective_settings.snippets);
                                 if snippet_result.text != final_text {
                                     debug!(
                                         "Applied {} snippet expansion(s)",
                                         snippet_result.hits.len()
                                     );
-                                    context_impact.snippet_context_hits = settings
+                                    context_impact.snippet_context_hits = effective_settings
                                         .snippets
                                         .iter()
                                         .filter(|snippet| {
@@ -3175,8 +3262,9 @@ impl ShortcutAction for TranscribeAction {
                                 }
                             }
 
-                            let source_language_hint =
-                                normalize_language_code(Some(&settings.selected_language));
+                            let source_language_hint = normalize_language_code(Some(
+                                &effective_settings.selected_language,
+                            ));
                             let mut translation_execution = if rewrite_selection {
                                 None
                             } else {
@@ -3265,7 +3353,9 @@ impl ShortcutAction for TranscribeAction {
                                 if let Some(impact) = processed.result.context_impact.clone() {
                                     context_impact = impact;
                                 }
-                                if should_post_process && settings.show_preview_before_paste {
+                                if should_post_process
+                                    && effective_settings.show_preview_before_paste
+                                {
                                     preview_was_shown = true;
                                 }
                                 let preview_text = if should_post_process {
@@ -3278,7 +3368,7 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                     maybe_preview_post_process_result(
                                         &ah,
-                                        &settings,
+                                        &effective_settings,
                                         &processed.result,
                                     )
                                     .await
@@ -3297,9 +3387,9 @@ impl ShortcutAction for TranscribeAction {
                                 if let Some(preview_text) = preview_text {
                                     if let Some(execution) = translation_execution.as_mut() {
                                         execution.translated_text = Some(preview_text.clone());
-                                        execution.final_text = match settings.translation_output_mode {
+                                        execution.final_text = match effective_settings.translation_output_mode {
                                             crate::settings::TranslationOutputMode::Bilingual => {
-                                                if settings.translation_bilingual_layout
+                                                if effective_settings.translation_bilingual_layout
                                                     == crate::settings::TranslationBilingualLayout::TranslationThenSource
                                                 {
                                                     format!(
@@ -3339,15 +3429,15 @@ impl ShortcutAction for TranscribeAction {
                             if !rewrite_selection {
                                 if let Some(execution) = translation_execution.as_mut() {
                                     let destination_label =
-                                        destination_label_for_dictation(&settings);
+                                        destination_label_for_dictation(&effective_settings);
                                     let should_preview_translation =
                                         execution.translated_text.is_some()
                                             && dictation_requires_preview(
-                                                &settings,
+                                                &effective_settings,
                                                 &execution.final_text,
                                             )
                                             && !(should_post_process
-                                                && settings.show_preview_before_paste);
+                                                && effective_settings.show_preview_before_paste);
 
                                     if should_preview_translation {
                                         preview_was_shown = true;
@@ -3399,7 +3489,7 @@ impl ShortcutAction for TranscribeAction {
                                 match utils::capture_selected_text(&ah) {
                                     Ok(Some(selected_text)) => {
                                         if let Some(rewritten) = rewrite_selected_text(
-                                            &settings,
+                                            &effective_settings,
                                             &selected_text,
                                             &final_text,
                                         )
@@ -3438,12 +3528,12 @@ impl ShortcutAction for TranscribeAction {
                             if !rewrite_selection {
                                 if let Some(execution) = translation_execution.as_ref() {
                                     if execution.translated_text.is_some()
-                                        && should_open_jot_pad_for_dictation(&settings)
+                                        && should_open_jot_pad_for_dictation(&effective_settings)
                                     {
                                         send_translation_to_jot_pad(
                                             &ah,
                                             execution,
-                                            destination_label_for_dictation(&settings),
+                                            destination_label_for_dictation(&effective_settings),
                                         );
                                         text_to_paste = None;
                                         routed_to_jot_pad = true;
@@ -3489,7 +3579,7 @@ impl ShortcutAction for TranscribeAction {
                             }
 
                             let readback_locale = choose_readback_locale(
-                                &settings,
+                                &effective_settings,
                                 TranslationOrigin::Dictation,
                                 translation_execution
                                     .as_ref()
@@ -3516,7 +3606,7 @@ impl ShortcutAction for TranscribeAction {
                                 );
                             }
                             let mut auto_speak_plan = build_auto_speak_plan(
-                                &settings,
+                                &effective_settings,
                                 TranslationOrigin::Dictation,
                                 preview_was_shown,
                                 if routed_to_jot_pad || text_to_paste.is_some() {
@@ -3547,7 +3637,8 @@ impl ShortcutAction for TranscribeAction {
                                     translation_destination: Some(if routed_to_jot_pad {
                                         "open_in_jot_pad".to_string()
                                     } else {
-                                        destination_label_for_dictation(&settings).to_string()
+                                        destination_label_for_dictation(&effective_settings)
+                                            .to_string()
                                     }),
                                 })
                                 .unwrap_or_default();
@@ -3569,7 +3660,7 @@ impl ShortcutAction for TranscribeAction {
                                             .as_ref()
                                             .map(|packet| {
                                                 if packet_age_ms(packet)
-                                                    > settings.screen_context_stale_threshold_ms as u64
+                                                    > effective_settings.screen_context_stale_threshold_ms as u64
                                                 {
                                                     crate::screen_context::ContextCaptureStatus::Stale
                                                 } else {
@@ -3589,9 +3680,9 @@ impl ShortcutAction for TranscribeAction {
                                         ),
                                         sent_externally: should_post_process
                                             && context_manager.context_sent_externally(
-                                                &settings,
+                                                &effective_settings,
                                                 screen_context.as_ref(),
-                                                settings
+                                                effective_settings
                                                     .active_post_process_provider()
                                                     .map(post_process_provider_is_local)
                                                     .unwrap_or(true),
@@ -3639,8 +3730,7 @@ impl ShortcutAction for TranscribeAction {
                                     return;
                                 }
                                 // Start correction monitoring if enabled
-                                let correction_settings = get_settings(&ah);
-                                if correction_settings.correction_tracking_enabled {
+                                if effective_settings.correction_tracking_enabled {
                                     if let Some(span_tracker) =
                                         ah.try_state::<InsertedSpanTracker>()
                                     {
@@ -3650,7 +3740,7 @@ impl ShortcutAction for TranscribeAction {
                                             if let Some(recent_input) =
                                                 ah.try_state::<Arc<RecentInputTracker>>()
                                             {
-                                                let insertion_method = match correction_settings
+                                                let insertion_method = match effective_settings
                                                     .paste_method
                                                 {
                                                     crate::settings::PasteMethod::Direct => {
@@ -3685,6 +3775,7 @@ impl ShortcutAction for TranscribeAction {
                                 // Paste the final text (either processed or original)
                                 let text_for_paste = text_to_paste.clone();
                                 let ah_clone = ah.clone();
+                                let paste_settings = effective_settings.clone();
                                 let paste_time = Instant::now();
                                 let submit_override = submit_override;
                                 let scratchpad_guard = _scratchpad_guard;
@@ -3719,13 +3810,19 @@ impl ShortcutAction for TranscribeAction {
                                     }
                                     let _scratchpad_guard = scratchpad_guard;
                                     let paste_result = if let Some(submit_key) = submit_override {
-                                        utils::paste_with_submit_override(
+                                        utils::paste_with_settings_and_submit_override(
                                             text_for_paste,
                                             ah_clone.clone(),
+                                            &paste_settings,
                                             Some(submit_key),
                                         )
                                     } else {
-                                        utils::paste(text_for_paste, ah_clone.clone())
+                                        utils::paste_with_settings_and_submit_override(
+                                            text_for_paste,
+                                            ah_clone.clone(),
+                                            &paste_settings,
+                                            None,
+                                        )
                                     };
 
                                     let mut history_save_request = history_save_request;

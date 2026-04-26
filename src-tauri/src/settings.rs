@@ -1,5 +1,9 @@
 use crate::portable;
-use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
+#[allow(deprecated)]
+use crate::post_processing::{
+    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition, WriteRule, WriteRuleMatchers,
+    WriteRuleOverrides,
+};
 use crate::secret_store;
 use crate::snippets::Snippet;
 use log::{debug, error, warn};
@@ -757,6 +761,10 @@ pub struct AppSettings {
     pub tone_definitions: Vec<ToneDefinition>,
     #[serde(default = "default_app_tone_mappings")]
     pub app_tone_mappings: Vec<AppToneMapping>,
+    #[serde(default)]
+    pub write_rules: Vec<WriteRule>,
+    #[serde(default)]
+    pub write_rules_url_capture_enabled: bool,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
     #[serde(default = "default_file_transcription_apply_dictionary")]
@@ -1358,6 +1366,34 @@ pub fn default_app_tone_mappings() -> Vec<AppToneMapping> {
     }
 }
 
+pub fn write_rules_from_app_tone_mappings(
+    mappings: &[AppToneMapping],
+    enabled: bool,
+) -> Vec<WriteRule> {
+    let mut priority: i32 = 100;
+    mappings
+        .iter()
+        .map(|mapping| {
+            let rule = WriteRule {
+                id: Uuid::new_v4().to_string(),
+                name: mapping.app_name.clone(),
+                enabled,
+                priority,
+                matchers: WriteRuleMatchers {
+                    bundle_ids: vec![mapping.bundle_id.clone()],
+                    url_patterns: Vec::new(),
+                },
+                overrides: WriteRuleOverrides {
+                    tone_id: Some(mapping.tone_id.clone()),
+                    ..Default::default()
+                },
+            };
+            priority -= 1;
+            rule
+        })
+        .collect()
+}
+
 fn default_app_language() -> String {
     tauri_plugin_os::locale()
         .map(|l| l.replace('_', "-"))
@@ -1768,6 +1804,19 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
     changed
 }
 
+pub fn ensure_write_rules_defaults(settings: &mut AppSettings) -> bool {
+    if !settings.write_rules.is_empty() {
+        return false;
+    }
+
+    settings.write_rules = write_rules_from_app_tone_mappings(
+        &settings.app_tone_mappings,
+        settings.app_aware_tone_enabled,
+    );
+
+    !settings.write_rules.is_empty()
+}
+
 /// Internal constants for correction behavior — no longer user-configurable.
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
@@ -2115,6 +2164,10 @@ pub fn get_default_settings() -> AppSettings {
         },
     );
 
+    let app_tone_mappings = default_app_tone_mappings();
+    let write_rules =
+        write_rules_from_app_tone_mappings(&app_tone_mappings, default_app_aware_tone_enabled());
+
     AppSettings {
         bindings,
         push_to_talk: true,
@@ -2217,7 +2270,9 @@ pub fn get_default_settings() -> AppSettings {
         fallback_to_raw_on_failure: default_fallback_to_raw_on_failure(),
         app_aware_tone_enabled: default_app_aware_tone_enabled(),
         tone_definitions: default_tone_definitions(),
-        app_tone_mappings: default_app_tone_mappings(),
+        app_tone_mappings,
+        write_rules,
+        write_rules_url_capture_enabled: false,
         correction_tracking_enabled: default_correction_tracking_enabled(),
         file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
         snippets_enabled: default_snippets_enabled(),
@@ -2785,6 +2840,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
 
     let translation_changed = ensure_translation_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
+    let write_rules_changed = ensure_write_rules_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
@@ -2793,6 +2849,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     if translation_changed
         || tts_changed
         || post_process_changed
+        || write_rules_changed
         || model_platform_changed
         || migrated_legacy_keys
     {
@@ -2821,6 +2878,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
 
     let translation_changed = ensure_translation_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
+    let write_rules_changed = ensure_write_rules_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
@@ -2829,6 +2887,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     if translation_changed
         || tts_changed
         || post_process_changed
+        || write_rules_changed
         || model_platform_changed
         || migrated_legacy_keys
     {
@@ -2858,6 +2917,7 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
 
     ensure_translation_defaults(&mut settings);
     ensure_post_process_defaults(&mut settings);
+    ensure_write_rules_defaults(&mut settings);
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
 
@@ -2947,12 +3007,36 @@ mod tests {
         let mut settings = get_default_settings();
         settings.tone_definitions.clear();
         settings.app_tone_mappings.clear();
+        settings.write_rules.clear();
 
         let changed = ensure_post_process_defaults(&mut settings);
 
         assert!(changed);
         assert!(!settings.tone_definitions.is_empty());
         assert!(!settings.app_tone_mappings.is_empty());
+    }
+
+    #[test]
+    fn migration_creates_rules_from_app_tone_mappings() {
+        let mut settings = get_default_settings();
+        settings.app_aware_tone_enabled = true;
+        settings.write_rules.clear();
+        settings.app_tone_mappings = vec![AppToneMapping {
+            bundle_id: "com.example.App".to_string(),
+            app_name: "Example App".to_string(),
+            tone_id: "casual".to_string(),
+        }];
+
+        let changed = ensure_write_rules_defaults(&mut settings);
+
+        assert!(changed);
+        assert_eq!(settings.write_rules.len(), 1);
+        let rule = &settings.write_rules[0];
+        assert_eq!(rule.name, "Example App");
+        assert!(rule.enabled);
+        assert_eq!(rule.priority, 100);
+        assert_eq!(rule.matchers.bundle_ids, vec!["com.example.App"]);
+        assert_eq!(rule.overrides.tone_id.as_deref(), Some("casual"));
     }
 
     #[test]

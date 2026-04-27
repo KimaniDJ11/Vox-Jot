@@ -2,7 +2,13 @@
 
 > Reference: external app **TypeWhisper**; do **not** copy GPLv3 code—feature parity only.
 
-Last updated: 2026-04-27 (UTC-4) — A5 fully decoupled, B3 indicator styles complete (Compact / Detailed / Minimal / Notch).
+Last updated: 2026-04-27 (UTC-4) — A5 fully decoupled, **B3 is complete** (see table below; do not mark B3 as pending).
+
+## At a glance (TypeWhisper parity vs Vox Jot)
+
+- **B3 — Recording overlay / indicator styles: DONE** (all four styles shipped: Compact, Detailed, Minimal, Notch; see `6bc8801`).
+- **A5 — Write profiles rule engine: DONE** (including decoupled `write_rules_enabled`, Windows frontmost, `force_post_process`).
+- **Still open on this plan:** A6, B2 (real streaming), B4, B6, optional A5 hotkey follow-up, Tier C ecosystem items.
 
 ## Tier A — Productivity & platform
 
@@ -26,7 +32,7 @@ Last updated: 2026-04-27 (UTC-4) — A5 fully decoupled, B3 indicator styles com
 | B5 | Audio ducking while recording | **Done** | `audio_toolkit/ducking.rs` + Recording & Devices |
 | B6 | Update channels (stable / RC / daily) | **Not done** | |
 
-## Tier C — Ecosystem (mostly pending)
+## Tier C — Ecosystem (not started; unrelated to B3)
 
 | ID | Item | Status |
 |----|------|--------|

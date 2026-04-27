@@ -364,3 +364,114 @@ pub async fn list_installed_apps() -> Result<Vec<InstalledApp>, String> {
         Ok(Vec::new())
     }
 }
+
+/// Resolve a bundle id to a base64-encoded PNG data URL of the app's icon.
+///
+/// On macOS we look up the `.app` via Spotlight, read `CFBundleIconFile` from
+/// `Info.plist`, and convert the `.icns` to a 128×128 PNG using the system
+/// `sips` tool. The PNG is cached on disk under
+/// `<app_data>/app-icons/<bundle_id>.png` so subsequent calls are a single
+/// file read.
+///
+/// Returns `Ok(None)` for unknown apps, missing icons, or non-macOS targets —
+/// the frontend falls back to a letter monogram in that case.
+#[specta::specta]
+#[tauri::command]
+pub async fn get_app_icon(app: AppHandle, bundle_id: String) -> Result<Option<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use base64::Engine;
+        use std::process::Command;
+
+        if bundle_id.trim().is_empty() {
+            return Ok(None);
+        }
+
+        let cache_dir = crate::portable::app_data_dir(&app)
+            .map_err(|e| format!("Failed to resolve app data dir: {}", e))?
+            .join("app-icons");
+        std::fs::create_dir_all(&cache_dir)
+            .map_err(|e| format!("Failed to create icon cache dir: {}", e))?;
+
+        // Sanitize bundle id for use as a filename.
+        let safe_id: String = bundle_id
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let png_path = cache_dir.join(format!("{}.png", safe_id));
+
+        if !png_path.exists() {
+            // Look up the .app path via Spotlight metadata.
+            let mdfind_output = Command::new("mdfind")
+                .arg(format!("kMDItemCFBundleIdentifier == \"{}\"", bundle_id))
+                .output()
+                .map_err(|e| format!("mdfind failed: {}", e))?;
+            if !mdfind_output.status.success() {
+                return Ok(None);
+            }
+            let app_path = String::from_utf8_lossy(&mdfind_output.stdout)
+                .lines()
+                .next()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+            let Some(app_path) = app_path else {
+                return Ok(None);
+            };
+
+            let plist_path = format!("{}/Contents/Info.plist", app_path);
+            if !std::path::Path::new(&plist_path).exists() {
+                return Ok(None);
+            }
+
+            let icon_name = Command::new("defaults")
+                .args(["read", &plist_path, "CFBundleIconFile"])
+                .output()
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .filter(|s| !s.is_empty());
+            let Some(icon_name) = icon_name else {
+                return Ok(None);
+            };
+
+            let icon_file = if icon_name.ends_with(".icns") {
+                icon_name.clone()
+            } else {
+                format!("{}.icns", icon_name)
+            };
+            let icns_path = format!("{}/Contents/Resources/{}", app_path, icon_file);
+            if !std::path::Path::new(&icns_path).exists() {
+                return Ok(None);
+            }
+
+            // Convert .icns → PNG, max dimension 128px (retina-friendly chip).
+            let status = Command::new("sips")
+                .args(["-s", "format", "png", "-Z", "128", &icns_path, "--out"])
+                .arg(&png_path)
+                .output()
+                .map_err(|e| format!("sips failed: {}", e))?;
+            if !status.status.success() {
+                return Ok(None);
+            }
+        }
+
+        let bytes = match std::fs::read(&png_path) {
+            Ok(b) => b,
+            Err(_) => return Ok(None),
+        };
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        Ok(Some(format!("data:image/png;base64,{}", encoded)))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, bundle_id);
+        Ok(None)
+    }
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-27",
+  "evaluator": "AI Assistant",
+
+  "source": {
+    "url": "https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF",
+    "repo_url": "https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF",
+    "paper_url": "",
+    "license": "lfm1.0",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "liquid-lfm2-1.2b-tool-gguf",
+    "label": "Liquid LFM2 1.2B Tool (GGUF)",
+    "description": "A 1.2B parameter edge-optimized LLM designed specifically for tool calling and structured outputs.",
+    "domain": "llm",
+    "parameter_count": "1.2B",
+    "model_format": "gguf",
+    "dtype": "int4"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": true,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": true,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": ["ggml-org/llama.cpp"],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "metal_gguf",
+    "can_run_as_local_process": true,
+    "api_surface": ["llama.cpp"],
+    "output_format": "tokens",
+    "supports_streaming": true,
+    "cold_start_estimate_sec": 1,
+    "vram_estimate_gb": 1.5,
+    "disk_size_mb": 731
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": true,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": true,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": ["en", "es", "fr", "de", "it", "pt", "pt-BR", "nl"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "gguf",
+    "estimated_download_mb": 731,
+    "requires_python_sidecar": false,
+    "requires_custom_runtime": false
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "Apple Silicon",
+    "cold_start_sec": 1,
+    "warm_start_sec": 0.5,
+    "peak_memory_gb": 1.5,
+    "sample_rtf": null,
+    "output_quality_notes": "Highly optimized for tool calling with extremely low latency due to small parameter size."
+  },
+
+  "verdict": {
+    "score": 43,
+    "decision": "ship_experimental",
+    "blockers": [],
+    "notes": "Excellent small model for local tool execution/function calling. Runs easily via standard llama.cpp in GGUF format."
+  }
+}

@@ -16,10 +16,13 @@ export const TestRuleButton: React.FC = () => {
     try {
       const appResult = await commands.getFrontmostAppForExclusion();
       const appContext = appResult.status === "ok" ? appResult.data : null;
+      const urlResult = await commands.getFrontmostUrlForWriteRules(
+        appContext?.bundle_id ?? null,
+      );
       const resolved = await commands.testResolveWriteRule(
         appContext?.bundle_id ?? null,
         appContext?.localized_name ?? null,
-        null,
+        urlResult.status === "ok" ? urlResult.data : null,
       );
       if (resolved.status === "ok" && resolved.data) {
         setResult(resolved.data);

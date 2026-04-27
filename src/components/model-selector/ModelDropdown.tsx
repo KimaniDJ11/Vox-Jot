@@ -5,7 +5,11 @@ import {
   getTranslatedModelName,
   getTranslatedModelDescription,
 } from "../../lib/utils/modelTranslation";
-import { ProviderIcon, engineTypeToProviderId } from "../ui/ProviderIcon";
+import {
+  ProviderIcon,
+  engineTypeToProviderId,
+  resolveModelProviderId,
+} from "../ui/ProviderIcon";
 
 interface ModelDropdownProps {
   models: ModelInfo[];
@@ -50,7 +54,10 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-start gap-2 min-w-0">
                   <ProviderIcon
-                    providerId={engineTypeToProviderId(model.engine_type)}
+                    providerId={resolveModelProviderId(
+                      `${getTranslatedModelName(model, t)} ${model.id}`,
+                      engineTypeToProviderId(model.engine_type),
+                    )}
                     size="sm"
                     className="mt-0.5"
                   />

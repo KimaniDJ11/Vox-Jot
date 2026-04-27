@@ -763,7 +763,7 @@ pub struct AppSettings {
     pub app_tone_mappings: Vec<AppToneMapping>,
     #[serde(default)]
     pub write_rules: Vec<WriteRule>,
-    #[serde(default)]
+    #[serde(default = "default_write_rules_url_capture_enabled")]
     pub write_rules_url_capture_enabled: bool,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
@@ -1059,7 +1059,11 @@ fn default_fallback_to_raw_on_failure() -> bool {
 }
 
 fn default_app_aware_tone_enabled() -> bool {
-    false
+    true
+}
+
+fn default_write_rules_url_capture_enabled() -> bool {
+    true
 }
 
 fn default_tone_definitions() -> Vec<ToneDefinition> {
@@ -2272,7 +2276,7 @@ pub fn get_default_settings() -> AppSettings {
         tone_definitions: default_tone_definitions(),
         app_tone_mappings,
         write_rules,
-        write_rules_url_capture_enabled: false,
+        write_rules_url_capture_enabled: default_write_rules_url_capture_enabled(),
         correction_tracking_enabled: default_correction_tracking_enabled(),
         file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
         snippets_enabled: default_snippets_enabled(),
@@ -2991,7 +2995,7 @@ mod tests {
     fn default_settings_include_app_aware_tone_presets() {
         let settings = get_default_settings();
 
-        assert!(!settings.app_aware_tone_enabled);
+        assert!(settings.app_aware_tone_enabled);
         assert!(settings
             .tone_definitions
             .iter()

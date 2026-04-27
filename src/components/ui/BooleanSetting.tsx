@@ -20,6 +20,7 @@ interface BooleanSettingProps {
   defaultValue?: boolean;
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
+  dense?: boolean;
   tooltipPosition?: "top" | "bottom";
   onChange?: (enabled: boolean) => void;
 }
@@ -34,6 +35,7 @@ export const BooleanSetting: React.FC<BooleanSettingProps> = React.memo(
     defaultValue = false,
     descriptionMode = "tooltip",
     grouped = false,
+    dense,
     tooltipPosition = "top",
     onChange,
   }) => {
@@ -62,6 +64,7 @@ export const BooleanSetting: React.FC<BooleanSettingProps> = React.memo(
         description={resolvedDescription}
         descriptionMode={descriptionMode}
         grouped={grouped}
+        dense={dense}
         tooltipPosition={tooltipPosition}
       />
     );

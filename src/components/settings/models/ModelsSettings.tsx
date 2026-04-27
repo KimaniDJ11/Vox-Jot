@@ -18,7 +18,10 @@ import {
   getModelPlatformOverview,
   type ModelPlatformOverview,
 } from "@/lib/modelPlatform";
-import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import {
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 import Badge from "@/components/ui/Badge";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 
@@ -425,7 +428,10 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {currentModelCatalog ? (
               <ProviderIcon
-                providerId={currentModelCatalog.provider_id}
+                providerId={resolveModelProviderId(
+                  `${currentModelInfo.name} ${currentModelInfo.id}`,
+                  currentModelCatalog.provider_id,
+                )}
                 size="md"
               />
             ) : null}

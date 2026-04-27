@@ -12,6 +12,11 @@ import {
   MODEL_HUB_TAB_DEFS,
   type ModelHubTabId,
 } from "@/components/model-hub/modelHubTabs";
+import {
+  ProviderIcon,
+  engineTypeToProviderId,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
 export const MODEL_HUB_SECTION_ID = "model-hub";
@@ -31,8 +36,10 @@ async function openModelHub(tab: ModelHubTabId) {
 
 interface LauncherRowProps {
   icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
+  iconBg?: string;
+  iconColor?: string;
+  /** When set, the icon node is rendered without the colored circular wrapper. */
+  iconBare?: boolean;
   label: string;
   value: string;
   ariaLabel?: string;
@@ -44,6 +51,7 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
   icon,
   iconBg,
   iconColor,
+  iconBare = false,
   label,
   value,
   ariaLabel,
@@ -51,6 +59,24 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
   onClick,
 }) => {
   const isStatsVariant = variant === "stats";
+
+  const renderIcon = (sizeClass: string) =>
+    iconBare ? (
+      <span
+        className={`flex ${sizeClass} shrink-0 items-center justify-center`}
+        aria-hidden
+      >
+        {icon}
+      </span>
+    ) : (
+      <span
+        className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full`}
+        style={{ backgroundColor: iconBg, color: iconColor }}
+        aria-hidden
+      >
+        {icon}
+      </span>
+    );
 
   return (
     <button
@@ -63,13 +89,7 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
       {isStatsVariant ? (
         <>
           <span className="flex items-center justify-between gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-              style={{ backgroundColor: iconBg, color: iconColor }}
-              aria-hidden
-            >
-              {icon}
-            </span>
+            {renderIcon("h-7 w-7")}
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                 {label}
@@ -86,13 +106,7 @@ const LauncherRow: React.FC<LauncherRowProps> = ({
         </>
       ) : (
         <>
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style={{ backgroundColor: iconBg, color: iconColor }}
-            aria-hidden
-          >
-            {icon}
-          </span>
+          {renderIcon("h-8 w-8")}
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               {label}
@@ -134,38 +148,68 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     "selected_tts_provider_id",
   ] as const);
 
+  const sttIconSize = variant === "stats" ? "sm" : "md";
+  const otherIconSize = variant === "stats" ? "sm" : "md";
+
+  const sttModel = useMemo(
+    () => models.find((m) => m.id === currentModel) ?? null,
+    [models, currentModel],
+  );
+
   const sttLabel = useMemo(() => {
-    const match = models.find((m) => m.id === currentModel);
     return (
-      match?.name ||
+      sttModel?.name ||
       currentModel ||
       t("footer.modelNotSet", { defaultValue: "Not set" })
     );
-  }, [models, currentModel, t]);
+  }, [sttModel, currentModel, t]);
 
-  const llmLabel = useMemo(() => {
+  const sttProviderId = useMemo(() => {
+    if (!sttModel) return null;
+    return resolveModelProviderId(
+      `${sttModel.name} ${sttModel.id}`,
+      engineTypeToProviderId(sttModel.engine_type),
+    );
+  }, [sttModel]);
+
+  const llmContext = useMemo(() => {
     const providerId = llmProviderId || "";
     const provider =
       llmProviders?.find((candidate) => candidate.id === providerId) || null;
     const selectedModel = llmModels?.[providerId] || "";
 
     if (!provider) {
-      return t("footer.llmNotSet", { defaultValue: "Not set" });
+      return {
+        label: t("footer.llmNotSet", { defaultValue: "Not set" }),
+        providerId: null as string | null,
+      };
     }
     if (provider.id === "apple_intelligence") {
-      return "Apple Intelligence";
+      return {
+        label: "Apple Intelligence",
+        providerId: "apple_intelligence",
+      };
     }
-    return (
-      selectedModel || t("footer.modelNotSet", { defaultValue: "Not set" })
-    );
+
+    const label =
+      selectedModel || t("footer.modelNotSet", { defaultValue: "Not set" });
+    const resolved = resolveModelProviderId(selectedModel, provider.id);
+    return { label, providerId: resolved };
   }, [llmModels, llmProviderId, llmProviders, t]);
 
-  const ttsLabel = useMemo(() => {
+  const ttsContext = useMemo(() => {
     const modelId = selectedTtsModelId ?? selectedTtsProviderId ?? null;
     if (!modelId) {
-      return t("footer.ttsModelNotSet", { defaultValue: "Not set" });
+      return {
+        label: t("footer.ttsModelNotSet", { defaultValue: "Not set" }),
+        providerId: null as string | null,
+      };
     }
-    return modelId;
+    const resolved = resolveModelProviderId(
+      `${selectedTtsModelId ?? ""} ${selectedTtsProviderId ?? ""}`,
+      selectedTtsProviderId ?? null,
+    );
+    return { label: modelId, providerId: resolved };
   }, [selectedTtsModelId, selectedTtsProviderId, t]);
 
   const hubTabLabel = (id: ModelHubTabId) => {
@@ -176,7 +220,14 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <LauncherRow
-        icon={<Mic className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        icon={
+          sttProviderId ? (
+            <ProviderIcon providerId={sttProviderId} size={sttIconSize} />
+          ) : (
+            <Mic className="h-4 w-4" strokeWidth={2} aria-hidden />
+          )
+        }
+        iconBare={Boolean(sttProviderId)}
         iconBg="color-mix(in srgb, var(--accent) 16%, transparent)"
         iconColor="var(--accent)"
         label={hubTabLabel("stt")}
@@ -185,20 +236,40 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
         onClick={() => void openModelHub("stt")}
       />
       <LauncherRow
-        icon={<Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        icon={
+          llmContext.providerId ? (
+            <ProviderIcon
+              providerId={llmContext.providerId}
+              size={otherIconSize}
+            />
+          ) : (
+            <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
+          )
+        }
+        iconBare={Boolean(llmContext.providerId)}
         iconBg="color-mix(in srgb, var(--voice) 16%, transparent)"
         iconColor="var(--voice)"
         label={hubTabLabel("llm")}
-        value={llmLabel}
+        value={llmContext.label}
         variant={variant}
         onClick={() => void openModelHub("llm")}
       />
       <LauncherRow
-        icon={<Volume2 className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        icon={
+          ttsContext.providerId ? (
+            <ProviderIcon
+              providerId={ttsContext.providerId}
+              size={otherIconSize}
+            />
+          ) : (
+            <Volume2 className="h-4 w-4" strokeWidth={2} aria-hidden />
+          )
+        }
+        iconBare={Boolean(ttsContext.providerId)}
         iconBg="color-mix(in srgb, var(--success, #22c55e) 16%, transparent)"
         iconColor="var(--success, #22c55e)"
         label={hubTabLabel("tts")}
-        value={ttsLabel}
+        value={ttsContext.label}
         variant={variant}
         onClick={() => void openModelHub("tts")}
       />

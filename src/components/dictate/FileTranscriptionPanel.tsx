@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, FileAudio, FolderPlus, Trash2, Upload } from "lucide-react";
 import type { TimedSegment, WatchFolderConfig, WatchFolderOutputFormat } from "@/bindings";
 import { commands } from "@/bindings";
-import { BooleanSetting } from "@/components/ui/BooleanSetting";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
@@ -186,14 +185,6 @@ export const FileTranscriptionPanel: React.FC = () => {
 
   return (
     <div className="space-y-4" aria-busy={isRunning}>
-      <BooleanSetting
-        settingKey="file_transcription_apply_dictionary"
-        labelKey="dictate.fileTranscription.applyDictionary"
-        descriptionKey="dictate.fileTranscription.applyDictionaryDescription"
-        descriptionMode="inline"
-        grouped
-        defaultValue={true}
-      />
       <div
         className={[
           subtleCardClassName,

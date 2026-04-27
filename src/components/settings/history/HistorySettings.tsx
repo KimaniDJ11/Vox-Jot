@@ -25,8 +25,10 @@ import {
   type FieldSnapshotStatus,
   type HistoryEntry,
 } from "@/bindings";
+import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { useOsType } from "@/hooks/useOsType";
+import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 
 const getHistoryDateKey = (timestamp: number): string => {
   const date = new Date(timestamp * 1000);
@@ -494,6 +496,12 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const dictionaryApplied = entry.dictionary_hits.length > 0;
   const postProcessApplied = polishedText.length > 0;
   const appLabel = getHistoryEntryAppLabel(entry);
+  const appBundleId = entry.screen_context_metadata?.active_app_bundle_id?.trim() || null;
+  const appNameFromMeta = entry.screen_context_metadata?.active_app_name?.trim() || null;
+  const appDisplayName =
+    appNameFromMeta ||
+    (appBundleId ? humanizeBundleId(appBundleId) : null) ||
+    appLabel;
   const fieldSnapshotStatus = entry.field_snapshot_status;
   const fieldCheckChanged =
     fieldSnapshotStatus === "captured" &&
@@ -545,7 +553,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           className="min-w-0 flex-1 sm:min-w-[220px]"
         />
 
-        <div className="flex items-center gap-1 opacity-40 transition-opacity duration-150 group-hover/history-row:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/history-row:opacity-100 focus-within:opacity-100">
           <button
             type="button"
             onClick={handleCopyText}
@@ -634,20 +642,28 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
-        {appLabel && (
+        {appLabel && appDisplayName && (
           <span
-            title={
-              entry.screen_context_metadata?.active_app_bundle_id ?? appLabel
-            }
+            title={appBundleId ?? appLabel}
+            aria-label={t("settings.history.badges.appA11y", {
+              appName: appDisplayName,
+              defaultValue: "Application: {{appName}}",
+            })}
           >
             <Badge
               variant="secondary"
-              className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
+              className="inline-flex max-w-full min-w-0 items-center gap-1.5 border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
             >
-              {t("settings.history.badges.app", {
-                appName: appLabel,
-                defaultValue: "App: {{appName}}",
-              })}
+              {appBundleId ? (
+                <AppMonogram
+                  bundleId={appBundleId}
+                  name={appDisplayName}
+                  size="sm"
+                />
+              ) : null}
+              <span className="min-w-0 max-w-[14rem] truncate sm:max-w-[18rem]">
+                {appDisplayName}
+              </span>
             </Badge>
           </span>
         )}

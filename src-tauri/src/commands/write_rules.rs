@@ -1,6 +1,6 @@
 use crate::post_processing::{ActiveAppContext, ResolvedWriteRule, WriteRule};
 use crate::settings::{get_settings, write_settings};
-use crate::write_rules::RuleResolver;
+use crate::write_rules::{validate_write_rules, RuleResolver};
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -26,9 +26,7 @@ pub fn upsert_write_rule(app: AppHandle, rule: WriteRule) -> Result<WriteRule, S
     } else {
         settings.write_rules.push(rule.clone());
     }
-    settings
-        .write_rules
-        .sort_by(|left, right| right.priority.cmp(&left.priority));
+    validate_write_rules(&settings.write_rules)?;
     write_settings(&app, settings);
     Ok(rule)
 }
@@ -81,6 +79,28 @@ pub fn test_resolve_write_rule(
         app_ctx.as_ref(),
         url.as_deref(),
     ))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_frontmost_url_for_write_rules(
+    app: AppHandle,
+    bundle_id: Option<String>,
+) -> Result<Option<String>, String> {
+    let settings = get_settings(&app);
+    if !settings.write_rules_url_capture_enabled {
+        return Ok(None);
+    }
+
+    let Some(bundle_id) = bundle_id else {
+        return Ok(None);
+    };
+    let bundle_id = bundle_id.trim();
+    if bundle_id.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(crate::browser_url::active_browser_url(bundle_id))
 }
 
 #[tauri::command]

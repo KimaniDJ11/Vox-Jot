@@ -65,7 +65,13 @@
       "edit": "Edit",
       "delete": "Delete",
       "enabled": "Enabled",
+      "disabled": "Disabled",
       "priority": "Priority",
+      "urlCaptureLabel": "Capture browser URL for website rules",
+      "view": {
+        "individual": "Individual",
+        "grouped": "Grouped"
+      },
       "matchers": {
         "appsLabel": "Apps",
         "urlsLabel": "URLs",
@@ -100,8 +106,6 @@
       "selectedLabel": "Selected:",
       "outputLabel": "Transcript",
       "fileDialogLabel": "Audio / Video",
-      "applyDictionary": "Apply dictionary & learned corrections",
-      "applyDictionaryDescription": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output.",
       "errors": {
         "heading": "Transcription failed",
         "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
@@ -390,6 +394,11 @@
     "corrections": {
       "title": "Dictionary",
       "description": "Manage the words, spellings, and learned corrections that shape how Vox Jot transcribes for you.",
+      "fileTranscriptionDictionary": {
+        "sectionTitle": "File transcription",
+        "label": "Apply dictionary & learned corrections",
+        "description": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output."
+      },
       "tracking": {
         "label": "Correction Tracking",
         "description": "Monitor text fields after paste to learn from your corrections. Adapts automatically to chat apps vs. note apps."
@@ -1031,7 +1040,10 @@
       "deleteConfirm": "Are you sure you want to delete this entry?",
       "loadError": "Failed to load history: {{error}}",
       "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}"
+      "saveToggleError": "Failed to update saved status: {{error}}",
+      "badges": {
+        "appA11y": "Application: {{appName}}"
+      }
     },
     "debug": {
       "title": "Debug",

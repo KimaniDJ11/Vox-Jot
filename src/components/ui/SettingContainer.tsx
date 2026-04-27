@@ -21,6 +21,8 @@ interface SettingContainerProps {
    */
   grouped?: boolean;
   layout?: "horizontal" | "stacked" | "compact";
+  /** Reduces row min-height from 56px to 44px for tighter cards. */
+  dense?: boolean;
   disabled?: boolean;
   tooltipPosition?: "top" | "bottom";
 }
@@ -31,6 +33,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   children,
   descriptionMode = "tooltip",
   layout = "horizontal",
+  dense = false,
   disabled = false,
   tooltipPosition = "top",
 }) => {
@@ -157,14 +160,19 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     );
   }
 
-  // Horizontal layout (default) — 56px minimum row height
-  const horizontalPadding = grouped ? "px-4 py-3" : "px-5 py-3";
+  // Horizontal layout (default) — 56px minimum row height (44px when dense)
+  const horizontalPadding = grouped
+    ? dense
+      ? "px-4 py-2"
+      : "px-4 py-3"
+    : "px-5 py-3";
+  const minRowHeight = dense ? "min-h-[44px]" : "min-h-[56px]";
 
   return (
     <div className={rowWrapperClasses} {...hoverHandlers}>
       {hoverTrack}
       <div
-        className={`relative flex min-h-[56px] items-center justify-between gap-6 ${horizontalPadding}`}
+        className={`relative flex ${minRowHeight} items-center justify-between gap-6 ${horizontalPadding}`}
       >
         <div className="flex-1 min-w-0">
           {descriptionMode === "tooltip" ? (

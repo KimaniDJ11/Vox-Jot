@@ -75,7 +75,7 @@ import { TranslationSettingsCard } from "@/components/settings/general/Translati
 import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
 import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
-import { AppAwareWriteProfilesToggle } from "@/components/settings/AppAwareWriteProfilesToggle";
+import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 import UpdateChecker from "@/components/update-checker";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
@@ -460,10 +460,13 @@ export const GeneralAppSettingsSection: React.FC = () => {
 
       <SpeechPackManagerSection />
 
+      <SettingsGroup title="Write Profiles">
+        <WriteProfilesCompactCard />
+      </SettingsGroup>
+
       <SettingsGroup title="Feature Toggles">
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
         <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
-        <AppAwareWriteProfilesToggle descriptionMode="tooltip" grouped={true} />
         <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
     </div>

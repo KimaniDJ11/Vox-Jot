@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { BooleanSetting } from "../../ui/BooleanSetting";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
 import { CustomWords } from "../CustomWords";
@@ -25,6 +26,20 @@ export const CorrectionSettings: React.FC<CorrectionSettingsProps> = ({
           <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
         </SettingsGroup>
       )}
+      <SettingsGroup
+        title={t("settings.corrections.fileTranscriptionDictionary.sectionTitle", {
+          defaultValue: "File transcription",
+        })}
+      >
+        <BooleanSetting
+          settingKey="file_transcription_apply_dictionary"
+          labelKey="settings.corrections.fileTranscriptionDictionary.label"
+          descriptionKey="settings.corrections.fileTranscriptionDictionary.description"
+          descriptionMode="inline"
+          grouped
+          defaultValue={true}
+        />
+      </SettingsGroup>
       <SettingsGroup>
         <CustomWords
           descriptionMode="tooltip"

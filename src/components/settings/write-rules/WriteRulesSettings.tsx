@@ -24,45 +24,52 @@ import {
   type ResolvedWriteRule,
   type WriteRule,
 } from "@/bindings";
+import {
+  readCachedInstalledApps,
+  refreshInstalledApps,
+  subscribeInstalledApps,
+} from "@/lib/installedApps";
 import { useSettings } from "@/hooks/useSettings";
-import { AppAwareWriteProfilesToggle } from "@/components/settings/AppAwareWriteProfilesToggle";
 import { Button } from "@/components/ui/Button";
-import { SettingsGroup, ToggleSwitch } from "@/components/ui";
+import { SettingsGroup } from "@/components/ui";
 import { WriteRuleEditor } from "./WriteRuleEditor";
+import {
+  groupWriteRules,
+  WriteProfileGroupCard,
+} from "./WriteProfileGroupCard";
 import { WriteRuleRow } from "./WriteRuleRow";
-import { TestRuleButton } from "./TestRuleButton";
 
-const urlCaptureLabel = "Capture browser URL for website rules";
-const urlCaptureDescription =
-  "Off by default. When on, Vox Jot asks Safari, Chrome, Arc, Firefox, Brave, and Edge for the active tab URL so URL patterns can match.";
 const emptyTitle = "No write profiles yet";
 const emptyBody =
   "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.";
 const createFirstLabel = "Create your first profile";
+type ViewMode = "individual" | "grouped";
 
 export const WriteRulesSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting, updateSetting, refreshSettings, isUpdating } =
-    useSettings();
+  const { getSetting, refreshSettings } = useSettings();
 
   const [rules, setRules] = useState<WriteRule[]>([]);
-  const [apps, setApps] = useState<InstalledApp[]>([]);
+  const [apps, setApps] = useState<InstalledApp[]>(
+    () => readCachedInstalledApps() ?? [],
+  );
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [activeRuleId, setActiveRuleId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("individual");
 
   const tones = getSetting("tone_definitions") ?? [];
   const prompts = getSetting("post_process_prompts") ?? [];
-  const urlCaptureEnabled =
-    getSetting("write_rules_url_capture_enabled") ?? false;
 
   const sortedRules = useMemo(
-    () => [...rules].sort((left, right) => right.priority - left.priority),
+    () => [...rules].sort((left, right) => left.name.localeCompare(right.name)),
     [rules],
   );
+  const groupedRules = useMemo(() => groupWriteRules(rules), [rules]);
   const editingRule = editingId
-    ? sortedRules.find((rule) => rule.id === editingId)
+    ? rules.find((rule) => rule.id === editingId)
     : undefined;
   const inEditMode = adding || !!editingRule;
 
@@ -78,12 +85,12 @@ export const WriteRulesSettings: React.FC = () => {
   // commands once per row.
   useEffect(() => {
     void loadRules();
-    void commands.listInstalledApps().then((result) => {
-      if (result.status === "ok") setApps(result.data);
-    });
+    void refreshInstalledApps().then(setApps);
+    const unsubscribe = subscribeInstalledApps(setApps);
     void commands.getAvailableModels().then((result) => {
       if (result.status === "ok") setModels(result.data);
     });
+    return unsubscribe;
   }, [loadRules]);
 
   // "Active now" indicator — periodically asks the backend which rule
@@ -96,11 +103,14 @@ export const WriteRulesSettings: React.FC = () => {
       setActiveRuleId(null);
       return;
     }
+    const urlResult = await commands.getFrontmostUrlForWriteRules(
+      appResult.data.bundle_id,
+    );
     const resolved: Awaited<ReturnType<typeof commands.testResolveWriteRule>> =
       await commands.testResolveWriteRule(
         appResult.data.bundle_id,
         appResult.data.localized_name,
-        null,
+        urlResult.status === "ok" ? urlResult.data : null,
       );
     if (resolved.status === "ok") {
       const data = resolved.data as ResolvedWriteRule | null;
@@ -118,8 +128,10 @@ export const WriteRulesSettings: React.FC = () => {
   }, [refreshActiveRule, inEditMode, rules.length]);
 
   const saveRule = async (rule: WriteRule) => {
+    setSaveError(null);
     const result = await commands.upsertWriteRule({
       ...rule,
+      priority: 0,
       name: rule.name.trim(),
       matchers: {
         bundle_ids: rule.matchers.bundle_ids ?? [],
@@ -132,6 +144,8 @@ export const WriteRulesSettings: React.FC = () => {
       await loadRules();
       await refreshSettings();
       await refreshActiveRule();
+    } else {
+      setSaveError(result.error);
     }
   };
 
@@ -141,18 +155,6 @@ export const WriteRulesSettings: React.FC = () => {
       await loadRules();
       await refreshSettings();
     }
-  };
-
-  const moveRule = async (id: string, direction: -1 | 1) => {
-    const next = [...sortedRules];
-    const index = next.findIndex((rule) => rule.id === id);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    setRules(next);
-    await commands.reorderWriteRules(next.map((rule) => rule.id));
-    await loadRules();
-    await refreshSettings();
   };
 
   // ─── EDIT MODE ────────────────────────────────────────────────────
@@ -166,7 +168,9 @@ export const WriteRulesSettings: React.FC = () => {
         onCancel={() => {
           setAdding(false);
           setEditingId(null);
+          setSaveError(null);
         }}
+        saveError={saveError}
       />
     );
   }
@@ -175,9 +179,11 @@ export const WriteRulesSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <SettingsGroup
+        noCard
         title={t("refine.writeRules.title")}
         description={t("refine.writeRules.description")}
-        titleAction={
+      >
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
@@ -190,25 +196,30 @@ export const WriteRulesSettings: React.FC = () => {
             <Plus className="h-3.5 w-3.5" />
             {t("refine.writeRules.newRule")}
           </Button>
-        }
-      >
-        <div className="space-y-3 px-5 py-4">
-          <AppAwareWriteProfilesToggle descriptionMode="tooltip" grouped />
-          <ToggleSwitch
-            grouped
-            label={urlCaptureLabel}
-            description={urlCaptureDescription}
-            checked={urlCaptureEnabled}
-            isUpdating={isUpdating("write_rules_url_capture_enabled")}
-            onChange={(enabled) =>
-              void updateSetting("write_rules_url_capture_enabled", enabled)
-            }
-          />
-          <TestRuleButton />
+          <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "individual" ? "primary-soft" : "ghost"}
+              className="border-transparent px-3"
+              onClick={() => setViewMode("individual")}
+            >
+              {t("refine.writeRules.view.individual")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "grouped" ? "primary-soft" : "ghost"}
+              className="border-transparent px-3"
+              onClick={() => setViewMode("grouped")}
+            >
+              {t("refine.writeRules.view.grouped")}
+            </Button>
+          </div>
         </div>
       </SettingsGroup>
 
-      {sortedRules.length === 0 ? (
+      {rules.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--input)]/40 p-8 text-center">
           <p className="text-sm font-semibold text-[var(--text)]">
             {emptyTitle}
@@ -230,14 +241,31 @@ export const WriteRulesSettings: React.FC = () => {
             {createFirstLabel}
           </Button>
         </div>
+      ) : viewMode === "grouped" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {groupedRules.map((group) => (
+            <WriteProfileGroupCard
+              key={group.key}
+              group={group}
+              apps={apps}
+              tones={tones}
+              prompts={prompts}
+              models={models}
+              activeRuleId={activeRuleId}
+              onEdit={(rule) => {
+                setAdding(false);
+                setEditingId(rule.id);
+              }}
+              onDelete={(id) => void deleteRule(id)}
+            />
+          ))}
+        </div>
       ) : (
-        <div className="space-y-2">
-          {sortedRules.map((rule, index) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {sortedRules.map((rule) => (
             <WriteRuleRow
               key={rule.id}
               rule={rule}
-              index={index}
-              count={sortedRules.length}
               apps={apps}
               tones={tones}
               prompts={prompts}
@@ -248,7 +276,6 @@ export const WriteRulesSettings: React.FC = () => {
                 setEditingId(rule.id);
               }}
               onDelete={() => void deleteRule(rule.id)}
-              onMove={(direction) => void moveRule(rule.id, direction)}
             />
           ))}
         </div>

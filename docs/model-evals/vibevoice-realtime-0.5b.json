@@ -1,0 +1,107 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-27",
+  "evaluator": "github-copilot",
+
+  "source": {
+    "url": "https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B",
+    "repo_url": "https://github.com/microsoft/VibeVoice",
+    "paper_url": "https://arxiv.org/abs/2508.19205",
+    "license": "MIT",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "vibevoice-realtime-0.5b",
+    "label": "VibeVoice-Realtime-0.5B",
+    "description": "Real-time streaming TTS model with ~200-300 ms first-audio latency claim, single-speaker output, and English-first behavior.",
+    "domain": "tts",
+    "parameter_count": "0.5B",
+    "model_format": "safetensors",
+    "dtype": "bfloat16"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": true,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": [
+      "https://github.com/microsoft/VibeVoice/blob/main/docs/vibevoice-realtime-0.5b.md",
+      "https://github.com/microsoft/VibeVoice/blob/main/demo/web/app.py"
+    ]
+  },
+
+  "runtime_fit": {
+    "lane": "sidecar",
+    "can_run_as_local_process": true,
+    "api_surface": [
+      "python generate()",
+      "websocket streaming demo"
+    ],
+    "output_format": "wav",
+    "supports_streaming": true,
+    "cold_start_estimate_sec": null,
+    "vram_estimate_gb": null,
+    "disk_size_mb": null
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": null,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": true,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": false,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": [
+    "en",
+    "de (experimental)",
+    "fr (experimental)",
+    "it (experimental)",
+    "ja (experimental)",
+    "ko (experimental)",
+    "nl (experimental)",
+    "pl (experimental)",
+    "pt (experimental)",
+    "es (experimental)"
+  ],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": null,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "No local Vox Jot benchmark yet. Upstream docs claim real-time on NVIDIA T4 and Mac M4 Pro.",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "Upstream claims real-time streaming. Model card labels this release research-focused and English-first."
+  },
+
+  "verdict": {
+    "score": 40,
+    "decision": "ship_experimental",
+    "blockers": [
+      "No MLX/GGUF/ONNX/CoreML path; runtime is Python + torch sidecar",
+      "No native Rust integration lane today",
+      "English is the only supported language; other languages are explicitly experimental"
+    ],
+    "notes": "Weighted rubric: License 12, Mac runtime 4, Domain fit 9, Resource budget 6, Packaging 2, Streaming 3, Languages 1, Community 3, Voice cloning 0 (total 40). Recommendation for Vox Jot: experimental Labs-only integration via sidecar with strict latency validation on Apple Silicon before broader rollout."
+  }
+}

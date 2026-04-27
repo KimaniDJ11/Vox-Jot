@@ -1461,6 +1461,14 @@ async testResolveWriteRule(bundleId: string | null, appName: string | null, url:
     else return { status: "error", error: e  as any };
 }
 },
+async getFrontmostUrlForWriteRules(bundleId: string | null) : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_frontmost_url_for_write_rules", { bundleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeWriteRulesUrlCaptureEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled }) };
@@ -1885,6 +1893,26 @@ async getDetailTargetSection() : Promise<Result<string | null, string>> {
 async listInstalledApps() : Promise<Result<InstalledApp[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_installed_apps") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Resolve a bundle id to a base64-encoded PNG data URL of the app's icon.
+ * 
+ * On macOS we look up the `.app` via Spotlight, read `CFBundleIconFile` from
+ * `Info.plist`, and convert the `.icns` to a 128×128 PNG using the system
+ * `sips` tool. The PNG is cached on disk under
+ * `<app_data>/app-icons/<bundle_id>.png` so subsequent calls are a single
+ * file read.
+ * 
+ * Returns `Ok(None)` for unknown apps, missing icons, or non-macOS targets —
+ * the frontend falls back to a letter monogram in that case.
+ */
+async getAppIcon(bundleId: string) : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_app_icon", { bundleId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

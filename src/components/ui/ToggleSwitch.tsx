@@ -11,6 +11,7 @@ interface ToggleSwitchProps {
   description: string;
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
+  dense?: boolean;
   tooltipPosition?: "top" | "bottom";
 }
 
@@ -23,6 +24,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   description,
   descriptionMode = "tooltip",
   grouped = false,
+  dense,
   tooltipPosition = "top",
 }) => {
   return (
@@ -31,6 +33,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       description={description}
       descriptionMode={descriptionMode}
       grouped={grouped}
+      dense={dense}
       disabled={disabled}
       tooltipPosition={tooltipPosition}
     >

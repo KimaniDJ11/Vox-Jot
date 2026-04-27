@@ -29,8 +29,6 @@ const newProfileTitle = "New profile";
 const editProfileTitle = "Edit profile";
 const nameLabel = "Profile name";
 const namePlaceholder = "e.g. Slack & Discord chats";
-const priorityLabel = "Priority";
-const priorityHint = "Higher numbers win when multiple profiles match.";
 const enabledLabel = "Enabled";
 const enabledDescription =
   "Disabled profiles are kept in the list but ignored during dictation.";
@@ -53,13 +51,14 @@ interface WriteRuleEditorProps {
   prompts: LLMPrompt[];
   onSave: (rule: WriteRule) => void;
   onCancel: () => void;
+  saveError?: string | null;
 }
 
 const createRule = (): WriteRule => ({
   id: crypto.randomUUID(),
   name: "New profile",
   enabled: true,
-  priority: 50,
+  priority: 0,
   matchers: { bundle_ids: [], url_patterns: [] },
   overrides: {},
 });
@@ -72,6 +71,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   prompts,
   onSave,
   onCancel,
+  saveError,
 }) => {
   const [draft, setDraft] = useState<WriteRule>(rule ?? createRule());
   const [activeTab, setActiveTab] = useState<OverrideTab>("speech");
@@ -131,40 +131,27 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         </div>
       </div>
 
-      {/* Identity card — name + priority + enabled */}
+      {/* Identity card — name + enabled */}
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_140px]">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--muted)]">
-              {nameLabel}
-            </label>
-            <Input
-              value={draft.name}
-              placeholder={namePlaceholder}
-              onChange={(event) =>
-                setDraft({ ...draft, name: event.target.value })
-              }
-            />
-            {!canSave ? (
-              <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
-            ) : null}
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--muted)]">
-              {priorityLabel}
-            </label>
-            <Input
-              type="number"
-              value={draft.priority}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  priority: Number(event.target.value) || 0,
-                })
-              }
-            />
-            <p className="text-[11px] text-[var(--muted)]">{priorityHint}</p>
-          </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--muted)]">
+            {nameLabel}
+          </label>
+          <Input
+            value={draft.name}
+            placeholder={namePlaceholder}
+            onChange={(event) =>
+              setDraft({ ...draft, name: event.target.value })
+            }
+          />
+          {!canSave ? (
+            <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
+          ) : null}
+          {saveError ? (
+            <p className="text-xs font-medium text-[var(--danger)]">
+              {saveError}
+            </p>
+          ) : null}
         </div>
         <div className="mt-3">
           <ToggleSwitch

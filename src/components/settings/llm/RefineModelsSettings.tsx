@@ -23,7 +23,10 @@ import Badge from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
-import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import {
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 import HubModelCard, {
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
@@ -839,7 +842,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
               <HubModelCard
                 key={`${model.runtime_provider_id}::${model.runtime_model_id}`}
                 title={model.title}
-                providerId={model.runtime_provider_id}
+                providerId={resolveModelProviderId(
+                  `${model.title} ${model.runtime_model_id}`,
+                  model.runtime_provider_id,
+                )}
                 headerBadges={buildHeaderBadges(model)}
                 description={description}
                 footerMetaItems={buildMetaItems(model)}

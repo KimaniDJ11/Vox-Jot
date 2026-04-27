@@ -2,6 +2,7 @@ use crate::post_processing::{ActiveAppContext, ResolvedWriteRule, WriteRule, Wri
 use crate::settings::{
     AppSettings, PasteMethod, TranslationOutputMode, TranslationRoutePreference,
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EffectiveSessionSettings {
@@ -19,43 +20,109 @@ pub struct EffectiveSessionSettings {
 pub struct RuleResolver;
 
 impl RuleResolver {
-    /// Cheap, pure-CPU match. Rules are sorted by priority; the first match wins.
+    /// Cheap, pure-CPU match. More specific matchers win over broad defaults:
+    /// URL match > app-specific default > any-app default.
     pub fn resolve(
         rules: &[WriteRule],
         app_ctx: Option<&ActiveAppContext>,
         url: Option<&str>,
     ) -> Option<ResolvedWriteRule> {
-        let mut candidates: Vec<&WriteRule> = rules.iter().filter(|rule| rule.enabled).collect();
-        candidates.sort_by(|left, right| {
-            right
-                .priority
-                .cmp(&left.priority)
-                .then_with(|| left.name.cmp(&right.name))
-                .then_with(|| left.id.cmp(&right.id))
-        });
+        let app_matches = |rule: &&WriteRule| rule.enabled && rule_app_matches(rule, app_ctx);
 
-        for rule in candidates {
-            let app_match = rule_app_matches(rule, app_ctx);
-            if !app_match {
+        rules
+            .iter()
+            .filter(app_matches)
+            .filter_map(|rule| {
+                matched_url_pattern(rule, url).map(|matched_pattern| (rule, matched_pattern))
+            })
+            .max_by(|(left, left_pattern), (right, right_pattern)| {
+                rule_specificity(left)
+                    .cmp(&rule_specificity(right))
+                    .then_with(|| {
+                        normalize_pattern(left_pattern)
+                            .len()
+                            .cmp(&normalize_pattern(right_pattern).len())
+                    })
+                    .then_with(|| right.name.cmp(&left.name))
+                    .then_with(|| right.id.cmp(&left.id))
+            })
+            .map(|(rule, matched_pattern)| resolved_rule(rule, app_ctx, url, Some(matched_pattern)))
+            .or_else(|| {
+                rules
+                    .iter()
+                    .filter(app_matches)
+                    .filter(|rule| rule.matchers.url_patterns.is_empty())
+                    .max_by(|left, right| {
+                        rule_specificity(left)
+                            .cmp(&rule_specificity(right))
+                            .then_with(|| right.name.cmp(&left.name))
+                            .then_with(|| right.id.cmp(&left.id))
+                    })
+                    .map(|rule| resolved_rule(rule, app_ctx, url, None))
+            })
+    }
+}
+
+pub fn validate_write_rules(rules: &[WriteRule]) -> Result<(), String> {
+    let mut any_app_default: Option<&WriteRule> = None;
+    let mut app_defaults: HashMap<String, &WriteRule> = HashMap::new();
+    let mut url_patterns: HashMap<String, &WriteRule> = HashMap::new();
+
+    for rule in rules.iter().filter(|rule| rule.enabled) {
+        let bundle_ids = rule.matchers.bundle_ids.as_slice();
+        let patterns = rule.matchers.url_patterns.as_slice();
+
+        if patterns.is_empty() {
+            if bundle_ids.is_empty() {
+                if let Some(existing) = any_app_default {
+                    if existing.id != rule.id {
+                        return Err(format!(
+                            "\"{}\" conflicts with \"{}\". Only one enabled Any app profile is allowed.",
+                            rule.name, existing.name
+                        ));
+                    }
+                }
+                any_app_default = Some(rule);
                 continue;
             }
 
-            let matched_url_pattern = matched_url_pattern(rule, url);
-            if rule.matchers.url_patterns.is_empty() || matched_url_pattern.is_some() {
-                return Some(ResolvedWriteRule {
-                    rule_id: rule.id.clone(),
-                    rule_name: rule.name.clone(),
-                    matched_bundle_id: app_ctx.map(|ctx| ctx.bundle_id.clone()),
-                    matched_app_name: app_ctx.map(|ctx| ctx.localized_name.clone()),
-                    matched_url: url.map(str::to_string),
-                    matched_url_pattern,
-                    overrides: rule.overrides.clone(),
-                });
+            for bundle_id in bundle_ids {
+                let normalized = bundle_id.trim().to_ascii_lowercase();
+                if normalized.is_empty() {
+                    continue;
+                }
+                if let Some(existing) = app_defaults.get(&normalized) {
+                    if existing.id != rule.id {
+                        return Err(format!(
+                            "\"{}\" and \"{}\" both target the same app. Each app can only have one default Write profile.",
+                            rule.name, existing.name
+                        ));
+                    }
+                } else {
+                    app_defaults.insert(normalized, rule);
+                }
             }
         }
 
-        None
+        for pattern in patterns {
+            let normalized = normalize_pattern(pattern);
+            if normalized.is_empty() {
+                continue;
+            }
+            if let Some(existing) = url_patterns.get(&normalized) {
+                if existing.id != rule.id {
+                    return Err(format!(
+                        "\"{}\" and \"{}\" both target URL pattern \"{}\". Each URL pattern can only belong to one Write profile.",
+                        rule.name, existing.name, normalized
+                    ));
+                }
+            } else {
+                url_patterns.insert(normalized, rule);
+            }
+        }
     }
+
+    Ok(())
 }
 
 pub fn apply_overrides(base: &AppSettings, ov: &WriteRuleOverrides) -> EffectiveSessionSettings {
@@ -142,6 +209,31 @@ fn rule_app_matches(rule: &WriteRule, app_ctx: Option<&ActiveAppContext>) -> boo
         .any(|bundle_id| bundle_id.eq_ignore_ascii_case(&app_ctx.bundle_id))
 }
 
+fn rule_specificity(rule: &WriteRule) -> u8 {
+    if rule.matchers.bundle_ids.is_empty() {
+        0
+    } else {
+        1
+    }
+}
+
+fn resolved_rule(
+    rule: &WriteRule,
+    app_ctx: Option<&ActiveAppContext>,
+    url: Option<&str>,
+    matched_url_pattern: Option<String>,
+) -> ResolvedWriteRule {
+    ResolvedWriteRule {
+        rule_id: rule.id.clone(),
+        rule_name: rule.name.clone(),
+        matched_bundle_id: app_ctx.map(|ctx| ctx.bundle_id.clone()),
+        matched_app_name: app_ctx.map(|ctx| ctx.localized_name.clone()),
+        matched_url: url.map(str::to_string),
+        matched_url_pattern,
+        overrides: rule.overrides.clone(),
+    }
+}
+
 fn matched_url_pattern(rule: &WriteRule, url: Option<&str>) -> Option<String> {
     if rule.matchers.url_patterns.is_empty() {
         return None;
@@ -151,7 +243,8 @@ fn matched_url_pattern(rule: &WriteRule, url: Option<&str>) -> Option<String> {
     rule.matchers
         .url_patterns
         .iter()
-        .find(|pattern| url_matches(pattern, url))
+        .filter(|pattern| url_matches(pattern, url))
+        .max_by_key(|pattern| normalize_pattern(pattern).len())
         .cloned()
 }
 
@@ -290,13 +383,58 @@ mod tests {
     }
 
     #[test]
-    fn priority_breaks_ties() {
+    fn url_match_beats_app_default() {
         let rules = vec![
-            rule("low", 10, vec!["com.test"], vec![]),
-            rule("high", 20, vec!["com.test"], vec![]),
+            rule("app", 100, vec!["com.browser"], vec![]),
+            rule("url", 10, vec!["com.browser"], vec!["mail.example.com"]),
+        ];
+        let resolved = RuleResolver::resolve(
+            &rules,
+            Some(&app_ctx("com.browser")),
+            Some("https://mail.example.com/inbox"),
+        )
+        .unwrap();
+        assert_eq!(resolved.rule_id, "url");
+    }
+
+    #[test]
+    fn app_default_beats_any_app_default() {
+        let rules = vec![
+            rule("any", 100, vec![], vec![]),
+            rule("app", 10, vec!["com.test"], vec![]),
         ];
         let resolved = RuleResolver::resolve(&rules, Some(&app_ctx("com.test")), None).unwrap();
-        assert_eq!(resolved.rule_id, "high");
+        assert_eq!(resolved.rule_id, "app");
+    }
+
+    #[test]
+    fn any_app_default_is_last_resort() {
+        let rules = vec![
+            rule("app", 100, vec!["com.other"], vec![]),
+            rule("any", 10, vec![], vec![]),
+        ];
+        let resolved = RuleResolver::resolve(&rules, Some(&app_ctx("com.test")), None).unwrap();
+        assert_eq!(resolved.rule_id, "any");
+    }
+
+    #[test]
+    fn longest_matching_url_pattern_wins() {
+        let rules = vec![
+            rule("broad", 100, vec!["com.browser"], vec!["github.com/*"]),
+            rule(
+                "specific",
+                10,
+                vec!["com.browser"],
+                vec!["github.com/orgs/*"],
+            ),
+        ];
+        let resolved = RuleResolver::resolve(
+            &rules,
+            Some(&app_ctx("com.browser")),
+            Some("https://github.com/orgs/acme/settings"),
+        )
+        .unwrap();
+        assert_eq!(resolved.rule_id, "specific");
     }
 
     #[test]
@@ -431,5 +569,50 @@ mod tests {
         let resolved_neutral =
             RuleResolver::resolve(&rules, Some(&app_ctx("com.app.neutral")), None).unwrap();
         assert_eq!(resolved_neutral.overrides.force_post_process, None);
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_app_defaults() {
+        let rules = vec![
+            rule("mail-a", 10, vec!["com.mail"], vec![]),
+            rule("mail-b", 20, vec!["com.mail"], vec![]),
+        ];
+
+        assert!(validate_write_rules(&rules).is_err());
+    }
+
+    #[test]
+    fn validation_allows_app_default_and_url_override_for_same_app() {
+        let rules = vec![
+            rule("browser-default", 10, vec!["com.browser"], vec![]),
+            rule(
+                "browser-url",
+                20,
+                vec!["com.browser"],
+                vec!["mail.example.com"],
+            ),
+        ];
+
+        assert!(validate_write_rules(&rules).is_ok());
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_any_app_defaults() {
+        let rules = vec![
+            rule("any-a", 10, vec![], vec![]),
+            rule("any-b", 20, vec![], vec![]),
+        ];
+
+        assert!(validate_write_rules(&rules).is_err());
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_url_patterns() {
+        let rules = vec![
+            rule("site-a", 10, vec![], vec!["https://mail.example.com/"]),
+            rule("site-b", 20, vec![], vec!["mail.example.com"]),
+        ];
+
+        assert!(validate_write_rules(&rules).is_err());
     }
 }

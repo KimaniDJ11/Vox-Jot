@@ -12,6 +12,7 @@ import { type CompactBadgeItem } from "../ui/CompactOverflow";
 import HubModelCard, {
   type HubTrailing,
 } from "../model-hub/HubModelCard";
+import { resolveModelProviderId } from "../ui/ProviderIcon";
 
 const formatLanguageAbbreviation = (language: string): string => {
   const trimmed = language.trim();
@@ -247,10 +248,15 @@ const ModelCard: React.FC<ModelCardProps> = ({
       <Languages className="h-3.5 w-3.5" />
     ) : null;
 
+  const resolvedProviderId = resolveModelProviderId(
+    `${displayName} ${model.id}`,
+    providerId,
+  );
+
   return (
     <HubModelCard
       title={displayName}
-      providerId={providerId}
+      providerId={resolvedProviderId}
       headerBadges={headerBadges}
       description={displayDescription}
       secondary={scoresNode}

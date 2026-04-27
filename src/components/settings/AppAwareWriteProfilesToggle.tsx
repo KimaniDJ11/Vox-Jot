@@ -4,6 +4,7 @@ import { BooleanSetting } from "../ui/BooleanSetting";
 interface AppAwareWriteProfilesToggleProps {
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
+  dense?: boolean;
 }
 
 export const AppAwareWriteProfilesToggle: React.FC<

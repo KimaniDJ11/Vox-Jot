@@ -15,6 +15,11 @@ const promptLabel = "Post-process prompt";
 const autoSubmitLabel = "Auto-submit";
 const autoSubmitHelp = "Press Enter automatically after dictating.";
 const useGlobalLabel = "Use global setting";
+const postProcessLabel = "Post-processing";
+const postProcessHelp =
+  "Force AI post-processing on or off when this rule matches, regardless of which shortcut you press.";
+const postProcessOnLabel = "Always run post-processing";
+const postProcessOffLabel = "Skip post-processing";
 
 interface RefineOverridesProps {
   overrides: WriteRuleOverrides;
@@ -46,6 +51,12 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
       : overrides.auto_submit === false
         ? "off"
         : "global";
+  const forcePostProcess: TriState =
+    overrides.force_post_process === true
+      ? "on"
+      : overrides.force_post_process === false
+        ? "off"
+        : "global";
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -73,7 +84,24 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
           }
         />
       </Field>
-      <Field label={autoSubmitLabel} help={autoSubmitHelp} fullWidth>
+      <Field label={postProcessLabel} help={postProcessHelp}>
+        <Dropdown
+          options={[
+            { value: "global", label: useGlobalLabel },
+            { value: "on", label: postProcessOnLabel },
+            { value: "off", label: postProcessOffLabel },
+          ]}
+          selectedValue={forcePostProcess}
+          onSelect={(value) =>
+            onChange({
+              ...overrides,
+              force_post_process:
+                value === "on" ? true : value === "off" ? false : null,
+            })
+          }
+        />
+      </Field>
+      <Field label={autoSubmitLabel} help={autoSubmitHelp}>
         <Dropdown
           options={[
             { value: "global", label: useGlobalLabel },

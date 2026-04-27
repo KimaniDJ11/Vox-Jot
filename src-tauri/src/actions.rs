@@ -3125,6 +3125,13 @@ impl ShortcutAction for TranscribeAction {
                 if resolved_rule.is_none() && !settings.write_rules.is_empty() {
                     effective_settings.app_aware_tone_enabled = false;
                 }
+                // A rule may force post-processing on/off regardless of which
+                // shortcut the user pressed. This shapes the action, not the
+                // settings, so we override the local `post_process` flag.
+                let post_process = resolved_rule
+                    .as_ref()
+                    .and_then(|rule| rule.overrides.force_post_process)
+                    .unwrap_or(post_process);
 
                 match tm.transcribe_with_settings(samples, effective_settings.clone()) {
                     Ok(transcription) => {

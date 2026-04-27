@@ -115,6 +115,11 @@ pub struct WriteRuleOverrides {
     pub append_trailing_space: Option<bool>,
     #[serde(default)]
     pub mute_while_recording: Option<bool>,
+    /// Force post-processing on/off when this rule matches, regardless of
+    /// which shortcut was pressed. `None` keeps the action's default behavior
+    /// (Transcribe = off, Transcribe-with-Post-Process = on).
+    #[serde(default)]
+    pub force_post_process: Option<bool>,
 }
 
 #[derive(Serialize, Debug, Clone, Type)]

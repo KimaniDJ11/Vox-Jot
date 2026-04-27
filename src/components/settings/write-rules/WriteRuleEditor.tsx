@@ -90,7 +90,8 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     const refine =
       (o.tone_id ? 1 : 0) +
       (o.post_process_prompt_id ? 1 : 0) +
-      (typeof o.auto_submit === "boolean" ? 1 : 0);
+      (typeof o.auto_submit === "boolean" ? 1 : 0) +
+      (typeof o.force_post_process === "boolean" ? 1 : 0);
     const output =
       (o.paste_method ? 1 : 0) +
       (typeof o.append_trailing_space === "boolean" ? 1 : 0) +

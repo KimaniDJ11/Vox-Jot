@@ -2293,7 +2293,13 @@ bundle_ids?: string[];
  * Empty means no URL constraint. Patterns match normalized host+path.
  */
 url_patterns?: string[] }
-export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null }
+export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null; 
+/**
+ * Force post-processing on/off when this rule matches, regardless of
+ * which shortcut was pressed. `None` keeps the action's default behavior
+ * (Transcribe = off, Transcribe-with-Post-Process = on).
+ */
+force_post_process?: boolean | null }
 
 /** tauri-specta globals **/
 

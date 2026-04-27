@@ -396,6 +396,7 @@ mod tests {
                 paste_method: Some(PasteMethod::Direct),
                 append_trailing_space: Some(true),
                 mute_while_recording: Some(true),
+                force_post_process: None,
             },
         );
         assert_eq!(effective.selected_model, "parakeet");
@@ -407,5 +408,28 @@ mod tests {
         assert_eq!(effective.paste_method, PasteMethod::Direct);
         assert!(effective.append_trailing_space);
         assert!(effective.mute_while_recording);
+    }
+
+    #[test]
+    fn force_post_process_round_trips_through_resolver() {
+        let mut force_on = rule("on", 10, vec!["com.app.on"], vec![]);
+        force_on.overrides.force_post_process = Some(true);
+        let mut force_off = rule("off", 10, vec!["com.app.off"], vec![]);
+        force_off.overrides.force_post_process = Some(false);
+        let neutral = rule("neutral", 10, vec!["com.app.neutral"], vec![]);
+
+        let rules = vec![force_on, force_off, neutral];
+
+        let resolved_on =
+            RuleResolver::resolve(&rules, Some(&app_ctx("com.app.on")), None).unwrap();
+        assert_eq!(resolved_on.overrides.force_post_process, Some(true));
+
+        let resolved_off =
+            RuleResolver::resolve(&rules, Some(&app_ctx("com.app.off")), None).unwrap();
+        assert_eq!(resolved_off.overrides.force_post_process, Some(false));
+
+        let resolved_neutral =
+            RuleResolver::resolve(&rules, Some(&app_ctx("com.app.neutral")), None).unwrap();
+        assert_eq!(resolved_neutral.overrides.force_post_process, None);
     }
 }

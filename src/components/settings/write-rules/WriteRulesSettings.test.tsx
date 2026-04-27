@@ -93,11 +93,16 @@ describe("Write Profiles rule UI", () => {
     const nameInput = view.querySelector("input") as HTMLInputElement;
     await inputValue(nameInput, editedName);
 
-    const buttons = Array.from(view.querySelectorAll("button"));
+    // The new editor has many buttons (sticky header + tabs + URL
+    // example chips), so we resolve "Save profile" by text. This also
+    // documents the contract: the editor's primary CTA must be labelled
+    // "Save profile" so the user can find it without scanning icons.
+    const saveButton = Array.from(view.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Save profile",
+    ) as HTMLButtonElement | undefined;
+    expect(saveButton).toBeDefined();
     await act(async () => {
-      buttons[buttons.length - 1]?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true }),
-      );
+      saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(onSave).toHaveBeenCalledWith(
@@ -113,9 +118,13 @@ describe("Write Profiles rule UI", () => {
     const input = view.querySelector("input") as HTMLInputElement;
     await inputValue(input, invalidPattern);
 
-    const addButton = view.querySelector("button") as HTMLButtonElement;
+    // The new UrlPatternList drops the explicit "+ Add URL" button in
+    // favor of pressing Enter inside the input — fewer clicks, matches
+    // chip-style inputs elsewhere in the app.
     await act(async () => {
-      addButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
     });
 
     expect(view.textContent).toContain(invalidPatternMessage);

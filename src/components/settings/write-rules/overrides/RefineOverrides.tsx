@@ -1,7 +1,20 @@
+// Refine-related overrides (tone, post-process prompt, auto-submit).
+//
+// The auto-submit control was a plain ToggleSwitch which forced the
+// user to commit to either "on" or "off" — there was no way to say
+// "leave it global". Now it's a 3-way Dropdown like the other tri-state
+// fields so the editor's behavior is consistent across panels
+// (Nielsen #4, consistency & standards).
+
 import React from "react";
 import type { LLMPrompt, ToneDefinition, WriteRuleOverrides } from "@/bindings";
 import { Dropdown } from "@/components/ui/Dropdown";
-import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+
+const toneLabel = "Tone";
+const promptLabel = "Post-process prompt";
+const autoSubmitLabel = "Auto-submit";
+const autoSubmitHelp = "Press Enter automatically after dictating.";
+const useGlobalLabel = "Use global setting";
 
 interface RefineOverridesProps {
   overrides: WriteRuleOverrides;
@@ -10,6 +23,8 @@ interface RefineOverridesProps {
   onChange: (overrides: WriteRuleOverrides) => void;
 }
 
+type TriState = "global" | "on" | "off";
+
 export const RefineOverrides: React.FC<RefineOverridesProps> = ({
   overrides,
   tones,
@@ -17,17 +32,24 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
   onChange,
 }) => {
   const toneOptions = [
-    { value: "__global__", label: "Use global setting" },
+    { value: "__global__", label: useGlobalLabel },
     ...tones.map((tone) => ({ value: tone.id, label: tone.label || tone.id })),
   ];
   const promptOptions = [
-    { value: "__global__", label: "Use global setting" },
+    { value: "__global__", label: useGlobalLabel },
     ...prompts.map((prompt) => ({ value: prompt.id, label: prompt.name })),
   ];
 
+  const autoSubmit: TriState =
+    overrides.auto_submit === true
+      ? "on"
+      : overrides.auto_submit === false
+        ? "off"
+        : "global";
+
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      <LabeledControl label="Tone">
+    <div className="grid gap-4 md:grid-cols-2">
+      <Field label={toneLabel}>
         <Dropdown
           options={toneOptions}
           selectedValue={overrides.tone_id ?? "__global__"}
@@ -38,8 +60,8 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
             })
           }
         />
-      </LabeledControl>
-      <LabeledControl label="Prompt">
+      </Field>
+      <Field label={promptLabel}>
         <Dropdown
           options={promptOptions}
           selectedValue={overrides.post_process_prompt_id ?? "__global__"}
@@ -50,24 +72,36 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
             })
           }
         />
-      </LabeledControl>
-      <ToggleSwitch
-        grouped
-        label="Auto-submit"
-        description="Press Enter after output for this profile."
-        checked={overrides.auto_submit === true}
-        onChange={(checked) => onChange({ ...overrides, auto_submit: checked })}
-      />
+      </Field>
+      <Field label={autoSubmitLabel} help={autoSubmitHelp} fullWidth>
+        <Dropdown
+          options={[
+            { value: "global", label: useGlobalLabel },
+            { value: "on", label: "Auto-submit" },
+            { value: "off", label: "Don't auto-submit" },
+          ]}
+          selectedValue={autoSubmit}
+          onSelect={(value) =>
+            onChange({
+              ...overrides,
+              auto_submit: value === "on" ? true : value === "off" ? false : null,
+            })
+          }
+        />
+      </Field>
     </div>
   );
 };
 
-const LabeledControl: React.FC<{
+const Field: React.FC<{
   label: string;
+  help?: string;
+  fullWidth?: boolean;
   children: React.ReactNode;
-}> = ({ label, children }) => (
-  <div className="space-y-1.5">
+}> = ({ label, help, fullWidth, children }) => (
+  <div className={"space-y-1.5 " + (fullWidth ? "md:col-span-2" : "")}>
     <label className="text-xs font-medium text-[var(--muted)]">{label}</label>
     {children}
+    {help ? <p className="text-[11px] text-[var(--muted)]">{help}</p> : null}
   </div>
 );

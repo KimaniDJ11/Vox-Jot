@@ -1,12 +1,23 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
-import { commands, type InstalledApp } from "@/bindings";
-import { Button } from "@/components/ui/Button";
-import { Dropdown } from "@/components/ui/Dropdown";
+// Multi-app picker for the "Match" card.
+//
+// Old version: a Dropdown + "Add app" button. Picking one app meant
+// two clicks AND lost the search affordance because react-select inside
+// a popover hides keyboard input until you click. New version: an
+// inline input with type-ahead suggestions; pick one to add it as a
+// chip. Pressing Enter or clicking a suggestion adds — no "+ Add"
+// button needed (Nielsen #7, flexibility & efficiency).
 
-const anyAppLabel = "Any app";
-const chooseAppLabel = "Choose an app";
-const addAppLabel = "Add app";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
+import { commands, type InstalledApp } from "@/bindings";
+import { Input } from "@/components/ui/Input";
+import { AppMonogram } from "../AppMonogram";
+
+const matchAnyChip = "Any app";
+const fieldLabel = "Apps";
+const helpHint =
+  "Leave empty to match any app. Typing a name shows suggestions.";
+const placeholder = "Search apps…";
 const removeAppLabel = "Remove app";
 
 interface AppMultiPickerProps {
@@ -19,13 +30,13 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
   onChange,
 }) => {
   const [apps, setApps] = useState<InstalledApp[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void commands.listInstalledApps().then((result) => {
-      if (result.status === "ok") {
-        setApps(result.data);
-      }
+      if (result.status === "ok") setApps(result.data);
     });
   }, []);
 
@@ -33,61 +44,134 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
     () => new Map(apps.map((app) => [app.bundle_id, app])),
     [apps],
   );
-  const options = apps
-    .filter((app) => !bundleIds.includes(app.bundle_id))
-    .map((app) => ({ value: app.bundle_id, label: app.name }));
 
-  const addSelected = () => {
-    if (!selected || bundleIds.includes(selected)) return;
-    onChange([...bundleIds, selected]);
-    setSelected(null);
+  // Type-ahead match. Hide already-added apps so the user can't
+  // accidentally add one twice.
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return apps
+      .filter(
+        (app) =>
+          !bundleIds.includes(app.bundle_id) &&
+          (app.name.toLowerCase().includes(q) ||
+            app.bundle_id.toLowerCase().includes(q)),
+      )
+      .slice(0, 8);
+  }, [apps, bundleIds, query]);
+
+  // Click-outside dismiss for the suggestion popover.
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const onDown = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [showSuggestions]);
+
+  const addApp = (bundleId: string) => {
+    if (bundleIds.includes(bundleId)) return;
+    onChange([...bundleIds, bundleId]);
+    setQuery("");
+    setShowSuggestions(false);
   };
 
   return (
-    <div className="space-y-2">
+    <div ref={containerRef} className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <label className="text-xs font-medium text-[var(--muted)]">
+          {fieldLabel}
+        </label>
+        <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {bundleIds.length === 0 ? (
           <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-            {anyAppLabel}
+            {matchAnyChip}
           </span>
         ) : (
-          bundleIds.map((bundleId) => (
-            <span
-              key={bundleId}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1 text-xs font-medium text-[var(--text)]"
-            >
-              {appsByBundleId.get(bundleId)?.name ?? bundleId}
-              <button
-                type="button"
-                className="text-[var(--muted)] hover:text-[var(--danger)]"
-                onClick={() =>
-                  onChange(bundleIds.filter((id) => id !== bundleId))
-                }
-                aria-label={removeAppLabel}
+          bundleIds.map((bundleId) => {
+            const app = appsByBundleId.get(bundleId);
+            return (
+              <span
+                key={bundleId}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
+                title={bundleId}
               >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))
+                <AppMonogram
+                  bundleId={bundleId}
+                  name={app?.name}
+                  size="xs"
+                />
+                {app?.name ?? bundleId}
+                <button
+                  type="button"
+                  className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
+                  onClick={() =>
+                    onChange(bundleIds.filter((id) => id !== bundleId))
+                  }
+                  aria-label={removeAppLabel}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            );
+          })
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Dropdown
-          options={options}
-          selectedValue={selected}
-          onSelect={setSelected}
-          placeholder={chooseAppLabel}
-          className="min-w-[240px]"
+
+      <div className="relative">
+        <Input
+          value={query}
+          onFocus={() => setShowSuggestions(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setShowSuggestions(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && suggestions[0]) {
+              event.preventDefault();
+              addApp(suggestions[0].bundle_id);
+            } else if (event.key === "Escape") {
+              setShowSuggestions(false);
+            }
+          }}
+          placeholder={placeholder}
+          className="w-full"
         />
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={addSelected}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {addAppLabel}
-        </Button>
+        {showSuggestions && suggestions.length > 0 ? (
+          <ul
+            role="listbox"
+            className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[var(--border)] bg-[var(--card)] py-1 shadow-[var(--shadow-md)]"
+          >
+            {suggestions.map((app) => (
+              <li key={app.bundle_id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--input)]"
+                  onClick={() => addApp(app.bundle_id)}
+                >
+                  <AppMonogram
+                    bundleId={app.bundle_id}
+                    name={app.name}
+                    size="sm"
+                  />
+                  <span className="truncate text-[var(--text)]">{app.name}</span>
+                  <span className="ml-auto truncate text-[10px] text-[var(--muted)]">
+                    {app.bundle_id}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </div>
   );

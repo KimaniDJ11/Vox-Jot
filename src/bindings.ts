@@ -1355,6 +1355,13 @@ async transcribeFile(path: string) : Promise<Result<TranscriptionFileResult, str
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Render `segments` as SubRip (`.srt`) text and write it to `path`.
+ * 
+ * The frontend chooses the path via the standard save dialog so the user
+ * retains full control over where files land. Returns the byte count
+ * written for the in-app toast message.
+ */
 async exportSubtitlesSrt(segments: TimedSegment[], path: string) : Promise<Result<number, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_subtitles_srt", { segments, path }) };
@@ -1363,6 +1370,9 @@ async exportSubtitlesSrt(segments: TimedSegment[], path: string) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Render `segments` as WebVTT (`.vtt`) text and write it to `path`.
+ */
 async exportSubtitlesVtt(segments: TimedSegment[], path: string) : Promise<Result<number, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_subtitles_vtt", { segments, path }) };
@@ -1406,6 +1416,54 @@ async setWatchFolderEnabled(id: string, enabled: boolean) : Promise<Result<null,
 async updateWatchFolderFormat(id: string, outputFormat: WatchFolderOutputFormat) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_watch_folder_format", { id, outputFormat }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listWriteRules() : Promise<Result<WriteRule[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_write_rules") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async upsertWriteRule(rule: WriteRule) : Promise<Result<WriteRule, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("upsert_write_rule", { rule }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteWriteRule(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_write_rule", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async reorderWriteRules(orderedIds: string[]) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reorder_write_rules", { orderedIds }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async testResolveWriteRule(bundleId: string | null, appName: string | null, url: string | null) : Promise<Result<ResolvedWriteRule | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("test_resolve_write_rule", { bundleId, appName, url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeWriteRulesUrlCaptureEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -1817,54 +1875,6 @@ async getDetailTargetSection() : Promise<Result<string | null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async listWriteRules() : Promise<Result<WriteRule[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("list_write_rules") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async upsertWriteRule(rule: WriteRule) : Promise<Result<WriteRule, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("upsert_write_rule", { rule }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async deleteWriteRule(id: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("delete_write_rule", { id }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async reorderWriteRules(orderedIds: string[]) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("reorder_write_rules", { orderedIds }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async testResolveWriteRule(bundleId: string | null, appName: string | null, url: string | null) : Promise<Result<ResolvedWriteRule | null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("test_resolve_write_rule", { bundleId, appName, url }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async changeWriteRulesUrlCaptureEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_write_rules_url_capture_enabled_setting", { enabled }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 /**
  * List GUI applications installed on the user's system.
  * 
@@ -2069,7 +2079,25 @@ async convoIsAudioCapturing() : Promise<Result<ConvoAudioCaptureStatus, string>>
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; watch_folders?: WatchFolderConfig[]; http_api_enabled?: boolean; http_api_port?: number }
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; 
+/**
+ * Folders Vox Jot watches; new audio files dropped into these are
+ * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
+ */
+watch_folders?: WatchFolderConfig[]; 
+/**
+ * Whether the loopback HTTP API server is enabled. Off by default;
+ * flipping this on starts an `axum` server on `127.0.0.1` so the
+ * `vox-jot` CLI and other tools can drive transcription externally.
+ */
+http_api_enabled?: boolean; 
+/**
+ * Port the loopback API binds to when `http_api_enabled` is true.
+ */
+http_api_port?: number }
+/**
+ * @deprecated Use WriteRule for app-aware routing.
+ */
 export type AppToneMapping = { bundle_id: string; app_name: string; tone_id: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
@@ -2093,15 +2121,6 @@ export type ConvoSessionState = { session_id: string; mode: ConvoMode; transcrip
 export type ConvoTranscriptItem = { id: string; role: string; text: string; timestamp_ms: number; has_audio: boolean }
 export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
 export type CustomSounds = { start: boolean; stop: boolean }
-export type TimedSegment = { start_ms: number; end_ms: number; text: string }
-export type TranscriptionFileResult = { text: string; segments: TimedSegment[] }
-export type WatchFolderOutputFormat = "text" | "srt" | "vtt"
-export type WatchFolderConfig = { id: string; path: string; output_format: WatchFolderOutputFormat; delete_after: boolean; enabled: boolean }
-export type HttpApiStatus = { enabled: boolean; port: number }
-export type WriteRule = { id: string; name: string; enabled: boolean; priority: number; matchers: WriteRuleMatchers; overrides: WriteRuleOverrides }
-export type WriteRuleMatchers = { bundle_ids?: string[]; url_patterns?: string[] }
-export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null }
-export type ResolvedWriteRule = { rule_id: string; rule_name: string; matched_bundle_id: string | null; matched_app_name: string | null; matched_url: string | null; matched_url_pattern: string | null; overrides: WriteRuleOverrides }
 /**
  * Aggregated dictation statistics computed from history entries.
  */
@@ -2132,6 +2151,7 @@ export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStream
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null; screen_context_metadata: ScreenContextHistoryMetadata | null }
+export type HttpApiStatus = { enabled: boolean; port: number }
 /**
  * Result of changing keyboard implementation
  */
@@ -2172,6 +2192,7 @@ export type RefineModelCatalog = { providers: RefineProviderStatus[]; models: Re
 export type RefineModelDescriptor = { id: string; title: string; description: string; source_kind: RefineModelSourceKind; source_label: string; runtime_provider_id: string; runtime_model_id: string; runtime_label: string; installed: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_repo_id: string | null; source_file_name: string | null; source_url: string | null; note: string | null }
 export type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face" | "managed_provider"
 export type RefineProviderStatus = { id: string; label: string; available: boolean; local_only: boolean; installed: boolean; running: boolean; detail: string }
+export type ResolvedWriteRule = { rule_id: string; rule_name: string; matched_bundle_id: string | null; matched_app_name: string | null; matched_url: string | null; matched_url_pattern: string | null; overrides: WriteRuleOverrides }
 export type RuntimeRequirement = { id: string; label: string; engine_family: string; auto_routed: boolean }
 export type ScreenContextDiagnostics = { status: ContextCaptureStatus; has_screen_permission: boolean; cache_size: number; latest_capture_at_ms: number | null; latest_context_age_ms: number | null; latest_display_id: number | null; latest_source: string | null; latest_preview_text: string | null; last_error: string | null }
 export type ScreenContextHistoryMetadata = { source: string | null; capture_status: ContextCaptureStatus; cache_age_ms: number | null; summary: string | null; active_app_bundle_id: string | null; active_app_name: string | null; sent_externally: boolean; changed_output: boolean }
@@ -2188,7 +2209,22 @@ export type SoundTheme = "marimba" | "pop" | "custom"
  * A stored correction entry, as returned to the frontend.
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
+/**
+ * One transcribed segment with millisecond-resolution timing.
+ * 
+ * `start_ms` and `end_ms` are absolute offsets from the start of the
+ * source audio, expressed in milliseconds. `text` is the segment's
+ * transcript without leading/trailing whitespace.
+ */
+export type TimedSegment = { start_ms: number; end_ms: number; text: string }
 export type ToneDefinition = { id: string; label: string; instruction: string }
+/**
+ * Return type for `transcribe_file`. `segments` is empty when the
+ * underlying engine did not expose timestamps (Moonshine/GigaAM/MLX
+ * today). The frontend uses an empty list as the signal to disable
+ * SRT/WebVTT export buttons.
+ */
+export type TranscriptionFileResult = { text: string; segments: TimedSegment[] }
 export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
 export type TranslationDestinationMode = "paste_in_place" | "preview_then_paste" | "open_in_jot_pad"
 export type TranslationOutputMode = "source" | "translated" | "bilingual"
@@ -2212,7 +2248,52 @@ export type TtsVoiceProfileDescriptor = { id: string; label: string; description
 export type TtsVoiceTuningSettings = { tempo_rate?: number; expressiveness?: number; exaggeration?: number; randomness?: number; guidance?: number; stability?: number; repetition_penalty?: number; style_instructions?: string | null }
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type VoiceInfo = { id: string; label: string; locale: string | null; engine: TtsEngineKind; installed: boolean; available: boolean }
+/**
+ * One watched folder entry. The `id` is generated client-side (uuid)
+ * so settings writes from the UI never collide with concurrent watcher
+ * events for the same folder.
+ */
+export type WatchFolderConfig = { id: string; path: string; output_format?: WatchFolderOutputFormat; 
+/**
+ * When true, the source audio file is deleted after a successful
+ * transcription. Defaults to false because losing recordings to a
+ * silent typo would be very bad.
+ */
+delete_after?: boolean; 
+/**
+ * Soft on/off for the row in the UI. The watcher service skips
+ * disabled rows entirely so users can pause without removing them.
+ */
+enabled?: boolean }
+/**
+ * Output format for files written by the watch-folder service.
+ */
+export type WatchFolderOutputFormat = 
+/**
+ * Plain transcript next to the source file as `<basename>.txt`.
+ */
+"text" | 
+/**
+ * SubRip subtitles (`.srt`); only meaningful when the engine
+ * produced timed segments (Whisper / Parakeet today).
+ */
+"srt" | 
+/**
+ * WebVTT subtitles (`.vtt`); same caveat as SRT.
+ */
+"vtt"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
+export type WriteRule = { id: string; name: string; enabled: boolean; priority: number; matchers: WriteRuleMatchers; overrides: WriteRuleOverrides }
+export type WriteRuleMatchers = { 
+/**
+ * Empty means the rule can match any app.
+ */
+bundle_ids?: string[]; 
+/**
+ * Empty means no URL constraint. Patterns match normalized host+path.
+ */
+url_patterns?: string[] }
+export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null }
 
 /** tauri-specta globals **/
 

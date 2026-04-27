@@ -1,12 +1,25 @@
+// URL pattern list for the "Match" card.
+//
+// UX heuristics in play:
+//   #5 Error prevention   → reject obvious mistakes (schemes, spaces)
+//                           inline rather than at save time.
+//   #10 Help & docs       → show example patterns the user can click
+//                           to add — they immediately learn the
+//                           grammar (`*.gmail.com`, `github.com/orgs/*`)
+//                           by example.
+
 import React, { useState } from "react";
-import { Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 
-const noUrlConstraintLabel = "No URL constraint";
-const addUrlLabel = "Add URL";
+const fieldLabel = "URLs";
+const helpHint = "Optional. Use `*` as a wildcard. Skip `https://`.";
+const placeholder = "Add URL pattern (e.g. *.gmail.com)";
 const removeUrlPatternLabel = "Remove URL pattern";
-const urlPlaceholder = "Add URL pattern (e.g. *.gmail.com)";
+const noConstraintChip = "No URL constraint";
+const examplesLabel = "Examples:";
+
+const EXAMPLES = ["mail.google.com", "*.gmail.com", "github.com/orgs/*"];
 
 interface UrlPatternListProps {
   patterns: string[];
@@ -29,8 +42,8 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const addPattern = () => {
-    const next = draft.trim();
+  const addPattern = (raw: string) => {
+    const next = raw.trim();
     const validation = validatePattern(next);
     if (validation) {
       setError(validation);
@@ -45,16 +58,23 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
 
   return (
     <div className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <label className="text-xs font-medium text-[var(--muted)]">
+          {fieldLabel}
+        </label>
+        <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {patterns.length === 0 ? (
           <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-            {noUrlConstraintLabel}
+            {noConstraintChip}
           </span>
         ) : (
           patterns.map((pattern) => (
             <span
               key={pattern}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1 text-xs font-medium text-[var(--text)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-3 pr-2 text-xs font-medium text-[var(--text)]"
             >
               {pattern}
               <button
@@ -71,33 +91,39 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
           ))
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            setError(null);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              addPattern();
-            }
-          }}
-          placeholder={urlPlaceholder}
-          className="min-w-[260px]"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={addPattern}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {addUrlLabel}
-        </Button>
-      </div>
+
+      <Input
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          if (error) setError(null);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            addPattern(draft);
+          }
+        }}
+        placeholder={placeholder}
+        className="w-full"
+      />
+
       {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--muted)]">
+        <span>{examplesLabel}</span>
+        {EXAMPLES.map((example) => (
+          <button
+            key={example}
+            type="button"
+            onClick={() => addPattern(example)}
+            disabled={patterns.includes(example)}
+            className="rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+          >
+            {example}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

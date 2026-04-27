@@ -1653,8 +1653,97 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
     }
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(all(
+    target_os = "windows",
+    not(all(target_os = "macos", target_arch = "aarch64"))
+))]
 fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+    // Windows path: use the Win32 API to find the foreground window's
+    // owning process, then read the executable's product name from
+    // its version info. This gives us a friendly localized_name plus
+    // a stable bundle_id (we use the executable path, since Windows
+    // doesn't have a true bundle id) so Write Profile rules can match
+    // by app on Windows the same way they do on macOS.
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, MAX_PATH};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return None;
+        }
+
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == 0 {
+            return None;
+        }
+
+        let process: HANDLE = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+            Ok(handle) => handle,
+            Err(err) => {
+                debug!("Failed to OpenProcess for pid {}: {}", pid, err);
+                return None;
+            }
+        };
+
+        // Read full process image path (e.g. C:\Program Files\Slack\Slack.exe).
+        let mut buffer = [0u16; MAX_PATH as usize];
+        let mut size = buffer.len() as u32;
+        let result = QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            windows::core::PWSTR(buffer.as_mut_ptr()),
+            &mut size,
+        );
+        let _ = CloseHandle(process);
+
+        if result.is_err() || size == 0 {
+            return None;
+        }
+
+        let path = OsString::from_wide(&buffer[..size as usize])
+            .to_string_lossy()
+            .into_owned();
+        if path.is_empty() {
+            return None;
+        }
+
+        // Friendly name: take the file stem ("Slack.exe" → "Slack").
+        let localized_name = std::path::Path::new(&path)
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or(&path)
+            .to_string();
+
+        // Bundle id: lowercase full path. Stable across launches and
+        // matches what users would see if they Tab + Get Info on the
+        // running EXE. Cross-platform rules can switch on it if they
+        // include both ".../Slack.exe" and "com.tinyspeck.slackmacgap".
+        let bundle_id = path.to_lowercase();
+
+        Some(ActiveAppContext {
+            bundle_id,
+            localized_name,
+        })
+    }
+}
+
+#[cfg(not(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    target_os = "windows"
+)))]
+fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+    // Linux + Intel macOS + everything else — no frontmost-app
+    // detection yet. Returning None means write profiles can still
+    // match purely on URL patterns (when the user enables URL capture)
+    // but app-only rules effectively never fire on these platforms.
     None
 }
 
@@ -1687,7 +1776,11 @@ fn resolve_active_write_rule(
     settings: &AppSettings,
     prepared: &PreparedActiveAppContext,
 ) -> Option<crate::post_processing::ResolvedWriteRule> {
-    if !settings.app_aware_tone_enabled {
+    // Write profiles get their own master toggle (`write_rules_enabled`)
+    // so users can keep app-aware tone mappings off while still using
+    // rule-based engine/language/output overrides — the two features
+    // ship together but conceptually do different things.
+    if !settings.write_rules_enabled() {
         return None;
     }
 

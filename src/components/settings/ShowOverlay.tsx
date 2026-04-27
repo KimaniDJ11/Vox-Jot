@@ -54,6 +54,25 @@ export const ShowOverlay: React.FC<ShowOverlayProps> = React.memo(
           defaultValue: "Wider overlay with mic status and partial text.",
         }),
       },
+      {
+        value: "minimal" as const,
+        label: t("settings.advanced.overlay.style.minimal", {
+          defaultValue: "Minimal",
+        }),
+        description: t("settings.advanced.overlay.style.minimalDescription", {
+          defaultValue: "Single dot — the smallest possible recording cue.",
+        }),
+      },
+      {
+        value: "notch" as const,
+        label: t("settings.advanced.overlay.style.notch", {
+          defaultValue: "Notch",
+        }),
+        description: t("settings.advanced.overlay.style.notchDescription", {
+          defaultValue:
+            "Hugs the camera notch on M-series MacBooks (top center).",
+        }),
+      },
     ];
 
     const selectedPosition = (getSetting("overlay_position") ||

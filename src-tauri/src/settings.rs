@@ -179,8 +179,18 @@ pub enum OverlayPosition {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum RecordingOverlayStyle {
+    /// Pill-shaped overlay with a small waveform — the historical
+    /// default. Sits at the chosen `OverlayPosition`.
     Compact,
+    /// Wider overlay with a full waveform, partial-text strip, and a
+    /// cancel button.
     Detailed,
+    /// Tiny dot in the corner — the smallest possible "I'm recording"
+    /// indicator. Useful when you want zero distraction.
+    Minimal,
+    /// macOS-only: hugs the camera notch area at the top of the
+    /// screen. Outside macOS this falls back to `Compact` at the top.
+    Notch,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
@@ -765,6 +775,14 @@ pub struct AppSettings {
     pub write_rules: Vec<WriteRule>,
     #[serde(default = "default_write_rules_url_capture_enabled")]
     pub write_rules_url_capture_enabled: bool,
+    /// Master toggle for the Write Profiles rule engine. Decoupled
+    /// from `app_aware_tone_enabled` so users can keep tone mappings
+    /// off while still routing engine/language/output overrides
+    /// based on the active app or URL. `None` falls back to the
+    /// legacy app-aware-tone toggle so we don't surprise existing
+    /// users on first upgrade.
+    #[serde(default)]
+    pub write_rules_enabled_override: Option<bool>,
     #[serde(default = "default_correction_tracking_enabled")]
     pub correction_tracking_enabled: bool,
     #[serde(default = "default_file_transcription_apply_dictionary")]
@@ -2277,6 +2295,7 @@ pub fn get_default_settings() -> AppSettings {
         app_tone_mappings,
         write_rules,
         write_rules_url_capture_enabled: default_write_rules_url_capture_enabled(),
+        write_rules_enabled_override: None,
         correction_tracking_enabled: default_correction_tracking_enabled(),
         file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
         snippets_enabled: default_snippets_enabled(),
@@ -2290,6 +2309,19 @@ pub fn get_default_settings() -> AppSettings {
 }
 
 impl AppSettings {
+    /// Whether the Write Profiles rule engine should run.
+    ///
+    /// Order of precedence:
+    ///   1. `write_rules_enabled_override` if the user explicitly set
+    ///      it (any `Some(_)` value);
+    ///   2. otherwise fall back to `app_aware_tone_enabled` so
+    ///      pre-decoupling installs keep their existing behavior
+    ///      until the user touches the new control.
+    pub fn write_rules_enabled(&self) -> bool {
+        self.write_rules_enabled_override
+            .unwrap_or(self.app_aware_tone_enabled)
+    }
+
     pub fn tts_preset(&self, preset_id: &str) -> Option<&TtsVoicePreset> {
         self.tts_voice_presets
             .iter()

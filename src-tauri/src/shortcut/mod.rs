@@ -1437,6 +1437,20 @@ pub fn change_app_aware_tone_enabled_setting(app: AppHandle, enabled: bool) -> R
     Ok(())
 }
 
+/// Set the explicit Write-Profiles master toggle. Pass `null` to
+/// clear the override and inherit from `app_aware_tone_enabled`.
+#[tauri::command]
+#[specta::specta]
+pub fn change_write_rules_enabled_setting(
+    app: AppHandle,
+    enabled: Option<bool>,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.write_rules_enabled_override = enabled;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn update_tone_definitions(

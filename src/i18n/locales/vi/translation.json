@@ -454,7 +454,13 @@
           "title": "Overlay Style",
           "description": "Minimal shows only a small pill with level bars. Detailed adds full level meters and live partial text.",
           "compact": "Minimal",
-          "detailed": "Detailed"
+          "detailed": "Detailed",
+          "minimal": "Minimal",
+          "minimalDescription": "Single dot — the smallest possible recording cue.",
+          "notch": "Notch",
+          "notchDescription": "Hugs the camera notch on M-series MacBooks (top center).",
+          "compactDescription": "Small pill with live level bars.",
+          "detailedDescription": "Wider overlay with mic status and partial text."
         }
       },
       "pasteMethod": {
@@ -1123,7 +1129,8 @@
   },
   "overlay": {
     "transcribing": "Đang chuyển đổi...",
-    "processing": "Đang xử lý..."
+    "processing": "Đang xử lý...",
+    "recording": "Recording"
   },
   "titleBar": {
     "streak": "{{count}}d streak",

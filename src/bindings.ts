@@ -576,6 +576,18 @@ async changeAppAwareToneEnabledSetting(enabled: boolean) : Promise<Result<null, 
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Set the explicit Write-Profiles master toggle. Pass `null` to
+ * clear the override and inherit from `app_aware_tone_enabled`.
+ */
+async changeWriteRulesEnabledSetting(enabled: boolean | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_write_rules_enabled_setting", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateToneDefinitions(definitions: ToneDefinition[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_tone_definitions", { definitions }) };
@@ -2107,7 +2119,16 @@ async convoIsAudioCapturing() : Promise<Result<ConvoAudioCaptureStatus, string>>
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; 
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; app_tone_mappings?: AppToneMapping[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; 
+/**
+ * Master toggle for the Write Profiles rule engine. Decoupled
+ * from `app_aware_tone_enabled` so users can keep tone mappings
+ * off while still routing engine/language/output overrides
+ * based on the active app or URL. `None` falls back to the
+ * legacy app-aware-tone toggle so we don't surprise existing
+ * users on first upgrade.
+ */
+write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean; 
 /**
  * Folders Vox Jot watches; new audio files dropped into these are
  * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
@@ -2214,7 +2235,27 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
-export type RecordingOverlayStyle = "compact" | "detailed"
+export type RecordingOverlayStyle = 
+/**
+ * Pill-shaped overlay with a small waveform — the historical
+ * default. Sits at the chosen `OverlayPosition`.
+ */
+"compact" | 
+/**
+ * Wider overlay with a full waveform, partial-text strip, and a
+ * cancel button.
+ */
+"detailed" | 
+/**
+ * Tiny dot in the corner — the smallest possible "I'm recording"
+ * indicator. Useful when you want zero distraction.
+ */
+"minimal" | 
+/**
+ * macOS-only: hugs the camera notch area at the top of the
+ * screen. Outside macOS this falls back to `Compact` at the top.
+ */
+"notch"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type RefineModelCatalog = { providers: RefineProviderStatus[]; models: RefineModelDescriptor[] }
 export type RefineModelDescriptor = { id: string; title: string; description: string; source_kind: RefineModelSourceKind; source_label: string; runtime_provider_id: string; runtime_model_id: string; runtime_label: string; installed: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_repo_id: string | null; source_file_name: string | null; source_url: string | null; note: string | null }

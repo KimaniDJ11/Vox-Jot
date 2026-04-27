@@ -638,9 +638,15 @@
         },
         "style": {
           "title": "Overlay Style",
-          "description": "Minimal shows only a small pill with level bars. Detailed adds full level meters and live partial text.",
-          "compact": "Minimal",
-          "detailed": "Detailed"
+          "description": "Compact shows a small pill with level bars. Detailed adds a partial-text strip. Minimal shows just a dot. Notch hugs the camera notch on M-series MacBooks.",
+          "compact": "Compact",
+          "compactDescription": "Small pill with live level bars.",
+          "detailed": "Detailed",
+          "detailedDescription": "Wider overlay with mic status and partial text.",
+          "minimal": "Minimal",
+          "minimalDescription": "Single dot — the smallest possible recording cue.",
+          "notch": "Notch",
+          "notchDescription": "Hugs the camera notch on M-series MacBooks (top center)."
         }
       },
       "pasteMethod": {
@@ -1286,7 +1292,8 @@
   },
   "overlay": {
     "transcribing": "Transcribing...",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "recording": "Recording"
   },
   "jotPad": {
     "newNote": "New note",

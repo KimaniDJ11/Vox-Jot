@@ -6,26 +6,18 @@ import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
 import { CustomWords } from "../CustomWords";
 import { CorrectionTrackingToggle } from "../CorrectionTrackingToggle";
 
-interface CorrectionSettingsProps {
-  showTrackingToggle?: boolean;
-}
-
-export const CorrectionSettings: React.FC<CorrectionSettingsProps> = ({
-  showTrackingToggle = true,
-}) => {
+export const CorrectionSettings: React.FC = () => {
   const { t } = useTranslation();
 
   return (
     <div className="w-full space-y-6">
-      {showTrackingToggle && (
-        <SettingsGroup
-          title={t("settings.corrections.tracking.title", {
-            defaultValue: "Learning",
-          })}
-        >
-          <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
-        </SettingsGroup>
-      )}
+      <SettingsGroup
+        title={t("settings.corrections.tracking.title", {
+          defaultValue: "Learning",
+        })}
+      >
+        <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
       <SettingsGroup
         title={t("settings.corrections.fileTranscriptionDictionary.sectionTitle", {
           defaultValue: "File transcription",

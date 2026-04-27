@@ -19,7 +19,7 @@ import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
 
 type OverlayState = "recording" | "transcribing" | "processing";
-type OverlayStyle = "compact" | "detailed";
+type OverlayStyle = "compact" | "detailed" | "minimal" | "notch";
 
 interface ShowOverlayPayload {
   state: OverlayState;
@@ -214,9 +214,14 @@ const RecordingOverlay: React.FC = () => {
   const direction = getLanguageDirection(i18n.language);
 
   const isCompact = style === "compact";
+  const isMinimal = style === "minimal";
+  const isNotch = style === "notch";
+  // Notch uses the compact bar count (small footprint, single waveform).
+  // Minimal renders no waveform, only a status dot, so its bar count
+  // is irrelevant — we still pick a value so the canvas isn't undefined.
   const barCount = useMemo(
-    () => (isCompact ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED),
-    [isCompact],
+    () => (isCompact || isNotch || isMinimal ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED),
+    [isCompact, isNotch, isMinimal],
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -379,7 +384,11 @@ const RecordingOverlay: React.FC = () => {
           className={[
             "recording-overlay",
             isCompact ? "recording-overlay--compact" : "",
-            !isCompact && state === "recording" ? "is-interactive" : "",
+            isMinimal ? "recording-overlay--minimal" : "",
+            isNotch ? "recording-overlay--notch" : "",
+            !isCompact && !isMinimal && !isNotch && state === "recording"
+              ? "is-interactive"
+              : "",
           ]
             .filter(Boolean)
             .join(" ")}
@@ -388,7 +397,20 @@ const RecordingOverlay: React.FC = () => {
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={bounce}
         >
-          {isCompact ? (
+          {isMinimal ? (
+            // Minimal: just a single dot — pulsing while recording,
+            // amber while transcribing, slow while post-processing.
+            <span
+              className={`overlay-dot overlay-dot--${state}`}
+              aria-label={
+                state === "recording"
+                  ? t("overlay.recording")
+                  : state === "transcribing"
+                    ? t("overlay.transcribing")
+                    : t("overlay.processing")
+              }
+            />
+          ) : isCompact || isNotch ? (
             <CompactBody state={state} canvasRef={canvasRef} />
           ) : (
             <>

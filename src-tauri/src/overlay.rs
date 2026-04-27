@@ -34,11 +34,20 @@ const OVERLAY_WIDTH_DETAILED: f64 = 220.0;
 const OVERLAY_HEIGHT_DETAILED: f64 = 44.0;
 const OVERLAY_WIDTH_COMPACT: f64 = 80.0;
 const OVERLAY_HEIGHT_COMPACT: f64 = 28.0;
+const OVERLAY_WIDTH_MINIMAL: f64 = 18.0;
+const OVERLAY_HEIGHT_MINIMAL: f64 = 18.0;
+// Notch overlay sits centered above the camera notch on M-series MacBooks.
+// Width matches the typical notch (~190 pt), height covers the menu-bar
+// region below the notch lip.
+const OVERLAY_WIDTH_NOTCH: f64 = 190.0;
+const OVERLAY_HEIGHT_NOTCH: f64 = 30.0;
 
 fn overlay_dimensions(style: RecordingOverlayStyle) -> (f64, f64) {
     match style {
         RecordingOverlayStyle::Compact => (OVERLAY_WIDTH_COMPACT, OVERLAY_HEIGHT_COMPACT),
         RecordingOverlayStyle::Detailed => (OVERLAY_WIDTH_DETAILED, OVERLAY_HEIGHT_DETAILED),
+        RecordingOverlayStyle::Minimal => (OVERLAY_WIDTH_MINIMAL, OVERLAY_HEIGHT_MINIMAL),
+        RecordingOverlayStyle::Notch => (OVERLAY_WIDTH_NOTCH, OVERLAY_HEIGHT_NOTCH),
     }
 }
 
@@ -215,10 +224,21 @@ fn calculate_overlay_position(app_handle: &AppHandle) -> Option<(f64, f64)> {
     let (ov_width, ov_height) = overlay_dimensions(settings.recording_overlay_style);
 
     let x = monitor_x + (monitor_width - ov_width) / 2.0;
-    let y = match settings.overlay_position {
-        OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
-        OverlayPosition::Bottom | OverlayPosition::None => {
-            monitor_y + monitor_height - ov_height - OVERLAY_BOTTOM_OFFSET
+    // The Notch style ignores OverlayPosition and pins to the very
+    // top of the screen so it can hug the menu-bar / camera notch
+    // area on macOS. On other platforms this just behaves like a
+    // top-aligned compact pill.
+    let y = if matches!(
+        settings.recording_overlay_style,
+        RecordingOverlayStyle::Notch
+    ) {
+        monitor_y
+    } else {
+        match settings.overlay_position {
+            OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
+            OverlayPosition::Bottom | OverlayPosition::None => {
+                monitor_y + monitor_height - ov_height - OVERLAY_BOTTOM_OFFSET
+            }
         }
     };
 
@@ -346,6 +366,8 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
         let style_str = match settings.recording_overlay_style {
             RecordingOverlayStyle::Compact => "compact",
             RecordingOverlayStyle::Detailed => "detailed",
+            RecordingOverlayStyle::Minimal => "minimal",
+            RecordingOverlayStyle::Notch => "notch",
         };
         let payload = serde_json::json!({ "state": state, "style": style_str });
         let _ = overlay_window.emit("show-overlay", payload);

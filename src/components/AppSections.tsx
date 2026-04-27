@@ -45,7 +45,6 @@ import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
 import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
 import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
-import { CorrectionTrackingToggle } from "@/components/settings/CorrectionTrackingToggle";
 import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
 import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
 import { LogDirectory } from "@/components/settings/debug/LogDirectory";
@@ -240,7 +239,28 @@ export const RefineModelsSection: React.FC<{
 };
 
 export const CorrectionsSection: React.FC = () => {
-  return <CorrectionSettings showTrackingToggle={false} />;
+  return (
+    <LearnedCorrectionsSection titleActionTargetId="corrections-section-actions" />
+  );
+};
+
+/** Full dictionary & correction controls (info, toggles, boosts). Shown in Settings. */
+export const CorrectionsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-6">
+      <div className={subtleCardClassName}>
+        <p className="text-base font-semibold text-[var(--text)]">
+          {t("settings.corrections.title")}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          {t("settings.corrections.description")}
+        </p>
+      </div>
+      <CorrectionSettings />
+    </div>
+  );
 };
 
 export const LearnedCorrectionsSection: React.FC<{
@@ -467,7 +487,6 @@ export const GeneralAppSettingsSection: React.FC = () => {
       <SettingsGroup title="Feature Toggles">
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
         <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
-        <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
     </div>
   );

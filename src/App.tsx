@@ -70,6 +70,7 @@ import {
   ConvoSelectionSection,
   ConvoSettingsCoachSection,
   CorrectionsSection,
+  CorrectionsSettingsSection,
   DictateHistorySection,
   FileTranscriptionSection,
   DiagnosticsSettingsSection,
@@ -413,6 +414,13 @@ function App() {
           icon: SlidersHorizontal,
           title: "Output & Paste",
           content: <OutputPasteSettingsSection />,
+        },
+        {
+          id: "corrections-settings",
+          label: "Corrections",
+          icon: SpellCheck,
+          title: "Corrections",
+          content: <CorrectionsSettingsSection />,
         },
         {
           id: "ai-setup",

@@ -643,6 +643,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_show_preview_before_paste_setting,
         shortcut::change_fallback_to_raw_on_failure_setting,
         shortcut::change_app_aware_tone_enabled_setting,
+        shortcut::change_write_rules_enabled_setting,
         shortcut::update_tone_definitions,
         shortcut::update_app_tone_mappings,
         shortcut::suspend_binding,

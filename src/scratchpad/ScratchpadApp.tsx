@@ -632,7 +632,7 @@ const ScratchpadApp: React.FC = () => {
                 onChange={(e) => handleTitleChange(e.target.value)}
                 onFocus={() => void setEditorArmed(true)}
                 placeholder={t("jotPad.titlePlaceholder")}
-                className="mb-3 w-full border-none bg-transparent text-[24px] font-display font-semibold tracking-[-0.01em] outline-none placeholder:text-[var(--muted)]/40"
+                className="mb-3 w-full border-none bg-transparent text-[24px] font-display font-semibold tracking-[-0.01em] outline-none placeholder:text-[var(--muted)]/65"
               />
 
               <textarea
@@ -641,13 +641,13 @@ const ScratchpadApp: React.FC = () => {
                 onChange={(e) => handleContentChange(e.target.value)}
                 onFocus={() => void setEditorArmed(true)}
                 placeholder={t("jotPad.contentPlaceholder")}
-                className="flex-1 w-full resize-none border-none bg-transparent text-[14px] leading-7 outline-none placeholder:text-[var(--muted)]/40"
+                className="flex-1 w-full resize-none border-none bg-transparent text-[14px] leading-7 outline-none placeholder:text-[var(--muted)]/65"
               />
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-[var(--muted)]">
-                <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <div className="text-center text-[var(--text)]">
+                <FileText className="text-[var(--muted)] mx-auto mb-3 h-10 w-10 opacity-[0.82]" />
                 <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
                 <Button
                   type="button"

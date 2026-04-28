@@ -544,7 +544,7 @@ export const CorrectionDictionaryView: React.FC<
                   )}
                 </div>
 
-                <div className="flex gap-3 text-xs text-[var(--muted)]">
+                <div className="flex gap-3 text-xs font-medium text-[var(--text)]">
                   <span>
                     {t("settings.corrections.dictionary.columns.frequency")}:{" "}
                     {group.totalFrequency}

@@ -135,7 +135,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                 disabled={disabled || state.isApiKeyUpdating}
                 className="min-w-[320px]"
               />
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-[var(--muted)]">
                 {state.hasApiKey
                   ? t("settings.postProcessing.api.apiKey.savedStatus", {
                       defaultValue: "Saved",

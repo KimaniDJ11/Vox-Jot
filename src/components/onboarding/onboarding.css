@@ -165,7 +165,7 @@
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
-  color: var(--muted);
+  color: var(--text);
   margin: 0 0 32px;
 }
 
@@ -249,7 +249,7 @@
 
 .ob-perm-desc {
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--ob-text);
   margin: 0 0 14px;
   line-height: 1.5;
 }
@@ -379,7 +379,7 @@
 .ob-permission-path-description {
   margin: 0;
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--ob-text);
   line-height: 1.6;
 }
 
@@ -426,7 +426,7 @@
 
 .ob-card-copy {
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--ob-text);
   line-height: 1.6;
   margin: 0;
 }
@@ -497,7 +497,7 @@
 
 .ob-stat-copy {
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--ob-text);
   line-height: 1.5;
 }
 
@@ -517,7 +517,7 @@
 
 .ob-note-copy {
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--ob-text);
   line-height: 1.6;
   margin: 0;
 }
@@ -538,7 +538,7 @@
 .ob-footnote {
   margin: 20px 0 0;
   font-size: 14px;
-  color: var(--ob-text-muted);
+  color: var(--muted);
   line-height: 1.6;
 }
 
@@ -627,7 +627,7 @@
   font-size: 12px;
   line-height: 1.35;
   margin: -2px 0 6px;
-  opacity: 0.92;
+  color: var(--muted);
 }
 
 .ob-permissions-flow .ob-perm-card .ob-perm-allow-btn {

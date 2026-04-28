@@ -1,0 +1,90 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-28",
+  "evaluator": "antigravity",
+
+  "source": {
+    "url": "https://www.modelscope.cn/models?page=1&tasks=speaker-verification&type=audio",
+    "repo_url": "https://github.com/modelscope/3D-Speaker",
+    "paper_url": "https://arxiv.org/pdf/2306.15354.pdf",
+    "license": "Apache-2.0",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "3d-speaker",
+    "label": "3D-Speaker",
+    "description": "Toolkit for speaker verification, speaker recognition, speaker diarization, and language identification. Includes CAM++, ERes2Net, ECAPA-TDNN models.",
+    "domain": "other",
+    "parameter_count": "varies by model (CAM++, ERes2Net, ECAPA-TDNN)",
+    "model_format": "pytorch",
+    "dtype": "float32"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": true,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "sidecar",
+    "can_run_as_local_process": true,
+    "api_surface": ["speaker_embedding", "speaker_verify", "diarize"],
+    "output_format": "text",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": 5,
+    "vram_estimate_gb": 1,
+    "disk_size_mb": 200
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": null,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": false,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": ["zh", "en"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 200,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": false
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "State-of-the-art EER on VoxCeleb and CNCeleb benchmarks. Has ONNX runtime support for deployment."
+  },
+
+  "verdict": {
+    "score": 22,
+    "decision": "prototype",
+    "blockers": [
+      "Not STT/TTS/LLM — speaker verification/diarization is adjacent but not a current Vox Jot domain",
+      "No MLX port exists",
+      "Would require defining a new integration lane for speaker-related features"
+    ],
+    "notes": "Speaker diarization could be valuable for Vox Jot's file transcription feature (labeling 'Speaker 1', 'Speaker 2' in multi-speaker recordings). The ONNX runtime support is a plus for native Rust integration. However, this is a feature enhancement, not a model that fills an existing provider slot. Consider prototyping as a post-processing step for transcription output if multi-speaker support becomes a priority."
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-28",
+  "evaluator": "antigravity",
+
+  "source": {
+    "url": "https://huggingface.co/yl4579/HiFTNet",
+    "repo_url": "https://github.com/yl4579/HiFTNet",
+    "paper_url": "https://arxiv.org/abs/2309.09493",
+    "license": "MIT",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "hiftnet",
+    "label": "HiFTNet",
+    "description": "Fast high-quality neural vocoder with harmonic-plus-noise filter and inverse STFT. Converts mel-spectrograms to waveforms.",
+    "domain": "tts",
+    "parameter_count": "~1/6 of BigVGAN (~2.3M estimated)",
+    "model_format": "pytorch",
+    "dtype": "float32"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "reject",
+    "can_run_as_local_process": true,
+    "api_surface": ["mel_to_wav"],
+    "output_format": "wav",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": 1,
+    "vram_estimate_gb": 0.5,
+    "disk_size_mb": 50
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": null,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": false,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": ["en"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "zip",
+    "estimated_download_mb": 50,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": false
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "Claims ground-truth-level quality on LJSpeech. 4x faster than BigVGAN with 1/6 parameters."
+  },
+
+  "verdict": {
+    "score": 21,
+    "decision": "skip",
+    "blockers": [
+      "Vocoder-only — requires a separate acoustic model (mel-spectrogram generator) to be useful as TTS",
+      "No MLX/GGUF/ONNX path exists",
+      "No text-to-speech pipeline — only mel-to-wav conversion",
+      "Does not solve any gap Vox Jot currently has"
+    ],
+    "notes": "HiFTNet is a vocoder component, not a standalone TTS system. Vox Jot's TTS providers already use end-to-end models (Kokoro, mlx-audio, CosyVoice) that include their own vocoders. Integrating a standalone vocoder provides no user-facing value."
+  }
+}

@@ -144,7 +144,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
         <p className="text-sm font-semibold">
           {t("accessibility.permissionsTitle")}
         </p>
-        <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_28%)]">
+        <p className="mt-1 text-sm text-[var(--text)]">
           {t("accessibility.permissionsDescription")}
         </p>
       </div>
@@ -155,7 +155,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             <p className="text-sm font-semibold">
               {t("onboarding.permissions.accessibility.title")}
             </p>
-            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+            <p className="mt-1 text-sm text-[var(--text)]">
               {t("onboarding.permissions.accessibility.cardDescription")}
             </p>
           </div>
@@ -176,10 +176,10 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
             <p className="text-sm font-semibold">
               {t("onboarding.permissions.inputMonitoring.title")}
             </p>
-            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+            <p className="mt-1 text-sm text-[var(--text)]">
               {t("onboarding.permissions.inputMonitoring.cardDescription")}
             </p>
-            <p className="mt-2 text-xs text-[color-mix(in_srgb,var(--text),transparent_42%)]">
+            <p className="mt-2 text-xs text-[var(--muted)]">
               {t("onboarding.permissions.inputMonitoring.manualCleanupHint")}
             </p>
           </div>
@@ -202,7 +202,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
                 defaultValue: "Screen Recording",
               })}
             </p>
-            <p className="mt-1 text-sm text-[color-mix(in_srgb,var(--text),transparent_32%)]">
+            <p className="mt-1 text-sm text-[var(--text)]">
               {t("onboarding.permissions.screenRecording.cardDescription", {
                 defaultValue:
                   "Vox Jot uses periodic local OCR from the active display to improve names, jargon, and phrase-key accuracy during dictation.",

@@ -18,7 +18,7 @@ const TitleBarStats: React.FC = () => {
 
   if (!stats || stats.total_sessions === 0) {
     return (
-      <span className="title-bar-stats text-sm font-bold tabular-nums leading-none opacity-70">
+      <span className="title-bar-stats text-[var(--muted)] text-sm font-bold tabular-nums leading-none">
         {t("titleBar.noStats")}
       </span>
     );

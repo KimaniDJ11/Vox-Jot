@@ -284,7 +284,9 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
             <Pin className="h-3 w-3 shrink-0 rotate-45 text-[var(--accent)]" />
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{preview}</p>
+        <p className="mt-0.5 truncate text-xs font-normal leading-snug text-[var(--text)]">
+          {preview}
+        </p>
       </div>
       <span className="shrink-0 text-xs text-[var(--muted)]">
         {formattedDate}
@@ -358,7 +360,7 @@ export const JotPadSection: React.FC = () => {
         </div>
       ) : notes.length === 0 ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center shadow-[var(--shadow-sm)]">
-          <NotebookPen className="mx-auto h-8 w-8 text-[var(--muted)] opacity-50" />
+          <NotebookPen className="mx-auto h-8 w-8 text-[var(--muted)] opacity-[0.88]" />
           <p className="mt-3 text-sm font-medium text-[var(--text)]">
             {jotPadEmptyTitle}
           </p>

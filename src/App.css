@@ -31,8 +31,8 @@
   --border: #e0d6ca;
   --border-strong: #cbbdab;
   --text: #2c2418;
-  --muted: #6f6256;
-  --text-subtle: #8a7b6d;
+  --muted: #5d5248;
+  --text-subtle: #625849;
   --inverse-text: #ffffff;
 
   --accent: #27408b;
@@ -129,7 +129,7 @@
   --border-strong: rgba(255, 255, 255, 0.09);
   --text: #f7f8f8;
   --muted: #b4b6ba;
-  --text-subtle: #8a8f98;
+  --text-subtle: #9aa3ad;
   --inverse-text: #ffffff;
 
   --accent: #7b9ce8;
@@ -187,7 +187,7 @@
     --border-strong: rgba(255, 255, 255, 0.09);
     --text: #f7f8f8;
     --muted: #b4b6ba;
-    --text-subtle: #8a8f98;
+    --text-subtle: #9aa3ad;
     --inverse-text: #ffffff;
 
     --accent: #7b9ce8;
@@ -245,8 +245,8 @@
   --border: #deceba;
   --border-strong: #c9b49c;
   --text: #3b2d1d;
-  --muted: #7a6650;
-  --text-subtle: #927b62;
+  --muted: #634c3a;
+  --text-subtle: #58422f;
   --inverse-text: #ffffff;
 
   --accent: #7c4c2e;
@@ -303,8 +303,8 @@
   --border: #cddbeb;
   --border-strong: #afc3da;
   --text: #183046;
-  --muted: #56708a;
-  --text-subtle: #6f88a0;
+  --muted: #3a5d78;
+  --text-subtle: #466a82;
   --inverse-text: #ffffff;
 
   --accent: #1f5d8f;
@@ -361,8 +361,8 @@
   --border: #e4cfd8;
   --border-strong: #cfb5c2;
   --text: #3a2430;
-  --muted: #7f5f6d;
-  --text-subtle: #967685;
+  --muted: #63475a;
+  --text-subtle: #6f5164;
   --inverse-text: #ffffff;
 
   --accent: #9a3f66;
@@ -419,8 +419,8 @@
   --border: #c7d8c8;
   --border-strong: #a9bfae;
   --text: #1f3224;
-  --muted: #5d7562;
-  --text-subtle: #758c79;
+  --muted: #455949;
+  --text-subtle: #4e6252;
   --inverse-text: #ffffff;
 
   --accent: #2f6c4a;
@@ -478,7 +478,7 @@
   --border-strong: #4a566c;
   --text: #eef2f8;
   --muted: #a8b3c4;
-  --text-subtle: #8f9caf;
+  --text-subtle: #96a6bb;
   --inverse-text: #ffffff;
 
   --accent: #87a5d8;
@@ -536,7 +536,7 @@
   --border-strong: #526a88;
   --text: #eff5ff;
   --muted: #afbdd3;
-  --text-subtle: #95a6bf;
+  --text-subtle: #a0b1cc;
   --inverse-text: #ffffff;
 
   --accent: #90aee6;
@@ -593,8 +593,8 @@
   --border: #d6c9ad;
   --border-strong: #c0af8f;
   --text: #30434f;
-  --muted: #6f7f88;
-  --text-subtle: #88969e;
+  --muted: #4f626e;
+  --text-subtle: #596e7c;
   --inverse-text: #ffffff;
 
   --accent: #2f6f8d;

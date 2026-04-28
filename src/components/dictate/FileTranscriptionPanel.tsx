@@ -330,7 +330,7 @@ export const FileTranscriptionPanel: React.FC = () => {
                 defaultValue: "Transcription failed",
               })}
             </div>
-            <div className="mt-1 break-words text-[var(--text)] opacity-80">
+            <div className="mt-1 break-words text-[var(--text)]">
               {error}
             </div>
           </div>
@@ -443,7 +443,7 @@ const WatchedFoldersGroup: React.FC = () => {
               defaultValue: "Watched folders",
             })}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--muted)]">
+          <div className="mt-0.5 text-sm text-[var(--text)]">
             {t("dictate.watchFolders.description", {
               defaultValue:
                 "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
@@ -457,7 +457,7 @@ const WatchedFoldersGroup: React.FC = () => {
       </div>
 
       {folders.length === 0 ? (
-        <div className="text-xs text-[var(--muted)]">
+        <div className="text-sm text-[var(--text)]">
           {t("dictate.watchFolders.empty", {
             defaultValue: "No folders yet. Add one to get started.",
           })}

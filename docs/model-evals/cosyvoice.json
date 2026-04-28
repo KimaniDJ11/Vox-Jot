@@ -1,0 +1,92 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-28",
+  "evaluator": "antigravity",
+
+  "source": {
+    "url": "https://huggingface.co/FunAudioLLM/CosyVoice2-0.5B",
+    "repo_url": "https://github.com/FunAudioLLM/CosyVoice",
+    "paper_url": "https://arxiv.org/pdf/2412.10117",
+    "license": "Apache-2.0",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "cosyvoice",
+    "label": "CosyVoice 3.0",
+    "description": "Multi-lingual large voice generation model with zero-shot voice cloning, streaming, instruction control, 9+ languages, 18+ Chinese dialects. LLM-based TTS with flow matching.",
+    "domain": "tts",
+    "parameter_count": "0.5B (CosyVoice2/3) / 300M (CosyVoice1)",
+    "model_format": "pytorch",
+    "dtype": "float32"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": true,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "reject",
+    "can_run_as_local_process": false,
+    "api_surface": ["tts_zero_shot", "tts_sft", "tts_instruct", "tts_cross_lingual", "voice_conversion"],
+    "output_format": "wav",
+    "supports_streaming": true,
+    "cold_start_estimate_sec": 15,
+    "vram_estimate_gb": 8,
+    "disk_size_mb": 3000
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": null,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": true,
+    "supports_voice_cloning": true,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": ["zh", "en", "ja", "ko", "de", "es", "fr", "it", "ru"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 3000,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "State-of-the-art multilingual zero-shot TTS. 150ms streaming latency claimed. Very active development (20.8k stars, 3 major versions). vLLM and TensorRT-LLM deployment support."
+  },
+
+  "verdict": {
+    "score": 28,
+    "decision": "prototype",
+    "blockers": [
+      "CUDA-only — no MLX, Metal, MPS, or ONNX path exists",
+      "0.5B parameters with ~8 GB VRAM — heavy for Apple Silicon unified memory",
+      "~3 GB download size",
+      "Requires sox system dependency and heavy Python environment",
+      "vLLM/TensorRT optimizations are NVIDIA-only"
+    ],
+    "notes": "CosyVoice is the most impressive of the three for Vox Jot's TTS needs — exceptional multi-lingual coverage, zero-shot voice cloning, streaming, and instruct-mode support. The feature set is arguably best-in-class. However, the entire stack is CUDA-bound. No community effort to port to MLX or MPS exists yet. If an MLX port materializes (the architecture is LLM + flow matching, both of which have MLX precedents), this would jump to a clear 'ship' score of 44+. Worth watching quarterly. The 300M variant could be more feasible for Apple Silicon if ported."
+  }
+}

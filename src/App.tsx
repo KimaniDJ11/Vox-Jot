@@ -928,8 +928,7 @@ function App() {
             toast:
               "flat-card rounded-xl px-4 py-3 flex items-center gap-3 text-sm",
             title: "font-semibold",
-            description:
-              "text-[color-mix(in_srgb,var(--text),transparent_35%)]",
+            description: "text-[var(--muted)]",
           },
         }}
       />
@@ -1109,7 +1108,7 @@ function App() {
                       )
                     : t("settings.postProcessing.preview.modal.title")}
                 </h2>
-                <p className="text-sm text-[color-mix(in_srgb,var(--text),transparent_35%)]">
+                <p className="text-sm text-[var(--muted)]">
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.translationDescription",
@@ -1147,7 +1146,7 @@ function App() {
 
             <div className="space-y-4 p-5">
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[var(--text)]">
                   {t("settings.postProcessing.preview.modal.originalLabel")}
                 </div>
                 <Textarea value={pendingPreview.source_text} readOnly />
@@ -1155,7 +1154,7 @@ function App() {
 
               {pendingPreview.translated_text && (
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
+                  <div className="text-xs font-semibold text-[var(--text)]">
                     {t(
                       "settings.postProcessing.preview.modal.translatedLabel",
                       { defaultValue: "Translated" },
@@ -1166,7 +1165,7 @@ function App() {
               )}
 
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[color-mix(in_srgb,var(--text),transparent_35%)]">
+                <div className="text-xs font-semibold text-[var(--text)]">
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.finalOutputLabel",
@@ -1181,7 +1180,7 @@ function App() {
               </div>
 
               {pendingPreview.destination_label && (
-                <div className="text-xs font-semibold uppercase tracking-wide text-[color-mix(in_srgb,var(--text),transparent_45%)]">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   {`${t(
                     "settings.postProcessing.preview.modal.destinationPrefix",
                     { defaultValue: "Destination" },

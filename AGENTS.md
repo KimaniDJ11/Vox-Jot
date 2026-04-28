@@ -15,6 +15,24 @@ Vox Jot is a latency-sensitive dictation app. All agents and AI coding tools mus
 - Prefer deferred/background persistence, cached metadata, precomputed state, and UI-only rendering over synchronous work in the dictation pipeline.
 - When completing a change, report whether latency is expected to be unchanged, improved, or at risk, and mention any validation performed.
 
+## Text color visibility (contrast)
+
+Body copy and interactive labels must remain readable on real surfaces (`--panel-bg`, `--card`, `--bg`, overlays). Targets follow **WCAG 2.x**: **≥ 4.5:1** contrast for normal-sized text, **≥ 3:1** for large or bold UI text. Semi-transparent shells and backdrop blur effectively lighten or darken backgrounds; avoid stacking extra faintness.
+
+**Prefer**
+
+- **`--text`** for primary readable content.
+- **`--muted`** for secondary/helper copy (token is tuned toward ≥ 4.5:1 on panel-like surfaces across themes).
+
+**Avoid or constrain**
+
+- **`--text-subtle`** as the only cue for critical copy — keep it for **compact meta labels**; **`--muted` / `--text`** are calibrated in `src/App.css` per theme so secondary sentences stay readable (~AA on `--panel-bg`).
+- **`color-mix(..., var(--text), transparent N)` on copy** — do not use heavy transparency to dim body text (e.g. 35%+ transparent). Prefer **`text-[var(--muted)]`** or **`text-[var(--text)]`**.
+- **Opacity on text/icons** (`opacity-40`–`50`, **`placeholder:text-[var(--muted)]/40**`) for anything user must read—reserve for optional affordances only.
+- **Undefined CSS vars** — e.g. `var(--color-text)` is invalid; primary text is **`var(--text)`** (see `@theme` / `:root` in `src/App.css`).
+
+Adjust tokens in **`src/App.css`** if a theme’s **`--muted`** / **`--text-subtle`** still fails against that theme’s surfaces.
+
 ## macOS Installed-App Workflow
 
 On macOS, the standard validation path for any solid app change is to update the already-installed `/Applications/Vox Jot.app` in place instead of relying on a fresh `tauri dev` app instance.

@@ -8,15 +8,17 @@ use crate::settings::{
     default_tts_model_store_dir, get_settings, is_local_base_url,
     sanitize_tts_voice_tuning_for_target, AppSettings, TtsAutoReadbackMode, TtsAutoReadbackScope,
     TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue, TtsVoicePreset,
-    TtsVoiceTuningSettings, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
-    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID, TTS_PROVIDER_KOKORO_ID,
-    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID,
-    TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID,
-    TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID,
-    TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID,
-    TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID,
-    TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
-    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID,
+    TtsVoiceTuningSettings, TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID,
+    TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
+    TTS_MODEL_VIBEVOICE_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
+    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LFM_AUDIO_GGUF_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
+    TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID,
+    TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_MING_OMNI_ID,
+    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
+    TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
+    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_VIBEVOICE_ID,
     TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
@@ -56,6 +58,8 @@ pub enum TtsEngineKind {
     Sidecar,
     MlxNative,
     Qwen3Native,
+    LfmAudioGguf,
+    VibeVoice,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -1335,6 +1339,7 @@ impl TtsManager {
             TtsEngineKind::MlxNative => Ok(self.mlx_audio_voice_inventory(&settings)),
             TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
             TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
+            TtsEngineKind::LfmAudioGguf | TtsEngineKind::VibeVoice => Ok(Vec::new()),
         }
     }
 
@@ -1852,6 +1857,7 @@ impl TtsManager {
             TtsEngineKind::MlxNative => Ok(self.mlx_audio_voice_inventory(&settings)),
             TtsEngineKind::Qwen3Native => Ok(self.installed_qwen3_voices()),
             TtsEngineKind::Sidecar => self.runtime_managed_voices(&settings),
+            TtsEngineKind::LfmAudioGguf | TtsEngineKind::VibeVoice => Ok(Vec::new()),
         }
     }
 
@@ -2400,6 +2406,212 @@ impl TtsManager {
             .collect()
     }
 
+    fn local_binary_provider_descriptors(&self, settings: &AppSettings) -> Vec<ProviderDescriptor> {
+        let mut descriptors = Vec::new();
+
+        let lfm_capabilities = CapabilityFlags {
+            downloadable: false,
+            loadable: true,
+            local_only: true,
+            supports_translation: false,
+            supports_streaming: false,
+            supports_voice_cloning: false,
+            supports_instruction_prompt: true,
+            supports_inline_tags: false,
+            coming_soon: false,
+        };
+        let lfm_runtime = RuntimeRequirement {
+            id: "lfm_audio_gguf".to_string(),
+            label: "LFM Audio native runner".to_string(),
+            engine_family: "lfm_audio_gguf".to_string(),
+            auto_routed: true,
+        };
+        descriptors.push(ProviderDescriptor {
+            id: TTS_PROVIDER_LFM_AUDIO_GGUF_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "LFM Audio (GGUF)".to_string(),
+            description:
+                "Liquid LFM2.5-Audio 1.5B running through the bundled native llama-liquid-audio runner."
+                    .to_string(),
+            source_label: "Vox Jot model assets".to_string(),
+            runtime: lfm_runtime,
+            available: self.ensure_lfm_audio_gguf_supported().is_ok(),
+            local_only: true,
+            coming_soon: false,
+            license_label: Some("LFM Open License v1.0".to_string()),
+            capabilities: lfm_capabilities,
+        });
+
+        let vv_capabilities = CapabilityFlags {
+            downloadable: false,
+            loadable: true,
+            local_only: true,
+            supports_translation: false,
+            supports_streaming: false,
+            supports_voice_cloning: false,
+            supports_instruction_prompt: false,
+            supports_inline_tags: false,
+            coming_soon: !settings.experimental_enabled,
+        };
+        let vv_runtime = RuntimeRequirement {
+            id: "vibevoice".to_string(),
+            label: "VibeVoice Python bridge".to_string(),
+            engine_family: "vibevoice".to_string(),
+            auto_routed: true,
+        };
+        descriptors.push(ProviderDescriptor {
+            id: TTS_PROVIDER_VIBEVOICE_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "VibeVoice (Experimental)".to_string(),
+            description:
+                "Microsoft VibeVoice-Realtime 0.5B via PyTorch/MPS bridge. Research license — enable Labs to use."
+                    .to_string(),
+            source_label: "Research-licensed model".to_string(),
+            runtime: vv_runtime,
+            available: settings.experimental_enabled
+                && self.ensure_vibevoice_supported(settings).is_ok(),
+            local_only: true,
+            coming_soon: !settings.experimental_enabled,
+            license_label: Some("Research-only".to_string()),
+            capabilities: vv_capabilities,
+        });
+
+        descriptors
+    }
+
+    fn local_binary_catalog_models(
+        &self,
+        settings: &AppSettings,
+        selected_provider_id: &str,
+        selected_model_id: Option<&str>,
+    ) -> Vec<CatalogModelDescriptor> {
+        let mut models = Vec::new();
+
+        let lfm_installed =
+            crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(&self.app_handle)
+                .map(|ctx| ctx.is_ready())
+                .unwrap_or(false);
+        let lfm_selected = selected_provider_id == TTS_PROVIDER_LFM_AUDIO_GGUF_ID
+            && selected_model_id == Some(TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID);
+        models.push(CatalogModelDescriptor {
+            id: TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID.to_string(),
+            provider_id: TTS_PROVIDER_LFM_AUDIO_GGUF_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "LFM2.5 Audio 1.5B (Q4_0 GGUF)".to_string(),
+            description: "Quantized Liquid Audio model running through a native CLI runner."
+                .to_string(),
+            installed: lfm_installed,
+            selected: lfm_selected,
+            active: lfm_selected && lfm_installed,
+            runnable: lfm_installed,
+            downloadable: false,
+            source_label: "Vox Jot model assets".to_string(),
+            runtime: RuntimeRequirement {
+                id: "lfm_audio_gguf".to_string(),
+                label: "LFM Audio native runner".to_string(),
+                engine_family: "lfm_audio_gguf".to_string(),
+                auto_routed: true,
+            },
+            license_label: Some("LFM Open License v1.0".to_string()),
+            locale: Some("en".to_string()),
+            supported_languages: vec!["en".to_string()],
+            readiness_status: Some(if lfm_installed { "ready" } else { "missing" }.to_string()),
+            readiness_issues: if lfm_installed {
+                Vec::new()
+            } else {
+                vec![
+                    "Place LFM2.5-Audio GGUF + macOS arm64 runner zip into ~/Apps/Models/LiquidAI_LFM2.5-Audio-1.5B-GGUF/ before launching."
+                        .to_string(),
+                ]
+            },
+            capabilities: CapabilityFlags {
+                downloadable: false,
+                loadable: true,
+                local_only: true,
+                supports_translation: false,
+                supports_streaming: false,
+                supports_voice_cloning: false,
+                supports_instruction_prompt: true,
+                supports_inline_tags: false,
+                coming_soon: false,
+            },
+            delivery_support: self.builtin_delivery_support(TTS_PROVIDER_LFM_AUDIO_GGUF_ID),
+        });
+
+        let vv_dir_ok = crate::storage_paths::vibevoice_dir(&self.app_handle)
+            .ok()
+            .map(|dir| dir.join("model.safetensors").exists())
+            .unwrap_or(false);
+        let vv_installed = vv_dir_ok && settings.experimental_enabled;
+        let vv_selected = selected_provider_id == TTS_PROVIDER_VIBEVOICE_ID
+            && selected_model_id == Some(TTS_MODEL_VIBEVOICE_DEFAULT_ID);
+        models.push(CatalogModelDescriptor {
+            id: TTS_MODEL_VIBEVOICE_DEFAULT_ID.to_string(),
+            provider_id: TTS_PROVIDER_VIBEVOICE_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "VibeVoice Realtime 0.5B".to_string(),
+            description:
+                "Research-only VibeVoice. Requires Labs flag and a Python venv with torch + transformers + soundfile."
+                    .to_string(),
+            installed: vv_installed,
+            selected: vv_selected,
+            active: vv_selected && vv_installed,
+            runnable: vv_installed,
+            downloadable: false,
+            source_label: "Research-licensed model".to_string(),
+            runtime: RuntimeRequirement {
+                id: "vibevoice".to_string(),
+                label: "VibeVoice Python bridge".to_string(),
+                engine_family: "vibevoice".to_string(),
+                auto_routed: true,
+            },
+            license_label: Some("Research-only".to_string()),
+            locale: None,
+            supported_languages: Vec::new(),
+            readiness_status: Some(
+                if vv_installed {
+                    "ready"
+                } else if !settings.experimental_enabled {
+                    "experimental"
+                } else {
+                    "missing"
+                }
+                .to_string(),
+            ),
+            readiness_issues: if vv_installed {
+                Vec::new()
+            } else if !settings.experimental_enabled {
+                vec![
+                    "Enable experimental features in Settings → Labs to use VibeVoice."
+                        .to_string(),
+                ]
+            } else {
+                vec![
+                    "Place VibeVoice files into ~/Apps/Models/microsoft_VibeVoice-Realtime-0.5B/ before launching, and run speech-runtime/install_vibevoice_deps.sh (or pip install -e vendor/VibeVoice[streamingtts] in speech-runtime/.venv)."
+                        .to_string(),
+                ]
+            },
+            capabilities: CapabilityFlags {
+                downloadable: false,
+                loadable: true,
+                local_only: true,
+                supports_translation: false,
+                supports_streaming: false,
+                supports_voice_cloning: false,
+                supports_instruction_prompt: false,
+                supports_inline_tags: false,
+                coming_soon: !settings.experimental_enabled,
+            },
+            delivery_support: self.builtin_delivery_support(TTS_PROVIDER_VIBEVOICE_ID),
+        });
+
+        models
+    }
+
     fn resolved_preset_for_request(
         &self,
         settings: &AppSettings,
@@ -2704,6 +2916,7 @@ impl TtsManager {
         ]);
 
         providers.extend(self.managed_runtime_provider_descriptors());
+        providers.extend(self.local_binary_provider_descriptors(settings));
 
         let mut models = vec![CatalogModelDescriptor {
             id: TTS_MODEL_SYSTEM_DEFAULT_ID.to_string(),
@@ -2779,6 +2992,11 @@ impl TtsManager {
         }
 
         models.extend(self.managed_runtime_placeholder_models(
+            &selected_provider_id,
+            selected_model_id.as_deref(),
+        ));
+        models.extend(self.local_binary_catalog_models(
+            settings,
             &selected_provider_id,
             selected_model_id.as_deref(),
         ));
@@ -3460,6 +3678,17 @@ impl TtsManager {
             ),
             _ => None,
         };
+        let lfm_audio_gguf_context = match engine {
+            TtsEngineKind::LfmAudioGguf => Some(
+                crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(&self.app_handle)
+                    .ok_or_else(|| "LFM Audio GGUF model is not installed.".to_string())?,
+            ),
+            _ => None,
+        };
+        let vibevoice_context = match engine {
+            TtsEngineKind::VibeVoice => Some(self.prepare_vibevoice_context()?),
+            _ => None,
+        };
         let tts_volume = settings.tts_volume.clamp(0.0, 1.0);
         let output_device = settings.selected_output_device.clone();
         let app_handle = self.app_handle.clone();
@@ -3578,6 +3807,31 @@ impl TtsManager {
                             &stop_flag,
                         )?;
                     }
+                    TtsEngineKind::LfmAudioGguf => {
+                        let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
+                            "LFM Audio GGUF context is not initialized.".to_string()
+                        })?;
+                        speak_lfm_audio_gguf_chunk(
+                            &chunk,
+                            context,
+                            tts_volume,
+                            output_device.clone(),
+                            &stop_flag,
+                        )?;
+                    }
+                    TtsEngineKind::VibeVoice => {
+                        let context = vibevoice_context
+                            .as_ref()
+                            .ok_or_else(|| "VibeVoice context is not initialized.".to_string())?;
+                        speak_vibevoice_chunk(
+                            &chunk,
+                            context,
+                            preferred_voice_id.as_deref(),
+                            tts_volume,
+                            output_device.clone(),
+                            &stop_flag,
+                        )?;
+                    }
                 }
             }
 
@@ -3612,6 +3866,8 @@ impl TtsManager {
             TTS_PROVIDER_SHERPA_PACK_ID => return Ok(TtsEngineKind::SherpaOnnx),
             TTS_PROVIDER_LOCAL_SIDECAR_API_ID => return self.ensure_sidecar_supported(settings),
             TTS_PROVIDER_QWEN3_NATIVE_ID => return Ok(TtsEngineKind::Qwen3Native),
+            TTS_PROVIDER_LFM_AUDIO_GGUF_ID => return self.ensure_lfm_audio_gguf_supported(),
+            TTS_PROVIDER_VIBEVOICE_ID => return self.ensure_vibevoice_supported(settings),
             provider_id if provider_is_mlx_audio(provider_id) => {
                 return self.ensure_mlx_audio_supported()
             }
@@ -3668,6 +3924,46 @@ impl TtsManager {
         } else {
             Err("MLX speech models currently require macOS on Apple Silicon.".to_string())
         }
+    }
+
+    fn ensure_lfm_audio_gguf_supported(&self) -> Result<TtsEngineKind, String> {
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        {
+            let context = crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(
+                &self.app_handle,
+            )
+            .ok_or_else(|| {
+                "LFM Audio GGUF model is not installed. Run the app once to migrate the local snapshot from ~/Apps/Models/LiquidAI_LFM2.5-Audio-1.5B-GGUF/.".to_string()
+            })?;
+            if !context.is_ready() {
+                return Err(
+                    "LFM Audio GGUF assets are present but the runner zip or quant files are incomplete.".to_string()
+                );
+            }
+            Ok(TtsEngineKind::LfmAudioGguf)
+        }
+        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+        {
+            Err("LFM Audio GGUF currently only ships a macOS arm64 runner.".to_string())
+        }
+    }
+
+    fn ensure_vibevoice_supported(&self, settings: &AppSettings) -> Result<TtsEngineKind, String> {
+        if !settings.experimental_enabled {
+            return Err(
+                "VibeVoice is research-licensed and only available when experimental features are enabled in Settings → Labs.".to_string()
+            );
+        }
+        let model_dir = crate::storage_paths::vibevoice_dir(&self.app_handle)
+            .map_err(|err| format!("Failed to resolve VibeVoice model dir: {err}"))?;
+        for name in ["model.safetensors", "preprocessor_config.json"] {
+            if !model_dir.join(name).exists() {
+                return Err(format!(
+                    "VibeVoice snapshot is incomplete (missing {name}). Copy from ~/Apps/Models/microsoft_VibeVoice-Realtime-0.5B/ or re-run migration."
+                ));
+            }
+        }
+        Ok(TtsEngineKind::VibeVoice)
     }
 
     fn ensure_system_engine_supported(&self) -> Result<TtsEngineKind, String> {
@@ -3911,6 +4207,32 @@ impl TtsManager {
             model_root,
             clone_profile,
             language: qwen3_language_for_locale(locale),
+        })
+    }
+
+    fn prepare_vibevoice_context(&self) -> Result<crate::vibevoice::VibeVoiceContext, String> {
+        let sidecar = self
+            .app_handle
+            .try_state::<Arc<crate::sidecar::SidecarManager>>()
+            .ok_or_else(|| "Sidecar manager is not initialized.".to_string())?;
+        let runtime_root = sidecar.resolve_runtime_path().ok_or_else(|| {
+            "VibeVoice requires the speech-runtime checkout (with vibevoice_bridge.py) — install it or set speech_runtime_path in settings.".to_string()
+        })?;
+        let python_path = crate::sidecar::SidecarManager::runtime_python_path(&runtime_root)
+            .ok_or_else(|| {
+                format!(
+                    "VibeVoice requires a Python venv inside the speech runtime at {}.",
+                    runtime_root.display()
+                )
+            })?;
+        crate::vibevoice::VibeVoiceContext::from_managed_store(
+            &self.app_handle,
+            python_path,
+            &runtime_root,
+        )
+        .ok_or_else(|| {
+            "VibeVoice is not ready: need models/tts/store/vibevoice/{config.json,model.safetensors,preprocessor_config.json}, speech-runtime/vibevoice_bridge.py, vendor voice .pt presets, and `pip install -e speech-runtime/vendor/VibeVoice[streamingtts]`."
+                .to_string()
         })
     }
 
@@ -4346,6 +4668,7 @@ impl TtsManager {
             TtsEngineKind::MlxNative => self.mlx_audio_voice_inventory(settings),
             TtsEngineKind::Qwen3Native => self.installed_qwen3_voices(),
             TtsEngineKind::Sidecar => Vec::new(),
+            TtsEngineKind::LfmAudioGguf | TtsEngineKind::VibeVoice => Vec::new(),
         };
 
         if voices.is_empty() {
@@ -4914,6 +5237,83 @@ fn speak_sherpa_chunk(
         audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play Sherpa-ONNX speech audio: {err}"));
     let _ = fs::remove_file(&temp_file);
+    play_result
+}
+
+fn speak_lfm_audio_gguf_chunk(
+    text: &str,
+    context: &crate::lfm_audio_gguf::LfmAudioGgufContext,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
+    let temp_dir = std::env::temp_dir();
+    let file_uuid = Uuid::new_v4().to_string();
+    let temp_cwd = temp_dir.join(format!("lfm-audio-gguf-{}", file_uuid));
+    std::fs::create_dir_all(&temp_cwd)
+        .map_err(|err| format!("Failed to create temp LFM Audio dir: {err}"))?;
+    let out_wav = temp_cwd.join("output.wav");
+
+    let synth_result = context.synthesize(text, &out_wav);
+    if let Err(err) = synth_result {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Err(err);
+    }
+
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Ok(());
+    }
+
+    repair_wav_riff_header(&out_wav);
+
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play LFM Audio speech: {err}"));
+
+    let _ = std::fs::remove_dir_all(&temp_cwd);
+    play_result
+}
+
+fn speak_vibevoice_chunk(
+    text: &str,
+    context: &crate::vibevoice::VibeVoiceContext,
+    preferred_voice_id: Option<&str>,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        return Ok(());
+    }
+
+    let temp_dir = std::env::temp_dir();
+    let file_uuid = Uuid::new_v4().to_string();
+    let temp_cwd = temp_dir.join(format!("vibevoice-{}", file_uuid));
+    std::fs::create_dir_all(&temp_cwd)
+        .map_err(|err| format!("Failed to create temp VibeVoice dir: {err}"))?;
+    let out_wav = temp_cwd.join("output.wav");
+
+    let synth_result = context.synthesize(text, &out_wav, preferred_voice_id);
+    if let Err(err) = synth_result {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Err(err);
+    }
+
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = std::fs::remove_dir_all(&temp_cwd);
+        return Ok(());
+    }
+
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play VibeVoice speech: {err}"));
+
+    let _ = std::fs::remove_dir_all(&temp_cwd);
     play_result
 }
 
@@ -5692,6 +6092,8 @@ fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_MLX_SPARK_ID
             | TTS_PROVIDER_MLX_VOXCPM_ID
             | TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+            | TTS_PROVIDER_LFM_AUDIO_GGUF_ID
+            | TTS_PROVIDER_VIBEVOICE_ID
     )
 }
 

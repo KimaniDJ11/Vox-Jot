@@ -127,7 +127,7 @@ const baseSettings = {
   clamshell_microphone: "Default",
   custom_words: [],
   debug_mode: false,
-  experimental_enabled: false,
+  experimental_enabled: true,
   external_script_path: null,
   fallback_to_raw_on_failure: true,
   history_limit: 100,

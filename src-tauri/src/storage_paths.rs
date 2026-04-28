@@ -16,6 +16,24 @@ const LLM_MODELS_DIR: &str = "llm";
 const QWEN3_CACHE_DIR: &str = "qwen3-cache";
 const PERSONAPLEX_DIR: &str = "personaplex";
 const PERSONAPLEX_HELPER_NAME: &str = "audio-server";
+const LFM_AUDIO_GGUF_DIR: &str = "lfm-audio-gguf";
+const VIBEVOICE_DIR: &str = "vibevoice";
+const LFM2_TOOL_DIR: &str = "lfm2-tool";
+
+// LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
+// while remaining production-quality for dictation readback).
+const LFM_AUDIO_QUANT: &str = "Q4_0";
+const LFM_AUDIO_RUNNER_ZIP: &str = "llama-liquid-audio-macos-arm64.zip";
+
+// LFM2-Tool default quant — Q4_K_M is the standard balance between quality and size.
+const LFM2_TOOL_QUANT_FILE: &str = "LFM2-1.2B-Tool-Q4_K_M.gguf";
+
+// VibeVoice files needed at runtime (figures/, README.md and .cache/ are skipped).
+const VIBEVOICE_FILES: &[&str] = &[
+    "config.json",
+    "model.safetensors",
+    "preprocessor_config.json",
+];
 
 fn ensure_dir(path: &Path) -> Result<(), String> {
     fs::create_dir_all(path).map_err(|err| format!("Failed to create '{}': {err}", path.display()))
@@ -106,6 +124,18 @@ pub fn personaplex_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 
 pub fn personaplex_helper_path(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(personaplex_dir(app)?.join(PERSONAPLEX_HELPER_NAME))
+}
+
+pub fn lfm_audio_gguf_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_model_store_dir(app)?.join(LFM_AUDIO_GGUF_DIR))
+}
+
+pub fn vibevoice_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_model_store_dir(app)?.join(VIBEVOICE_DIR))
+}
+
+pub fn lfm2_tool_staging_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(llm_models_dir(app)?.join(LFM2_TOOL_DIR))
 }
 
 fn migrate_legacy_stt_layout(app: &AppHandle) -> Result<(), String> {
@@ -235,6 +265,65 @@ fn migrate_legacy_llm_layout(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn migrate_local_model_snapshots(app: &AppHandle) -> Result<(), String> {
+    let Some(home) = dirs::home_dir() else {
+        return Ok(());
+    };
+    let snapshots = home.join("Apps").join("Models");
+    if !snapshots.exists() {
+        return Ok(());
+    }
+
+    // LFM2.5-Audio GGUF (Q4_0 quant + macOS runner zip) → models/tts/store/lfm-audio-gguf/
+    let lfm_audio_src = snapshots.join("LiquidAI_LFM2.5-Audio-1.5B-GGUF");
+    let lfm_audio_dst = lfm_audio_gguf_dir(app)
+        .map_err(|err| format!("Failed to resolve LFM Audio GGUF dir: {err}"))?;
+    if lfm_audio_src.exists() {
+        ensure_dir(&lfm_audio_dst)?;
+        let q = LFM_AUDIO_QUANT;
+        let needed_files = [
+            format!("LFM2.5-Audio-1.5B-{q}.gguf"),
+            format!("mmproj-LFM2.5-Audio-1.5B-{q}.gguf"),
+            format!("vocoder-LFM2.5-Audio-1.5B-{q}.gguf"),
+            format!("tokenizer-LFM2.5-Audio-1.5B-{q}.gguf"),
+        ];
+        for file in needed_files.iter() {
+            let src = lfm_audio_src.join(file);
+            let dst = lfm_audio_dst.join(file);
+            copy_dir_if_missing(&src, &dst, "LFM2.5-Audio GGUF")?;
+        }
+        let runner_src = lfm_audio_src.join("runners").join(LFM_AUDIO_RUNNER_ZIP);
+        let runner_dst = lfm_audio_dst.join(LFM_AUDIO_RUNNER_ZIP);
+        copy_dir_if_missing(&runner_src, &runner_dst, "LFM2.5-Audio runner zip")?;
+    }
+
+    // VibeVoice → models/tts/store/vibevoice/
+    let vv_src = snapshots.join("microsoft_VibeVoice-Realtime-0.5B");
+    let vv_dst =
+        vibevoice_dir(app).map_err(|err| format!("Failed to resolve VibeVoice dir: {err}"))?;
+    if vv_src.exists() {
+        ensure_dir(&vv_dst)?;
+        for file in VIBEVOICE_FILES {
+            let src = vv_src.join(file);
+            let dst = vv_dst.join(file);
+            copy_dir_if_missing(&src, &dst, "VibeVoice asset")?;
+        }
+    }
+
+    // LFM2-Tool GGUF (Q4_K_M) → models/llm/lfm2-tool/ (staging for Ollama import)
+    let lfm2_src = snapshots.join("LiquidAI_LFM2-1.2B-Tool-GGUF");
+    let lfm2_dst = lfm2_tool_staging_dir(app)
+        .map_err(|err| format!("Failed to resolve LFM2-Tool staging dir: {err}"))?;
+    if lfm2_src.exists() {
+        ensure_dir(&lfm2_dst)?;
+        let src = lfm2_src.join(LFM2_TOOL_QUANT_FILE);
+        let dst = lfm2_dst.join(LFM2_TOOL_QUANT_FILE);
+        copy_dir_if_missing(&src, &dst, "LFM2-Tool GGUF")?;
+    }
+
+    Ok(())
+}
+
 pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
     for dir in [
         model_root_dir(app).map_err(|err| format!("Failed to resolve model root: {err}"))?,
@@ -257,6 +346,7 @@ pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
 
     migrate_legacy_stt_layout(app)?;
     migrate_legacy_llm_layout(app)?;
+    migrate_local_model_snapshots(app)?;
 
     Ok(())
 }

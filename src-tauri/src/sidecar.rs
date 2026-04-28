@@ -201,6 +201,19 @@ impl SidecarManager {
             return Some(path.to_path_buf());
         }
 
+        // `speech-runtime` checkout with vendored `VibeVoice` + bridge (no legacy `runtime/app.py` tree).
+        if path.join("vibevoice_bridge.py").exists()
+            && path
+                .join("vendor")
+                .join("VibeVoice")
+                .join("demo")
+                .join("voices")
+                .join("streaming_model")
+                .is_dir()
+        {
+            return Some(path.to_path_buf());
+        }
+
         if path.join("app.py").exists() && path.file_name().is_some_and(|name| name == "runtime") {
             return path.parent().map(|parent| parent.to_path_buf());
         }
@@ -238,7 +251,7 @@ impl SidecarManager {
         Self::normalize_runtime_root(&repo_root.join("speech-runtime"))
     }
 
-    fn runtime_python_path(runtime_root: &Path) -> Option<PathBuf> {
+    pub fn runtime_python_path(runtime_root: &Path) -> Option<PathBuf> {
         #[cfg(target_os = "windows")]
         let candidates = [
             runtime_root
@@ -267,7 +280,7 @@ impl SidecarManager {
         candidates.into_iter().find(|candidate| candidate.exists())
     }
 
-    fn resolve_runtime_path(&self) -> Option<PathBuf> {
+    pub fn resolve_runtime_path(&self) -> Option<PathBuf> {
         let settings = get_settings(&self.app_handle);
         if let Some(ref custom_path) = settings.speech_runtime_path {
             if !custom_path.trim().is_empty() {

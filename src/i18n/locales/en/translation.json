@@ -598,7 +598,7 @@
       },
       "experimentalToggle": {
         "label": "Labs features",
-        "description": "Turn on in-development options. Use with care."
+        "description": "In-development features (on by default — turn off anytime)."
       },
       "startHidden": {
         "label": "Start Hidden",

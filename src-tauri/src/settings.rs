@@ -40,6 +40,10 @@ pub const TTS_PROVIDER_MLX_FISH_AUDIO_ID: &str = "mlx_fish_audio";
 pub const TTS_PROVIDER_MLX_LFM_AUDIO_ID: &str = "mlx_lfm_audio";
 pub const TTS_PROVIDER_MLX_POCKET_TTS_ID: &str = "mlx_pocket_tts";
 pub const TTS_PROVIDER_MLX_VOXCPM_ID: &str = "mlx_voxcpm";
+pub const TTS_PROVIDER_LFM_AUDIO_GGUF_ID: &str = "lfm_audio_gguf";
+pub const TTS_PROVIDER_VIBEVOICE_ID: &str = "vibevoice";
+pub const TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID: &str = "lfm2-5-audio-1-5b-q4-0";
+pub const TTS_MODEL_VIBEVOICE_DEFAULT_ID: &str = "vibevoice-realtime-0-5b";
 pub const TTS_MODEL_SYSTEM_DEFAULT_ID: &str = "system-default";
 pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
 const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 6;
@@ -740,7 +744,7 @@ pub struct AppSettings {
     pub app_language: String,
     #[serde(default = "default_global_language_sync_enabled")]
     pub global_language_sync_enabled: bool,
-    #[serde(default)]
+    #[serde(default = "default_experimental_enabled")]
     pub experimental_enabled: bool,
     #[serde(default)]
     pub keyboard_implementation: KeyboardImplementation,
@@ -842,6 +846,10 @@ pub struct WatchFolderConfig {
 }
 
 fn default_true() -> bool {
+    true
+}
+
+fn default_experimental_enabled() -> bool {
     true
 }
 
@@ -1924,7 +1932,7 @@ pub fn get_default_settings() -> AppSettings {
         append_trailing_space: false,
         app_language: default_app_language(),
         global_language_sync_enabled: default_global_language_sync_enabled(),
-        experimental_enabled: false,
+        experimental_enabled: default_experimental_enabled(),
         keyboard_implementation: KeyboardImplementation::default(),
         show_tray_icon: default_show_tray_icon(),
         paste_delay_ms: default_paste_delay_ms(),

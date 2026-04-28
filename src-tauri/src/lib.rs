@@ -26,6 +26,7 @@ mod github_release;
 mod helpers;
 mod http_api;
 mod input;
+mod lfm_audio_gguf;
 mod llm_client;
 mod managers;
 mod model_platform;
@@ -51,6 +52,7 @@ mod tray_i18n;
 mod tts;
 mod tts_profiles;
 mod utils;
+mod vibevoice;
 mod write_rules;
 
 /// Main settings window default / minimum size (logical pixels).

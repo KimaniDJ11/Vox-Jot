@@ -121,6 +121,14 @@ const HF_IMPORT_SPECS: &[HfImportSpec] = &[
         file_name: "",
         runtime_model_id: "phi-4-mini-instruct-q4_k_m",
     },
+    HfImportSpec {
+        id: "hf:lfm2-1.2b-tool",
+        title: "LFM2 1.2B Tool",
+        description: "Liquid AI edge model tuned for tool use and structured output. Fast dictation cleanup.",
+        repo_id: "LiquidAI/LFM2-1.2B-Tool-GGUF",
+        file_name: "LFM2-1.2B-Tool-Q4_K_M.gguf",
+        runtime_model_id: "lfm2-1.2b-tool-q4_k_m",
+    },
 ];
 
 #[derive(Debug, Deserialize)]
@@ -1011,6 +1019,25 @@ fn refine_import_dir(model_id: &str) -> PathBuf {
         .join(sanitize_runtime_model_id(model_id))
 }
 
+/// Look up a pre-staged GGUF file in the app-managed model store. Returns the
+/// path if a file with matching name exists and is non-empty. Today only the
+/// LFM2-Tool staging dir is checked, but the matcher is keyed by file name so
+/// future managed quants drop in without code changes.
+fn locate_managed_staging_gguf(app: &AppHandle, file_name: &str) -> Option<PathBuf> {
+    let candidates = [crate::storage_paths::lfm2_tool_staging_dir(app).ok()?];
+    for dir in candidates {
+        let candidate = dir.join(file_name);
+        if candidate.is_file() {
+            if let Ok(metadata) = std::fs::metadata(&candidate) {
+                if metadata.len() > 0 {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+    None
+}
+
 async fn ensure_hf_gguf_downloaded(
     app: &AppHandle,
     model_id: &str,
@@ -1176,6 +1203,25 @@ async fn import_hf_gguf_to_ollama(
 
     let import_dir = refine_import_dir(model_id);
     let gguf_path = import_dir.join(&resolved_file);
+
+    if !gguf_path.exists() {
+        if let Some(staged) = locate_managed_staging_gguf(app, &resolved_file) {
+            if let Some(parent) = gguf_path.parent() {
+                tokio_fs::create_dir_all(parent)
+                    .await
+                    .map_err(|e| format!("Failed to create import dir: {e}"))?;
+            }
+            tokio_fs::copy(&staged, &gguf_path)
+                .await
+                .map_err(|e| format!("Failed to copy staged GGUF '{}': {e}", staged.display()))?;
+            log::info!(
+                "import_hf_gguf_to_ollama: copied staged GGUF from {} → {}",
+                staged.display(),
+                gguf_path.display()
+            );
+        }
+    }
+
     ensure_hf_gguf_downloaded(app, model_id, repo_id, &resolved_file, &gguf_path).await?;
     log::info!("import_hf_gguf_to_ollama: download complete, running ollama create");
 

@@ -247,7 +247,6 @@ const PROVIDER_BRAND: Record<string, string> = {
   stt_qwen: "qwen",
   stt_mlx_audio: "apple",
   stt_apple_speech: "apple",
-  stt_whisperkit: "openai",
   stt_hf_verified: "huggingface",
   // TTS builtin providers
   system_builtin: "system",
@@ -317,7 +316,6 @@ const ENGINE_TO_PROVIDER: Record<EngineType, string> = {
   MlxAudioStt: "stt_mlx_audio",
   AppleSpeech: "stt_apple_speech",
   AppleSpeechStreaming: "stt_apple_speech",
-  WhisperKitStreaming: "stt_whisperkit",
 };
 
 export function engineTypeToProviderId(engineType: EngineType): string {
@@ -351,7 +349,6 @@ interface FamilyRule {
 // Order matters: more specific keywords should win over broader ones.
 const FAMILY_RULES: FamilyRule[] = [
   { keyword: "apple intelligence", providerId: "apple" },
-  { keyword: "whisperkit", providerId: "stt_whisperkit" },
   { keyword: "whisper", providerId: "stt_whisper" },
   { keyword: "parakeet", providerId: "stt_parakeet" },
   { keyword: "moonshine", providerId: "stt_moonshine" },
@@ -389,7 +386,7 @@ const FAMILY_RULES: FamilyRule[] = [
  * (e.g. "Llama 3.2 3B Instruct" → "meta", "phi-4-mini" → "microsoft").
  * Returns null if no family keyword matches.
  */
-export function inferModelBrand(title: string | null | undefined): string | null {
+function inferModelBrand(title: string | null | undefined): string | null {
   if (!title) return null;
   const lower = title.toLowerCase();
   for (const rule of FAMILY_RULES) {

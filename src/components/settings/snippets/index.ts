@@ -1,1 +1,0 @@
-export { SnippetSettings } from "./SnippetSettings";

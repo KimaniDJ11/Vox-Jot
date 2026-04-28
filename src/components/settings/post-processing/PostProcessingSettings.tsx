@@ -741,16 +741,18 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [previewAppBundleId, setPreviewAppBundleId] = useState("none");
 
-  const appToneMappings = getSetting("app_tone_mappings") || [];
+  const writeRules = getSetting("write_rules") || [];
   const previewAppOptions = [
     {
       value: "none",
       label: t("settings.postProcessing.preview.previewApp.none"),
     },
-    ...appToneMappings.map((mapping) => ({
-      value: mapping.bundle_id,
-      label: mapping.app_name || mapping.bundle_id,
-    })),
+    ...writeRules.flatMap((rule) =>
+      (rule.matchers.bundle_ids ?? []).map((bundleId) => ({
+        value: bundleId,
+        label: rule.name || bundleId,
+      })),
+    ),
   ];
 
   const controlsDisabled =

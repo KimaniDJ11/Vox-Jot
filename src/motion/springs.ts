@@ -41,10 +41,3 @@ export const track: Transition = {
   damping: 40,
   mass: 0.7,
 };
-
-// Tween fallback (for opacity-only / non-physics properties).
-export const fade: Transition = {
-  type: "tween",
-  duration: 0.14,
-  ease: [0.22, 1, 0.36, 1],
-};

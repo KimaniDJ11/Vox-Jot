@@ -4,7 +4,6 @@ use crate::managers::apple_speech::{AppleSpeechEngine, AppleSpeechMode};
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::continuous_cloning::ContinuousCloningManager;
 use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
-use crate::managers::whisperkit::WhisperKitStreamingEngine;
 use crate::settings::{get_settings, AppSettings, ModelUnloadTimeout};
 use anyhow::Result;
 use log::{debug, error, info, warn};
@@ -56,7 +55,6 @@ enum LoadedEngine {
     MlxAudioStt(MlxAudioSttEngine),
     AppleSpeech(AppleSpeechEngine),
     AppleSpeechStreaming(AppleSpeechEngine),
-    WhisperKitStreaming(WhisperKitStreamingEngine),
 }
 
 #[derive(Clone, Debug)]
@@ -574,9 +572,6 @@ impl TranscriptionManager {
             EngineType::AppleSpeechStreaming => LoadedEngine::AppleSpeechStreaming(
                 AppleSpeechEngine::new(AppleSpeechMode::Progressive)?,
             ),
-            EngineType::WhisperKitStreaming => {
-                LoadedEngine::WhisperKitStreaming(WhisperKitStreamingEngine::new()?)
-            }
         };
 
         Ok(loaded_engine)
@@ -735,16 +730,6 @@ impl TranscriptionManager {
                 apple_engine
                     .transcribe(&audio, 16_000, language)
                     .map_err(|e| anyhow::anyhow!("Apple Speech transcription failed: {}", e))?
-            }
-            LoadedEngine::WhisperKitStreaming(whisperkit_engine) => {
-                let language = if settings.selected_language == "auto" {
-                    None
-                } else {
-                    Some(settings.selected_language.as_str())
-                };
-                whisperkit_engine
-                    .transcribe(&audio, 16_000, language)
-                    .map_err(|e| anyhow::anyhow!("WhisperKit transcription failed: {}", e))?
             }
         };
 

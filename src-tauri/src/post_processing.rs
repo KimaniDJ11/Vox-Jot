@@ -68,14 +68,6 @@ pub struct ToneDefinition {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
-#[deprecated(note = "Use WriteRule for app-aware routing.")]
-pub struct AppToneMapping {
-    pub bundle_id: String,
-    pub app_name: String,
-    pub tone_id: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Type)]
 pub struct WriteRule {
     pub id: String,
     pub name: String,

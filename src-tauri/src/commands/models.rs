@@ -278,12 +278,6 @@ fn stt_provider_meta(
             "macOS Speech framework",
             "Apple SpeechAnalyzer",
         ),
-        EngineType::WhisperKitStreaming => (
-            "stt_whisperkit",
-            "WhisperKit",
-            "WhisperKit helper",
-            "WhisperKit streaming runtime",
-        ),
     }
 }
 
@@ -328,7 +322,6 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
         "stt_moonshine",
         "stt_moonshine_streaming",
         "stt_apple_speech",
-        "stt_whisperkit",
         "stt_sensevoice",
         "stt_gigaam",
         "stt_qwen",
@@ -364,9 +357,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     supports_translation: model.supports_translation,
                     supports_streaming: matches!(
                         model.engine_type,
-                        EngineType::MoonshineStreaming
-                            | EngineType::AppleSpeechStreaming
-                            | EngineType::WhisperKitStreaming
+                        EngineType::MoonshineStreaming | EngineType::AppleSpeechStreaming
                     ),
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,
@@ -416,9 +407,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     supports_translation: model.supports_translation,
                     supports_streaming: matches!(
                         model.engine_type,
-                        EngineType::MoonshineStreaming
-                            | EngineType::AppleSpeechStreaming
-                            | EngineType::WhisperKitStreaming
+                        EngineType::MoonshineStreaming | EngineType::AppleSpeechStreaming
                     ),
                     supports_voice_cloning: false,
                     supports_instruction_prompt: false,

@@ -19,5 +19,3 @@ export function useMinWidth769(): boolean {
 
   return matches;
 }
-
-export default useMinWidth769;

@@ -3247,15 +3247,3 @@ export const AutoReadbackSection: React.FC<{
   const speech = useListenSpeechState();
   return <AutoReadbackPanel speech={speech} showTitle={showGroupTitle} />;
 };
-
-export const ListenAllSections: React.FC = () => {
-  const speech = useListenSpeechState();
-  return (
-    <div className="space-y-6">
-      <VoiceArchitectSection speech={speech} />
-      <EngineLibraryPanel speech={speech} />
-      <VoiceCloningSection speech={speech} />
-      <AutoReadbackPanel speech={speech} />
-    </div>
-  );
-};

@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::managers::audio::AudioRecordingManager;
-use crate::post_processing::{AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition};
+use crate::post_processing::{DictionaryEntry, PostProcessMode, ToneDefinition};
 use crate::secret_store;
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
@@ -1459,18 +1459,6 @@ pub fn update_tone_definitions(
 ) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.tone_definitions = definitions;
-    settings::write_settings(&app, settings);
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn update_app_tone_mappings(
-    app: AppHandle,
-    mappings: Vec<AppToneMapping>,
-) -> Result<(), String> {
-    let mut settings = settings::get_settings(&app);
-    settings.app_tone_mappings = mappings;
     settings::write_settings(&app, settings);
     Ok(())
 }

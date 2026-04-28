@@ -1,9 +1,5 @@
 use crate::portable;
-#[allow(deprecated)]
-use crate::post_processing::{
-    AppToneMapping, DictionaryEntry, PostProcessMode, ToneDefinition, WriteRule, WriteRuleMatchers,
-    WriteRuleOverrides,
-};
+use crate::post_processing::{DictionaryEntry, PostProcessMode, ToneDefinition, WriteRule};
 use crate::secret_store;
 use crate::snippets::Snippet;
 use log::{debug, error, warn};
@@ -769,8 +765,6 @@ pub struct AppSettings {
     pub app_aware_tone_enabled: bool,
     #[serde(default = "default_tone_definitions")]
     pub tone_definitions: Vec<ToneDefinition>,
-    #[serde(default = "default_app_tone_mappings")]
-    pub app_tone_mappings: Vec<AppToneMapping>,
     #[serde(default)]
     pub write_rules: Vec<WriteRule>,
     #[serde(default = "default_write_rules_url_capture_enabled")]
@@ -814,22 +808,17 @@ fn default_http_api_port() -> u16 {
 }
 
 /// Output format for files written by the watch-folder service.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum WatchFolderOutputFormat {
     /// Plain transcript next to the source file as `<basename>.txt`.
+    #[default]
     Text,
     /// SubRip subtitles (`.srt`); only meaningful when the engine
     /// produced timed segments (Whisper / Parakeet today).
     Srt,
     /// WebVTT subtitles (`.vtt`); same caveat as SRT.
     Vtt,
-}
-
-impl Default for WatchFolderOutputFormat {
-    fn default() -> Self {
-        Self::Text
-    }
 }
 
 /// One watched folder entry. The `id` is generated client-side (uuid)
@@ -1119,301 +1108,6 @@ fn default_tone_definitions() -> Vec<ToneDefinition> {
                     .to_string(),
         },
     ]
-}
-
-/// All candidate app-tone mappings. At first launch the app filters this list
-/// down to only apps actually installed on the user's machine (macOS).  On
-/// other platforms the full list is used as-is since there is no installed-app
-/// detection yet.
-fn default_app_tone_mappings_candidates() -> Vec<AppToneMapping> {
-    vec![
-        // ── Chat / Casual ───────────────────────────────────────
-        AppToneMapping {
-            bundle_id: "com.tinyspeck.slackmacgap".to_string(),
-            app_name: "Slack".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.hnc.Discord".to_string(),
-            app_name: "Discord".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.apple.MobileSMS".to_string(),
-            app_name: "Messages".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "us.zoom.xos".to_string(),
-            app_name: "Zoom".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.facebook.archon.developerID".to_string(),
-            app_name: "Messenger".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "ru.keepcoder.Telegram".to_string(),
-            app_name: "Telegram".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "net.whatsapp.WhatsApp".to_string(),
-            app_name: "WhatsApp".to_string(),
-            tone_id: "casual".to_string(),
-        },
-        // ── Professional ────────────────────────────────────────
-        AppToneMapping {
-            bundle_id: "com.apple.mail".to_string(),
-            app_name: "Mail".to_string(),
-            tone_id: "professional".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.microsoft.Word".to_string(),
-            app_name: "Microsoft Word".to_string(),
-            tone_id: "professional".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.microsoft.Outlook".to_string(),
-            app_name: "Microsoft Outlook".to_string(),
-            tone_id: "professional".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.google.Chrome".to_string(),
-            app_name: "Google Chrome".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.apple.Safari".to_string(),
-            app_name: "Safari".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        // ── Neutral ─────────────────────────────────────────────
-        AppToneMapping {
-            bundle_id: "com.apple.Notes".to_string(),
-            app_name: "Notes".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.apple.Pages".to_string(),
-            app_name: "Pages".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "md.obsidian".to_string(),
-            app_name: "Obsidian".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.notion.id".to_string(),
-            app_name: "Notion".to_string(),
-            tone_id: "neutral".to_string(),
-        },
-        // ── Coding ──────────────────────────────────────────────
-        AppToneMapping {
-            bundle_id: "com.microsoft.VSCode".to_string(),
-            app_name: "VS Code".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.vscodium".to_string(),
-            app_name: "VSCodium".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "dev.zed.Zed".to_string(),
-            app_name: "Zed".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.sublimetext.4".to_string(),
-            app_name: "Sublime Text".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.intellij".to_string(),
-            app_name: "IntelliJ IDEA".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.WebStorm".to_string(),
-            app_name: "WebStorm".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.pycharm".to_string(),
-            app_name: "PyCharm".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.CLion".to_string(),
-            app_name: "CLion".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.rider".to_string(),
-            app_name: "Rider".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.goland".to_string(),
-            app_name: "GoLand".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.jetbrains.rustrover".to_string(),
-            app_name: "RustRover".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.apple.dt.Xcode".to_string(),
-            app_name: "Xcode".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.googlecode.iterm2".to_string(),
-            app_name: "iTerm2".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.apple.Terminal".to_string(),
-            app_name: "Terminal".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "net.kovidgoyal.kitty".to_string(),
-            app_name: "Kitty".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.github.wez.wezterm".to_string(),
-            app_name: "WezTerm".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "co.zeit.hyper".to_string(),
-            app_name: "Hyper".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.mitchellh.ghostty".to_string(),
-            app_name: "Ghostty".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "dev.warp.Warp-Stable".to_string(),
-            app_name: "Warp".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.todesktop.230313mzl4w4u92".to_string(),
-            app_name: "Cursor".to_string(),
-            tone_id: "coding".to_string(),
-        },
-        AppToneMapping {
-            bundle_id: "com.windsurf.windsurf".to_string(),
-            app_name: "Windsurf".to_string(),
-            tone_id: "coding".to_string(),
-        },
-    ]
-}
-
-/// Filters `default_app_tone_mappings_candidates()` down to apps actually
-/// installed on the current machine.  Falls back to the full candidate list
-/// when installed-app detection is unavailable (non-macOS).
-pub fn default_app_tone_mappings() -> Vec<AppToneMapping> {
-    let candidates = default_app_tone_mappings_candidates();
-
-    #[cfg(target_os = "macos")]
-    {
-        use std::process::Command;
-
-        // Collect the set of bundle IDs present on this machine via Spotlight.
-        let installed: std::collections::HashSet<String> = Command::new("mdfind")
-            .arg("kMDItemContentType == 'com.apple.application-bundle'")
-            .output()
-            .ok()
-            .map(|output| {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                stdout
-                    .lines()
-                    .filter_map(|line| {
-                        let plist = format!("{}/Contents/Info.plist", line.trim());
-                        Command::new("defaults")
-                            .args(["read", &plist, "CFBundleIdentifier"])
-                            .output()
-                            .ok()
-                            .and_then(|o| {
-                                if o.status.success() {
-                                    let id = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                                    if id.is_empty() {
-                                        None
-                                    } else {
-                                        Some(id)
-                                    }
-                                } else {
-                                    None
-                                }
-                            })
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        if installed.is_empty() {
-            // Spotlight unavailable — keep all candidates
-            return candidates;
-        }
-
-        let filtered: Vec<AppToneMapping> = candidates
-            .into_iter()
-            .filter(|m| installed.contains(&m.bundle_id))
-            .collect();
-
-        // If nothing matched at all (unlikely), keep the Apple basics
-        if filtered.is_empty() {
-            return default_app_tone_mappings_candidates()
-                .into_iter()
-                .filter(|m| m.bundle_id.starts_with("com.apple."))
-                .collect();
-        }
-
-        filtered
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        candidates
-    }
-}
-
-pub fn write_rules_from_app_tone_mappings(
-    mappings: &[AppToneMapping],
-    enabled: bool,
-) -> Vec<WriteRule> {
-    let mut priority: i32 = 100;
-    mappings
-        .iter()
-        .map(|mapping| {
-            let rule = WriteRule {
-                id: Uuid::new_v4().to_string(),
-                name: mapping.app_name.clone(),
-                enabled,
-                priority,
-                matchers: WriteRuleMatchers {
-                    bundle_ids: vec![mapping.bundle_id.clone()],
-                    url_patterns: Vec::new(),
-                },
-                overrides: WriteRuleOverrides {
-                    tone_id: Some(mapping.tone_id.clone()),
-                    ..Default::default()
-                },
-            };
-            priority -= 1;
-            rule
-        })
-        .collect()
 }
 
 fn default_app_language() -> String {
@@ -1826,19 +1520,6 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
     changed
 }
 
-pub fn ensure_write_rules_defaults(settings: &mut AppSettings) -> bool {
-    if !settings.write_rules.is_empty() {
-        return false;
-    }
-
-    settings.write_rules = write_rules_from_app_tone_mappings(
-        &settings.app_tone_mappings,
-        settings.app_aware_tone_enabled,
-    );
-
-    !settings.write_rules.is_empty()
-}
-
 /// Internal constants for correction behavior — no longer user-configurable.
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
@@ -1954,38 +1635,6 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
         if !settings.tone_definitions.iter().any(|t| t.id == starter.id) {
             debug!("Adding missing starter tone definition: {}", starter.id);
             settings.tone_definitions.push(starter);
-            changed = true;
-        }
-    }
-
-    if settings.app_tone_mappings.is_empty() {
-        settings.app_tone_mappings = default_app_tone_mappings();
-        changed = true;
-    }
-
-    // Migration: replace the old hardcoded 6-app defaults with the new
-    // installed-app-aware defaults when the user hasn't customised mappings.
-    {
-        let old_defaults: std::collections::HashSet<&str> = [
-            "com.tinyspeck.slackmacgap",
-            "com.hnc.Discord",
-            "com.apple.MobileSMS",
-            "com.apple.mail",
-            "com.microsoft.Word",
-            "com.apple.Notes",
-        ]
-        .into_iter()
-        .collect();
-
-        let current_ids: std::collections::HashSet<&str> = settings
-            .app_tone_mappings
-            .iter()
-            .map(|m| m.bundle_id.as_str())
-            .collect();
-
-        if current_ids == old_defaults {
-            debug!("Migrating app-tone mappings from legacy 6-app defaults to installed-app-aware defaults");
-            settings.app_tone_mappings = default_app_tone_mappings();
             changed = true;
         }
     }
@@ -2186,10 +1835,6 @@ pub fn get_default_settings() -> AppSettings {
         },
     );
 
-    let app_tone_mappings = default_app_tone_mappings();
-    let write_rules =
-        write_rules_from_app_tone_mappings(&app_tone_mappings, default_app_aware_tone_enabled());
-
     AppSettings {
         bindings,
         push_to_talk: true,
@@ -2292,8 +1937,7 @@ pub fn get_default_settings() -> AppSettings {
         fallback_to_raw_on_failure: default_fallback_to_raw_on_failure(),
         app_aware_tone_enabled: default_app_aware_tone_enabled(),
         tone_definitions: default_tone_definitions(),
-        app_tone_mappings,
-        write_rules,
+        write_rules: Vec::new(),
         write_rules_url_capture_enabled: default_write_rules_url_capture_enabled(),
         write_rules_enabled_override: None,
         correction_tracking_enabled: default_correction_tracking_enabled(),
@@ -2483,12 +2127,6 @@ impl AppSettings {
 
     pub fn tone_definition(&self, tone_id: &str) -> Option<&ToneDefinition> {
         self.tone_definitions.iter().find(|tone| tone.id == tone_id)
-    }
-
-    pub fn app_tone_mapping(&self, bundle_id: &str) -> Option<&AppToneMapping> {
-        self.app_tone_mappings
-            .iter()
-            .find(|mapping| mapping.bundle_id.eq_ignore_ascii_case(bundle_id))
     }
 
     pub fn is_post_process_provider_local(&self, provider_id: &str) -> bool {
@@ -2876,7 +2514,6 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
 
     let translation_changed = ensure_translation_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
-    let write_rules_changed = ensure_write_rules_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
@@ -2885,7 +2522,6 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     if translation_changed
         || tts_changed
         || post_process_changed
-        || write_rules_changed
         || model_platform_changed
         || migrated_legacy_keys
     {
@@ -2914,7 +2550,6 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
 
     let translation_changed = ensure_translation_defaults(&mut settings);
     let post_process_changed = ensure_post_process_defaults(&mut settings);
-    let write_rules_changed = ensure_write_rules_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
@@ -2923,7 +2558,6 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     if translation_changed
         || tts_changed
         || post_process_changed
-        || write_rules_changed
         || model_platform_changed
         || migrated_legacy_keys
     {
@@ -2953,7 +2587,6 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
 
     ensure_translation_defaults(&mut settings);
     ensure_post_process_defaults(&mut settings);
-    ensure_write_rules_defaults(&mut settings);
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
 
@@ -3024,7 +2657,7 @@ mod tests {
     }
 
     #[test]
-    fn default_settings_include_app_aware_tone_presets() {
+    fn default_settings_include_tone_presets() {
         let settings = get_default_settings();
 
         assert!(settings.app_aware_tone_enabled);
@@ -3032,47 +2665,17 @@ mod tests {
             .tone_definitions
             .iter()
             .any(|tone| tone.id == "casual"));
-        assert!(settings
-            .app_tone_mappings
-            .iter()
-            .any(|mapping| mapping.bundle_id == "com.apple.mail"));
     }
 
     #[test]
     fn ensure_post_process_defaults_restores_tone_presets() {
         let mut settings = get_default_settings();
         settings.tone_definitions.clear();
-        settings.app_tone_mappings.clear();
-        settings.write_rules.clear();
 
         let changed = ensure_post_process_defaults(&mut settings);
 
         assert!(changed);
         assert!(!settings.tone_definitions.is_empty());
-        assert!(!settings.app_tone_mappings.is_empty());
-    }
-
-    #[test]
-    fn migration_creates_rules_from_app_tone_mappings() {
-        let mut settings = get_default_settings();
-        settings.app_aware_tone_enabled = true;
-        settings.write_rules.clear();
-        settings.app_tone_mappings = vec![AppToneMapping {
-            bundle_id: "com.example.App".to_string(),
-            app_name: "Example App".to_string(),
-            tone_id: "casual".to_string(),
-        }];
-
-        let changed = ensure_write_rules_defaults(&mut settings);
-
-        assert!(changed);
-        assert_eq!(settings.write_rules.len(), 1);
-        let rule = &settings.write_rules[0];
-        assert_eq!(rule.name, "Example App");
-        assert!(rule.enabled);
-        assert_eq!(rule.priority, 100);
-        assert_eq!(rule.matchers.bundle_ids, vec!["com.example.App"]);
-        assert_eq!(rule.overrides.tone_id.as_deref(), Some("casual"));
     }
 
     #[test]

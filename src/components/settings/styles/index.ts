@@ -1,1 +1,0 @@
-export { StylesSettings } from "./StylesSettings";

@@ -63,9 +63,3 @@ export async function clearProfileCollectedData(
 ): Promise<TtsVoiceProfileDescriptor> {
   return invoke("clear_profile_collected_data", { profileId });
 }
-
-export async function getVoiceProfileProgress(
-  profileId: string,
-): Promise<TtsVoiceProfileDescriptor> {
-  return invoke("get_voice_profile_progress", { profileId });
-}

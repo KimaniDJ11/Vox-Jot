@@ -66,5 +66,3 @@ export const Alert: React.FC<AlertProps> = ({
     </div>
   );
 };
-
-export const Banner = Alert;

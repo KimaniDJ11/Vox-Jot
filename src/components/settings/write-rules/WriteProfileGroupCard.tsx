@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
-export interface WriteRuleGroup {
+interface WriteRuleGroup {
   key: string;
   rules: WriteRule[];
   overrides: WriteRuleOverrides;
@@ -37,7 +37,7 @@ interface WriteProfileGroupCardProps {
   onDelete: (id: string) => void;
 }
 
-export const writeRuleGroupKey = (overrides: WriteRuleOverrides): string => {
+const writeRuleGroupKey = (overrides: WriteRuleOverrides): string => {
   const normalized: Required<WriteRuleOverrides> = {
     stt_model_id: overrides.stt_model_id?.trim() || null,
     stt_language: overrides.stt_language?.trim() || null,

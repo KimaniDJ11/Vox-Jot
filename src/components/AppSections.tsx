@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
-import { ArrowRight, NotebookPen, Pin, Plus } from "lucide-react";
+import { NotebookPen, Pin, Plus } from "lucide-react";
 import { ConvoModeView } from "@/components/convo";
 
 import { commands, type Note } from "@/bindings";
@@ -58,7 +58,6 @@ import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
-import { StylesSettings } from "@/components/settings/styles/StylesSettings";
 import { WriteRulesSettings } from "@/components/settings/write-rules/WriteRulesSettings";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
 import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
@@ -66,7 +65,6 @@ import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPa
 import {
   AutoReadbackSection as AutoReadbackPanel,
   MyVoicesSection as MyVoicesPanel,
-  EngineLibrarySection as EngineLibraryPanel,
   SpeechPackManagerSection,
   ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
@@ -101,42 +99,6 @@ const aboutSummaryPrimary =
   "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
 const aboutSummarySecondary =
   "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.";
-
-type WorkflowMode = "dictate" | "refine" | "listen";
-
-type WorkflowSectionProps = {
-  onNavigateToSection: (mode: WorkflowMode, sectionId: string) => void;
-};
-
-const WorkflowLinkCard: React.FC<{
-  eyebrow: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  onAction: () => void;
-}> = ({ eyebrow, title, description, actionLabel, onAction }) => {
-  return (
-    <div className={subtleCardClassName}>
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-        {eyebrow}
-      </p>
-      <p className="mt-2 text-lg font-bold text-[var(--text)]">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        {description}
-      </p>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="mt-4 inline-flex items-center gap-2"
-        onClick={onAction}
-      >
-        {actionLabel}
-        <ArrowRight className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-};
 
 export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
@@ -200,17 +162,6 @@ export const RefineProfilesSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <WriteRulesSettings />
-    </div>
-  );
-};
-
-export const AppMappingsSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <StylesSettings
-        showEnabledToggle={false}
-        visibleSections="mappings-only"
-      />
     </div>
   );
 };
@@ -281,27 +232,6 @@ export const ListenMyVoicesSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <MyVoicesPanel showGroupTitle={false} />
-    </div>
-  );
-};
-
-export const ListenEngineLibrarySection: React.FC<WorkflowSectionProps> = ({
-  onNavigateToSection,
-}) => {
-  return (
-    <div className="space-y-6">
-      <EngineLibraryPanel
-        showGroupTitle={false}
-        titleActionTargetId="engine-library-section-actions"
-      />
-
-      <WorkflowLinkCard
-        eyebrow="Need Past Sessions?"
-        title="Recording Review Lives in Dictate"
-        description="History and recordings now stay with the capture workflow. Use Dictate when you want to replay older sessions or inspect archived output."
-        actionLabel="Open Dictate History"
-        onAction={() => onNavigateToSection("dictate", "history")}
-      />
     </div>
   );
 };

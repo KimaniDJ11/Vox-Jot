@@ -29,16 +29,12 @@ pub enum EngineType {
     MlxAudioStt,
     AppleSpeech,
     AppleSpeechStreaming,
-    WhisperKitStreaming,
 }
 
 pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
     matches!(
         engine_type,
-        EngineType::MlxAudioStt
-            | EngineType::AppleSpeech
-            | EngineType::AppleSpeechStreaming
-            | EngineType::WhisperKitStreaming
+        EngineType::MlxAudioStt | EngineType::AppleSpeech | EngineType::AppleSpeechStreaming
     )
 }
 
@@ -95,7 +91,6 @@ impl ModelManager {
             EngineType::QwenAudio => "stt_qwen",
             EngineType::MlxAudioStt => "stt_mlx_audio",
             EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => "stt_apple_speech",
-            EngineType::WhisperKitStreaming => "stt_whisperkit",
         }
     }
 
@@ -314,31 +309,6 @@ impl ModelManager {
                 engine_type: EngineType::AppleSpeechStreaming,
                 accuracy_score: 0.76,
                 speed_score: 0.90,
-                supports_translation: false,
-                is_recommended: false,
-                supported_languages: whisper_languages.clone(),
-                is_custom: false,
-            },
-        );
-
-        available_models.insert(
-            "whisperkit-streaming".to_string(),
-            ModelInfo {
-                id: "whisperkit-streaming".to_string(),
-                name: "WhisperKit Streaming".to_string(),
-                description:
-                    "WhisperKit-compatible streaming engine. Requires a bundled helper or VOX_JOT_WHISPERKIT_HELPER."
-                        .to_string(),
-                filename: "whisperkit-streaming".to_string(),
-                url: None,
-                size_mb: 0,
-                is_downloaded: cfg!(target_os = "macos"),
-                is_downloading: false,
-                partial_size: 0,
-                is_directory: false,
-                engine_type: EngineType::WhisperKitStreaming,
-                accuracy_score: 0.82,
-                speed_score: 0.78,
                 supports_translation: false,
                 is_recommended: false,
                 supported_languages: whisper_languages.clone(),

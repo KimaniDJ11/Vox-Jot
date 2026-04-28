@@ -645,7 +645,6 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_app_aware_tone_enabled_setting,
         shortcut::change_write_rules_enabled_setting,
         shortcut::update_tone_definitions,
-        shortcut::update_app_tone_mappings,
         shortcut::suspend_binding,
         shortcut::resume_binding,
         shortcut::change_mute_while_recording_setting,

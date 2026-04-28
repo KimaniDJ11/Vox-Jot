@@ -3,7 +3,6 @@ import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
 import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
 import {
-  AppMappingsSection,
   DictateHistorySection,
   DictateModelsSection,
   FileTranscriptionSection,
@@ -28,10 +27,6 @@ const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
   "write-profiles": {
     title: "Write Profiles",
     component: RefineProfilesSection,
-  },
-  "app-mappings": {
-    title: "App Mappings",
-    component: AppMappingsSection,
   },
   "stt-models": {
     title: "Speech Models",

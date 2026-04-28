@@ -3,7 +3,6 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AppSettings as Settings,
-  AppToneMapping,
   AudioDevice,
   DictionaryEntry,
   LogLevel,
@@ -279,8 +278,6 @@ const settingUpdaters: {
     commands.changeAppAwareToneEnabledSetting(value as boolean),
   tone_definitions: (value) =>
     commands.updateToneDefinitions(value as ToneDefinition[]),
-  app_tone_mappings: (value) =>
-    commands.updateAppToneMappings(value as AppToneMapping[]),
   write_rules_url_capture_enabled: (value) =>
     commands.changeWriteRulesUrlCaptureEnabledSetting(value as boolean),
   mute_while_recording: (value) =>

@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
@@ -432,6 +439,133 @@ const HistoryDetailSection: React.FC<{
   </div>
 );
 
+const HISTORY_BADGE_POPOVER_PAD = 12;
+const HISTORY_BADGE_POPOVER_GAP = 8;
+
+const HistoryBadgePopoverPortal: React.FC<{
+  anchorRef: React.RefObject<HTMLElement | null>;
+  onPointerEnterPanel: () => void;
+  onPointerLeavePanel: () => void;
+  children: React.ReactNode;
+}> = ({
+  anchorRef,
+  onPointerEnterPanel,
+  onPointerLeavePanel,
+  children,
+}) => {
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: -9999,
+    left: -9999,
+  });
+
+  const reposition = useCallback(() => {
+    const anchor = anchorRef.current;
+    const pop = popRef.current;
+    if (!anchor || !pop) return;
+
+    const r = anchor.getBoundingClientRect();
+    const pr = pop.getBoundingClientRect();
+    let top = r.bottom + HISTORY_BADGE_POPOVER_GAP;
+    let left = r.left + r.width / 2 - pr.width / 2;
+    left = Math.max(
+      HISTORY_BADGE_POPOVER_PAD,
+      Math.min(left, window.innerWidth - pr.width - HISTORY_BADGE_POPOVER_PAD),
+    );
+    if (top + pr.height > window.innerHeight - HISTORY_BADGE_POPOVER_PAD) {
+      top = Math.max(
+        HISTORY_BADGE_POPOVER_PAD,
+        r.top - pr.height - HISTORY_BADGE_POPOVER_GAP,
+      );
+    }
+    setPos((prev) =>
+      Math.abs(prev.top - top) < 0.5 && Math.abs(prev.left - left) < 0.5
+        ? prev
+        : { top, left },
+    );
+  }, [anchorRef]);
+
+  useLayoutEffect(() => {
+    reposition();
+  }, [reposition]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [reposition]);
+
+  return createPortal(
+    <div
+      ref={popRef}
+      role="tooltip"
+      className="pointer-events-auto z-[10000] max-h-[min(70vh,24rem)] w-max max-w-[min(90vw,28rem)] overflow-y-auto rounded-xl border border-mid-gray/20 bg-[var(--card)] p-3 shadow-xl"
+      style={{ position: "fixed", top: pos.top, left: pos.left }}
+      onMouseEnter={onPointerEnterPanel}
+      onMouseLeave={onPointerLeavePanel}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+};
+
+const HistoryBadgeHoverPanel: React.FC<{
+  children: React.ReactNode;
+  panel: React.ReactNode;
+}> = ({ children, panel }) => {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => {
+      setOpen(false);
+      closeTimerRef.current = null;
+    }, 120);
+  }, [cancelClose]);
+
+  const handleOpen = useCallback(() => {
+    cancelClose();
+    setOpen(true);
+  }, [cancelClose]);
+
+  useEffect(() => () => cancelClose(), [cancelClose]);
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className="inline-flex cursor-help"
+        onMouseEnter={handleOpen}
+        onMouseLeave={scheduleClose}
+      >
+        {children}
+      </span>
+      {open ? (
+        <HistoryBadgePopoverPortal
+          anchorRef={triggerRef}
+          onPointerEnterPanel={handleOpen}
+          onPointerLeavePanel={scheduleClose}
+        >
+          {panel}
+        </HistoryBadgePopoverPortal>
+      ) : null}
+    </>
+  );
+};
+
 const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
   not_requested: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
   pending:
@@ -532,6 +666,88 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             : t("settings.history.fieldObservation.notRequested", {
                 defaultValue: "No text field check recorded",
               });
+
+  const showFieldObservationBadge =
+    fieldSnapshotStatus !== "not_requested" &&
+    fieldSnapshotStatus !== "skipped";
+
+  const postProcessBadgePanel = (
+    <div className="space-y-2">
+      <HistoryDetailSection
+        title={t("settings.history.sections.text", {
+          defaultValue: "Transcribed text",
+        })}
+        icon={<Type className="h-3.5 w-3.5" />}
+      >
+        <p className="text-sm leading-6 text-[var(--text)] italic select-text cursor-text">
+          {rawText}
+        </p>
+      </HistoryDetailSection>
+      {postProcessApplied ? (
+        <HistoryDetailSection
+          title={t("settings.history.sections.postProcess", {
+            defaultValue: "Post process",
+          })}
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+        >
+          <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
+            {polishedText}
+          </p>
+        </HistoryDetailSection>
+      ) : null}
+    </div>
+  );
+
+  const dictionaryBadgePanel = (
+    <HistoryDetailSection
+      title={t("settings.history.sections.dictionary", {
+        defaultValue: "Dictionary",
+      })}
+      icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+    >
+      <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
+        {entry.dictionary_hits.join(", ")}
+      </p>
+    </HistoryDetailSection>
+  );
+
+  const fieldBadgePanel = (
+    <div className="space-y-2">
+      {fieldCheckChanged && observedText ? (
+        <HistoryDetailSection
+          title={t("settings.history.fieldObservation.title", {
+            defaultValue: "Text field check",
+          })}
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+        >
+          <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
+            <span
+              className="min-w-0 max-w-[45%] break-words font-mono"
+              title={pastedText}
+            >
+              {pastedText}
+            </span>
+            <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
+            <span
+              className="min-w-0 flex-1 break-words font-mono"
+              title={observedText}
+            >
+              {observedText}
+            </span>
+          </div>
+        </HistoryDetailSection>
+      ) : (
+        <>
+          <p className={`${sectionLabelClassName} mb-0`}>{fieldStatusLabel}</p>
+          {observedText ? (
+            <p className="cursor-text select-text break-words font-mono text-sm leading-6 text-[var(--text)]">
+              {observedText}
+            </p>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div className="group/history-row relative grid grid-cols-1 gap-y-3 px-4 py-4 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
@@ -667,105 +883,43 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             </Badge>
           </span>
         )}
-        <Badge
-          variant="secondary"
-          className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
-        >
-          {postProcessApplied
-            ? t("settings.history.badges.postProcessOn", {
-                defaultValue: "Post process on",
-              })
-            : t("settings.history.badges.postProcessOff", {
-                defaultValue: "Raw transcript",
-              })}
-        </Badge>
-        {dictionaryApplied && (
+        <HistoryBadgeHoverPanel panel={postProcessBadgePanel}>
           <Badge
             variant="secondary"
             className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
           >
-            {t("settings.history.badges.dictionaryOn", {
-              defaultValue: "Dictionary applied",
-            })}
+            {postProcessApplied
+              ? t("settings.history.badges.postProcessOn", {
+                  defaultValue: "Post process on",
+                })
+              : t("settings.history.badges.postProcessOff", {
+                  defaultValue: "Raw transcript",
+                })}
           </Badge>
+        </HistoryBadgeHoverPanel>
+        {dictionaryApplied && (
+          <HistoryBadgeHoverPanel panel={dictionaryBadgePanel}>
+            <Badge
+              variant="secondary"
+              className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
+            >
+              {t("settings.history.badges.dictionaryOn", {
+                defaultValue: "Dictionary applied",
+              })}
+            </Badge>
+          </HistoryBadgeHoverPanel>
         )}
-        <Badge
-          variant="secondary"
-          className={`border px-2.5 py-1 ${snapshotToneClasses[fieldSnapshotStatus]}`}
-        >
-          {fieldStatusLabel}
-        </Badge>
+        {showFieldObservationBadge ? (
+          <HistoryBadgeHoverPanel panel={fieldBadgePanel}>
+            <Badge
+              variant="secondary"
+              className={`border px-2.5 py-1 ${snapshotToneClasses[fieldSnapshotStatus]}`}
+            >
+              {fieldStatusLabel}
+            </Badge>
+          </HistoryBadgeHoverPanel>
+        ) : null}
       </div>
-
-      {(postProcessApplied ||
-        dictionaryApplied ||
-        (fieldCheckChanged && observedText)) && (
-        <div className="mt-1 grid gap-2 md:col-start-2 lg:grid-cols-2">
-          {rawText !== displayText && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.text", {
-                defaultValue: "Transcribed text",
-              })}
-              icon={<Type className="h-3.5 w-3.5" />}
-            >
-              <p className="text-sm leading-6 text-[var(--text)] italic select-text cursor-text">
-                {rawText}
-              </p>
-            </HistoryDetailSection>
-          )}
-
-          {postProcessApplied && polishedText !== displayText && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.postProcess", {
-                defaultValue: "Post process",
-              })}
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-            >
-              <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                {polishedText}
-              </p>
-            </HistoryDetailSection>
-          )}
-
-          {dictionaryApplied && (
-            <HistoryDetailSection
-              title={t("settings.history.sections.dictionary", {
-                defaultValue: "Dictionary",
-              })}
-              icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            >
-              <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                {entry.dictionary_hits.join(", ")}
-              </p>
-            </HistoryDetailSection>
-          )}
-
-          {fieldCheckChanged && observedText && (
-            <HistoryDetailSection
-              title={t("settings.history.fieldObservation.title", {
-                defaultValue: "Text field check",
-              })}
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-            >
-              <div className="flex items-start gap-2 overflow-hidden text-sm leading-6 text-[var(--text)] select-text cursor-text">
-                <span
-                  className="min-w-0 max-w-[45%] break-words font-mono"
-                  title={pastedText}
-                >
-                  {pastedText}
-                </span>
-                <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />
-                <span
-                  className="min-w-0 flex-1 break-words font-mono"
-                  title={observedText}
-                >
-                  {observedText}
-                </span>
-              </div>
-            </HistoryDetailSection>
-          )}
-        </div>
-      )}
     </div>
   );
 };

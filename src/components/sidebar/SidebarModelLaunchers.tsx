@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/ProviderIcon";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
-export const MODEL_HUB_SECTION_ID = "model-hub";
+const MODEL_HUB_SECTION_ID = "model-hub";
 
 async function openModelHub(tab: ModelHubTabId) {
   try {

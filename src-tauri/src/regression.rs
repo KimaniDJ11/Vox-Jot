@@ -636,11 +636,6 @@ fn transcribe_audio(
                 "Apple SpeechAnalyzer regression runs are not implemented for the CLI path yet."
             ));
         }
-        EngineType::WhisperKitStreaming => {
-            return Err(anyhow!(
-                "WhisperKit regression runs are not implemented for the CLI path yet."
-            ));
-        }
     };
 
     if !settings.custom_words.is_empty() {

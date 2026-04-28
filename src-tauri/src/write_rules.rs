@@ -174,17 +174,10 @@ pub fn apply_resolved_rule_to_settings(
     } else if resolved.overrides.translate_to_english == Some(false) {
         next.translation_output_mode = TranslationOutputMode::Source;
     }
-    if let Some(tone_id) = effective.tone_id {
-        next.app_tone_mappings.clear();
-        next.app_tone_mappings
-            .push(crate::post_processing::AppToneMapping {
-                bundle_id: resolved.matched_bundle_id.clone().unwrap_or_default(),
-                app_name: resolved.matched_app_name.clone().unwrap_or_default(),
-                tone_id,
-            });
+    // Tone is resolved directly from write_rules at consumption time
+    // (see actions::resolve_tone_context), so no bridge is needed.
+    if effective.tone_id.is_some() {
         next.app_aware_tone_enabled = true;
-    } else {
-        next.app_tone_mappings.clear();
     }
     next.post_process_selected_prompt_id = effective.post_process_prompt_id;
     next.auto_submit = effective.auto_submit;

@@ -127,16 +127,6 @@ export async function getModelPlatformOverview(): Promise<ModelPlatformOverview>
   return invoke<ModelPlatformOverview>("get_model_platform_overview");
 }
 
-export async function setSttPlatformSelection(
-  providerId: string,
-  modelId: string,
-): Promise<void> {
-  return invoke("set_stt_platform_selection", {
-    providerId,
-    modelId,
-  });
-}
-
 export async function setTtsPlatformSelection(
   providerId: string,
   modelId?: string | null,

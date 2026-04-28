@@ -673,8 +673,13 @@ fn resolve_tone_context(
     }
 
     let active_app_context = active_app_context?;
-    let mapping = settings.app_tone_mapping(&active_app_context.bundle_id)?;
-    let tone = settings.tone_definition(&mapping.tone_id)?;
+    let resolved = crate::write_rules::RuleResolver::resolve(
+        &settings.write_rules,
+        Some(active_app_context),
+        None,
+    )?;
+    let tone_id = resolved.overrides.tone_id.as_ref()?;
+    let tone = settings.tone_definition(tone_id)?;
 
     Some(ResolvedToneContext {
         active_app_context: active_app_context.clone(),
@@ -1811,16 +1816,21 @@ fn preview_app_context_from_override(
         return None;
     }
 
-    if let Some(mapping) = settings.app_tone_mapping(bundle_id) {
-        return Some(ActiveAppContext {
-            bundle_id: mapping.bundle_id.clone(),
-            localized_name: mapping.app_name.clone(),
-        });
-    }
+    let app_name = settings
+        .write_rules
+        .iter()
+        .find(|rule| {
+            rule.matchers
+                .bundle_ids
+                .iter()
+                .any(|b| b.eq_ignore_ascii_case(bundle_id))
+        })
+        .map(|rule| rule.name.clone())
+        .unwrap_or_default();
 
     Some(ActiveAppContext {
         bundle_id: bundle_id.to_string(),
-        localized_name: String::new(),
+        localized_name: app_name,
     })
 }
 
@@ -4127,7 +4137,8 @@ mod tests {
         should_fallback_to_plain_text_drift, should_force_conservative_rewrite, PostProcessPass,
     };
     use crate::post_processing::{
-        ActiveAppContext, AppToneMapping, DictionaryEntry, PostProcessMode,
+        ActiveAppContext, DictionaryEntry, PostProcessMode, WriteRule, WriteRuleMatchers,
+        WriteRuleOverrides,
     };
     use crate::settings::{get_default_settings, AutoSubmitKey};
 
@@ -4342,22 +4353,28 @@ mod tests {
         assert!(no_fallback.is_none());
     }
 
+    fn slack_casual_rule() -> WriteRule {
+        WriteRule {
+            id: "slack-casual".to_string(),
+            name: "Slack".to_string(),
+            enabled: true,
+            priority: 100,
+            matchers: WriteRuleMatchers {
+                bundle_ids: vec!["com.tinyspeck.slackmacgap".to_string()],
+                url_patterns: Vec::new(),
+            },
+            overrides: WriteRuleOverrides {
+                tone_id: Some("casual".to_string()),
+                ..Default::default()
+            },
+        }
+    }
+
     #[test]
     fn app_aware_tone_prompt_includes_matching_instruction() {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
-        // Explicitly inject the Slack mapping so the test is machine-independent.
-        if !settings
-            .app_tone_mappings
-            .iter()
-            .any(|m| m.bundle_id == "com.tinyspeck.slackmacgap")
-        {
-            settings.app_tone_mappings.push(AppToneMapping {
-                bundle_id: "com.tinyspeck.slackmacgap".to_string(),
-                app_name: "Slack".to_string(),
-                tone_id: "casual".to_string(),
-            });
-        }
+        settings.write_rules.push(slack_casual_rule());
         let context = ActiveAppContext {
             bundle_id: "com.tinyspeck.slackmacgap".to_string(),
             localized_name: "Slack".to_string(),
@@ -4406,8 +4423,19 @@ mod tests {
     }
 
     #[test]
-    fn preview_override_uses_mapping_without_live_lookup() {
-        let settings = get_default_settings();
+    fn preview_override_uses_write_rule_name() {
+        let mut settings = get_default_settings();
+        settings.write_rules.push(WriteRule {
+            id: "mail".to_string(),
+            name: "Mail".to_string(),
+            enabled: true,
+            priority: 100,
+            matchers: WriteRuleMatchers {
+                bundle_ids: vec!["com.apple.mail".to_string()],
+                url_patterns: Vec::new(),
+            },
+            overrides: WriteRuleOverrides::default(),
+        });
         let context = preview_app_context_from_override(&settings, Some("com.apple.mail")).unwrap();
 
         assert_eq!(context.bundle_id, "com.apple.mail");
@@ -4433,18 +4461,7 @@ mod tests {
     fn non_apple_tone_instruction_contains_app_and_tone() {
         let mut settings = get_default_settings();
         settings.app_aware_tone_enabled = true;
-        // Explicitly inject the Slack mapping so the test is machine-independent.
-        if !settings
-            .app_tone_mappings
-            .iter()
-            .any(|m| m.bundle_id == "com.tinyspeck.slackmacgap")
-        {
-            settings.app_tone_mappings.push(AppToneMapping {
-                bundle_id: "com.tinyspeck.slackmacgap".to_string(),
-                app_name: "Slack".to_string(),
-                tone_id: "casual".to_string(),
-            });
-        }
+        settings.write_rules.push(slack_casual_rule());
         let context = ActiveAppContext {
             bundle_id: "com.tinyspeck.slackmacgap".to_string(),
             localized_name: "Slack".to_string(),

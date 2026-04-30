@@ -193,6 +193,8 @@ impl ContextCaptureManager {
             state: Arc::new(Mutex::new(ManagerState::default())),
         };
         manager.register_bundled_ocr_resources();
+        let settings = get_settings_without_secrets(app_handle);
+        crate::ocr_models::refresh_neural_route_cache(app_handle, &settings);
         manager.spawn_background_worker();
         manager
     }
@@ -217,11 +219,9 @@ impl ContextCaptureManager {
                 "tesseract"
             };
 
-            let tesseract_path = crate::portable::resolve_resource(
-                app,
-                &format!("{}/{}", platform_dir, bin_name),
-            )
-            .ok();
+            let tesseract_path =
+                crate::portable::resolve_resource(app, &format!("{}/{}", platform_dir, bin_name))
+                    .ok();
             let tessdata_path =
                 crate::portable::resolve_resource(app, "resources/tesseract/tessdata").ok();
 
@@ -505,11 +505,18 @@ impl ContextCaptureManager {
             state.status = ContextCaptureStatus::Pending;
         }
 
+        // Phase 0 router: if the user picked a neural OCR model and it's
+        // actually runnable on this platform, the platform fn will try the
+        // neural backend first and fall through to the existing native /
+        // backup pipeline on `NotImplemented` or any backend failure.
+        let neural_route = crate::ocr_models::resolve_neural_route(&self.app_handle, settings);
+
         match native_capture_screen_context(
             settings.screen_context_ocr_engine,
             settings.screen_context_ocr_quality,
             settings.screen_context_token_budget as usize,
             settings.screen_context_ocr_timeout_ms,
+            neural_route,
         ) {
             Ok(native_payload) => {
                 let packet = rank_context_packet(native_payload, settings, source.to_string());
@@ -927,6 +934,19 @@ struct ScreenContextCaptureResponse {
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[repr(C)]
+struct ScreenContextBitmapResponse {
+    bgra: *mut u8,
+    width: u32,
+    height: u32,
+    stride: u32,
+    display_id: u32,
+    captured_at_ms: i64,
+    success: c_int,
+    error_message: *mut c_char,
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 extern "C" {
     fn check_screen_recording_permission_apple() -> c_int;
     fn capture_screen_context_apple(
@@ -935,6 +955,118 @@ extern "C" {
         timeout_ms: c_int,
     ) -> *mut ScreenContextCaptureResponse;
     fn free_screen_context_capture_response(response: *mut ScreenContextCaptureResponse);
+    fn capture_screen_context_bitmap_apple(timeout_ms: c_int) -> *mut ScreenContextBitmapResponse;
+    fn free_screen_context_bitmap_response(response: *mut ScreenContextBitmapResponse);
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+struct AppleBitmapResponse {
+    ptr: *mut ScreenContextBitmapResponse,
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+impl AppleBitmapResponse {
+    fn width(&self) -> u32 {
+        unsafe { (*self.ptr).width }
+    }
+
+    fn height(&self) -> u32 {
+        unsafe { (*self.ptr).height }
+    }
+
+    fn stride(&self) -> u32 {
+        unsafe { (*self.ptr).stride }
+    }
+
+    fn display_id(&self) -> u32 {
+        unsafe { (*self.ptr).display_id }
+    }
+
+    fn captured_at_ms(&self) -> i64 {
+        unsafe { (*self.ptr).captured_at_ms }
+    }
+
+    fn slice(&self) -> &[u8] {
+        unsafe {
+            let total = (*self.ptr).stride as usize * (*self.ptr).height as usize;
+            if (*self.ptr).bgra.is_null() || total == 0 {
+                &[]
+            } else {
+                std::slice::from_raw_parts((*self.ptr).bgra, total)
+            }
+        }
+    }
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+impl Drop for AppleBitmapResponse {
+    fn drop(&mut self) {
+        unsafe { free_screen_context_bitmap_response(self.ptr) };
+    }
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn capture_apple_bitmap(timeout_ms: u32) -> Result<AppleBitmapResponse, String> {
+    let timeout = timeout_ms.min(i32::MAX as u32) as c_int;
+    let response_ptr = unsafe { capture_screen_context_bitmap_apple(timeout) };
+    if response_ptr.is_null() {
+        return Err("Apple bitmap capture returned a null response.".to_string());
+    }
+
+    let success = unsafe { (*response_ptr).success };
+    if success != 1 {
+        let message = unsafe {
+            if (*response_ptr).error_message.is_null() {
+                "Unknown Apple bitmap capture error.".to_string()
+            } else {
+                CStr::from_ptr((*response_ptr).error_message)
+                    .to_string_lossy()
+                    .into_owned()
+            }
+        };
+        unsafe { free_screen_context_bitmap_response(response_ptr) };
+        return Err(message);
+    }
+
+    Ok(AppleBitmapResponse { ptr: response_ptr })
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn clip_snippets_by_word_budget_macos(
+    snippets: Vec<NativeScreenContextSnippet>,
+    max_words: usize,
+) -> Vec<NativeScreenContextSnippet> {
+    if max_words == 0 {
+        return snippets;
+    }
+
+    let mut budget = max_words;
+    let mut out = Vec::with_capacity(snippets.len());
+    for snippet in snippets {
+        if budget == 0 {
+            break;
+        }
+        let words = snippet
+            .text
+            .split_whitespace()
+            .filter(|w| !w.is_empty())
+            .collect::<Vec<_>>();
+        if words.is_empty() {
+            continue;
+        }
+        if words.len() <= budget {
+            budget -= words.len();
+            out.push(snippet);
+        } else {
+            let truncated = words.into_iter().take(budget).collect::<Vec<_>>().join(" ");
+            out.push(NativeScreenContextSnippet {
+                text: truncated,
+                ..snippet
+            });
+            break;
+        }
+    }
+    out
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -943,11 +1075,60 @@ fn native_capture_screen_context(
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
+    neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     let _ = engine;
     unsafe {
         if check_screen_recording_permission_apple() != 1 {
             return Err("Screen Recording permission is not granted.".to_string());
+        }
+    }
+
+    if let Some(route) = neural_route.as_ref() {
+        match capture_apple_bitmap(timeout_ms) {
+            Ok(bitmap) => {
+                let frame = crate::screen_context_ocr_backup::OcrFrame {
+                    width: bitmap.width(),
+                    height: bitmap.height(),
+                    stride_bytes: bitmap.stride(),
+                    pixels: bitmap.slice(),
+                    format: crate::screen_context_ocr_backup::PixelFormat::Bgra8,
+                };
+                let timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+                let req = crate::ocr_backend::NeuralOcrRequest {
+                    route,
+                    frame: &frame,
+                    quality,
+                    timeout,
+                };
+                match crate::ocr_backend::run(req) {
+                    Ok(snippets) if !snippets.is_empty() => {
+                        return Ok(NativeScreenContextPayload {
+                            display_id: bitmap.display_id(),
+                            captured_at_ms: bitmap.captured_at_ms(),
+                            snippets: clip_snippets_by_word_budget_macos(snippets, max_words),
+                        });
+                    }
+                    Ok(_) => {
+                        debug!(
+                            "OCR backend ({}) returned no snippets; falling back to Vision",
+                            route.catalog_id
+                        );
+                    }
+                    Err(err) => {
+                        warn!(
+                            "OCR backend ({}) failed: {}; falling back to Vision",
+                            route.catalog_id, err
+                        );
+                    }
+                }
+            }
+            Err(err) => {
+                warn!(
+                    "Apple bitmap capture for selected OCR backend failed: {}; falling back to Vision",
+                    err
+                );
+            }
         }
     }
 
@@ -1003,9 +1184,14 @@ fn native_capture_screen_context(
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
+    neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     crate::screen_context_windows::native_capture_screen_context(
-        engine, quality, max_words, timeout_ms,
+        engine,
+        quality,
+        max_words,
+        timeout_ms,
+        neural_route,
     )
 }
 
@@ -1015,9 +1201,14 @@ fn native_capture_screen_context(
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
+    neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     crate::screen_context_linux::native_capture_screen_context(
-        engine, quality, max_words, timeout_ms,
+        engine,
+        quality,
+        max_words,
+        timeout_ms,
+        neural_route,
     )
 }
 
@@ -1031,6 +1222,7 @@ fn native_capture_screen_context(
     _quality: OcrQualityMode,
     _max_words: usize,
     _timeout_ms: u32,
+    _neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     Err("Screen context capture is not supported on this platform.".to_string())
 }
@@ -1109,7 +1301,10 @@ fn current_frontmost_app_context() -> Option<ActiveAppContext> {
     }
 }
 
-#[cfg(not(any(all(target_os = "macos", target_arch = "aarch64"), target_os = "windows")))]
+#[cfg(not(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    target_os = "windows"
+)))]
 fn current_frontmost_app_context() -> Option<ActiveAppContext> {
     None
 }
@@ -1135,7 +1330,8 @@ fn read_ax_field_text(active_app_context: Option<&ActiveAppContext>) -> Option<S
 
 #[cfg(target_os = "windows")]
 fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<String> {
-    let reader = crate::correction_tracker::field_monitor_windows::WindowsFieldTextReader::new(None);
+    let reader =
+        crate::correction_tracker::field_monitor_windows::WindowsFieldTextReader::new(None);
     reader.read_focused_field_text().ok().flatten()
 }
 

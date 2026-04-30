@@ -295,3 +295,150 @@ public func freeScreenContextCaptureResponse(
 
     response.deallocate()
 }
+
+private typealias ScreenContextBitmapPointer = UnsafeMutablePointer<ScreenContextBitmapResponse>
+
+private func renderBitmap(_ image: CGImage) -> (UnsafeMutablePointer<UInt8>, Int)? {
+    let width = image.width
+    let height = image.height
+    guard width > 0, height > 0 else { return nil }
+
+    let bytesPerRow = width * 4
+    let totalBytes = bytesPerRow * height
+    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: totalBytes)
+    buffer.initialize(repeating: 0, count: totalBytes)
+
+    let bitmapInfo: UInt32 =
+        CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+    guard
+        let context = CGContext(
+            data: buffer,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: bitmapInfo
+        )
+    else {
+        buffer.deinitialize(count: totalBytes)
+        buffer.deallocate()
+        return nil
+    }
+
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return (buffer, totalBytes)
+}
+
+@_cdecl("capture_screen_context_bitmap_apple")
+public func captureScreenContextBitmapApple(
+    _ timeoutMs: Int32
+) -> UnsafeMutablePointer<ScreenContextBitmapResponse> {
+    let responsePtr = ScreenContextBitmapPointer.allocate(capacity: 1)
+    responsePtr.initialize(
+        to: ScreenContextBitmapResponse(
+            bgra: nil,
+            width: 0,
+            height: 0,
+            stride: 0,
+            display_id: 0,
+            captured_at_ms: 0,
+            success: 0,
+            error_message: nil
+        )
+    )
+
+    guard CGPreflightScreenCaptureAccess() else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "Screen Recording permission is not granted."
+        )
+        return responsePtr
+    }
+
+    guard #available(macOS 14.0, *) else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "Screen context bitmap capture requires macOS 14 or newer."
+        )
+        return responsePtr
+    }
+
+    guard let displayId = activeDisplayIdentifier() else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "Could not determine the active display for screen capture."
+        )
+        return responsePtr
+    }
+
+    let semaphore = DispatchSemaphore(value: 0)
+
+    final class ResultBox: @unchecked Sendable {
+        var image: CGImage?
+        var error: String?
+    }
+    let box = ResultBox()
+
+    Task.detached(priority: .userInitiated) {
+        defer { semaphore.signal() }
+        do {
+            #if canImport(ScreenCaptureKit)
+            box.image = try await captureDisplayImage(displayId: displayId)
+            #else
+            box.error = "ScreenCaptureKit is unavailable in this build."
+            #endif
+        } catch {
+            box.error = error.localizedDescription
+        }
+    }
+
+    let timeout = DispatchTime.now() + .milliseconds(max(100, Int(timeoutMs)))
+    if semaphore.wait(timeout: timeout) == .timedOut {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "Timed out while capturing the display bitmap."
+        )
+        return responsePtr
+    }
+
+    guard let image = box.image else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            box.error ?? "Unknown bitmap capture error."
+        )
+        return responsePtr
+    }
+
+    guard let (buffer, _) = renderBitmap(image) else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "Failed to render captured display image into a packed BGRA buffer."
+        )
+        return responsePtr
+    }
+
+    responsePtr.pointee.bgra = buffer
+    responsePtr.pointee.width = UInt32(image.width)
+    responsePtr.pointee.height = UInt32(image.height)
+    responsePtr.pointee.stride = UInt32(image.width * 4)
+    responsePtr.pointee.display_id = displayId
+    responsePtr.pointee.captured_at_ms = Int64(Date().timeIntervalSince1970 * 1000)
+    responsePtr.pointee.success = 1
+    return responsePtr
+}
+
+@_cdecl("free_screen_context_bitmap_response")
+public func freeScreenContextBitmapResponse(
+    _ response: UnsafeMutablePointer<ScreenContextBitmapResponse>?
+) {
+    guard let response else { return }
+
+    if let buffer = response.pointee.bgra {
+        let total = Int(response.pointee.stride) * Int(response.pointee.height)
+        if total > 0 {
+            buffer.deinitialize(count: total)
+        }
+        buffer.deallocate()
+    }
+
+    if let errorMessage = response.pointee.error_message {
+        free(UnsafeMutablePointer(mutating: errorMessage))
+    }
+
+    response.deallocate()
+}

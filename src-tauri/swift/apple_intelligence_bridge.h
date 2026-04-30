@@ -27,6 +27,17 @@ typedef struct {
 } ScreenContextCaptureResponse;
 
 typedef struct {
+    unsigned char* bgra; // packed BGRA bytes; length = stride * height
+    unsigned int width;
+    unsigned int height;
+    unsigned int stride; // bytes per row
+    unsigned int display_id;
+    long long captured_at_ms;
+    int success; // 0 for failure, 1 for success
+    char* error_message; // Only valid when success = 0
+} ScreenContextBitmapResponse;
+
+typedef struct {
     char* json_payload;
     int success; // 0 for failure, 1 for success
     char* error_message; // Only valid when success = 0
@@ -55,6 +66,12 @@ ScreenContextCaptureResponse* capture_screen_context_apple(const char* quality_m
 
 // Free memory allocated by the screen context capture response.
 void free_screen_context_capture_response(ScreenContextCaptureResponse* response);
+
+// Capture only the active display as packed BGRA bytes.
+ScreenContextBitmapResponse* capture_screen_context_bitmap_apple(int timeout_ms);
+
+// Free memory allocated by capture_screen_context_bitmap_apple.
+void free_screen_context_bitmap_response(ScreenContextBitmapResponse* response);
 
 // Check whether Apple SpeechAnalyzer transcription is available.
 int is_apple_speech_analyzer_available(void);

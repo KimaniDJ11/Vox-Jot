@@ -28,12 +28,9 @@ import { Button } from "@/components/ui/Button";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
+import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 
-type OcrProviderFilterValue =
-  | "all"
-  | "system"
-  | "neural"
-  | "tesseract";
+type OcrProviderFilterValue = "all" | "system" | "neural" | "tesseract";
 
 interface OcrDownloadProgressPayload {
   catalog_id: string;
@@ -151,7 +148,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<
     Record<
       string,
-      Pick<OcrDownloadProgressPayload, "stage" | "percentage" | "file" | "error">
+      Pick<
+        OcrDownloadProgressPayload,
+        "stage" | "percentage" | "file" | "error"
+      >
     >
   >({});
 
@@ -261,9 +261,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       });
       picked = typeof result === "string" ? result : null;
     } catch (err) {
-      setCatalogError(
-        err instanceof Error ? err.message : String(err),
-      );
+      setCatalogError(err instanceof Error ? err.message : String(err));
       return;
     }
     if (!picked) return;
@@ -370,6 +368,20 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       return haystack.includes(q);
     });
   }, [catalog, hubSearchQuery, providerFilter]);
+
+  const installedCatalogModels = useMemo(() => {
+    const models = filteredCatalogModels.filter((model) => model.installed);
+    const activeIndex = models.findIndex((model) => model.id === currentNeural);
+    if (activeIndex <= 0) return models;
+    const next = [...models];
+    const [activeModel] = next.splice(activeIndex, 1);
+    return [activeModel, ...next];
+  }, [currentNeural, filteredCatalogModels]);
+
+  const downloadableCatalogModels = useMemo(
+    () => filteredCatalogModels.filter((model) => !model.installed),
+    [filteredCatalogModels],
+  );
 
   const providerLanguageFilters = hubFilterLabels ? (
     <div className="flex items-center gap-2">
@@ -515,26 +527,9 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           defaultValue: "Screen OCR runtime used for this mode.",
         }),
       },
-      model.installed && !model.runnable
-        ? {
-            id: `pending-${model.id}`,
-            label: t("modelHub.ocr.badges.backendComingSoon", {
-              defaultValue: "Backend coming soon",
-            }),
-            variant: "secondary",
-            icon: <AlertTriangle className="h-3.5 w-3.5" aria-hidden />,
-            detail: t("modelHub.ocr.badges.backendComingSoonDetail", {
-              defaultValue:
-                "Files imported. Inference for this model will arrive in a follow-up release; capture still uses System OCR.",
-            }),
-          }
-        : null,
     ].filter(Boolean) as CompactBadgeItem[];
 
-    const footerMetaItems = [
-      model.languages_label,
-      model.size_hint_label,
-    ];
+    const footerMetaItems = [model.languages_label, model.size_hint_label];
 
     let trailing: HubTrailing = null;
     if (!model.installed) {
@@ -632,7 +627,9 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
               </span>
             ) : null}
             {dl.error ? (
-              <span className="font-normal text-[var(--danger)]">{dl.error}</span>
+              <span className="font-normal text-[var(--danger)]">
+                {dl.error}
+              </span>
             ) : null}
           </div>
           <div
@@ -719,11 +716,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       <HubModelCard
         key={model.id}
         title={model.title}
-        providerId={
-          model.backend === "tessdata_pack"
-            ? "generic"
-            : "system_builtin"
-        }
+        providerId={resolveModelProviderId(
+          `${model.vendor} ${model.title} ${model.id}`,
+          model.backend === "tessdata_pack" ? "tesseract" : "generic",
+        )}
         headerBadges={headerBadges}
         headerBadgesMaxVisible={3}
         description={model.description}
@@ -742,7 +738,39 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   const isCatalogEmpty =
     catalog !== null &&
     !showSystemCard &&
-    filteredCatalogModels.length === 0;
+    installedCatalogModels.length === 0 &&
+    downloadableCatalogModels.length === 0;
+  const showCatalogGroups =
+    catalog !== null && filteredCatalogModels.length > 0;
+
+  const renderModelGroup = (
+    title: string,
+    models: OcrModelDescriptor[],
+    emptyMessage: string,
+    showHeader: boolean,
+  ) => (
+    <div className="space-y-3">
+      {showHeader ? (
+        <div className="flex items-center gap-2 px-1">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+            {title}
+          </h2>
+          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
+            {models.length}
+          </span>
+        </div>
+      ) : null}
+      {models.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          {models.map(renderNeuralCard)}
+        </div>
+      ) : showHeader ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
+          {emptyMessage}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -768,7 +796,34 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
       <div className="flex flex-col gap-3">
         {showSystemCard ? systemCard : null}
-        {filteredCatalogModels.map(renderNeuralCard)}
+        {showCatalogGroups ? (
+          <>
+            {renderModelGroup(
+              t("modelHub.ocr.sections.downloaded", {
+                defaultValue: "Downloaded Models",
+              }),
+              installedCatalogModels,
+              t("modelHub.ocr.sections.downloadedEmpty", {
+                defaultValue:
+                  "No downloaded OCR models match the current filters.",
+              }),
+              false,
+            )}
+            <div className="border-t border-[var(--border)] pt-4">
+              {renderModelGroup(
+                t("modelHub.ocr.sections.available", {
+                  defaultValue: "Available to Download",
+                }),
+                downloadableCatalogModels,
+                t("modelHub.ocr.sections.availableEmpty", {
+                  defaultValue:
+                    "Every matching OCR model is already downloaded.",
+                }),
+                true,
+              )}
+            </div>
+          </>
+        ) : null}
         {isCatalogEmpty ? (
           <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-5 text-sm text-[var(--muted)]">
             {t("modelHub.ocr.empty", {

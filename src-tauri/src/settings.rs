@@ -1252,7 +1252,7 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
     // Ollama - local LLM inference (always present, no API key needed)
     providers.push(PostProcessProvider {
         id: OLLAMA_PROVIDER_ID.to_string(),
-        label: "Ollama Internal".to_string(),
+        label: "Ollama".to_string(),
         base_url: "http://127.0.0.1:11434/v1".to_string(),
         allow_base_url_edit: false,
         models_endpoint: Some("/models".to_string()),

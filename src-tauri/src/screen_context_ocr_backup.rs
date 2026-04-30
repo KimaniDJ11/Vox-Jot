@@ -206,7 +206,10 @@ pub(crate) fn prewarm() {
             );
         }
         (Some(path), None) => {
-            info!("Backup OCR ready (system tessdata): tesseract={}", path.display());
+            info!(
+                "Backup OCR ready (system tessdata): tesseract={}",
+                path.display()
+            );
         }
         (None, _) => {
             debug!("Backup OCR not yet available — tesseract binary not found");
@@ -220,6 +223,25 @@ pub fn run_tesseract_ocr(
     frame: &OcrFrame,
     quality: OcrQualityMode,
     timeout: Duration,
+) -> Result<Vec<NativeScreenContextSnippet>, String> {
+    run_tesseract_ocr_with_tessdata(frame, quality, timeout, None)
+}
+
+/// Same as `run_tesseract_ocr` but lets a caller override which `tessdata/`
+/// directory the spawned tesseract reads its language packs from. Used by the
+/// neural OCR router when the user picks the `tessdata-best` catalog entry —
+/// we point tesseract at `<app_data>/models/ocr/tessdata-best/` instead of
+/// the bundled English-only pack.
+///
+/// `tessdata_override`'s contract: the path itself is the directory that
+/// directly contains `*.traineddata` files. The function takes care of
+/// computing the right `TESSDATA_PREFIX` value (tesseract expects the
+/// parent of `tessdata/`).
+pub fn run_tesseract_ocr_with_tessdata(
+    frame: &OcrFrame,
+    quality: OcrQualityMode,
+    timeout: Duration,
+    tessdata_override: Option<&Path>,
 ) -> Result<Vec<NativeScreenContextSnippet>, String> {
     let tess = tesseract_executable().ok_or_else(|| {
         "Tesseract not found. Install via your package manager or set the VOX_JOT_TESSERACT env var to the binary path.".to_string()
@@ -235,20 +257,35 @@ pub fn run_tesseract_ocr(
         .arg("--psm")
         .arg("11")
         .arg("tsv")
+        .env_remove("TESSDATA_PREFIX")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    // When we ship a bundled tessdata directory next to the binary, point
-    // tesseract at it explicitly so it does not hunt the system for language
-    // packs. Tesseract requires the parent of `tessdata/` for TESSDATA_PREFIX,
-    // not the directory itself.
-    if let Some(tessdata) = bundled_tessdata_dir() {
-        if let Some(parent) = tessdata.parent() {
-            command.env("TESSDATA_PREFIX", parent);
-        } else {
-            command.env("TESSDATA_PREFIX", tessdata);
-        }
+    // Resolve TESSDATA_PREFIX. Override beats the bundled default.
+    //
+    // Tesseract's prefix points at the parent of `tessdata/` when the dir
+    // is literally named `tessdata`, otherwise it points at the directory
+    // containing the `*.traineddata` files itself. We mirror that quirk so
+    // both `<root>/tessdata/` and `<root>/tessdata_best/` layouts work.
+    let prefix = tessdata_override
+        .map(|p| {
+            if p.file_name().map(|n| n == "tessdata").unwrap_or(false) {
+                p.parent().unwrap_or(p).to_path_buf()
+            } else {
+                p.to_path_buf()
+            }
+        })
+        .or_else(|| {
+            bundled_tessdata_dir().map(|tessdata| {
+                tessdata
+                    .parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| tessdata.to_path_buf())
+            })
+        });
+    if let Some(prefix) = prefix {
+        command.env("TESSDATA_PREFIX", prefix);
     }
 
     let mut child = command
@@ -275,7 +312,10 @@ pub fn run_tesseract_ocr(
             Ok(Some(_)) => break,
             Ok(None) => {
                 if start.elapsed() > timeout {
-                    warn!("Tesseract timed out after {:?}; killing pid {}", timeout, pid);
+                    warn!(
+                        "Tesseract timed out after {:?}; killing pid {}",
+                        timeout, pid
+                    );
                     let _ = child.kill();
                     let _ = child.wait();
                     let _ = writer.join();

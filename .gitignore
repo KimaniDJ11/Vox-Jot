@@ -25,6 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+~$*
 
 /target/
 recording_*
@@ -66,6 +67,7 @@ __pycache__/
 # Python virtual environments (never commit)
 .venv/
 speech-runtime/.venv/
+speech-runtime/vendor/
 
 # Temp runtime state
 tmp/

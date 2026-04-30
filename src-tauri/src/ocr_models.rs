@@ -1,14 +1,14 @@
 //! OCR model catalog.
 //!
-//! Phase 1 scope: registry of neural OCR families the app can target, plus
+//! Registry of OCR families the app can target, plus
 //! commands to import them from a user-chosen folder into an app-managed
 //! `models/ocr/<catalog_id>/` tree, remove them, and persist a selection in
 //! settings.
 //!
-//! The actual neural inference path is intentionally not wired up yet — the
-//! capture worker still runs the built-in routing in
-//! `screen_context::capture_now`. Selecting a neural model surfaces a
-//! "backend coming soon" affordance in the UI so the UX stays honest.
+//! OCR runtime support routes `tessdata-best` through the existing Tesseract
+//! backup engine and routes neural/Paddle rows through the `ocr-runtime`
+//! sidecar. Backends may fall through to the platform OCR policy on empty or
+//! failed results, but every installed catalog row has an executable route.
 //!
 //! On developer machines that have model files staged at
 //! `~/Apps/Models/<conventional-subdir>/`, we silently auto-migrate them on
@@ -17,12 +17,13 @@
 //! (canonical mirror repos in `hf_repo_id`), an optional folder import, and
 //! progress updates via `ocr-download-progress`.
 //!
-//! Phase 2 (follow-up commit) will add an `OcrBackend` trait, split macOS
-//! capture from OCR, and wire one neural family end-to-end.
+//! Follow-up phases split macOS capture from Vision OCR and wire neural
+//! sidecars one family at a time.
 
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
 use futures_util::StreamExt;
@@ -38,8 +39,15 @@ use tokio::sync::Mutex;
 use crate::settings::{get_settings, write_settings};
 use crate::storage_paths;
 
-static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
+static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static NEURAL_ROUTE_CACHE: Lazy<StdMutex<NeuralRouteCache>> =
+    Lazy::new(|| StdMutex::new(NeuralRouteCache::default()));
+
+#[derive(Debug, Default)]
+struct NeuralRouteCache {
+    selected_id: Option<String>,
+    route: Option<crate::ocr_backend::NeuralRoute>,
+}
 
 /// How the catalog entry expects to be imported. Phase 1 only supports
 /// `LocalDirectory` (user-picked folder).
@@ -53,8 +61,8 @@ pub enum OcrCatalogSourceKind {
     HuggingFace,
 }
 
-/// Inference runtime an entry will eventually use. Used by the UI to show a
-/// "backend coming soon" badge until Phase 2 wires the runtime.
+/// Inference runtime an entry uses once its files and backend are available.
+/// Rows become runnable when their expected local assets are present.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OcrBackendKind {
@@ -253,8 +261,8 @@ pub struct OcrModelDescriptor {
     pub install_path: Option<String>,
     pub selected: bool,
     /// Whether the app currently knows how to run inference for this entry.
-    /// Phase 1: always `false` (the catalog is informational only). Set to
-    /// `true` when an `OcrBackend` adapter lands.
+    /// Whether the app can attempt inference for this entry with the files
+    /// currently installed on disk.
     pub runnable: bool,
     /// HuggingFace repo the in-app downloader pulls from.
     pub hf_repo_id: String,
@@ -300,6 +308,11 @@ fn descriptor_for(
         .as_ref()
         .map(|dir| dir.exists() && directory_has_contents(dir))
         .unwrap_or(false);
+    let runnable = installed
+        && install_dir
+            .as_ref()
+            .map(|dir| compute_runnable(entry.backend, dir))
+            .unwrap_or(false);
     OcrModelDescriptor {
         id: entry.id.to_string(),
         title: entry.title.to_string(),
@@ -312,24 +325,249 @@ fn descriptor_for(
         installed,
         install_path: install_dir.map(|dir| dir.display().to_string()),
         selected: selected_id == Some(entry.id),
-        runnable: false,
+        runnable,
         hf_repo_id: entry.hf_repo_id.to_string(),
         hf_repo_url: format!("https://huggingface.co/{}", entry.hf_repo_id),
     }
 }
 
+/// Whether the app currently has the code path *and* the on-disk files to
+/// actually run inference for `backend` against `install_dir`.
+///
+/// This is a presence probe, not a hot-path health check. The route cache is
+/// refreshed on startup and selection/import/delete so screen capture does not
+/// scan model directories on every frame.
+pub fn compute_runnable(backend: OcrBackendKind, install_dir: &Path) -> bool {
+    match backend {
+        OcrBackendKind::TessdataPack => tessdata_pack_runnable(install_dir),
+        OcrBackendKind::TransformersVl => transformers_vl_runnable(install_dir),
+        OcrBackendKind::PaddleDetRec => paddle_det_rec_runnable(install_dir),
+        OcrBackendKind::PaddleVl => install_dir.join("config.json").is_file(),
+    }
+}
+
+fn tessdata_pack_runnable(install_dir: &Path) -> bool {
+    locate_tessdata_pack_dir(install_dir).is_some()
+}
+
+fn locate_tessdata_pack_dir(install_dir: &Path) -> Option<PathBuf> {
+    fn dir_has_traineddata(dir: &Path) -> bool {
+        fs::read_dir(dir)
+            .map(|entries| {
+                entries.filter_map(Result::ok).any(|entry| {
+                    entry
+                        .path()
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|s| s.eq_ignore_ascii_case("traineddata"))
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false)
+    }
+    if dir_has_traineddata(install_dir) {
+        return Some(install_dir.to_path_buf());
+    }
+    for nested in ["tessdata_best", "tessdata"] {
+        let candidate = install_dir.join(nested);
+        if candidate.is_dir() && dir_has_traineddata(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+fn transformers_vl_runnable(install_dir: &Path) -> bool {
+    if !install_dir.join("config.json").is_file() {
+        return false;
+    }
+    fs::read_dir(install_dir)
+        .map(|entries| {
+            entries.filter_map(Result::ok).any(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|s| s.eq_ignore_ascii_case("safetensors"))
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn paddle_det_rec_runnable(install_dir: &Path) -> bool {
+    fn contains_inference_file(dir: &Path) -> bool {
+        fs::read_dir(dir)
+            .map(|entries| {
+                entries.filter_map(Result::ok).any(|entry| {
+                    let path = entry.path();
+                    let name = path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or_default()
+                        .to_ascii_lowercase();
+                    name == "inference.pdiparams"
+                        || name == "inference.onnx"
+                        || name.ends_with(".onnx")
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    let det_ok = ["mobile_det", "server_det", "det"]
+        .iter()
+        .map(|name| install_dir.join(name))
+        .any(|dir| dir.is_dir() && contains_inference_file(&dir));
+    let rec_ok = ["mobile_rec", "server_rec", "rec"]
+        .iter()
+        .map(|name| install_dir.join(name))
+        .any(|dir| dir.is_dir() && contains_inference_file(&dir));
+    det_ok && rec_ok
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn tessdata_pack_runnable_uses_platform_gate() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("eng.traineddata"), b"fake").unwrap();
+
+        let runnable = compute_runnable(OcrBackendKind::TessdataPack, dir.path());
+        assert!(runnable);
+    }
+
+    #[test]
+    fn tessdata_pack_probe_accepts_nested_tessdata_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("tessdata_best");
+        fs::create_dir(&nested).unwrap();
+        fs::write(nested.join("eng.traineddata"), b"fake").unwrap();
+
+        let runnable = compute_runnable(OcrBackendKind::TessdataPack, dir.path());
+        assert!(runnable);
+    }
+
+    #[test]
+    fn tessdata_route_dir_points_at_traineddata_parent() {
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("tessdata");
+        fs::create_dir(&nested).unwrap();
+        fs::write(nested.join("eng.traineddata"), b"fake").unwrap();
+
+        assert_eq!(locate_tessdata_pack_dir(dir.path()).unwrap(), nested);
+    }
+
+    #[test]
+    fn transformers_vl_requires_config_and_weights() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("config.json"), b"{}").unwrap();
+        assert!(!compute_runnable(
+            OcrBackendKind::TransformersVl,
+            dir.path()
+        ));
+        fs::write(dir.path().join("model.safetensors"), b"fake").unwrap();
+
+        assert!(compute_runnable(OcrBackendKind::TransformersVl, dir.path()));
+    }
+
+    #[test]
+    fn paddle_vl_requires_config() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!compute_runnable(OcrBackendKind::PaddleVl, dir.path()));
+        fs::write(dir.path().join("config.json"), b"{}").unwrap();
+        assert!(compute_runnable(OcrBackendKind::PaddleVl, dir.path()));
+    }
+
+    #[test]
+    fn paddle_det_rec_requires_detector_and_recognizer() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join("mobile_det")).unwrap();
+        fs::create_dir(dir.path().join("mobile_rec")).unwrap();
+        fs::write(
+            dir.path().join("mobile_det").join("inference.pdiparams"),
+            b"fake",
+        )
+        .unwrap();
+        assert!(!compute_runnable(OcrBackendKind::PaddleDetRec, dir.path()));
+        fs::write(
+            dir.path().join("mobile_rec").join("inference.pdiparams"),
+            b"fake",
+        )
+        .unwrap();
+        assert!(compute_runnable(OcrBackendKind::PaddleDetRec, dir.path()));
+    }
+}
+
+/// Recompute the selected OCR route outside the capture hot path.
+pub fn refresh_neural_route_cache(
+    app: &AppHandle,
+    settings: &crate::settings::AppSettings,
+) -> Option<crate::ocr_backend::NeuralRoute> {
+    let selected_id = settings.screen_context_ocr_neural_model_id.clone();
+    let route = selected_id
+        .as_deref()
+        .and_then(|id| build_neural_route(app, id));
+
+    let mut cache = NEURAL_ROUTE_CACHE
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    cache.selected_id = selected_id;
+    cache.route = route.clone();
+    route
+}
+
+fn build_neural_route(app: &AppHandle, id: &str) -> Option<crate::ocr_backend::NeuralRoute> {
+    let entry = CATALOG.iter().find(|entry| entry.id == id)?;
+    let install_dir = entry_install_dir(app, entry).ok()?;
+    if !install_dir.exists() {
+        return None;
+    }
+    if !compute_runnable(entry.backend, &install_dir) {
+        return None;
+    }
+
+    let backend_dir = match entry.backend {
+        OcrBackendKind::TessdataPack => locate_tessdata_pack_dir(&install_dir)?,
+        OcrBackendKind::TransformersVl
+        | OcrBackendKind::PaddleDetRec
+        | OcrBackendKind::PaddleVl => install_dir,
+    };
+
+    Some(crate::ocr_backend::NeuralRoute {
+        backend: entry.backend,
+        install_dir: backend_dir,
+        catalog_id: entry.id.to_string(),
+    })
+}
+
+/// What the screen-context worker should hand to `ocr_backend::run` this
+/// capture, if anything. This function is intentionally cache-only: model
+/// file probes run on selection/startup, not during capture.
+pub fn resolve_neural_route(
+    _app: &AppHandle,
+    settings: &crate::settings::AppSettings,
+) -> Option<crate::ocr_backend::NeuralRoute> {
+    let id = settings.screen_context_ocr_neural_model_id.as_deref()?;
+    let cache = NEURAL_ROUTE_CACHE
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    if cache.selected_id.as_deref() == Some(id) {
+        return cache.route.clone();
+    }
+    None
+}
+
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<u64, String> {
     if !src.exists() {
-        return Err(format!(
-            "Source path '{}' does not exist.",
-            src.display()
-        ));
+        return Err(format!("Source path '{}' does not exist.", src.display()));
     }
     if src.is_file() {
         if let Some(parent) = dst.parent() {
-            fs::create_dir_all(parent).map_err(|err| {
-                format!("Failed to create '{}': {err}", parent.display())
-            })?;
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("Failed to create '{}': {err}", parent.display()))?;
         }
         return fs::copy(src, dst)
             .map_err(|err| format!("Failed to copy '{}': {err}", src.display()));
@@ -338,11 +576,10 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<u64, String> {
     fs::create_dir_all(dst)
         .map_err(|err| format!("Failed to create '{}': {err}", dst.display()))?;
     let mut bytes = 0u64;
-    for entry in fs::read_dir(src)
-        .map_err(|err| format!("Failed to read '{}': {err}", src.display()))?
+    for entry in
+        fs::read_dir(src).map_err(|err| format!("Failed to read '{}': {err}", src.display()))?
     {
-        let entry =
-            entry.map_err(|err| format!("Failed to inspect directory entry: {err}"))?;
+        let entry = entry.map_err(|err| format!("Failed to inspect directory entry: {err}"))?;
         let child_src = entry.path();
         let name = entry.file_name();
         // Skip dotfiles and HF cache scratch (.cache, .git, etc.) — they
@@ -363,10 +600,7 @@ fn import_from_dir(
     src: &Path,
 ) -> Result<OcrModelDescriptor, String> {
     if !src.exists() {
-        return Err(format!(
-            "Source folder '{}' does not exist.",
-            src.display()
-        ));
+        return Err(format!("Source folder '{}' does not exist.", src.display()));
     }
     if !src.is_dir() {
         return Err(format!(
@@ -406,6 +640,9 @@ fn import_from_dir(
 
     let settings = get_settings(app);
     let selected_id = settings.screen_context_ocr_neural_model_id.as_deref();
+    if selected_id == Some(entry.id) {
+        refresh_neural_route_cache(app, &settings);
+    }
     Ok(descriptor_for(app, entry, selected_id))
 }
 
@@ -443,10 +680,7 @@ pub fn migrate_local_ocr_snapshots(app: &AppHandle) {
                 "Auto-migrated OCR model '{}' from staging dir into managed store",
                 entry.id
             ),
-            Err(err) => warn!(
-                "Auto-migration failed for OCR model '{}': {err}",
-                entry.id
-            ),
+            Err(err) => warn!("Auto-migration failed for OCR model '{}': {err}", entry.id),
         }
     }
 }
@@ -497,13 +731,13 @@ pub fn delete_ocr_model_impl(
         .ok_or_else(|| format!("Unknown OCR catalog id: '{}'.", catalog_id))?;
     let install_dir = entry_install_dir(app, entry)?;
     if install_dir.exists() {
-        fs::remove_dir_all(&install_dir).map_err(|err| {
-            format!(
-                "Failed to remove '{}': {err}",
-                install_dir.display()
-            )
-        })?;
-        info!("Removed OCR model '{}' at {}", entry.id, install_dir.display());
+        fs::remove_dir_all(&install_dir)
+            .map_err(|err| format!("Failed to remove '{}': {err}", install_dir.display()))?;
+        info!(
+            "Removed OCR model '{}' at {}",
+            entry.id,
+            install_dir.display()
+        );
     }
 
     // If the deleted model was the selected one, fall back to the built-in
@@ -514,7 +748,8 @@ pub fn delete_ocr_model_impl(
     if selected_id.as_deref() == Some(entry.id) {
         settings.screen_context_ocr_neural_model_id = None;
         selected_id = None;
-        write_settings(app, settings);
+        write_settings(app, settings.clone());
+        refresh_neural_route_cache(app, &settings);
     }
 
     Ok(descriptor_for(app, entry, selected_id.as_deref()))
@@ -540,7 +775,24 @@ pub fn set_ocr_model_selection_impl(
 
     let mut settings = get_settings(app);
     settings.screen_context_ocr_neural_model_id = neural_model_id;
-    write_settings(app, settings);
+    write_settings(app, settings.clone());
+    let route = refresh_neural_route_cache(app, &settings);
+    if let Some(route) = route {
+        if !matches!(route.backend, OcrBackendKind::TessdataPack) {
+            std::thread::spawn(move || {
+                let _ = crate::ocr_runtime::shared().probe(
+                    &route.catalog_id,
+                    route.backend,
+                    &route.install_dir,
+                    Duration::from_millis(1500),
+                );
+            });
+        } else {
+            crate::ocr_runtime::shared().shutdown();
+        }
+    } else {
+        crate::ocr_runtime::shared().shutdown();
+    }
     Ok(())
 }
 
@@ -750,10 +1002,7 @@ pub async fn download_ocr_model_impl(
     {
         let mut active = ACTIVE_DOWNLOADS.lock().await;
         if !active.insert(catalog_id.clone()) {
-            return Err(format!(
-                "'{}' is already downloading.",
-                entry.title
-            ));
+            return Err(format!("'{}' is already downloading.", entry.title));
         }
     }
 
@@ -776,17 +1025,7 @@ async fn download_ocr_model_inner(
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
 
-    emit_progress(
-        app,
-        entry.id,
-        "preparing",
-        0,
-        0,
-        None,
-        None,
-        None,
-        None,
-    );
+    emit_progress(app, entry.id, "preparing", 0, 0, None, None, None, None);
 
     let files = fetch_hf_repo_files(&client, entry.hf_repo_id).await?;
     let file_count = files.len();
@@ -866,13 +1105,15 @@ async fn download_ocr_model_inner(
             .await
             .map_err(|err| format!("Failed to clear existing install: {err}"))?;
     }
-    tokio_fs::rename(&staging, &final_dir).await.map_err(|err| {
-        format!(
-            "Failed to move staging into place ({} -> {}): {err}",
-            staging.display(),
-            final_dir.display()
-        )
-    })?;
+    tokio_fs::rename(&staging, &final_dir)
+        .await
+        .map_err(|err| {
+            format!(
+                "Failed to move staging into place ({} -> {}): {err}",
+                staging.display(),
+                final_dir.display()
+            )
+        })?;
 
     info!(
         "Downloaded OCR model '{}' from {} to {}",
@@ -895,6 +1136,9 @@ async fn download_ocr_model_inner(
 
     let settings = get_settings(app);
     let selected_id = settings.screen_context_ocr_neural_model_id.as_deref();
+    if selected_id == Some(entry.id) {
+        refresh_neural_route_cache(app, &settings);
+    }
     Ok(descriptor_for(app, entry, selected_id))
 }
 
@@ -920,10 +1164,7 @@ pub fn import_ocr_model_from_disk(
 
 #[tauri::command]
 #[specta::specta]
-pub fn delete_ocr_model(
-    app: AppHandle,
-    catalog_id: String,
-) -> Result<OcrModelDescriptor, String> {
+pub fn delete_ocr_model(app: AppHandle, catalog_id: String) -> Result<OcrModelDescriptor, String> {
     delete_ocr_model_impl(&app, catalog_id)
 }
 

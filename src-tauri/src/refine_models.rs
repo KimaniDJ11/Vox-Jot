@@ -1278,9 +1278,7 @@ pub async fn delete_refine_model_impl(
     model_id: String,
 ) -> Result<(), String> {
     if provider_id != OLLAMA_PROVIDER_ID {
-        return Err(
-            "Only Ollama-managed refine models can be removed from here.".to_string(),
-        );
+        return Err("Only Ollama-managed refine models can be removed from here.".to_string());
     }
 
     {
@@ -1305,7 +1303,11 @@ pub async fn delete_refine_model_impl(
 
     let mut settings = settings::get_settings(app);
 
-    if settings.post_process_models.get(&provider_id).map(|s| s.as_str()) == Some(model_id.as_str())
+    if settings
+        .post_process_models
+        .get(&provider_id)
+        .map(|s| s.as_str())
+        == Some(model_id.as_str())
     {
         settings.post_process_models.insert(
             provider_id.clone(),
@@ -1313,7 +1315,8 @@ pub async fn delete_refine_model_impl(
         );
     }
 
-    if settings.selected_llm_provider_id == provider_id && settings.selected_llm_model_id == model_id
+    if settings.selected_llm_provider_id == provider_id
+        && settings.selected_llm_model_id == model_id
     {
         settings.selected_llm_model_id = settings
             .post_process_models

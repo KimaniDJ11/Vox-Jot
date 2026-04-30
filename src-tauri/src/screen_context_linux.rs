@@ -64,10 +64,57 @@ pub(crate) fn native_capture_screen_context(
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
+    neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
+    let frame = capture_screen()?;
+    let captured_at_ms = current_time_millis();
+
+    let backup_timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+    let ocr_frame =
+        OcrFrame::new_packed(frame.width, frame.height, &frame.pixels, PixelFormat::Rgba8);
+
+    // Phase 0 router — same shape as Windows. Tessdata-best is the only
+    // wired backend today; everything else falls through.
+    if let Some(route) = neural_route.as_ref() {
+        let req = crate::ocr_backend::NeuralOcrRequest {
+            route,
+            frame: &ocr_frame,
+            quality,
+            timeout: backup_timeout,
+        };
+        match crate::ocr_backend::run(req) {
+            Ok(snippets) if !snippets.is_empty() => {
+                let clipped = clip_snippets_by_word_budget(snippets, max_words);
+                return Ok(NativeScreenContextPayload {
+                    display_id: 0,
+                    captured_at_ms,
+                    snippets: clipped,
+                });
+            }
+            Ok(_) => {
+                debug!(
+                    "Neural OCR backend ({}) returned no snippets — falling back to backup",
+                    route.catalog_id
+                );
+            }
+            Err(crate::ocr_backend::OcrError::NotImplemented(_)) => {
+                debug!(
+                    "Neural OCR backend not yet wired for {} — using backup",
+                    route.catalog_id
+                );
+            }
+            Err(err) => {
+                warn!(
+                    "Neural OCR ({}) failed: {}; falling back to backup",
+                    route.catalog_id, err
+                );
+            }
+        }
+    }
+
     // The engine setting is honoured even though Linux only has the backup
     // engine today. `NativeOnly` therefore returns an explanatory error so
-    // the user understands why nothing is captured.
+    // the user understands why fallback could not run.
     if matches!(engine, ScreenContextOcrEngine::NativeOnly) {
         return Err(
             "Native OCR is not available on Linux. Pick \"Auto\" or \"Backup only\" in Screen Context settings."
@@ -75,13 +122,8 @@ pub(crate) fn native_capture_screen_context(
         );
     }
 
-    let frame = capture_screen()?;
-    let captured_at_ms = current_time_millis();
-
-    let backup_timeout = Duration::from_millis(timeout_ms.max(150) as u64);
-    let ocr_frame =
-        OcrFrame::new_packed(frame.width, frame.height, &frame.pixels, PixelFormat::Rgba8);
-    let snippets = screen_context_ocr_backup::run_tesseract_ocr(&ocr_frame, quality, backup_timeout)?;
+    let snippets =
+        screen_context_ocr_backup::run_tesseract_ocr(&ocr_frame, quality, backup_timeout)?;
 
     let clipped = clip_snippets_by_word_budget(snippets, max_words);
 

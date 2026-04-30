@@ -59,9 +59,9 @@ impl LfmAudioVoice {
 /// Runtime context for the Liquid Audio (LFM2.5-Audio) GGUF stack.
 ///
 /// All assets live under `<app_data>/models/tts/store/lfm-audio-gguf/`. The
-/// migration in `storage_paths::migrate_local_model_snapshots` seeds this dir
-/// from `~/Apps/Models/LiquidAI_LFM2.5-Audio-1.5B-GGUF/`. Runtime extracts the
-/// zipped binary on first use into a `runner/` subdir.
+/// The Model Hub downloader seeds this directory from the verified Hugging
+/// Face mirror. Runtime extracts the zipped binary on first use into a
+/// `runner/` subdir.
 pub struct LfmAudioGgufContext {
     pub root_dir: PathBuf,
     pub quantization: String,

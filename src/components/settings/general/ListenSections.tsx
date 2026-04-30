@@ -48,7 +48,10 @@ import HubModelCard, {
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import { Trans, useTranslation } from "react-i18next";
-import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import {
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
 import {
   getModelPlatformOverview,
@@ -1444,9 +1447,7 @@ const VoiceArchitectSection: React.FC<{
     { value: "__none__", label: "No clone profile" },
     ...draftCompatibleProfiles.map((profile) => ({
       value: profile.id,
-      label: !profile.ready
-        ? `${profile.label} (Needs audio)`
-        : profile.label,
+      label: !profile.ready ? `${profile.label} (Needs audio)` : profile.label,
     })),
   ];
   const controls =
@@ -2152,16 +2153,11 @@ const SpeechModelLibraryCard: React.FC<{
       disabled: !speech.ttsEnabled || speech.loadingPlatform,
       label: `Download ${model.label}`,
     };
-  } else if (
-    !active &&
-    ttsHubModelCanRemove(model) &&
-    !confirmingRemove
-  ) {
+  } else if (!active && ttsHubModelCanRemove(model) && !confirmingRemove) {
     trailing = {
       kind: "remove",
       onClick: () => setConfirmingRemove(true),
-      disabled:
-        !speech.ttsEnabled || speech.loadingPlatform || removing,
+      disabled: !speech.ttsEnabled || speech.loadingPlatform || removing,
       busy: removing,
       label: t("modelHub.tts.remove", {
         modelName: model.label,
@@ -2235,7 +2231,10 @@ const SpeechModelLibraryCard: React.FC<{
   return (
     <HubModelCard
       title={model.label}
-      providerId={model.provider_id}
+      providerId={resolveModelProviderId(
+        `${model.label} ${model.id}`,
+        model.provider_id,
+      )}
       headerBadges={headerBadges}
       description={model.description}
       footerMetaItems={detailItems}

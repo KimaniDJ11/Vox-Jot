@@ -1418,9 +1418,7 @@
       "badges": {
         "active": "Active",
         "activeDetail": "Currently selected screen OCR engine.",
-        "vendorDetail": "Screen OCR runtime used for this mode.",
-        "backendComingSoon": "Backend coming soon",
-        "backendComingSoonDetail": "Files imported. Inference for this model will arrive in a follow-up release; capture still uses System OCR."
+        "vendorDetail": "Screen OCR runtime used for this mode."
       },
       "options": {
         "nativeThenBackup": {

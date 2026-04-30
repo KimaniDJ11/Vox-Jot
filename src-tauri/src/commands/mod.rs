@@ -220,7 +220,11 @@ pub fn open_screen_recording_settings() -> Result<(), String> {
         // No equivalent screen-recording consent prompt on Windows — open the
         // generic Privacy / Screenshots page instead.
         std::process::Command::new("cmd")
-            .args(["/C", "start", "ms-settings:privacy-graphicscaptureprogrammatic"])
+            .args([
+                "/C",
+                "start",
+                "ms-settings:privacy-graphicscaptureprogrammatic",
+            ])
             .spawn()
             .map(|_| ())
             .map_err(|err| format!("Failed to open privacy settings: {}", err))

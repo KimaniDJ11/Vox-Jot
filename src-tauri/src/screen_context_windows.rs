@@ -58,11 +58,56 @@ pub(crate) fn native_capture_screen_context(
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
+    neural_route: Option<crate::ocr_backend::NeuralRoute>,
 ) -> Result<NativeScreenContextPayload, String> {
     let frame = capture_screen()?;
     let captured_at_ms = current_time_millis();
 
     let backup_timeout = Duration::from_millis(timeout_ms.max(150) as u64);
+
+    // Phase 0: try the selected neural backend first when one is wired.
+    // On `NotImplemented` (Phase 1+ backends) or empty / hard error we
+    // fall through to the existing native -> backup pipeline so the user
+    // never loses screen context to a half-baked neural path.
+    if let Some(route) = neural_route.as_ref() {
+        let ocr_frame =
+            OcrFrame::new_packed(frame.width, frame.height, &frame.pixels, PixelFormat::Bgra8);
+        let req = crate::ocr_backend::NeuralOcrRequest {
+            route,
+            frame: &ocr_frame,
+            quality,
+            timeout: backup_timeout,
+        };
+        match crate::ocr_backend::run(req) {
+            Ok(snippets) if !snippets.is_empty() => {
+                let clipped = clip_snippets_by_word_budget(snippets, max_words);
+                return Ok(NativeScreenContextPayload {
+                    display_id: frame.display_id,
+                    captured_at_ms,
+                    snippets: clipped,
+                });
+            }
+            Ok(_) => {
+                debug!(
+                    "Neural OCR backend ({}) returned no snippets — falling back to native/backup",
+                    route.catalog_id
+                );
+            }
+            Err(crate::ocr_backend::OcrError::NotImplemented(_)) => {
+                debug!(
+                    "Neural OCR backend not yet wired for {} — using native/backup",
+                    route.catalog_id
+                );
+            }
+            Err(err) => {
+                warn!(
+                    "Neural OCR ({}) failed: {}; falling back to native/backup",
+                    route.catalog_id, err
+                );
+            }
+        }
+    }
+
     let snippets = match engine {
         ScreenContextOcrEngine::BackupOnly => run_backup(&frame, quality, backup_timeout)?,
         ScreenContextOcrEngine::NativeOnly => match run_native_ocr(&frame, timeout_ms) {
@@ -196,7 +241,15 @@ fn capture_screen() -> Result<CapturedFrame, String> {
 
         let prev = SelectObject(mem_dc, bitmap.into());
         let blt_ok = BitBlt(
-            mem_dc, 0, 0, width, height, Some(screen_dc), left, top, SRCCOPY,
+            mem_dc,
+            0,
+            0,
+            width,
+            height,
+            Some(screen_dc),
+            left,
+            top,
+            SRCCOPY,
         )
         .is_ok();
         SelectObject(mem_dc, prev);
@@ -281,9 +334,7 @@ fn run_native_ocr(
 
     // Block this worker thread up to the requested timeout. WinRT exposes a
     // 100-nanosecond TimeSpan, so 10 000 = 1 ms.
-    let hard_limit_ms = (timeout_ms as u64)
-        .max(200)
-        .min(NATIVE_OCR_HARD_LIMIT_MS);
+    let hard_limit_ms = (timeout_ms as u64).max(200).min(NATIVE_OCR_HARD_LIMIT_MS);
     let _ = async_op.SetCompleted(&windows::Foundation::AsyncOperationCompletedHandler::new(
         |_, _| Ok(()),
     ));
@@ -368,8 +419,8 @@ fn software_bitmap_from_bgra(frame: &CapturedFrame) -> Result<SoftwareBitmap, St
     let stream = InMemoryRandomAccessStream::new()
         .map_err(|err| format!("InMemoryRandomAccessStream::new failed: {:?}", err))?;
 
-    let encoder_id = BitmapEncoder::BmpEncoderId()
-        .map_err(|err| format!("BmpEncoderId failed: {:?}", err))?;
+    let encoder_id =
+        BitmapEncoder::BmpEncoderId().map_err(|err| format!("BmpEncoderId failed: {:?}", err))?;
     let encoder = BitmapEncoder::CreateAsync(encoder_id, &stream)
         .map_err(|err| format!("BitmapEncoder::CreateAsync start failed: {:?}", err))?
         .get()

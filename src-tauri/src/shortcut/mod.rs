@@ -28,11 +28,11 @@ use crate::settings::{
     KeyboardImplementation, LLMPrompt, OcrQualityMode, OverlayPosition, PasteMethod,
     RecordingOverlayStyle, ScreenContextOcrEngine, ShortcutBinding, SoundTheme,
     TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
-    TranslationRoutePreference,
-    TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
-    TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
-    OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
-    TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TranslationRoutePreference, TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference,
+    TtsReadbackTextMode, TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID,
+    APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
+    TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_SHERPA_PACK_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID,
 };
 use crate::tray;
 

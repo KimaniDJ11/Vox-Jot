@@ -49,6 +49,32 @@ const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
 const RUNTIME_TTS_REQUEST_TIMEOUT_SECS: u64 = 180;
 const HIDDEN_RUNTIME_MODEL_IDS: &[&str] = &[];
+const LFM_AUDIO_GGUF_HF_REPO_ID: &str = "IrieDinamik/LiquidAI-LFM2.5-Audio-1.5B-GGUF";
+const LFM_AUDIO_GGUF_HF_FILES: &[(&str, &str)] = &[
+    ("LFM2.5-Audio-1.5B-Q4_0.gguf", "LFM2.5-Audio-1.5B-Q4_0.gguf"),
+    (
+        "mmproj-LFM2.5-Audio-1.5B-Q4_0.gguf",
+        "mmproj-LFM2.5-Audio-1.5B-Q4_0.gguf",
+    ),
+    (
+        "vocoder-LFM2.5-Audio-1.5B-Q4_0.gguf",
+        "vocoder-LFM2.5-Audio-1.5B-Q4_0.gguf",
+    ),
+    (
+        "tokenizer-LFM2.5-Audio-1.5B-Q4_0.gguf",
+        "tokenizer-LFM2.5-Audio-1.5B-Q4_0.gguf",
+    ),
+    (
+        "runners/llama-liquid-audio-macos-arm64.zip",
+        "llama-liquid-audio-macos-arm64.zip",
+    ),
+];
+const VIBEVOICE_HF_REPO_ID: &str = "IrieDinamik/microsoft-VibeVoice-Realtime-0.5B";
+const VIBEVOICE_HF_FILES: &[(&str, &str)] = &[
+    ("config.json", "config.json"),
+    ("model.safetensors", "model.safetensors"),
+    ("preprocessor_config.json", "preprocessor_config.json"),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -653,7 +679,7 @@ const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         provider_label: "MLX Ming Omni",
         provider_description: "Ming Omni synthesis with style controls via mlx-audio.",
         model_id: "ming-omni-0.5b",
-        hf_model_id: "mlx-community/Ming-omni-tts-0.5B-bf16",
+        hf_model_id: "mlx-community/Ming-omni-tts-0.5B-4bit",
         local_dir_names: &["Ming-omni-tts-0.5B-4bit", "Ming-omni-tts-0.5B-bf16"],
         label: "Ming Omni 0.5B",
         description: "Dense Ming Omni TTS with voice cloning and style control.",
@@ -1812,6 +1838,130 @@ impl TtsManager {
             .await
     }
 
+    async fn download_hf_file_set_into_dir(
+        &self,
+        repo_id: &str,
+        files: &[(&str, &str)],
+        install_dir: &Path,
+        label: &str,
+    ) -> Result<(), String> {
+        use futures_util::StreamExt;
+        use tokio::fs as tokio_fs;
+        use tokio::io::AsyncWriteExt;
+
+        if files.is_empty() {
+            return Err(format!("No files configured for {label}."));
+        }
+
+        let parent = install_dir
+            .parent()
+            .ok_or_else(|| format!("Invalid install directory '{}'.", install_dir.display()))?;
+        tokio_fs::create_dir_all(parent)
+            .await
+            .map_err(|err| format!("Failed to create {}: {err}", parent.display()))?;
+        let staging_dir = parent.join(format!(
+            ".staging-{}-{}",
+            install_dir
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("tts-model"),
+            Uuid::new_v4()
+        ));
+        tokio_fs::create_dir_all(&staging_dir)
+            .await
+            .map_err(|err| format!("Failed to create staging dir for {label}: {err}"))?;
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(900))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        for (source, destination) in files {
+            let encoded = source
+                .split('/')
+                .map(|segment| segment.replace(' ', "%20"))
+                .collect::<Vec<_>>()
+                .join("/");
+            let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded}");
+            let target = staging_dir.join(destination);
+            if let Some(parent) = target.parent() {
+                tokio_fs::create_dir_all(parent)
+                    .await
+                    .map_err(|err| format!("Failed to create {}: {err}", parent.display()))?;
+            }
+
+            let response = client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|err| format!("Failed to fetch {source} for {label}: {err}"))?;
+            if !response.status().is_success() {
+                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                return Err(format!(
+                    "Failed to download {source} for {label}: HTTP {}",
+                    response.status()
+                ));
+            }
+
+            let mut output = tokio_fs::File::create(&target)
+                .await
+                .map_err(|err| format!("Failed to create {}: {err}", target.display()))?;
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                let chunk =
+                    chunk.map_err(|err| format!("Download stream failed for {source}: {err}"))?;
+                output
+                    .write_all(&chunk)
+                    .await
+                    .map_err(|err| format!("Failed to write {source}: {err}"))?;
+            }
+            output
+                .flush()
+                .await
+                .map_err(|err| format!("Failed to flush {source}: {err}"))?;
+        }
+
+        if install_dir.exists() {
+            tokio_fs::remove_dir_all(install_dir)
+                .await
+                .map_err(|err| format!("Failed to clear existing {label}: {err}"))?;
+        }
+        tokio_fs::rename(&staging_dir, install_dir)
+            .await
+            .map_err(|err| {
+                format!(
+                    "Failed to install {label} ({} -> {}): {err}",
+                    staging_dir.display(),
+                    install_dir.display()
+                )
+            })?;
+        Ok(())
+    }
+
+    async fn install_lfm_audio_gguf_model(&self) -> Result<(), String> {
+        let install_dir = crate::storage_paths::lfm_audio_gguf_dir(&self.app_handle)
+            .map_err(|err| format!("Failed to resolve LFM Audio install dir: {err}"))?;
+        self.download_hf_file_set_into_dir(
+            LFM_AUDIO_GGUF_HF_REPO_ID,
+            LFM_AUDIO_GGUF_HF_FILES,
+            &install_dir,
+            "LFM2.5 Audio GGUF assets",
+        )
+        .await
+    }
+
+    async fn install_vibevoice_model(&self) -> Result<(), String> {
+        let install_dir = crate::storage_paths::vibevoice_dir(&self.app_handle)
+            .map_err(|err| format!("Failed to resolve VibeVoice install dir: {err}"))?;
+        self.download_hf_file_set_into_dir(
+            VIBEVOICE_HF_REPO_ID,
+            VIBEVOICE_HF_FILES,
+            &install_dir,
+            "VibeVoice assets",
+        )
+        .await
+    }
+
     pub fn stop(&self) {
         if let Some(flag) = self
             .current_stop_flag
@@ -2410,7 +2560,7 @@ impl TtsManager {
         let mut descriptors = Vec::new();
 
         let lfm_capabilities = CapabilityFlags {
-            downloadable: false,
+            downloadable: true,
             loadable: true,
             local_only: true,
             supports_translation: false,
@@ -2444,7 +2594,7 @@ impl TtsManager {
         });
 
         let vv_capabilities = CapabilityFlags {
-            downloadable: false,
+            downloadable: true,
             loadable: true,
             local_only: true,
             supports_translation: false,
@@ -2507,7 +2657,7 @@ impl TtsManager {
             selected: lfm_selected,
             active: lfm_selected && lfm_installed,
             runnable: lfm_installed,
-            downloadable: false,
+            downloadable: true,
             source_label: "Vox Jot model assets".to_string(),
             runtime: RuntimeRequirement {
                 id: "lfm_audio_gguf".to_string(),
@@ -2523,12 +2673,12 @@ impl TtsManager {
                 Vec::new()
             } else {
                 vec![
-                    "Place LFM2.5-Audio GGUF + macOS arm64 runner zip into ~/Apps/Models/LiquidAI_LFM2.5-Audio-1.5B-GGUF/ before launching."
+                    "Download the LFM2.5 Audio GGUF assets from Hugging Face to install the Q4_0 model and macOS runner."
                         .to_string(),
                 ]
             },
             capabilities: CapabilityFlags {
-                downloadable: false,
+                downloadable: true,
                 loadable: true,
                 local_only: true,
                 supports_translation: false,
@@ -2561,7 +2711,7 @@ impl TtsManager {
             selected: vv_selected,
             active: vv_selected && vv_installed,
             runnable: vv_installed,
-            downloadable: false,
+            downloadable: true,
             source_label: "Research-licensed model".to_string(),
             runtime: RuntimeRequirement {
                 id: "vibevoice".to_string(),
@@ -2591,12 +2741,12 @@ impl TtsManager {
                 ]
             } else {
                 vec![
-                    "Place VibeVoice files into ~/Apps/Models/microsoft_VibeVoice-Realtime-0.5B/ before launching, and run speech-runtime/install_vibevoice_deps.sh (or pip install -e vendor/VibeVoice[streamingtts] in speech-runtime/.venv)."
+                    "Download the VibeVoice files from Hugging Face, then run speech-runtime/install_vibevoice_deps.sh if the Python runtime is not prepared yet."
                         .to_string(),
                 ]
             },
             capabilities: CapabilityFlags {
-                downloadable: false,
+                downloadable: true,
                 loadable: true,
                 local_only: true,
                 supports_translation: false,
@@ -3548,10 +3698,38 @@ impl TtsManager {
             return self.install_managed_runtime_model(definition).await;
         }
 
+        if pack_id == TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID {
+            return self.install_lfm_audio_gguf_model().await;
+        }
+
+        if pack_id == TTS_MODEL_VIBEVOICE_DEFAULT_ID {
+            return self.install_vibevoice_model().await;
+        }
+
         Err(format!("Unknown TTS pack '{pack_id}'"))
     }
 
     pub fn remove_pack(&self, pack_id: &str) -> Result<(), String> {
+        if pack_id == TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID {
+            let install_dir = crate::storage_paths::lfm_audio_gguf_dir(&self.app_handle)
+                .map_err(|err| format!("Failed to resolve LFM Audio install dir: {err}"))?;
+            if install_dir.exists() {
+                fs::remove_dir_all(&install_dir)
+                    .map_err(|err| format!("Failed to remove LFM Audio assets: {err}"))?;
+            }
+            return Ok(());
+        }
+
+        if pack_id == TTS_MODEL_VIBEVOICE_DEFAULT_ID {
+            let install_dir = crate::storage_paths::vibevoice_dir(&self.app_handle)
+                .map_err(|err| format!("Failed to resolve VibeVoice install dir: {err}"))?;
+            if install_dir.exists() {
+                fs::remove_dir_all(&install_dir)
+                    .map_err(|err| format!("Failed to remove VibeVoice assets: {err}"))?;
+            }
+            return Ok(());
+        }
+
         if let Some(definition) = mlx_audio_tts_model_definition(pack_id) {
             let install_dir = self.mlx_audio_model_install_dir(definition);
             if install_dir.exists() {
@@ -3586,11 +3764,7 @@ impl TtsManager {
                 let sanitized: String = pack_id
                     .chars()
                     .map(|c| {
-                        if c.is_ascii_alphanumeric()
-                            || c == '-'
-                            || c == '_'
-                            || c == '.'
-                        {
+                        if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
                             c
                         } else {
                             '_'
@@ -3600,10 +3774,7 @@ impl TtsManager {
                 let install_dir = hf_root.join(&sanitized);
                 if install_dir.exists() {
                     fs::remove_dir_all(&install_dir).map_err(|err| {
-                        format!(
-                            "Failed to remove HF TTS model '{}': {err}",
-                            pack_id
-                        )
+                        format!("Failed to remove HF TTS model '{}': {err}", pack_id)
                     })?;
                 }
                 return Ok(());
@@ -3992,7 +4163,7 @@ impl TtsManager {
                 &self.app_handle,
             )
             .ok_or_else(|| {
-                "LFM Audio GGUF model is not installed. Run the app once to migrate the local snapshot from ~/Apps/Models/LiquidAI_LFM2.5-Audio-1.5B-GGUF/.".to_string()
+                "LFM Audio GGUF model is not installed. Download it from Model Hub before selecting it.".to_string()
             })?;
             if !context.is_ready() {
                 return Err(
@@ -4018,7 +4189,7 @@ impl TtsManager {
         for name in ["model.safetensors", "preprocessor_config.json"] {
             if !model_dir.join(name).exists() {
                 return Err(format!(
-                    "VibeVoice snapshot is incomplete (missing {name}). Copy from ~/Apps/Models/microsoft_VibeVoice-Realtime-0.5B/ or re-run migration."
+                    "VibeVoice snapshot is incomplete (missing {name}). Re-download it from Model Hub."
                 ));
             }
         }

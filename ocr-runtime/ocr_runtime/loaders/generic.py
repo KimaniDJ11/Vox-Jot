@@ -1,0 +1,372 @@
+"""Best-effort OCR loaders used by the shipped sidecar.
+
+The catalog mirrors contain several model families with different APIs. This
+module keeps the IPC contract stable while letting each family use the best
+available local dependency:
+
+* Transformers VL models use ``transformers`` when installed and return one
+  full-screen snippet containing the generated OCR text.
+* Paddle detector/recognizer packs use ``paddleocr`` when installed and return
+  line snippets with normalised boxes.
+
+If an optional dependency is missing or a model-specific loader fails, the
+loader returns no snippets. The Rust router treats that as a backend miss and
+falls through to the existing system/Tesseract OCR policy within the capture
+timeout.
+"""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from typing import Iterable, Optional
+
+from .base import LoaderInfo, OcrLoader, Snippet
+
+OCR_PROMPT = (
+    "Read all visible text in this screenshot. Return only the text, preserving "
+    "line breaks where useful. Do not describe the image."
+)
+
+
+def _word_clip(text: str, max_words: int) -> str:
+    text = text.strip()
+    if max_words <= 0:
+        return text
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    return " ".join(words[:max_words])
+
+
+def _image_from_pixels(
+    *,
+    bgra: bytes,
+    width: int,
+    height: int,
+    stride: int,
+    pixel_format: str,
+):
+    try:
+        from PIL import Image
+    except Exception:
+        return None
+
+    raw_mode = "RGBA" if pixel_format == "rgba8" else "BGRA"
+    return Image.frombytes(
+        "RGBA",
+        (width, height),
+        bgra,
+        "raw",
+        raw_mode,
+        stride,
+        1,
+    ).convert("RGB")
+
+
+class TransformersVlLoader(OcrLoader):
+    catalog_id: str
+
+    def __init__(self, *, model_root: Path | str, catalog_id: str, backend: str) -> None:
+        self.catalog_id = catalog_id
+        self._backend = backend
+        self._model_root = Path(model_root)
+        self._processor = None
+        self._tokenizer = None
+        self._model = None
+        self._torch = None
+        self._device = "cpu"
+        self._load_error: Optional[str] = None
+
+    def _ensure_loaded(self) -> bool:
+        if self._model is not None:
+            return True
+        if self._load_error is not None:
+            return False
+
+        try:
+            import torch
+            from transformers import AutoProcessor, AutoTokenizer
+
+            model_classes = []
+            try:
+                from transformers import AutoModelForImageTextToText
+
+                model_classes.append(AutoModelForImageTextToText)
+            except Exception:
+                pass
+            try:
+                from transformers import AutoModelForVision2Seq
+
+                model_classes.append(AutoModelForVision2Seq)
+            except Exception:
+                pass
+            try:
+                from transformers import AutoModelForCausalLM
+
+                model_classes.append(AutoModelForCausalLM)
+            except Exception:
+                pass
+
+            root = str(self._model_root)
+            self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True)
+            try:
+                self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True)
+            except Exception:
+                self._tokenizer = None
+
+            if torch.cuda.is_available():
+                self._device = "cuda"
+            elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+                self._device = "mps"
+            else:
+                self._device = "cpu"
+
+            last_error: Optional[Exception] = None
+            for model_cls in model_classes:
+                try:
+                    self._model = model_cls.from_pretrained(
+                        root,
+                        trust_remote_code=True,
+                        torch_dtype="auto",
+                        low_cpu_mem_usage=True,
+                    )
+                    break
+                except TypeError:
+                    try:
+                        self._model = model_cls.from_pretrained(root, trust_remote_code=True)
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = exc
+                except Exception as exc:  # noqa: BLE001
+                    last_error = exc
+
+            if self._model is None:
+                raise RuntimeError(f"no supported transformers model class loaded: {last_error}")
+
+            self._model.eval()
+            if self._device != "cpu":
+                self._model.to(self._device)
+            self._torch = torch
+            return True
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return False
+
+    def run(
+        self,
+        bgra: bytes,
+        width: int,
+        height: int,
+        stride: int,
+        max_words: int,
+        pixel_format: str = "bgra8",
+    ) -> Iterable[Snippet]:
+        image = _image_from_pixels(
+            bgra=bgra,
+            width=width,
+            height=height,
+            stride=stride,
+            pixel_format=pixel_format,
+        )
+        if image is None or not self._ensure_loaded():
+            return ()
+
+        processor = self._processor
+        assert processor is not None
+        try:
+            if hasattr(processor, "apply_chat_template"):
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "image": image},
+                            {"type": "text", "text": OCR_PROMPT},
+                        ],
+                    }
+                ]
+                text = processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                inputs = processor(text=[text], images=[image], return_tensors="pt")
+            else:
+                inputs = processor(images=image, text=OCR_PROMPT, return_tensors="pt")
+
+            inputs = {
+                key: value.to(self._device) if hasattr(value, "to") else value
+                for key, value in inputs.items()
+            }
+            with self._torch.inference_mode():
+                output_ids = self._model.generate(**inputs, max_new_tokens=768)
+
+            input_ids = inputs.get("input_ids")
+            if input_ids is not None and output_ids.shape[-1] > input_ids.shape[-1]:
+                output_ids = output_ids[:, input_ids.shape[-1] :]
+
+            decoder = processor
+            if not hasattr(decoder, "batch_decode") and self._tokenizer is not None:
+                decoder = self._tokenizer
+            text = decoder.batch_decode(output_ids, skip_special_tokens=True)[0]
+            text = _word_clip(text.replace(OCR_PROMPT, "").strip(), max_words)
+            if not text:
+                return ()
+            return (
+                Snippet(
+                    text=text,
+                    confidence=0.65,
+                    x=0.0,
+                    y=0.0,
+                    width=1.0,
+                    height=1.0,
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return ()
+
+    def info(self) -> dict:
+        loaded = self._ensure_loaded()
+        return LoaderInfo(
+            catalog_id=self.catalog_id,
+            backend=self._backend,
+            loaded=loaded,
+            detail=self._load_error or "transformers loader ready",
+            model_root=str(self._model_root),
+        ).to_json()
+
+
+class PaddleOcrLoader(OcrLoader):
+    catalog_id: str
+
+    def __init__(self, *, model_root: Path | str, catalog_id: str, backend: str) -> None:
+        self.catalog_id = catalog_id
+        self._backend = backend
+        self._model_root = Path(model_root)
+        self._ocr = None
+        self._load_error: Optional[str] = None
+
+    def _ensure_loaded(self) -> bool:
+        if self._ocr is not None:
+            return True
+        if self._load_error is not None:
+            return False
+        try:
+            from paddleocr import PaddleOCR
+
+            kwargs = {"use_angle_cls": True, "lang": "en", "show_log": False}
+            if self._backend == "paddle_det_rec":
+                det_dir = _first_dir(self._model_root, ("mobile_det", "server_det", "det"))
+                rec_dir = _first_dir(self._model_root, ("mobile_rec", "server_rec", "rec"))
+                if det_dir is not None:
+                    kwargs["det_model_dir"] = str(det_dir)
+                if rec_dir is not None:
+                    kwargs["rec_model_dir"] = str(rec_dir)
+            self._ocr = PaddleOCR(**kwargs)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return False
+
+    def run(
+        self,
+        bgra: bytes,
+        width: int,
+        height: int,
+        stride: int,
+        max_words: int,
+        pixel_format: str = "bgra8",
+    ) -> Iterable[Snippet]:
+        image = _image_from_pixels(
+            bgra=bgra,
+            width=width,
+            height=height,
+            stride=stride,
+            pixel_format=pixel_format,
+        )
+        if image is None or not self._ensure_loaded():
+            return ()
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+                image.save(tmp.name)
+                result = self._ocr.ocr(tmp.name, cls=True)
+            snippets = _snippets_from_paddle_result(result, width, height)
+            if max_words > 0:
+                clipped = []
+                remaining = max_words
+                for snippet in snippets:
+                    text = _word_clip(snippet.text, remaining)
+                    if not text:
+                        break
+                    remaining -= len(text.split())
+                    clipped.append(
+                        Snippet(
+                            text=text,
+                            confidence=snippet.confidence,
+                            x=snippet.x,
+                            y=snippet.y,
+                            width=snippet.width,
+                            height=snippet.height,
+                        )
+                    )
+                    if remaining <= 0:
+                        break
+                return tuple(clipped)
+            return tuple(snippets)
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = str(exc)
+            return ()
+
+    def info(self) -> dict:
+        loaded = self._ensure_loaded()
+        return LoaderInfo(
+            catalog_id=self.catalog_id,
+            backend=self._backend,
+            loaded=loaded,
+            detail=self._load_error or "paddleocr loader ready",
+            model_root=str(self._model_root),
+        ).to_json()
+
+
+def _first_dir(root: Path, names: tuple[str, ...]) -> Optional[Path]:
+    for name in names:
+        candidate = root / name
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def _snippets_from_paddle_result(result, image_width: int, image_height: int) -> list[Snippet]:
+    snippets: list[Snippet] = []
+    pages = result or []
+    for page in pages:
+        for item in page or []:
+            try:
+                box, payload = item
+                text, confidence = payload
+                text = str(text).strip()
+                if not text:
+                    continue
+                xs = [float(p[0]) for p in box]
+                ys = [float(p[1]) for p in box]
+                left = max(0.0, min(xs))
+                right = min(float(image_width), max(xs))
+                top = max(0.0, min(ys))
+                bottom = min(float(image_height), max(ys))
+                if right <= left or bottom <= top:
+                    continue
+                snippets.append(
+                    Snippet(
+                        text=text,
+                        confidence=float(confidence),
+                        x=left / image_width,
+                        y=(image_height - bottom) / image_height,
+                        width=(right - left) / image_width,
+                        height=(bottom - top) / image_height,
+                    )
+                )
+            except Exception:
+                continue
+    return snippets

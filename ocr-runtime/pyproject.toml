@@ -1,0 +1,30 @@
+[project]
+name = "ocr-runtime"
+version = "0.1.0"
+description = "Vox Jot neural OCR sidecar — line-delimited JSON IPC + per-family transformers / paddle loaders"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Vox Jot" }]
+
+# Stub-only build needs nothing more than the stdlib. Real model loaders
+# pull their deps via the optional groups below.
+dependencies = []
+
+[project.optional-dependencies]
+dots-ocr = [
+    "torch>=2.4",
+    "transformers>=4.45",
+    "pillow>=10.4",
+    "accelerate>=0.34",
+]
+paddle = ["paddleocr>=2.8", "paddlepaddle>=2.6"]
+
+[project.scripts]
+ocr-runtime = "ocr_runtime.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ocr_runtime*"]

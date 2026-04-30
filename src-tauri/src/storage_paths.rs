@@ -19,6 +19,7 @@ const PERSONAPLEX_HELPER_NAME: &str = "audio-server";
 const LFM_AUDIO_GGUF_DIR: &str = "lfm-audio-gguf";
 const VIBEVOICE_DIR: &str = "vibevoice";
 const LFM2_TOOL_DIR: &str = "lfm2-tool";
+const OCR_MODELS_DIR: &str = "ocr";
 
 // LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
 // while remaining production-quality for dictation readback).
@@ -128,6 +129,19 @@ pub fn personaplex_helper_path(app: &AppHandle) -> Result<PathBuf, tauri::Error>
 
 pub fn lfm_audio_gguf_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(tts_model_store_dir(app)?.join(LFM_AUDIO_GGUF_DIR))
+}
+
+/// Root for OCR-model assets managed by the app. Each registry entry installs
+/// to `<this>/<catalog_id>/`; the app never reads from the user's staging
+/// directory at runtime.
+pub fn ocr_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(OCR_MODELS_DIR))
+}
+
+/// Per-repo install root for TTS models pulled in from the verified HF
+/// collection. Each repo lives at `<this>/<sanitized-repo>/`.
+pub fn tts_hf_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(tts_model_store_dir(app)?.join("hf"))
 }
 
 pub fn vibevoice_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
@@ -344,9 +358,12 @@ pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
         }
     }
 
+    ensure_dir(&ocr_models_dir(app).map_err(|err| format!("Failed to resolve OCR dir: {err}"))?)?;
+
     migrate_legacy_stt_layout(app)?;
     migrate_legacy_llm_layout(app)?;
     migrate_local_model_snapshots(app)?;
+    crate::ocr_models::migrate_local_ocr_snapshots(app);
 
     Ok(())
 }

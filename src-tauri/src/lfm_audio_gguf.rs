@@ -9,6 +9,53 @@ const RUNNER_DIR_NAME: &str = "runner";
 const CLI_BINARY: &str = "llama-liquid-audio-cli";
 const DEFAULT_QUANT: &str = "Q4_0";
 
+/// Built-in voice variants accepted by the upstream `llama-liquid-audio-cli`
+/// system prompt. Anything outside this set causes the CLI to abort with
+/// `ERR: Unsupported system prompt` (regardless of GPU / Metal support).
+#[derive(Debug, Clone, Copy, Default)]
+pub enum LfmAudioVoice {
+    #[default]
+    UsFemale,
+    UsMale,
+    UkFemale,
+    UkMale,
+}
+
+impl LfmAudioVoice {
+    pub fn from_voice_id(voice_id: Option<&str>) -> Self {
+        let Some(raw) = voice_id else {
+            return Self::default();
+        };
+        let normalized: String = raw
+            .chars()
+            .filter_map(|ch| {
+                if ch.is_ascii_alphanumeric() {
+                    Some(ch.to_ascii_lowercase())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let has_uk = normalized.contains("uk") || normalized.contains("british");
+        let has_male = normalized.contains("male") && !normalized.contains("female");
+        match (has_uk, has_male) {
+            (true, true) => Self::UkMale,
+            (true, false) => Self::UkFemale,
+            (false, true) => Self::UsMale,
+            (false, false) => Self::UsFemale,
+        }
+    }
+
+    fn system_prompt(self) -> &'static str {
+        match self {
+            Self::UsFemale => "Perform TTS. Use the US female voice.",
+            Self::UsMale => "Perform TTS. Use the US male voice.",
+            Self::UkFemale => "Perform TTS. Use the UK female voice.",
+            Self::UkMale => "Perform TTS. Use the UK male voice.",
+        }
+    }
+}
+
 /// Runtime context for the Liquid Audio (LFM2.5-Audio) GGUF stack.
 ///
 /// All assets live under `<app_data>/models/tts/store/lfm-audio-gguf/`. The
@@ -131,20 +178,28 @@ impl LfmAudioGgufContext {
         Ok(cli)
     }
 
-    /// Synthesize `text` to `output_path` (a .wav file).
-    pub fn synthesize(&self, text: &str, output_path: &Path) -> Result<(), String> {
+    /// Synthesize `text` using a built-in voice variant. The CLI rejects any
+    /// system prompt outside the four built-in voices with
+    /// `ERR: Unsupported system prompt`, so the variant has to be one of
+    /// `LfmAudioVoice`'s cases.
+    pub fn synthesize_with_voice(
+        &self,
+        text: &str,
+        output_path: &Path,
+        voice: LfmAudioVoice,
+    ) -> Result<(), String> {
         let cli = self.ensure_runner()?;
         let output = Command::new(&cli)
             .arg("-m")
             .arg(self.model_gguf())
             .arg("--mmproj")
             .arg(self.mmproj_gguf())
-            .arg("--vocoder")
+            .arg("-mv")
             .arg(self.vocoder_gguf())
-            .arg("--audio-tokenizer")
+            .arg("--tts-speaker-file")
             .arg(self.tokenizer_gguf())
             .arg("-sys")
-            .arg("Perform TTS.")
+            .arg(voice.system_prompt())
             .arg("-p")
             .arg(text)
             .arg("-o")
@@ -154,16 +209,30 @@ impl LfmAudioGgufContext {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let truncated: String = stderr.chars().take(500).collect();
+            let preview = cli_stderr_preview(&stderr);
             return Err(format!(
                 "LFM Audio TTS exited with {}: {}",
-                output.status, truncated
+                output.status, preview
             ));
         }
         if !output_path.exists() {
             return Err("LFM Audio CLI completed but produced no output file.".to_string());
         }
         Ok(())
+    }
+}
+
+/// Prefer the full stderr when short; otherwise keep the tail so CLI usage /
+/// error lines after verbose GGML init logs remain visible in UI previews.
+fn cli_stderr_preview(stderr: &str) -> String {
+    const MAX_FULL_CHARS: usize = 2048;
+    const TAIL_CHARS: usize = 1000;
+    let chars: Vec<char> = stderr.chars().collect();
+    if chars.len() <= MAX_FULL_CHARS {
+        chars.into_iter().collect()
+    } else {
+        let start = chars.len().saturating_sub(TAIL_CHARS);
+        format!("…{}", chars[start..].iter().collect::<String>())
     }
 }
 

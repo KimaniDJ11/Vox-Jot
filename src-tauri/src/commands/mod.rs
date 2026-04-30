@@ -189,9 +189,18 @@ pub fn get_frontmost_app_for_exclusion() -> Result<ActiveAppContext, String> {
     {
         crate::apple_intelligence::get_frontmost_app_context()
     }
-    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    #[cfg(target_os = "windows")]
     {
-        Err("Frontmost app detection is only available on Apple silicon Macs.".to_string())
+        crate::screen_context::current_frontmost_app_context_public()
+            .ok_or_else(|| "Could not detect the frontmost window.".to_string())
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Err("Frontmost app detection is not yet supported on Linux.".to_string())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        Err("Frontmost app detection is not supported on this platform.".to_string())
     }
 }
 
@@ -206,9 +215,26 @@ pub fn open_screen_recording_settings() -> Result<(), String> {
             .map(|_| ())
             .map_err(|err| format!("Failed to open Screen Recording settings: {}", err))
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
     {
-        Err("Screen Recording permission UI is only available on macOS.".to_string())
+        // No equivalent screen-recording consent prompt on Windows — open the
+        // generic Privacy / Screenshots page instead.
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "ms-settings:privacy-graphicscaptureprogrammatic"])
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("Failed to open privacy settings: {}", err))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Err(
+            "Screen capture relies on the `grim` (Wayland) or `import`/`gnome-screenshot` (X11) tools. Install one via your package manager."
+                .to_string(),
+        )
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        Err("Screen capture settings are not available on this platform.".to_string())
     }
 }
 

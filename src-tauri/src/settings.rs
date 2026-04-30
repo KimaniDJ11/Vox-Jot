@@ -261,6 +261,23 @@ pub enum OcrQualityMode {
     Accurate,
 }
 
+/// Selects which OCR engine the screen-context worker should use.
+///
+/// `NativeThenBackup` is the default: try the platform's built-in OCR first
+/// (macOS Vision, Windows.Media.Ocr) and fall back to the bundled cross-platform
+/// backup (Tesseract) on failure, timeout, or empty result. Linux always falls
+/// straight through to the backup engine since there is no first-party native
+/// OCR. `BackupOnly` forces the cross-platform engine everywhere — useful for
+/// QA parity, Intel Mac experiments, or comparing engines.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ScreenContextOcrEngine {
+    Auto,
+    NativeOnly,
+    BackupOnly,
+    NativeThenBackup,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyboardImplementation {
@@ -705,6 +722,15 @@ pub struct AppSettings {
     pub context_capture_mode: ContextCaptureMode,
     #[serde(default = "default_screen_context_ocr_quality")]
     pub screen_context_ocr_quality: OcrQualityMode,
+    #[serde(default = "default_screen_context_ocr_engine")]
+    pub screen_context_ocr_engine: ScreenContextOcrEngine,
+    /// When set, points at a `OcrModelDescriptor.id` from the OCR catalog.
+    /// `None` means "use the built-in routing policy in
+    /// `screen_context_ocr_engine`". Selecting a neural model only changes
+    /// the catalog UI today — actual neural inference is gated on a
+    /// follow-up backend (see `ocr_models::OcrBackendKind`).
+    #[serde(default)]
+    pub screen_context_ocr_neural_model_id: Option<String>,
     #[serde(default = "default_screen_context_ocr_timeout_ms")]
     pub screen_context_ocr_timeout_ms: u32,
     #[serde(default = "default_screen_context_token_budget")]
@@ -1031,6 +1057,10 @@ fn default_context_capture_mode() -> ContextCaptureMode {
 
 fn default_screen_context_ocr_quality() -> OcrQualityMode {
     OcrQualityMode::Balanced
+}
+
+fn default_screen_context_ocr_engine() -> ScreenContextOcrEngine {
+    ScreenContextOcrEngine::NativeThenBackup
 }
 
 fn default_screen_context_ocr_timeout_ms() -> u32 {
@@ -1911,6 +1941,8 @@ pub fn get_default_settings() -> AppSettings {
         screen_context_idle_threshold_ms: default_screen_context_idle_threshold_ms(),
         context_capture_mode: default_context_capture_mode(),
         screen_context_ocr_quality: default_screen_context_ocr_quality(),
+        screen_context_ocr_engine: default_screen_context_ocr_engine(),
+        screen_context_ocr_neural_model_id: None,
         screen_context_ocr_timeout_ms: default_screen_context_ocr_timeout_ms(),
         screen_context_token_budget: default_screen_context_token_budget(),
         screen_context_stale_threshold_ms: default_screen_context_stale_threshold_ms(),

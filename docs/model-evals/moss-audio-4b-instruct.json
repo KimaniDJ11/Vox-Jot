@@ -1,0 +1,86 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-04-28",
+  "evaluator": "AI Assistant",
+
+  "source": {
+    "url": "https://huggingface.co/OpenMOSS-Team/MOSS-Audio-4B-Instruct",
+    "repo_url": "https://github.com/OpenMOSS/MOSS-Audio",
+    "paper_url": "",
+    "license": "Apache 2.0",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "moss-audio-4b-instruct",
+    "label": "MOSS-Audio-4B-Instruct",
+    "description": "Audio understanding model supporting speech recognition, environmental sound analysis, music understanding, time-aware QA.",
+    "domain": "stt",
+    "parameter_count": "4B",
+    "model_format": "pytorch",
+    "dtype": "float16"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": false,
+    "cuda_only": true,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "reject",
+    "can_run_as_local_process": false,
+    "api_surface": ["python", "gradio", "sglang"],
+    "output_format": "text",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": 15,
+    "vram_estimate_gb": 8,
+    "disk_size_mb": 8000
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": false,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": true,
+    "coming_soon": false
+  },
+
+  "languages": ["en", "zh"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": false,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 8000,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "N/A (CUDA only)",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "Very high accuracy reported across audio understanding and ASR."
+  },
+
+  "verdict": {
+    "score": 29,
+    "decision": "skip",
+    "blockers": ["CUDA-only runtime", "No MLX/Metal/ONNX support"],
+    "notes": "Strong capabilities but entirely blocked on Mac OS due to hard dependencies on CUDA (torch cu128, flash-attn) and missing Apple Silicon support. Revisit if an MLX or ONNX version becomes available."
+  }
+}

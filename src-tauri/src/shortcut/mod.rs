@@ -26,8 +26,9 @@ use crate::secret_store;
 use crate::settings::{
     self, get_settings, is_local_base_url, AutoSubmitKey, ClipboardHandling, ContextCaptureMode,
     KeyboardImplementation, LLMPrompt, OcrQualityMode, OverlayPosition, PasteMethod,
-    RecordingOverlayStyle, ShortcutBinding, SoundTheme, TranslationBilingualLayout,
-    TranslationDestinationMode, TranslationOutputMode, TranslationRoutePreference,
+    RecordingOverlayStyle, ScreenContextOcrEngine, ShortcutBinding, SoundTheme,
+    TranslationBilingualLayout, TranslationDestinationMode, TranslationOutputMode,
+    TranslationRoutePreference,
     TtsAutoReadbackMode, TtsAutoReadbackScope, TtsEnginePreference, TtsReadbackTextMode,
     TypingTool, APPLE_INTELLIGENCE_DEFAULT_MODEL_ID, APPLE_INTELLIGENCE_PROVIDER_ID,
     OLLAMA_PROVIDER_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
@@ -1329,6 +1330,24 @@ pub fn change_screen_context_ocr_quality_setting(
         "balanced" => OcrQualityMode::Balanced,
         "accurate" => OcrQualityMode::Accurate,
         other => return Err(format!("Invalid OCR quality '{}'", other)),
+    };
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn change_screen_context_ocr_engine_setting(
+    app: AppHandle,
+    engine: String,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.screen_context_ocr_engine = match engine.as_str() {
+        "auto" => ScreenContextOcrEngine::Auto,
+        "native_only" => ScreenContextOcrEngine::NativeOnly,
+        "backup_only" => ScreenContextOcrEngine::BackupOnly,
+        "native_then_backup" => ScreenContextOcrEngine::NativeThenBackup,
+        other => return Err(format!("Invalid OCR engine '{}'", other)),
     };
     settings::write_settings(&app, settings);
     Ok(())

@@ -2,6 +2,7 @@ use crate::managers::transcription::TranscriptionManager;
 use crate::post_processing::ActiveAppContext;
 use crate::settings::{
     get_settings_without_secrets, AppSettings, ContextCaptureMode, OcrQualityMode,
+    ScreenContextOcrEngine,
 };
 use log::{debug, warn};
 use once_cell::sync::Lazy;
@@ -9,6 +10,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::{HashMap, VecDeque};
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::ffi::{CStr, CString};
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::os::raw::{c_char, c_int};
@@ -17,7 +19,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::correction_tracker::field_monitor::FieldTextReader;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, Default)]
@@ -121,20 +123,20 @@ struct ScreenContextCaptureEvent {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct NativeScreenContextPayload {
-    display_id: u32,
-    captured_at_ms: i64,
-    snippets: Vec<NativeScreenContextSnippet>,
+pub(crate) struct NativeScreenContextPayload {
+    pub(crate) display_id: u32,
+    pub(crate) captured_at_ms: i64,
+    pub(crate) snippets: Vec<NativeScreenContextSnippet>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct NativeScreenContextSnippet {
-    text: String,
-    confidence: f32,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
+pub(crate) struct NativeScreenContextSnippet {
+    pub(crate) text: String,
+    pub(crate) confidence: f32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) width: f64,
+    pub(crate) height: f64,
 }
 
 static EMAIL_REDACTION_RE: Lazy<Regex> = Lazy::new(|| {
@@ -190,8 +192,57 @@ impl ContextCaptureManager {
             app_handle: app_handle.clone(),
             state: Arc::new(Mutex::new(ManagerState::default())),
         };
+        manager.register_bundled_ocr_resources();
         manager.spawn_background_worker();
         manager
+    }
+
+    /// Resolve the bundled tesseract binary + eng tessdata once at startup so
+    /// the worker thread never blocks on filesystem discovery during its first
+    /// capture. macOS uses Vision natively and never falls back to the bundled
+    /// engine, so the registration is a no-op there.
+    fn register_bundled_ocr_resources(&self) {
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        {
+            use crate::screen_context_ocr_backup::{set_bundled_paths, BundledPaths};
+            let app = &self.app_handle;
+            let platform_dir = if cfg!(target_os = "windows") {
+                "resources/tesseract/windows-x64"
+            } else {
+                "resources/tesseract/linux-x64"
+            };
+            let bin_name = if cfg!(target_os = "windows") {
+                "tesseract.exe"
+            } else {
+                "tesseract"
+            };
+
+            let tesseract_path = crate::portable::resolve_resource(
+                app,
+                &format!("{}/{}", platform_dir, bin_name),
+            )
+            .ok();
+            let tessdata_path =
+                crate::portable::resolve_resource(app, "resources/tesseract/tessdata").ok();
+
+            let bundle = match (tesseract_path, tessdata_path) {
+                (Some(tess), Some(tessdata)) => Some(BundledPaths {
+                    tesseract: tess,
+                    tessdata_dir: tessdata,
+                }),
+                _ => None,
+            };
+            set_bundled_paths(bundle);
+            crate::screen_context_ocr_backup::prewarm();
+        }
+
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            // macOS: Vision is the primary engine. Backup OCR only triggers
+            // when the user explicitly forces it; in that case we use the
+            // system tesseract via PATH, just like before.
+            crate::screen_context_ocr_backup::prewarm();
+        }
     }
 
     pub fn request_immediate_capture(&self, reason: &str) {
@@ -323,7 +374,11 @@ impl ContextCaptureManager {
     }
 
     fn spawn_background_worker(&self) {
-        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(target_os = "macos", target_arch = "aarch64"),
+            target_os = "windows",
+            target_os = "linux"
+        ))]
         {
             let manager = self.clone();
             thread::spawn(move || {
@@ -451,6 +506,7 @@ impl ContextCaptureManager {
         }
 
         match native_capture_screen_context(
+            settings.screen_context_ocr_engine,
             settings.screen_context_ocr_quality,
             settings.screen_context_token_budget as usize,
             settings.screen_context_ocr_timeout_ms,
@@ -883,10 +939,12 @@ extern "C" {
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn native_capture_screen_context(
+    engine: ScreenContextOcrEngine,
     quality: OcrQualityMode,
     max_words: usize,
     timeout_ms: u32,
 ) -> Result<NativeScreenContextPayload, String> {
+    let _ = engine;
     unsafe {
         if check_screen_recording_permission_apple() != 1 {
             return Err("Screen Recording permission is not granted.".to_string());
@@ -939,13 +997,42 @@ fn native_capture_screen_context(
     result
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(target_os = "windows")]
 fn native_capture_screen_context(
+    engine: ScreenContextOcrEngine,
+    quality: OcrQualityMode,
+    max_words: usize,
+    timeout_ms: u32,
+) -> Result<NativeScreenContextPayload, String> {
+    crate::screen_context_windows::native_capture_screen_context(
+        engine, quality, max_words, timeout_ms,
+    )
+}
+
+#[cfg(target_os = "linux")]
+fn native_capture_screen_context(
+    engine: ScreenContextOcrEngine,
+    quality: OcrQualityMode,
+    max_words: usize,
+    timeout_ms: u32,
+) -> Result<NativeScreenContextPayload, String> {
+    crate::screen_context_linux::native_capture_screen_context(
+        engine, quality, max_words, timeout_ms,
+    )
+}
+
+#[cfg(not(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    target_os = "windows",
+    target_os = "linux"
+)))]
+fn native_capture_screen_context(
+    _engine: ScreenContextOcrEngine,
     _quality: OcrQualityMode,
     _max_words: usize,
     _timeout_ms: u32,
 ) -> Result<NativeScreenContextPayload, String> {
-    Err("Screen context capture is only available on Apple silicon Macs.".to_string())
+    Err("Screen context capture is not supported on this platform.".to_string())
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -953,9 +1040,85 @@ fn current_frontmost_app_context() -> Option<ActiveAppContext> {
     crate::apple_intelligence::get_frontmost_app_context().ok()
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(target_os = "windows")]
+fn current_frontmost_app_context() -> Option<ActiveAppContext> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    };
+
+    unsafe {
+        let hwnd: HWND = GetForegroundWindow();
+        if hwnd.is_invalid() {
+            return None;
+        }
+
+        let mut title_buf = [0u16; 256];
+        let title_len = GetWindowTextW(hwnd, &mut title_buf);
+        let localized_name = if title_len > 0 {
+            String::from_utf16_lossy(&title_buf[..title_len as usize])
+        } else {
+            String::new()
+        };
+
+        let mut pid: u32 = 0;
+        let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == 0 {
+            return Some(ActiveAppContext {
+                bundle_id: format!("hwnd:{}", hwnd.0 as usize),
+                localized_name,
+            });
+        }
+
+        let process = match OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ,
+            false,
+            pid,
+        ) {
+            Ok(handle) => handle,
+            Err(_) => {
+                return Some(ActiveAppContext {
+                    bundle_id: format!("pid:{}", pid),
+                    localized_name,
+                });
+            }
+        };
+
+        let mut module_buf = [0u16; 1024];
+        let len = GetModuleFileNameExW(Some(process), None, &mut module_buf);
+        let bundle_id = if len > 0 {
+            let path = String::from_utf16_lossy(&module_buf[..len as usize]);
+            // Use the executable filename as the "bundle id" so exclusion lists
+            // remain comparable across apps even though Windows lacks bundle ids.
+            std::path::Path::new(&path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| format!("pid:{}", pid))
+        } else {
+            format!("pid:{}", pid)
+        };
+
+        Some(ActiveAppContext {
+            bundle_id,
+            localized_name,
+        })
+    }
+}
+
+#[cfg(not(any(all(target_os = "macos", target_arch = "aarch64"), target_os = "windows")))]
 fn current_frontmost_app_context() -> Option<ActiveAppContext> {
     None
+}
+
+/// Public re-export so `commands::get_frontmost_app_for_exclusion` can reuse
+/// the platform helper without duplicating the Win32 dance.
+#[cfg(target_os = "windows")]
+pub fn current_frontmost_app_context_public() -> Option<ActiveAppContext> {
+    current_frontmost_app_context()
 }
 
 fn current_frontmost_bundle() -> Option<String> {
@@ -970,7 +1133,13 @@ fn read_ax_field_text(active_app_context: Option<&ActiveAppContext>) -> Option<S
     reader.read_focused_field_text().ok().flatten()
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<String> {
+    let reader = crate::correction_tracker::field_monitor_windows::WindowsFieldTextReader::new(None);
+    reader.read_focused_field_text().ok().flatten()
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn read_ax_field_text(_active_app_context: Option<&ActiveAppContext>) -> Option<String> {
     None
 }

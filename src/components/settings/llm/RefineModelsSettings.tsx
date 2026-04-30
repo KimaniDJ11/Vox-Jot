@@ -10,15 +10,18 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   Cpu,
   Download,
   Globe,
+  Loader2,
   Search,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { commands } from "@/bindings";
 import Badge from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -146,6 +149,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const [customFileName, setCustomFileName] = useState("");
   const [customModelId, setCustomModelId] = useState("");
   const [customBusy, setCustomBusy] = useState(false);
+  const [confirmingDeleteRuntimeId, setConfirmingDeleteRuntimeId] = useState<
+    string | null
+  >(null);
 
   const onProgressEvent = useCallback(
     (event: { payload: RefineDownloadProgress }) => {
@@ -467,6 +473,32 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }
   };
 
+  const handleDeleteRefineModel = async (model: RefineModelDescriptor) => {
+    setBusyModelIds((prev) => new Set(prev).add(model.runtime_model_id));
+    try {
+      const res = await commands.deleteRefineModel(
+        model.runtime_provider_id,
+        model.runtime_model_id,
+      );
+      if (res.status === "error") {
+        toast.error(res.error);
+        return;
+      }
+      setConfirmingDeleteRuntimeId(null);
+      await refreshSettings();
+      await loadCatalog({ silent: true });
+      toast.success(
+        t("settings.refineModels.toast.removed", { title: model.title }),
+      );
+    } finally {
+      setBusyModelIds((prev) => {
+        const next = new Set(prev);
+        next.delete(model.runtime_model_id);
+        return next;
+      });
+    }
+  };
+
   const handleInstall = async (model: RefineModelDescriptor) => {
     setBusyModelIds((prev) => new Set(prev).add(model.runtime_model_id));
     try {
@@ -547,6 +579,25 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       ollamaProvider?.running === false;
 
     if (model.active) return null;
+
+    const showOllamaRemove =
+      model.runtime_provider_id === "ollama" &&
+      model.installed &&
+      !model.active &&
+      confirmingDeleteRuntimeId !== model.runtime_model_id;
+
+    if (showOllamaRemove) {
+      return {
+        kind: "remove",
+        onClick: () => setConfirmingDeleteRuntimeId(model.runtime_model_id),
+        disabled: isBusy,
+        busy: isBusy,
+        label: t("settings.refineModels.actions.removeFromOllama", {
+          title: model.title,
+        }),
+      };
+    }
+
     if (model.installed && model.runnable) return null;
 
     if (model.downloadable) {
@@ -583,6 +634,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
   const handleCardClick = (model: RefineModelDescriptor) => {
     if (busyModelIds.has(model.runtime_model_id)) return;
+    if (confirmingDeleteRuntimeId === model.runtime_model_id) return;
     if (model.active) return;
     if (model.installed && model.runnable) {
       void handleUse(model);
@@ -687,6 +739,52 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
     return null;
   };
+
+  const renderRefineDeleteConfirm = (
+    model: RefineModelDescriptor,
+  ): React.ReactNode => (
+    <div
+      className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      role="presentation"
+    >
+      <div className="flex items-start gap-2 text-sm text-[var(--text)]">
+        <AlertTriangle
+          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+          aria-hidden
+        />
+        <p className="min-w-0 flex-1 leading-snug">
+          {t("settings.refineModels.actions.confirmRemoveModel", {
+            title: model.title,
+          })}
+        </p>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setConfirmingDeleteRuntimeId(null)}
+        >
+          {t("common.cancel")}
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          size="sm"
+          disabled={busyModelIds.has(model.runtime_model_id)}
+          onClick={() => void handleDeleteRefineModel(model)}
+        >
+          {busyModelIds.has(model.runtime_model_id) ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            t("modelSelector.confirmDelete")
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 
   const filterAction = (
     <div className="flex items-center gap-2">
@@ -853,9 +951,15 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 footerMetaMaxVisible={3}
                 footerOverflowLabel={`${model.title} runtime details`}
                 trailing={getTrailing(model)}
-                footerExtra={renderProgressExtra(model)}
+                footerExtra={
+                  confirmingDeleteRuntimeId === model.runtime_model_id
+                    ? renderRefineDeleteConfirm(model)
+                    : renderProgressExtra(model)
+                }
                 onClick={
-                  model.active || isBusy
+                  model.active ||
+                  isBusy ||
+                  confirmingDeleteRuntimeId === model.runtime_model_id
                     ? undefined
                     : () => handleCardClick(model)
                 }

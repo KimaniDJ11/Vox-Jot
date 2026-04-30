@@ -1,5 +1,5 @@
 /** Shared Model Hub tab ids + i18n keys (sidebar launchers + hub tab bar). */
-export type ModelHubTabId = "stt" | "llm" | "tts";
+export type ModelHubTabId = "stt" | "llm" | "tts" | "ocr";
 
 export const MODEL_HUB_TAB_DEFS: Array<{
   id: ModelHubTabId;
@@ -13,4 +13,5 @@ export const MODEL_HUB_TAB_DEFS: Array<{
     defaultLabel: "Post-process (LLM)",
   },
   { id: "tts", labelKey: "modelHub.tabs.tts", defaultLabel: "Voices (TTS)" },
+  { id: "ocr", labelKey: "modelHub.tabs.ocr", defaultLabel: "Screen OCR" },
 ];

@@ -72,6 +72,37 @@ fn hf_repo_title(repo_id: &str) -> String {
         .replace('_', " ")
 }
 
+fn sanitize_hf_repo_id(repo_id: &str) -> String {
+    repo_id
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+fn tts_hf_install_dir(app: &AppHandle, repo_id: &str) -> Option<std::path::PathBuf> {
+    crate::storage_paths::tts_hf_models_dir(app)
+        .ok()
+        .map(|dir| dir.join(sanitize_hf_repo_id(repo_id)))
+}
+
+fn tts_hf_repo_is_installed(app: &AppHandle, repo_id: &str) -> bool {
+    let Some(dir) = tts_hf_install_dir(app, repo_id) else {
+        return false;
+    };
+    if !dir.exists() {
+        return false;
+    }
+    std::fs::read_dir(&dir)
+        .map(|mut entries| entries.next().is_some())
+        .unwrap_or(false)
+}
+
 fn stt_hf_repo_to_model_id(repo_id: &str) -> Option<&'static str> {
     let lower = repo_id.to_ascii_lowercase();
 
@@ -539,7 +570,11 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
     }
 }
 
-fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_ids: Vec<String>) {
+fn augment_tts_catalog_with_hf_verified(
+    app: &AppHandle,
+    tts_catalog: &mut DomainCatalog,
+    repo_ids: Vec<String>,
+) {
     if repo_ids.is_empty() {
         return;
     }
@@ -554,7 +589,7 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             domain: ModelDomain::Tts,
             source_kind: CatalogSourceKind::Runtime,
             label: "HF TTS Verified".to_string(),
-            description: "Auto-synced from your verified Hugging Face TTS collection and routed through the local sidecar runtime API.".to_string(),
+            description: "Auto-synced from your verified Hugging Face TTS collection. Tap Download on a card to pull the repo into Vox Jot's local TTS store.".to_string(),
             source_label: "Hugging Face collection".to_string(),
             runtime: RuntimeRequirement {
                 id: "local_sidecar_api".to_string(),
@@ -567,7 +602,7 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             coming_soon: false,
             license_label: None,
             capabilities: CapabilityFlags {
-                downloadable: false,
+                downloadable: true,
                 loadable: true,
                 local_only: true,
                 supports_translation: false,
@@ -600,6 +635,9 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             || lower.contains("voice");
         let supports_instructions = lower.contains("parler") || lower.contains("qwen");
 
+        let installed = tts_hf_repo_is_installed(app, &repo_id);
+        let downloadable = !installed;
+
         tts_catalog.models.push(CatalogModelDescriptor {
             id: model_id,
             provider_id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
@@ -607,11 +645,11 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             source_kind: CatalogSourceKind::Runtime,
             label: hf_repo_title(&repo_id),
             description: format!("Verified TTS model from Hugging Face collection ({repo_id})."),
-            installed: true,
+            installed,
             selected: false,
             active: false,
-            runnable: true,
-            downloadable: false,
+            runnable: installed,
+            downloadable,
             source_label: "Hugging Face collection".to_string(),
             runtime: RuntimeRequirement {
                 id: "local_sidecar_api".to_string(),
@@ -622,11 +660,17 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             license_label: None,
             locale: None,
             supported_languages: Vec::new(),
-            readiness_status: Some("ready".to_string()),
-            readiness_issues: Vec::new(),
+            readiness_status: Some(if installed { "ready" } else { "missing" }.to_string()),
+            readiness_issues: if installed {
+                Vec::new()
+            } else {
+                vec![format!(
+                    "Tap Download to pull {repo_id} into Vox Jot's local TTS store."
+                )]
+            },
             capabilities: CapabilityFlags {
-                downloadable: false,
-                loadable: true,
+                downloadable,
+                loadable: installed,
                 local_only: true,
                 supports_translation: false,
                 supports_streaming: true,
@@ -638,6 +682,270 @@ fn augment_tts_catalog_with_hf_verified(tts_catalog: &mut DomainCatalog, repo_id
             delivery_support: unsupported_delivery_support(),
         });
     }
+}
+
+// --- HF TTS download path -----------------------------------------------
+
+#[derive(Debug, Deserialize)]
+struct HfRepoSibling {
+    rfilename: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfRepoInfo {
+    #[serde(default)]
+    siblings: Vec<HfRepoSibling>,
+}
+
+fn hf_tts_filter_file(name: &str) -> bool {
+    !name.starts_with('.')
+        && !name.contains("/.cache/")
+        && !name.starts_with(".cache/")
+        && !name.contains("/.git/")
+        && !name.starts_with(".git/")
+}
+
+async fn fetch_hf_repo_files(repo_id: &str) -> Result<Vec<String>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+    let url = format!("https://huggingface.co/api/models/{repo_id}");
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|err| format!("Failed to query {repo_id}: {err}"))?;
+    if resp.status().as_u16() == 401 || resp.status().as_u16() == 403 {
+        return Err(format!(
+            "{repo_id} is private on Hugging Face. Publish the mirror before downloading."
+        ));
+    }
+    if resp.status().as_u16() == 404 {
+        return Err(format!("{repo_id} was not found on Hugging Face."));
+    }
+    if !resp.status().is_success() {
+        return Err(format!(
+            "Failed to fetch repo info for {repo_id}: HTTP {}",
+            resp.status()
+        ));
+    }
+    let info: HfRepoInfo = resp
+        .json()
+        .await
+        .map_err(|err| format!("Failed to decode repo info for {repo_id}: {err}"))?;
+    let files: Vec<String> = info
+        .siblings
+        .into_iter()
+        .map(|s| s.rfilename)
+        .filter(|name| hf_tts_filter_file(name))
+        .collect();
+    if files.is_empty() {
+        return Err(format!("No downloadable files in {repo_id}."));
+    }
+    Ok(files)
+}
+
+fn emit_tts_download_progress(
+    app: &AppHandle,
+    repo_id: &str,
+    stage: &str,
+    file: Option<&str>,
+    file_index: Option<usize>,
+    file_count: Option<usize>,
+    error: Option<&str>,
+) {
+    let payload = serde_json::json!({
+        "repo_id": repo_id,
+        "stage": stage,
+        "file": file,
+        "file_index": file_index,
+        "file_count": file_count,
+        "error": error,
+    });
+    let _ = app.emit("tts-hf-download-progress", payload);
+}
+
+pub async fn download_hf_tts_repo_impl(
+    app: &AppHandle,
+    repo_id: &str,
+) -> Result<std::path::PathBuf, String> {
+    use tokio::fs as tokio_fs;
+    use tokio::io::AsyncWriteExt;
+
+    if !repo_id.contains('/') {
+        return Err(format!("Invalid HF repo id '{}'", repo_id));
+    }
+
+    let install_dir = tts_hf_install_dir(app, repo_id).ok_or_else(|| {
+        "Failed to resolve TTS HF install directory.".to_string()
+    })?;
+    let staging_dir = install_dir.with_file_name(format!(
+        ".staging-{}",
+        sanitize_hf_repo_id(repo_id)
+    ));
+
+    if staging_dir.exists() {
+        let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+    }
+    tokio_fs::create_dir_all(&staging_dir)
+        .await
+        .map_err(|err| format!("Failed to create staging dir: {err}"))?;
+
+    emit_tts_download_progress(app, repo_id, "preparing", None, None, None, None);
+
+    let files = match fetch_hf_repo_files(repo_id).await {
+        Ok(files) => files,
+        Err(err) => {
+            let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+            emit_tts_download_progress(app, repo_id, "failed", None, None, None, Some(&err));
+            return Err(err);
+        }
+    };
+    let file_count = files.len();
+    emit_tts_download_progress(
+        app,
+        repo_id,
+        "downloading",
+        None,
+        Some(0),
+        Some(file_count),
+        None,
+    );
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(900))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+
+    for (idx, rel) in files.iter().enumerate() {
+        let encoded = rel
+            .split('/')
+            .map(|seg| seg.replace(' ', "%20"))
+            .collect::<Vec<_>>()
+            .join("/");
+        let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded}");
+        let target = staging_dir.join(rel);
+        if let Some(parent) = target.parent() {
+            if let Err(err) = tokio_fs::create_dir_all(parent).await {
+                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                let msg = format!("Failed to create {}: {err}", parent.display());
+                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                return Err(msg);
+            }
+        }
+
+        let response = match client.get(&url).send().await {
+            Ok(r) => r,
+            Err(err) => {
+                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                let msg = format!("Failed to fetch {rel}: {err}");
+                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                return Err(msg);
+            }
+        };
+        if !response.status().is_success() {
+            let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+            let msg = format!("Failed to download {rel}: HTTP {}", response.status());
+            emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+            return Err(msg);
+        }
+
+        let mut file = match tokio_fs::File::create(&target).await {
+            Ok(f) => f,
+            Err(err) => {
+                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                let msg = format!("Failed to open {}: {err}", target.display());
+                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                return Err(msg);
+            }
+        };
+
+        use futures_util::StreamExt;
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = match chunk {
+                Ok(c) => c,
+                Err(err) => {
+                    let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                    let msg = format!("Stream failed for {rel}: {err}");
+                    emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                    return Err(msg);
+                }
+            };
+            if let Err(err) = file.write_all(&chunk).await {
+                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                let msg = format!("Failed to write {rel}: {err}");
+                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                return Err(msg);
+            }
+        }
+        let _ = file.flush().await;
+        emit_tts_download_progress(
+            app,
+            repo_id,
+            "downloading",
+            Some(rel),
+            Some(idx + 1),
+            Some(file_count),
+            None,
+        );
+    }
+
+    if install_dir.exists() {
+        let _ = tokio_fs::remove_dir_all(&install_dir).await;
+    }
+    if let Some(parent) = install_dir.parent() {
+        let _ = tokio_fs::create_dir_all(parent).await;
+    }
+    tokio_fs::rename(&staging_dir, &install_dir)
+        .await
+        .map_err(|err| {
+            let msg = format!(
+                "Failed to move staging into place ({} -> {}): {err}",
+                staging_dir.display(),
+                install_dir.display()
+            );
+            let _ = std::fs::remove_dir_all(&staging_dir);
+            msg
+        })?;
+
+    emit_tts_download_progress(
+        app,
+        repo_id,
+        "complete",
+        None,
+        Some(file_count),
+        Some(file_count),
+        None,
+    );
+    Ok(install_dir)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn download_tts_hf_model(
+    app_handle: AppHandle,
+    repo_id: String,
+) -> Result<(), String> {
+    download_hf_tts_repo_impl(&app_handle, &repo_id).await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_tts_hf_model(
+    app_handle: AppHandle,
+    repo_id: String,
+) -> Result<(), String> {
+    let dir = tts_hf_install_dir(&app_handle, &repo_id)
+        .ok_or_else(|| "Failed to resolve TTS HF install dir.".to_string())?;
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).map_err(|err| {
+            format!("Failed to remove '{}': {err}", dir.display())
+        })?;
+    }
+    Ok(())
 }
 
 fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
@@ -793,7 +1101,7 @@ pub async fn get_model_platform_overview(
         tts_manager.domain_catalog(&settings)
     );
 
-    augment_tts_catalog_with_hf_verified(&mut tts_catalog, tts_collection_ids);
+    augment_tts_catalog_with_hf_verified(&app_handle, &mut tts_catalog, tts_collection_ids);
 
     let active_tts_model = tts_catalog
         .models
@@ -975,7 +1283,7 @@ pub async fn set_tts_platform_selection(
         fetch_hf_collection_repo_ids(&tts_collection_slug),
         tts_manager.domain_catalog(&settings)
     );
-    augment_tts_catalog_with_hf_verified(&mut catalog, tts_collection_ids);
+    augment_tts_catalog_with_hf_verified(&app_handle, &mut catalog, tts_collection_ids);
 
     let provider = catalog
         .providers
@@ -1019,6 +1327,8 @@ pub async fn set_tts_platform_selection(
     }
     if model.source_kind == CatalogSourceKind::Builtin && !model.installed && model.downloadable {
         tts_manager.download_pack(&resolved_model_id).await?;
+    } else if model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID && !model.installed {
+        download_hf_tts_repo_impl(&app_handle, &resolved_model_id).await?;
     }
 
     let mut settings = get_settings(&app_handle);

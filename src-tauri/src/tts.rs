@@ -3552,6 +3552,64 @@ impl TtsManager {
     }
 
     pub fn remove_pack(&self, pack_id: &str) -> Result<(), String> {
+        if let Some(definition) = mlx_audio_tts_model_definition(pack_id) {
+            let install_dir = self.mlx_audio_model_install_dir(definition);
+            if install_dir.exists() {
+                fs::remove_dir_all(&install_dir).map_err(|err| {
+                    format!(
+                        "Failed to remove MLX TTS model '{}': {err}",
+                        definition.model_id
+                    )
+                })?;
+            }
+            return Ok(());
+        }
+
+        if let Some(definition) = self.managed_runtime_model_definition(pack_id) {
+            let install_dir = self.managed_runtime_model_install_dir(definition);
+            if install_dir.exists() {
+                fs::remove_dir_all(&install_dir).map_err(|err| {
+                    format!(
+                        "Failed to remove downloaded runtime model '{}': {err}",
+                        definition.model_id
+                    )
+                })?;
+            }
+            return Ok(());
+        }
+
+        // Pack ids that look like HF repo slugs (`<author>/<name>`) come from
+        // the verified TTS collection augmenter. Route them to the per-repo
+        // install dir under `models/tts/store/hf/`.
+        if pack_id.contains('/') {
+            if let Ok(hf_root) = crate::storage_paths::tts_hf_models_dir(&self.app_handle) {
+                let sanitized: String = pack_id
+                    .chars()
+                    .map(|c| {
+                        if c.is_ascii_alphanumeric()
+                            || c == '-'
+                            || c == '_'
+                            || c == '.'
+                        {
+                            c
+                        } else {
+                            '_'
+                        }
+                    })
+                    .collect();
+                let install_dir = hf_root.join(&sanitized);
+                if install_dir.exists() {
+                    fs::remove_dir_all(&install_dir).map_err(|err| {
+                        format!(
+                            "Failed to remove HF TTS model '{}': {err}",
+                            pack_id
+                        )
+                    })?;
+                }
+                return Ok(());
+            }
+        }
+
         let install_dir = self.pack_install_dir(pack_id);
         if install_dir.exists() {
             fs::remove_dir_all(&install_dir)
@@ -3814,6 +3872,7 @@ impl TtsManager {
                         speak_lfm_audio_gguf_chunk(
                             &chunk,
                             context,
+                            preferred_voice_id.as_deref(),
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -5243,6 +5302,7 @@ fn speak_sherpa_chunk(
 fn speak_lfm_audio_gguf_chunk(
     text: &str,
     context: &crate::lfm_audio_gguf::LfmAudioGgufContext,
+    preferred_voice_id: Option<&str>,
     volume: f32,
     output_device: Option<String>,
     stop_flag: &AtomicBool,
@@ -5258,7 +5318,8 @@ fn speak_lfm_audio_gguf_chunk(
         .map_err(|err| format!("Failed to create temp LFM Audio dir: {err}"))?;
     let out_wav = temp_cwd.join("output.wav");
 
-    let synth_result = context.synthesize(text, &out_wav);
+    let voice = crate::lfm_audio_gguf::LfmAudioVoice::from_voice_id(preferred_voice_id);
+    let synth_result = context.synthesize_with_voice(text, &out_wav, voice);
     if let Err(err) = synth_result {
         let _ = std::fs::remove_dir_all(&temp_cwd);
         return Err(err);

@@ -39,6 +39,7 @@ const ScreenContextSettingsSection: React.FC = () => {
     screen_context_idle_threshold_ms: idleThresholdValue,
     context_capture_mode: captureModeValue,
     screen_context_ocr_quality: ocrQualityValue,
+    screen_context_ocr_engine: ocrEngineValue,
     screen_context_ocr_timeout_ms: ocrTimeoutValue,
     screen_context_token_budget: tokenBudgetValue,
     screen_context_stale_threshold_ms: staleThresholdValue,
@@ -49,6 +50,7 @@ const ScreenContextSettingsSection: React.FC = () => {
     "screen_context_idle_threshold_ms",
     "context_capture_mode",
     "screen_context_ocr_quality",
+    "screen_context_ocr_engine",
     "screen_context_ocr_timeout_ms",
     "screen_context_token_budget",
     "screen_context_stale_threshold_ms",
@@ -69,6 +71,7 @@ const ScreenContextSettingsSection: React.FC = () => {
   const idleThreshold = idleThresholdValue ?? 60_000;
   const captureMode = captureModeValue ?? "always_frequent";
   const ocrQuality = ocrQualityValue ?? "balanced";
+  const ocrEngine = ocrEngineValue ?? "native_then_backup";
   const ocrTimeout = ocrTimeoutValue ?? 700;
   const tokenBudget = tokenBudgetValue ?? 400;
   const staleThreshold = staleThresholdValue ?? 2500;
@@ -293,6 +296,39 @@ const ScreenContextSettingsSection: React.FC = () => {
             ]}
             disabled={
               controlsDisabled || isUpdating("screen_context_ocr_quality")
+            }
+          />
+        </SettingContainer>
+        <SettingContainer
+          title={t("settings.screenContext.ocrEngineLabel")}
+          description={t("settings.screenContext.ocrEngineDescription")}
+          grouped={true}
+        >
+          <Dropdown
+            selectedValue={ocrEngine as string}
+            onSelect={(value) =>
+              void updateSetting("screen_context_ocr_engine", value as never)
+            }
+            options={[
+              {
+                value: "native_then_backup",
+                label: t("settings.screenContext.ocrEngineNativeThenBackup"),
+              },
+              {
+                value: "auto",
+                label: t("settings.screenContext.ocrEngineAuto"),
+              },
+              {
+                value: "native_only",
+                label: t("settings.screenContext.ocrEngineNativeOnly"),
+              },
+              {
+                value: "backup_only",
+                label: t("settings.screenContext.ocrEngineBackupOnly"),
+              },
+            ]}
+            disabled={
+              controlsDisabled || isUpdating("screen_context_ocr_engine")
             }
           />
         </SettingContainer>

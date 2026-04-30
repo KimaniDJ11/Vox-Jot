@@ -73,7 +73,7 @@ struct HfImportSpec {
 }
 
 const HF_COLLECTION_SLUG_ENV: &str = "VOXJOT_HF_COLLECTION_SLUG";
-const HF_DEFAULT_COLLECTION_SLUG: &str = "IrieDinamik/vox-jot-best-gguf-models-for-custom-import";
+const HF_DEFAULT_COLLECTION_SLUG: &str = "IrieDinamik/vox-jot-llm-verified";
 const HF_DYNAMIC_SEARCH_QUERY: &str = "bartowski GGUF instruct";
 const HF_DYNAMIC_SEARCH_LIMIT: usize = 24;
 const HF_DYNAMIC_SEARCH_MAX_RESULTS: usize = 8;
@@ -446,9 +446,10 @@ async fn fetch_dynamic_hf_repo_ids(
             if repo_id.is_empty() || !seen.insert(repo_id.to_string()) {
                 continue;
             }
-            if !is_hf_repo_safe_candidate(repo_id) {
-                continue;
-            }
+            // Trust the curated collection — every entry is one the user has
+            // explicitly verified for Vox Jot. The size/keyword heuristics in
+            // `is_hf_repo_safe_candidate` are only useful for the open
+            // search-discovery fallback.
             repo_ids.push(repo_id.to_string());
             if repo_ids.len() >= HF_DYNAMIC_COLLECTION_MAX_RESULTS {
                 break;
@@ -460,7 +461,7 @@ async fn fetch_dynamic_hf_repo_ids(
         }
 
         log::warn!(
-            "Hugging Face collection '{}' did not return safe GGUF instruct repos; falling back to search.",
+            "Hugging Face collection '{}' returned no items; falling back to search.",
             collection_slug
         );
     }
@@ -1271,6 +1272,61 @@ pub async fn get_active_refine_installs_impl() -> Vec<String> {
     ACTIVE_INSTALLS.lock().await.iter().cloned().collect()
 }
 
+pub async fn delete_refine_model_impl(
+    app: &AppHandle,
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    if provider_id != OLLAMA_PROVIDER_ID {
+        return Err(
+            "Only Ollama-managed refine models can be removed from here.".to_string(),
+        );
+    }
+
+    {
+        let active = ACTIVE_INSTALLS.lock().await;
+        if active.contains(&model_id) {
+            return Err(format!(
+                "'{}' is still downloading or importing. Wait for it to finish.",
+                model_id
+            ));
+        }
+    }
+
+    ollama::delete_ollama_model_impl(model_id.clone()).await?;
+
+    let import_dir = refine_import_dir(&model_id);
+    if import_dir.exists() {
+        tokio::task::spawn_blocking(move || std::fs::remove_dir_all(&import_dir))
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| format!("Failed to remove refine import cache: {e}"))?;
+    }
+
+    let mut settings = settings::get_settings(app);
+
+    if settings.post_process_models.get(&provider_id).map(|s| s.as_str()) == Some(model_id.as_str())
+    {
+        settings.post_process_models.insert(
+            provider_id.clone(),
+            settings::default_model_for_provider(&provider_id),
+        );
+    }
+
+    if settings.selected_llm_provider_id == provider_id && settings.selected_llm_model_id == model_id
+    {
+        settings.selected_llm_model_id = settings
+            .post_process_models
+            .get(&provider_id)
+            .cloned()
+            .unwrap_or_else(|| settings::default_model_for_provider(&provider_id));
+    }
+
+    settings.enforce_local_privacy_mode();
+    settings::write_settings(app, settings);
+    Ok(())
+}
+
 pub async fn install_refine_model_impl(
     app: &AppHandle,
     provider_id: String,
@@ -1348,4 +1404,14 @@ pub async fn install_refine_model(
         source_file_name,
     )
     .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_refine_model(
+    app: AppHandle,
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    delete_refine_model_impl(&app, provider_id, model_id).await
 }

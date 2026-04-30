@@ -30,6 +30,7 @@ mod lfm_audio_gguf;
 mod llm_client;
 mod managers;
 mod model_platform;
+mod ocr_models;
 mod ollama;
 mod overlay;
 pub mod portable;
@@ -38,6 +39,11 @@ mod refine_models;
 mod regression;
 mod scratchpad;
 mod screen_context;
+#[cfg(target_os = "linux")]
+mod screen_context_linux;
+mod screen_context_ocr_backup;
+#[cfg(target_os = "windows")]
+mod screen_context_windows;
 mod secret_store;
 mod settings;
 mod shortcut;
@@ -623,6 +629,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_screen_context_idle_threshold_ms_setting,
         shortcut::change_context_capture_mode_setting,
         shortcut::change_screen_context_ocr_quality_setting,
+        shortcut::change_screen_context_ocr_engine_setting,
         shortcut::change_screen_context_ocr_timeout_ms_setting,
         shortcut::change_screen_context_token_budget_setting,
         shortcut::change_screen_context_stale_threshold_ms_setting,
@@ -718,6 +725,8 @@ pub fn run(cli_args: CliArgs) {
         commands::models::cancel_download,
         commands::models::set_stt_platform_selection,
         commands::models::set_tts_platform_selection,
+        commands::models::download_tts_hf_model,
+        commands::models::delete_tts_hf_model,
         commands::models::set_active_model,
         commands::models::get_current_model,
         commands::models::get_transcription_model_status,
@@ -780,7 +789,14 @@ pub fn run(cli_args: CliArgs) {
         refine_models::get_refine_model_catalog,
         refine_models::set_refine_model_selection,
         refine_models::install_refine_model,
+        refine_models::delete_refine_model,
         refine_models::get_active_refine_installs,
+        ocr_models::get_ocr_model_catalog,
+        ocr_models::import_ocr_model_from_disk,
+        ocr_models::delete_ocr_model,
+        ocr_models::set_ocr_model_selection,
+        ocr_models::download_ocr_model,
+        ocr_models::get_active_ocr_downloads,
         commands::notes::get_notes,
         commands::notes::get_note,
         commands::notes::create_note,

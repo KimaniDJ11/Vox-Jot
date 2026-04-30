@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, Mic, Sparkles, Volume2 } from "lucide-react";
-import { commands } from "@/bindings";
+import { ChevronRight, Mic, ScanText, Sparkles, Volume2 } from "lucide-react";
+import { commands, type ScreenContextOcrEngine } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { useSettingsSlice } from "@/hooks/useSettings";
 import {
@@ -140,12 +140,14 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     post_process_models: llmModels,
     selected_tts_model_id: selectedTtsModelId,
     selected_tts_provider_id: selectedTtsProviderId,
+    screen_context_ocr_engine: ocrEngineValue,
   } = useSettingsSlice([
     "post_process_provider_id",
     "post_process_providers",
     "post_process_models",
     "selected_tts_model_id",
     "selected_tts_provider_id",
+    "screen_context_ocr_engine",
   ] as const);
 
   const sttIconSize = variant === "stats" ? "sm" : "md";
@@ -212,6 +214,32 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     return { label: modelId, providerId: resolved };
   }, [selectedTtsModelId, selectedTtsProviderId, t]);
 
+  const ocrEngine: ScreenContextOcrEngine =
+    (ocrEngineValue as ScreenContextOcrEngine | undefined) ??
+    "native_then_backup";
+
+  const ocrLabel = useMemo(() => {
+    switch (ocrEngine) {
+      case "native_only":
+        return t("modelHub.ocr.options.nativeOnly.title", {
+          defaultValue: "System OCR",
+        });
+      case "backup_only":
+        return t("modelHub.ocr.options.backupOnly.title", {
+          defaultValue: "Cross-platform (Tesseract)",
+        });
+      case "auto":
+        return t("modelHub.ocr.options.auto.title", {
+          defaultValue: "Auto",
+        });
+      case "native_then_backup":
+      default:
+        return t("modelHub.ocr.options.nativeThenBackup.title", {
+          defaultValue: "Smart (default)",
+        });
+    }
+  }, [ocrEngine, t]);
+
   const hubTabLabel = (id: ModelHubTabId) => {
     const def = MODEL_HUB_TAB_DEFS.find((d) => d.id === id)!;
     return t(def.labelKey, { defaultValue: def.defaultLabel });
@@ -272,6 +300,15 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
         value={ttsContext.label}
         variant={variant}
         onClick={() => void openModelHub("tts")}
+      />
+      <LauncherRow
+        icon={<ScanText className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        iconBg="color-mix(in srgb, var(--info, #3b82f6) 16%, transparent)"
+        iconColor="var(--info, #3b82f6)"
+        label={hubTabLabel("ocr")}
+        value={ocrLabel}
+        variant={variant}
+        onClick={() => void openModelHub("ocr")}
       />
     </div>
   );

@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Globe, Languages, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Globe, Languages, Loader2 } from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { formatModelSize } from "../../lib/utils/format";
 import {
@@ -64,8 +64,12 @@ const ModelCard: React.FC<ModelCardProps> = ({
   runtimeLabel,
 }) => {
   const { t } = useTranslation();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isClickable =
-    status === "available" || status === "active" || status === "downloadable";
+    !confirmingDelete &&
+    !deleting &&
+    (status === "available" || status === "active" || status === "downloadable");
 
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
@@ -140,7 +144,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
     }
   };
 
-  // Trailing: Download icon (acquire) or Trash (remove) — never both.
+  // Trailing: Download icon (acquire) or Trash (remove) — never both. While
+  // the inline confirm row is active we hide the trash icon so the only
+  // affordance is the explicit Cancel/Delete pair below.
   let trailing: HubTrailing = null;
   if (status === "downloadable") {
     trailing = {
@@ -154,14 +160,83 @@ const ModelCard: React.FC<ModelCardProps> = ({
     };
   } else if (
     onDelete &&
+    !confirmingDelete &&
     (status === "available" || status === "active")
   ) {
     trailing = {
       kind: "remove",
-      onClick: () => onDelete(model.id),
+      onClick: () => setConfirmingDelete(true),
+      busy: deleting,
       label: t("modelSelector.deleteModel", { modelName: displayName }),
     };
   }
+
+  const confirmDeleteNode =
+    confirmingDelete && onDelete ? (
+      <div
+        className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-2 text-sm text-[var(--text)]">
+          <AlertTriangle
+            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+            aria-hidden
+          />
+          <p className="min-w-0 flex-1 leading-snug">
+            {status === "active"
+              ? t("modelSelector.deleteActiveConfirm", {
+                  modelName: displayName,
+                  defaultValue:
+                    "Delete {{modelName}}? It is the active model — you'll need to pick another to dictate.",
+                })
+              : t("modelSelector.deleteConfirm", {
+                  modelName: displayName,
+                  defaultValue:
+                    "Delete {{modelName}}? Files will be removed from disk.",
+                })}
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={deleting}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setConfirmingDelete(false);
+            }}
+          >
+            {t("common.cancel", { defaultValue: "Cancel" })}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={deleting}
+            onClick={async (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              try {
+                setDeleting(true);
+                await onDelete(model.id);
+                setConfirmingDelete(false);
+              } finally {
+                setDeleting(false);
+              }
+            }}
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              t("modelSelector.confirmDelete", {
+                defaultValue: "Delete",
+              })
+            )}
+          </Button>
+        </div>
+      </div>
+    ) : null;
 
   const scoresNode = showsScores ? (
     <div className="grid w-32 gap-1.5">
@@ -264,7 +339,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       footerMetaIcon={metaIcon}
       footerOverflowLabel={`${displayName} model details`}
       trailing={trailing}
-      footerExtra={progressNode}
+      footerExtra={confirmDeleteNode ?? progressNode}
       onClick={isClickable ? handleCardClick : undefined}
       disabled={disabled}
       variant={variant}

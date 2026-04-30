@@ -9,6 +9,7 @@ import {
   RefineModelsSection,
 } from "@/components/AppSections";
 import { EngineLibrarySection } from "@/components/settings/general/ListenSections";
+import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import { press } from "@/motion/springs";
 import { MODEL_HUB_TAB_STORAGE_KEY } from "@/components/sidebar/SidebarModelLaunchers";
 import {
@@ -21,7 +22,12 @@ const TABS = MODEL_HUB_TAB_DEFS;
 function readInitialTab(): ModelHubTabId {
   try {
     const stored = localStorage.getItem(MODEL_HUB_TAB_STORAGE_KEY);
-    if (stored === "stt" || stored === "llm" || stored === "tts") {
+    if (
+      stored === "stt" ||
+      stored === "llm" ||
+      stored === "tts" ||
+      stored === "ocr"
+    ) {
       return stored;
     }
   } catch {
@@ -44,7 +50,8 @@ const ModelHubSection: React.FC = () => {
       if (
         event.newValue === "stt" ||
         event.newValue === "llm" ||
-        event.newValue === "tts"
+        event.newValue === "tts" ||
+        event.newValue === "ocr"
       ) {
         setActiveTab(event.newValue);
       }
@@ -173,6 +180,16 @@ const ModelHubSection: React.FC = () => {
                 activeTab === "tts" ? "model-hub-section-actions" : undefined
               }
               showActiveModelBanner={false}
+              hubSearchQuery={query}
+              hubFilterLabels
+            />
+          </div>
+
+          <div className={activeTab === "ocr" ? "block" : "hidden"}>
+            <OcrEnginesSection
+              titleActionTargetId={
+                activeTab === "ocr" ? "model-hub-section-actions" : undefined
+              }
               hubSearchQuery={query}
               hubFilterLabels
             />

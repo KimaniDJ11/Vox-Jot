@@ -249,7 +249,10 @@
       "languageOnly": "Nur {{language}}"
     },
     "cancel": "Abbrechen",
-    "cancelDownload": "Download abbrechen"
+    "cancelDownload": "Download abbrechen",
+    "deleteConfirm": "Delete {{modelName}}? Files will be removed from disk.",
+    "deleteActiveConfirm": "Delete {{modelName}}? It is the active model — you'll need to pick another to dictate.",
+    "confirmDelete": "Delete"
   },
   "settings": {
     "snippets": {
@@ -987,7 +990,9 @@
         "preparing": "Preparing...",
         "downloading": "Downloading {{percent}}%",
         "importing": "Importing...",
-        "installingIntoOllama": "Installing into Ollama..."
+        "installingIntoOllama": "Installing into Ollama...",
+        "removeFromOllama": "Remove {{title}}",
+        "confirmRemoveModel": "Remove {{title}} from Ollama and delete local import files? If this model is selected for Refine, Vox Jot will fall back to the default Ollama model entry."
       },
       "customImport": {
         "title": "Custom Import",
@@ -1014,7 +1019,8 @@
         "installError": "Failed to install refine model.",
         "importError": "Failed to import Hugging Face GGUF.",
         "importSuccess": "{{modelId}} was imported into Ollama and selected.",
-        "enterRepo": "Enter a Hugging Face repo ID first."
+        "enterRepo": "Enter a Hugging Face repo ID first.",
+        "removed": "{{title}} was removed from Ollama."
       }
     },
     "screenContext": {
@@ -1053,7 +1059,16 @@
       "latestContextAgeValue": "{{ms}} ms",
       "latestContextAgeUnavailable": "Unavailable",
       "debugPreviewTitle": "Latest OCR preview (debug)",
-      "debugPreviewEmpty": "No cached OCR snippet yet."
+      "debugPreviewEmpty": "No cached OCR snippet yet.",
+      "ocrEngineLabel": "OCR engine",
+      "ocrEngineDescription": "Pick which engine reads text from screen captures. The default uses your operating system's built-in OCR and falls back to the cross-platform engine if it fails.",
+      "ocrEngineNativeThenBackup": "Native, fall back to cross-platform",
+      "ocrEngineNativeOnly": "Native only",
+      "ocrEngineBackupOnly": "Cross-platform only (Tesseract)",
+      "ocrEngineAuto": "Auto",
+      "ocrEngineHelpLinux": "Linux always uses the cross-platform engine — install `tesseract` and `grim` (Wayland) or `import`/`gnome-screenshot` (X11).",
+      "ocrEngineHelpWindows": "Windows uses Windows.Media.Ocr by default and falls back to Tesseract when the system OCR fails or returns empty results.",
+      "ocrEngineHelpMacos": "Apple silicon Macs always use Apple Vision; the cross-platform engine is reserved for QA and Intel-Mac experiments."
     },
     "diagnostics": {
       "localApi": {
@@ -1107,7 +1122,8 @@
     "no": "Nein",
     "noOptionsFound": "Keine Optionen gefunden",
     "active": "Active",
-    "downloaded": "Downloaded"
+    "downloaded": "Downloaded",
+    "dismiss": "Dismiss"
   },
   "accessibility": {
     "permissionsRequired": "Bedienungshilfen-Berechtigungen erforderlich",
@@ -1368,6 +1384,93 @@
       "formatVtt": "VTT",
       "formatAria": "Output format",
       "recentActivity": "Recent activity"
+    }
+  },
+  "modelHub": {
+    "ocr": {
+      "filters": {
+        "providerIdle": "Provider",
+        "languageIdle": "Language",
+        "allProviders": "All providers",
+        "osNative": "OS native OCR",
+        "hybrid": "Smart (native + fallback)",
+        "tesseract": "Tesseract",
+        "autoRouting": "Auto routing",
+        "providerAria": "Filter OCR engines by provider",
+        "languageAria": "Filter OCR engines by language",
+        "system": "System OCR",
+        "neural": "Neural OCR"
+      },
+      "vendor": {
+        "hybrid": "Apple / Microsoft + Tesseract",
+        "tesseract": "Tesseract",
+        "auto": "Vox Jot routing",
+        "appleVision": "Apple Vision",
+        "windowsMediaOcr": "Windows.Media.Ocr",
+        "linuxSystem": "System OCR utilities"
+      },
+      "languages": {
+        "hybrid": "System languages plus Tesseract-trained languages when fallback runs.",
+        "nativeOnly": "Follows your OS language and regional text recognition settings.",
+        "tesseract": "Depends on installed tessdata packs (often English-first unless you add more).",
+        "auto": "Matches app and dictation language coverage where the OS allows."
+      },
+      "badges": {
+        "active": "Active",
+        "activeDetail": "Currently selected screen OCR engine.",
+        "vendorDetail": "Screen OCR runtime used for this mode.",
+        "backendComingSoon": "Backend coming soon",
+        "backendComingSoonDetail": "Files imported. Inference for this model will arrive in a follow-up release; capture still uses System OCR."
+      },
+      "options": {
+        "nativeThenBackup": {
+          "title": "Smart (default)",
+          "description": "Use the OS-native OCR first, fall back to Tesseract on failure or empty results."
+        },
+        "nativeOnly": {
+          "title": "System OCR only",
+          "description": "Use the operating system's built-in OCR only — Apple Vision on macOS, Windows.Media.Ocr on Windows."
+        },
+        "backupOnly": {
+          "title": "Tesseract only",
+          "description": "Always use the bundled Tesseract engine. Useful for parity testing or when system OCR underperforms."
+        },
+        "auto": {
+          "title": "Auto",
+          "description": "Let Vox Jot pick the best engine for your platform and current language coverage."
+        }
+      },
+      "meta": {
+        "balanced": "Balanced",
+        "recommended": "Recommended",
+        "fastest": "Fastest path",
+        "osBuiltIn": "OS built-in",
+        "crossPlatform": "Cross-platform",
+        "requiresTesseract": "Requires Tesseract",
+        "adaptive": "Adaptive"
+      },
+      "systemCard": {
+        "title": "System OCR",
+        "description": "Built-in routing across Apple Vision / Windows.Media.Ocr and the bundled Tesseract fallback.",
+        "routingLabel": "Routing"
+      },
+      "actions": {
+        "import": "Import {{modelName}} from disk",
+        "remove": "Remove {{modelName}}",
+        "pickFolderTitle": "Pick the folder that contains {{modelName}}",
+        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "importFromDisk": "Import from folder"
+      },
+      "confirmRemove": "Remove {{modelName}}? Files will be deleted from the app's OCR cache.",
+      "empty": "No OCR engines match the current filters.",
+      "download": {
+        "preparing": "Preparing download…",
+        "percent": "{{value}}%"
+      }
+    },
+    "tts": {
+      "remove": "Remove {{modelName}}",
+      "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
     }
   }
 }

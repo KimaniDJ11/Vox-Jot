@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  AlertTriangle,
   ChevronDown,
   Check,
   Globe,
@@ -2071,6 +2072,12 @@ const SoundDesignSection: React.FC<{
   );
 };
 
+function ttsHubModelCanRemove(model: CatalogModelDescriptor): boolean {
+  if (!model.installed) return false;
+  if (model.provider_id === "system_builtin") return false;
+  return true;
+}
+
 const SpeechModelLibraryCard: React.FC<{
   model: CatalogModelDescriptor;
   provider: ProviderDescriptor | null;
@@ -2078,6 +2085,9 @@ const SpeechModelLibraryCard: React.FC<{
   selected: boolean;
   speech: ListenSpeechState;
 }> = ({ model, provider, active, selected, speech }) => {
+  const { t } = useTranslation();
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const capabilityTags = formatModelCapabilityTags(model);
   const headerBadges: CompactBadgeItem[] = [
     active
@@ -2128,7 +2138,11 @@ const SpeechModelLibraryCard: React.FC<{
     ...capabilityTags,
   ];
 
-  const clickable = !active && speech.ttsEnabled && !speech.loadingPlatform;
+  const clickable =
+    !active &&
+    speech.ttsEnabled &&
+    !speech.loadingPlatform &&
+    !confirmingRemove;
 
   let trailing: HubTrailing = null;
   if (!active && model.downloadable && !model.installed) {
@@ -2138,7 +2152,85 @@ const SpeechModelLibraryCard: React.FC<{
       disabled: !speech.ttsEnabled || speech.loadingPlatform,
       label: `Download ${model.label}`,
     };
+  } else if (
+    !active &&
+    ttsHubModelCanRemove(model) &&
+    !confirmingRemove
+  ) {
+    trailing = {
+      kind: "remove",
+      onClick: () => setConfirmingRemove(true),
+      disabled:
+        !speech.ttsEnabled || speech.loadingPlatform || removing,
+      busy: removing,
+      label: t("modelHub.tts.remove", {
+        modelName: model.label,
+        defaultValue: "Remove {{modelName}}",
+      }),
+    };
   }
+
+  const footerExtra =
+    confirmingRemove && ttsHubModelCanRemove(model) ? (
+      <div
+        className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        role="presentation"
+      >
+        <div className="flex items-start gap-2 text-sm text-[var(--text)]">
+          <AlertTriangle
+            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+            aria-hidden
+          />
+          <p className="min-w-0 flex-1 leading-snug">
+            {t("modelHub.tts.confirmRemove", {
+              modelName: model.label,
+              defaultValue:
+                "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac.",
+            })}
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirmingRemove(false)}
+          >
+            {t("common.cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={removing || !speech.ttsEnabled || speech.loadingPlatform}
+            onClick={() => {
+              void (async () => {
+                setRemoving(true);
+                try {
+                  const result = await commands.removeTtsPack(model.id);
+                  if (result.status !== "ok") {
+                    speech.setStatusMessage(result.error);
+                    return;
+                  }
+                  setConfirmingRemove(false);
+                  await speech.refreshAll();
+                } finally {
+                  setRemoving(false);
+                }
+              })();
+            }}
+          >
+            {removing ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              t("modelSelector.confirmDelete")
+            )}
+          </Button>
+        </div>
+      </div>
+    ) : null;
 
   return (
     <HubModelCard
@@ -2151,6 +2243,7 @@ const SpeechModelLibraryCard: React.FC<{
       footerMetaIcon={<Globe className="h-3.5 w-3.5" />}
       footerOverflowLabel={`${model.label} details`}
       trailing={trailing}
+      footerExtra={footerExtra}
       onClick={
         clickable
           ? () => void speech.activateModel(model.provider_id, model.id)

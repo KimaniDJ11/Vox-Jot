@@ -10,5 +10,6 @@
 BINARY="$1"
 shift
 
-codesign --force --sign - --identifier "com.iriedinamik.voxjot" "$BINARY" 2>/dev/null
+SIGN_IDENTIFIER="${VOX_JOT_CODESIGN_IDENTIFIER:-com.iriedinamik.voxjot}"
+codesign --force --sign - --identifier "$SIGN_IDENTIFIER" "$BINARY" 2>/dev/null
 exec "$BINARY" "$@"

@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Globe, Languages, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Globe,
+  Languages,
+  Loader2,
+  X,
+} from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { formatModelSize } from "../../lib/utils/format";
 import {
@@ -12,7 +19,10 @@ import { type CompactBadgeItem } from "../ui/CompactOverflow";
 import HubModelCard, {
   type HubTrailing,
 } from "../model-hub/HubModelCard";
-import { resolveModelProviderId } from "../ui/ProviderIcon";
+import {
+  providerDisplayName,
+  resolveModelProviderId,
+} from "../ui/ProviderIcon";
 
 const formatLanguageAbbreviation = (language: string): string => {
   const trimmed = language.trim();
@@ -74,6 +84,22 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
   const showsScores = model.accuracy_score > 0 || model.speed_score > 0;
+  const resolvedProviderId = resolveModelProviderId(
+    `${displayName} ${model.id}`,
+    providerId,
+  );
+  const isQwenFamily = `${displayName} ${model.id}`
+    .toLowerCase()
+    .includes("qwen");
+  const providerLabelIsRuntime =
+    providerLabel?.toLowerCase().includes("runtime") ?? false;
+  const displayProviderLabel =
+    isQwenFamily
+      ? providerDisplayName("stt_qwen")
+      : resolvedProviderId !== "generic" &&
+          (!providerLabel || providerLabelIsRuntime)
+        ? providerDisplayName(resolvedProviderId)
+        : providerLabel;
 
   const headerBadges: CompactBadgeItem[] = [
     showRecommended && model.is_recommended
@@ -107,10 +133,10 @@ const ModelCard: React.FC<ModelCardProps> = ({
           }),
         }
       : null,
-    providerLabel
+    displayProviderLabel
       ? {
-          id: `provider-${providerLabel}`,
-          label: providerLabel,
+          id: `provider-${displayProviderLabel}`,
+          label: displayProviderLabel,
           variant: "secondary" as const,
           detail: t("modelSelector.providerDetail", {
             defaultValue: "Provider that ships / runs this model.",
@@ -157,6 +183,29 @@ const ModelCard: React.FC<ModelCardProps> = ({
         modelName: displayName,
         defaultValue: `Download ${displayName}`,
       }),
+    };
+  } else if (
+    status === "downloading" &&
+    onCancel
+  ) {
+    trailing = {
+      kind: "custom",
+      node: (
+        <Button
+          variant="danger-ghost"
+          size="icon-sm"
+          title={t("modelSelector.cancelDownload")}
+          aria-label={t("modelSelector.cancelDownload")}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel(model.id);
+          }}
+          className="shrink-0"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      ),
     };
   } else if (
     onDelete &&
@@ -322,11 +371,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
     ) : model.supports_translation ? (
       <Languages className="h-3.5 w-3.5" />
     ) : null;
-
-  const resolvedProviderId = resolveModelProviderId(
-    `${displayName} ${model.id}`,
-    providerId,
-  );
 
   return (
     <HubModelCard

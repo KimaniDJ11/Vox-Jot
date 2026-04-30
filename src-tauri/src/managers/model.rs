@@ -39,7 +39,7 @@ pub fn engine_uses_remote_runtime(engine_type: &EngineType) -> bool {
 }
 
 pub fn model_is_available(model: &ModelInfo) -> bool {
-    model.is_downloaded || engine_uses_remote_runtime(&model.engine_type)
+    model.is_downloaded || (engine_uses_remote_runtime(&model.engine_type) && model.url.is_none())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -69,6 +69,17 @@ pub struct DownloadProgress {
     pub downloaded: u64,
     pub total: u64,
     pub percentage: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfSibling {
+    rfilename: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct HfModelInfo {
+    #[serde(default)]
+    siblings: Vec<HfSibling>,
 }
 
 pub struct ModelManager {
@@ -135,9 +146,27 @@ impl ModelManager {
         )
     }
 
+    fn hf_snapshot_url(repo_id: &str) -> String {
+        format!("hf-snapshot://{repo_id}")
+    }
+
+    fn parse_hf_snapshot_url(url: &str) -> Option<&str> {
+        url.strip_prefix("hf-snapshot://")
+            .map(str::trim)
+            .filter(|repo_id| repo_id.contains('/') && !repo_id.is_empty())
+    }
+
     fn is_tar_gz_url(url: &str) -> bool {
         let path = url.split('?').next().unwrap_or(url);
         path.ends_with(".tar.gz")
+    }
+
+    fn hf_snapshot_file_is_needed(name: &str) -> bool {
+        !name.starts_with('.')
+            && !name.contains("/.cache/")
+            && !name.starts_with(".cache/")
+            && !name.contains("/.git/")
+            && !name.starts_with(".git/")
     }
 
     fn collect_files_recursive(root: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
@@ -504,6 +533,32 @@ impl ModelManager {
         );
 
         available_models.insert(
+            "whisper-medium-q4_1".to_string(),
+            ModelInfo {
+                id: "whisper-medium-q4_1".to_string(),
+                name: "Whisper Medium Q4_1".to_string(),
+                description: "Preserved local Whisper Medium Q4_1 model, mirrored to Hugging Face for recovery.".to_string(),
+                filename: "whisper-medium-q4_1.bin".to_string(),
+                url: Some(
+                    "https://huggingface.co/IrieDinamik/vox-jot-stt-whisper-medium-q4_1/resolve/main/whisper-medium-q4_1.bin"
+                        .to_string(),
+                ),
+                size_mb: 469,
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.74,
+                speed_score: 0.68,
+                supports_translation: true,
+                is_recommended: false,
+                supported_languages: whisper_languages.clone(),
+                is_custom: false,
+            },
+        );
+
+        available_models.insert(
             "turbo".to_string(),
             ModelInfo {
                 id: "turbo".to_string(),
@@ -854,13 +909,15 @@ impl ModelManager {
                     description:
                         "MLX-accelerated Whisper served through the shared mlx-audio sidecar."
                             .to_string(),
-                    filename: "mlx-whisper-large-v3-turbo".to_string(),
-                    url: None,
-                    size_mb: 0,
+                    filename: "MLX/mlx-community/whisper-large-v3-turbo-asr-fp16".to_string(),
+                    url: Some(Self::hf_snapshot_url(
+                        "mlx-community/whisper-large-v3-turbo-asr-fp16",
+                    )),
+                    size_mb: 3200,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
-                    is_directory: false,
+                    is_directory: true,
                     engine_type: EngineType::MlxAudioStt,
                     accuracy_score: 0.90,
                     speed_score: 0.80,
@@ -877,13 +934,13 @@ impl ModelManager {
                     id: "mlx-distil-whisper-large-v3".to_string(),
                     name: "Distil-Whisper Large V3 (MLX)".to_string(),
                     description: "Fast MLX Distil-Whisper transcription via mlx-audio.".to_string(),
-                    filename: "mlx-distil-whisper-large-v3".to_string(),
-                    url: None,
-                    size_mb: 0,
+                    filename: "MLX/distil-whisper/distil-large-v3".to_string(),
+                    url: Some(Self::hf_snapshot_url("distil-whisper/distil-large-v3")),
+                    size_mb: 3000,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
-                    is_directory: false,
+                    is_directory: true,
                     engine_type: EngineType::MlxAudioStt,
                     accuracy_score: 0.84,
                     speed_score: 0.92,
@@ -902,13 +959,13 @@ impl ModelManager {
                     description:
                         "Qwen3 ASR running inside mlx-audio for multilingual Apple Silicon STT."
                             .to_string(),
-                    filename: "mlx-qwen3-asr".to_string(),
-                    url: None,
-                    size_mb: 0,
+                    filename: "MLX/mlx-community/Qwen3-ASR-1.7B-8bit".to_string(),
+                    url: Some(Self::hf_snapshot_url("mlx-community/Qwen3-ASR-1.7B-8bit")),
+                    size_mb: 2000,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
-                    is_directory: false,
+                    is_directory: true,
                     engine_type: EngineType::MlxAudioStt,
                     accuracy_score: 0.90,
                     speed_score: 0.78,
@@ -932,13 +989,13 @@ impl ModelManager {
                     name: "Parakeet V3 (MLX)".to_string(),
                     description: "MLX Parakeet served over the shared mlx-audio transcription API."
                         .to_string(),
-                    filename: "mlx-parakeet-v3".to_string(),
-                    url: None,
-                    size_mb: 0,
+                    filename: "MLX/mlx-community/parakeet-tdt-0.6b-v3".to_string(),
+                    url: Some(Self::hf_snapshot_url("mlx-community/parakeet-tdt-0.6b-v3")),
+                    size_mb: 1300,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
-                    is_directory: false,
+                    is_directory: true,
                     engine_type: EngineType::MlxAudioStt,
                     accuracy_score: 0.88,
                     speed_score: 0.82,
@@ -984,8 +1041,10 @@ impl ModelManager {
                         "Local Voxtral Mini 3B transcription from the shared mlx-audio runtime."
                             .to_string(),
                     filename: "MLX/mlx-community/Voxtral-Mini-3B-2507-bf16".to_string(),
-                    url: None,
-                    size_mb: 0,
+                    url: Some(Self::hf_snapshot_url(
+                        "mlx-community/Voxtral-Mini-3B-2507-bf16",
+                    )),
+                    size_mb: 6000,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
@@ -1019,8 +1078,10 @@ impl ModelManager {
                             .to_string(),
                     filename: "MLX/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
                         .to_string(),
-                    url: None,
-                    size_mb: 0,
+                    url: Some(Self::hf_snapshot_url(
+                        "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+                    )),
+                    size_mb: 3000,
                     is_downloaded: false,
                     is_downloading: false,
                     partial_size: 0,
@@ -1374,6 +1435,168 @@ impl ModelManager {
         Ok(())
     }
 
+    async fn download_hf_snapshot_model(
+        &self,
+        model_id: &str,
+        model_info: &ModelInfo,
+        repo_id: &str,
+    ) -> Result<()> {
+        struct SnapshotDownloadGuard<'a> {
+            manager: &'a ModelManager,
+            model_id: String,
+            staging_path: PathBuf,
+            active: bool,
+        }
+
+        impl SnapshotDownloadGuard<'_> {
+            fn disarm(&mut self) {
+                self.active = false;
+            }
+        }
+
+        impl Drop for SnapshotDownloadGuard<'_> {
+            fn drop(&mut self) {
+                if !self.active {
+                    return;
+                }
+
+                self.manager.set_model_downloading(&self.model_id, false);
+                self.manager.clear_download_cancel_flag(&self.model_id);
+                let _ = fs::remove_dir_all(&self.staging_path);
+            }
+        }
+
+        let model_path = self.models_dir.join(&model_info.filename);
+        if model_path.exists() {
+            self.update_download_status()?;
+            return Ok(());
+        }
+
+        let parent = model_path
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Invalid model path: {}", model_path.display()))?;
+        fs::create_dir_all(parent)?;
+        let staging_path = parent.join(format!(".staging-{}", model_info.id));
+        if staging_path.exists() {
+            fs::remove_dir_all(&staging_path)?;
+        }
+        fs::create_dir_all(&staging_path)?;
+
+        {
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if let Some(model) = models.get_mut(model_id) {
+                model.is_downloading = true;
+            }
+        }
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        {
+            let mut flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
+            flags.insert(model_id.to_string(), Arc::clone(&cancel_flag));
+        }
+        let mut download_guard = SnapshotDownloadGuard {
+            manager: self,
+            model_id: model_id.to_string(),
+            staging_path: staging_path.clone(),
+            active: true,
+        };
+
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(900))
+            .build()?;
+        let api_url = format!("https://huggingface.co/api/models/{repo_id}");
+        let repo_info: HfModelInfo = client
+            .get(&api_url)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        let files = repo_info
+            .siblings
+            .into_iter()
+            .map(|sibling| sibling.rfilename)
+            .filter(|name| Self::hf_snapshot_file_is_needed(name))
+            .collect::<Vec<_>>();
+
+        if files.is_empty() {
+            let _ = fs::remove_dir_all(&staging_path);
+            self.set_model_downloading(model_id, false);
+            return Err(anyhow::anyhow!("No downloadable files found in {repo_id}"));
+        }
+
+        let total = files.len() as u64;
+        for (idx, rel_path) in files.iter().enumerate() {
+            if cancel_flag.load(Ordering::Relaxed) {
+                info!("Hugging Face snapshot download cancelled for: {}", model_id);
+                return Ok(());
+            }
+
+            let encoded_path = rel_path
+                .split('/')
+                .map(|segment| segment.replace(' ', "%20"))
+                .collect::<Vec<_>>()
+                .join("/");
+            let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded_path}");
+            let target = staging_path.join(rel_path);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let response = client.get(&url).send().await?.error_for_status()?;
+            let mut output = File::create(&target)?;
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                if cancel_flag.load(Ordering::Relaxed) {
+                    drop(output);
+                    let _ = fs::remove_file(&target);
+                    info!("Hugging Face snapshot download cancelled for: {}", model_id);
+                    return Ok(());
+                }
+                output.write_all(&chunk?)?;
+            }
+            output.flush()?;
+
+            let downloaded = (idx + 1) as u64;
+            let progress = DownloadProgress {
+                model_id: model_id.to_string(),
+                downloaded,
+                total,
+                percentage: (downloaded as f64 / total as f64) * 100.0,
+            };
+            let _ = self.app_handle.emit("model-download-progress", &progress);
+        }
+
+        if model_path.exists() {
+            fs::remove_dir_all(&model_path)?;
+        }
+        fs::rename(&staging_path, &model_path)?;
+
+        {
+            let mut models = self
+                .available_models
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if let Some(model) = models.get_mut(model_id) {
+                model.is_downloading = false;
+                model.is_downloaded = true;
+                model.partial_size = 0;
+            }
+        }
+
+        let _ = self.app_handle.emit("model-download-complete", model_id);
+        info!(
+            "Successfully downloaded Hugging Face snapshot {} to {:?}",
+            repo_id, model_path
+        );
+        self.clear_download_cancel_flag(model_id);
+        download_guard.disarm();
+        Ok(())
+    }
+
     pub async fn download_model(&self, model_id: &str) -> Result<()> {
         struct DownloadStateGuard<'a> {
             manager: &'a ModelManager,
@@ -1419,7 +1642,15 @@ impl ModelManager {
 
         let url = model_info
             .url
+            .clone()
             .ok_or_else(|| anyhow::anyhow!("No download URL for model"))?;
+
+        if let Some(repo_id) = Self::parse_hf_snapshot_url(&url) {
+            return self
+                .download_hf_snapshot_model(model_id, &model_info, repo_id)
+                .await;
+        }
+
         let model_path = self.models_dir.join(&model_info.filename);
         let partial_path = self
             .models_dir

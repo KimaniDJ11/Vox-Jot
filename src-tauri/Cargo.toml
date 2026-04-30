@@ -34,7 +34,6 @@ serde = { version = "1", features = ["derive"] }
 [dependencies]
 once_cell = "1"
 tauri = { version = "2.10.3", features = [
-  "protocol-asset",
   "macos-private-api",
   "tray-icon",
   'image-png',

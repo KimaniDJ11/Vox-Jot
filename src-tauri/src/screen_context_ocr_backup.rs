@@ -397,7 +397,7 @@ pub(crate) fn parse_tesseract_tsv(tsv: &str, w: u32, h: u32) -> Vec<NativeScreen
         let height_px: i32 = cols[height_i].trim().parse().unwrap_or(0);
 
         let key = (block, par, line_num);
-        let entry = lines.entry(key).or_insert_with(LineAggregate::default);
+        let entry = lines.entry(key).or_default();
         if !entry.seen {
             entry.min_x = left;
             entry.min_y = top;

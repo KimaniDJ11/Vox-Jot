@@ -24,7 +24,6 @@ import {
   Sparkles,
   Type,
 } from "lucide-react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
@@ -34,7 +33,6 @@ import {
 } from "@/bindings";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
-import { useOsType } from "@/hooks/useOsType";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
 
 const getHistoryDateKey = (timestamp: number): string => {
@@ -78,7 +76,6 @@ const HISTORY_PAGE_SIZE = 50;
 
 export const HistorySettings: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const osType = useOsType();
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -218,14 +215,10 @@ export const HistorySettings: React.FC = () => {
       try {
         const result = await commands.getAudioFilePath(fileName);
         if (result.status === "ok") {
-          if (osType === "linux") {
-            const fileData = await readFile(result.data);
-            const blob = new Blob([fileData], { type: "audio/wav" });
+          const fileData = await readFile(result.data);
+          const blob = new Blob([fileData], { type: "audio/wav" });
 
-            return URL.createObjectURL(blob);
-          }
-
-          return convertFileSrc(result.data, "asset");
+          return URL.createObjectURL(blob);
         }
         return null;
       } catch (error) {
@@ -233,7 +226,7 @@ export const HistorySettings: React.FC = () => {
         return null;
       }
     },
-    [osType],
+    [],
   );
 
   const deleteAudioEntry = async (id: number) => {

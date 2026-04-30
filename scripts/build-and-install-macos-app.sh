@@ -115,7 +115,7 @@ fi
 echo "Building signed macOS bundle..."
 export CARGO_TARGET_DIR="${TARGET_DIR}"
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
-bun run tauri build --config "${TAURI_CONFIG_OVERRIDE}"
+bun run tauri build --bundles app --config "${TAURI_CONFIG_OVERRIDE}"
 
 if [[ ! -d "${BUILT_APP_PATH}" ]]; then
   echo "Built app bundle not found at ${BUILT_APP_PATH}" >&2

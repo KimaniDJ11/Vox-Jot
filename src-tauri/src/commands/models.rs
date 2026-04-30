@@ -262,44 +262,49 @@ fn stt_provider_meta(
     match engine_type {
         EngineType::Whisper => (
             "stt_whisper",
-            "Whisper",
-            "Vox Jot curated assets",
-            "Whisper engine",
+            "OpenAI Whisper",
+            "OpenAI Whisper / whisper.cpp assets",
+            "Whisper.cpp runtime",
         ),
         EngineType::Parakeet => (
             "stt_parakeet",
-            "Parakeet",
-            "Vox Jot curated assets",
-            "Parakeet engine",
+            "NVIDIA Parakeet",
+            "NVIDIA NeMo / Vox Jot assets",
+            "Parakeet runtime",
         ),
         EngineType::Moonshine => (
             "stt_moonshine",
-            "Moonshine",
-            "Vox Jot curated assets",
+            "Useful Sensors Moonshine",
+            "Useful Sensors / Vox Jot assets",
             "Moonshine engine",
         ),
         EngineType::MoonshineStreaming => (
             "stt_moonshine_streaming",
-            "Moonshine Streaming",
-            "Vox Jot curated assets",
+            "Useful Sensors Moonshine Streaming",
+            "Useful Sensors / Vox Jot assets",
             "Moonshine streaming engine",
         ),
         EngineType::SenseVoice => (
             "stt_sensevoice",
-            "SenseVoice",
-            "Vox Jot curated assets",
+            "FunAudioLLM SenseVoice",
+            "FunAudioLLM / Vox Jot assets",
             "SenseVoice engine",
         ),
         EngineType::GigaAM => (
             "stt_gigaam",
-            "GigaAM",
-            "Vox Jot curated assets",
+            "Sber GigaAM",
+            "Sber / Vox Jot assets",
             "GigaAM engine",
         ),
-        EngineType::QwenAudio => ("stt_qwen", "Qwen", "Alibaba Cloud", "Qwen Audio Engine"),
+        EngineType::QwenAudio => (
+            "stt_qwen",
+            "Alibaba Qwen Audio",
+            "Alibaba Cloud / Qwen",
+            "Qwen Audio engine",
+        ),
         EngineType::MlxAudioStt => (
             "stt_mlx_audio",
-            "MLX Audio",
+            "MLX Audio Runtime",
             "mlx-audio",
             "Shared mlx-audio sidecar",
         ),
@@ -310,6 +315,20 @@ fn stt_provider_meta(
             "Apple SpeechAnalyzer",
         ),
     }
+}
+
+fn stt_catalog_provider_id(model: &ModelInfo, runtime_provider_id: &'static str) -> &'static str {
+    if runtime_provider_id == "stt_mlx_audio" {
+        let title = format!("{} {}", model.name, model.id).to_lowercase();
+        if title.contains("qwen3-asr")
+            || title.contains("qwen3 asr")
+            || title.contains("qwen3_asr")
+        {
+            return "stt_qwen";
+        }
+    }
+
+    runtime_provider_id
 }
 
 fn stt_selection_provider_id(
@@ -404,11 +423,18 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
         .map(|model| {
             let (provider_id, _, source_label, runtime_label) =
                 stt_provider_meta(&model.engine_type);
+            let catalog_provider_id = stt_catalog_provider_id(&model, provider_id);
+            let catalog_runtime_label =
+                if provider_id == "stt_mlx_audio" && catalog_provider_id == "stt_qwen" {
+                    "Alibaba Qwen"
+                } else {
+                    runtime_label
+                };
             let available = model_is_available(&model);
             let downloadable = model.url.is_some();
             CatalogModelDescriptor {
                 id: model.id.clone(),
-                provider_id: provider_id.to_string(),
+                provider_id: catalog_provider_id.to_string(),
                 domain: ModelDomain::Stt,
                 source_kind: CatalogSourceKind::Builtin,
                 label: model.name.clone(),
@@ -424,7 +450,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 source_label: source_label.to_string(),
                 runtime: RuntimeRequirement {
                     id: provider_id.to_string(),
-                    label: runtime_label.to_string(),
+                    label: catalog_runtime_label.to_string(),
                     engine_family: provider_id.trim_start_matches("stt_").to_string(),
                     auto_routed: true,
                 },
@@ -535,7 +561,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
             domain: ModelDomain::Stt,
             source_kind: CatalogSourceKind::Builtin,
-            label: "HF STT Verified".to_string(),
+            label: "Hugging Face STT Verified".to_string(),
             description: "Auto-synced STT aliases from your verified Hugging Face collection, mapped to installable local Whisper assets.".to_string(),
             source_label: "Hugging Face collection".to_string(),
             runtime: RuntimeRequirement {
@@ -588,7 +614,7 @@ fn augment_tts_catalog_with_hf_verified(
             id: TTS_PROVIDER_LOCAL_SIDECAR_API_ID.to_string(),
             domain: ModelDomain::Tts,
             source_kind: CatalogSourceKind::Runtime,
-            label: "HF TTS Verified".to_string(),
+            label: "Hugging Face TTS Verified".to_string(),
             description: "Auto-synced from your verified Hugging Face TTS collection. Tap Download on a card to pull the repo into Vox Jot's local TTS store.".to_string(),
             source_label: "Hugging Face collection".to_string(),
             runtime: RuntimeRequirement {
@@ -777,13 +803,10 @@ pub async fn download_hf_tts_repo_impl(
         return Err(format!("Invalid HF repo id '{}'", repo_id));
     }
 
-    let install_dir = tts_hf_install_dir(app, repo_id).ok_or_else(|| {
-        "Failed to resolve TTS HF install directory.".to_string()
-    })?;
-    let staging_dir = install_dir.with_file_name(format!(
-        ".staging-{}",
-        sanitize_hf_repo_id(repo_id)
-    ));
+    let install_dir = tts_hf_install_dir(app, repo_id)
+        .ok_or_else(|| "Failed to resolve TTS HF install directory.".to_string())?;
+    let staging_dir =
+        install_dir.with_file_name(format!(".staging-{}", sanitize_hf_repo_id(repo_id)));
 
     if staging_dir.exists() {
         let _ = tokio_fs::remove_dir_all(&staging_dir).await;
@@ -830,7 +853,15 @@ pub async fn download_hf_tts_repo_impl(
             if let Err(err) = tokio_fs::create_dir_all(parent).await {
                 let _ = tokio_fs::remove_dir_all(&staging_dir).await;
                 let msg = format!("Failed to create {}: {err}", parent.display());
-                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                emit_tts_download_progress(
+                    app,
+                    repo_id,
+                    "failed",
+                    Some(rel),
+                    None,
+                    None,
+                    Some(&msg),
+                );
                 return Err(msg);
             }
         }
@@ -840,7 +871,15 @@ pub async fn download_hf_tts_repo_impl(
             Err(err) => {
                 let _ = tokio_fs::remove_dir_all(&staging_dir).await;
                 let msg = format!("Failed to fetch {rel}: {err}");
-                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                emit_tts_download_progress(
+                    app,
+                    repo_id,
+                    "failed",
+                    Some(rel),
+                    None,
+                    None,
+                    Some(&msg),
+                );
                 return Err(msg);
             }
         };
@@ -856,7 +895,15 @@ pub async fn download_hf_tts_repo_impl(
             Err(err) => {
                 let _ = tokio_fs::remove_dir_all(&staging_dir).await;
                 let msg = format!("Failed to open {}: {err}", target.display());
-                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                emit_tts_download_progress(
+                    app,
+                    repo_id,
+                    "failed",
+                    Some(rel),
+                    None,
+                    None,
+                    Some(&msg),
+                );
                 return Err(msg);
             }
         };
@@ -869,14 +916,30 @@ pub async fn download_hf_tts_repo_impl(
                 Err(err) => {
                     let _ = tokio_fs::remove_dir_all(&staging_dir).await;
                     let msg = format!("Stream failed for {rel}: {err}");
-                    emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                    emit_tts_download_progress(
+                        app,
+                        repo_id,
+                        "failed",
+                        Some(rel),
+                        None,
+                        None,
+                        Some(&msg),
+                    );
                     return Err(msg);
                 }
             };
             if let Err(err) = file.write_all(&chunk).await {
                 let _ = tokio_fs::remove_dir_all(&staging_dir).await;
                 let msg = format!("Failed to write {rel}: {err}");
-                emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+                emit_tts_download_progress(
+                    app,
+                    repo_id,
+                    "failed",
+                    Some(rel),
+                    None,
+                    None,
+                    Some(&msg),
+                );
                 return Err(msg);
             }
         }
@@ -924,26 +987,19 @@ pub async fn download_hf_tts_repo_impl(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn download_tts_hf_model(
-    app_handle: AppHandle,
-    repo_id: String,
-) -> Result<(), String> {
+pub async fn download_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
     download_hf_tts_repo_impl(&app_handle, &repo_id).await?;
     Ok(())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn delete_tts_hf_model(
-    app_handle: AppHandle,
-    repo_id: String,
-) -> Result<(), String> {
+pub async fn delete_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
     let dir = tts_hf_install_dir(&app_handle, &repo_id)
         .ok_or_else(|| "Failed to resolve TTS HF install dir.".to_string())?;
     if dir.exists() {
-        std::fs::remove_dir_all(&dir).map_err(|err| {
-            format!("Failed to remove '{}': {err}", dir.display())
-        })?;
+        std::fs::remove_dir_all(&dir)
+            .map_err(|err| format!("Failed to remove '{}': {err}", dir.display()))?;
     }
     Ok(())
 }

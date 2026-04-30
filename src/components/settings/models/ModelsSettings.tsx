@@ -18,6 +18,7 @@ import {
   type ModelPlatformOverview,
 } from "@/lib/modelPlatform";
 import {
+  providerDisplayName,
   ProviderIcon,
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
@@ -284,6 +285,13 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   const currentModelCatalog = currentModelInfo
     ? (sttCatalogById.get(currentModelInfo.id) ?? null)
     : null;
+  const currentModelProviderId =
+    currentModelInfo && currentModelCatalog
+      ? resolveModelProviderId(
+          `${currentModelInfo.name} ${currentModelInfo.id}`,
+          currentModelCatalog.provider_id,
+        )
+      : null;
 
   const filterAction = (
     <div className="flex items-center gap-2">
@@ -414,10 +422,9 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {currentModelCatalog ? (
               <ProviderIcon
-                providerId={resolveModelProviderId(
-                  `${currentModelInfo.name} ${currentModelInfo.id}`,
-                  currentModelCatalog.provider_id,
-                )}
+                providerId={
+                  currentModelProviderId ?? currentModelCatalog.provider_id
+                }
                 size="md"
               />
             ) : null}
@@ -429,9 +436,9 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 variant="secondary"
                 className="bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)]"
               >
-                {currentModelCatalog.provider_id
-                  .replace(/^stt_/, "")
-                  .replace(/_/g, " ")}
+                {providerDisplayName(
+                  currentModelProviderId ?? currentModelCatalog.provider_id,
+                )}
               </Badge>
             ) : null}
             {hasActiveFilter ? (
@@ -486,6 +493,20 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               <div className="flex flex-col gap-3">
                 {downloadedModels.map((model: ModelInfo) => {
                   const catalog = sttCatalogById.get(model.id);
+                  const resolvedProviderId = resolveModelProviderId(
+                    `${model.name} ${model.id}`,
+                    catalog?.provider_id,
+                  );
+                  const rawProviderLabel = platformOverview?.stt.providers.find(
+                    (provider) => provider.id === catalog?.provider_id,
+                  )?.label;
+                  const providerLabel =
+                    rawProviderLabel &&
+                    !rawProviderLabel.toLowerCase().includes("runtime")
+                      ? rawProviderLabel
+                      : resolvedProviderId !== "generic"
+                        ? providerDisplayName(resolvedProviderId)
+                        : rawProviderLabel;
                   return (
                     <ModelCard
                       key={model.id}
@@ -498,12 +519,8 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       downloadProgress={getDownloadProgress(model.id)}
                       downloadSpeed={getDownloadSpeed(model.id)}
                       showRecommended={false}
-                      providerId={catalog?.provider_id}
-                      providerLabel={
-                        platformOverview?.stt.providers.find(
-                          (provider) => provider.id === catalog?.provider_id,
-                        )?.label
-                      }
+                      providerId={resolvedProviderId}
+                      providerLabel={providerLabel}
                       runtimeLabel={catalog?.runtime.label}
                     />
                   );
@@ -542,6 +559,20 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
               <div className="flex flex-col gap-3">
                 {availableModels.map((model: ModelInfo) => {
                   const catalog = sttCatalogById.get(model.id);
+                  const resolvedProviderId = resolveModelProviderId(
+                    `${model.name} ${model.id}`,
+                    catalog?.provider_id,
+                  );
+                  const rawProviderLabel = platformOverview?.stt.providers.find(
+                    (provider) => provider.id === catalog?.provider_id,
+                  )?.label;
+                  const providerLabel =
+                    rawProviderLabel &&
+                    !rawProviderLabel.toLowerCase().includes("runtime")
+                      ? rawProviderLabel
+                      : resolvedProviderId !== "generic"
+                        ? providerDisplayName(resolvedProviderId)
+                        : rawProviderLabel;
                   return (
                     <ModelCard
                       key={model.id}
@@ -554,12 +585,8 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       downloadProgress={getDownloadProgress(model.id)}
                       downloadSpeed={getDownloadSpeed(model.id)}
                       showRecommended={false}
-                      providerId={catalog?.provider_id}
-                      providerLabel={
-                        platformOverview?.stt.providers.find(
-                          (provider) => provider.id === catalog?.provider_id,
-                        )?.label
-                      }
+                      providerId={resolvedProviderId}
+                      providerLabel={providerLabel}
                       runtimeLabel={catalog?.runtime.label}
                     />
                   );

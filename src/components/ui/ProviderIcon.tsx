@@ -32,7 +32,7 @@ function OpenAIMark({ size, color }: { size: number; color: string }) {
 }
 
 function AppleMark({ size, color }: { size: number; color: string }) {
-  const s = size * 0.6;
+  const s = size * 0.78;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
       <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.81-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -141,6 +141,348 @@ function DeepSeekMark({ size, color }: { size: number; color: string }) {
   );
 }
 
+function QwenMark({ size }: { size: number; color: string }) {
+  const s = size * 0.82;
+  return (
+    <svg width={s} height={s} viewBox="0 0 200 200" aria-hidden>
+      <path
+        d="M174.82 108.75 155.38 75l10.26-17.25a4.65 4.65 0 0 0 0-4.66l-10.26-17.25a3.01 3.01 0 0 0-2.6-1.51h-37.9l-8.74-15.3a3.01 3.01 0 0 0-2.6-1.51H83.3a3.01 3.01 0 0 0-2.6 1.51L61.26 52.77H41.02a3.01 3.01 0 0 0-2.6 1.51L28.16 71.53a4.65 4.65 0 0 0 0 4.66l17.36 31.31-8.74 15.3a4.65 4.65 0 0 0 0 4.66l10.26 17.25a3.01 3.01 0 0 0 2.6 1.51h37.9l8.74 15.3a3.01 3.01 0 0 0 2.6 1.51h20.24a3.01 3.01 0 0 0 2.6-1.51l19.44-33.74h17.36a3.01 3.01 0 0 0 2.6-1.51l10.26-17.25a4.65 4.65 0 0 0 0-4.66l3.44 4.39Z"
+        fill="#665CEE"
+      />
+      <path
+        d="M119.12 163.03H98.88l-11.34-18.32h-37.9l11.62-18.32H80.7L38.42 55.29h22.84L83.3 19.03l10.26 18.32L83.3 55.29h78.28l-10.26 17.25 19.44 33.74h-19.44l-10.16-17.94-39.98 74.69h17.94Z"
+        fill="#FFFFFF"
+      />
+      <path d="M127.86 79.83H76.14l25.04 42.28 26.68-42.28Z" fill="#665CEE" />
+    </svg>
+  );
+}
+
+function UsefulSensorsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.66;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 6.8v5.4c0 3.8 2.9 6.8 7 6.8s7-3 7-6.8V6.8"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.3 5.4v6.7c0 2.1 1.5 3.6 3.7 3.6s3.7-1.5 3.7-3.6V5.4"
+        fill="none"
+        stroke="#A7F3D0"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <circle cx={12} cy={4.5} r={2.2} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function FunAudioMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 15.5c2.2-6.8 5.6-9.8 10.1-9 4.2.8 5.3 4.5 5.9 8.3"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.2 16.4c2.7 1.7 5.6 2.1 8.6 1.1 2.3-.8 4-2.2 5.2-4.4"
+        fill="none"
+        stroke="#FFE2C6"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <circle cx={15.2} cy={10.3} r={2.1} fill="#FFFFFF" />
+      <circle cx={15.2} cy={10.3} r={0.9} fill="#FF6A00" />
+    </svg>
+  );
+}
+
+function SberMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={12} cy={12} r={9} fill="#FFFFFF" />
+      <path
+        d="M7.2 11.8 10.6 15 17.5 8"
+        fill="none"
+        stroke="#21A038"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 10a8.2 8.2 0 0 1 13-5"
+        fill="none"
+        stroke="#F7C948"
+        strokeWidth={2.1}
+        strokeLinecap="round"
+      />
+      <path
+        d="M20.1 9.7a8.2 8.2 0 0 1-2.6 8.6"
+        fill="none"
+        stroke="#21A038"
+        strokeWidth={2.1}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function LiquidAIMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3c3.4 3.7 5.1 6.6 5.1 9.2a5.1 5.1 0 0 1-10.2 0C6.9 9.6 8.6 6.7 12 3Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M8.8 13.6c1.6 1 3.3 1.1 5 .2 1-.5 1.8-1.2 2.3-2.2"
+        fill="none"
+        stroke="#00A7A7"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function TencentMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M4 4h16v4.1h-5.8V20H9.8V8.1H4V4Z" fill="#FFFFFF" />
+      <path d="M9.8 8.1h4.4v3.5H9.8V8.1Z" fill="#2563EB" opacity={0.95} />
+    </svg>
+  );
+}
+
+function SystemMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 8.5h8.5v10H4v-10Zm10.5-3H20v13h-5.5v-13Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.5 12h3.4M16.5 9h1.5M16.5 12h1.5M16.5 15h1.5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SherpaMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M3 18 9.5 6l3.2 5.7L15 8l6 10H3Z" fill="#FFFFFF" />
+      <path d="M8.5 12.4 9.5 6l3.2 5.7 1.4-2.2 1.4 8.5H3l5.5-5.6Z" fill="#BFDBFE" />
+    </svg>
+  );
+}
+
+function HumeMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 4 20 9v6l-8 5-8-5V9l8-5Z" fill="#FFFFFF" opacity={0.95} />
+      <path
+        d="M7.2 12c1.5-2.7 3.1-2.7 4.8 0s3.3 2.7 4.8 0"
+        fill="none"
+        stroke="#F43F5E"
+        strokeWidth={2.1}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MyShellMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 15.5c1.2-5.8 4.2-9 8-9s6.8 3.2 8 9H4Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M7 15.5c.8-3 2.6-4.7 5-4.7s4.2 1.7 5 4.7M12 6.5v9"
+        fill="none"
+        stroke="#3B82F6"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ResembleMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 14c2.1-4.8 4.5-4.8 7.1 0s4.8 4.8 6.9 0"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M5 9.5c2.1 4.8 4.5 4.8 7.1 0s4.8-4.8 6.9 0"
+        fill="none"
+        stroke="#E9D5FF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function KokoroMark({ size }: { size: number; color: string }) {
+  const s = size * 0.66;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 20c-4.8-3.3-7.5-5.9-7.5-9.2A4.1 4.1 0 0 1 12 8.5a4.1 4.1 0 0 1 7.5 2.3c0 3.3-2.7 5.9-7.5 9.2Z"
+        fill="#111827"
+      />
+    </svg>
+  );
+}
+
+function CoquiMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M5 12.5c0-3.2 3.1-5.8 7-5.8s7 2.6 7 5.8-3.1 5.8-7 5.8-7-2.6-7-5.8Z" fill="#FFFFFF" />
+      <circle cx={8.3} cy={8} r={2.1} fill="#FFFFFF" />
+      <circle cx={15.7} cy={8} r={2.1} fill="#FFFFFF" />
+      <circle cx={8.3} cy={8} r={0.9} fill="#00C853" />
+      <circle cx={15.7} cy={8} r={0.9} fill="#00C853" />
+      <path d="M8.5 13.5c2.2 1.5 4.8 1.5 7 0" fill="none" stroke="#00C853" strokeWidth={1.7} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FishAudioMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M3.5 12c3.4-4.3 8.7-5.2 14-1.5L21 7.8v8.4l-3.5-2.7c-5.3 3.7-10.6 2.8-14-1.5Z" fill="#FFFFFF" />
+      <circle cx={8.2} cy={11.2} r={0.9} fill="#0EA5E9" />
+    </svg>
+  );
+}
+
+function NariMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M5 8.5h14v7H9.8L5 19V8.5Z" fill="#FFFFFF" />
+      <path d="M8.4 12h1.6m2 0h1.6m2 0h1.6" stroke="#2563EB" strokeWidth={1.7} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SesameMark({ size }: { size: number; color: string }) {
+  const s = size * 0.66;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <ellipse cx={9} cy={12} rx={4.2} ry={7.5} fill="#FFFFFF" transform="rotate(-18 9 12)" />
+      <ellipse cx={15} cy={12} rx={4.2} ry={7.5} fill="#FED7AA" transform="rotate(18 15 12)" />
+      <circle cx={12} cy={12} r={2.1} fill="#F97316" />
+    </svg>
+  );
+}
+
+function SparkAudioMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 2.8 14.6 9l6.6 3-6.6 3L12 21.2 9.4 15l-6.6-3 6.6-3L12 2.8Z" fill="#FFFFFF" />
+      <path d="M12 8.4 13.1 11l2.5 1-2.5 1L12 15.6 10.9 13l-2.5-1 2.5-1L12 8.4Z" fill="#DC2626" />
+    </svg>
+  );
+}
+
+function OuteTTSMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={12} cy={12} r={8} fill="#FFFFFF" />
+      <path d="M7.2 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0" fill="none" stroke="#14B8A6" strokeWidth={2.2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function InclusionAIMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" fill="#FFFFFF" />
+      <path d="M7.2 8.8 12 6.1l4.8 2.7v5.4L12 17l-4.8-2.8V8.8Z" fill="#0F172A" />
+      <circle cx={12} cy={12} r={2.2} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function KugelAudioMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={12} cy={12} r={8.5} fill="#FFFFFF" />
+      <path d="M5 12h14M12 3.5c2.2 2.4 3.2 5.2 3.2 8.5s-1 6.1-3.2 8.5M12 3.5C9.8 5.9 8.8 8.7 8.8 12s1 6.1 3.2 8.5" fill="none" stroke="#1F2937" strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function KyutaiMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 3.2 15 9l6 3-6 3-3 5.8L9 15l-6-3 6-3 3-5.8Z" fill="#FFFFFF" />
+      <circle cx={12} cy={12} r={2.4} fill="#FF4F8B" />
+    </svg>
+  );
+}
+
+function OpenBmbMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={6.8} cy={12} r={3.4} fill="#FFFFFF" />
+      <circle cx={17.2} cy={8} r={3.4} fill="#BFDBFE" />
+      <circle cx={17.2} cy={16} r={3.4} fill="#FFFFFF" />
+      <path d="M9.6 11 14.1 9.2M9.6 13 14.1 14.8" stroke="#2563EB" strokeWidth={1.7} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SunoMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={12} cy={12} r={6.2} fill="#FFFFFF" />
+      <path d="M4 12c2-2.2 4-2.2 6 0s4 2.2 6 0 3-2.2 4 0" fill="none" stroke="#7C3AED" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function HuggingFaceMark({ size }: { size: number; color: string }) {
   // Simplified hugging face emoji glyph (face with hands).
   const s = size * 0.66;
@@ -179,7 +521,7 @@ interface BrandConfig {
 const BRANDS: Record<string, BrandConfig> = {
   openai: { bg: "#000000", fg: "#FFFFFF", letter: "O", mark: OpenAIMark },
   nvidia: { bg: "#76B900", fg: "#FFFFFF", letter: "N", mark: NvidiaMark },
-  apple: { bg: "#000000", fg: "#FFFFFF", letter: "", mark: AppleMark },
+  apple: { bg: "#F5F5F7", fg: "#111827", letter: "", mark: AppleMark },
   mistral: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "M", mark: MistralMark },
   anthropic: {
     bg: "#D97757",
@@ -196,39 +538,84 @@ const BRANDS: Record<string, BrandConfig> = {
   },
   google: { bg: "#FFFFFF", fg: "#4285F4", letter: "G", mark: GoogleMark },
   deepseek: { bg: "#4D6BFE", fg: "#FFFFFF", letter: "D", mark: DeepSeekMark },
+  mediatek: { bg: "#E60012", fg: "#FFFFFF", letter: "MT" },
+  liquid_ai: {
+    bg: "#00A7A7",
+    fg: "#FFFFFF",
+    letter: "L",
+    mark: LiquidAIMark,
+  },
+  tencent: { bg: "#2563EB", fg: "#FFFFFF", letter: "T", mark: TencentMark },
   groq: { bg: "#F55036", fg: "#FFFFFF", letter: "G" },
   cerebras: { bg: "#0F172A", fg: "#FFFFFF", letter: "C" },
   openrouter: { bg: "#111827", fg: "#FFFFFF", letter: "OR" },
   zai: { bg: "#2563EB", fg: "#FFFFFF", letter: "Z" },
   lmstudio: { bg: "#0EA5A4", fg: "#FFFFFF", letter: "LM" },
-  qwen: { bg: "#6F42C1", fg: "#FFFFFF", letter: "Q" },
-  useful_sensors: { bg: "#6366F1", fg: "#FFFFFF", letter: "U" },
-  funaudillm: { bg: "#FF6A00", fg: "#FFFFFF", letter: "S" },
-  sber: { bg: "#21A038", fg: "#FFFFFF", letter: "G" },
+  qwen: { bg: "#FFFFFF", fg: "#6F42C1", letter: "Q", mark: QwenMark },
+  useful_sensors: {
+    bg: "#4F46E5",
+    fg: "#FFFFFF",
+    letter: "U",
+    mark: UsefulSensorsMark,
+  },
+  funaudillm: {
+    bg: "#FF6A00",
+    fg: "#FFFFFF",
+    letter: "F",
+    mark: FunAudioMark,
+  },
+  sber: { bg: "#21A038", fg: "#FFFFFF", letter: "G", mark: SberMark },
+  ai2: { bg: "#0F766E", fg: "#FFFFFF", letter: "A2" },
+  paddlepaddle: { bg: "#2563EB", fg: "#FFFFFF", letter: "P" },
+  lighton: { bg: "#111827", fg: "#FFFFFF", letter: "L" },
+  datalab: { bg: "#7C3AED", fg: "#FFFFFF", letter: "D" },
+  dots: { bg: "#111827", fg: "#FFFFFF", letter: "D" },
+  tesseract: { bg: "#4B5563", fg: "#FFFFFF", letter: "T" },
   huggingface: {
     bg: "#FFD21E",
     fg: "#1F2937",
     letter: "HF",
     mark: HuggingFaceMark,
   },
-  hume: { bg: "#F43F5E", fg: "#FFFFFF", letter: "H" },
+  hume: { bg: "#F43F5E", fg: "#FFFFFF", letter: "H", mark: HumeMark },
   system: {
     bg: "var(--text-subtle)",
     fg: "var(--inverse-text)",
     letter: "OS",
+    mark: SystemMark,
   },
-  sherpa: { bg: "#2563EB", fg: "#FFFFFF", letter: "S" },
-  myshell: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M" },
-  resemble: { bg: "#7C3AED", fg: "#FFFFFF", letter: "R" },
-  kokoro: { bg: "#EF4444", fg: "#FFFFFF", letter: "K" },
-  coqui: { bg: "#00C853", fg: "#FFFFFF", letter: "C" },
-  fish_audio: { bg: "#0EA5E9", fg: "#FFFFFF", letter: "F" },
-  nari: { bg: "#2563EB", fg: "#FFFFFF", letter: "N" },
-  sesame: { bg: "#F97316", fg: "#FFFFFF", letter: "S" },
-  sparkaudio: { bg: "#DC2626", fg: "#FFFFFF", letter: "S" },
-  outetts: { bg: "#14B8A6", fg: "#FFFFFF", letter: "O" },
-  ming: { bg: "#92400E", fg: "#FFFFFF", letter: "M" },
-  kugelaudio: { bg: "#1F2937", fg: "#FFFFFF", letter: "K" },
+  sherpa: { bg: "#2563EB", fg: "#FFFFFF", letter: "S", mark: SherpaMark },
+  myshell: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M", mark: MyShellMark },
+  resemble: { bg: "#7C3AED", fg: "#FFFFFF", letter: "R", mark: ResembleMark },
+  hexgrad: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
+  kokoro: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
+  coqui: { bg: "#00C853", fg: "#FFFFFF", letter: "C", mark: CoquiMark },
+  fish_audio: { bg: "#0EA5E9", fg: "#FFFFFF", letter: "F", mark: FishAudioMark },
+  nari: { bg: "#2563EB", fg: "#FFFFFF", letter: "N", mark: NariMark },
+  sesame: { bg: "#F97316", fg: "#FFFFFF", letter: "S", mark: SesameMark },
+  sparkaudio: {
+    bg: "#DC2626",
+    fg: "#FFFFFF",
+    letter: "S",
+    mark: SparkAudioMark,
+  },
+  outetts: { bg: "#14B8A6", fg: "#FFFFFF", letter: "O", mark: OuteTTSMark },
+  inclusion_ai: {
+    bg: "#0F172A",
+    fg: "#FFFFFF",
+    letter: "IA",
+    mark: InclusionAIMark,
+  },
+  ming: { bg: "#0F172A", fg: "#FFFFFF", letter: "IA", mark: InclusionAIMark },
+  kugelaudio: {
+    bg: "#1F2937",
+    fg: "#FFFFFF",
+    letter: "K",
+    mark: KugelAudioMark,
+  },
+  kyutai: { bg: "#FF4F8B", fg: "#FFFFFF", letter: "K", mark: KyutaiMark },
+  openbmb: { bg: "#2563EB", fg: "#FFFFFF", letter: "B", mark: OpenBmbMark },
+  suno: { bg: "#7C3AED", fg: "#FFFFFF", letter: "S", mark: SunoMark },
   ollama: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "O" },
   custom: { bg: "var(--accent-2)", fg: "var(--inverse-text)", letter: "C" },
   generic: { bg: "var(--muted)", fg: "var(--inverse-text)", letter: "?" },
@@ -245,9 +632,23 @@ const PROVIDER_BRAND: Record<string, string> = {
   stt_sensevoice: "funaudillm",
   stt_gigaam: "sber",
   stt_qwen: "qwen",
+  apple: "apple",
+  qwen: "qwen",
   stt_mlx_audio: "apple",
   stt_apple_speech: "apple",
   stt_hf_verified: "huggingface",
+  nvidia: "nvidia",
+  useful_sensors: "useful_sensors",
+  funaudillm: "funaudillm",
+  sber: "sber",
+  mediatek: "mediatek",
+  paddlepaddle: "paddlepaddle",
+  lighton: "lighton",
+  datalab: "datalab",
+  dots: "dots",
+  allen_ai: "ai2",
+  ai2: "ai2",
+  tesseract: "tesseract",
   // TTS builtin providers
   system_builtin: "system",
   system_tts: "system",
@@ -270,14 +671,16 @@ const PROVIDER_BRAND: Record<string, string> = {
   mlx_csm: "sesame",
   mlx_spark: "sparkaudio",
   mlx_oute: "outetts",
-  mlx_ming_omni: "ming",
+  mlx_ming_omni: "inclusion_ai",
   mlx_kugel: "kugelaudio",
-  mlx_bark: "huggingface",
+  mlx_bark: "suno",
   mlx_fish_audio: "fish_audio",
-  mlx_lfm_audio: "huggingface",
-  mlx_pocket_tts: "huggingface",
-  mlx_voxcpm: "huggingface",
+  mlx_lfm_audio: "liquid_ai",
+  mlx_pocket_tts: "kyutai",
+  mlx_voxcpm: "openbmb",
   mlx_voxtral_tts: "mistral",
+  lfm_audio_gguf: "liquid_ai",
+  vibevoice: "microsoft",
   // LLM providers
   ollama: "ollama",
   apple_intelligence: "apple",
@@ -295,6 +698,10 @@ const PROVIDER_BRAND: Record<string, string> = {
   microsoft: "microsoft",
   google: "google",
   deepseek: "deepseek",
+  liquid: "liquid_ai",
+  liquid_ai: "liquid_ai",
+  tencent: "tencent",
+  hunyuan: "tencent",
   gemma: "google",
   gemini: "google",
   llama: "meta",
@@ -333,7 +740,18 @@ const RUNTIME_HOST_IDS = new Set([
   "ollama",
   "lmstudio",
   "huggingface",
+  "openrouter",
   "stt_hf_verified",
+  "stt_whisper",
+  "stt_parakeet",
+  "stt_moonshine",
+  "stt_moonshine_streaming",
+  "stt_sensevoice",
+  "stt_gigaam",
+  "stt_qwen",
+  "stt_mlx_audio",
+  "stt_apple_speech",
+  "local_sidecar_api",
   "custom",
   "generic",
   "",
@@ -349,14 +767,67 @@ interface FamilyRule {
 // Order matters: more specific keywords should win over broader ones.
 const FAMILY_RULES: FamilyRule[] = [
   { keyword: "apple intelligence", providerId: "apple" },
+  { keyword: "apple speech", providerId: "apple" },
+  { keyword: "distil-whisper", providerId: "huggingface" },
+  { keyword: "breeze-asr", providerId: "mediatek" },
+  { keyword: "breeze asr", providerId: "mediatek" },
+  { keyword: "faster-whisper", providerId: "huggingface" },
   { keyword: "whisper", providerId: "stt_whisper" },
   { keyword: "parakeet", providerId: "stt_parakeet" },
   { keyword: "moonshine", providerId: "stt_moonshine" },
   { keyword: "sensevoice", providerId: "stt_sensevoice" },
+  { keyword: "sense voice", providerId: "stt_sensevoice" },
   { keyword: "gigaam", providerId: "stt_gigaam" },
   { keyword: "qwen-audio", providerId: "stt_qwen" },
   { keyword: "qwen2-audio", providerId: "stt_qwen" },
+  { keyword: "qwen2 audio", providerId: "stt_qwen" },
+  { keyword: "qwen3-asr", providerId: "stt_qwen" },
+  { keyword: "qwen3_asr", providerId: "stt_qwen" },
+  { keyword: "qwen3 asr", providerId: "stt_qwen" },
+  { keyword: "voxtral", providerId: "mistral" },
+  { keyword: "lfm2", providerId: "liquid_ai" },
+  { keyword: "lfm audio", providerId: "liquid_ai" },
+  { keyword: "liquid", providerId: "liquid_ai" },
+  { keyword: "hunyuan", providerId: "tencent" },
+  { keyword: "tencent", providerId: "tencent" },
+  { keyword: "smollm", providerId: "huggingface" },
+  { keyword: "smol lm", providerId: "huggingface" },
+  { keyword: "vibevoice", providerId: "microsoft" },
+  { keyword: "openvoice", providerId: "openvoice" },
+  { keyword: "chatterbox", providerId: "chatterbox" },
+  { keyword: "kokoro", providerId: "kokoro" },
+  { keyword: "xtts", providerId: "xtts" },
+  { keyword: "nvidia", providerId: "nvidia" },
+  { keyword: "nemotron", providerId: "nvidia" },
+  { keyword: "dia ", providerId: "mlx_dia" },
+  { keyword: "dia-", providerId: "mlx_dia" },
+  { keyword: "csm", providerId: "mlx_csm" },
+  { keyword: "spark tts", providerId: "mlx_spark" },
+  { keyword: "outetts", providerId: "mlx_oute" },
+  { keyword: "oute tts", providerId: "mlx_oute" },
+  { keyword: "ming omni", providerId: "mlx_ming_omni" },
+  { keyword: "ming-omni", providerId: "mlx_ming_omni" },
+  { keyword: "kugelaudio", providerId: "mlx_kugel" },
+  { keyword: "bark", providerId: "mlx_bark" },
+  { keyword: "fish audio", providerId: "mlx_fish_audio" },
+  { keyword: "fish-audio", providerId: "mlx_fish_audio" },
+  { keyword: "s2-pro", providerId: "mlx_fish_audio" },
+  { keyword: "pocket tts", providerId: "mlx_pocket_tts" },
+  { keyword: "pocket-tts", providerId: "mlx_pocket_tts" },
+  { keyword: "voxcpm", providerId: "mlx_voxcpm" },
+  { keyword: "paddleocr", providerId: "paddlepaddle" },
+  { keyword: "paddlepaddle", providerId: "paddlepaddle" },
+  { keyword: "pp-ocr", providerId: "paddlepaddle" },
+  { keyword: "lightonocr", providerId: "lighton" },
+  { keyword: "lighton", providerId: "lighton" },
+  { keyword: "chandra", providerId: "datalab" },
+  { keyword: "dots.ocr", providerId: "dots" },
+  { keyword: "olmocr", providerId: "ai2" },
+  { keyword: "allen ai", providerId: "ai2" },
   { keyword: "deepseek", providerId: "deepseek" },
+  { keyword: "glm-ocr", providerId: "zai" },
+  { keyword: "zhipu", providerId: "zai" },
+  { keyword: "tesseract", providerId: "tesseract" },
   { keyword: "llama", providerId: "meta" },
   { keyword: "gemma", providerId: "google" },
   { keyword: "gemini", providerId: "google" },
@@ -419,6 +890,35 @@ export function resolveModelProviderId(
   return inferred ?? "generic";
 }
 
+const PROVIDER_DISPLAY_NAME: Record<string, string> = {
+  stt_whisper: "OpenAI Whisper",
+  stt_parakeet: "NVIDIA Parakeet",
+  stt_moonshine: "Useful Sensors Moonshine",
+  stt_moonshine_streaming: "Useful Sensors Moonshine",
+  stt_sensevoice: "FunAudioLLM SenseVoice",
+  stt_gigaam: "Sber GigaAM",
+  stt_qwen: "Alibaba Qwen",
+  stt_mlx_audio: "MLX Audio",
+  stt_apple_speech: "Apple Speech",
+  qwen: "Alibaba Qwen",
+  apple: "Apple",
+  meta: "Meta Llama",
+  liquid_ai: "Liquid AI",
+  tencent: "Tencent Hunyuan",
+  huggingface: "Hugging Face",
+  microsoft: "Microsoft",
+  google: "Google",
+  mistral: "Mistral AI",
+  anthropic: "Anthropic",
+  deepseek: "DeepSeek",
+  nvidia: "NVIDIA",
+  ollama: "Ollama",
+};
+
+export function providerDisplayName(providerId: string): string {
+  return PROVIDER_DISPLAY_NAME[providerId] ?? providerId.replace(/_/g, " ");
+}
+
 // ---------- Component ----------
 
 export const ProviderIcon: React.FC<ProviderIconProps> = ({
@@ -451,7 +951,7 @@ export const ProviderIcon: React.FC<ProviderIconProps> = ({
             fontSize: brand.letter.length > 1 ? cfg.font * 0.72 : cfg.font,
             fontWeight: 700,
             lineHeight: 1,
-            letterSpacing: brand.letter.length > 1 ? "-0.03em" : undefined,
+            letterSpacing: 0,
           }}
         >
           {brand.letter}

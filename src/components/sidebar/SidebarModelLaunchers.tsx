@@ -167,12 +167,15 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
   }, [sttModel, currentModel, t]);
 
   const sttProviderId = useMemo(() => {
-    if (!sttModel) return null;
+    if (!sttModel) {
+      const inferred = resolveModelProviderId(sttLabel, null);
+      return inferred === "generic" ? null : inferred;
+    }
     return resolveModelProviderId(
       `${sttModel.name} ${sttModel.id}`,
       engineTypeToProviderId(sttModel.engine_type),
     );
-  }, [sttModel]);
+  }, [sttLabel, sttModel]);
 
   const llmContext = useMemo(() => {
     const providerId = llmProviderId || "";

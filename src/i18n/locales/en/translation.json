@@ -5,6 +5,11 @@
       "label": "Selection",
       "title": "Selection",
       "emptyState": "Highlight text in any app, then start a conversation about it.",
+      "starterPrompts": [
+        "Summarize the selected text",
+        "Rewrite it more clearly",
+        "Pull out action items"
+      ],
       "pastePrompt": "Or paste text below to discuss:",
       "refreshSelection": "Refresh Selection",
       "copyLastReply": "Copy Last Reply",
@@ -15,6 +20,11 @@
       "label": "Jot Pad",
       "title": "Jot Pad",
       "emptyState": "Start a conversation about your current note.",
+      "starterPrompts": [
+        "Turn this note into a clean draft",
+        "Find the main points",
+        "Suggest next steps"
+      ],
       "replaceNote": "Replace Note",
       "appendToNote": "Append to Note",
       "copyDraft": "Copy Draft",
@@ -28,12 +38,22 @@
       "label": "Settings Coach",
       "title": "Settings Coach",
       "emptyState": "Ask me anything about Vox Jot's features and settings.",
+      "starterPrompts": [
+        "Help me reduce dictation latency",
+        "Explain post-processing setup",
+        "Show privacy-related settings"
+      ],
       "openFailed": "Couldn't open that settings section."
     },
     "filesContext": {
       "label": "Files & Context",
       "title": "Files & Context",
       "emptyState": "Paste text, attach files, or select a folder to discuss.",
+      "starterPrompts": [
+        "Summarize the attached context",
+        "Compare the key details",
+        "Draft a response from this context"
+      ],
       "attachFiles": "Attach Files",
       "attachFolder": "Attach Folder",
       "pasteText": "Paste Text",
@@ -117,7 +137,9 @@
       "title": "Watched folders",
       "description": "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
       "add": "Add folder",
-      "empty": "No folders yet. Add one to get started.",
+      "empty": "No watched folders yet.",
+      "emptyDescription": "Add a folder to transcribe audio files automatically when you drop them in.",
+      "emptyExample": "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT.",
       "remove": "Remove folder",
       "toggleAria": "Enable or disable this watched folder",
       "formatText": "Text",
@@ -243,7 +265,7 @@
         "title": "Input Monitoring",
         "description": "Required so Vox Jot can better tell the difference between sending a message and manually clearing text.",
         "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
-        "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
+        "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears. It does not log what you type.",
         "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app."
       },
       "screenRecording": {
@@ -260,8 +282,9 @@
         "checkFailed": "Failed to check permissions. Please try again.",
         "requestFailed": "Failed to request permission. Please try again."
       },
-      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
-      "continue": "Continue",
+      "heading": "Enable your dictation toolkit",
+      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context.",
+      "continue": "Continue setup",
       "moreInfo": "More info",
       "visualPath": "System Settings -> Privacy & Security",
       "visualDescription": "Grant microphone, Accessibility, Input Monitoring, and Screen Recording so Vox Jot can capture your voice, place text in the right app, understand quick send-vs-delete changes, and build local OCR context from the active display."
@@ -408,7 +431,9 @@
       },
       "dictionary": {
         "title": "Learned Corrections",
-        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
+        "empty": "No learned corrections yet.",
+        "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
+        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling.",
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",
@@ -436,7 +461,9 @@
       },
       "list": {
         "title": "Trigger Phrases",
-        "empty": "No phrase keys yet. Add a trigger and the text it should expand to.",
+        "empty": "No phrase keys yet.",
+        "emptyDescription": "Phrase keys expand short spoken triggers into saved text while you dictate.",
+        "emptyExample": "For example, say “my email” to insert “hello@example.com.”",
         "add": "Add phrase key",
         "import": "Import",
         "export": "Export",
@@ -449,12 +476,16 @@
     },
     "styles": {
       "title": "Write profiles",
-      "description": "Write profiles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
+      "description": "Don't sound like a robot in Slack or too casual in emails. Vox Jot can switch tone, model, and output behavior based on the app or website you're dictating into.",
       "disabledMessage": "Enable write profiles to automatically match tone to the app you are dictating into.",
       "toggle": {
-        "label": "Enable app-aware write profiles",
-        "description": "Apply a different writing profile for chat, email, notes, and other apps based on where you dictate."
+        "label": "Auto-match writing style by app",
+        "description": "Use different writing behavior for chat, email, notes, and other apps based on where you dictate."
       },
+      "empty": "No write profiles yet.",
+      "emptyDescription": "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
+      "emptyExample": "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
+      "createFirstProfile": "Create your first profile",
       "tones": {
         "title": "Starter profiles",
         "description": "Start with built-in presets, adjust their instructions as needed, and add custom profiles only when you want something extra.",
@@ -706,14 +737,14 @@
         "title": "Free Up Model Memory",
         "description": "Automatically free memory when speech models have been idle for a while.",
         "options": {
-          "never": "Never",
-          "immediately": "Immediately",
-          "min2": "After 2 minutes",
-          "min5": "After 5 minutes",
-          "min10": "After 10 minutes",
-          "min15": "After 15 minutes",
-          "hour1": "After 1 hour",
-          "sec5": "After 5 seconds"
+          "never": "Never (fastest next dictation)",
+          "immediately": "Immediately (lowest memory use)",
+          "min2": "After 2 minutes (saves memory quickly)",
+          "min5": "After 5 minutes (balanced)",
+          "min10": "After 10 minutes (keeps warm longer)",
+          "min15": "After 15 minutes (fewer reloads)",
+          "hour1": "After 1 hour (best for frequent use)",
+          "sec5": "After 5 seconds (debug)"
         }
       },
       "customWords": {
@@ -1404,7 +1435,9 @@
   },
   "jotPad": {
     "newNote": "New note",
-    "empty": "No notes yet. Click + to create one.",
+    "empty": "No notes yet.",
+    "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
+    "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
     "untitled": "Untitled",
     "titlePlaceholder": "Note title",
     "contentPlaceholder": "Start typing…",

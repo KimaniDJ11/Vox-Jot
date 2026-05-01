@@ -6,11 +6,12 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, X, Pencil, Check } from "lucide-react";
+import { Trash2, X, Pencil, Check, WholeWord } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
 import { Button } from "../../ui/Button";
+import { EmptyState } from "../../ui/EmptyState";
 import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { ListActionButtons } from "../../ui/ListActionButtons";
@@ -279,9 +280,27 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
 
           {/* Snippet list */}
           {snippets.length === 0 && !adding ? (
-            <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
-              {t("settings.snippets.list.empty")}
-            </div>
+            <EmptyState
+              framed={false}
+              icon={<WholeWord className="h-5 w-5" aria-hidden />}
+              title={t("settings.snippets.list.empty")}
+              description={t("settings.snippets.list.emptyDescription")}
+              example={t("settings.snippets.list.emptyExample")}
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary-soft"
+                  onClick={() => {
+                    setAdding(true);
+                    setNewTrigger("");
+                    setNewExpansion("");
+                  }}
+                >
+                  {t("settings.snippets.list.add")}
+                </Button>
+              }
+            />
           ) : (
             <div className="divide-y divide-[var(--border)]">
               {snippets.map((snippet) => {

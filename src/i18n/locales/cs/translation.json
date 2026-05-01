@@ -136,7 +136,8 @@
         "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
         "cardTitle": "Allow Vox Jot to read active-screen context locally",
         "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating."
-      }
+      },
+      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context."
     },
     "steps": {
       "welcome": "Overview",
@@ -271,7 +272,9 @@
         "trigger": "Spoken trigger",
         "expansion": "Expands to",
         "triggerPlaceholder": "What you say (e.g. my email)",
-        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)",
+        "emptyDescription": "Phrase keys expand short spoken triggers into saved text while you dictate.",
+        "emptyExample": "For example, say “my email” to insert “hello@example.com.”"
       }
     },
     "styles": {
@@ -318,7 +321,11 @@
         "selectTone": "Select profile…",
         "add": "Add app",
         "empty": "No app mappings yet. Add one below to tailor tone per app."
-      }
+      },
+      "empty": "No write profiles yet.",
+      "emptyDescription": "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
+      "emptyExample": "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
+      "createFirstProfile": "Create your first profile"
     },
     "modelSettings": {
       "title": "Nastavení {{model}}",
@@ -943,7 +950,9 @@
           "confidence": "Conf",
           "source": "Source App",
           "active": "Active"
-        }
+        },
+        "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
+        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling."
       }
     },
     "dataPrivacy": {
@@ -1198,7 +1207,9 @@
     "noNoteSelected": "Select a note or create a new one",
     "createFirst": "Create a note",
     "pin": "Pin",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
+    "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary."
   },
   "convo": {
     "title": "Convo",
@@ -1210,7 +1221,12 @@
       "refreshSelection": "Refresh Selection",
       "copyLastReply": "Copy Last Reply",
       "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
-      "copiedReply": "Copied the last reply."
+      "copiedReply": "Copied the last reply.",
+      "starterPrompts": [
+        "Summarize the selected text",
+        "Rewrite it more clearly",
+        "Pull out action items"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1223,13 +1239,23 @@
       "noteReplaceFailed": "Couldn't replace the note.",
       "noteAppended": "Appended the draft to the note.",
       "noteAppendFailed": "Couldn't append to the note.",
-      "draftCopied": "Copied the draft."
+      "draftCopied": "Copied the draft.",
+      "starterPrompts": [
+        "Turn this note into a clean draft",
+        "Find the main points",
+        "Suggest next steps"
+      ]
     },
     "settingsCoach": {
       "label": "Settings Coach",
       "title": "Settings Coach",
       "emptyState": "Ask me anything about Vox Jot's features and settings.",
-      "openFailed": "Couldn't open that settings section."
+      "openFailed": "Couldn't open that settings section.",
+      "starterPrompts": [
+        "Help me reduce dictation latency",
+        "Explain post-processing setup",
+        "Show privacy-related settings"
+      ]
     },
     "filesContext": {
       "label": "Files & Context",
@@ -1239,7 +1265,12 @@
       "attachFolder": "Attach Folder",
       "pasteText": "Paste Text",
       "cancel": "Cancel",
-      "charCount": "({{count}}k)"
+      "charCount": "({{count}}k)",
+      "starterPrompts": [
+        "Summarize the attached context",
+        "Compare the key details",
+        "Draft a response from this context"
+      ]
     },
     "common": {
       "speakReplies": "Speak Replies",
@@ -1389,7 +1420,9 @@
       "formatSrt": "SRT",
       "formatVtt": "VTT",
       "formatAria": "Output format",
-      "recentActivity": "Recent activity"
+      "recentActivity": "Recent activity",
+      "emptyDescription": "Add a folder to transcribe audio files automatically when you drop them in.",
+      "emptyExample": "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT."
     }
   },
   "modelHub": {

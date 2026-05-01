@@ -15,7 +15,7 @@
 // scannability win versus the previous list (Nielsen heuristic #2).
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, WandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   commands,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/installedApps";
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SettingsGroup } from "@/components/ui";
 import { WriteRuleEditor } from "./WriteRuleEditor";
 import {
@@ -220,27 +221,33 @@ export const WriteRulesSettings: React.FC = () => {
       </SettingsGroup>
 
       {rules.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--input)]/40 p-8 text-center">
-          <p className="text-sm font-semibold text-[var(--text)]">
-            {emptyTitle}
-          </p>
-          <p className="mx-auto mt-1.5 max-w-md text-xs text-[var(--muted)]">
-            {emptyBody}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary-soft"
-            className="mt-4"
-            onClick={() => {
-              setEditingId(null);
-              setAdding(true);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {createFirstLabel}
-          </Button>
-        </div>
+        <EmptyState
+          icon={<WandSparkles className="h-5 w-5" aria-hidden />}
+          title={t("settings.styles.empty", { defaultValue: emptyTitle })}
+          description={t("settings.styles.emptyDescription", {
+            defaultValue: emptyBody,
+          })}
+          example={t("settings.styles.emptyExample", {
+            defaultValue:
+              "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
+          })}
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="primary-soft"
+              onClick={() => {
+                setEditingId(null);
+                setAdding(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("settings.styles.createFirstProfile", {
+                defaultValue: createFirstLabel,
+              })}
+            </Button>
+          }
+        />
       ) : viewMode === "grouped" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {groupedRules.map((group) => (

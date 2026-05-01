@@ -80,6 +80,12 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
     settings_coach: "convo.settingsCoach.emptyState",
     files_context: "convo.filesContext.emptyState",
   };
+  const starterPromptKeys: Record<ConvoModeViewProps["mode"], string> = {
+    selection: "convo.selection.starterPrompts",
+    jotpad: "convo.jotpad.starterPrompts",
+    settings_coach: "convo.settingsCoach.starterPrompts",
+    files_context: "convo.filesContext.starterPrompts",
+  };
 
   const getModeContext = useCallback(() => {
     switch (mode) {
@@ -309,7 +315,9 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
         await navigator.clipboard.writeText(lastAssistant.text);
         toast.success(t("convo.selection.copiedReply"));
       } catch {
-        toast.error(t("convo.common.copyFailed", { defaultValue: "Copy failed" }));
+        toast.error(
+          t("convo.common.copyFailed", { defaultValue: "Copy failed" }),
+        );
       }
     })();
   }, [t, transcript]);
@@ -359,7 +367,9 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
           await navigator.clipboard.writeText(draftContent);
           toast.success(t("convo.jotpad.draftCopied"));
         } catch {
-          toast.error(t("convo.common.copyFailed", { defaultValue: "Copy failed" }));
+          toast.error(
+            t("convo.common.copyFailed", { defaultValue: "Copy failed" }),
+          );
         }
       })();
     },
@@ -446,6 +456,14 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
         {t("convo.selection.copyLastReply")}
       </Button>
     ) : null;
+  const translatedStarterPrompts = t(starterPromptKeys[mode], {
+    returnObjects: true,
+  });
+  const starterPrompts = Array.isArray(translatedStarterPrompts)
+    ? translatedStarterPrompts.filter(
+        (prompt): prompt is string => typeof prompt === "string",
+      )
+    : [];
 
   if (isAvailable === null) {
     return null;
@@ -482,6 +500,7 @@ export const ConvoModeView: React.FC<ConvoModeViewProps> = ({ mode }) => {
       onSendText={handleSendText}
       onReset={handleReset}
       emptyStateMessage={t(emptyStateKeys[mode])}
+      starterPrompts={starterPrompts}
       actions={toolbarActions}
       activeNoteId={activeNoteId}
       sessionId={sessionId}

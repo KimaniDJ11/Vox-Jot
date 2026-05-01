@@ -16,31 +16,34 @@ export const WriteProfilesCompactCard: React.FC = () => {
     useSetting("write_rules_url_capture_enabled") ?? true;
 
   return (
-    <div className="flex items-center gap-5 px-4 py-2.5">
-      <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
-        <SwitchControl
-          checked={appAwareToneEnabled}
-          onChange={(v) =>
-            void updateSetting("app_aware_tone_enabled", v)
-          }
-        />
-        {t("settings.styles.toggle.label")}
-      </label>
+    <div className="space-y-3 px-4 py-3">
+      <p className="text-sm leading-6 text-[var(--muted)]">
+        {t("settings.styles.description")}
+      </p>
+      <div className="flex flex-wrap items-center gap-5">
+        <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
+          <SwitchControl
+            checked={appAwareToneEnabled}
+            onChange={(v) => void updateSetting("app_aware_tone_enabled", v)}
+          />
+          {t("settings.styles.toggle.label")}
+        </label>
 
-      <span className="h-3.5 w-px bg-[var(--border)]" aria-hidden />
+        <span className="h-3.5 w-px bg-[var(--border)]" aria-hidden />
 
-      <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
-        <SwitchControl
-          checked={urlCaptureEnabled}
-          onChange={(v) =>
-            void updateSetting("write_rules_url_capture_enabled", v)
-          }
-        />
-        {t("refine.writeRules.urlCaptureLabel")}
-      </label>
+        <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
+          <SwitchControl
+            checked={urlCaptureEnabled}
+            onChange={(v) =>
+              void updateSetting("write_rules_url_capture_enabled", v)
+            }
+          />
+          {t("refine.writeRules.urlCaptureLabel")}
+        </label>
 
-      <div className="ml-auto">
-        <TestRuleButton />
+        <div className="ml-auto">
+          <TestRuleButton />
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { Check, Loader2, Info } from "lucide-react";
+import { Check, Loader2, Info, ShieldCheck } from "lucide-react";
 import OnboardingLayout from "./OnboardingLayout";
 
 interface PermissionsStepProps {
@@ -391,6 +391,10 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       leftContent={
         <div className="ob-permissions-flow">
           <h1 className="ob-heading">{t("onboarding.permissions.heading")}</h1>
+          <div className="ob-privacy-badge">
+            <ShieldCheck size={14} aria-hidden />
+            <span>{t("onboarding.permissions.privacyBadge")}</span>
+          </div>
 
           {/* Accessibility Permission */}
           {showAccessibilityPermission && (

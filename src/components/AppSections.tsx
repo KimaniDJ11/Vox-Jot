@@ -10,6 +10,7 @@ import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Dropdown,
   SettingContainer,
@@ -296,6 +297,7 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
 };
 
 export const JotPadSection: React.FC = () => {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -359,24 +361,27 @@ export const JotPadSection: React.FC = () => {
           Loading notes...
         </div>
       ) : notes.length === 0 ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center shadow-[var(--shadow-sm)]">
-          <NotebookPen className="mx-auto h-8 w-8 text-[var(--muted)] opacity-[0.88]" />
-          <p className="mt-3 text-sm font-medium text-[var(--text)]">
-            {jotPadEmptyTitle}
-          </p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            {jotPadEmptyDescription}
-          </p>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="mt-4"
-            onClick={() => void createNote()}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            {createNoteLabel}
-          </Button>
-        </div>
+        <EmptyState
+          icon={<NotebookPen className="h-5 w-5" aria-hidden />}
+          title={t("jotPad.empty", { defaultValue: jotPadEmptyTitle })}
+          description={t("jotPad.emptyDescription", {
+            defaultValue: jotPadEmptyDescription,
+          })}
+          example={t("jotPad.emptyExample", {
+            defaultValue:
+              "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
+          })}
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void createNote()}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              {t("jotPad.createFirst", { defaultValue: createNoteLabel })}
+            </Button>
+          }
+        />
       ) : (
         <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
           {sortedNotes.map((note) => (
@@ -396,7 +401,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <SettingsGroup title="Dictation">
-        <LanguageSelector descriptionMode="tooltip" grouped={true} />
+        <LanguageSelector descriptionMode="inline" grouped={true} />
       </SettingsGroup>
 
       <SettingsGroup title="App">
@@ -407,7 +412,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <AppLanguageSelector descriptionMode="tooltip" grouped={true} />
         <GlobalLanguageSync descriptionMode="tooltip" grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
-        <ModelUnloadTimeoutSetting descriptionMode="tooltip" grouped={true} />
+        <ModelUnloadTimeoutSetting descriptionMode="inline" grouped={true} />
       </SettingsGroup>
 
       <SpeechPackManagerSection />
@@ -524,12 +529,12 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
       <SettingsGroup>
         <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
-        <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
-        <MuteWhileRecording descriptionMode="tooltip" grouped={true} />
-        <AudioDucking descriptionMode="tooltip" grouped={true} />
+        <AlwaysOnMicrophone descriptionMode="inline" grouped={true} />
+        <MuteWhileRecording descriptionMode="inline" grouped={true} />
+        <AudioDucking descriptionMode="inline" grouped={true} />
         <AudioFeedback descriptionMode="tooltip" grouped={true} />
         <VolumeSlider disabled={!audioFeedbackEnabled} />
-        <ShowOverlay descriptionMode="tooltip" grouped={true} />
+        <ShowOverlay descriptionMode="inline" grouped={true} />
         <SoundPicker
           label="Sound Theme"
           description="Choose the start and stop cue sounds Vox Jot plays around recording."
@@ -574,13 +579,13 @@ export const OutputPasteSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <SettingsGroup>
-        <PasteMethodSetting descriptionMode="tooltip" grouped={true} />
-        <TypingToolSetting descriptionMode="tooltip" grouped={true} />
-        <ClipboardHandlingSetting descriptionMode="tooltip" grouped={true} />
-        <AutoSubmit descriptionMode="tooltip" grouped={true} />
-        <AppendTrailingSpace descriptionMode="tooltip" grouped={true} />
+        <PasteMethodSetting descriptionMode="inline" grouped={true} />
+        <TypingToolSetting descriptionMode="inline" grouped={true} />
+        <ClipboardHandlingSetting descriptionMode="inline" grouped={true} />
+        <AutoSubmit descriptionMode="inline" grouped={true} />
+        <AppendTrailingSpace descriptionMode="inline" grouped={true} />
         {debugMode ? (
-          <PasteDelay descriptionMode="tooltip" grouped={true} />
+          <PasteDelay descriptionMode="inline" grouped={true} />
         ) : null}
       </SettingsGroup>
     </div>
@@ -739,12 +744,12 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           isUpdating={isUpdating("local_privacy_mode")}
           label="Local Privacy Mode"
           description="Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available."
-          descriptionMode="tooltip"
+          descriptionMode="inline"
           grouped={true}
         />
-        <HistoryLimit descriptionMode="tooltip" grouped={true} />
+        <HistoryLimit descriptionMode="inline" grouped={true} />
         <RecordingRetentionPeriodSelector
-          descriptionMode="tooltip"
+          descriptionMode="inline"
           grouped={true}
         />
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />

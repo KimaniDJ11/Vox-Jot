@@ -606,6 +606,28 @@
   flex-shrink: 0;
 }
 
+.ob-privacy-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  border-radius: 12px;
+  background: var(--success-soft);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  flex-shrink: 0;
+}
+
+.ob-privacy-badge svg {
+  margin-top: 1px;
+  color: var(--success);
+  flex-shrink: 0;
+}
+
 .ob-permissions-flow .ob-perm-card {
   padding: 12px 16px;
   margin-bottom: 10px;

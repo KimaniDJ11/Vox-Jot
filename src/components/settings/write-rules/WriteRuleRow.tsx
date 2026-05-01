@@ -116,8 +116,13 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
     if (o.auto_submit === false) parts.push("No auto-submit");
     if (o.force_post_process === true) parts.push("Always post-process");
     if (o.force_post_process === false) parts.push("Skip post-process");
-    if (o.append_trailing_space !== null && o.append_trailing_space !== undefined)
-      parts.push(o.append_trailing_space ? "Trailing space" : "No trailing space");
+    if (
+      o.append_trailing_space !== null &&
+      o.append_trailing_space !== undefined
+    )
+      parts.push(
+        o.append_trailing_space ? "Trailing space" : "No trailing space",
+      );
     if (o.mute_while_recording === true) parts.push("Mute while recording");
     return parts;
   }, [rule.overrides, toneById, modelById, promptById]);
@@ -198,8 +203,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
           </p>
         </div>
 
-        {/* Actions — only show on hover/focus to reduce visual noise */}
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             type="button"
             variant="ghost"

@@ -237,6 +237,7 @@ const ScreenContextSettingsSection: React.FC = () => {
         <SettingContainer
           title={t("settings.screenContext.enableLabel")}
           description={t("settings.screenContext.enableDescription")}
+          descriptionMode="inline"
           grouped={true}
         >
           <SwitchControl
@@ -264,6 +265,7 @@ const ScreenContextSettingsSection: React.FC = () => {
         <SettingContainer
           title="Capture Mode"
           description="Choose how often Vox Jot updates screen text while the app is open."
+          descriptionMode="inline"
           grouped={true}
         >
           <Dropdown
@@ -282,6 +284,7 @@ const ScreenContextSettingsSection: React.FC = () => {
         <SettingContainer
           title="Text Recognition Quality"
           description="Choose faster capture or more accurate text recognition."
+          descriptionMode="inline"
           grouped={true}
         >
           <Dropdown
@@ -302,6 +305,7 @@ const ScreenContextSettingsSection: React.FC = () => {
         <SettingContainer
           title={t("settings.screenContext.ocrEngineLabel")}
           description={t("settings.screenContext.ocrEngineDescription")}
+          descriptionMode="inline"
           grouped={true}
         >
           <Dropdown
@@ -345,6 +349,7 @@ const ScreenContextSettingsSection: React.FC = () => {
           step={50}
           label="Recognition Timeout"
           description="How long Vox Jot waits when reading text from one screen capture."
+          descriptionMode="inline"
           grouped={true}
           formatValue={(value) => `${Math.round(value)} ms`}
           disabled={controlsDisabled}
@@ -362,6 +367,7 @@ const ScreenContextSettingsSection: React.FC = () => {
           step={100}
           label="Recency Window"
           description="How recent captured screen text must be before Vox Jot refreshes it."
+          descriptionMode="inline"
           grouped={true}
           formatValue={(value) => `${Math.round(value)} ms`}
           disabled={controlsDisabled}
@@ -382,6 +388,7 @@ const ScreenContextSettingsSection: React.FC = () => {
           step={25}
           label="Context Amount"
           description="How much recent screen text Vox Jot can use during dictation cleanup."
+          descriptionMode="inline"
           grouped={true}
           formatValue={(value) => `${Math.round(value)} units`}
           disabled={controlsDisabled}
@@ -389,6 +396,7 @@ const ScreenContextSettingsSection: React.FC = () => {
         <SettingContainer
           title={t("settings.screenContext.pauseOnIdleLabel")}
           description={t("settings.screenContext.pauseOnIdleDescription")}
+          descriptionMode="inline"
           grouped={true}
         >
           <SwitchControl
@@ -414,6 +422,7 @@ const ScreenContextSettingsSection: React.FC = () => {
           step={5}
           label={t("settings.screenContext.idleThresholdLabel")}
           description={t("settings.screenContext.idleThresholdDescription")}
+          descriptionMode="inline"
           grouped={true}
           formatValue={(value) =>
             t("settings.screenContext.idleThresholdValue", {
@@ -512,13 +521,13 @@ const ScreenContextSettingsSection: React.FC = () => {
           {debugMode ? (
             <>
               <p>
-                {t("settings.screenContext.cacheSizeLabel")} {" "}
+                {t("settings.screenContext.cacheSizeLabel")}{" "}
                 <span className="font-semibold text-[var(--text)]">
                   {diagnostics?.cache_size ?? 0}
                 </span>
               </p>
               <p>
-                {t("settings.screenContext.latestContextAgeLabel")} {" "}
+                {t("settings.screenContext.latestContextAgeLabel")}{" "}
                 <span className="font-semibold text-[var(--text)]">
                   {diagnostics?.latest_context_age_ms != null
                     ? t("settings.screenContext.latestContextAgeValue", {

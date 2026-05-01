@@ -3,10 +3,21 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, FileAudio, FolderPlus, Trash2, Upload } from "lucide-react";
-import type { TimedSegment, WatchFolderConfig, WatchFolderOutputFormat } from "@/bindings";
+import {
+  AlertCircle,
+  FileAudio,
+  FolderPlus,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import type {
+  TimedSegment,
+  WatchFolderConfig,
+  WatchFolderOutputFormat,
+} from "@/bindings";
 import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 
@@ -249,8 +260,7 @@ export const FileTranscriptionPanel: React.FC = () => {
           value={transcription}
           readOnly
           placeholder={t("dictate.fileTranscription.placeholder", {
-            defaultValue:
-              "Transcript appears here after processing.",
+            defaultValue: "Transcript appears here after processing.",
           })}
           aria-live="polite"
           className="min-h-[140px]"
@@ -323,16 +333,18 @@ export const FileTranscriptionPanel: React.FC = () => {
           className="flex items-start gap-2 rounded-2xl border border-[var(--danger)] bg-[var(--input)] px-4 py-3 text-xs text-[var(--danger)]"
           role="alert"
         >
-          <AlertCircle size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+          <AlertCircle
+            size={16}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0"
+          />
           <div>
             <div className="font-medium">
               {t("dictate.fileTranscription.errors.heading", {
                 defaultValue: "Transcription failed",
               })}
             </div>
-            <div className="mt-1 break-words text-[var(--text)]">
-              {error}
-            </div>
+            <div className="mt-1 break-words text-[var(--text)]">{error}</div>
           </div>
         </div>
       )}
@@ -457,11 +469,22 @@ const WatchedFoldersGroup: React.FC = () => {
       </div>
 
       {folders.length === 0 ? (
-        <div className="text-sm text-[var(--text)]">
-          {t("dictate.watchFolders.empty", {
-            defaultValue: "No folders yet. Add one to get started.",
+        <EmptyState
+          framed={false}
+          icon={<FolderPlus className="h-5 w-5" aria-hidden />}
+          title={t("dictate.watchFolders.empty", {
+            defaultValue: "No watched folders yet.",
           })}
-        </div>
+          description={t("dictate.watchFolders.emptyDescription", {
+            defaultValue:
+              "Add a folder to transcribe audio files automatically when you drop them in.",
+          })}
+          example={t("dictate.watchFolders.emptyExample", {
+            defaultValue:
+              "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT.",
+          })}
+          className="py-5"
+        />
       ) : (
         <ul className="space-y-2">
           {folders.map((f) => (

@@ -61,7 +61,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
       <SettingContainer
         title={t("settings.postProcessing.api.provider.title")}
         description={t("settings.postProcessing.api.provider.description")}
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         layout="horizontal"
         grouped={true}
         disabled={disabled}
@@ -92,7 +92,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
             <SettingContainer
               title={t("settings.postProcessing.api.baseUrl.title")}
               description={t("settings.postProcessing.api.baseUrl.description")}
-              descriptionMode="tooltip"
+              descriptionMode="inline"
               layout="horizontal"
               grouped={true}
               disabled={disabled}
@@ -114,7 +114,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
           <SettingContainer
             title={t("settings.postProcessing.api.apiKey.title")}
             description={t("settings.postProcessing.api.apiKey.description")}
-            descriptionMode="tooltip"
+            descriptionMode="inline"
             layout="horizontal"
             grouped={true}
             disabled={disabled}
@@ -154,7 +154,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                 ? t("settings.postProcessing.api.model.descriptionCustom")
                 : t("settings.postProcessing.api.model.descriptionDefault")
             }
-            descriptionMode="tooltip"
+            descriptionMode="inline"
             layout="stacked"
             grouped={true}
             disabled={disabled}
@@ -619,6 +619,7 @@ const PostProcessReviewSettings: React.FC<ProviderSectionProps> = ({
         isUpdating={isUpdating("show_preview_before_paste")}
         label={t("settings.postProcessing.review.toggle.label")}
         description={t("settings.postProcessing.review.toggle.description")}
+        descriptionMode="inline"
         grouped={true}
         disabled={disabled}
       />
@@ -650,7 +651,7 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
       <SettingContainer
         title={t("settings.postProcessing.apple.mode.title")}
         description={t("settings.postProcessing.apple.mode.description")}
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
         disabled={disabled}
       >
@@ -681,7 +682,7 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
         description={t(
           "settings.postProcessing.apple.rewriteStrength.description",
         )}
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
         disabled={disabled}
       >
@@ -722,6 +723,7 @@ const ApplePostProcessingSettings: React.FC<ProviderSectionProps> = ({
         isUpdating={isUpdating("fallback_to_raw_on_failure")}
         label={t("settings.postProcessing.apple.fallback.label")}
         description={t("settings.postProcessing.apple.fallback.description")}
+        descriptionMode="inline"
         grouped={true}
         disabled={disabled}
       />
@@ -910,7 +912,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
   return (
     <div className="w-full space-y-6">
       <SettingsGroup title={t("settings.postProcessing.sections.setup.title")}>
-        <PostProcessingToggle descriptionMode="tooltip" grouped={true} />
+        <PostProcessingToggle descriptionMode="inline" grouped={true} />
         {!omitLocalPrivacy && (
           <>
             <ToggleSwitch
@@ -923,7 +925,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
               description={t(
                 "settings.postProcessing.localPrivacy.description",
               )}
-              descriptionMode="tooltip"
+              descriptionMode="inline"
               grouped={true}
             />
             {localPrivacyMode && (
@@ -935,7 +937,7 @@ export const PostProcessingSettings: React.FC<PostProcessingSettingsProps> = ({
         )}
         <ShortcutInput
           shortcutId="transcribe_with_post_process"
-          descriptionMode="tooltip"
+          descriptionMode="inline"
           grouped={true}
         />
         <PostProcessingSettingsApi

@@ -14,6 +14,7 @@ import {
   Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { HighlightTrack } from "@/motion/HighlightTrack";
 import { Kbd } from "@/components/ui/Kbd";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -470,9 +471,23 @@ const ScratchpadApp: React.FC = () => {
         <div className="card-linear flex min-h-0 w-[260px] shrink-0 flex-col overflow-hidden bg-[color-mix(in_srgb,var(--sidebar-bg)_72%,transparent)]">
           <div className="min-h-0 flex-1 overflow-y-auto">
             {notes.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs text-[var(--muted)]">
-                {t("jotPad.empty")}
-              </div>
+              <EmptyState
+                framed={false}
+                title={t("jotPad.empty")}
+                description={t("jotPad.emptyDescription")}
+                example={t("jotPad.emptyExample")}
+                action={
+                  <Button
+                    type="button"
+                    onClick={() => void handleCreateNote()}
+                    variant="primary-soft"
+                    size="sm"
+                  >
+                    {t("jotPad.createFirst")}
+                  </Button>
+                }
+                className="px-3 py-6"
+              />
             ) : (
               <LayoutGroup id="scratchpad-notes">
                 <div className="flex flex-col gap-1 p-2">
@@ -546,9 +561,8 @@ const ScratchpadApp: React.FC = () => {
                         <motion.div
                           initial={false}
                           animate={{
-                            opacity:
-                              hoveredNoteId === note.id || isActive ? 1 : 0,
-                            x: hoveredNoteId === note.id || isActive ? 0 : 6,
+                            opacity: 1,
+                            x: 0,
                           }}
                           transition={crisp}
                           className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1"
@@ -646,19 +660,23 @@ const ScratchpadApp: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-[var(--text)]">
-                <FileText className="text-[var(--muted)] mx-auto mb-3 h-10 w-10 opacity-[0.82]" />
-                <p className="text-sm">{t("jotPad.noNoteSelected")}</p>
-                <Button
-                  type="button"
-                  onClick={() => void handleCreateNote()}
-                  variant="primary-soft"
-                  size="sm"
-                  className="mt-3"
-                >
-                  {t("jotPad.createFirst")}
-                </Button>
-              </div>
+              <EmptyState
+                framed={false}
+                icon={<FileText className="h-5 w-5" aria-hidden />}
+                title={t("jotPad.noNoteSelected")}
+                description={t("jotPad.emptyDescription")}
+                example={t("jotPad.emptyExample")}
+                action={
+                  <Button
+                    type="button"
+                    onClick={() => void handleCreateNote()}
+                    variant="primary-soft"
+                    size="sm"
+                  >
+                    {t("jotPad.createFirst")}
+                  </Button>
+                }
+              />
             </div>
           )}
         </div>

@@ -6,12 +6,13 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { Plus, Search, Trash2, X, SpellCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
 import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
+import { EmptyState } from "../../ui/EmptyState";
 import { Input } from "../../ui/Input";
 import { SwitchControl } from "../../ui/SwitchControl";
 import { ListActionButtons } from "../../ui/ListActionButtons";
@@ -322,7 +323,9 @@ export const CorrectionDictionaryView: React.FC<
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredGroups = useMemo(
     () =>
-      groups.filter((group) => groupMatchesSearch(group, normalizedSearchQuery)),
+      groups.filter((group) =>
+        groupMatchesSearch(group, normalizedSearchQuery),
+      ),
     [groups, normalizedSearchQuery],
   );
   const bulkActionsDisabled = loading || corrections.length === 0;
@@ -500,9 +503,28 @@ export const CorrectionDictionaryView: React.FC<
             {t("common.loading")}
           </div>
         ) : groups.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
-            {t("settings.corrections.dictionary.empty")}
-          </div>
+          <EmptyState
+            framed={false}
+            icon={<SpellCheck className="h-5 w-5" aria-hidden />}
+            title={t("settings.corrections.dictionary.empty")}
+            description={t("settings.corrections.dictionary.emptyDescription")}
+            example={t("settings.corrections.dictionary.emptyExample")}
+            action={
+              <Button
+                type="button"
+                size="sm"
+                variant="primary-soft"
+                onClick={() => {
+                  setShowManualEditor(true);
+                  setManualDraft(emptyManualCorrectionDraft());
+                }}
+              >
+                {t("settings.postProcessing.dictionary.add", {
+                  defaultValue: "Add entry",
+                })}
+              </Button>
+            }
+          />
         ) : filteredGroups.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
             {t("settings.corrections.dictionary.search.empty", {
@@ -705,8 +727,9 @@ const OriginalChip: React.FC<{
       </button>
       <button
         type="button"
-        className="opacity-0 group-hover:opacity-100 text-[var(--muted)] hover:text-[var(--danger)] transition-all -mr-0.5"
+        className="text-[var(--muted)] transition-colors hover:text-[var(--danger)] -mr-0.5"
         onClick={() => void onDelete(entry.id)}
+        aria-label="Delete original phrase"
       >
         <X className="h-2.5 w-2.5" />
       </button>

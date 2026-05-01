@@ -69,7 +69,7 @@ export const TranslationSettingsCard: React.FC = () => {
       <SettingContainer
         title="Translation Output"
         description="Choose whether dictation stays in the source language, is translated, or shows both source and translation."
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
       >
         <SelectField
@@ -92,7 +92,7 @@ export const TranslationSettingsCard: React.FC = () => {
       <SettingContainer
         title="Target Language"
         description="Choose the language Vox Jot should translate into."
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
         disabled={!isTranslatedMode}
       >
@@ -111,7 +111,7 @@ export const TranslationSettingsCard: React.FC = () => {
       <SettingContainer
         title="Translation Method"
         description="Automatic works for most people. Choose a specific method only if you need one."
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
         disabled={!isTranslatedMode}
       >
@@ -140,7 +140,7 @@ export const TranslationSettingsCard: React.FC = () => {
         <SettingContainer
           title="Bilingual Layout"
           description="Choose which block appears first when both source and translation are shown."
-          descriptionMode="tooltip"
+          descriptionMode="inline"
           grouped={true}
         >
           <SelectField
@@ -171,7 +171,7 @@ export const TranslationSettingsCard: React.FC = () => {
       <SettingContainer
         title="Dictation Destination"
         description="Choose whether translated dictation pastes directly, opens a preview first, or goes to Jot Pad."
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
         disabled={!isTranslatedMode}
       >
@@ -194,7 +194,7 @@ export const TranslationSettingsCard: React.FC = () => {
       <SettingContainer
         title="Selection Translation"
         description="Choose how highlighted text translation is delivered."
-        descriptionMode="tooltip"
+        descriptionMode="inline"
         grouped={true}
       >
         <SelectField

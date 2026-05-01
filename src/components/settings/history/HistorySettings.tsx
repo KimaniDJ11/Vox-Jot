@@ -757,7 +757,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           className="min-w-0 flex-1 sm:min-w-[220px]"
         />
 
-        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/history-row:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-1 opacity-100 transition-opacity duration-150">
           <button
             type="button"
             onClick={handleCopyText}

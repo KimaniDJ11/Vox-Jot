@@ -412,6 +412,12 @@
         "import": "Import",
         "export": "Export",
         "clearAll": "Clear All",
+        "search": {
+          "placeholder": "Search corrections",
+          "ariaLabel": "Search learned corrections",
+          "clear": "Clear search",
+          "empty": "No corrections match your search for '{{query}}'."
+        },
         "columns": {
           "original": "Original",
           "corrected": "Corrected",

@@ -6,7 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
@@ -76,6 +76,19 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
   return groups;
 }
 
+function groupMatchesSearch(group: CorrectionGroup, normalizedQuery: string) {
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return (
+    group.corrected.toLowerCase().includes(normalizedQuery) ||
+    group.entries.some((entry) =>
+      entry.original.toLowerCase().includes(normalizedQuery),
+    )
+  );
+}
+
 interface CorrectionDictionaryViewProps {
   /** Shown in the row above the card, with import/export/clear icons trailing right. */
   sectionTitle: string;
@@ -107,6 +120,7 @@ export const CorrectionDictionaryView: React.FC<
   const [manualDraft, setManualDraft] = useState<ManualCorrectionDraft>(
     emptyManualCorrectionDraft,
   );
+  const [searchQuery, setSearchQuery] = useState("");
   const portalTarget = usePortalTarget(titleActionTargetId);
   const addInputRef = useRef<HTMLInputElement>(null);
 
@@ -301,8 +315,60 @@ export const CorrectionDictionaryView: React.FC<
     }
   };
 
-  const groups = loading ? [] : groupCorrections(corrections);
+  const groups = useMemo(
+    () => (loading ? [] : groupCorrections(corrections)),
+    [corrections, loading],
+  );
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredGroups = useMemo(
+    () =>
+      groups.filter((group) => groupMatchesSearch(group, normalizedSearchQuery)),
+    [groups, normalizedSearchQuery],
+  );
   const bulkActionsDisabled = loading || corrections.length === 0;
+
+  const searchField = (
+    <label
+      className="relative flex h-8 w-full min-w-[11rem] max-w-60 items-center"
+      aria-label={t("settings.corrections.dictionary.search.ariaLabel", {
+        defaultValue: "Search learned corrections",
+      })}
+    >
+      <Search
+        className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--muted)]"
+        aria-hidden
+      />
+      <Input
+        autoFocus
+        type="search"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && searchQuery) {
+            setSearchQuery("");
+            event.preventDefault();
+          }
+        }}
+        placeholder={t("settings.corrections.dictionary.search.placeholder", {
+          defaultValue: "Search corrections",
+        })}
+        className="h-8 w-full pl-8 pr-8 text-xs text-[var(--text)] placeholder:text-[var(--muted)]"
+      />
+      {searchQuery ? (
+        <button
+          type="button"
+          className="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
+          onClick={() => setSearchQuery("")}
+          aria-label={t("settings.corrections.dictionary.search.clear", {
+            defaultValue: "Clear search",
+          })}
+        >
+          <X className="h-3 w-3" aria-hidden />
+        </button>
+      ) : null}
+    </label>
+  );
+
   const actionButtons = useMemo(
     () => (
       <ListActionButtons
@@ -326,22 +392,26 @@ export const CorrectionDictionaryView: React.FC<
     ),
     [bulkActionsDisabled, t],
   );
+  const headerControls = (
+    <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+      {searchField}
+      <div className="flex shrink-0 gap-1">{actionButtons}</div>
+    </div>
+  );
   const shouldPortalActions = !showHeaderTitle && !!portalTarget;
 
   return (
     <section className="space-y-2">
-      {shouldPortalActions ? createPortal(actionButtons, portalTarget) : null}
-      <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
-        {showHeaderTitle ? (
+      {shouldPortalActions ? createPortal(headerControls, portalTarget) : null}
+      <div className="px-5 mb-3 flex flex-wrap items-center justify-between gap-3 min-w-0">
+        {showHeaderTitle || !shouldPortalActions ? (
           <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
             {sectionTitle}
           </h2>
         ) : (
           <div className="min-w-0 flex-1" />
         )}
-        {!shouldPortalActions ? (
-          <div className="flex gap-1 shrink-0">{actionButtons}</div>
-        ) : null}
+        {!shouldPortalActions ? headerControls : null}
       </div>
 
       <div className="flat-card overflow-visible">
@@ -433,9 +503,16 @@ export const CorrectionDictionaryView: React.FC<
           <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
             {t("settings.corrections.dictionary.empty")}
           </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
+            {t("settings.corrections.dictionary.search.empty", {
+              query: searchQuery.trim(),
+              defaultValue: "No corrections match your search for '{{query}}'.",
+            })}
+          </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            {groups.map((group) => (
+            {filteredGroups.map((group) => (
               <div
                 key={getCorrectionGroupKey(group)}
                 className={`px-5 py-3 space-y-2.5 transition-opacity ${

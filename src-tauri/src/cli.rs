@@ -66,9 +66,9 @@ pub struct CliArgs {
 pub enum CliCommand {
     /// Transcribe an audio file via the running Vox Jot instance.
     ///
-    /// Requires the local API to be enabled in
-    /// Settings → Diagnostics. Use `-` as the path to read WAV from
-    /// stdin (e.g. `cat audio.wav | vox-jot transcribe -`).
+    /// Requires the local API to be enabled in Settings → Diagnostics and
+    /// `VOX_JOT_API_TOKEN` to match the token shown there. Use `-` as the
+    /// path to read WAV from stdin (e.g. `cat audio.wav | vox-jot transcribe -`).
     Transcribe {
         /// Path to a WAV file, or `-` to read WAV from stdin.
         path: String,

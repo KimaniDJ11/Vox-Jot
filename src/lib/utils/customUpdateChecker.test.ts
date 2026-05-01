@@ -60,7 +60,7 @@ describe("custom update checker", () => {
     const result = await checkForCustomUpdate("1.2.0");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://github.com/cjpais/Handy/releases/latest/download/latest.json",
+      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest/download/latest.json",
       {
         method: "GET",
         cache: "no-store",
@@ -68,7 +68,7 @@ describe("custom update checker", () => {
     );
     expect(result.available).toBe(false);
     expect(result.downloadUrl).toBe(
-      "https://github.com/cjpais/Handy/releases/latest",
+      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest",
     );
   });
 
@@ -102,7 +102,7 @@ describe("custom update checker", () => {
     );
     expect(openUrlMock).toHaveBeenNthCalledWith(
       2,
-      "https://github.com/cjpais/Handy/releases/latest",
+      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest",
     );
   });
 });

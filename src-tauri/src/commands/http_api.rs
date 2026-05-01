@@ -18,6 +18,7 @@ use tauri::{AppHandle, State};
 pub struct HttpApiStatus {
     pub enabled: bool,
     pub port: u16,
+    pub token: String,
 }
 
 #[tauri::command]
@@ -75,5 +76,6 @@ pub fn get_http_api_status(app: AppHandle) -> Result<HttpApiStatus, String> {
     Ok(HttpApiStatus {
         enabled: s.http_api_enabled,
         port: s.http_api_port,
+        token: s.http_api_token,
     })
 }

@@ -800,7 +800,7 @@ impl ConvoController {
         headers.insert(
             reqwest::header::USER_AGENT,
             reqwest::header::HeaderValue::from_static(
-                "Vox Jot/1.0 (+https://github.com/cjpais/Handy)",
+                "Vox Jot/1.0 (+https://github.com/KimaniDJ11/Vox-Jot)",
             ),
         );
 

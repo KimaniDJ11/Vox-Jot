@@ -320,9 +320,7 @@ fn stt_provider_meta(
 fn stt_catalog_provider_id(model: &ModelInfo, runtime_provider_id: &'static str) -> &'static str {
     if runtime_provider_id == "stt_mlx_audio" {
         let title = format!("{} {}", model.name, model.id).to_lowercase();
-        if title.contains("qwen3-asr")
-            || title.contains("qwen3 asr")
-            || title.contains("qwen3_asr")
+        if title.contains("qwen3-asr") || title.contains("qwen3 asr") || title.contains("qwen3_asr")
         {
             return "stt_qwen";
         }

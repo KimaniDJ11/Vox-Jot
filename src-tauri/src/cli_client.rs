@@ -18,6 +18,7 @@ use serde::Deserialize;
 use std::io::Read;
 
 const DEFAULT_PORT: u16 = 8978;
+const API_TOKEN_HEADER: &str = "x-vox-jot-api-token";
 
 #[derive(Deserialize)]
 struct TranscribeResponse {
@@ -49,15 +50,19 @@ pub fn run(cmd: CliCommand) -> i32 {
         .and_then(|s| s.parse().ok())
         .unwrap_or(DEFAULT_PORT);
     let base = format!("http://127.0.0.1:{}", port);
+    let token = std::env::var("VOX_JOT_API_TOKEN")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
 
     match cmd {
         CliCommand::Health => run_health(&base),
-        CliCommand::Models { json } => run_models(&base, json),
+        CliCommand::Models { json } => run_models(&base, json, token.as_deref()),
         CliCommand::Transcribe {
             path,
             format,
             language,
-        } => run_transcribe(&base, &path, format, language.as_deref()),
+        } => run_transcribe(&base, &path, format, language.as_deref(), token.as_deref()),
     }
 }
 
@@ -89,9 +94,13 @@ fn run_health(base: &str) -> i32 {
     }
 }
 
-fn run_models(base: &str, json: bool) -> i32 {
+fn run_models(base: &str, json: bool, token: Option<&str>) -> i32 {
     let client = reqwest::blocking::Client::new();
-    match client.get(format!("{}/v1/models", base)).send() {
+    let mut request = client.get(format!("{}/v1/models", base));
+    if let Some(token) = token {
+        request = request.header(API_TOKEN_HEADER, token);
+    }
+    match request.send() {
         Ok(resp) => match resp.json::<ModelsResponse>() {
             Ok(m) => {
                 if json {
@@ -128,7 +137,13 @@ fn run_models(base: &str, json: bool) -> i32 {
     }
 }
 
-fn run_transcribe(base: &str, path: &str, format: CliOutputFormat, _language: Option<&str>) -> i32 {
+fn run_transcribe(
+    base: &str,
+    path: &str,
+    format: CliOutputFormat,
+    _language: Option<&str>,
+    token: Option<&str>,
+) -> i32 {
     // Read the audio bytes — `-` means stdin.
     let bytes: Vec<u8> = if path == "-" {
         let mut buf = Vec::new();
@@ -170,11 +185,13 @@ fn run_transcribe(base: &str, path: &str, format: CliOutputFormat, _language: Op
         }
     };
 
-    let response = match client
+    let mut request = client
         .post(format!("{}/v1/transcribe", base))
-        .multipart(form)
-        .send()
-    {
+        .multipart(form);
+    if let Some(token) = token {
+        request = request.header(API_TOKEN_HEADER, token);
+    }
+    let response = match request.send() {
         Ok(r) => r,
         Err(err) => {
             print_api_unreachable(&err);

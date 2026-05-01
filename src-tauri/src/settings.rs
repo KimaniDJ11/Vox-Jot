@@ -831,10 +831,17 @@ pub struct AppSettings {
     /// Port the loopback API binds to when `http_api_enabled` is true.
     #[serde(default = "default_http_api_port")]
     pub http_api_port: u16,
+    /// Bearer token required by state-changing/local-control HTTP API routes.
+    #[serde(default = "default_http_api_token")]
+    pub http_api_token: String,
 }
 
 fn default_http_api_port() -> u16 {
     8978
+}
+
+fn default_http_api_token() -> String {
+    String::new()
 }
 
 /// Output format for files written by the watch-folder service.
@@ -1989,7 +1996,20 @@ pub fn get_default_settings() -> AppSettings {
         watch_folders: Vec::new(),
         http_api_enabled: false,
         http_api_port: default_http_api_port(),
+        http_api_token: generate_http_api_token(),
     }
+}
+
+fn generate_http_api_token() -> String {
+    format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+}
+
+fn ensure_http_api_defaults(settings: &mut AppSettings) -> bool {
+    if settings.http_api_token.trim().is_empty() {
+        settings.http_api_token = generate_http_api_token();
+        return true;
+    }
+    false
 }
 
 impl AppSettings {
@@ -2556,6 +2576,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
+    let http_api_changed = ensure_http_api_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
     hydrate_post_process_api_keys(app, &mut settings);
 
@@ -2563,6 +2584,7 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
         || tts_changed
         || post_process_changed
         || model_platform_changed
+        || http_api_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -2592,6 +2614,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let post_process_changed = ensure_post_process_defaults(&mut settings);
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
+    let http_api_changed = ensure_http_api_defaults(&mut settings);
     let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
     hydrate_post_process_api_keys(app, &mut settings);
 
@@ -2599,6 +2622,7 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
         || tts_changed
         || post_process_changed
         || model_platform_changed
+        || http_api_changed
         || migrated_legacy_keys
     {
         write_settings(app, settings.clone());
@@ -2629,6 +2653,7 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
     ensure_post_process_defaults(&mut settings);
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
+    ensure_http_api_defaults(&mut settings);
 
     settings
 }

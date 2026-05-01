@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { File, FolderOpen, ClipboardPaste, X, Plus } from "lucide-react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/Button";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { commands, type ConvoContextItem } from "@/bindings";
@@ -37,19 +36,8 @@ export const FilesContextCard: React.FC<FilesContextCardProps> = ({
   const handleAttachFile = async () => {
     if (!sessionId) return;
     try {
-      const selected = await open({
-        multiple: true,
-        title: t("convo.filesContext.attachFiles"),
-      });
-      if (selected) {
-        const paths = Array.isArray(selected) ? selected : [selected];
-        for (const p of paths) {
-          if (typeof p === "string") {
-            await commands.convoReadFileText(sessionId, p);
-          }
-        }
-        await refreshItems();
-      }
+      await commands.convoPickFilesContext(sessionId);
+      await refreshItems();
     } catch (err) {
       console.error("Failed to attach file:", err);
     }
@@ -58,14 +46,8 @@ export const FilesContextCard: React.FC<FilesContextCardProps> = ({
   const handleAttachFolder = async () => {
     if (!sessionId) return;
     try {
-      const selected = await open({
-        directory: true,
-        title: t("convo.filesContext.attachFolder"),
-      });
-      if (selected && typeof selected === "string") {
-        await commands.convoReadFolderText(sessionId, selected);
-        await refreshItems();
-      }
+      await commands.convoPickFolderContext(sessionId);
+      await refreshItems();
     } catch (err) {
       console.error("Failed to attach folder:", err);
     }

@@ -84,24 +84,24 @@ Vox Jot supports command-line flags for controlling a running instance and custo
 **Remote control flags** (sent to an already-running instance via the single-instance plugin):
 
 ```bash
-handy --toggle-transcription    # Toggle recording on/off
-handy --toggle-post-process     # Toggle recording with post-processing on/off
-handy --cancel                  # Cancel the current operation
+vox-jot --toggle-transcription    # Toggle recording on/off
+vox-jot --toggle-post-process     # Toggle recording with post-processing on/off
+vox-jot --cancel                  # Cancel the current operation
 ```
 
 **Startup flags:**
 
 ```bash
-handy --start-hidden            # Start without showing the main window
-handy --no-tray                 # Start without the system tray icon
-handy --debug                   # Enable debug mode with verbose logging
-handy --help                    # Show all available flags
+vox-jot --start-hidden            # Start without showing the main window
+vox-jot --no-tray                 # Start without the system tray icon
+vox-jot --debug                   # Enable debug mode with verbose logging
+vox-jot --help                    # Show all available flags
 ```
 
 Flags can be combined for autostart scenarios:
 
 ```bash
-handy --start-hidden --no-tray
+vox-jot --start-hidden --no-tray
 ```
 
 > **macOS tip:** When Vox Jot is installed as an app bundle, invoke the binary directly:
@@ -166,7 +166,7 @@ Without these tools, Vox Jot falls back to enigo which may have limited compatib
   1. Open **Settings > Keyboard > Keyboard Shortcuts > Custom Shortcuts**
   2. Click the **+** button to add a new shortcut
   3. Set the **Name** to `Toggle Vox Jot Transcription`
-  4. Set the **Command** to `handy --toggle-transcription`
+  4. Set the **Command** to `vox-jot --toggle-transcription`
   5. Click **Set Shortcut** and press your desired key combination (e.g., `Super+O`)
 
   **KDE Plasma:**
@@ -174,14 +174,14 @@ Without these tools, Vox Jot falls back to enigo which may have limited compatib
   2. Click **Edit > New > Global Shortcut > Command/URL**
   3. Name it `Toggle Vox Jot Transcription`
   4. In the **Trigger** tab, set your desired key combination
-  5. In the **Action** tab, set the command to `handy --toggle-transcription`
+  5. In the **Action** tab, set the command to `vox-jot --toggle-transcription`
 
   **Sway / i3:**
 
   Add to your config file (`~/.config/sway/config` or `~/.config/i3/config`):
 
   ```ini
-  bindsym $mod+o exec handy --toggle-transcription
+  bindsym $mod+o exec vox-jot --toggle-transcription
   ```
 
   **Hyprland:**
@@ -189,21 +189,21 @@ Without these tools, Vox Jot falls back to enigo which may have limited compatib
   Add to your config file (`~/.config/hypr/hyprland.conf`):
 
   ```ini
-  bind = $mainMod, O, exec, handy --toggle-transcription
+  bind = $mainMod, O, exec, vox-jot --toggle-transcription
   ```
 
 - You can also manage global shortcuts outside of Vox Jot via Unix signals, which lets Wayland window managers or other hotkey daemons keep ownership of keybindings:
 
   | Signal    | Action                                    | Example                |
   | --------- | ----------------------------------------- | ---------------------- |
-  | `SIGUSR2` | Toggle transcription                      | `pkill -USR2 -n handy` |
-  | `SIGUSR1` | Toggle transcription with post-processing | `pkill -USR1 -n handy` |
+  | `SIGUSR2` | Toggle transcription                      | `pkill -USR2 -n vox_jot` |
+  | `SIGUSR1` | Toggle transcription with post-processing | `pkill -USR1 -n vox_jot` |
 
   Example Sway config:
 
   ```ini
-  bindsym $mod+o exec pkill -USR2 -n handy
-  bindsym $mod+p exec pkill -USR1 -n handy
+  bindsym $mod+o exec pkill -USR2 -n vox_jot
+  bindsym $mod+p exec pkill -USR1 -n vox_jot
   ```
 
   `pkill` here simply delivers the signal—it does not terminate the process.
@@ -466,7 +466,7 @@ Vox Jot can auto-discover custom Whisper GGML models placed in the `models` dire
 2. **Fork the repository** and create a feature branch
 3. **Test thoroughly** on your target platform
 4. **Submit a pull request** with clear description of changes
-5. **Join the discussion** - reach out at [contact@handy.computer](mailto:contact@handy.computer)
+5. **Join the discussion** - reach out at [contact@voxjot.app](mailto:contact@voxjot.app)
 
 The goal is to create both a useful tool and a foundation for others to build upon—a well-patterned, simple codebase that serves the community.
 

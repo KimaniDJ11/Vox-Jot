@@ -37,7 +37,6 @@ import {
   checkAccessibilityPermission,
   checkInputMonitoringPermission,
   checkMicrophonePermission,
-  checkScreenRecordingPermission,
 } from "tauri-plugin-macos-permissions-api";
 import { LayoutGroup, motion } from "framer-motion";
 import { press } from "./motion/springs";
@@ -772,23 +771,13 @@ function App() {
 
         if (currentPlatform === "macos") {
           try {
-            const [
-              hasAccessibility,
-              hasMicrophone,
-              hasInputMonitoring,
-              hasScreenRecording,
-            ] = await Promise.all([
-              checkAccessibilityPermission(),
-              checkMicrophonePermission(),
-              checkInputMonitoringPermission(),
-              checkScreenRecordingPermission(),
-            ]);
-            if (
-              !hasAccessibility ||
-              !hasMicrophone ||
-              !hasInputMonitoring ||
-              !hasScreenRecording
-            ) {
+            const [hasAccessibility, hasMicrophone, hasInputMonitoring] =
+              await Promise.all([
+                checkAccessibilityPermission(),
+                checkMicrophonePermission(),
+                checkInputMonitoringPermission(),
+              ]);
+            if (!hasAccessibility || !hasMicrophone || !hasInputMonitoring) {
               await revealMainWindowForPermissions();
               setOnboardingStep("onboarding");
               return;

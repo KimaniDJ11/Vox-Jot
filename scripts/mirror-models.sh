@@ -40,7 +40,7 @@ RELEASE_TITLE="STT Model Assets (${RELEASE_TAG})"
 OUTDIR=""
 LOCAL_MODEL_DIRS=(
   "${VOX_JOT_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.iriedinamik.voxjot/models}"
-  "${HANDY_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.pais.handy/models}"
+  "${VOX_JOT_LOCAL_MODELS_DIR:-$HOME/Library/Application Support/com.iriedinamik.voxjot/models}"
 )
 
 while [[ $# -gt 0 ]]; do

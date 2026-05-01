@@ -2085,17 +2085,17 @@ async convoListContextItems(sessionId: string) : Promise<Result<ConvoContextItem
     else return { status: "error", error: e  as any };
 }
 },
-async convoReadFileText(sessionId: string, path: string) : Promise<Result<ConvoContextItem, string>> {
+async convoPickFilesContext(sessionId: string) : Promise<Result<ConvoContextItem[], string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("convo_read_file_text", { sessionId, path }) };
+    return { status: "ok", data: await TAURI_INVOKE("convo_pick_files_context", { sessionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async convoReadFolderText(sessionId: string, path: string) : Promise<Result<ConvoContextItem[], string>> {
+async convoPickFolderContext(sessionId: string) : Promise<Result<ConvoContextItem[], string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("convo_read_folder_text", { sessionId, path }) };
+    return { status: "ok", data: await TAURI_INVOKE("convo_pick_folder_context", { sessionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2218,7 +2218,7 @@ http_api_enabled?: boolean;
 /**
  * Port the loopback API binds to when `http_api_enabled` is true.
  */
-http_api_port?: number }
+http_api_port?: number; http_api_token?: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
@@ -2271,7 +2271,7 @@ export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStream
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null; screen_context_metadata: ScreenContextHistoryMetadata | null }
-export type HttpApiStatus = { enabled: boolean; port: number }
+export type HttpApiStatus = { enabled: boolean; port: number; token: string }
 /**
  * Result of changing keyboard implementation
  */

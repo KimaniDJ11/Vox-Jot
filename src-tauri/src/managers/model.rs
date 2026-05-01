@@ -5,11 +5,12 @@ use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use specta::Type;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -49,6 +50,8 @@ pub struct ModelInfo {
     pub description: String,
     pub filename: String,
     pub url: Option<String>,
+    #[serde(default)]
+    pub sha256: Option<String>,
     pub size_mb: u64,
     pub is_downloaded: bool,
     pub is_downloading: bool,
@@ -205,6 +208,35 @@ impl ModelManager {
         Ok(())
     }
 
+    fn verify_optional_sha256(path: &Path, expected_sha256: Option<&str>) -> Result<()> {
+        let Some(expected_sha256) = expected_sha256.map(str::trim).filter(|s| !s.is_empty()) else {
+            return Ok(());
+        };
+
+        let mut file = File::open(path)?;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0_u8; 64 * 1024];
+
+        loop {
+            let bytes_read = file.read(&mut buffer)?;
+            if bytes_read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..bytes_read]);
+        }
+
+        let actual_sha256 = format!("{:x}", hasher.finalize());
+        if actual_sha256.eq_ignore_ascii_case(expected_sha256) {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "SHA-256 mismatch for downloaded model: expected {}, got {}",
+                expected_sha256,
+                actual_sha256
+            ))
+        }
+    }
+
     fn set_model_downloading(&self, model_id: &str, is_downloading: bool) {
         let mut models = self
             .available_models
@@ -305,6 +337,7 @@ impl ModelManager {
                         .to_string(),
                 filename: "apple-speech-analyzer".to_string(),
                 url: None,
+                sha256: None,
                 size_mb: 0,
                 is_downloaded: cfg!(target_os = "macos"),
                 is_downloading: false,
@@ -330,6 +363,7 @@ impl ModelManager {
                         .to_string(),
                 filename: "apple-speech-progressive".to_string(),
                 url: None,
+                sha256: None,
                 size_mb: 0,
                 is_downloaded: cfg!(target_os = "macos"),
                 is_downloading: false,
@@ -354,6 +388,7 @@ impl ModelManager {
                 description: "Fastest multilingual Whisper model.".to_string(),
                 filename: "ggml-tiny.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-tiny.bin")),
+                sha256: None,
                 size_mb: 75,
                 is_downloaded: false,
                 is_downloading: false,
@@ -377,6 +412,7 @@ impl ModelManager {
                 description: "Fastest English-only Whisper model.".to_string(),
                 filename: "ggml-tiny.en.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-tiny.en.bin")),
+                sha256: None,
                 size_mb: 75,
                 is_downloaded: false,
                 is_downloading: false,
@@ -400,6 +436,7 @@ impl ModelManager {
                 description: "Fast multilingual Whisper model.".to_string(),
                 filename: "ggml-base.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-base.bin")),
+                sha256: None,
                 size_mb: 142,
                 is_downloaded: false,
                 is_downloading: false,
@@ -423,6 +460,7 @@ impl ModelManager {
                 description: "Fast English-only Whisper model.".to_string(),
                 filename: "ggml-base.en.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-base.en.bin")),
+                sha256: None,
                 size_mb: 142,
                 is_downloaded: false,
                 is_downloading: false,
@@ -446,6 +484,7 @@ impl ModelManager {
                 description: "Fast and fairly accurate.".to_string(),
                 filename: "ggml-small.bin".to_string(),
                 url: Some(Self::model_url_for("small", "ggml-small.bin", true)),
+                sha256: None,
                 size_mb: 487,
                 is_downloaded: false,
                 is_downloading: false,
@@ -470,6 +509,7 @@ impl ModelManager {
                     .to_string(),
                 filename: "ggml-small.en.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-small.en.bin")),
+                sha256: None,
                 size_mb: 487,
                 is_downloaded: false,
                 is_downloading: false,
@@ -494,6 +534,7 @@ impl ModelManager {
                 description: "Good accuracy, medium speed".to_string(),
                 filename: "ggml-medium.bin".to_string(),
                 url: Some(Self::model_url_for("medium", "ggml-medium.bin", true)),
+                sha256: None,
                 size_mb: 1500, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -517,6 +558,7 @@ impl ModelManager {
                 description: "High-quality English-only Whisper model.".to_string(),
                 filename: "ggml-medium.en.bin".to_string(),
                 url: Some(Self::whisper_cpp_resolve_url("ggml-medium.en.bin")),
+                sha256: None,
                 size_mb: 1500,
                 is_downloaded: false,
                 is_downloading: false,
@@ -543,6 +585,7 @@ impl ModelManager {
                     "https://huggingface.co/IrieDinamik/vox-jot-stt-whisper-medium-q4_1/resolve/main/whisper-medium-q4_1.bin"
                         .to_string(),
                 ),
+                sha256: None,
                 size_mb: 469,
                 is_downloaded: false,
                 is_downloading: false,
@@ -570,6 +613,7 @@ impl ModelManager {
                     "ggml-large-v3-turbo.bin",
                     true,
                 )),
+                sha256: None,
                 size_mb: 1600, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -593,6 +637,7 @@ impl ModelManager {
                 description: "Good accuracy, but slow.".to_string(),
                 filename: "ggml-large-v3-q5_0.bin".to_string(),
                 url: Some(Self::model_url_for("large", "ggml-large-v3-q5_0.bin", true)),
+                sha256: None,
                 size_mb: 1100, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
@@ -621,6 +666,7 @@ impl ModelManager {
                     "breeze-asr-q5_k.bin",
                     false,
                 )),
+                sha256: None,
                 size_mb: 1080,
                 is_downloaded: false,
                 is_downloading: false,
@@ -649,6 +695,7 @@ impl ModelManager {
                     "parakeet-v2-int8.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 473, // Approximate size for int8 quantized model
                 is_downloaded: false,
                 is_downloading: false,
@@ -686,6 +733,7 @@ impl ModelManager {
                     "parakeet-v3-int8.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 478, // Approximate size for int8 quantized model
                 is_downloaded: false,
                 is_downloading: false,
@@ -713,6 +761,7 @@ impl ModelManager {
                     "moonshine-base.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 58,
                 is_downloaded: false,
                 is_downloading: false,
@@ -740,6 +789,7 @@ impl ModelManager {
                     "moonshine-tiny-streaming-en.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 31,
                 is_downloaded: false,
                 is_downloading: false,
@@ -767,6 +817,7 @@ impl ModelManager {
                     "moonshine-small-streaming-en.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 100,
                 is_downloaded: false,
                 is_downloading: false,
@@ -794,6 +845,7 @@ impl ModelManager {
                     "moonshine-medium-streaming-en.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 192,
                 is_downloaded: false,
                 is_downloading: false,
@@ -829,6 +881,7 @@ impl ModelManager {
                     "sense-voice-int8.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 160,
                 is_downloaded: false,
                 is_downloading: false,
@@ -859,6 +912,7 @@ impl ModelManager {
                     "giga-am-v3.tar.gz",
                     false,
                 )),
+                sha256: None,
                 size_mb: 225,
                 is_downloaded: false,
                 is_downloading: false,
@@ -884,6 +938,7 @@ impl ModelManager {
                         .to_string(),
                 filename: "qwen2-audio-7b".to_string(),
                 url: None, // Placeholder for now
+                sha256: None,
                 size_mb: 14000,
                 is_downloaded: false,
                 is_downloading: false,
@@ -913,6 +968,7 @@ impl ModelManager {
                     url: Some(Self::hf_snapshot_url(
                         "mlx-community/whisper-large-v3-turbo-asr-fp16",
                     )),
+                    sha256: None,
                     size_mb: 3200,
                     is_downloaded: false,
                     is_downloading: false,
@@ -936,6 +992,7 @@ impl ModelManager {
                     description: "Fast MLX Distil-Whisper transcription via mlx-audio.".to_string(),
                     filename: "MLX/distil-whisper/distil-large-v3".to_string(),
                     url: Some(Self::hf_snapshot_url("distil-whisper/distil-large-v3")),
+                    sha256: None,
                     size_mb: 3000,
                     is_downloaded: false,
                     is_downloading: false,
@@ -961,6 +1018,7 @@ impl ModelManager {
                             .to_string(),
                     filename: "MLX/mlx-community/Qwen3-ASR-1.7B-8bit".to_string(),
                     url: Some(Self::hf_snapshot_url("mlx-community/Qwen3-ASR-1.7B-8bit")),
+                    sha256: None,
                     size_mb: 2000,
                     is_downloaded: false,
                     is_downloading: false,
@@ -991,6 +1049,7 @@ impl ModelManager {
                         .to_string(),
                     filename: "MLX/mlx-community/parakeet-tdt-0.6b-v3".to_string(),
                     url: Some(Self::hf_snapshot_url("mlx-community/parakeet-tdt-0.6b-v3")),
+                    sha256: None,
                     size_mb: 1300,
                     is_downloaded: false,
                     is_downloading: false,
@@ -1044,6 +1103,7 @@ impl ModelManager {
                     url: Some(Self::hf_snapshot_url(
                         "mlx-community/Voxtral-Mini-3B-2507-bf16",
                     )),
+                    sha256: None,
                     size_mb: 6000,
                     is_downloaded: false,
                     is_downloading: false,
@@ -1081,6 +1141,7 @@ impl ModelManager {
                     url: Some(Self::hf_snapshot_url(
                         "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
                     )),
+                    sha256: None,
                     size_mb: 3000,
                     is_downloaded: false,
                     is_downloading: false,
@@ -1416,6 +1477,7 @@ impl ModelManager {
                     description: "Not officially supported".to_string(),
                     filename,
                     url: None, // Custom models have no download URL
+                    sha256: None,
                     size_mb,
                     is_downloaded: true, // Already present on disk
                     is_downloading: false,
@@ -1891,6 +1953,22 @@ impl ModelManager {
             }
         }
 
+        if let Err(error) =
+            Self::verify_optional_sha256(&partial_path, model_info.sha256.as_deref())
+        {
+            let _ = fs::remove_file(&partial_path);
+            {
+                let mut models = self
+                    .available_models
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                if let Some(model) = models.get_mut(model_id) {
+                    model.is_downloading = false;
+                }
+            }
+            return Err(error);
+        }
+
         let is_archive_download = Self::is_tar_gz_url(&url);
 
         // Handle extracted archives before falling back to plain file moves.
@@ -2275,6 +2353,7 @@ mod tests {
                 description: "Test".to_string(),
                 filename: "ggml-small.bin".to_string(),
                 url: Some("https://example.com".to_string()),
+                sha256: None,
                 size_mb: 100,
                 is_downloaded: false,
                 is_downloading: false,

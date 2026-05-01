@@ -34,6 +34,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [port, setPort] = useState(8978);
+  const [token, setToken] = useState("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,6 +47,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       if (r.status === "ok") {
         setEnabled(r.data.enabled);
         setPort(r.data.port);
+        setToken(r.data.token);
         setRunning(r.data.enabled); // optimistic; live event will correct
       }
     })();
@@ -62,23 +64,20 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
     };
   }, []);
 
-  const onToggle = useCallback(
-    async (next: boolean) => {
-      setBusy(true);
-      setError(null);
-      setEnabled(next);
-      try {
-        const r = await commands.setHttpApiEnabled(next);
-        if (r.status === "error") {
-          setError(r.error);
-          setEnabled(!next);
-        }
-      } finally {
-        setBusy(false);
+  const onToggle = useCallback(async (next: boolean) => {
+    setBusy(true);
+    setError(null);
+    setEnabled(next);
+    try {
+      const r = await commands.setHttpApiEnabled(next);
+      if (r.status === "error") {
+        setError(r.error);
+        setEnabled(!next);
       }
-    },
-    [],
-  );
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const onPortBlur = useCallback(async () => {
     if (port < 1024 || port > 65535) {
@@ -90,6 +89,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
   }, [port]);
 
   const url = `http://127.0.0.1:${port}`;
+  const authHeader = `X-Vox-Jot-Api-Token: ${token}`;
   const copyUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -97,6 +97,13 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
   }, [url]);
+  const copyToken = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(token);
+    } catch {
+      /* clipboard may be unavailable in some contexts; non-fatal */
+    }
+  }, [token]);
 
   return (
     <div className="space-y-2">
@@ -143,6 +150,29 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="text-[var(--muted)]">
+              {t("settings.diagnostics.localApi.token", {
+                defaultValue: "Token",
+              })}
+            </span>
+            <span className="max-w-[18rem] truncate font-mono text-[var(--text)]">
+              {token}
+            </span>
+            <Button
+              variant="secondary"
+              onClick={() => void copyToken()}
+              className="ml-auto"
+            >
+              <Copy size={12} className="mr-1" />
+              {t("settings.diagnostics.localApi.copyToken", {
+                defaultValue: "Copy Token",
+              })}
+            </Button>
+          </div>
+
+          <div className="font-mono text-[var(--muted)]">{authHeader}</div>
+
+          <div className="flex items-center gap-2">
             <label
               className="text-[var(--muted)]"
               htmlFor="local-api-port-input"
@@ -180,7 +210,7 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
           <div className="text-[var(--muted)]">
             {t("settings.diagnostics.localApi.cliHint", {
               defaultValue:
-                "Try it: vox-jot transcribe path/to/file.wav --format srt",
+                "Try it: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
             })}
           </div>
         </div>

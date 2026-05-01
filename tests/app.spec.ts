@@ -236,6 +236,8 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
   );
 
   await page.addInitScript((activeScenario: Scenario) => {
+    window.localStorage.removeItem("vox-jot-sidebar-collapsed");
+
     const callbacks: Record<number, (...args: unknown[]) => void> = {};
     let callbackId = 0;
     let eventListenerId = 0;
@@ -339,6 +341,19 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
           case "get_available_microphones":
           case "get_available_output_devices":
             return [];
+          case "get_model_platform_overview":
+            return {
+              stt: { providers: [], models: [] },
+              llm: { providers: [], models: [] },
+              tts: { providers: [], models: [] },
+              selection: {},
+            };
+          case "get_available_tts_voices":
+          case "refresh_tts_voices":
+          case "get_available_tts_packs":
+          case "list_tts_voice_presets":
+          case "list_tts_voice_profiles":
+            return [];
           case "get_available_models":
             return state.models;
           case "get_current_model":
@@ -389,6 +404,26 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             };
           case "get_history_entries":
             return activeScenario.historyEntries;
+          case "list_write_rules":
+            return state.settings.write_rules ?? [];
+          case "list_installed_apps":
+            return [
+              { name: "Slack", bundle_id: "com.tinyspeck.slackmacgap" },
+              { name: "Mail", bundle_id: "com.apple.mail" },
+            ];
+          case "get_history_entries_page": {
+            const offset = Number(args.offset ?? 0);
+            const limit = Number(args.limit ?? 50);
+            const entries = activeScenario.historyEntries.slice(
+              offset,
+              offset + limit,
+            );
+            return {
+              entries,
+              has_more: offset + limit < activeScenario.historyEntries.length,
+              total: activeScenario.historyEntries.length,
+            };
+          }
           case "toggle_history_entry_saved": {
             const entry = activeScenario.historyEntries.find(
               (item) => item.id === args.id,
@@ -559,7 +594,7 @@ test.describe("Vox Jot app", () => {
     await expect(titleBarNotice).toBeVisible();
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility to type text and Input Monitoring/i,
+        /Vox Jot needs Accessibility to type text, Input Monitoring/i,
       ),
     ).toHaveCount(0);
 
@@ -567,7 +602,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility to type text and Input Monitoring/i,
+        /Vox Jot needs Accessibility to type text, Input Monitoring/i,
       ),
     ).toBeVisible();
     await expect(page.getByText(/Input Monitoring/i).first()).toBeVisible();
@@ -582,11 +617,14 @@ test.describe("Vox Jot app", () => {
       },
     });
 
-    await expect(page.getByText("Post Process")).toBeVisible();
-    await page.getByText("Post Process").click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Models & AI" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(
-      page.getByRole("heading", { name: /^Post Process$/i }),
+      page.getByRole("heading", { name: /^Models & AI$/i }),
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -605,7 +643,8 @@ test.describe("Vox Jot app", () => {
       },
     });
 
-    await page.getByText("Post Process").click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(page.getByText("Apple Cleanup")).toBeVisible();
     await expect(page.getByText("Apple Personalization")).toHaveCount(0);
@@ -620,6 +659,34 @@ test.describe("Vox Jot app", () => {
         app_aware_tone_enabled: true,
         post_process_enabled: true,
         post_process_provider_id: "openai",
+        write_rules: [
+          {
+            id: "slack-casual",
+            name: "Slack casual",
+            enabled: true,
+            priority: 10,
+            matchers: {
+              bundle_ids: ["com.tinyspeck.slackmacgap"],
+              url_patterns: [],
+            },
+            overrides: {
+              tone_id: "casual",
+            },
+          },
+          {
+            id: "mail-professional",
+            name: "Mail professional",
+            enabled: true,
+            priority: 20,
+            matchers: {
+              bundle_ids: ["com.apple.mail"],
+              url_patterns: [],
+            },
+            overrides: {
+              tone_id: "professional",
+            },
+          },
+        ],
         tone_definitions: [
           {
             id: "neutral",
@@ -640,48 +707,20 @@ test.describe("Vox Jot app", () => {
             label: "Professional",
           },
         ],
-        app_tone_mappings: [
-          {
-            app_name: "Slack",
-            bundle_id: "com.tinyspeck.slackmacgap",
-            tone_id: "casual",
-          },
-          {
-            app_name: "Mail",
-            bundle_id: "com.apple.mail",
-            tone_id: "professional",
-          },
-        ],
       },
     });
 
-    await expect(page.getByText("Write profiles").first()).toBeVisible();
-    await page.getByText("Write profiles").first().click();
+    await page.getByRole("tab", { name: "Refine" }).click();
+    await expect(page.getByText("Write Profiles").first()).toBeVisible();
+    await page.getByText("Write Profiles").first().click();
 
     await expect(
-      page.getByRole("heading", { name: /^Write profiles$/i }).first(),
+      page.getByRole("heading", { name: /^Write Profiles$/i }).first(),
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /^Starter profiles$/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /^Casual$/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /^Professional$/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /^Neutral$/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /^App mappings$/i }),
-    ).toBeVisible();
-    await expect(page.locator('input[value="Slack"]')).toBeVisible();
-    await expect(
-      page.locator('input[value="com.tinyspeck.slackmacgap"]'),
-    ).toBeVisible();
-    await expect(page.locator('input[value="Mail"]')).toBeVisible();
-    await expect(page.locator('input[value="com.apple.mail"]')).toBeVisible();
+    await expect(page.getByText("Slack")).toBeVisible();
+    await expect(page.getByText("Mail")).toBeVisible();
+    await expect(page.getByText("Tone · Casual")).toBeVisible();
+    await expect(page.getByText("Tone · Professional")).toBeVisible();
   });
 
   test("renders prompting for non-Apple providers", async ({ page }) => {
@@ -692,7 +731,8 @@ test.describe("Vox Jot app", () => {
       },
     });
 
-    await page.getByText("Post Process").click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(page.getByText("Prompting")).toBeVisible();
     await expect(page.getByText("Apple Cleanup")).toHaveCount(0);
@@ -724,8 +764,6 @@ test.describe("Vox Jot app", () => {
       ],
     });
 
-    await page.getByText("History").click();
-
     await expect(page.getByTestId("history-entries")).toBeVisible();
     await expect(page.getByText("buy bread and apples")).toBeVisible();
     await expect(
@@ -736,19 +774,25 @@ test.describe("Vox Jot app", () => {
   test("keeps debug section visible and route debugger interactive", async ({
     page,
   }) => {
-    await bootApp(page);
+    await bootApp(page, {
+      settings: {
+        debug_mode: true,
+      },
+    });
 
-    await expect(page.getByText("Debug")).toBeVisible();
-    await page.getByText("Debug").click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Diagnostics" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Diagnostics" }).click();
 
     await page
-      .getByTestId("route-debugger-input")
+      .getByPlaceholder(
+        "Paste some dictated text to inspect the cleanup route.",
+      )
       .fill("rewrite this as bullet points one ship two test");
-    await page.getByTestId("route-debugger-analyze").click();
-    await expect(page.getByTestId("route-debugger-result")).toContainText(
-      /Route:/,
-    );
-    await expect(page.getByTestId("route-debugger-metrics")).toBeVisible();
+    await page.getByRole("button", { name: "Analyze Route" }).click();
+    await expect(page.getByText(/"route": "command"/)).toBeVisible();
   });
 
   test("shows the Apple unavailable state when the selected provider cannot run", async ({
@@ -762,7 +806,8 @@ test.describe("Vox Jot app", () => {
       },
     });
 
-    await page.getByText("Post Process").click();
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(
       page

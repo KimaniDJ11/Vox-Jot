@@ -68,8 +68,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const allGranted = isMacOS
     ? permissions.accessibility === "granted" &&
       permissions.microphone === "granted" &&
-      permissions.inputMonitoring === "granted" &&
-      permissions.screenRecording === "granted"
+      permissions.inputMonitoring === "granted"
     : isWindows
       ? permissions.microphone === "granted"
       : true;
@@ -136,12 +135,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           };
           setPermissions(newState);
 
-          if (
-            accessibilityGranted &&
-            microphoneGranted &&
-            inputMonitoringGranted &&
-            screenRecordingGranted
-          ) {
+          if (accessibilityGranted && microphoneGranted && inputMonitoringGranted) {
             await completeOnboarding();
           }
         } catch (error) {
@@ -236,12 +230,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
           return newState;
         });
 
-        if (
-          accessibilityGranted &&
-          microphoneGranted &&
-          inputMonitoringGranted &&
-          screenRecordingGranted
-        ) {
+        if (accessibilityGranted && microphoneGranted && inputMonitoringGranted) {
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
@@ -450,7 +439,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
               <p className="ob-perm-title">
                 {t("onboarding.permissions.screenRecording.title", {
                   defaultValue: "Screen Recording",
-                })}
+                })}{" "}
+                <span className="text-xs font-medium text-[var(--muted)]">
+                  {t("onboarding.permissions.optional", {
+                    defaultValue: "Optional",
+                  })}
+                </span>
               </p>
               <p className="ob-perm-desc">
                 {t("onboarding.permissions.screenRecording.cardDescription", {

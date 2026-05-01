@@ -210,24 +210,21 @@ export const HistorySettings: React.FC = () => {
     }
   };
 
-  const getAudioUrl = useCallback(
-    async (fileName: string) => {
-      try {
-        const result = await commands.getAudioFilePath(fileName);
-        if (result.status === "ok") {
-          const fileData = await readFile(result.data);
-          const blob = new Blob([fileData], { type: "audio/wav" });
+  const getAudioUrl = useCallback(async (fileName: string) => {
+    try {
+      const result = await commands.getAudioFilePath(fileName);
+      if (result.status === "ok") {
+        const fileData = await readFile(result.data);
+        const blob = new Blob([fileData], { type: "audio/wav" });
 
-          return URL.createObjectURL(blob);
-        }
-        return null;
-      } catch (error) {
-        console.error("Failed to get audio file path:", error);
-        return null;
+        return URL.createObjectURL(blob);
       }
-    },
-    [],
-  );
+      return null;
+    } catch (error) {
+      console.error("Failed to get audio file path:", error);
+      return null;
+    }
+  }, []);
 
   const deleteAudioEntry = async (id: number) => {
     try {
@@ -440,12 +437,7 @@ const HistoryBadgePopoverPortal: React.FC<{
   onPointerEnterPanel: () => void;
   onPointerLeavePanel: () => void;
   children: React.ReactNode;
-}> = ({
-  anchorRef,
-  onPointerEnterPanel,
-  onPointerLeavePanel,
-  children,
-}) => {
+}> = ({ anchorRef, onPointerEnterPanel, onPointerLeavePanel, children }) => {
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number }>({
     top: -9999,
@@ -620,16 +612,19 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const pastedText =
     insertedText || polishedText || rawText || displayText.trim();
   const observedText = entry.field_snapshot_text?.trim() || "";
-  const dictionaryApplied = entry.dictionary_hits.length > 0;
+  const dictionaryHits = entry.dictionary_hits ?? [];
+  const dictionaryApplied = dictionaryHits.length > 0;
   const postProcessApplied = polishedText.length > 0;
   const appLabel = getHistoryEntryAppLabel(entry);
-  const appBundleId = entry.screen_context_metadata?.active_app_bundle_id?.trim() || null;
-  const appNameFromMeta = entry.screen_context_metadata?.active_app_name?.trim() || null;
+  const appBundleId =
+    entry.screen_context_metadata?.active_app_bundle_id?.trim() || null;
+  const appNameFromMeta =
+    entry.screen_context_metadata?.active_app_name?.trim() || null;
   const appDisplayName =
     appNameFromMeta ||
     (appBundleId ? humanizeBundleId(appBundleId) : null) ||
     appLabel;
-  const fieldSnapshotStatus = entry.field_snapshot_status;
+  const fieldSnapshotStatus = entry.field_snapshot_status ?? "not_requested";
   const fieldCheckChanged =
     fieldSnapshotStatus === "captured" &&
     Boolean(observedText) &&
@@ -699,7 +694,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
       icon={<CheckCircle2 className="h-3.5 w-3.5" />}
     >
       <p className="text-sm leading-6 text-[var(--text)] select-text cursor-text">
-        {entry.dictionary_hits.join(", ")}
+        {dictionaryHits.join(", ")}
       </p>
     </HistoryDetailSection>
   );

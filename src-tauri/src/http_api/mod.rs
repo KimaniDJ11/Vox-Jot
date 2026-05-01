@@ -30,10 +30,10 @@
 
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
-use crate::settings::get_settings;
+use crate::settings::get_settings_without_secrets;
 use axum::{
-    extract::{Multipart, State as AxumState},
-    http::StatusCode,
+    extract::{DefaultBodyLimit, Multipart, State as AxumState},
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Json},
     routing::{get, post},
     Router,
@@ -45,6 +45,9 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+
+const MAX_TRANSCRIBE_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
+const API_TOKEN_HEADER: &str = "x-vox-jot-api-token";
 
 #[derive(Clone)]
 struct ApiState {
@@ -116,6 +119,7 @@ impl HttpApiManager {
             .route("/v1/health", get(handle_health))
             .route("/v1/models", get(handle_models))
             .route("/v1/transcribe", post(handle_transcribe))
+            .layer(DefaultBodyLimit::max(MAX_TRANSCRIBE_UPLOAD_BYTES))
             .with_state(state);
 
         let bind_addr = format!("127.0.0.1:{}", port);
@@ -200,7 +204,17 @@ async fn handle_health() -> Json<HealthResponse> {
     })
 }
 
-async fn handle_models(AxumState(state): AxumState<ApiState>) -> impl IntoResponse {
+async fn handle_models(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return response;
+    }
+    handle_models_authorized(state).await
+}
+
+async fn handle_models_authorized(state: ApiState) -> axum::response::Response {
     let manager = match state.app.try_state::<Arc<TranscriptionManager>>() {
         Some(m) => m.inner().clone(),
         None => {
@@ -243,8 +257,13 @@ async fn handle_models(AxumState(state): AxumState<ApiState>) -> impl IntoRespon
 
 async fn handle_transcribe(
     AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
     mut multipart: Multipart,
 ) -> impl IntoResponse {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return response;
+    }
+
     // Pull the first file field — `file=@audio.wav` matches the way
     // the CLI and most clients (curl, Raycast, Python requests) post
     // audio.
@@ -308,12 +327,9 @@ async fn handle_transcribe(
         }
     };
 
-    let app_for_warn = state.app.clone();
-    let result = tokio::task::spawn_blocking(move || {
-        let _ = get_settings(&app_for_warn);
-        manager.transcribe_with_segments(Arc::new(samples))
-    })
-    .await;
+    let result =
+        tokio::task::spawn_blocking(move || manager.transcribe_with_segments(Arc::new(samples)))
+            .await;
 
     match result {
         Ok(Ok((text, segments))) => Json(TranscribeResponse { text, segments }).into_response(),
@@ -332,6 +348,34 @@ async fn handle_transcribe(
         )
             .into_response(),
     }
+}
+
+fn require_api_token(app: &AppHandle, headers: &HeaderMap) -> Result<(), axum::response::Response> {
+    let expected = get_settings_without_secrets(app).http_api_token;
+    let expected = expected.trim();
+    let provided = headers
+        .get(API_TOKEN_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .or_else(|| {
+            headers
+                .get(axum::http::header::AUTHORIZATION)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.strip_prefix("Bearer "))
+                .map(str::trim)
+        });
+
+    if !expected.is_empty() && provided == Some(expected) {
+        return Ok(());
+    }
+
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse {
+            error: format!("missing or invalid {API_TOKEN_HEADER}"),
+        }),
+    )
+        .into_response())
 }
 
 fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {

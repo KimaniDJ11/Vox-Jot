@@ -1,8 +1,9 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const DEFAULT_UPDATE_FEED_URL =
-  "https://github.com/cjpais/Handy/releases/latest/download/latest.json";
-const DEFAULT_RELEASES_URL = "https://github.com/cjpais/Handy/releases/latest";
+  "https://github.com/KimaniDJ11/Vox-Jot/releases/latest/download/latest.json";
+const DEFAULT_RELEASES_URL =
+  "https://github.com/KimaniDJ11/Vox-Jot/releases/latest";
 
 type UpdateFeedShape = {
   version?: string;

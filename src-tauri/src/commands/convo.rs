@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_dialog::DialogExt;
 
 use crate::convo::{
     ConvoAudioCaptureStatus, ConvoAvailability, ConvoContextItem, ConvoMode, ConvoSessionState,
@@ -122,24 +123,63 @@ pub fn convo_list_context_items(
 
 #[tauri::command]
 #[specta::specta]
-pub fn convo_read_file_text(
+pub async fn convo_pick_files_context(
     app: AppHandle,
     session_id: String,
-    path: String,
-) -> Result<ConvoContextItem, String> {
+) -> Result<Vec<ConvoContextItem>, String> {
+    let app_for_dialog = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app_for_dialog
+            .dialog()
+            .file()
+            .set_title("Attach files")
+            .blocking_pick_files()
+    })
+    .await
+    .map_err(|e| format!("Failed to open file picker: {}", e))?;
+
+    let Some(paths) = picked else {
+        return Ok(Vec::new());
+    };
+
     let controller = app.state::<Arc<ConvoController>>();
-    controller.read_file_as_context(&session_id, &path)
+    let mut items = Vec::new();
+    for path in paths {
+        let path = path
+            .into_path()
+            .map_err(|e| format!("Selected file path is not readable: {}", e))?;
+        let path = path.to_string_lossy().to_string();
+        items.push(controller.read_file_as_context(&session_id, &path)?);
+    }
+    Ok(items)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn convo_read_folder_text(
+pub async fn convo_pick_folder_context(
     app: AppHandle,
     session_id: String,
-    path: String,
 ) -> Result<Vec<ConvoContextItem>, String> {
+    let app_for_dialog = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app_for_dialog
+            .dialog()
+            .file()
+            .set_title("Attach folder")
+            .blocking_pick_folder()
+    })
+    .await
+    .map_err(|e| format!("Failed to open folder picker: {}", e))?;
+
+    let Some(path) = picked else {
+        return Ok(Vec::new());
+    };
+
+    let path = path
+        .into_path()
+        .map_err(|e| format!("Selected folder path is not readable: {}", e))?;
     let controller = app.state::<Arc<ConvoController>>();
-    controller.read_folder_as_context(&session_id, &path)
+    controller.read_folder_as_context(&session_id, &path.to_string_lossy())
 }
 
 #[tauri::command]

@@ -13,6 +13,7 @@ import {
   Cloud,
   Dna,
   Globe,
+  HardDrive,
   Loader2,
   Mic2,
   Monitor,
@@ -171,6 +172,40 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "xtts",
 ]);
 
+const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
+  openvoice: "~1.6 GB",
+  chatterbox: "~3.0 GB",
+  "kokoro-82m-v1.0": "~350 MB",
+  "xtts-v2": "~1.9 GB",
+  "lfm2-5-audio-1-5b-q4-0": "~1.0 GB",
+  "vibevoice-realtime-0-5b": "~1.1 GB",
+  "qwen3-0.6b-base": "~1.2 GB",
+  "qwen3-0.6b-customvoice": "~1.2 GB",
+  "qwen3-1.7b-customvoice": "~3.4 GB",
+  "tts-sherpa-en-us-lessac-medium": "~60 MB",
+  "tts-sherpa-zh-cn-melo": "~120 MB",
+  "qwen3-tts-0.6b": "~1.2 GB",
+  "qwen3-tts-0.6b-4bit": "~450 MB",
+  "qwen3-tts-1.7b": "~3.4 GB",
+  "qwen3-tts-1.7b-base": "~3.4 GB",
+  "dia-1.6b": "~3.2 GB",
+  "csm-1b": "~2.0 GB",
+  "spark-tts-0.5b": "~1.0 GB",
+  "outetts-0.6b": "~1.2 GB",
+  "ming-omni-0.5b": "~500 MB",
+  "kugel-audio-7b": "~14 GB",
+  "bark-small": "~1.5 GB",
+  "fish-audio-s2-pro": "~4.0 GB",
+  "lfm2-5-audio-1-5b": "~3.0 GB",
+  "pocket-tts": "~1.0 GB",
+  "pocket-tts-4bit": "~500 MB",
+  "pocket-tts-8bit": "~900 MB",
+  "voxcpm2-4bit": "~2.5 GB",
+  "voxtral-tts-4b": "~8.0 GB",
+  "tada-1b": "~2.0 GB",
+  "tada-3b-ml": "~6.0 GB",
+};
+
 function emptyVoiceInventoryLabel(_providerId: string) {
   return "No preset voices";
 }
@@ -216,6 +251,25 @@ function formatLanguageCoverage(model: CatalogModelDescriptor) {
   if (languages.length === 0) return "";
   if (languages.length === 1) return languages[0];
   return `${languages[0]}+${languages.length - 1}`;
+}
+
+function ttsStorageSizeLabel(
+  model: CatalogModelDescriptor,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  if (TTS_MODEL_SIZE_HINTS[model.id]) {
+    return TTS_MODEL_SIZE_HINTS[model.id];
+  }
+
+  if (!model.downloadable) {
+    return model.capabilities.local_only
+      ? t("modelSelector.noDownload", { defaultValue: "No download" })
+      : t("modelHub.chips.externalStorage", {
+          defaultValue: "External storage",
+        });
+  }
+
+  return t("modelHub.chips.sizeUnknown", { defaultValue: "Size unknown" });
 }
 
 function ttsModelSupportsLanguage(
@@ -2189,6 +2243,15 @@ const SpeechModelLibraryCard: React.FC<{
         : t("modelHub.chips.cloudDetail", {
             defaultValue: "Uses a configured network provider.",
           }),
+    },
+    {
+      id: "capability-size",
+      label: ttsStorageSizeLabel(model, t),
+      variant: "secondary" as const,
+      icon: <HardDrive className="h-3 w-3" />,
+      detail: t("modelHub.chips.storageSizeDetail", {
+        defaultValue: "Approximate model storage footprint.",
+      }),
     },
     languageCoverage
       ? {

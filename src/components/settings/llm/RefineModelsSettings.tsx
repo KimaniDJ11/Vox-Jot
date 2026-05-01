@@ -18,6 +18,7 @@ import {
   Cpu,
   Download,
   Globe,
+  HardDrive,
   Loader2,
   Monitor,
   Search,
@@ -80,6 +81,42 @@ type RefineModelDescriptor = {
 type RefineModelCatalog = {
   providers: RefineProviderStatus[];
   models: RefineModelDescriptor[];
+};
+
+const REFINE_MODEL_SIZE_HINTS: Record<string, string> = {
+  "llama-3.2-3b-instruct-q4_k_m": "~2.0 GB",
+  "llama-3.2-1b-instruct-q4_k_m": "~0.8 GB",
+  "qwen2.5-1.5b-instruct-q4_k_m": "~1.0 GB",
+  "qwen2.5-0.5b-instruct-q4_k_m": "~0.4 GB",
+  "phi-4-mini-instruct-q4_k_m": "~2.5 GB",
+  "lfm2-1.2b-tool-q4_k_m": "~0.8 GB",
+  "qwen2.5:0.5b": "~0.4 GB",
+  "smollm2:135m": "~0.2 GB",
+  "smollm2:360m": "~0.4 GB",
+  "tinyllama:1.1b": "~0.7 GB",
+  "gemma3:1b": "~1.0 GB",
+  "llama3.2:1b": "~1.3 GB",
+  "qwen2.5:1.5b": "~1.0 GB",
+  "smollm2:1.7b": "~1.1 GB",
+  "llama3.2:3b": "~2.0 GB",
+  "phi4-mini": "~2.5 GB",
+  "falcon3:1b": "~0.7 GB",
+  "granite3.1-dense:2b": "~1.6 GB",
+  "granite3.1-moe:1b": "~0.9 GB",
+  "gemma2:2b": "~1.6 GB",
+  "qwen2.5-coder:1.5b": "~1.0 GB",
+  "codegemma:2b": "~1.6 GB",
+  "stable-code:3b": "~2.1 GB",
+  "orca-mini:3b": "~2.0 GB",
+  "phi3:mini": "~2.2 GB",
+  "dolphin3:1b": "~0.8 GB",
+  "mistral-small:3b": "~2.2 GB",
+  "deepseek-coder:1.3b": "~1.0 GB",
+};
+
+const extractSizeHint = (value: string | null | undefined): string | null => {
+  const match = value?.match(/~?\d+(?:\.\d+)?\s*(?:GB|MB)\b/i);
+  return match ? match[0].replace(/\s+/, " ").toUpperCase() : null;
 };
 
 const sanitizeModelId = (value: string): string =>
@@ -703,6 +740,29 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     return items;
   };
 
+  const buildStorageSizeLabel = (model: RefineModelDescriptor): string => {
+    const knownSize =
+      REFINE_MODEL_SIZE_HINTS[model.runtime_model_id] ??
+      REFINE_MODEL_SIZE_HINTS[model.id] ??
+      extractSizeHint(model.description) ??
+      extractSizeHint(model.note) ??
+      extractSizeHint(model.source_file_name);
+
+    if (knownSize) return knownSize;
+
+    if (model.source_kind === "managed_provider") {
+      return t("modelSelector.noDownload", { defaultValue: "No download" });
+    }
+
+    if (model.source_kind === "lm_studio") {
+      return t("modelHub.chips.externalStorage", {
+        defaultValue: "External storage",
+      });
+    }
+
+    return t("modelHub.chips.sizeUnknown", { defaultValue: "Size unknown" });
+  };
+
   const buildCapabilityChips = (
     model: RefineModelDescriptor,
   ): CompactBadgeItem[] => {
@@ -740,7 +800,21 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             })
           : t("modelHub.chips.cloudDetail", {
               defaultValue: "Uses a configured network provider.",
-            }),
+          }),
+      },
+      {
+        id: "capability-size",
+        label: buildStorageSizeLabel(model),
+        variant: "secondary" as const,
+        icon: <HardDrive className="h-3 w-3" />,
+        detail:
+          model.source_kind === "managed_provider"
+            ? t("modelSelector.noDownloadDetail", {
+                defaultValue: "Uses a configured provider and stores no local model in Vox Jot.",
+              })
+            : t("modelHub.chips.storageSizeDetail", {
+                defaultValue: "Approximate model storage footprint.",
+              }),
       },
       parameterLabel
         ? {

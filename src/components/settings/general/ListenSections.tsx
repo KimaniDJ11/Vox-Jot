@@ -176,6 +176,7 @@ const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   openvoice: "~1.6 GB",
   chatterbox: "~3.0 GB",
   "kokoro-82m-v1.0": "~350 MB",
+  "kokoro-82m": "~350 MB",
   "xtts-v2": "~1.9 GB",
   "lfm2-5-audio-1-5b-q4-0": "~1.0 GB",
   "vibevoice-realtime-0-5b": "~1.1 GB",
@@ -204,6 +205,17 @@ const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   "voxtral-tts-4b": "~8.0 GB",
   "tada-1b": "~2.0 GB",
   "tada-3b-ml": "~6.0 GB",
+  "rhasspy/piper-voices": "~1.0 GB",
+  "microsoft/speecht5_tts": "~1.1 GB",
+  "onnx-community/kokoro-82m-v1.0-onnx": "~350 MB",
+  "hexgrad/kokoro-82m": "~350 MB",
+  "parler-tts/parler-tts-mini-v1.1": "~2.4 GB",
+  "parler-tts/parler-tts-mini-multilingual-v1.1": "~2.4 GB",
+  "outeai/outetts-0.3-1b": "~2.0 GB",
+  "outeai/outetts-0.3-1b-gguf": "~0.8 GB",
+  "swivid/f5-tts": "~3.0 GB",
+  "iriedinamik/microsoft_vibevoice-realtime-0.5b": "~1.1 GB",
+  "iriedinamik/microsoft-vibevoice-realtime-0.5b": "~1.1 GB",
 };
 
 function emptyVoiceInventoryLabel(_providerId: string) {
@@ -257,8 +269,16 @@ function ttsStorageSizeLabel(
   model: CatalogModelDescriptor,
   t: ReturnType<typeof useTranslation>["t"],
 ) {
-  if (TTS_MODEL_SIZE_HINTS[model.id]) {
-    return TTS_MODEL_SIZE_HINTS[model.id];
+  const normalizedId = model.id.toLowerCase();
+  const normalizedLabel = model.label.toLowerCase();
+  const sizeHint =
+    TTS_MODEL_SIZE_HINTS[model.id] ??
+    TTS_MODEL_SIZE_HINTS[normalizedId] ??
+    TTS_MODEL_SIZE_HINTS[model.label] ??
+    TTS_MODEL_SIZE_HINTS[normalizedLabel];
+
+  if (sizeHint) {
+    return sizeHint;
   }
 
   if (!model.downloadable) {

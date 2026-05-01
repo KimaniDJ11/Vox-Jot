@@ -119,6 +119,49 @@ const extractSizeHint = (value: string | null | undefined): string | null => {
   return match ? match[0].replace(/\s+/, " ").toUpperCase() : null;
 };
 
+const formatApproximateSize = (gb: number): string => {
+  if (gb < 1) return `~${Math.max(0.1, gb).toFixed(1)} GB`;
+  if (gb < 10) return `~${gb.toFixed(1)} GB`;
+  return `~${Math.round(gb)} GB`;
+};
+
+const estimateQuantizedGgufSize = (
+  model: RefineModelDescriptor,
+): string | null => {
+  const haystack =
+    `${model.title} ${model.id} ${model.runtime_model_id} ${model.source_repo_id ?? ""} ${model.source_file_name ?? ""}`.toLowerCase();
+  const parameterMatch = haystack.match(/(\d+(?:\.\d+)?)\s*([bm])\b/);
+  let parameterBillions = parameterMatch
+    ? Number(parameterMatch[1]) * (parameterMatch[2] === "m" ? 0.001 : 1)
+    : null;
+
+  if (parameterBillions == null) {
+    if (haystack.includes("phi-3.5-mini")) parameterBillions = 3.8;
+    if (haystack.includes("phi-4-mini")) parameterBillions = 3.8;
+  }
+
+  if (parameterBillions == null || !Number.isFinite(parameterBillions)) {
+    return null;
+  }
+
+  const bytesPerParameter =
+    haystack.includes("q8_0") || haystack.includes("q8-k")
+      ? 1.05
+      : haystack.includes("q6_k")
+        ? 0.78
+        : haystack.includes("q5_k")
+          ? 0.68
+          : haystack.includes("q4")
+            ? 0.57
+            : 0.62;
+
+  const overheadGb =
+    parameterBillions >= 3 ? 0.25 : parameterBillions >= 1 ? 0.15 : 0.08;
+  return formatApproximateSize(
+    parameterBillions * bytesPerParameter + overheadGb,
+  );
+};
+
 const sanitizeModelId = (value: string): string =>
   value
     .trim()
@@ -746,7 +789,8 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       REFINE_MODEL_SIZE_HINTS[model.id] ??
       extractSizeHint(model.description) ??
       extractSizeHint(model.note) ??
-      extractSizeHint(model.source_file_name);
+      extractSizeHint(model.source_file_name) ??
+      estimateQuantizedGgufSize(model);
 
     if (knownSize) return knownSize;
 
@@ -800,7 +844,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             })
           : t("modelHub.chips.cloudDetail", {
               defaultValue: "Uses a configured network provider.",
-          }),
+            }),
       },
       {
         id: "capability-size",
@@ -810,7 +854,8 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         detail:
           model.source_kind === "managed_provider"
             ? t("modelSelector.noDownloadDetail", {
-                defaultValue: "Uses a configured provider and stores no local model in Vox Jot.",
+                defaultValue:
+                  "Uses a configured provider and stores no local model in Vox Jot.",
               })
             : t("modelHub.chips.storageSizeDetail", {
                 defaultValue: "Approximate model storage footprint.",

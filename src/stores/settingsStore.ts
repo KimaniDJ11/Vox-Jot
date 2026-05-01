@@ -256,6 +256,8 @@ const settingUpdaters: {
     commands.changeContextCaptureModeSetting(value as string),
   screen_context_ocr_quality: (value) =>
     commands.changeScreenContextOcrQualitySetting(value as string),
+  screen_context_ocr_neural_model_id: (value) =>
+    commands.setOcrModelSelection((value as string | null) ?? null),
   screen_context_ocr_timeout_ms: (value) =>
     commands.changeScreenContextOcrTimeoutMsSetting(value as number),
   screen_context_token_budget: (value) =>

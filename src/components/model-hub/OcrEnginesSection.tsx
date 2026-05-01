@@ -233,7 +233,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
   const onSelectSystemPolicy = async (engine: ScreenContextOcrEngine) => {
     if (currentNeural) {
-      await commands.setOcrModelSelection(null);
+      await updateSetting("screen_context_ocr_neural_model_id", null as never);
       await refreshCatalog();
     }
     if (engine !== currentEngine) {
@@ -245,11 +245,11 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     if (!model.installed) return;
     setBusyId(model.id);
     try {
-      const res = await commands.setOcrModelSelection(model.id);
-      if (res.status === "error") {
-        setCatalogError(res.error);
-        return;
-      }
+      await updateSetting(
+        "screen_context_ocr_neural_model_id",
+        model.id as never,
+      );
+      setCatalogError(null);
       await refreshCatalog();
     } finally {
       setBusyId(null);

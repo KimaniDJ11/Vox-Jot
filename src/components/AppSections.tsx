@@ -2,7 +2,21 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
-import { NotebookPen, Pin, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Cloud,
+  Cpu,
+  Info,
+  Mic,
+  NotebookPen,
+  Pin,
+  Plus,
+  Shield,
+  Trash2,
+  Wifi,
+  XCircle,
+} from "lucide-react";
 import { ConvoModeView } from "@/components/convo";
 
 import { commands, type Note } from "@/bindings";
@@ -77,6 +91,7 @@ import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCom
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 import UpdateChecker from "@/components/update-checker";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
+import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
 
 export { subtleCardClassName };
 const jotPadEmptyTitle = "Start your first note";
@@ -100,6 +115,222 @@ const aboutSummaryPrimary =
   "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
 const aboutSummarySecondary =
   "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.";
+const smartCorrectionsDemoTitle = "Smart corrections demo";
+const smartCorrectionsDemoDescription =
+  "Shows how learned fixes become visible without relying on color alone.";
+const rawLabel = "Raw";
+const fixedLabel = "Fixed";
+const correctionDemoPrefix = "I am going";
+const correctionDemoWrongWord = "two";
+const correctionDemoFixedWord = "to";
+const correctionDemoSuffix = "the store";
+const processingRoutePreviewTitle = "Processing route preview";
+const processingRoutePreviewDescription =
+  "Dictation starts on-device; optional cleanup follows the selected refine provider.";
+const recordingRetentionPreviewTitle = "Recording retention";
+const day1Label = "Day 1";
+const day7Label = "Day 7";
+const day30Label = "Day 30";
+const routeMonitorLabel = "Route monitor";
+
+const MiniStatusPill: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  tone?: "default" | "success" | "warning" | "info";
+}> = ({ icon, label, tone = "default" }) => {
+  const toneClass =
+    tone === "success"
+      ? "border-[color-mix(in_srgb,var(--success),transparent_72%)] bg-[var(--success-soft)] text-[var(--success)]"
+      : tone === "warning"
+        ? "border-[color-mix(in_srgb,var(--warning),transparent_72%)] bg-[var(--warning-soft)] text-[var(--warning)]"
+        : tone === "info"
+          ? "border-[color-mix(in_srgb,var(--info),transparent_72%)] bg-[var(--info-soft)] text-[var(--info)]"
+          : "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--muted)]";
+
+  return (
+    <span
+      className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${toneClass}`}
+    >
+      {icon}
+      {label}
+    </span>
+  );
+};
+
+const CorrectionsDemoCard: React.FC = () => (
+  <div className={subtleCardClassName}>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-semibold text-[var(--text)]">
+          {smartCorrectionsDemoTitle}
+        </p>
+        <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+          {smartCorrectionsDemoDescription}
+        </p>
+      </div>
+      <MiniStatusPill
+        icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
+        label="Correction applied"
+        tone="success"
+      />
+    </div>
+    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+          {rawLabel}
+        </p>
+        <p className="mt-2 text-sm text-[var(--text)]">
+          {correctionDemoPrefix}{" "}
+          <span className="underline decoration-[var(--warning)] decoration-2">
+            {correctionDemoWrongWord}
+          </span>{" "}
+          {correctionDemoSuffix}
+        </p>
+      </div>
+      <ArrowRight className="hidden h-4 w-4 text-[var(--muted)] md:block" />
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+          {fixedLabel}
+        </p>
+        <p className="mt-2 text-sm text-[var(--text)]">
+          {correctionDemoPrefix}{" "}
+          <span className="rounded bg-[var(--accent-gold-soft)] px-1 font-bold underline decoration-[var(--accent-gold)] decoration-2">
+            {correctionDemoFixedWord}
+          </span>{" "}
+          {correctionDemoSuffix}
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+const AIProcessingRoutePreview: React.FC = () => {
+  const { getSetting } = useSettings();
+  const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
+  const providers = getSetting("post_process_providers") ?? [];
+  const providerId = getSetting("post_process_provider_id") ?? "";
+  const selectedProvider = providers.find(
+    (provider) => provider.id === providerId,
+  );
+  const baseUrl = selectedProvider?.base_url?.toLowerCase() ?? "";
+  const localProvider =
+    localPrivacyMode ||
+    providerId === "apple_intelligence" ||
+    providerId === "ollama" ||
+    baseUrl.includes("localhost") ||
+    baseUrl.includes("127.0.0.1");
+
+  return (
+    <div className={subtleCardClassName}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {processingRoutePreviewTitle}
+          </p>
+          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            {processingRoutePreviewDescription}
+          </p>
+        </div>
+        <MiniStatusPill
+          icon={
+            localProvider ? (
+              <Shield className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <Wifi className="h-3.5 w-3.5" aria-hidden />
+            )
+          }
+          label={localProvider ? "Local route" : "Cloud route"}
+          tone={localProvider ? "success" : "info"}
+        />
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <RouteCard
+          selected={localProvider}
+          icon={<Cpu className="h-5 w-5" aria-hidden />}
+          title="Local AI"
+          detail="Mic -> device model -> paste"
+          badge="Offline capable"
+        />
+        <RouteCard
+          selected={!localProvider}
+          icon={<Cloud className="h-5 w-5" aria-hidden />}
+          title="Cloud AI"
+          detail="Mic -> network -> provider"
+          badge="Uses internet"
+        />
+      </div>
+    </div>
+  );
+};
+
+const RouteCard: React.FC<{
+  selected: boolean;
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  badge: string;
+}> = ({ selected, icon, title, detail, badge }) => (
+  <div
+    className={`rounded-lg border p-3 ${
+      selected
+        ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+        : "border-[var(--border)] bg-[var(--panel-bg)]"
+    }`}
+  >
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-[var(--text)]">
+        <span className="text-[var(--accent)]">{icon}</span>
+        <span className="text-sm font-semibold">{title}</span>
+      </div>
+      {selected ? (
+        <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
+      ) : null}
+    </div>
+    <p className="mt-3 text-xs font-medium text-[var(--text)]">{detail}</p>
+    <p className="mt-1 text-xs text-[var(--muted)]">{badge}</p>
+  </div>
+);
+
+const RetentionTimelinePreview: React.FC = () => {
+  const { getSetting } = useSettings();
+  const retention = getSetting("recording_retention_period") ?? "never";
+  const labels: Record<string, string> = {
+    never: "Keep until removed",
+    preserve_limit: "Keep saved history limit",
+    days3: "Delete after 3 days",
+    weeks2: "Delete after 2 weeks",
+    months3: "Delete after 3 months",
+  };
+
+  return (
+    <div className="px-4 py-3">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {recordingRetentionPreviewTitle}
+          </p>
+          <MiniStatusPill
+            icon={<Trash2 className="h-3.5 w-3.5" aria-hidden />}
+            label={labels[retention] ?? labels.never}
+            tone={retention === "never" ? "success" : "warning"}
+          />
+        </div>
+        <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2 text-xs font-semibold text-[var(--text)]">
+          <span>{day1Label}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <span>{day7Label}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <span>{day30Label}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <Trash2
+            className="h-4 w-4 text-[var(--warning)]"
+            aria-label="Auto-delete"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
@@ -210,6 +441,7 @@ export const CorrectionsSettingsSection: React.FC = () => {
           {t("settings.corrections.description")}
         </p>
       </div>
+      <CorrectionsDemoCard />
       <CorrectionSettings />
     </div>
   );
@@ -720,6 +952,7 @@ const FileTranscriptionHint: React.FC = () => {
 export const AISetupSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
+      <AIProcessingRoutePreview />
       <RefineModelsSettings />
       <PostProcessingSettings omitLocalPrivacy />
       <TranslationProviderSettingsCard />
@@ -748,6 +981,7 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           grouped={true}
         />
         <HistoryLimit descriptionMode="inline" grouped={true} />
+        <RetentionTimelinePreview />
         <RecordingRetentionPeriodSelector
           descriptionMode="inline"
           grouped={true}
@@ -836,6 +1070,47 @@ const DebugDiagnosticsPanel: React.FC = () => {
   return (
     <SettingsGroup title="Route Debugger">
       <div className="space-y-3 px-5 py-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+          <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+              <Cpu className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+              {routeMonitorLabel}
+            </div>
+            <MiniStatusPill
+              icon={
+                routeError ? (
+                  <XCircle className="h-3.5 w-3.5" aria-hidden />
+                ) : routeResult ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                )
+              }
+              label={
+                routeError ? "Error" : routeResult ? "Analyzed" : "Waiting"
+              }
+              tone={
+                routeError ? "warning" : routeResult ? "success" : "default"
+              }
+            />
+          </div>
+          <div className="space-y-2 font-mono text-xs leading-5 text-[var(--text)]">
+            <p>
+              <span className="text-[var(--muted)]">&gt;</span>{" "}
+              {routeInput.trim()
+                ? "Input staged for route analysis"
+                : "Waiting for dictation input..."}
+            </p>
+            <p>
+              <span className="text-[var(--muted)]">&gt;</span>{" "}
+              {routeLoading
+                ? "Analyzing route..."
+                : routeResult
+                  ? "Route analysis complete"
+                  : "Analyze Route ready"}
+            </p>
+          </div>
+        </div>
         <Textarea
           value={routeInput}
           onChange={(event) => setRouteInput(event.target.value)}
@@ -849,7 +1124,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
         </div>
         {routeError && <Alert variant="error">{routeError}</Alert>}
         {routeResult && (
-          <pre className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-xs text-[var(--text)]">
+          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-xs text-[var(--text)]">
             {JSON.stringify(routeResult, null, 2)}
           </pre>
         )}
@@ -869,22 +1144,18 @@ export const AboutSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup>
-        <SettingContainer
-          title="Version"
-          description="Current installed app version."
-          grouped={true}
-        >
-          <span className="font-mono text-sm">{`v${version}`}</span>
-        </SettingContainer>
-        <SettingContainer
-          title="Updates"
-          description="Check for a newer version of Vox Jot."
-          grouped={true}
-        >
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-6 text-center shadow-[var(--shadow-sm)]">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-md)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[var(--accent)] text-[var(--accent)]">
+            <Mic className="h-6 w-6" aria-hidden />
+          </div>
+        </div>
+        <VoxJotTextLogo className="mx-auto mt-4 h-10 w-auto max-w-[220px]" />
+        <p className="mt-1 font-mono text-sm text-[var(--muted)]">{`Version ${version}`}</p>
+        <div className="mt-5 flex justify-center">
           <UpdateChecker />
-        </SettingContainer>
-      </SettingsGroup>
+        </div>
+      </div>
 
       <SettingsGroup title="Acknowledgments">
         <div className="space-y-3 px-5 py-4 text-sm leading-6 text-[var(--muted)]">

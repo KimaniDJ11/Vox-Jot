@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
+import { AppWindow, FileText, ScanSearch, Trash2 } from "lucide-react";
 
 import {
   commands,
@@ -25,6 +25,13 @@ import {
 import { useSettingsStore } from "@/stores/settingsStore";
 
 const REFRESH_INTERVAL_MS = 5000;
+const screenContextPreviewTitle = "Context capture preview";
+const screenContextPreviewDescription =
+  "Vox Jot reads visible text near the active app to improve cleanup and writing style.";
+const activeAppLabel = "Active app";
+const contextTextLabel = "Context text";
+const contextPreviewExplanation =
+  "The highlighted region becomes short-lived context for dictation cleanup.";
 
 const ScreenContextSettingsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -232,6 +239,7 @@ const ScreenContextSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <Alert variant="info">{t("settings.screenContext.intro")}</Alert>
+      <ScreenContextPreview enabled={enabled as boolean} />
 
       <SettingsGroup title={t("settings.screenContext.title")}>
         <SettingContainer
@@ -560,3 +568,52 @@ const ScreenContextSettingsSection: React.FC = () => {
 };
 
 export default ScreenContextSettingsSection;
+
+const ScreenContextPreview: React.FC<{ enabled: boolean }> = ({ enabled }) => (
+  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-4 shadow-[var(--shadow-sm)]">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-semibold text-[var(--text)]">
+          {screenContextPreviewTitle}
+        </p>
+        <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+          {screenContextPreviewDescription}
+        </p>
+      </div>
+      <span
+        className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${
+          enabled
+            ? "border-[color-mix(in_srgb,var(--success),transparent_72%)] bg-[var(--success-soft)] text-[var(--success)]"
+            : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+        }`}
+      >
+        <ScanSearch className="h-3.5 w-3.5" aria-hidden />
+        {enabled ? "Capture enabled" : "Capture paused"}
+      </span>
+    </div>
+    <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+        <div className="mb-3 flex items-center gap-2 border-b border-[var(--border)] pb-2 text-sm font-semibold text-[var(--text)]">
+          <AppWindow className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+          {activeAppLabel}
+        </div>
+        <div className="rounded-md border-2 border-[var(--accent)] bg-[var(--accent-soft)] p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text)]">
+            <FileText
+              className="h-3.5 w-3.5 text-[var(--accent)]"
+              aria-hidden
+            />
+            {contextTextLabel}
+          </div>
+          <div className="mt-2 space-y-1.5" aria-hidden>
+            <span className="block h-1.5 w-5/6 rounded-full bg-[var(--accent)]" />
+            <span className="block h-1.5 w-2/3 rounded-full bg-[var(--accent)] opacity-70" />
+          </div>
+        </div>
+      </div>
+      <p className="text-sm leading-6 text-[var(--muted)]">
+        {contextPreviewExplanation}
+      </p>
+    </div>
+  </div>
+);

@@ -144,6 +144,7 @@ def catalog_payload() -> dict[str, Any]:
                     "supports_voice_cloning": spec.supports_voice_cloning,
                     "supports_reference_transcript": spec.supports_voice_cloning,
                     "supports_instruction_prompt": spec.supports_instruction_prompt,
+                    "supports_inline_tags": spec.supports_inline_tags,
                     "supports_preset_speakers": bool(spec.default_voice),
                     "supports_voice_design": False,
                     "supports_multilingual": len(spec.supported_languages) > 1

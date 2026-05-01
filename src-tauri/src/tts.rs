@@ -166,6 +166,8 @@ struct RuntimeListenCapabilities {
     supports_basic_tts: bool,
     supports_voice_cloning: bool,
     supports_instruction_prompt: bool,
+    #[serde(default)]
+    supports_inline_tags: bool,
     supports_streaming: bool,
 }
 
@@ -288,6 +290,7 @@ struct Qwen3Context {
     model_root: PathBuf,
     clone_profile: Option<Qwen3CloneProfile>,
     language: String,
+    supports_instruction_prompt: bool,
 }
 
 struct MlxAudioContext {
@@ -890,6 +893,10 @@ fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str> {
 
 fn mlx_audio_definition_available(definition: &MlxAudioTtsModelDefinition) -> bool {
     mlx_audio_model_unavailable_reason(definition.model_id).is_none()
+}
+
+fn mlx_audio_model_supports_inline_tags(model_id: &str) -> bool {
+    matches!(model_id, "dia-1.6b" | "bark-small")
 }
 
 fn ensure_mlx_audio_definition_available(
@@ -2359,6 +2366,23 @@ impl TtsManager {
         }
     }
 
+    fn qwen3_delivery_support(&self, features: Qwen3PackFeatures) -> TtsDeliverySupport {
+        TtsDeliverySupport {
+            expressiveness_mode: if features.supports_instruction_prompt {
+                TtsExpressivenessMode::Native
+            } else {
+                TtsExpressivenessMode::Unsupported
+            },
+            advanced_controls: if features.supports_instruction_prompt {
+                vec![Self::instruction_prompt_control(
+                    "Optional Qwen3 style instruction for 1.7B CustomVoice voices.",
+                )]
+            } else {
+                Vec::new()
+            },
+        }
+    }
+
     fn sidecar_backend(&self) -> Option<SidecarBackend> {
         self.app_handle
             .try_state::<Arc<crate::sidecar::SidecarManager>>()
@@ -2410,6 +2434,9 @@ impl TtsManager {
                         supports_basic_tts: true,
                         supports_voice_cloning: definition.supports_voice_cloning,
                         supports_instruction_prompt: definition.supports_instruction_prompt,
+                        supports_inline_tags: mlx_audio_model_supports_inline_tags(
+                            definition.model_id,
+                        ),
                         supports_streaming: false,
                     },
                     readiness: RuntimeListenReadiness {
@@ -2566,7 +2593,7 @@ impl TtsManager {
             supports_translation: false,
             supports_streaming: false,
             supports_voice_cloning: false,
-            supports_instruction_prompt: true,
+            supports_instruction_prompt: false,
             supports_inline_tags: false,
             coming_soon: false,
         };
@@ -2684,7 +2711,7 @@ impl TtsManager {
                 supports_translation: false,
                 supports_streaming: false,
                 supports_voice_cloning: false,
-                supports_instruction_prompt: true,
+                supports_instruction_prompt: false,
                 supports_inline_tags: false,
                 coming_soon: false,
             },
@@ -2914,6 +2941,7 @@ impl TtsManager {
         let mut qwen3_capabilities = planned_capabilities.clone();
         qwen3_capabilities.downloadable = true;
         qwen3_capabilities.loadable = true;
+        qwen3_capabilities.supports_inline_tags = false;
         qwen3_capabilities.coming_soon = false;
         let qwen3_models = QWEN3_PACK_DEFINITIONS.iter().collect::<Vec<_>>();
 
@@ -3194,9 +3222,7 @@ impl TtsManager {
                             )]
                         },
                         capabilities,
-                        delivery_support: self.builtin_delivery_support(
-                            TTS_PROVIDER_QWEN3_NATIVE_ID,
-                        ),
+                        delivery_support: self.qwen3_delivery_support(features),
                     }
                 }),
         );
@@ -3369,7 +3395,9 @@ impl TtsManager {
                         supports_instruction_prompt: provider_models
                             .iter()
                             .any(|model| model.capabilities.supports_instruction_prompt),
-                        supports_inline_tags: false,
+                        supports_inline_tags: provider_models
+                            .iter()
+                            .any(|model| model.capabilities.supports_inline_tags),
                         coming_soon: false,
                     },
                 };
@@ -3426,7 +3454,7 @@ impl TtsManager {
                         supports_streaming: model.capabilities.supports_streaming,
                         supports_voice_cloning: model.capabilities.supports_voice_cloning,
                         supports_instruction_prompt: model.capabilities.supports_instruction_prompt,
-                        supports_inline_tags: false,
+                        supports_inline_tags: model.capabilities.supports_inline_tags,
                         coming_soon: false,
                     },
                     delivery_support: self.runtime_delivery_support(&model),
@@ -4001,6 +4029,7 @@ impl TtsManager {
                         speak_qwen3_chunk(
                             &chunk,
                             qwen3_context,
+                            &tuning,
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -4430,6 +4459,11 @@ impl TtsManager {
             )
             .ok_or_else(|| format!("Installed Qwen3 model '{}' is missing on disk", voice.id))?;
 
+        let features = QWEN3_PACK_DEFINITIONS
+            .iter()
+            .find(|definition| definition.id == voice.id)
+            .map(|definition| self.qwen3_pack_features(definition))
+            .ok_or_else(|| format!("Unknown Qwen3 model '{}' is not supported", voice.id))?;
         let clone_profile = self.resolve_qwen3_clone_profile(settings, &voice.id)?;
 
         Ok(Qwen3Context {
@@ -4437,6 +4471,7 @@ impl TtsManager {
             model_root,
             clone_profile,
             language: qwen3_language_for_locale(locale),
+            supports_instruction_prompt: features.supports_instruction_prompt,
         })
     }
 
@@ -5552,6 +5587,7 @@ fn speak_vibevoice_chunk(
 fn speak_qwen3_chunk(
     text: &str,
     context: &Qwen3Context,
+    tuning: &TtsVoiceTuningSettings,
     volume: f32,
     output_device: Option<String>,
     stop_flag: &AtomicBool,
@@ -5590,6 +5626,16 @@ fn speak_qwen3_chunk(
         }
     } else {
         command.arg(text);
+        if let Some(instruct) = tuning
+            .style_instructions
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && context.supports_instruction_prompt)
+        {
+            command.arg("Vivian");
+            command.arg(&context.language);
+            command.arg(instruct);
+        }
     }
 
     let output = command
@@ -6815,6 +6861,14 @@ mod tests {
     #[test]
     fn unavailable_mlx_provider_has_no_default_model() {
         assert!(first_mlx_audio_model_for_provider(TTS_PROVIDER_MLX_OUTE_ID).is_none());
+    }
+
+    #[test]
+    fn inline_tags_are_limited_to_nonverbal_mlx_models() {
+        assert!(mlx_audio_model_supports_inline_tags("dia-1.6b"));
+        assert!(mlx_audio_model_supports_inline_tags("bark-small"));
+        assert!(!mlx_audio_model_supports_inline_tags("qwen3-tts-1.7b"));
+        assert!(!mlx_audio_model_supports_inline_tags("kokoro-82m"));
     }
 
     #[test]

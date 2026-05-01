@@ -18,6 +18,7 @@ class EngineSpec:
     supported_languages: tuple[str, ...]
     supports_voice_cloning: bool
     supports_instruction_prompt: bool
+    supports_inline_tags: bool
     default_voice: str | None
     style_controls: tuple[dict, ...]
 
@@ -34,6 +35,7 @@ ENGINE_SPECS: tuple[EngineSpec, ...] = (
         supported_languages=("en", "es", "fr", "zh", "ja", "ko"),
         supports_voice_cloning=True,
         supports_instruction_prompt=False,
+        supports_inline_tags=False,
         default_voice="default",
         style_controls=(
             {
@@ -60,6 +62,7 @@ ENGINE_SPECS: tuple[EngineSpec, ...] = (
         supported_languages=("en",),
         supports_voice_cloning=False,
         supports_instruction_prompt=False,
+        supports_inline_tags=False,
         default_voice=None,
         style_controls=(
             {
@@ -115,6 +118,7 @@ ENGINE_SPECS: tuple[EngineSpec, ...] = (
         supported_languages=("en", "es", "fr", "hi", "it", "pt", "ja", "zh"),
         supports_voice_cloning=False,
         supports_instruction_prompt=False,
+        supports_inline_tags=False,
         default_voice="af_heart",
         style_controls=(
             {
@@ -159,6 +163,7 @@ ENGINE_SPECS: tuple[EngineSpec, ...] = (
         ),
         supports_voice_cloning=True,
         supports_instruction_prompt=False,
+        supports_inline_tags=False,
         default_voice=None,
         style_controls=(
             {

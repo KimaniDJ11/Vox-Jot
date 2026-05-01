@@ -3,7 +3,7 @@ import type { EngineType } from "@/bindings";
 
 // ---------- Types ----------
 
-export type ProviderIconSize = "xs" | "sm" | "md" | "lg";
+export type ProviderIconSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 interface ProviderIconProps {
   providerId: string;
@@ -18,6 +18,7 @@ const SIZE_CONFIG = {
   sm: { px: 20, font: 11, r: 4.5 },
   md: { px: 24, font: 13, r: 5.5 },
   lg: { px: 32, font: 17, r: 7 },
+  xl: { px: 40, font: 21, r: 9 },
 } as const;
 
 // ---------- SVG Mark Components ----------

@@ -8,7 +8,10 @@ import {
   Download,
   FolderOpen,
   Globe,
+  HardDrive,
   Loader2,
+  Monitor,
+  ScanSearch,
   Trash2,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -117,6 +120,31 @@ function systemVendorLabel(
   return translate("modelHub.ocr.vendor.linuxSystem", {
     defaultValue: "Tesseract (system)",
   });
+}
+
+function ocrBackendLabel(model: OcrModelDescriptor, translate: TFunction) {
+  switch (model.backend) {
+    case "paddle_det_rec":
+      return translate("modelHub.ocr.backends.paddleDetRec", {
+        defaultValue: "Detector + recognizer",
+      });
+    case "paddle_vl":
+      return translate("modelHub.ocr.backends.paddleVl", {
+        defaultValue: "Vision-language",
+      });
+    case "transformers_vl":
+      return translate("modelHub.ocr.backends.transformersVl", {
+        defaultValue: "VL transformer",
+      });
+    case "tessdata_pack":
+      return translate("modelHub.ocr.backends.tessdata", {
+        defaultValue: "Tessdata pack",
+      });
+    default:
+      return translate("modelHub.ocr.backends.ocrRuntime", {
+        defaultValue: "OCR runtime",
+      });
+  }
 }
 
 const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
@@ -415,6 +443,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   const systemActive = currentNeural === null;
   const systemVendor = systemVendorLabel(platform, t);
 
+  // Top-right reserved for status only — vendor moved to subline.
   const systemHeaderBadges: CompactBadgeItem[] = [
     systemActive
       ? {
@@ -427,14 +456,6 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           }),
         }
       : null,
-    {
-      id: "system-vendor",
-      label: systemVendor,
-      variant: "secondary",
-      detail: t("modelHub.ocr.badges.vendorDetail", {
-        defaultValue: "Screen OCR runtime used for this mode.",
-      }),
-    },
   ].filter(Boolean) as CompactBadgeItem[];
 
   const systemCardProviderId =
@@ -449,12 +470,46 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       key="system-ocr"
       title={t("modelHub.ocr.systemCard.title", { defaultValue: "System OCR" })}
       providerId={systemCardProviderId}
+      subline={systemVendor}
       headerBadges={systemHeaderBadges}
-      headerBadgesMaxVisible={3}
+      headerBadgesMaxVisible={2}
       description={t("modelHub.ocr.systemCard.description", {
         defaultValue:
           "Built-in routing across Apple Vision / Windows.Media.Ocr and the bundled Tesseract fallback.",
       })}
+      capabilityChips={[
+        {
+          id: "capability-deployment",
+          label: t("modelHub.chips.local", { defaultValue: "Local" }),
+          variant: "secondary",
+          icon: <Monitor className="h-3 w-3" />,
+          detail: t("modelHub.chips.localDetail", {
+            defaultValue: "Runs on this Mac or through a local runtime.",
+          }),
+        },
+        {
+          id: "capability-coverage",
+          label: t("modelHub.ocr.meta.osBuiltIn", {
+            defaultValue: "OS built-in",
+          }),
+          variant: "secondary",
+          icon: <Globe className="h-3 w-3" />,
+          detail: t("modelHub.ocr.languages.nativeOnly", {
+            defaultValue:
+              "Follows your OS language and regional text recognition settings.",
+          }),
+        },
+        {
+          id: "capability-backend",
+          label: t("modelHub.ocr.meta.adaptive", { defaultValue: "Adaptive" }),
+          variant: "secondary",
+          icon: <ScanSearch className="h-3 w-3" />,
+          detail: t("modelHub.ocr.options.nativeThenBackup.description", {
+            defaultValue:
+              "Use the OS-native OCR first, fall back to Tesseract on failure or empty results.",
+          }),
+        },
+      ]}
       footerMetaItems={[
         t("modelHub.ocr.meta.balanced", { defaultValue: "Balanced" }),
         t("modelHub.ocr.meta.fastest", { defaultValue: "Fastest path" }),
@@ -507,6 +562,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     const isBusy = busyId === model.id;
     const isConfirmingDelete = confirmingDeleteId === model.id;
 
+    // Top-right reserved for status only — vendor moves to subline.
     const headerBadges: CompactBadgeItem[] = [
       isActive
         ? {
@@ -519,17 +575,49 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             }),
           }
         : null,
+    ].filter(Boolean) as CompactBadgeItem[];
+
+    const backendLabel = ocrBackendLabel(model, t);
+    const capabilityChips: CompactBadgeItem[] = [
       {
-        id: `vendor-${model.id}`,
-        label: model.vendor,
+        id: "capability-deployment",
+        label: t("modelHub.chips.local", { defaultValue: "Local" }),
         variant: "secondary",
+        icon: <Monitor className="h-3 w-3" />,
+        detail: t("modelHub.chips.localDetail", {
+          defaultValue: "Runs on this Mac or through a local runtime.",
+        }),
+      },
+      {
+        id: "capability-size",
+        label: model.size_hint_label,
+        variant: "secondary",
+        icon: <HardDrive className="h-3 w-3" />,
+        detail: t("modelSelector.sizeDetail", {
+          defaultValue: "Approximate disk size after download.",
+        }),
+      },
+      {
+        id: "capability-languages",
+        label: model.languages_label,
+        variant: "secondary",
+        icon: <Globe className="h-3 w-3" />,
+        detail: t("modelHub.ocr.languages.tesseract", {
+          defaultValue:
+            "Depends on installed tessdata packs (often English-first unless you add more).",
+        }),
+      },
+      {
+        id: "capability-backend",
+        label: backendLabel,
+        variant: "secondary",
+        icon: <ScanSearch className="h-3 w-3" />,
         detail: t("modelHub.ocr.badges.vendorDetail", {
           defaultValue: "Screen OCR runtime used for this mode.",
         }),
       },
-    ].filter(Boolean) as CompactBadgeItem[];
-
-    const footerMetaItems = [model.languages_label, model.size_hint_label];
+    ];
+    const footerMetaItems = [backendLabel];
 
     let trailing: HubTrailing = null;
     if (!model.installed) {
@@ -543,7 +631,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           >
             <Button
               variant="primary"
-              size="icon-sm"
+              size="icon"
               title={t("modelHub.ocr.actions.downloadFromHub", {
                 modelName: model.title,
                 repoId: model.hf_repo_id,
@@ -571,7 +659,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             </Button>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               title={t("modelHub.ocr.actions.importFromDisk", {
                 defaultValue: "Import from folder",
               })}
@@ -720,9 +808,11 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           `${model.vendor} ${model.title} ${model.id}`,
           model.backend === "tessdata_pack" ? "tesseract" : "generic",
         )}
+        subline={model.vendor}
         headerBadges={headerBadges}
-        headerBadgesMaxVisible={3}
+        headerBadgesMaxVisible={2}
         description={model.description}
+        capabilityChips={capabilityChips}
         footerMetaItems={footerMetaItems}
         footerMetaIcon={<Globe className="h-3.5 w-3.5" aria-hidden />}
         footerMetaMaxVisible={4}

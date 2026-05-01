@@ -10,9 +10,14 @@ import {
   AlertTriangle,
   ChevronDown,
   Check,
+  Cloud,
+  Dna,
   Globe,
   Loader2,
+  Mic2,
+  Monitor,
   Play,
+  SlidersHorizontal,
   Sparkles,
   Square,
   Star,
@@ -206,6 +211,13 @@ function getModelLanguageItems(model: CatalogModelDescriptor) {
   return model.supported_languages.map(formatLanguageAbbreviation);
 }
 
+function formatLanguageCoverage(model: CatalogModelDescriptor) {
+  const languages = getModelLanguageItems(model);
+  if (languages.length === 0) return "";
+  if (languages.length === 1) return languages[0];
+  return `${languages[0]}+${languages.length - 1}`;
+}
+
 function ttsModelSupportsLanguage(
   model: CatalogModelDescriptor,
   languageCode: string,
@@ -215,15 +227,6 @@ function ttsModelSupportsLanguage(
   }
 
   return model.locale?.split(/[-_]/)[0] === languageCode;
-}
-
-function formatModelCapabilityTags(model: CatalogModelDescriptor) {
-  const tags: string[] = [];
-  if (model.capabilities.supports_voice_cloning) tags.push("Voice cloning");
-  if (model.capabilities.supports_instruction_prompt) tags.push("Instructions");
-  if (model.capabilities.local_only) tags.push("Local");
-  if (model.downloadable) tags.push("Downloadable");
-  return tags.slice(0, 3);
 }
 
 function defaultPresetInput(): TtsVoicePresetInput {
@@ -978,6 +981,34 @@ function tuningDescription(
   return control?.description ?? fallbackDescription;
 }
 
+const InlineCueHint: React.FC<{ modelLabel?: string | null }> = ({
+  modelLabel,
+}) => {
+  const label = modelLabel?.trim();
+  const { t } = useTranslation();
+  return (
+    <p className="flex items-start gap-1.5 text-xs leading-5 text-[var(--muted)]">
+      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--voice)]" />
+      <Trans
+        i18nKey="listen.inlineCueHint"
+        values={{
+          subject:
+            label ??
+            t("listen.inlineCueHintFallbackSubject", {
+              defaultValue: "This model",
+            }),
+        }}
+        components={{
+          cueLaughs: <span className="font-medium" />,
+          cueSighs: <span className="font-medium" />,
+          cueWhispers: <span className="font-medium" />,
+        }}
+        defaults="{{subject}} supports inline cues in the spoken text, such as <cueLaughs>[laughs]</cueLaughs>, <cueSighs>[sighs]</cueSighs>, or <cueWhispers>[whispers]</cueWhispers>. Exact cue behavior varies by model."
+      />
+    </p>
+  );
+};
+
 const WorkflowField: React.FC<{
   label: string;
   hint?: string;
@@ -1438,6 +1469,8 @@ const VoiceArchitectSection: React.FC<{
     ) ?? null;
   const draftSupportsVoiceCloning =
     draftSelectedModel?.capabilities.supports_voice_cloning ?? false;
+  const draftSupportsInlineTags =
+    draftSelectedModel?.capabilities.supports_inline_tags ?? false;
   const draftCompatibleProfiles = draftSelectedModel
     ? speech.profiles.filter((profile) =>
         profileSupportsModel(profile, draftSelectedModel),
@@ -1622,6 +1655,9 @@ const VoiceArchitectSection: React.FC<{
                 disabled={!speech.ttsEnabled}
                 className="w-full min-h-[120px] !rounded-2xl"
               />
+              {draftSupportsInlineTags ? (
+                <InlineCueHint modelLabel={draftSelectedModel?.label} />
+              ) : null}
             </div>
             <div className="flex shrink-0 flex-col items-stretch gap-2 pt-6">
               <Button
@@ -1987,6 +2023,8 @@ const SoundDesignSection: React.FC<{
   const supportsExpressiveness =
     (speech.activeModel?.delivery_support.expressiveness_mode ??
       "unsupported") !== "unsupported";
+  const activeSupportsInlineTags =
+    speech.activeModel?.capabilities.supports_inline_tags ?? false;
 
   return (
     <SettingsGroup
@@ -2057,6 +2095,9 @@ const SoundDesignSection: React.FC<{
               disabled={!speech.ttsEnabled}
               className="min-h-[110px] resize-y !rounded-2xl"
             />
+            {activeSupportsInlineTags ? (
+              <InlineCueHint modelLabel={speech.activeModel?.label} />
+            ) : null}
           </div>
         </div>
 
@@ -2089,7 +2130,8 @@ const SpeechModelLibraryCard: React.FC<{
   const { t } = useTranslation();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const capabilityTags = formatModelCapabilityTags(model);
+  // Top-right reserved for status only. Provider/source/runtime move to subline
+  // and footer so the identity row reads cleanly.
   const headerBadges: CompactBadgeItem[] = [
     active
       ? {
@@ -2108,22 +2150,7 @@ const SpeechModelLibraryCard: React.FC<{
           detail: "Chosen in settings — click card to activate.",
         }
       : null,
-    {
-      id: `provider-${provider?.id ?? model.provider_id}`,
-      label: provider?.label ?? "Provider",
-      variant: "secondary",
-      detail: "Provider that ships / runs this voice.",
-    },
-    {
-      id: `source-${model.source_kind}`,
-      label: sourceKindLabel(model.source_kind),
-      variant: "secondary",
-      detail:
-        model.source_kind === "runtime"
-          ? "Runs through a downloaded runtime pack."
-          : "Built into the operating system.",
-    },
-    model.installed
+    model.installed && !active && !selected
       ? {
           id: "downloaded",
           label: "Downloaded",
@@ -2133,11 +2160,96 @@ const SpeechModelLibraryCard: React.FC<{
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
 
-  const detailItems = [
-    ...getModelLanguageItems(model),
-    provider?.runtime.label ?? model.runtime.label,
-    ...capabilityTags,
-  ];
+  const sublineParts = [
+    provider?.label,
+    sourceKindLabel(model.source_kind),
+  ].filter((part): part is string => Boolean(part));
+  const subline = sublineParts.join(" · ");
+  const isLocal = model.capabilities.local_only || provider?.local_only;
+  const languageCoverage = formatLanguageCoverage(model);
+  const supportsStyle =
+    (model.delivery_support.expressiveness_mode ?? "unsupported") !==
+    "unsupported";
+  const capabilityChips: CompactBadgeItem[] = [
+    {
+      id: "capability-deployment",
+      label: isLocal
+        ? t("modelHub.chips.local", { defaultValue: "Local" })
+        : t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
+      variant: "secondary",
+      icon: isLocal ? (
+        <Monitor className="h-3 w-3" />
+      ) : (
+        <Cloud className="h-3 w-3" />
+      ),
+      detail: isLocal
+        ? t("modelHub.chips.localDetail", {
+            defaultValue: "Runs on this Mac or through a local runtime.",
+          })
+        : t("modelHub.chips.cloudDetail", {
+            defaultValue: "Uses a configured network provider.",
+          }),
+    },
+    languageCoverage
+      ? {
+          id: "capability-languages",
+          label: languageCoverage,
+          variant: "secondary" as const,
+          icon: <Globe className="h-3 w-3" />,
+          detail: getModelLanguageItems(model).join(" · "),
+        }
+      : null,
+    model.capabilities.supports_voice_cloning
+      ? {
+          id: "capability-cloning",
+          label: t("modelHub.chips.cloning", { defaultValue: "Cloning" }),
+          variant: "secondary" as const,
+          icon: <Dna className="h-3 w-3" />,
+          detail: t("modelHub.chips.cloningDetail", {
+            defaultValue: "Supports voice cloning or profile-conditioned speech.",
+          }),
+        }
+      : null,
+    supportsStyle
+      ? {
+          id: "capability-style",
+          label: t("modelHub.chips.style", { defaultValue: "Style" }),
+          variant: "secondary" as const,
+          icon: <SlidersHorizontal className="h-3 w-3" />,
+          detail: t("modelHub.chips.styleDetail", {
+            defaultValue: "Supports expressive style or delivery controls.",
+          }),
+        }
+      : null,
+    model.capabilities.supports_instruction_prompt
+      ? {
+          id: "capability-instructions",
+          label: t("modelHub.chips.instructions", {
+            defaultValue: "Instructions",
+          }),
+          variant: "secondary" as const,
+          icon: <Mic2 className="h-3 w-3" />,
+          detail: t("modelHub.chips.instructionsDetail", {
+            defaultValue: "Can follow text style instructions for generation.",
+          }),
+        }
+      : null,
+    model.capabilities.supports_inline_tags
+      ? {
+          id: "capability-inline-cues",
+          label: t("modelHub.chips.inlineCues", {
+            defaultValue: "Inline cues",
+          }),
+          variant: "secondary" as const,
+          icon: <Sparkles className="h-3 w-3" />,
+          detail: t("modelHub.chips.inlineCuesDetail", {
+            defaultValue: "Supports spoken-text cues such as laughs or whispers.",
+          }),
+        }
+      : null,
+  ].filter(Boolean) as CompactBadgeItem[];
+
+  const detailItems = [provider?.runtime.label ?? model.runtime.label];
 
   const clickable =
     !active &&
@@ -2235,8 +2347,10 @@ const SpeechModelLibraryCard: React.FC<{
         `${model.label} ${model.id}`,
         model.provider_id,
       )}
+      subline={subline || undefined}
       headerBadges={headerBadges}
       description={model.description}
+      capabilityChips={capabilityChips}
       footerMetaItems={detailItems}
       footerMetaMaxVisible={4}
       footerMetaIcon={<Globe className="h-3.5 w-3.5" />}

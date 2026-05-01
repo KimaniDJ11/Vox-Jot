@@ -11,14 +11,18 @@ import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
+  Brain,
   Check,
   ChevronDown,
+  Cloud,
   Cpu,
   Download,
   Globe,
   Loader2,
+  Monitor,
   Search,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
@@ -645,6 +649,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }
   };
 
+  // Top-right reserved for status only — source/runtime now live in the subline.
   const buildHeaderBadges = (
     model: RefineModelDescriptor,
   ): CompactBadgeItem[] => {
@@ -672,24 +677,23 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         detail: "Click the download icon to fetch this model.",
       });
     }
-    items.push({
-      id: `source-${model.source_kind}`,
-      label: model.source_label,
-      variant: "secondary",
-      detail: "Where this model comes from.",
-    });
-    items.push({
-      id: `runtime-${model.runtime_provider_id}`,
-      label: model.runtime_label,
-      variant: "secondary",
-      detail: "Runtime that executes this model.",
-    });
     return items;
+  };
+
+  const buildSubline = (model: RefineModelDescriptor): string => {
+    const parts: string[] = [];
+    if (model.source_label) parts.push(model.source_label);
+    if (
+      model.runtime_label &&
+      model.runtime_label.toLowerCase() !== model.source_label?.toLowerCase()
+    ) {
+      parts.push(model.runtime_label);
+    }
+    return parts.join(" · ");
   };
 
   const buildMetaItems = (model: RefineModelDescriptor): string[] => {
     const items: string[] = [];
-    items.push(model.runtime_label);
     if (model.runtime_model_id && model.runtime_model_id !== model.title) {
       items.push(model.runtime_model_id);
     }
@@ -697,6 +701,81 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       items.push(model.source_repo_id);
     }
     return items;
+  };
+
+  const buildCapabilityChips = (
+    model: RefineModelDescriptor,
+  ): CompactBadgeItem[] => {
+    const haystack =
+      `${model.title} ${model.id} ${model.runtime_model_id} ${model.source_repo_id ?? ""}`.toLowerCase();
+    const parameterMatch = haystack.match(/(\d+(?:\.\d+)?)\s*([bm])\b/);
+    const parameterLabel = parameterMatch
+      ? `${parameterMatch[1]}${parameterMatch[2].toUpperCase()}`
+      : null;
+    const isLocal =
+      model.runtime_provider_id === "ollama" ||
+      model.runtime_provider_id === "lmstudio" ||
+      model.runtime_provider_id === "apple_intelligence" ||
+      model.source_kind === "hugging_face";
+    const supportsTools =
+      haystack.includes("tool") ||
+      haystack.includes("json") ||
+      haystack.includes("function");
+
+    return [
+      {
+        id: "capability-deployment",
+        label: isLocal
+          ? t("modelHub.chips.local", { defaultValue: "Local" })
+          : t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
+        variant: "secondary" as const,
+        icon: isLocal ? (
+          <Monitor className="h-3 w-3" />
+        ) : (
+          <Cloud className="h-3 w-3" />
+        ),
+        detail: isLocal
+          ? t("modelHub.chips.localDetail", {
+              defaultValue: "Runs on this Mac or through a local runtime.",
+            })
+          : t("modelHub.chips.cloudDetail", {
+              defaultValue: "Uses a configured network provider.",
+            }),
+      },
+      parameterLabel
+        ? {
+            id: "capability-family",
+            label: parameterLabel,
+            variant: "secondary" as const,
+            icon: <Brain className="h-3 w-3" />,
+            detail: t("modelHub.chips.parameterDetail", {
+              defaultValue: "Model family or approximate parameter size.",
+            }),
+          }
+        : null,
+      supportsTools
+        ? {
+            id: "capability-tools",
+            label: t("modelHub.chips.toolUse", { defaultValue: "Tool-use" }),
+            variant: "secondary" as const,
+            icon: <Wrench className="h-3 w-3" />,
+            detail: t("modelHub.chips.toolUseDetail", {
+              defaultValue: "Tuned or named for structured/tool-style output.",
+            }),
+          }
+        : null,
+      model.source_label
+        ? {
+            id: "capability-source",
+            label: model.source_label,
+            variant: "secondary" as const,
+            icon: <Cpu className="h-3 w-3" />,
+            detail: t("modelHub.chips.sourceDetail", {
+              defaultValue: "Catalog source for this model.",
+            }),
+          }
+        : null,
+    ].filter(Boolean) as CompactBadgeItem[];
   };
 
   const renderProgressExtra = (
@@ -944,8 +1023,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                   `${model.title} ${model.runtime_model_id}`,
                   model.runtime_provider_id,
                 )}
+                subline={buildSubline(model) || undefined}
                 headerBadges={buildHeaderBadges(model)}
                 description={description}
+                capabilityChips={buildCapabilityChips(model)}
                 footerMetaItems={buildMetaItems(model)}
                 footerMetaIcon={<Cpu className="h-3.5 w-3.5" />}
                 footerMetaMaxVisible={3}

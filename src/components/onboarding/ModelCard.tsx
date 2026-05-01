@@ -3,9 +3,12 @@ import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   Check,
+  Clock,
   Globe,
+  HardDrive,
   Languages,
   Loader2,
+  Monitor,
   X,
 } from "lucide-react";
 import type { ModelInfo } from "@/bindings";
@@ -28,6 +31,15 @@ const formatLanguageAbbreviation = (language: string): string => {
   const trimmed = language.trim();
   if (!trimmed) return language;
   return trimmed.split(/[-_]/)[0].slice(0, 3).toUpperCase();
+};
+
+const formatLanguageCount = (
+  languages: string[],
+  fallbackLabel: string,
+): string => {
+  if (languages.length === 0) return fallbackLabel;
+  if (languages.length === 1) return formatLanguageAbbreviation(languages[0]);
+  return `${formatLanguageAbbreviation(languages[0])}+${languages.length - 1}`;
 };
 
 export type ModelCardStatus =
@@ -83,7 +95,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
-  const showsScores = model.accuracy_score > 0 || model.speed_score > 0;
   const resolvedProviderId = resolveModelProviderId(
     `${displayName} ${model.id}`,
     providerId,
@@ -101,6 +112,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
         ? providerDisplayName(resolvedProviderId)
         : providerLabel;
 
+  // Top-right reserved for status only — provider identity now lives in the
+  // 40px logo + subline, so the provider chip badge is dropped.
   const headerBadges: CompactBadgeItem[] = [
     showRecommended && model.is_recommended
       ? {
@@ -133,16 +146,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
           }),
         }
       : null,
-    displayProviderLabel
-      ? {
-          id: `provider-${displayProviderLabel}`,
-          label: displayProviderLabel,
-          variant: "secondary" as const,
-          detail: t("modelSelector.providerDetail", {
-            defaultValue: "Provider that ships / runs this model.",
-          }),
-        }
-      : null,
     status === "switching"
       ? {
           id: "switching",
@@ -153,13 +156,86 @@ const ModelCard: React.FC<ModelCardProps> = ({
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
 
-  const metadataItems = [
-    ...model.supported_languages.map(formatLanguageAbbreviation),
-    ...(model.supports_translation
-      ? [t("modelSelector.capabilities.translate")]
-      : []),
-    ...(runtimeLabel ? [runtimeLabel] : []),
-  ];
+  const sizeLabel =
+    Number(model.size_mb) > 0
+      ? formatModelSize(Number(model.size_mb))
+      : t("modelSelector.noDownload", { defaultValue: "No download" });
+  const languagesSummary = formatLanguageCount(
+    model.supported_languages,
+    t("settings.general.language.auto", { defaultValue: "Auto" }),
+  );
+  const languagesDetail =
+    model.supported_languages.length > 0
+      ? model.supported_languages.map(formatLanguageAbbreviation).join(" · ")
+      : undefined;
+  const isRealtimeModel =
+    model.engine_type === "AppleSpeechStreaming" ||
+    displayName.toLowerCase().includes("realtime") ||
+    model.id.toLowerCase().includes("realtime");
+
+  // Capability chips — fact-style differentiators above the divider. Cap at 4.
+  const capabilityChips: CompactBadgeItem[] = [
+    {
+      id: "capability-deployment",
+      label: t("modelHub.chips.local", { defaultValue: "Local" }),
+      variant: "secondary" as const,
+      icon: <Monitor className="h-3 w-3" />,
+      detail: t("modelHub.chips.localDetail", {
+        defaultValue: "Runs on this Mac or through a local runtime.",
+      }),
+    },
+    sizeLabel
+      ? {
+          id: "capability-size",
+          label: sizeLabel,
+          variant: "secondary" as const,
+          icon: <HardDrive className="h-3 w-3" />,
+          detail:
+            Number(model.size_mb) > 0
+              ? t("modelSelector.sizeDetail", {
+                  defaultValue: "Approximate disk size after download.",
+                })
+              : t("modelSelector.noDownloadDetail", {
+                  defaultValue: "Uses a built-in or configured local runtime.",
+                }),
+        }
+      : null,
+    languagesSummary
+      ? {
+          id: "capability-languages",
+          label: languagesSummary,
+          variant: "secondary" as const,
+          icon: <Globe className="h-3 w-3" />,
+          detail: languagesDetail,
+        }
+      : null,
+    model.supports_translation
+      ? {
+          id: "capability-translate",
+          label: t("modelSelector.capabilities.translate"),
+          variant: "secondary" as const,
+          icon: <Languages className="h-3 w-3" />,
+          detail: t("modelSelector.translateDetail", {
+            defaultValue: "Translates non-English speech to English.",
+          }),
+        }
+      : null,
+    isRealtimeModel
+      ? {
+          id: "capability-realtime",
+          label: t("modelHub.chips.realtime", { defaultValue: "Realtime" }),
+          variant: "secondary" as const,
+          icon: <Clock className="h-3 w-3" />,
+          detail: t("modelHub.chips.realtimeDetail", {
+            defaultValue: "Optimized for lower-latency partial or streaming results.",
+          }),
+        }
+      : null,
+  ].filter(Boolean) as CompactBadgeItem[];
+
+  // Footer chips — runtime context only. Languages live in the capability
+  // chip above; the source/runtime row stays factual and short.
+  const metadataItems = runtimeLabel ? [runtimeLabel] : [];
 
   const handleCardClick = () => {
     if (!isClickable || disabled) return;
@@ -193,7 +269,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
       node: (
         <Button
           variant="danger-ghost"
-          size="icon-sm"
+          size="icon"
           title={t("modelSelector.cancelDownload")}
           aria-label={t("modelSelector.cancelDownload")}
           onClick={(event) => {
@@ -287,33 +363,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
       </div>
     ) : null;
 
-  const scoresNode = showsScores ? (
-    <div className="grid w-32 gap-1.5">
-      <div className="flex items-center gap-2">
-        <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-          {t("onboarding.modelCard.accuracy")}
-        </p>
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
-          <div
-            className="h-full rounded-full bg-logo-primary"
-            style={{ width: `${model.accuracy_score * 100}%` }}
-          />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <p className="shrink-0 whitespace-nowrap text-[11px] font-medium text-[var(--muted)]">
-          {t("onboarding.modelCard.speed")}
-        </p>
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mid-gray/20">
-          <div
-            className="h-full rounded-full bg-logo-primary"
-            style={{ width: `${model.speed_score * 100}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  ) : null;
-
   const progressNode =
     status === "downloading" && downloadProgress !== undefined ? (
       <div className="w-full">
@@ -365,22 +414,15 @@ const ModelCard: React.FC<ModelCardProps> = ({
       </div>
     ) : null;
 
-  const metaIcon =
-    model.supported_languages.length > 0 ? (
-      <Globe className="h-3.5 w-3.5" />
-    ) : model.supports_translation ? (
-      <Languages className="h-3.5 w-3.5" />
-    ) : null;
-
   return (
     <HubModelCard
       title={displayName}
       providerId={resolvedProviderId}
+      subline={displayProviderLabel ?? undefined}
       headerBadges={headerBadges}
       description={displayDescription}
-      secondary={scoresNode}
+      capabilityChips={capabilityChips}
       footerMetaItems={metadataItems}
-      footerMetaIcon={metaIcon}
       footerOverflowLabel={`${displayName} model details`}
       trailing={trailing}
       footerExtra={confirmDeleteNode ?? progressNode}

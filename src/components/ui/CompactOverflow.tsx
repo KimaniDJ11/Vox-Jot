@@ -84,7 +84,7 @@ export const CompactBadgeRow: React.FC<{
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+    <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">
       {visibleItems.map((item) => {
         const tooltip = item.detail
           ? `${item.label} — ${item.detail}`
@@ -93,9 +93,9 @@ export const CompactBadgeRow: React.FC<{
           <Badge
             key={item.id}
             variant={item.variant ?? "secondary"}
-            className="max-w-[9.5rem] shrink-0 truncate"
+            className="min-w-0 max-w-[9.5rem] shrink truncate"
           >
-            <span className="inline-flex items-center" title={tooltip}>
+            <span className="inline-flex min-w-0 items-center" title={tooltip}>
               {item.icon ? (
                 <span className="mr-1 shrink-0">{item.icon}</span>
               ) : null}

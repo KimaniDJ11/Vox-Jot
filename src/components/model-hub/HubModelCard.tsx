@@ -12,30 +12,41 @@ import { ProviderIcon } from "@/components/ui/ProviderIcon";
 export type HubCardVariant = "default" | "featured";
 
 export interface HubModelCardProps {
-  // Identity (row 1)
+  // Identity
   title: string;
-  /** Passed to ProviderIcon as the leading logo. */
+  /** Passed to ProviderIcon as the leading 40px logo. */
   providerId?: string;
+  /**
+   * Optional sub-line shown directly under the title (e.g. "OpenAI · Whisper Family").
+   * Truncates to a single line.
+   */
+  subline?: string;
+  /** Top-right badges. Reserve for status only (Active, New, Beta, Recommended). */
   headerBadges?: CompactBadgeItem[];
   headerBadgesMaxVisible?: number;
 
-  // Summary (row 2)
-  /** Muted single-line description (truncates, title on hover). */
+  /** Two-line value-prop sentence. Renders muted with line-clamp-2. */
   description?: string;
-  /** Optional right-aligned secondary content on the same row as description (sm+). */
+  /** Optional right-aligned content on the capability-chip row (e.g. STT score bars). */
   secondary?: React.ReactNode;
 
-  // Actions strip (row 3)
-  /** Chip strings shown on the left of row 3 (languages, runtime, etc.). */
+  /**
+   * Capability/fact chips between description and divider. Use for differentiating
+   * facts: deployment (Local/Cloud), size, languages, capability flags. Cap at 4 visible.
+   */
+  capabilityChips?: CompactBadgeItem[];
+  capabilityChipsMaxVisible?: number;
+
+  /** Footer chips (left side): source/runtime/language list. Below the divider. */
   footerMetaItems?: string[];
   footerMetaIcon?: React.ReactNode;
   footerMetaMaxVisible?: number;
   footerOverflowLabel?: string;
 
-  /** Trailing row-3 slot: acquire/remove icons or progress indicator. */
+  /** Trailing footer slot: acquire/remove icons or progress indicator. */
   trailing?: HubTrailing;
 
-  // Optional block below the 3-row core (progress, notes).
+  /** Optional block below the core (progress bar, delete confirmation). */
   footerExtra?: React.ReactNode;
 
   // Interaction
@@ -52,8 +63,8 @@ export interface HubModelCardProps {
 }
 
 /**
- * Universal row-3 trailing descriptor.
- * All three tabs (STT / LLM / TTS) share the same two affordances:
+ * Universal footer trailing descriptor.
+ * Two affordances:
  *   - acquire (Download) when the asset isn't available locally
  *   - remove  (Trash2)   when it's installed and removable
  * A spinner can replace either icon while busy. Primary selection is
@@ -85,15 +96,18 @@ export type HubTrailing =
   | undefined;
 
 const baseClasses =
-  "flex h-full min-w-0 flex-col gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200";
+  "flex h-full min-h-[176px] min-w-0 flex-col gap-3 rounded-xl px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 motion-reduce:transition-none";
 
 const HubModelCard: React.FC<HubModelCardProps> = ({
   title,
   providerId,
+  subline,
   headerBadges,
   headerBadgesMaxVisible = 2,
   description,
   secondary,
+  capabilityChips,
+  capabilityChipsMaxVisible = 4,
   footerMetaItems,
   footerMetaIcon,
   footerMetaMaxVisible = 3,
@@ -120,7 +134,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
     ? disabled
       ? "opacity-60"
       : ""
-    : "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group";
+    : "cursor-pointer hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]";
 
   const handleClick = () => {
     if (!isClickable) return;
@@ -137,6 +151,8 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   };
 
   const trailingNode = renderTrailing(trailing);
+  const hasCapabilityRow =
+    (capabilityChips && capabilityChips.length > 0) || Boolean(secondary);
 
   return (
     <div
@@ -149,45 +165,75 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
         .filter(Boolean)
         .join(" ")}
     >
-      {/* ROW 1 — identity */}
-      <div className="flex min-w-0 items-center gap-2">
-        {providerId ? <ProviderIcon providerId={providerId} size="sm" /> : null}
-        <h3
-          className={`min-w-0 flex-1 truncate text-base font-semibold text-[var(--text)] ${isClickable ? "group-hover:text-[var(--accent)]" : ""} transition-colors`}
-          title={title}
-        >
-          {title}
-        </h3>
-        {headerBadges && headerBadges.length > 0 ? (
-          <CompactBadgeRow
-            items={headerBadges}
-            maxVisible={headerBadgesMaxVisible}
-            overflowLabel={`${title} badges`}
+      {/* IDENTITY — 40px logo as left rail, title block on the right. */}
+      <div className="flex min-w-0 items-start gap-3">
+        {providerId ? (
+          <ProviderIcon
+            providerId={providerId}
+            size="xl"
+            className="mt-0.5"
           />
         ) : null}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex min-w-0 items-start gap-2">
+            <h3
+              className={`min-w-0 flex-1 truncate text-base font-semibold leading-tight text-[var(--text)] ${isClickable ? "group-hover:text-[var(--accent)]" : ""} transition-colors`}
+              title={title}
+            >
+              {title}
+            </h3>
+            {headerBadges && headerBadges.length > 0 ? (
+              <CompactBadgeRow
+                items={headerBadges}
+                maxVisible={headerBadgesMaxVisible}
+                overflowLabel={`${title} badges`}
+              />
+            ) : null}
+          </div>
+          {subline ? (
+            <p
+              className="min-w-0 truncate text-xs font-medium text-[var(--muted)]"
+              title={subline}
+            >
+              {subline}
+            </p>
+          ) : null}
+          {description ? (
+            <p
+              className="min-w-0 text-sm leading-snug text-[var(--muted)] line-clamp-2"
+              title={description}
+            >
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
 
-      {/* ROW 2 — summary (single line; optional secondary on sm+).
-          `min-h-10` reserves space for the tallest `secondary` content
-          (STT score bars) so STT / LLM / TTS cards stay the same height. */}
-      {(description || secondary) && (
-        <div className="flex min-h-10 min-w-0 items-center gap-3">
-          <p
-            className="min-w-0 flex-1 truncate text-sm text-[var(--muted)]"
-            title={description ?? undefined}
-          >
-            {description ?? "\u00A0"}
-          </p>
+      {/* CAPABILITY CHIPS — fact chips + optional right-aligned secondary slot. */}
+      {hasCapabilityRow ? (
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {capabilityChips && capabilityChips.length > 0 ? (
+              <CompactBadgeRow
+                items={capabilityChips}
+                maxVisible={capabilityChipsMaxVisible}
+                overflowLabel={`${title} capabilities`}
+              />
+            ) : null}
+          </div>
           {secondary ? (
             <div className="hidden shrink-0 sm:block">{secondary}</div>
           ) : null}
         </div>
-      )}
+      ) : null}
+
+      {/* Spacer keeps divider/footer pinned at a consistent visual height. */}
+      <div className="flex-1" />
 
       {/* Divider */}
       <div className="border-t border-mid-gray/20" />
 
-      {/* ROW 3 — meta + trailing */}
+      {/* FOOTER — meta + trailing action. */}
       <div className="flex min-w-0 items-center gap-2">
         {footerMetaItems && footerMetaItems.length > 0 ? (
           <CompactMetaRow
@@ -203,7 +249,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
         {trailingNode}
       </div>
 
-      {/* Optional block below the 3-row core */}
+      {/* Optional block below the core (progress, confirmation). */}
       {footerExtra ? <div className="mt-1 w-full">{footerExtra}</div> : null}
     </div>
   );
@@ -230,7 +276,7 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
         ) : null}
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           title={label}
           aria-label={label}
           disabled={itemDisabled || busy}
@@ -255,7 +301,7 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
   return (
     <Button
       variant="ghost"
-      size="icon-sm"
+      size="icon"
       title={label}
       aria-label={label}
       disabled={itemDisabled || busy}

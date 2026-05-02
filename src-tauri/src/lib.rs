@@ -37,6 +37,7 @@ mod overlay;
 pub mod portable;
 mod post_processing;
 mod refine_models;
+#[cfg(not(feature = "ci-mock-transcription"))]
 mod regression;
 mod scratchpad;
 mod screen_context;
@@ -568,11 +569,20 @@ pub fn run(cli_args: CliArgs) {
     portable::init();
 
     if cli_args.regression_manifest.is_some() {
-        if let Err(err) = regression::run_cli(&cli_args) {
-            eprintln!("Regression run failed: {err}");
-            std::process::exit(1);
+        #[cfg(feature = "ci-mock-transcription")]
+        {
+            eprintln!("Regression runs are unavailable with the CI mock transcription feature.");
+            std::process::exit(2);
         }
-        return;
+
+        #[cfg(not(feature = "ci-mock-transcription"))]
+        {
+            if let Err(err) = regression::run_cli(&cli_args) {
+                eprintln!("Regression run failed: {err}");
+                std::process::exit(1);
+            }
+            return;
+        }
     }
 
     // Parse console logging directives from RUST_LOG, falling back to info-level logging

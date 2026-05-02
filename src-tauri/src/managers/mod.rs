@@ -5,5 +5,9 @@ pub mod convo;
 pub mod history;
 pub mod model;
 pub mod notes;
+#[cfg(not(feature = "ci-mock-transcription"))]
+pub mod transcription;
+#[cfg(feature = "ci-mock-transcription")]
+#[path = "transcription_mock.rs"]
 pub mod transcription;
 pub mod watch_folders;

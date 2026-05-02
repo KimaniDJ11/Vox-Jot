@@ -2,7 +2,10 @@
 // This file is copied over transcription.rs during CI tests.
 // Existing tests don't exercise transcription, so this is safe.
 
+use crate::helpers::subtitles::TimedSegment;
+use crate::managers::audio::AudioRecordingManager;
 use crate::managers::model::ModelManager;
+use crate::settings::AppSettings;
 use anyhow::Result;
 use serde::Serialize;
 use std::sync::Arc;
@@ -45,6 +48,23 @@ impl TranscriptionManager {
 
     pub fn initiate_model_load(&self) {}
 
+    pub fn initiate_model_load_for_model(&self, _model_id: String) {}
+
+    pub fn begin_processing_run(&self) -> u64 {
+        1
+    }
+
+    pub fn cancel_active_processing(&self) {}
+
+    pub fn start_partial_provider(
+        &self,
+        _binding_id: &str,
+        _recording_manager: Arc<AudioRecordingManager>,
+    ) {
+    }
+
+    pub fn stop_partial_provider(&self) {}
+
     pub fn get_current_model(&self) -> Option<String> {
         None
     }
@@ -53,7 +73,50 @@ impl TranscriptionManager {
         0
     }
 
-    pub fn transcribe(&self, _audio: Vec<f32>) -> Result<String> {
+    pub fn transcribe(&self, _audio: Arc<Vec<f32>>) -> Result<String> {
         Ok(String::new())
+    }
+
+    pub fn transcribe_with_settings(
+        &self,
+        _audio: Arc<Vec<f32>>,
+        _settings: AppSettings,
+    ) -> Result<String> {
+        Ok(String::new())
+    }
+
+    pub fn transcribe_with_segments(
+        &self,
+        _audio: Arc<Vec<f32>>,
+    ) -> Result<(String, Vec<TimedSegment>)> {
+        Ok((String::new(), Vec::new()))
+    }
+
+    pub fn is_processing_cancelled(&self, _generation: u64) -> bool {
+        false
+    }
+
+    pub fn maybe_emit_partial_transcription(&self, _generation: u64, _text: &str) {}
+
+    pub fn maybe_emit_partial_error(&self, _generation: u64, _error: &str) {}
+
+    pub fn cancel_partial_provider(&self) {
+        self.stop_partial_provider();
+    }
+
+    pub fn active_partial_binding_id(&self) -> Option<String> {
+        None
+    }
+
+    pub fn finish_active_partial_provider(&self) {}
+
+    pub fn set_model_unload_timeout(&self, _timeout: crate::settings::ModelUnloadTimeout) {}
+
+    pub fn schedule_model_unload_if_idle(&self, _context: &str) {}
+
+    pub fn update_model_runtime_settings(&self, _settings: &AppSettings) {}
+
+    pub fn warm_selected_model(&self) -> Result<()> {
+        Ok(())
     }
 }

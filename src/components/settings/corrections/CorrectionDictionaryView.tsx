@@ -534,21 +534,98 @@ export const CorrectionDictionaryView: React.FC<
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
+            <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
+              <span>
+                {t("settings.corrections.dictionary.columns.original")}
+              </span>
+              <span>
+                {t("settings.corrections.dictionary.columns.corrected")}
+              </span>
+              <span>{t("common.status", { defaultValue: "Stats" })}</span>
+              <span className="text-right">
+                {t("common.actions", { defaultValue: "Actions" })}
+              </span>
+            </div>
             {filteredGroups.map((group) => (
               <div
                 key={getCorrectionGroupKey(group)}
-                className={`px-5 py-3 space-y-2.5 transition-opacity ${
-                  !group.allActive ? "opacity-50" : ""
+                className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_5.75rem] md:items-center md:gap-4 ${
+                  !group.allActive
+                    ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
+                    : ""
                 }`}
               >
-                {/* Top row: corrected word + controls */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
+                <div className="min-w-0 space-y-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
+                    {t("settings.corrections.dictionary.columns.original")}
+                  </span>
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    {group.entries.map((entry) => (
+                      <OriginalChip
+                        key={entry.id}
+                        entry={entry}
+                        onUpdate={handleUpdateOriginal}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                    {addingTo === group.corrected ? (
+                      <form
+                        className="inline-flex items-center gap-1"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void handleAddOriginal(group.corrected);
+                        }}
+                      >
+                        <input
+                          ref={addInputRef}
+                          type="text"
+                          value={newOriginal}
+                          onChange={(e) => setNewOriginal(e.target.value)}
+                          onBlur={() => {
+                            if (!newOriginal.trim()) {
+                              setAddingTo(null);
+                              setNewOriginal("");
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              setAddingTo(null);
+                              setNewOriginal("");
+                            }
+                          }}
+                          className="h-7 w-28 rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                          placeholder={t("common.add", {
+                            defaultValue: "Add...",
+                          })}
+                        />
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                        onClick={() => {
+                          setAddingTo(group.corrected);
+                          setNewOriginal("");
+                        }}
+                        title={t("common.add", { defaultValue: "Add" })}
+                        aria-label={t("common.add", { defaultValue: "Add" })}
+                      >
+                        <Plus className="h-3 w-3" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
                     {t("settings.corrections.dictionary.columns.corrected")}
                   </span>
                   <Input
                     variant="compact"
-                    className="flex-1 font-semibold min-w-0"
+                    aria-label={t(
+                      "settings.corrections.dictionary.columns.corrected",
+                    )}
+                    className="min-h-9 w-full min-w-0 rounded-[999px] px-3 font-semibold text-[var(--text)]"
                     defaultValue={group.corrected}
                     onBlur={(e) => handleUpdateCorrected(group, e.target.value)}
                     onKeyDown={(e) => {
@@ -557,101 +634,50 @@ export const CorrectionDictionaryView: React.FC<
                       }
                     }}
                   />
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <SwitchControl
-                      checked={group.allActive}
-                      onChange={(checked) => handleToggleGroup(group, checked)}
-                      size="compact"
-                      frame="icon"
-                      title={
-                        group.allActive
-                          ? t("common.disable", { defaultValue: "Disable" })
-                          : t("common.enable", { defaultValue: "Enable" })
-                      }
-                      ariaLabel={
-                        group.allActive
-                          ? t("common.disable", { defaultValue: "Disable" })
-                          : t("common.enable", { defaultValue: "Enable" })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="danger-ghost"
-                      size="icon-sm"
-                      onClick={() => handleDeleteGroup(group)}
-                      title={t("common.delete")}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mr-1">
-                    {t("settings.corrections.dictionary.columns.original")}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
+                  <span className="block text-[var(--text)]">
+                    {t("settings.corrections.dictionary.columns.frequency", {
+                      defaultValue: "Uses",
+                    })}
+                    : {group.totalFrequency}
                   </span>
-                  {group.entries.map((entry) => (
-                    <OriginalChip
-                      key={entry.id}
-                      entry={entry}
-                      onUpdate={handleUpdateOriginal}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                  {addingTo === group.corrected ? (
-                    <form
-                      className="inline-flex items-center gap-1"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void handleAddOriginal(group.corrected);
-                      }}
-                    >
-                      <input
-                        ref={addInputRef}
-                        type="text"
-                        value={newOriginal}
-                        onChange={(e) => setNewOriginal(e.target.value)}
-                        onBlur={() => {
-                          if (!newOriginal.trim()) {
-                            setAddingTo(null);
-                            setNewOriginal("");
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            setAddingTo(null);
-                            setNewOriginal("");
-                          }
-                        }}
-                        className="px-2 py-0.5 text-xs bg-mid-gray/10 border border-mid-gray/60 rounded-full w-24 focus:outline-none focus:border-[var(--accent)] focus:bg-[var(--accent)]/10"
-                        placeholder={t("common.add", {
-                          defaultValue: "Add...",
-                        })}
-                      />
-                    </form>
-                  ) : (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-[var(--text)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 rounded-full transition-colors border border-dashed border-mid-gray/50 hover:border-[var(--accent)]/40"
-                      onClick={() => {
-                        setAddingTo(group.corrected);
-                        setNewOriginal("");
-                      }}
-                    >
-                      <Plus className="h-2.5 w-2.5" />
-                    </button>
-                  )}
+                  <span className="block">
+                    {t("settings.corrections.dictionary.columns.confidence", {
+                      defaultValue: "Confidence",
+                    })}
+                    : {(group.avgConfidence * 100).toFixed(0)}%
+                  </span>
                 </div>
 
-                <div className="flex gap-3 text-xs font-medium text-[var(--text)]">
-                  <span>
-                    {t("settings.corrections.dictionary.columns.frequency")}:{" "}
-                    {group.totalFrequency}
-                  </span>
-                  <span>
-                    {t("settings.corrections.dictionary.columns.confidence")}:{" "}
-                    {(group.avgConfidence * 100).toFixed(0)}%
-                  </span>
+                <div className="flex items-center justify-end gap-1.5">
+                  <SwitchControl
+                    checked={group.allActive}
+                    onChange={(checked) => handleToggleGroup(group, checked)}
+                    size="compact"
+                    frame="icon"
+                    title={
+                      group.allActive
+                        ? t("common.disable", { defaultValue: "Disable" })
+                        : t("common.enable", { defaultValue: "Enable" })
+                    }
+                    ariaLabel={
+                      group.allActive
+                        ? t("common.disable", { defaultValue: "Disable" })
+                        : t("common.enable", { defaultValue: "Enable" })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    variant="danger-ghost"
+                    size="icon-sm"
+                    onClick={() => handleDeleteGroup(group)}
+                    title={t("common.delete")}
+                    aria-label={t("common.delete")}
+                  >
+                    <Trash2 aria-hidden />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -715,11 +741,11 @@ const OriginalChip: React.FC<{
   return (
     <Badge
       variant="secondary"
-      className="group gap-0.5 border border-mid-gray/30 bg-mid-gray/10 px-2 py-0.5 font-mono text-[var(--text)] hover:border-mid-gray/50"
+      className="group min-w-0 gap-1 border border-[var(--border)] bg-[var(--input)] px-2 py-1 font-mono text-[var(--text)] hover:border-[var(--border-strong)]"
     >
       <button
         type="button"
-        className="cursor-text"
+        className="min-w-0 max-w-[18rem] cursor-text truncate text-left"
         onClick={() => setEditing(true)}
         title={entry.source_app || undefined}
       >
@@ -727,7 +753,7 @@ const OriginalChip: React.FC<{
       </button>
       <button
         type="button"
-        className="text-[var(--muted)] transition-colors hover:text-[var(--danger)] -mr-0.5"
+        className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         onClick={() => void onDelete(entry.id)}
         aria-label="Delete original phrase"
       >

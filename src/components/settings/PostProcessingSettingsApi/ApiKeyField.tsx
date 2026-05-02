@@ -11,7 +11,14 @@ interface ApiKeyFieldProps {
 }
 
 export const ApiKeyField: React.FC<ApiKeyFieldProps> = React.memo(
-  ({ onBlur, disabled, resetKey, hasSavedValue = false, placeholder, className = "" }) => {
+  ({
+    onBlur,
+    disabled,
+    resetKey,
+    hasSavedValue = false,
+    placeholder,
+    className = "",
+  }) => {
     const [localValue, setLocalValue] = useState("");
 
     React.useEffect(() => {

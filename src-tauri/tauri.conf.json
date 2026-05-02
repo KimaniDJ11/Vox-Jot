@@ -21,7 +21,7 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "resources": ["resources/**/*", "../ocr-runtime/**/*"],
     "license": "MIT",
@@ -39,9 +39,6 @@
       "entitlements": "Entitlements.plist"
     },
     "linux": {
-      "deb": {
-        "depends": ["libgtk-layer-shell0"]
-      },
       "rpm": {
         "compression": {
           "type": "none"

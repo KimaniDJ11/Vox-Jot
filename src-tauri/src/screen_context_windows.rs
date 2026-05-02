@@ -24,7 +24,6 @@ use crate::screen_context_ocr_backup::{self, OcrFrame, PixelFormat};
 use crate::settings::{OcrQualityMode, ScreenContextOcrEngine};
 
 use windows::core::HSTRING;
-use windows::Foundation::TimeSpan;
 use windows::Graphics::Imaging::{
     BitmapAlphaMode, BitmapDecoder, BitmapEncoder, BitmapPixelFormat, SoftwareBitmap,
 };
@@ -332,17 +331,10 @@ fn run_native_ocr(
         .RecognizeAsync(&bitmap)
         .map_err(|err| format!("OcrEngine.RecognizeAsync start failed: {:?}", err))?;
 
-    // Block this worker thread up to the requested timeout. WinRT exposes a
-    // 100-nanosecond TimeSpan, so 10 000 = 1 ms.
-    let hard_limit_ms = (timeout_ms as u64).max(200).min(NATIVE_OCR_HARD_LIMIT_MS);
-    let _ = async_op.SetCompleted(&windows::Foundation::AsyncOperationCompletedHandler::new(
-        |_, _| Ok(()),
-    ));
-
-    let timeout = TimeSpan {
-        Duration: (hard_limit_ms as i64) * 10_000,
-    };
-    let _ = timeout; // We rely on get() returning when complete; timeout is best-effort.
+    // The WinRT projection does not expose a cancellable timeout on this
+    // operation. Keep the requested hard limit visible for diagnostics while
+    // relying on the worker-thread fallback path to isolate the blocking call.
+    let _hard_limit_ms = (timeout_ms as u64).clamp(200, NATIVE_OCR_HARD_LIMIT_MS);
     let result = async_op
         .get()
         .map_err(|err| format!("OcrEngine.RecognizeAsync wait failed: {:?}", err))?;

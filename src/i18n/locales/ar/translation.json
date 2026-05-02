@@ -459,6 +459,10 @@
           "solarized": "Solarized",
           "graphite": "Graphite"
         }
+      },
+      "fontScale": {
+        "title": "Text Size",
+        "description": "Increase or decrease readable text across Vox Jot."
       }
     },
     "postProcessing": {

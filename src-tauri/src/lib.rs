@@ -9,7 +9,6 @@
 )]
 
 mod actions;
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod apple_intelligence;
 mod audio_feedback;
 mod audio_playback;
@@ -38,6 +37,7 @@ mod overlay;
 pub mod portable;
 mod post_processing;
 mod refine_models;
+#[cfg(not(feature = "ci-mock-transcription"))]
 mod regression;
 mod scratchpad;
 mod screen_context;
@@ -569,11 +569,20 @@ pub fn run(cli_args: CliArgs) {
     portable::init();
 
     if cli_args.regression_manifest.is_some() {
-        if let Err(err) = regression::run_cli(&cli_args) {
-            eprintln!("Regression run failed: {err}");
-            std::process::exit(1);
+        #[cfg(feature = "ci-mock-transcription")]
+        {
+            eprintln!("Regression runs are unavailable with the CI mock transcription feature.");
+            std::process::exit(2);
         }
-        return;
+
+        #[cfg(not(feature = "ci-mock-transcription"))]
+        {
+            if let Err(err) = regression::run_cli(&cli_args) {
+                eprintln!("Regression run failed: {err}");
+                std::process::exit(1);
+            }
+            return;
+        }
     }
 
     // Parse console logging directives from RUST_LOG, falling back to info-level logging
@@ -865,16 +874,23 @@ pub fn run(cli_args: CliArgs) {
         let bindings_path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
         let ts = Typescript::default().bigint(BigIntExportBehavior::Number);
-        let generated = specta_builder
+        let generated_raw = specta_builder
             .export_str(&ts)
             .expect("Failed to generate typescript bindings");
+        let mut generated = generated_raw
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
+        if generated_raw.ends_with('\n') {
+            generated.push('\n');
+        }
         let needs_write = match std::fs::read_to_string(&bindings_path) {
             Ok(existing) => existing != generated,
             Err(_) => true,
         };
         if needs_write {
-            specta_builder
-                .export(ts, &bindings_path)
+            std::fs::write(&bindings_path, generated)
                 .expect("Failed to export typescript bindings");
         }
     }

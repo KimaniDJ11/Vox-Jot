@@ -105,11 +105,7 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
                 className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
                 title={bundleId}
               >
-                <AppMonogram
-                  bundleId={bundleId}
-                  name={app?.name}
-                  size="xs"
-                />
+                <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
                 {app?.name ?? bundleId}
                 <button
                   type="button"
@@ -163,7 +159,9 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
                     name={app.name}
                     size="sm"
                   />
-                  <span className="truncate text-[var(--text)]">{app.name}</span>
+                  <span className="truncate text-[var(--text)]">
+                    {app.name}
+                  </span>
                   <span className="ml-auto truncate text-[10px] text-[var(--muted)]">
                     {app.bundle_id}
                   </span>

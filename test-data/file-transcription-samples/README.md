@@ -16,13 +16,13 @@ chmod +x generate.sh
 
 This uses the built-in **`say`** voice synthesizer, then writes:
 
-| File | Purpose |
-|------|---------|
-| `sample_speech_48k_mono.wav` | WAV path (decode in Rust + resample to 16 kHz) |
-| `sample_speech_48k_stereo.wav` | Stereo downmix + resample |
-| `sample_speech.mp3` | FFmpeg decode path |
-| `sample_speech.m4a` | FFmpeg decode path (AAC) |
-| `sample_talk_head.mp4` | FFmpeg decode path (audio inside video) |
+| File                           | Purpose                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `sample_speech_48k_mono.wav`   | WAV path (decode in Rust + resample to 16 kHz) |
+| `sample_speech_48k_stereo.wav` | Stereo downmix + resample                      |
+| `sample_speech.mp3`            | FFmpeg decode path                             |
+| `sample_speech.m4a`            | FFmpeg decode path (AAC)                       |
+| `sample_talk_head.mp4`         | FFmpeg decode path (audio inside video)        |
 
 The script overwrites the committed copies — re-run it any time you want to
 refresh the samples.

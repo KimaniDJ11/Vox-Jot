@@ -86,7 +86,10 @@ export const OutputOverrides: React.FC<OutputOverridesProps> = ({
       </Field>
       <Field label={muteLabel} help={muteHelp}>
         <Dropdown
-          options={triStateOptions("Mute while recording", "Keep audio playing")}
+          options={triStateOptions(
+            "Mute while recording",
+            "Keep audio playing",
+          )}
           selectedValue={mute}
           onSelect={(value) =>
             onChange({

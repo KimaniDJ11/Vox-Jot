@@ -41,10 +41,7 @@
   "runtime_fit": {
     "lane": "sidecar",
     "can_run_as_local_process": true,
-    "api_surface": [
-      "python generate()",
-      "websocket streaming demo"
-    ],
+    "api_surface": ["python generate()", "websocket streaming demo"],
     "output_format": "wav",
     "supports_streaming": true,
     "cold_start_estimate_sec": null,

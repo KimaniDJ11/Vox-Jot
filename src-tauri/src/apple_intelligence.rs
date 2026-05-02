@@ -1,10 +1,13 @@
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::ffi::{CStr, CString};
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 use std::os::raw::{c_char, c_int};
 
 use crate::helpers::subtitles::TimedSegment;
 use crate::post_processing::ActiveAppContext;
 
 // Define the response structure from Swift
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 #[repr(C)]
 pub struct AppleLLMResponse {
     pub response: *mut c_char,
@@ -12,6 +15,7 @@ pub struct AppleLLMResponse {
     pub error_message: *mut c_char,
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 #[repr(C)]
 pub struct FrontmostAppResponse {
     pub bundle_id: *mut c_char,
@@ -20,6 +24,7 @@ pub struct FrontmostAppResponse {
     pub error_message: *mut c_char,
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 #[repr(C)]
 pub struct AppleSpeechTranscriptionResponse {
     pub json_payload: *mut c_char,
@@ -35,6 +40,7 @@ pub struct AppleSpeechTranscriptionPayload {
 }
 
 // Link to the Swift functions
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 extern "C" {
     pub fn is_apple_intelligence_available() -> c_int;
     pub fn free_apple_llm_response(response: *mut AppleLLMResponse);
@@ -55,12 +61,24 @@ extern "C" {
 }
 
 // Safe wrapper functions
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn check_apple_intelligence_availability() -> bool {
     unsafe { is_apple_intelligence_available() == 1 }
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn check_apple_intelligence_availability() -> bool {
+    false
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn check_apple_speech_analyzer_availability() -> bool {
     unsafe { is_apple_speech_analyzer_available() == 1 }
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn check_apple_speech_analyzer_availability() -> bool {
+    false
 }
 
 /// Returns true if Apple's on-device speech model for `locale` is
@@ -68,6 +86,7 @@ pub fn check_apple_speech_analyzer_availability() -> bool {
 /// is the only authoritative source — `SpeechTranscriber.isAvailable`
 /// is a global flag and lies for uninstalled locales (the cause of
 /// the EXC_BREAKPOINT crash we hit in production).
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn is_apple_speech_locale_ready(locale_identifier: Option<&str>) -> bool {
     let cstr = match CString::new(locale_identifier.unwrap_or("")) {
         Ok(s) => s,
@@ -76,6 +95,12 @@ pub fn is_apple_speech_locale_ready(locale_identifier: Option<&str>) -> bool {
     unsafe { is_apple_speech_locale_installed(cstr.as_ptr()) == 1 }
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn is_apple_speech_locale_ready(_locale_identifier: Option<&str>) -> bool {
+    false
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn transcribe_with_apple_speech_analyzer(
     audio: &[f32],
     sample_rate: u32,
@@ -140,6 +165,17 @@ pub fn transcribe_with_apple_speech_analyzer(
     result
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn transcribe_with_apple_speech_analyzer(
+    _audio: &[f32],
+    _sample_rate: u32,
+    _locale_identifier: Option<&str>,
+    _progressive: bool,
+) -> Result<AppleSpeechTranscriptionPayload, String> {
+    Err("Apple SpeechAnalyzer is only available on supported Apple Silicon Macs.".to_string())
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
     let response_ptr = unsafe { get_frontmost_app_context_apple() };
 
@@ -189,7 +225,13 @@ pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
     result
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn get_frontmost_app_context() -> Result<ActiveAppContext, String> {
+    Err("Frontmost app lookup through Apple APIs is only available on macOS.".to_string())
+}
+
 // Link to the Swift function for system prompt support
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 extern "C" {
     pub fn process_text_with_system_prompt_apple(
         system_prompt: *const c_char,
@@ -199,6 +241,7 @@ extern "C" {
 }
 
 /// Process text with Apple Intelligence using separate system prompt and user content
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 pub fn process_text_with_system_prompt(
     system_prompt: &str,
     user_content: &str,
@@ -239,6 +282,15 @@ pub fn process_text_with_system_prompt(
     unsafe { free_apple_llm_response(response_ptr) };
 
     result
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+pub fn process_text_with_system_prompt(
+    _system_prompt: &str,
+    _user_content: &str,
+    _max_tokens: i32,
+) -> Result<String, String> {
+    Err("Apple Intelligence is only available on supported Apple Silicon Macs.".to_string())
 }
 
 #[cfg(test)]

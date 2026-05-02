@@ -292,7 +292,10 @@ function SherpaMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <path d="M3 18 9.5 6l3.2 5.7L15 8l6 10H3Z" fill="#FFFFFF" />
-      <path d="M8.5 12.4 9.5 6l3.2 5.7 1.4-2.2 1.4 8.5H3l5.5-5.6Z" fill="#BFDBFE" />
+      <path
+        d="M8.5 12.4 9.5 6l3.2 5.7 1.4-2.2 1.4 8.5H3l5.5-5.6Z"
+        fill="#BFDBFE"
+      />
     </svg>
   );
 }
@@ -317,10 +320,7 @@ function MyShellMark({ size }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M4 15.5c1.2-5.8 4.2-9 8-9s6.8 3.2 8 9H4Z"
-        fill="#FFFFFF"
-      />
+      <path d="M4 15.5c1.2-5.8 4.2-9 8-9s6.8 3.2 8 9H4Z" fill="#FFFFFF" />
       <path
         d="M7 15.5c.8-3 2.6-4.7 5-4.7s4.2 1.7 5 4.7M12 6.5v9"
         fill="none"
@@ -370,12 +370,21 @@ function CoquiMark({ size }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path d="M5 12.5c0-3.2 3.1-5.8 7-5.8s7 2.6 7 5.8-3.1 5.8-7 5.8-7-2.6-7-5.8Z" fill="#FFFFFF" />
+      <path
+        d="M5 12.5c0-3.2 3.1-5.8 7-5.8s7 2.6 7 5.8-3.1 5.8-7 5.8-7-2.6-7-5.8Z"
+        fill="#FFFFFF"
+      />
       <circle cx={8.3} cy={8} r={2.1} fill="#FFFFFF" />
       <circle cx={15.7} cy={8} r={2.1} fill="#FFFFFF" />
       <circle cx={8.3} cy={8} r={0.9} fill="#00C853" />
       <circle cx={15.7} cy={8} r={0.9} fill="#00C853" />
-      <path d="M8.5 13.5c2.2 1.5 4.8 1.5 7 0" fill="none" stroke="#00C853" strokeWidth={1.7} strokeLinecap="round" />
+      <path
+        d="M8.5 13.5c2.2 1.5 4.8 1.5 7 0"
+        fill="none"
+        stroke="#00C853"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -384,7 +393,10 @@ function FishAudioMark({ size }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path d="M3.5 12c3.4-4.3 8.7-5.2 14-1.5L21 7.8v8.4l-3.5-2.7c-5.3 3.7-10.6 2.8-14-1.5Z" fill="#FFFFFF" />
+      <path
+        d="M3.5 12c3.4-4.3 8.7-5.2 14-1.5L21 7.8v8.4l-3.5-2.7c-5.3 3.7-10.6 2.8-14-1.5Z"
+        fill="#FFFFFF"
+      />
       <circle cx={8.2} cy={11.2} r={0.9} fill="#0EA5E9" />
     </svg>
   );
@@ -395,7 +407,12 @@ function NariMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <path d="M5 8.5h14v7H9.8L5 19V8.5Z" fill="#FFFFFF" />
-      <path d="M8.4 12h1.6m2 0h1.6m2 0h1.6" stroke="#2563EB" strokeWidth={1.7} strokeLinecap="round" />
+      <path
+        d="M8.4 12h1.6m2 0h1.6m2 0h1.6"
+        stroke="#2563EB"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -404,8 +421,22 @@ function SesameMark({ size }: { size: number; color: string }) {
   const s = size * 0.66;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <ellipse cx={9} cy={12} rx={4.2} ry={7.5} fill="#FFFFFF" transform="rotate(-18 9 12)" />
-      <ellipse cx={15} cy={12} rx={4.2} ry={7.5} fill="#FED7AA" transform="rotate(18 15 12)" />
+      <ellipse
+        cx={9}
+        cy={12}
+        rx={4.2}
+        ry={7.5}
+        fill="#FFFFFF"
+        transform="rotate(-18 9 12)"
+      />
+      <ellipse
+        cx={15}
+        cy={12}
+        rx={4.2}
+        ry={7.5}
+        fill="#FED7AA"
+        transform="rotate(18 15 12)"
+      />
       <circle cx={12} cy={12} r={2.1} fill="#F97316" />
     </svg>
   );
@@ -415,8 +446,14 @@ function SparkAudioMark({ size }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path d="M12 2.8 14.6 9l6.6 3-6.6 3L12 21.2 9.4 15l-6.6-3 6.6-3L12 2.8Z" fill="#FFFFFF" />
-      <path d="M12 8.4 13.1 11l2.5 1-2.5 1L12 15.6 10.9 13l-2.5-1 2.5-1L12 8.4Z" fill="#DC2626" />
+      <path
+        d="M12 2.8 14.6 9l6.6 3-6.6 3L12 21.2 9.4 15l-6.6-3 6.6-3L12 2.8Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M12 8.4 13.1 11l2.5 1-2.5 1L12 15.6 10.9 13l-2.5-1 2.5-1L12 8.4Z"
+        fill="#DC2626"
+      />
     </svg>
   );
 }
@@ -426,7 +463,13 @@ function OuteTTSMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <circle cx={12} cy={12} r={8} fill="#FFFFFF" />
-      <path d="M7.2 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0" fill="none" stroke="#14B8A6" strokeWidth={2.2} strokeLinecap="round" />
+      <path
+        d="M7.2 12c1.6-3.2 3.2-3.2 4.8 0s3.2 3.2 4.8 0"
+        fill="none"
+        stroke="#14B8A6"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -436,7 +479,10 @@ function InclusionAIMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" fill="#FFFFFF" />
-      <path d="M7.2 8.8 12 6.1l4.8 2.7v5.4L12 17l-4.8-2.8V8.8Z" fill="#0F172A" />
+      <path
+        d="M7.2 8.8 12 6.1l4.8 2.7v5.4L12 17l-4.8-2.8V8.8Z"
+        fill="#0F172A"
+      />
       <circle cx={12} cy={12} r={2.2} fill="#FFFFFF" />
     </svg>
   );
@@ -447,7 +493,13 @@ function KugelAudioMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <circle cx={12} cy={12} r={8.5} fill="#FFFFFF" />
-      <path d="M5 12h14M12 3.5c2.2 2.4 3.2 5.2 3.2 8.5s-1 6.1-3.2 8.5M12 3.5C9.8 5.9 8.8 8.7 8.8 12s1 6.1 3.2 8.5" fill="none" stroke="#1F2937" strokeWidth={1.6} strokeLinecap="round" />
+      <path
+        d="M5 12h14M12 3.5c2.2 2.4 3.2 5.2 3.2 8.5s-1 6.1-3.2 8.5M12 3.5C9.8 5.9 8.8 8.7 8.8 12s1 6.1 3.2 8.5"
+        fill="none"
+        stroke="#1F2937"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -456,7 +508,10 @@ function KyutaiMark({ size }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path d="M12 3.2 15 9l6 3-6 3-3 5.8L9 15l-6-3 6-3 3-5.8Z" fill="#FFFFFF" />
+      <path
+        d="M12 3.2 15 9l6 3-6 3-3 5.8L9 15l-6-3 6-3 3-5.8Z"
+        fill="#FFFFFF"
+      />
       <circle cx={12} cy={12} r={2.4} fill="#FF4F8B" />
     </svg>
   );
@@ -469,7 +524,12 @@ function OpenBmbMark({ size }: { size: number; color: string }) {
       <circle cx={6.8} cy={12} r={3.4} fill="#FFFFFF" />
       <circle cx={17.2} cy={8} r={3.4} fill="#BFDBFE" />
       <circle cx={17.2} cy={16} r={3.4} fill="#FFFFFF" />
-      <path d="M9.6 11 14.1 9.2M9.6 13 14.1 14.8" stroke="#2563EB" strokeWidth={1.7} strokeLinecap="round" />
+      <path
+        d="M9.6 11 14.1 9.2M9.6 13 14.1 14.8"
+        stroke="#2563EB"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -479,7 +539,13 @@ function SunoMark({ size }: { size: number; color: string }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
       <circle cx={12} cy={12} r={6.2} fill="#FFFFFF" />
-      <path d="M4 12c2-2.2 4-2.2 6 0s4 2.2 6 0 3-2.2 4 0" fill="none" stroke="#7C3AED" strokeWidth={2} strokeLinecap="round" />
+      <path
+        d="M4 12c2-2.2 4-2.2 6 0s4 2.2 6 0 3-2.2 4 0"
+        fill="none"
+        stroke="#7C3AED"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -591,7 +657,12 @@ const BRANDS: Record<string, BrandConfig> = {
   hexgrad: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
   kokoro: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
   coqui: { bg: "#00C853", fg: "#FFFFFF", letter: "C", mark: CoquiMark },
-  fish_audio: { bg: "#0EA5E9", fg: "#FFFFFF", letter: "F", mark: FishAudioMark },
+  fish_audio: {
+    bg: "#0EA5E9",
+    fg: "#FFFFFF",
+    letter: "F",
+    mark: FishAudioMark,
+  },
   nari: { bg: "#2563EB", fg: "#FFFFFF", letter: "N", mark: NariMark },
   sesame: { bg: "#F97316", fg: "#FFFFFF", letter: "S", mark: SesameMark },
   sparkaudio: {

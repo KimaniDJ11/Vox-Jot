@@ -8,6 +8,7 @@ the same shape as `vibevoice_bridge.py` but always-on so we don't pay
 model-load cost (5–30s) per capture.
 
 The router only routes here when:
+
 - a neural OCR model is selected on the OCR card,
 - the catalog row's `runnable` flag is `true` (files exist + probe passed),
 - the entry's `OcrBackendKind` is `TransformersVl` (Phase 1 scope).
@@ -33,7 +34,7 @@ process lifetime.
   "width": 2560,
   "height": 1440,
   "stride": 10240,
-  "max_words": 400
+  "max_words": 400,
 }
 ```
 
@@ -50,12 +51,12 @@ process lifetime.
     {
       "text": "Hello world",
       "confidence": 0.92,
-      "x": 0.10,
-      "y": 0.40,
-      "width": 0.30,
-      "height": 0.04
-    }
-  ]
+      "x": 0.1,
+      "y": 0.4,
+      "width": 0.3,
+      "height": 0.04,
+    },
+  ],
 }
 ```
 

@@ -168,11 +168,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {/* IDENTITY — 40px logo as left rail, title block on the right. */}
       <div className="flex min-w-0 items-start gap-3">
         {providerId ? (
-          <ProviderIcon
-            providerId={providerId}
-            size="xl"
-            className="mt-0.5"
-          />
+          <ProviderIcon providerId={providerId} size="xl" className="mt-0.5" />
         ) : null}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex min-w-0 items-start gap-2">

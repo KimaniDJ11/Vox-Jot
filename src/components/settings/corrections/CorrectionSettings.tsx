@@ -19,9 +19,12 @@ export const CorrectionSettings: React.FC = () => {
         <CorrectionTrackingToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
       <SettingsGroup
-        title={t("settings.corrections.fileTranscriptionDictionary.sectionTitle", {
-          defaultValue: "File transcription",
-        })}
+        title={t(
+          "settings.corrections.fileTranscriptionDictionary.sectionTitle",
+          {
+            defaultValue: "File transcription",
+          },
+        )}
       >
         <BooleanSetting
           settingKey="file_transcription_apply_dictionary"

@@ -17,19 +17,19 @@ This document refines the approach for **real screen capture + OCR on Windows an
 
 ### 1) Linux capture (Wayland vs X11)
 
-| Phase | Approach | Rationale |
-|-------|-----------|-----------|
+| Phase             | Approach                                                                                                                                                                                                                                                                                                     | Rationale                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | **Phase 1 (MVP)** | **X11:** capture via Rust (`x11rb` / `xcb` + shared memory or `XGetImage`–class path) **without** requiring `scrot`. **Wayland:** if `grim` is on `PATH`, use **`grim -t png -`** (full output) into memory; otherwise return a clear error asking the user to install `grim` **or** run under XWayland/X11. | Ships faster than D-Bus + PipeWire; avoids large GStreamer/PW deps for MVP. Many wlroots-based desktops ship `grim`. |
-| **Phase 2** | **`ashpd` + PipeWire** (or equivalent portal screen-cast) for **generic** Wayland (GNOME/KDE) without `grim`. | Full coverage; higher complexity and binary size—explicitly deferred. |
+| **Phase 2**       | **`ashpd` + PipeWire** (or equivalent portal screen-cast) for **generic** Wayland (GNOME/KDE) without `grim`.                                                                                                                                                                                                | Full coverage; higher complexity and binary size—explicitly deferred.                                                |
 
 **Implication:** Linux diagnostics (`ScreenContextDiagnostics`) should surface **`MissingCaptureTool`** vs **`PermissionDenied`** vs **`WaylandUnsupported`** (exact enum names TBD) so support is actionable.
 
 ### 2) Backup OCR: Tesseract first, ONNX later
 
-| Phase | Approach | Rationale |
-|-------|-----------|-----------|
-| **Phase 1** | **Subprocess Tesseract** with **TSV** output (`tesseract in.png stdout tsv` with `tessedit_create_tsv=1` in config or CLI `-c`). Parse TSV → `NativeScreenContextSnippet` + normalize boxes. | Fast to integrate; no static link of `libleptonica`; easy to bundle a `tesseract` binary + `tessdata` under app resources (pattern similar to other shipped tools). |
-| **Phase 2 (optional)** | **Compact ONNX** det/rec (e.g. PP-OCR mobile ONNX) via existing `ort` patterns in the repo. | Better accuracy/languages at the cost of integration time and artifact size—only if MVP proves insufficient. |
+| Phase                  | Approach                                                                                                                                                                                     | Rationale                                                                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 1**            | **Subprocess Tesseract** with **TSV** output (`tesseract in.png stdout tsv` with `tessedit_create_tsv=1` in config or CLI `-c`). Parse TSV → `NativeScreenContextSnippet` + normalize boxes. | Fast to integrate; no static link of `libleptonica`; easy to bundle a `tesseract` binary + `tessdata` under app resources (pattern similar to other shipped tools). |
+| **Phase 2 (optional)** | **Compact ONNX** det/rec (e.g. PP-OCR mobile ONNX) via existing `ort` patterns in the repo.                                                                                                  | Better accuracy/languages at the cost of integration time and artifact size—only if MVP proves insufficient.                                                        |
 
 **Bundling:** Resolve `tesseract` executable from: user `PATH` → app resource dir (per OS) → documented install step. Same for `TESSDATA_PREFIX` / tessdata next to the binary.
 
@@ -63,26 +63,26 @@ flowchart LR
 
 ### Backend
 
-- **[`src-tauri/src/settings.rs`](../src-tauri/src/settings.rs)**  
-  - Add `ScreenContextOcrEngine` enum: `Auto`, `NativeOnly`, `BackupOnly`, `NativeThenBackup`.  
-  - Add `screen_context_ocr_engine` with default **`NativeThenBackup`** (or **`Auto`** alias—pick one name in code and map synonyms in deserializer if needed).  
+- **[`src-tauri/src/settings.rs`](../src-tauri/src/settings.rs)**
+  - Add `ScreenContextOcrEngine` enum: `Auto`, `NativeOnly`, `BackupOnly`, `NativeThenBackup`.
+  - Add `screen_context_ocr_engine` with default **`NativeThenBackup`** (or **`Auto`** alias—pick one name in code and map synonyms in deserializer if needed).
   - Extend defaults, merge helpers, and any `get_settings_without_secrets` plain-data structs if they duplicate screen-context fields.
 
-- **[`src-tauri/src/shortcut/mod.rs`](../src-tauri/src/shortcut/mod.rs)**  
+- **[`src-tauri/src/shortcut/mod.rs`](../src-tauri/src/shortcut/mod.rs)**
   - New command: `change_screen_context_ocr_engine_setting` (mirror existing `change_screen_context_*` pattern: clamp/validate, persist, emit `"settings"` event).
 
-- **[`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs)**  
+- **[`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs)**
   - Register the new Tauri command in the `invoke_handler` list.
 
-- **Specta / bindings**  
+- **Specta / bindings**
   - Ensure the enum is exported so **`src/bindings.ts`** regenerates with the new type and command (project’s usual `specta` flow).
 
 ### Frontend
 
-- **[`src/components/settings/screen-context/ScreenContextSettingsSection.tsx`](../src/components/settings/screen-context/ScreenContextSettingsSection.tsx)**  
+- **[`src/components/settings/screen-context/ScreenContextSettingsSection.tsx`](../src/components/settings/screen-context/ScreenContextSettingsSection.tsx)**
   - Dropdown or radio for OCR engine; wire to `settingsStore` / `commands.changeScreenContextOcrEngineSetting`.
 
-- **i18n**  
+- **i18n**
   - Add keys under English [`src/i18n/locales/en/translation.json`](../src/i18n/locales/en/translation.json) only in the MVP PR; run `bun run check:translations` / sync scripts per [`CLAUDE.md`](../CLAUDE.md) for other locales in a follow-up if needed.
 
 ---
@@ -206,4 +206,3 @@ When any of these tools is missing, the screen-context settings panel surfaces a
 ### Bundling (deferred)
 
 - The plan calls for bundling `tesseract` + `tessdata` under `src-tauri/resources/` so end users do not have to install it separately. That work is intentionally deferred — installing via package manager is acceptable for the MVP and avoids a per-platform binary copy in the repo.
-

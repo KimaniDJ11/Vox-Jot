@@ -120,9 +120,7 @@ export const useNotesStore = create<NotesStore>()((set, get) => ({
       if (previousNote) {
         set((state) => ({
           notes: state.notes.some((note) => note.id === id)
-            ? state.notes.map((note) =>
-                note.id === id ? previousNote : note,
-              )
+            ? state.notes.map((note) => (note.id === id ? previousNote : note))
             : [...state.notes, previousNote],
         }));
       }
@@ -130,7 +128,10 @@ export const useNotesStore = create<NotesStore>()((set, get) => ({
       try {
         await get().refresh();
       } catch (refreshError) {
-        console.error("Failed to refetch notes after update error:", refreshError);
+        console.error(
+          "Failed to refetch notes after update error:",
+          refreshError,
+        );
       }
     }
   },

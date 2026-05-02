@@ -14,18 +14,12 @@ const hasExplicitConfig = args.includes("--config") || args.includes("-c");
 const finalArgs = [...args];
 
 if (isBuildLikeCommand && !hasSigningKey && !hasExplicitConfig) {
-  const configOverride = {
-    bundle: {
-      // Local builds can still produce the app and dmg without updater artifacts.
-      // CI release builds keep updater artifacts enabled via the real signing key.
-      createUpdaterArtifacts: false,
-    },
-  };
+  const configOverride = { bundle: { createUpdaterArtifacts: false } };
 
+  // Local builds can still produce the app and dmg without updater artifacts.
+  // Signed release builds can provide their own config alongside signing keys.
   if (macSigningIdentity) {
-    configOverride.bundle.macOS = {
-      signingIdentity: macSigningIdentity,
-    };
+    configOverride.bundle.macOS = { signingIdentity: macSigningIdentity };
   }
 
   finalArgs.push("--config", JSON.stringify(configOverride));

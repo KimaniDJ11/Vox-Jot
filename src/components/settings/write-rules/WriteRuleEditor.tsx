@@ -117,7 +117,12 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
             {isNew ? newProfileTitle : trimmedName || editProfileTitle}
           </h2>
-          <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onCancel}
+          >
             {cancelLabel}
           </Button>
           <Button
@@ -206,7 +211,9 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
                 </span>
               ) : null}
             </h3>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">{overridesHelp}</p>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {overridesHelp}
+            </p>
           </div>
           <Tabs<OverrideTab>
             items={[

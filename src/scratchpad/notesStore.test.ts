@@ -50,7 +50,8 @@ describe("notes store", () => {
     localStorage.setItem("scratchpad_active_note_id", "Infinity");
 
     vi.resetModules();
-    const { useNotesStore: freshStore } = await import("@/scratchpad/notesStore");
+    const { useNotesStore: freshStore } =
+      await import("@/scratchpad/notesStore");
 
     expect(freshStore.getState().activeNoteId).toBeNull();
     expect(localStorage.getItem("scratchpad_active_note_id")).toBeNull();

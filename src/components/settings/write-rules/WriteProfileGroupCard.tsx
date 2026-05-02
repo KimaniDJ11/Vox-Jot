@@ -153,8 +153,13 @@ export const WriteProfileGroupCard: React.FC<WriteProfileGroupCardProps> = ({
     if (o.auto_submit === false) parts.push("No auto-submit");
     if (o.force_post_process === true) parts.push("Always post-process");
     if (o.force_post_process === false) parts.push("Skip post-process");
-    if (o.append_trailing_space !== null && o.append_trailing_space !== undefined)
-      parts.push(o.append_trailing_space ? "Trailing space" : "No trailing space");
+    if (
+      o.append_trailing_space !== null &&
+      o.append_trailing_space !== undefined
+    )
+      parts.push(
+        o.append_trailing_space ? "Trailing space" : "No trailing space",
+      );
     if (o.mute_while_recording === true) parts.push("Mute while recording");
     return parts;
   }, [group.overrides, modelById, promptById, toneById]);

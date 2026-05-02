@@ -4106,6 +4106,235 @@ impl TtsManager {
         join_result
     }
 
+    pub async fn synthesize_to_temp_files(
+        &self,
+        request: SpeakRequest,
+        stop_flag: Arc<AtomicBool>,
+    ) -> Result<Vec<PathBuf>, String> {
+        let settings = get_settings(&self.app_handle);
+        let selected_preset = self.resolved_preset_for_request(&settings, &request);
+        let mut effective_settings = settings.clone();
+        if let Some(preset) = selected_preset.as_ref() {
+            effective_settings.tts_active_preset_id = None;
+            effective_settings.selected_tts_provider_id = preset.provider_id.clone();
+            effective_settings.selected_tts_model_id = Some(preset.model_id.clone());
+            effective_settings.selected_tts_profile_id = preset.voice_profile_id.clone();
+            effective_settings.selected_tts_voice_id = preset.voice_id.clone();
+            effective_settings.tts_default_voice_id = preset.voice_id.clone();
+            effective_settings.tts_rate = preset.tuning.tempo_rate.clamp(0.5, 2.0);
+        }
+
+        let trimmed = request.text.trim();
+        if trimmed.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let locale = normalize_locale(request.locale.as_deref());
+        let engine = self.resolve_engine_kind(&effective_settings, locale.as_deref())?;
+        let selected_provider_id = self.selected_provider_id(&effective_settings);
+        let selected_model_id = selected_preset
+            .as_ref()
+            .map(|preset| preset.model_id.clone())
+            .or_else(|| self.selected_model_id(&effective_settings));
+        let selected_profile_id = selected_preset
+            .as_ref()
+            .and_then(|preset| preset.voice_profile_id.clone())
+            .or_else(|| effective_settings.selected_tts_profile_id.clone());
+
+        let chunks = chunk_text(trimmed);
+        if engine == TtsEngineKind::Sidecar {
+            self.ensure_managed_speech_runtime_available(&selected_provider_id)
+                .await?;
+            if let Some(sidecar) = self
+                .app_handle
+                .try_state::<Arc<crate::sidecar::SidecarManager>>()
+            {
+                let sidecar = Arc::clone(&*sidecar);
+                let uses_speech_runtime =
+                    provider_uses_managed_speech_runtime(&selected_provider_id);
+                let ensure_result = tokio::task::spawn_blocking(move || {
+                    if uses_speech_runtime {
+                        sidecar.ensure_speech_runtime()
+                    } else {
+                        sidecar.ensure_running()
+                    }
+                })
+                .await;
+                match ensure_result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(err)) => return Err(err),
+                    Err(err) => {
+                        return Err(format!(
+                            "Failed to start the local Speech runtime before story rendering: {err}"
+                        ))
+                    }
+                }
+            }
+        }
+
+        let voice = self.select_voice(
+            &effective_settings,
+            engine,
+            locale.as_deref(),
+            request.preferred_voice_id.as_deref(),
+        )?;
+        let sherpa_context = match engine {
+            TtsEngineKind::SherpaOnnx => Some(
+                self.prepare_sherpa_context(locale.as_deref(), voice.as_ref())
+                    .await?,
+            ),
+            _ => None,
+        };
+        let qwen3_context = match engine {
+            TtsEngineKind::Qwen3Native => Some(
+                self.prepare_qwen3_context(&effective_settings, locale.as_deref(), voice.as_ref())
+                    .await?,
+            ),
+            _ => None,
+        };
+        let mlx_audio_context = match engine {
+            TtsEngineKind::MlxNative => Some(
+                self.prepare_mlx_audio_context(&effective_settings, locale.as_deref())
+                    .await?,
+            ),
+            _ => None,
+        };
+        let lfm_audio_gguf_context = match engine {
+            TtsEngineKind::LfmAudioGguf => Some(
+                crate::lfm_audio_gguf::LfmAudioGgufContext::from_managed_store(&self.app_handle)
+                    .ok_or_else(|| "LFM Audio GGUF model is not installed.".to_string())?,
+            ),
+            _ => None,
+        };
+        let vibevoice_context = match engine {
+            TtsEngineKind::VibeVoice => Some(self.prepare_vibevoice_context()?),
+            _ => None,
+        };
+        let app_handle = self.app_handle.clone();
+        let preferred_voice_id = request
+            .preferred_voice_id
+            .clone()
+            .or_else(|| voice.as_ref().map(|voice| voice.id.clone()))
+            .or_else(|| {
+                selected_preset
+                    .as_ref()
+                    .and_then(|preset| preset.voice_id.clone())
+            });
+        let preferred_voice_id = if engine == TtsEngineKind::MlxNative {
+            preferred_voice_id.filter(|voice_id| is_valid_mlx_voice_id(voice_id))
+        } else {
+            preferred_voice_id
+        };
+        let tuning = selected_preset
+            .as_ref()
+            .map(|preset| preset.tuning.clone())
+            .unwrap_or(TtsVoiceTuningSettings {
+                tempo_rate: effective_settings.tts_rate.clamp(0.5, 2.0),
+                expressiveness: 0.5,
+                exaggeration: 0.5,
+                randomness: 0.7,
+                guidance: 0.5,
+                stability: 0.5,
+                repetition_penalty: 1.2,
+                style_instructions: None,
+            });
+
+        info!(
+            "Rendering {} story chunk(s) with {:?} engine, voice {:?}, preset {:?}",
+            chunks.len(),
+            engine,
+            preferred_voice_id,
+            selected_preset.as_ref().map(|preset| preset.id.as_str())
+        );
+
+        tokio::task::spawn_blocking(move || {
+            let mut files = Vec::new();
+            for chunk in chunks {
+                if stop_flag.load(Ordering::Relaxed) {
+                    break;
+                }
+
+                let file = match engine {
+                    TtsEngineKind::System => synthesize_system_chunk(
+                        &app_handle,
+                        &chunk,
+                        locale.as_deref(),
+                        voice.as_ref(),
+                        tuning.tempo_rate,
+                        &stop_flag,
+                    )?,
+                    TtsEngineKind::SherpaOnnx => {
+                        let sherpa_context = sherpa_context
+                            .as_ref()
+                            .ok_or_else(|| "No Sherpa-ONNX TTS pack is available.".to_string())?;
+                        synthesize_sherpa_chunk(
+                            &chunk,
+                            sherpa_context,
+                            tuning.tempo_rate,
+                            &stop_flag,
+                        )?
+                    }
+                    TtsEngineKind::Qwen3Native => {
+                        let qwen3_context = qwen3_context
+                            .as_ref()
+                            .ok_or_else(|| "No Qwen3 Native models are available.".to_string())?;
+                        synthesize_qwen3_chunk(&chunk, qwen3_context, &tuning, &stop_flag)?
+                    }
+                    TtsEngineKind::MlxNative => {
+                        let mlx_audio_context = mlx_audio_context
+                            .as_ref()
+                            .ok_or_else(|| "No MLX speech models are available.".to_string())?;
+                        synthesize_mlx_audio_chunk(
+                            &chunk,
+                            mlx_audio_context,
+                            preferred_voice_id.as_deref(),
+                            voice.as_ref(),
+                            &tuning,
+                            &stop_flag,
+                        )?
+                    }
+                    TtsEngineKind::Sidecar => synthesize_sidecar_chunk(
+                        &chunk,
+                        &selected_provider_id,
+                        selected_model_id.as_deref(),
+                        selected_profile_id.as_deref(),
+                        locale.as_deref(),
+                        preferred_voice_id.as_deref(),
+                        voice.as_ref(),
+                        &tuning,
+                        &stop_flag,
+                    )?,
+                    TtsEngineKind::LfmAudioGguf => {
+                        let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
+                            "LFM Audio GGUF context is not initialized.".to_string()
+                        })?;
+                        synthesize_lfm_audio_gguf_chunk(
+                            &chunk,
+                            context,
+                            preferred_voice_id.as_deref(),
+                            &stop_flag,
+                        )?
+                    }
+                    TtsEngineKind::VibeVoice => {
+                        let context = vibevoice_context
+                            .as_ref()
+                            .ok_or_else(|| "VibeVoice context is not initialized.".to_string())?;
+                        synthesize_vibevoice_chunk(
+                            &chunk,
+                            context,
+                            preferred_voice_id.as_deref(),
+                            &stop_flag,
+                        )?
+                    }
+                };
+                files.push(file);
+            }
+            Ok::<Vec<PathBuf>, String>(files)
+        })
+        .await
+        .map_err(|err| format!("TTS render task failed: {err}"))?
+    }
+
     pub fn sidecar_base_url(&self) -> String {
         std::env::var("VOX_JOT_TTS_SIDECAR_URL").unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string())
     }
@@ -5394,16 +5623,14 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
     Ok(())
 }
 
-fn speak_sherpa_chunk(
+fn synthesize_sherpa_chunk(
     text: &str,
     context: &SherpaContext,
     rate: f32,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let temp_file = std::env::temp_dir().join(format!("vox-jot-sherpa-{}.wav", Uuid::new_v4()));
@@ -5495,9 +5722,21 @@ fn speak_sherpa_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = fs::remove_file(&temp_file);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
+    Ok(temp_file)
+}
+
+fn speak_sherpa_chunk(
+    text: &str,
+    context: &SherpaContext,
+    rate: f32,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let temp_file = synthesize_sherpa_chunk(text, context, rate, stop_flag)?;
     let play_result =
         audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play Sherpa-ONNX speech audio: {err}"));
@@ -5505,16 +5744,14 @@ fn speak_sherpa_chunk(
     play_result
 }
 
-fn speak_lfm_audio_gguf_chunk(
+fn synthesize_lfm_audio_gguf_chunk(
     text: &str,
     context: &crate::lfm_audio_gguf::LfmAudioGgufContext,
     preferred_voice_id: Option<&str>,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -5533,29 +5770,43 @@ fn speak_lfm_audio_gguf_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     repair_wav_riff_header(&out_wav);
-
-    let play_result =
-        audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
-            .map_err(|err| format!("Failed to play LFM Audio speech: {err}"));
-
+    let temp_file = std::env::temp_dir().join(format!("vox-jot-lfm-audio-{}.wav", Uuid::new_v4()));
+    std::fs::copy(&out_wav, &temp_file)
+        .map_err(|err| format!("Failed to preserve LFM Audio output: {err}"))?;
     let _ = std::fs::remove_dir_all(&temp_cwd);
-    play_result
+    Ok(temp_file)
 }
 
-fn speak_vibevoice_chunk(
+fn speak_lfm_audio_gguf_chunk(
     text: &str,
-    context: &crate::vibevoice::VibeVoiceContext,
+    context: &crate::lfm_audio_gguf::LfmAudioGgufContext,
     preferred_voice_id: Option<&str>,
     volume: f32,
     output_device: Option<String>,
     stop_flag: &AtomicBool,
 ) -> Result<(), String> {
+    let out_wav = synthesize_lfm_audio_gguf_chunk(text, context, preferred_voice_id, stop_flag)?;
+
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play LFM Audio speech: {err}"));
+
+    let _ = std::fs::remove_file(&out_wav);
+    play_result
+}
+
+fn synthesize_vibevoice_chunk(
+    text: &str,
+    context: &crate::vibevoice::VibeVoiceContext,
+    preferred_voice_id: Option<&str>,
+    stop_flag: &AtomicBool,
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let temp_dir = std::env::temp_dir();
@@ -5573,27 +5824,42 @@ fn speak_vibevoice_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
+
+    let temp_file = std::env::temp_dir().join(format!("vox-jot-vibevoice-{}.wav", Uuid::new_v4()));
+    std::fs::copy(&out_wav, &temp_file)
+        .map_err(|err| format!("Failed to preserve VibeVoice output: {err}"))?;
+    let _ = std::fs::remove_dir_all(&temp_cwd);
+    Ok(temp_file)
+}
+
+fn speak_vibevoice_chunk(
+    text: &str,
+    context: &crate::vibevoice::VibeVoiceContext,
+    preferred_voice_id: Option<&str>,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let out_wav = synthesize_vibevoice_chunk(text, context, preferred_voice_id, stop_flag)?;
 
     let play_result =
         audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play VibeVoice speech: {err}"));
 
-    let _ = std::fs::remove_dir_all(&temp_cwd);
+    let _ = std::fs::remove_file(&out_wav);
     play_result
 }
 
-fn speak_qwen3_chunk(
+fn synthesize_qwen3_chunk(
     text: &str,
     context: &Qwen3Context,
     tuning: &TtsVoiceTuningSettings,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let binary_path = if context.clone_profile.is_some() {
@@ -5691,18 +5957,29 @@ fn speak_qwen3_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
-    let play_result = audio_playback::play_audio_file_with_stop(
-        &actual_out_wav,
-        output_device,
-        volume,
-        stop_flag,
-    )
-    .map_err(|err| format!("Failed to play Qwen3 speech audio: {err}"));
-
+    let temp_file = std::env::temp_dir().join(format!("vox-jot-qwen3-{}.wav", Uuid::new_v4()));
+    std::fs::copy(&actual_out_wav, &temp_file)
+        .map_err(|err| format!("Failed to preserve Qwen3 output: {err}"))?;
     let _ = std::fs::remove_dir_all(&temp_cwd);
+    Ok(temp_file)
+}
+
+fn speak_qwen3_chunk(
+    text: &str,
+    context: &Qwen3Context,
+    tuning: &TtsVoiceTuningSettings,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let output_path = synthesize_qwen3_chunk(text, context, tuning, stop_flag)?;
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&output_path, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play Qwen3 speech audio: {err}"));
+    let _ = std::fs::remove_file(&output_path);
     play_result
 }
 
@@ -5751,18 +6028,16 @@ fn repair_wav_riff_header(path: &Path) {
     }
 }
 
-fn speak_mlx_audio_chunk(
+fn synthesize_mlx_audio_chunk(
     text: &str,
     context: &MlxAudioContext,
     preferred_voice_id: Option<&str>,
     voice: Option<&VoiceInfo>,
     tuning: &TtsVoiceTuningSettings,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let mlx_target = format!(
@@ -5775,7 +6050,8 @@ fn speak_mlx_audio_chunk(
     let temp_cwd = temp_dir.join(format!("mlx-audio-{}", file_uuid));
     std::fs::create_dir_all(&temp_cwd)
         .map_err(|err| format!("Failed to create temp MLX audio dir: {err}"))?;
-    let output_path = temp_cwd.join("output.wav");
+    let output_path =
+        std::env::temp_dir().join(format!("vox-jot-mlx-audio-{}.wav", Uuid::new_v4()));
 
     let mut command = Command::new(&context.python_path);
     command
@@ -5866,79 +6142,65 @@ fn speak_mlx_audio_chunk(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        return Ok(());
+        let _ = std::fs::remove_file(&output_path);
+        return Err("Story rendering was cancelled.".to_string());
     }
 
+    let _ = std::fs::remove_dir_all(&temp_cwd);
+    Ok(output_path)
+}
+
+fn speak_mlx_audio_chunk(
+    text: &str,
+    context: &MlxAudioContext,
+    preferred_voice_id: Option<&str>,
+    voice: Option<&VoiceInfo>,
+    tuning: &TtsVoiceTuningSettings,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let output_path =
+        synthesize_mlx_audio_chunk(text, context, preferred_voice_id, voice, tuning, stop_flag)?;
     let play_result =
         audio_playback::play_audio_file_with_stop(&output_path, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play MLX speech audio: {err}"));
-
-    let _ = std::fs::remove_dir_all(&temp_cwd);
+    let _ = std::fs::remove_file(&output_path);
     play_result
 }
 
-fn speak_system_chunk(
+fn synthesize_system_chunk(
     app_handle: &AppHandle,
     text: &str,
     locale: Option<&str>,
     voice: Option<&VoiceInfo>,
     rate: f32,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     #[cfg(target_os = "macos")]
     {
         let _ = locale;
-        speak_system_chunk_macos(
-            app_handle,
-            text,
-            voice,
-            rate,
-            volume,
-            output_device,
-            stop_flag,
-        )
+        synthesize_system_chunk_macos(app_handle, text, voice, rate, stop_flag)
     }
     #[cfg(target_os = "windows")]
     {
-        speak_system_chunk_windows(
-            app_handle,
-            text,
-            locale,
-            voice,
-            rate,
-            volume,
-            output_device,
-            stop_flag,
-        )
+        synthesize_system_chunk_windows(app_handle, text, locale, voice, rate, stop_flag)
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let _ = (
-            app_handle,
-            text,
-            locale,
-            voice,
-            rate,
-            volume,
-            output_device,
-            stop_flag,
-        );
+        let _ = (app_handle, text, locale, voice, rate, stop_flag);
         Err("System TTS is not supported on this platform.".to_string())
     }
 }
 
 #[cfg(target_os = "macos")]
-fn speak_system_chunk_macos(
+fn synthesize_system_chunk_macos(
     app_handle: &AppHandle,
     text: &str,
     voice: Option<&VoiceInfo>,
     rate: f32,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     // `say` on this macOS stack will happily synthesize AIFF, while our playback
     // path is happiest with PCM WAV. Generate AIFF first, then normalize with
     // `afconvert` before playback.
@@ -5988,7 +6250,7 @@ fn speak_system_chunk_macos(
         let _ = child.wait();
         let _ = fs::remove_file(&synthesized_file);
         let _ = fs::remove_file(&playback_file);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     if !synthesized_file.exists() {
@@ -6014,24 +6276,19 @@ fn speak_system_chunk_macos(
         });
     }
 
-    audio_playback::play_audio_file_with_stop(&playback_file, output_device, volume, stop_flag)
-        .map_err(|err| format!("Failed to play speech audio: {err}"))?;
     let _ = fs::remove_file(&synthesized_file);
-    let _ = fs::remove_file(&playback_file);
-    Ok(())
+    Ok(playback_file)
 }
 
 #[cfg(target_os = "windows")]
-fn speak_system_chunk_windows(
+fn synthesize_system_chunk_windows(
     app_handle: &AppHandle,
     text: &str,
     locale: Option<&str>,
     voice: Option<&VoiceInfo>,
     rate: f32,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     let temp_file = tts_temp_file(app_handle, "wav")?;
     let mut script = String::from(
         "Add-Type -AssemblyName System.Speech\n$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer\n",
@@ -6065,16 +6322,31 @@ fn speak_system_chunk_windows(
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = fs::remove_file(&temp_file);
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
-    audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
-        .map_err(|err| format!("Failed to play speech audio: {err}"))?;
-    let _ = fs::remove_file(&temp_file);
-    Ok(())
+    Ok(temp_file)
 }
 
-fn speak_sidecar_chunk(
+fn speak_system_chunk(
+    app_handle: &AppHandle,
+    text: &str,
+    locale: Option<&str>,
+    voice: Option<&VoiceInfo>,
+    rate: f32,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let temp_file = synthesize_system_chunk(app_handle, text, locale, voice, rate, stop_flag)?;
+    let play_result =
+        audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
+            .map_err(|err| format!("Failed to play speech audio: {err}"));
+    let _ = fs::remove_file(&temp_file);
+    play_result
+}
+
+fn synthesize_sidecar_chunk(
     text: &str,
     provider_id: &str,
     model_id: Option<&str>,
@@ -6083,12 +6355,10 @@ fn speak_sidecar_chunk(
     preferred_voice_id: Option<&str>,
     voice: Option<&VoiceInfo>,
     tuning: &TtsVoiceTuningSettings,
-    volume: f32,
-    output_device: Option<String>,
     stop_flag: &AtomicBool,
-) -> Result<(), String> {
+) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
-        return Ok(());
+        return Err("Story rendering was cancelled.".to_string());
     }
 
     let runtime = tokio::runtime::Handle::current();
@@ -6157,6 +6427,37 @@ fn speak_sidecar_chunk(
     let temp_file =
         std::env::temp_dir().join(format!("vox-jot-sidecar-{}.{}", Uuid::new_v4(), extension));
     fs::write(&temp_file, &bytes).map_err(|err| format!("Failed to save sidecar audio: {err}"))?;
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = fs::remove_file(&temp_file);
+        return Err("Story rendering was cancelled.".to_string());
+    }
+    Ok(temp_file)
+}
+
+fn speak_sidecar_chunk(
+    text: &str,
+    provider_id: &str,
+    model_id: Option<&str>,
+    profile_id: Option<&str>,
+    locale: Option<&str>,
+    preferred_voice_id: Option<&str>,
+    voice: Option<&VoiceInfo>,
+    tuning: &TtsVoiceTuningSettings,
+    volume: f32,
+    output_device: Option<String>,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let temp_file = synthesize_sidecar_chunk(
+        text,
+        provider_id,
+        model_id,
+        profile_id,
+        locale,
+        preferred_voice_id,
+        voice,
+        tuning,
+        stop_flag,
+    )?;
     let play_result =
         audio_playback::play_audio_file_with_stop(&temp_file, output_device, volume, stop_flag)
             .map_err(|err| format!("Failed to play sidecar speech audio: {err}"));

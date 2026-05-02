@@ -17,7 +17,6 @@ import {
   Wifi,
   XCircle,
 } from "lucide-react";
-import { ConvoModeView } from "@/components/convo";
 
 import { commands, type Note } from "@/bindings";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
@@ -89,6 +88,7 @@ import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings"
 import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
 import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
+import { StoryStudioSection } from "@/components/story-studio";
 import UpdateChecker from "@/components/update-checker";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
@@ -601,7 +601,7 @@ export const JotPadSection: React.FC = () => {
           })}
           example={t("jotPad.emptyExample", {
             defaultValue:
-              "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
+              "For example, dictate meeting notes here, then refine them into a clean summary.",
           })}
           action={
             <Button
@@ -1167,34 +1167,10 @@ export const AboutSection: React.FC = () => {
   );
 };
 
-export const ConvoSelectionSection: React.FC = () => {
+export const StoryStudioAppSection: React.FC = () => {
   return (
     <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
-      <ConvoModeView mode="selection" />
-    </div>
-  );
-};
-
-export const ConvoJotpadSection: React.FC = () => {
-  return (
-    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
-      <ConvoModeView mode="jotpad" />
-    </div>
-  );
-};
-
-export const ConvoSettingsCoachSection: React.FC = () => {
-  return (
-    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
-      <ConvoModeView mode="settings_coach" />
-    </div>
-  );
-};
-
-export const ConvoFilesContextSection: React.FC = () => {
-  return (
-    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
-      <ConvoModeView mode="files_context" />
+      <StoryStudioSection />
     </div>
   );
 };

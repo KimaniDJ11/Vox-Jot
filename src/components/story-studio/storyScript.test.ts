@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+import {
+  parseStoryScript,
+  validateStoryDraft,
+  type StoryCastMemberDraft,
+} from "./storyScript";
+import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
+
+const preset: TtsVoicePreset = {
+  id: "preset-1",
+  label: "Narrator Voice",
+  provider_id: "system",
+  model_id: "system",
+  voice_id: "Alex",
+  voice_profile_id: null,
+  voice_label_snapshot: "Alex",
+  locale_snapshot: "en-US",
+  tuning: {
+    tempo_rate: 1,
+    expressiveness: 0.5,
+    exaggeration: 0.5,
+    randomness: 0.5,
+    guidance: 0.5,
+    stability: 0.5,
+    repetition_penalty: 1.2,
+    style_instructions: null,
+  },
+};
+
+const cast: StoryCastMemberDraft[] = [
+  { id: "cast-1", characterName: "Narrator", presetId: "preset-1" },
+];
+
+describe("storyScript", () => {
+  it("parses Character: line scripts", () => {
+    const result = parseStoryScript("Narrator: Hello\nHero: Go now");
+    expect(result.errors).toEqual([]);
+    expect(result.lines).toEqual([
+      { speaker: "Narrator", text: "Hello", lineNumber: 1 },
+      { speaker: "Hero", text: "Go now", lineNumber: 2 },
+    ]);
+  });
+
+  it("reports malformed lines", () => {
+    const result = parseStoryScript("Narrator says hello");
+    expect(result.errors[0]).toContain("Line 1");
+    expect(result.lines).toEqual([]);
+  });
+
+  it("validates unknown speakers", () => {
+    const result = validateStoryDraft(cast, "Hero: Hello", [preset]);
+    expect(result.errors).toContain(
+      'Line 1: "Hero" appears in the script but is not in the cast.',
+    );
+  });
+
+  it("validates duplicate cast names", () => {
+    const result = validateStoryDraft(
+      [
+        ...cast,
+        { id: "cast-2", characterName: "narrator", presetId: "preset-1" },
+      ],
+      "Narrator: Hello",
+      [preset],
+    );
+    expect(result.errors).toContain('Duplicate character name "narrator".');
+  });
+
+  it("validates missing voice presets", () => {
+    const result = validateStoryDraft(cast, "Narrator: Hello", []);
+    expect(result.errors).toContain(
+      'Choose a saved voice preset for "Narrator".',
+    );
+  });
+});

@@ -6,6 +6,7 @@ pub mod http_api;
 pub mod models;
 pub mod notes;
 pub mod stats;
+pub mod story_studio;
 pub mod transcription;
 pub mod tts;
 pub mod write_rules;

@@ -11,15 +11,14 @@ import { listen } from "@tauri-apps/api/event";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   AppWindow,
+  BookOpen,
   Cpu,
   FileAudio,
-  FileText,
   FlaskConical,
   History,
   Info,
   Keyboard,
   Languages,
-  MessageCircle,
   Monitor,
   NotebookPen,
   PanelLeft,
@@ -64,10 +63,6 @@ import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import {
   AboutSection,
   AISetupSettingsSection,
-  ConvoFilesContextSection,
-  ConvoJotpadSection,
-  ConvoSelectionSection,
-  ConvoSettingsCoachSection,
   CorrectionsSection,
   CorrectionsSettingsSection,
   DictateHistorySection,
@@ -85,11 +80,12 @@ import {
   RefinePhraseKeysSection,
   RefineTranslationSection,
   ShortcutsSettingsSection,
+  StoryStudioAppSection,
 } from "@/components/AppSections";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 
 type OnboardingStep = "onboarding" | "done";
-type PrimaryMode = "dictate" | "refine" | "listen" | "convo";
+type PrimaryMode = "dictate" | "refine" | "listen" | "story_studio";
 type RootView = PrimaryMode | "settings";
 
 type PostProcessPreviewRequest = {
@@ -133,7 +129,7 @@ const PrimaryModeSwitcher: React.FC<{
     { id: "dictate", label: "Dictate" },
     { id: "refine", label: "Refine" },
     { id: "listen", label: "Listen" },
-    { id: "convo", label: "Convo" },
+    { id: "story_studio", label: "Story Studio" },
   ];
 
   return (
@@ -160,6 +156,9 @@ const PrimaryModeSwitcher: React.FC<{
                     return;
                   }
                   event.preventDefault();
+                  activate();
+                }}
+                onClick={() => {
                   activate();
                 }}
                 onKeyDown={(event) => {
@@ -355,34 +354,13 @@ function App() {
           content: <ListenAutoReadbackSection />,
         },
       ],
-      convo: [
+      story_studio: [
         {
-          id: "selection",
-          label: "Selection",
-          icon: MessageCircle,
-          title: "Selection",
-          content: <ConvoSelectionSection />,
-        },
-        {
-          id: "jotpad",
-          label: "Jot Pad",
-          icon: NotebookPen,
-          title: "Jot Pad",
-          content: <ConvoJotpadSection />,
-        },
-        {
-          id: "settings-coach",
-          label: "Settings Coach",
-          icon: Info,
-          title: "Settings Coach",
-          content: <ConvoSettingsCoachSection />,
-        },
-        {
-          id: "files-context",
-          label: "Files & Context",
-          icon: FileText,
-          title: "Files & Context",
-          content: <ConvoFilesContextSection />,
+          id: "story-studio",
+          label: "Story Studio",
+          icon: BookOpen,
+          title: "Story Studio",
+          content: <StoryStudioAppSection />,
         },
       ],
       settings: [
@@ -861,7 +839,7 @@ function App() {
         view === "dictate" ||
         view === "refine" ||
         view === "listen" ||
-        view === "convo"
+        view === "story_studio"
       ) {
         handleModeSelect(view);
       }

@@ -1954,6 +1954,70 @@ async getDictationStats() : Promise<Result<DictationStats, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRenderResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("render_story_audio", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cancelStoryRender(renderId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_story_render", { renderId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async playStoryAudio(path: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("play_story_audio", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopStoryAudio() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stop_story_audio") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async revealStoryAudio(path: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reveal_story_audio", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listStoryAudio() : Promise<Result<StoryAudioItem[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_story_audio") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async toggleStoryAudioStarred(id: string) : Promise<Result<StoryAudioItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("toggle_story_audio_starred", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteStoryAudio(id: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_story_audio", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async showDetailView(section: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("show_detail_view", { section }) };
@@ -2226,7 +2290,11 @@ http_api_enabled?: boolean;
 /**
  * Port the loopback API binds to when `http_api_enabled` is true.
  */
-http_api_port?: number; http_api_token?: string }
+http_api_port?: number;
+/**
+ * Bearer token required by state-changing/local-control HTTP API routes.
+ */
+http_api_token?: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
@@ -2296,7 +2364,7 @@ export type KeyboardImplementation = "tauri" | "handy_keys"
 export type LLMPrompt = { id: string; name: string; prompt: string }
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error"
 export type ModelDomain = "stt" | "tts" | "llm"
-export type ModelInfo = { id: string; name: string; description: string; filename: string; url: string | null; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; is_directory: boolean; engine_type: EngineType; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; is_custom: boolean }
+export type ModelInfo = { id: string; name: string; description: string; filename: string; url: string | null; sha256?: string | null; size_mb: number; is_downloaded: boolean; is_downloading: boolean; partial_size: number; is_directory: boolean; engine_type: EngineType; accuracy_score: number; speed_score: number; supports_translation: boolean; is_recommended: boolean; supported_languages: string[]; is_custom: boolean }
 export type ModelLoadStatus = { is_loaded: boolean; current_model: string | null }
 export type ModelPlatformOverview = { stt: DomainCatalog; llm: DomainCatalog; tts: DomainCatalog; selection: ModelPlatformSelectionState }
 export type ModelPlatformSelectionState = { selected_stt_provider_id: string | null; selected_stt_model_id: string | null; selected_llm_provider_id: string | null; selected_llm_model_id: string | null; selected_tts_provider_id: string | null; selected_tts_model_id: string | null; selected_tts_voice_id: string | null; selected_tts_profile_id: string | null; active_tts_provider_id: string | null; active_tts_model_id: string | null }
@@ -2422,6 +2490,10 @@ export type SoundTheme = "marimba" | "pop" | "custom"
  * A stored correction entry, as returned to the frontend.
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
+export type StoryAudioItem = { id: string; title: string; script_text: string; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; starred: boolean }
+export type StoryCastMember = { character_name: string; preset_id: string }
+export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number }
+export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.
  *

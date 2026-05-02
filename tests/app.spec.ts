@@ -538,7 +538,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: /Give Vox Jot the permissions it needs to listen and type for you/i,
+        name: /Enable your dictation toolkit/i,
       }),
     ).toBeVisible();
     await expect(
@@ -557,6 +557,12 @@ test.describe("Vox Jot app", () => {
         microphone: false,
       },
     });
+
+    await expect(
+      page.getByRole("heading", {
+        name: /Enable your dictation toolkit/i,
+      }),
+    ).toBeVisible();
 
     const viewportOk = await page.evaluate(() => {
       const root = document.querySelector(".ob-root") as HTMLElement | null;

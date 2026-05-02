@@ -9,7 +9,6 @@
 )]
 
 mod actions;
-#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod apple_intelligence;
 mod audio_feedback;
 mod audio_playback;

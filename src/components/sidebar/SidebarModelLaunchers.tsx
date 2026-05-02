@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Mic, ScanText, Sparkles, Volume2 } from "lucide-react";
 import { commands, type ScreenContextOcrEngine } from "@/bindings";
@@ -141,6 +141,7 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     selected_tts_model_id: selectedTtsModelId,
     selected_tts_provider_id: selectedTtsProviderId,
     screen_context_ocr_engine: ocrEngineValue,
+    screen_context_ocr_neural_model_id: ocrNeuralModelIdValue,
   } = useSettingsSlice([
     "post_process_provider_id",
     "post_process_providers",
@@ -148,7 +149,9 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     "selected_tts_model_id",
     "selected_tts_provider_id",
     "screen_context_ocr_engine",
+    "screen_context_ocr_neural_model_id",
   ] as const);
+  const [ocrCatalogLabel, setOcrCatalogLabel] = useState<string | null>(null);
 
   const sttIconSize = variant === "stats" ? "sm" : "md";
   const otherIconSize = variant === "stats" ? "sm" : "md";
@@ -220,8 +223,47 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
   const ocrEngine: ScreenContextOcrEngine =
     (ocrEngineValue as ScreenContextOcrEngine | undefined) ??
     "native_then_backup";
+  const ocrNeuralModelId =
+    (ocrNeuralModelIdValue as string | null | undefined) ?? null;
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    if (!ocrNeuralModelId) {
+      setOcrCatalogLabel(null);
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    setOcrCatalogLabel(null);
+    void commands
+      .getOcrModelCatalog()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result.status !== "ok") {
+          setOcrCatalogLabel(ocrNeuralModelId);
+          return;
+        }
+        const activeModel = result.data.models.find(
+          (model) => model.id === ocrNeuralModelId,
+        );
+        setOcrCatalogLabel(activeModel?.title ?? ocrNeuralModelId);
+      })
+      .catch(() => {
+        if (isCurrent) setOcrCatalogLabel(ocrNeuralModelId);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [ocrNeuralModelId]);
 
   const ocrLabel = useMemo(() => {
+    if (ocrNeuralModelId) {
+      return ocrCatalogLabel ?? ocrNeuralModelId;
+    }
+
     switch (ocrEngine) {
       case "native_only":
         return t("modelHub.ocr.options.nativeOnly.title", {
@@ -241,7 +283,7 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
           defaultValue: "Smart (default)",
         });
     }
-  }, [ocrEngine, t]);
+  }, [ocrCatalogLabel, ocrEngine, ocrNeuralModelId, t]);
 
   const hubTabLabel = (id: ModelHubTabId) => {
     const def = MODEL_HUB_TAB_DEFS.find((d) => d.id === id)!;

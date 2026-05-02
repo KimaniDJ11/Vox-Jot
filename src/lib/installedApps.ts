@@ -157,10 +157,7 @@ export function humanizeBundleId(bundleId: string): string {
     "todesktop",
     "warp",
   ]);
-  if (
-    segments.length > 1 &&
-    VENDOR_SEGMENTS.has(segments[0]!.toLowerCase())
-  ) {
+  if (segments.length > 1 && VENDOR_SEGMENTS.has(segments[0]!.toLowerCase())) {
     segments = segments.slice(1);
   }
   const last = segments[segments.length - 1] ?? trimmed;

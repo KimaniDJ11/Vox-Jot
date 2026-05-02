@@ -2289,7 +2289,8 @@ const SpeechModelLibraryCard: React.FC<{
           variant: "secondary" as const,
           icon: <Dna className="h-3 w-3" />,
           detail: t("modelHub.chips.cloningDetail", {
-            defaultValue: "Supports voice cloning or profile-conditioned speech.",
+            defaultValue:
+              "Supports voice cloning or profile-conditioned speech.",
           }),
         }
       : null,
@@ -2326,7 +2327,8 @@ const SpeechModelLibraryCard: React.FC<{
           variant: "secondary" as const,
           icon: <Sparkles className="h-3 w-3" />,
           detail: t("modelHub.chips.inlineCuesDetail", {
-            defaultValue: "Supports spoken-text cues such as laughs or whispers.",
+            defaultValue:
+              "Supports spoken-text cues such as laughs or whispers.",
           }),
         }
       : null,

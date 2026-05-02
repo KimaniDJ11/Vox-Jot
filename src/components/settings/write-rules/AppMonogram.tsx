@@ -165,13 +165,7 @@ export const AppMonogram: React.FC<AppMonogramProps> = ({
         height: px,
         backgroundColor: pickTint(bundleId),
         fontSize:
-          size === "xs"
-            ? 9
-            : size === "md"
-              ? 13
-              : size === "lg"
-                ? 16
-                : 11,
+          size === "xs" ? 9 : size === "md" ? 13 : size === "lg" ? 16 : 11,
       }}
       aria-hidden="true"
     >

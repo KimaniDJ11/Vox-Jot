@@ -54,7 +54,9 @@ export function Tabs<Value extends string>({
             ].join(" ")}
           >
             {item.label}
-            {item.badge !== undefined && item.badge !== 0 && item.badge !== "" ? (
+            {item.badge !== undefined &&
+            item.badge !== 0 &&
+            item.badge !== "" ? (
               <span
                 className={[
                   "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",

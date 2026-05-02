@@ -32,7 +32,9 @@
     "cuda_only": false,
     "tensorrt_required": false,
     "known_mac_forks": ["ggml-org/llama.cpp#18641"],
-    "community_discussion_links": ["https://github.com/ggml-org/llama.cpp/pull/18641"]
+    "community_discussion_links": [
+      "https://github.com/ggml-org/llama.cpp/pull/18641"
+    ]
   },
 
   "runtime_fit": {
@@ -80,7 +82,9 @@
   "verdict": {
     "score": 43,
     "decision": "ship_experimental",
-    "blockers": ["Custom llama.cpp fork required until PR #18641 lands upstream"],
+    "blockers": [
+      "Custom llama.cpp fork required until PR #18641 lands upstream"
+    ],
     "notes": "Excellent combined STT/TTS solution. Will be ready for main shipping lane once the audio runner merges natively into llama.cpp releases."
   }
 }

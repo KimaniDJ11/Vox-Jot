@@ -38,7 +38,13 @@
   "runtime_fit": {
     "lane": "reject",
     "can_run_as_local_process": false,
-    "api_surface": ["tts_zero_shot", "tts_sft", "tts_instruct", "tts_cross_lingual", "voice_conversion"],
+    "api_surface": [
+      "tts_zero_shot",
+      "tts_sft",
+      "tts_instruct",
+      "tts_cross_lingual",
+      "voice_conversion"
+    ],
     "output_format": "wav",
     "supports_streaming": true,
     "cold_start_estimate_sec": 15,

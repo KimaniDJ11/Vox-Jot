@@ -112,7 +112,8 @@ export const RefineOverrides: React.FC<RefineOverridesProps> = ({
           onSelect={(value) =>
             onChange({
               ...overrides,
-              auto_submit: value === "on" ? true : value === "off" ? false : null,
+              auto_submit:
+                value === "on" ? true : value === "off" ? false : null,
             })
           }
         />

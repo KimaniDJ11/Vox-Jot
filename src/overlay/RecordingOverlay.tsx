@@ -220,7 +220,10 @@ const RecordingOverlay: React.FC = () => {
   // Minimal renders no waveform, only a status dot, so its bar count
   // is irrelevant — we still pick a value so the canvas isn't undefined.
   const barCount = useMemo(
-    () => (isCompact || isNotch || isMinimal ? BAR_COUNT_COMPACT : BAR_COUNT_DETAILED),
+    () =>
+      isCompact || isNotch || isMinimal
+        ? BAR_COUNT_COMPACT
+        : BAR_COUNT_DETAILED,
     [isCompact, isNotch, isMinimal],
   );
 

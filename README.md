@@ -194,8 +194,8 @@ Without these tools, Vox Jot falls back to enigo which may have limited compatib
 
 - You can also manage global shortcuts outside of Vox Jot via Unix signals, which lets Wayland window managers or other hotkey daemons keep ownership of keybindings:
 
-  | Signal    | Action                                    | Example                |
-  | --------- | ----------------------------------------- | ---------------------- |
+  | Signal    | Action                                    | Example                  |
+  | --------- | ----------------------------------------- | ------------------------ |
   | `SIGUSR2` | Toggle transcription                      | `pkill -USR2 -n vox_jot` |
   | `SIGUSR1` | Toggle transcription with post-processing | `pkill -USR1 -n vox_jot` |
 

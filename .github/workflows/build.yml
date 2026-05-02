@@ -244,6 +244,17 @@ jobs:
           fi
           echo "platform=${patched_platform}" >> $GITHUB_OUTPUT
 
+      - name: Disable Windows signing for unsigned builds
+        if: ${{ contains(inputs.platform, 'windows') && !inputs.sign-binaries }}
+        shell: pwsh
+        run: |
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content $configPath -Raw | ConvertFrom-Json
+          if ($config.bundle.windows.PSObject.Properties.Name -contains "signCommand") {
+            $config.bundle.windows.PSObject.Properties.Remove("signCommand")
+          }
+          $config | ConvertTo-Json -Depth 100 | Set-Content $configPath -Encoding utf8
+
       - name: Build with Tauri (unsigned)
         if: ${{ !inputs.sign-binaries }}
         uses: tauri-apps/tauri-action@v0

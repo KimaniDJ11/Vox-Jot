@@ -75,12 +75,17 @@
                   "libayatana-appindicator3.so.1" \
                   "${pkgs.libayatana-appindicator}/lib/libayatana-appindicator3.so.1"
 
-              # Disable cbindgen in ferrous-opencc (calls cargo metadata which fails in sandbox)
-              # Upstream removed this call in v0.3.1+
-              substituteInPlace $cargoDepsCopy/ferrous-opencc-0.2.3/build.rs \
-                --replace-fail '.expect("Unable to generate bindings")' '.ok();'
-              substituteInPlace $cargoDepsCopy/ferrous-opencc-0.2.3/build.rs \
-                --replace-fail '.write_to_file("opencc.h");' '// skipped'
+              # Older ferrous-opencc releases called cargo metadata from build.rs,
+              # which fails inside the Nix sandbox. Newer releases removed it, so
+              # only patch when that legacy build script is present in the vendor tree.
+              for build_rs in $cargoDepsCopy/ferrous-opencc-*/build.rs; do
+                if [ -f "$build_rs" ] && grep -q 'Unable to generate bindings' "$build_rs"; then
+                  substituteInPlace "$build_rs" \
+                    --replace-fail '.expect("Unable to generate bindings")' '.ok();'
+                  substituteInPlace "$build_rs" \
+                    --replace-fail '.write_to_file("opencc.h");' '// skipped'
+                fi
+              done
             '';
 
             # Bun dependencies: fetched per-package using hashes from .nix/bun.nix.

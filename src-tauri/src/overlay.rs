@@ -15,11 +15,6 @@ use tauri::WebviewUrl;
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{tauri_panel, CollectionBehavior, PanelBuilder, PanelLevel};
 
-#[cfg(target_os = "linux")]
-use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-#[cfg(target_os = "linux")]
-use std::env;
-
 #[cfg(target_os = "macos")]
 tauri_panel! {
     panel!(RecordingOverlayPanel {
@@ -61,65 +56,6 @@ const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
-
-#[cfg(target_os = "linux")]
-fn update_gtk_layer_shell_anchors(overlay_window: &tauri::webview::WebviewWindow) {
-    let window_clone = overlay_window.clone();
-    let _ = overlay_window.run_on_main_thread(move || {
-        // Try to get the GTK window from the Tauri webview
-        if let Ok(gtk_window) = window_clone.gtk_window() {
-            let settings = settings::get_settings(window_clone.app_handle());
-            match settings.overlay_position {
-                OverlayPosition::Top => {
-                    gtk_window.set_anchor(Edge::Top, true);
-                    gtk_window.set_anchor(Edge::Bottom, false);
-                }
-                OverlayPosition::Bottom | OverlayPosition::None => {
-                    gtk_window.set_anchor(Edge::Bottom, true);
-                    gtk_window.set_anchor(Edge::Top, false);
-                }
-            }
-        }
-    });
-}
-
-/// Initializes GTK layer shell for Linux overlay window
-/// Returns true if layer shell was successfully initialized, false otherwise
-#[cfg(target_os = "linux")]
-fn init_gtk_layer_shell(overlay_window: &tauri::webview::WebviewWindow) -> bool {
-    // On KDE Wayland, layer-shell init has shown protocol instability.
-    // Fall back to regular always-on-top overlay behavior (as in v0.7.1).
-    let is_wayland = env::var("WAYLAND_DISPLAY").is_ok()
-        || env::var("XDG_SESSION_TYPE")
-            .map(|v| v.eq_ignore_ascii_case("wayland"))
-            .unwrap_or(false);
-    let is_kde = env::var("XDG_CURRENT_DESKTOP")
-        .map(|v| v.to_uppercase().contains("KDE"))
-        .unwrap_or(false)
-        || env::var("KDE_SESSION_VERSION").is_ok();
-    if is_wayland && is_kde {
-        debug!("Skipping GTK layer shell init on KDE Wayland");
-        return false;
-    }
-
-    if !gtk_layer_shell::is_supported() {
-        return false;
-    }
-
-    // Try to get the GTK window from the Tauri webview
-    if let Ok(gtk_window) = overlay_window.gtk_window() {
-        // Initialize layer shell
-        gtk_window.init_layer_shell();
-        gtk_window.set_layer(Layer::Overlay);
-        gtk_window.set_keyboard_mode(KeyboardMode::None);
-        gtk_window.set_exclusive_zone(0);
-
-        update_gtk_layer_shell_anchors(overlay_window);
-
-        return true;
-    }
-    false
-}
 
 /// Forces a window to be topmost using Win32 API (Windows only)
 /// This is more reliable than Tauri's set_always_on_top which can be overridden
@@ -289,16 +225,7 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
 
     match builder.build() {
         Ok(window) => {
-            #[cfg(target_os = "linux")]
-            {
-                // Try to initialize GTK layer shell, ignore errors if compositor doesn't support it
-                if init_gtk_layer_shell(&window) {
-                    debug!("GTK layer shell initialized for overlay window");
-                } else {
-                    debug!("GTK layer shell not available, falling back to regular window");
-                }
-            }
-
+            let _ = window;
             debug!("Recording overlay window created successfully (hidden)");
         }
         Err(e) => {
@@ -399,11 +326,6 @@ pub fn apply_recording_overlay_metrics(app_handle: &AppHandle) {
             width: w,
             height: h,
         }));
-
-        #[cfg(target_os = "linux")]
-        {
-            update_gtk_layer_shell_anchors(&overlay_window);
-        }
 
         if let Some((x, y)) = calculate_overlay_position(app_handle) {
             let _ = overlay_window

@@ -14,21 +14,16 @@ const hasExplicitConfig = args.includes("--config") || args.includes("-c");
 const finalArgs = [...args];
 
 if (isBuildLikeCommand && !hasSigningKey && !hasExplicitConfig) {
-  const configOverride = {
-    bundle: {
-      // Local builds can still produce the app and dmg without updater artifacts.
-      // CI release builds keep updater artifacts enabled via the real signing key.
-      createUpdaterArtifacts: false,
-    },
-  };
+  // Local builds can still produce the app and dmg without updater artifacts.
+  // CI release builds keep updater artifacts enabled via the real signing key.
+  finalArgs.push("--config", "bundle.createUpdaterArtifacts=false");
 
   if (macSigningIdentity) {
-    configOverride.bundle.macOS = {
-      signingIdentity: macSigningIdentity,
-    };
+    finalArgs.push(
+      "--config",
+      `bundle.macOS.signingIdentity=${JSON.stringify(macSigningIdentity)}`,
+    );
   }
-
-  finalArgs.push("--config", JSON.stringify(configOverride));
 }
 
 const result = spawnSync("tauri", finalArgs, {

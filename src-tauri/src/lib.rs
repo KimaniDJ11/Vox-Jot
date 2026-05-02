@@ -865,16 +865,23 @@ pub fn run(cli_args: CliArgs) {
         let bindings_path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/bindings.ts");
         let ts = Typescript::default().bigint(BigIntExportBehavior::Number);
-        let generated = specta_builder
+        let generated_raw = specta_builder
             .export_str(&ts)
             .expect("Failed to generate typescript bindings");
+        let mut generated = generated_raw
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
+        if generated_raw.ends_with('\n') {
+            generated.push('\n');
+        }
         let needs_write = match std::fs::read_to_string(&bindings_path) {
             Ok(existing) => existing != generated,
             Err(_) => true,
         };
         if needs_write {
-            specta_builder
-                .export(ts, &bindings_path)
+            std::fs::write(&bindings_path, generated)
                 .expect("Failed to export typescript bindings");
         }
     }

@@ -1,0 +1,39 @@
+name: "Security"
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-and-secret-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust security tools
+        run: |
+          cargo install cargo-deny --locked
+          cargo install cargo-audit --locked
+
+      - name: Audit frontend dependencies
+        run: bun audit
+
+      - name: Enforce Rust advisory policy
+        run: cargo deny --manifest-path src-tauri/Cargo.toml check advisories
+
+      - name: Audit Rust dependencies
+        run: cargo audit --file src-tauri/Cargo.lock
+
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { produce } from "immer";
-import { listen } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { commands, type ModelInfo } from "@/bindings";
 
 interface DownloadProgress {
@@ -31,6 +31,8 @@ interface ModelsStore {
   hasAnyModels: boolean;
   isFirstRun: boolean;
   initialized: boolean;
+  initializePromise: Promise<void> | null;
+  eventUnlisteners: UnlistenFn[];
 
   // Actions
   initialize: () => Promise<void>;
@@ -66,6 +68,8 @@ export const useModelStore = create<ModelsStore>()(
     hasAnyModels: false,
     isFirstRun: false,
     initialized: false,
+    initializePromise: null,
+    eventUnlisteners: [],
 
     // Internal setters
     setModels: (models) => set({ models }),
@@ -260,131 +264,152 @@ export const useModelStore = create<ModelsStore>()(
     initialize: async () => {
       if (get().initialized) return;
 
+      const existingPromise = get().initializePromise;
+      if (existingPromise) {
+        return existingPromise;
+      }
+
       const { loadModels, loadCurrentModel, checkFirstRun } = get();
 
-      // Load initial data
-      await Promise.all([loadModels(), loadCurrentModel(), checkFirstRun()]);
+      const initializePromise = (async () => {
+        // Load initial data
+        await Promise.all([loadModels(), loadCurrentModel(), checkFirstRun()]);
 
-      // Set up event listeners
-      listen<DownloadProgress>("model-download-progress", (event) => {
-        const progress = event.payload;
-        set(
-          produce((state) => {
-            state.downloadProgress[progress.model_id] = progress;
+        // Set up event listeners after data load. Awaiting registration avoids
+        // marking the store initialized before it can receive backend updates.
+        const eventUnlisteners = await Promise.all([
+          listen<DownloadProgress>("model-download-progress", (event) => {
+            const progress = event.payload;
+            set(
+              produce((state) => {
+                state.downloadProgress[progress.model_id] = progress;
+              }),
+            );
+
+            // Update download stats for speed calculation
+            const now = Date.now();
+            set(
+              produce((state) => {
+                const current = state.downloadStats[progress.model_id];
+
+                if (!current) {
+                  state.downloadStats[progress.model_id] = {
+                    startTime: now,
+                    lastUpdate: now,
+                    totalDownloaded: progress.downloaded,
+                    speed: 0,
+                  };
+                } else {
+                  const timeDiff = (now - current.lastUpdate) / 1000;
+                  const bytesDiff =
+                    progress.downloaded - current.totalDownloaded;
+
+                  if (timeDiff > 0.5) {
+                    const currentSpeed = bytesDiff / (1024 * 1024) / timeDiff;
+                    const validCurrentSpeed = Math.max(0, currentSpeed);
+                    const smoothedSpeed =
+                      current.speed > 0
+                        ? current.speed * 0.8 + validCurrentSpeed * 0.2
+                        : validCurrentSpeed;
+
+                    state.downloadStats[progress.model_id] = {
+                      startTime: current.startTime,
+                      lastUpdate: now,
+                      totalDownloaded: progress.downloaded,
+                      speed: Math.max(0, smoothedSpeed),
+                    };
+                  }
+                }
+              }),
+            );
           }),
-        );
 
-        // Update download stats for speed calculation
-        const now = Date.now();
-        set(
-          produce((state) => {
-            const current = state.downloadStats[progress.model_id];
-
-            if (!current) {
-              state.downloadStats[progress.model_id] = {
-                startTime: now,
-                lastUpdate: now,
-                totalDownloaded: progress.downloaded,
-                speed: 0,
-              };
-            } else {
-              const timeDiff = (now - current.lastUpdate) / 1000;
-              const bytesDiff = progress.downloaded - current.totalDownloaded;
-
-              if (timeDiff > 0.5) {
-                const currentSpeed = bytesDiff / (1024 * 1024) / timeDiff;
-                const validCurrentSpeed = Math.max(0, currentSpeed);
-                const smoothedSpeed =
-                  current.speed > 0
-                    ? current.speed * 0.8 + validCurrentSpeed * 0.2
-                    : validCurrentSpeed;
-
-                state.downloadStats[progress.model_id] = {
-                  startTime: current.startTime,
-                  lastUpdate: now,
-                  totalDownloaded: progress.downloaded,
-                  speed: Math.max(0, smoothedSpeed),
-                };
-              }
-            }
+          listen<string>("model-download-complete", (event) => {
+            const modelId = event.payload;
+            set(
+              produce((state) => {
+                delete state.downloadingModels[modelId];
+                delete state.downloadProgress[modelId];
+                delete state.downloadStats[modelId];
+              }),
+            );
+            void get().loadModels();
           }),
-        );
-      });
 
-      listen<string>("model-download-complete", (event) => {
-        const modelId = event.payload;
-        set(
-          produce((state) => {
-            delete state.downloadingModels[modelId];
-            delete state.downloadProgress[modelId];
-            delete state.downloadStats[modelId];
+          listen<string>("model-extraction-started", (event) => {
+            const modelId = event.payload;
+            set(
+              produce((state) => {
+                state.extractingModels[modelId] = true;
+              }),
+            );
           }),
-        );
-        get().loadModels();
-      });
 
-      listen<string>("model-extraction-started", (event) => {
-        const modelId = event.payload;
-        set(
-          produce((state) => {
-            state.extractingModels[modelId] = true;
+          listen<string>("model-extraction-completed", (event) => {
+            const modelId = event.payload;
+            set(
+              produce((state) => {
+                delete state.extractingModels[modelId];
+              }),
+            );
+            void get().loadModels();
           }),
-        );
-      });
 
-      listen<string>("model-extraction-completed", (event) => {
-        const modelId = event.payload;
-        set(
-          produce((state) => {
-            delete state.extractingModels[modelId];
+          listen<{ model_id: string; error: string }>(
+            "model-extraction-failed",
+            (event) => {
+              const modelId = event.payload.model_id;
+              set(
+                produce((state) => {
+                  delete state.extractingModels[modelId];
+                  state.error = `Failed to extract model: ${event.payload.error}`;
+                }),
+              );
+            },
+          ),
+
+          listen<string>("model-download-cancelled", (event) => {
+            const modelId = event.payload;
+            set(
+              produce((state) => {
+                delete state.downloadingModels[modelId];
+                delete state.downloadProgress[modelId];
+                delete state.downloadStats[modelId];
+              }),
+            );
           }),
-        );
-        get().loadModels();
-      });
 
-      listen<{ model_id: string; error: string }>(
-        "model-extraction-failed",
-        (event) => {
-          const modelId = event.payload.model_id;
-          set(
-            produce((state) => {
-              delete state.extractingModels[modelId];
-              state.error = `Failed to extract model: ${event.payload.error}`;
-            }),
-          );
-        },
-      );
-
-      listen<string>("model-download-cancelled", (event) => {
-        const modelId = event.payload;
-        set(
-          produce((state) => {
-            delete state.downloadingModels[modelId];
-            delete state.downloadProgress[modelId];
-            delete state.downloadStats[modelId];
+          listen<string>("model-deleted", () => {
+            void get().loadModels();
+            void get().loadCurrentModel();
           }),
-        );
-      });
 
-      listen<string>("model-deleted", () => {
-        get().loadModels();
-        get().loadCurrentModel();
-      });
+          listen<string>("active-model-changed", (event) => {
+            set({
+              currentModel: event.payload,
+              isFirstRun: false,
+              hasAnyModels: true,
+            });
+          }),
 
-      listen<string>("active-model-changed", (event) => {
-        set({
-          currentModel: event.payload,
-          isFirstRun: false,
-          hasAnyModels: true,
-        });
-      });
+          listen("model-state-changed", () => {
+            void get().loadModels();
+            void get().loadCurrentModel();
+          }),
+        ]);
 
-      listen("model-state-changed", () => {
-        get().loadModels();
-        get().loadCurrentModel();
-      });
+        set({ initialized: true, eventUnlisteners });
+      })();
 
-      set({ initialized: true });
+      set({ initializePromise });
+
+      try {
+        await initializePromise;
+      } finally {
+        if (get().initializePromise === initializePromise) {
+          set({ initializePromise: null });
+        }
+      }
     },
   })),
 );

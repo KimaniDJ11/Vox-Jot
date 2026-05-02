@@ -2316,6 +2316,8 @@ export type ConvoMode = "selection" | "jotpad" | "settings_coach" | "files_conte
 export type ConvoSessionState = { session_id: string; mode: ConvoMode; transcript: ConvoTranscriptItem[]; context_description: string; voice_id: string; speak_replies: boolean; context_items: ConvoContextItem[]; suggested_actions: ConvoActionSuggestion[] }
 export type ConvoTranscriptItem = { id: string; role: string; text: string; timestamp_ms: number; has_audio: boolean }
 export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
+export type CorrectionAutoApply = { status: CorrectionAutoApplyStatus; eligible: boolean; effective_confidence: number; min_frequency: number; min_confidence: number; confirmations_remaining: number }
+export type CorrectionAutoApplyStatus = "candidate" | "manual" | "active" | "low_confidence" | "blocked" | "disabled"
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
@@ -2489,7 +2491,7 @@ export type SoundTheme = "marimba" | "pop" | "custom"
 /**
  * A stored correction entry, as returned to the frontend.
  */
-export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean }
+export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
 export type StoryAudioItem = { id: string; title: string; script_text: string; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
 export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number }

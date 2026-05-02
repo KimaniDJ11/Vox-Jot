@@ -268,22 +268,38 @@ async fn handle_transcribe(
     // the CLI and most clients (curl, Raycast, Python requests) post
     // audio.
     let mut audio_bytes: Option<Vec<u8>> = None;
-    while let Ok(Some(field)) = multipart.next_field().await {
-        if field.name() == Some("file") {
-            match field.bytes().await {
-                Ok(bytes) => {
-                    audio_bytes = Some(bytes.to_vec());
-                    break;
-                }
-                Err(err) => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(ErrorResponse {
-                            error: format!("failed to read file field: {}", err),
-                        }),
-                    )
-                        .into_response();
-                }
+    loop {
+        let field = match multipart.next_field().await {
+            Ok(Some(field)) => field,
+            Ok(None) => break,
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!("invalid multipart upload: {}", err),
+                    }),
+                )
+                    .into_response();
+            }
+        };
+
+        if field.name() != Some("file") {
+            continue;
+        }
+
+        match field.bytes().await {
+            Ok(bytes) => {
+                audio_bytes = Some(bytes.to_vec());
+                break;
+            }
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: format!("failed to read file field: {}", err),
+                    }),
+                )
+                    .into_response();
             }
         }
     }
@@ -372,19 +388,32 @@ fn require_api_token(
         return Ok(());
     }
 
-    Err(Box::new((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse {
-            error: format!("missing or invalid {API_TOKEN_HEADER}"),
-        }),
-    )
-        .into_response()))
+    Err(Box::new(
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                error: format!("missing or invalid {API_TOKEN_HEADER}"),
+            }),
+        )
+            .into_response(),
+    ))
 }
 
 fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
     let cursor = Cursor::new(bytes);
     let mut reader = hound::WavReader::new(cursor).map_err(|e| format!("WavReader: {}", e))?;
     let spec = reader.spec();
+    if spec.channels == 0 {
+        return Err("WAV file has no channels".to_string());
+    }
+    if spec.sample_rate == 0 {
+        return Err("WAV file has no sample rate".to_string());
+    }
+    if matches!(spec.sample_format, hound::SampleFormat::Int) && spec.bits_per_sample == 0 {
+        return Err("WAV integer sample width must be greater than zero".to_string());
+    }
+
+    let channels = spec.channels as usize;
     let mut mono: Vec<f32> = Vec::new();
     match spec.sample_format {
         hound::SampleFormat::Float => {
@@ -392,7 +421,7 @@ fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
                 .samples::<f32>()
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| format!("read float samples: {}", e))?;
-            for frame in all.chunks(spec.channels as usize) {
+            for frame in all.chunks(channels) {
                 let sum: f32 = frame.iter().copied().sum();
                 mono.push(sum / frame.len() as f32);
             }
@@ -403,7 +432,7 @@ fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| format!("read int samples: {}", e))?;
             let scale = 2f32.powi((spec.bits_per_sample as i32) - 1);
-            for frame in all.chunks(spec.channels as usize) {
+            for frame in all.chunks(channels) {
                 let sum: f32 = frame.iter().map(|s| (*s as f32) / scale).sum();
                 mono.push(sum / frame.len() as f32);
             }

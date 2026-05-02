@@ -120,32 +120,7 @@ fn build_correction_pair(
         return None;
     }
 
-    // Compute similarity using strsim
-    let similarity =
-        strsim::normalized_levenshtein(&original.to_lowercase(), &corrected.to_lowercase());
-
-    // Skip low similarity (< 0.3) — these are likely restructuring, not corrections
-    if similarity < 0.3 {
-        return None;
-    }
-
-    // ── Semantic-change filter ──────────────────────────────────────────
-    // When the original is a very common English word and the correction is
-    // a different word (not sharing a stem/root), the user is almost certainly
-    // changing *meaning* rather than fixing a transcription error.
-    // Examples blocked:  "skip" → "ran", "called" → "texted", "going" → "running"
-    // Examples allowed:  "teh" → "the", "recieve" → "receive", "Cheyene" → "Cheyenne"
-    if word_count(original) == 1 && word_count(corrected) == 1 {
-        let orig_lower = original.to_lowercase();
-        let corr_lower = corrected.to_lowercase();
-
-        if is_common_english_word(&orig_lower) && !shares_stem(&orig_lower, &corr_lower) {
-            return None;
-        }
-    }
-
-    // Confidence based on similarity — closer words = higher confidence
-    let confidence = similarity;
+    let confidence = score_correction_candidate(original, corrected)?;
 
     Some(CorrectionPair {
         original: original.to_string(),
@@ -157,6 +132,244 @@ fn build_correction_pair(
     })
 }
 
+/// Re-validate a stored auto-learned correction before it can be applied to new text.
+///
+/// This keeps older/noisier entries from becoming active dictionary rules after the
+/// extraction heuristics become stricter. Manual/user-approved corrections bypass
+/// this check at the store layer.
+pub fn auto_correction_score(original: &str, corrected: &str) -> Option<f64> {
+    score_correction_candidate(original, corrected)
+}
+
+fn score_correction_candidate(original: &str, corrected: &str) -> Option<f64> {
+    let original_profile = CandidateText::new(original)?;
+    let corrected_profile = CandidateText::new(corrected)?;
+
+    if original != corrected && original.to_lowercase() == corrected.to_lowercase() {
+        return Some(0.92);
+    }
+
+    if original_profile.exact == corrected_profile.exact {
+        return None;
+    }
+
+    if original_profile.compact == corrected_profile.compact {
+        return Some(if original == corrected { 0.0 } else { 0.92 });
+    }
+
+    if corrected_profile.introduces_digit_without_spoken_number(&original_profile) {
+        return None;
+    }
+
+    if is_one_sided_substring_rewrite(&original_profile, &corrected_profile) {
+        return None;
+    }
+
+    if let Some(score) = score_spoken_symbol_correction(&original_profile, &corrected_profile) {
+        return Some(score);
+    }
+
+    if is_semantic_single_word_rewrite(&original_profile, &corrected_profile) {
+        return None;
+    }
+
+    let edit_distance =
+        strsim::damerau_levenshtein(&original_profile.compact, &corrected_profile.compact);
+    let max_len = original_profile
+        .compact
+        .chars()
+        .count()
+        .max(corrected_profile.compact.chars().count());
+    let min_len = original_profile
+        .compact
+        .chars()
+        .count()
+        .min(corrected_profile.compact.chars().count());
+    if max_len == 0 {
+        return None;
+    }
+
+    let damerau_similarity = 1.0 - (edit_distance as f64 / max_len as f64);
+    let jaro = strsim::jaro_winkler(&original_profile.compact, &corrected_profile.compact);
+    let similarity = damerau_similarity.max(jaro);
+
+    if edit_distance == 1 && min_len >= 3 {
+        return Some(0.9_f64.max(similarity));
+    }
+
+    if edit_distance == 2 && min_len >= 5 && similarity >= 0.72 {
+        return Some(0.82_f64.max(similarity));
+    }
+
+    let either_phrase = original_profile.word_count > 1 || corrected_profile.word_count > 1;
+    let threshold = if either_phrase { 0.8 } else { 0.74 };
+    if similarity >= threshold && min_len >= 5 {
+        return Some(similarity);
+    }
+
+    None
+}
+
+#[derive(Debug)]
+struct CandidateText {
+    exact: String,
+    compact: String,
+    words: Vec<String>,
+    symbol_form: String,
+    word_count: usize,
+    has_digit: bool,
+}
+
+impl CandidateText {
+    fn new(value: &str) -> Option<Self> {
+        let words: Vec<String> = value
+            .split_whitespace()
+            .map(clean_token_for_matching)
+            .filter(|token| !token.is_empty())
+            .collect();
+        let exact = words.join(" ");
+        let compact = words.join("");
+        let symbol_form: String = value
+            .chars()
+            .filter(|ch| ch.is_alphanumeric() || matches!(ch, '_' | '-' | '.' | '/' | '\\' | '@'))
+            .flat_map(char::to_lowercase)
+            .collect();
+        let has_alpha = compact.chars().any(char::is_alphabetic);
+        let has_digit = compact.chars().any(|ch| ch.is_ascii_digit());
+
+        if compact.is_empty() || !has_alpha {
+            return None;
+        }
+
+        Some(Self {
+            word_count: words.len(),
+            exact,
+            compact,
+            words,
+            symbol_form,
+            has_digit,
+        })
+    }
+
+    fn introduces_digit_without_spoken_number(&self, original: &Self) -> bool {
+        self.has_digit
+            && !original.has_digit
+            && !original.words.iter().any(|word| is_number_word(word))
+    }
+}
+
+fn clean_token_for_matching(token: &str) -> String {
+    token
+        .trim_matches(|ch: char| !ch.is_alphanumeric())
+        .chars()
+        .filter(|ch| ch.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn is_one_sided_substring_rewrite(original: &CandidateText, corrected: &CandidateText) -> bool {
+    if original.compact == corrected.compact {
+        return false;
+    }
+
+    let original_len = original.compact.chars().count();
+    let corrected_len = corrected.compact.chars().count();
+    let shorter = original_len.min(corrected_len);
+    let longer = original_len.max(corrected_len);
+
+    if shorter < 4 || longer < shorter + 3 {
+        return false;
+    }
+
+    if original.compact.contains(&corrected.compact)
+        || corrected.compact.contains(&original.compact)
+    {
+        return true;
+    }
+
+    false
+}
+
+fn score_spoken_symbol_correction(
+    original: &CandidateText,
+    corrected: &CandidateText,
+) -> Option<f64> {
+    let mut rendered = String::new();
+    let mut used_symbol_word = false;
+
+    for word in &original.words {
+        if let Some(symbol) = spoken_symbol(word) {
+            rendered.push_str(symbol);
+            used_symbol_word = true;
+        } else {
+            rendered.push_str(word);
+        }
+    }
+
+    if !used_symbol_word {
+        return None;
+    }
+
+    if rendered == corrected.symbol_form {
+        Some(0.95)
+    } else {
+        None
+    }
+}
+
+fn spoken_symbol(word: &str) -> Option<&'static str> {
+    match word {
+        "underscore" => Some("_"),
+        "dash" | "hyphen" => Some("-"),
+        "dot" | "period" => Some("."),
+        "slash" | "forwardslash" => Some("/"),
+        "backslash" => Some("\\"),
+        "at" => Some("@"),
+        _ => None,
+    }
+}
+
+fn is_semantic_single_word_rewrite(original: &CandidateText, corrected: &CandidateText) -> bool {
+    if original.word_count != 1 || corrected.word_count != 1 {
+        return false;
+    }
+
+    let original_word = &original.words[0];
+    let corrected_word = &corrected.words[0];
+    let edit_distance = strsim::damerau_levenshtein(original_word, corrected_word);
+
+    (is_common_english_word(original_word) || is_common_english_word(corrected_word))
+        && edit_distance > 2
+        && !shares_stem(original_word, corrected_word)
+}
+
+fn is_number_word(word: &str) -> bool {
+    matches!(
+        word,
+        "zero"
+            | "one"
+            | "two"
+            | "three"
+            | "four"
+            | "five"
+            | "six"
+            | "seven"
+            | "eight"
+            | "nine"
+            | "ten"
+            | "eleven"
+            | "twelve"
+            | "thirteen"
+            | "fourteen"
+            | "fifteen"
+            | "sixteen"
+            | "seventeen"
+            | "eighteen"
+            | "nineteen"
+            | "twenty"
+    )
+}
+
 /// Check whether a word is a common English word unlikely to be a transcription error.
 /// This is a compact blocklist of high-frequency words that users are more likely
 /// to change for *meaning* than because the STT misspelled them.
@@ -164,6 +377,8 @@ fn is_common_english_word(word: &str) -> bool {
     const COMMON_WORDS: &[&str] = &[
         // Verbs commonly swapped for meaning
         "go",
+        "use",
+        "using",
         "going",
         "went",
         "gone",
@@ -191,6 +406,9 @@ fn is_common_english_word(word: &str) -> bool {
         "sell",
         "read",
         "write",
+        "record",
+        "recording",
+        "import",
         "take",
         "took",
         "taken",
@@ -243,6 +461,13 @@ fn is_common_english_word(word: &str) -> bool {
         "house",
         "home",
         "room",
+        "box",
+        "loan",
+        "user",
+        "other",
+        "phrase",
+        "key",
+        "keys",
         // Time/place words
         "today",
         "tomorrow",
@@ -252,6 +477,7 @@ fn is_common_english_word(word: &str) -> bool {
         "night",
         "here",
         "there",
+        "or",
     ];
     COMMON_WORDS.contains(&word)
 }
@@ -378,6 +604,44 @@ mod tests {
             corrections[0].source_app.as_deref(),
             Some("com.apple.TextEdit")
         );
+    }
+
+    #[test]
+    fn test_screenshot_noise_is_not_learned() {
+        let examples = [
+            ("Using", "Recording"),
+            ("import", "or"),
+            ("other", "user"),
+            ("drive.", "drive 2"),
+            ("transcription. Section..", "Transcription"),
+            ("copylash", "lash"),
+            ("box", "Chatterbox"),
+            ("Mal X", "MIX"),
+        ];
+
+        for (original, corrected) in examples {
+            let corrections = extract_corrections(original, corrected, None);
+            assert!(
+                corrections.is_empty(),
+                "Expected noisy candidate '{original}' → '{corrected}' to be rejected, got: {:?}",
+                corrections
+            );
+        }
+    }
+
+    #[test]
+    fn test_spoken_symbol_correction_is_learned() {
+        let corrections = extract_corrections("fish underscore speech", "fish_speech", None);
+        assert_eq!(corrections.len(), 1);
+        assert_eq!(corrections[0].original, "fish underscore speech");
+        assert_eq!(corrections[0].corrected, "fish_speech");
+        assert!(corrections[0].confidence > 0.9);
+    }
+
+    #[test]
+    fn test_short_substring_expansion_is_not_learned() {
+        let corrections = extract_corrections("box", "Chatterbox", None);
+        assert!(corrections.is_empty());
     }
 
     // ── Semantic vs. spelling change tests ──────────────────────────────

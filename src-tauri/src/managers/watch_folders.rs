@@ -205,7 +205,10 @@ impl WatchFolderManager {
 
         // Skip if we're already processing this file.
         {
-            let mut in_flight = self.in_flight.lock().unwrap();
+            let mut in_flight = self
+                .in_flight
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             if !in_flight.insert(path.clone()) {
                 return;
             }
@@ -218,7 +221,11 @@ impl WatchFolderManager {
             .name("watch-folders-transcribe".into())
             .spawn(move || {
                 manager.process_file(path.clone(), cfg);
-                manager.in_flight.lock().unwrap().remove(&path);
+                manager
+                    .in_flight
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .remove(&path);
             })
             .ok();
     }

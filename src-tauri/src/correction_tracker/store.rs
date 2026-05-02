@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use crate::post_processing::DictionaryEntry;
 
-use super::diff::CorrectionPair;
+use super::diff::{auto_correction_score, CorrectionPair};
 
 /// Database migrations for the corrections store.
 static MIGRATIONS: &[M] = &[
@@ -45,6 +45,30 @@ pub struct StoredCorrection {
     pub last_seen: i64,
     pub is_active: bool,
     pub user_approved: bool,
+    #[serde(default)]
+    pub auto_apply: CorrectionAutoApply,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CorrectionAutoApplyStatus {
+    #[default]
+    Candidate,
+    Manual,
+    Active,
+    LowConfidence,
+    Blocked,
+    Disabled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Default)]
+pub struct CorrectionAutoApply {
+    pub status: CorrectionAutoApplyStatus,
+    pub eligible: bool,
+    pub effective_confidence: f64,
+    pub min_frequency: u32,
+    pub min_confidence: f64,
+    pub confirmations_remaining: u32,
 }
 
 /// Persistent SQLite store for auto-learned corrections.
@@ -233,10 +257,24 @@ impl CorrectionStore {
         for row in rows {
             let (original, corrected, frequency, confidence, exact_only, user_approved) = row?;
 
+            let auto_score = if user_approved {
+                None
+            } else {
+                auto_correction_score(&original, &corrected)
+            };
+
+            let effective_confidence = if user_approved {
+                confidence
+            } else {
+                auto_score.map_or(confidence, |score| confidence.max(score))
+            };
+
             let should_include = if user_approved {
                 true
             } else if include_auto_learned {
-                frequency >= min_frequency && confidence >= min_confidence
+                frequency >= min_frequency
+                    && effective_confidence >= min_confidence
+                    && auto_score.is_some()
             } else {
                 false
             };
@@ -248,7 +286,7 @@ impl CorrectionStore {
             let priority = if user_approved {
                 u8::MAX
             } else {
-                compute_priority(frequency, confidence)
+                compute_priority(frequency, effective_confidence)
             };
 
             entries.push(DictionaryEntry {
@@ -273,18 +311,33 @@ impl CorrectionStore {
         )?;
 
         let rows = stmt.query_map([], |row| {
+            let original: String = row.get("original")?;
+            let corrected: String = row.get("corrected")?;
+            let frequency: u32 = row.get("frequency")?;
+            let confidence: f64 = row.get("confidence")?;
+            let is_active: bool = row.get("is_active")?;
+            let user_approved: bool = row.get("user_approved")?;
+
             Ok(StoredCorrection {
                 id: row.get("id")?,
-                original: row.get("original")?,
-                corrected: row.get("corrected")?,
-                frequency: row.get("frequency")?,
-                confidence: row.get("confidence")?,
+                auto_apply: evaluate_auto_apply(
+                    &original,
+                    &corrected,
+                    frequency,
+                    confidence,
+                    is_active,
+                    user_approved,
+                ),
+                original,
+                corrected,
+                frequency,
+                confidence,
                 exact_only: row.get("exact_only")?,
                 source_app: row.get("source_app")?,
                 first_seen: row.get("first_seen")?,
                 last_seen: row.get("last_seen")?,
-                is_active: row.get("is_active")?,
-                user_approved: row.get("user_approved")?,
+                is_active,
+                user_approved,
             })
         })?;
 
@@ -467,6 +520,67 @@ pub fn build_effective_personal_dictionary(
     }
 }
 
+fn evaluate_auto_apply(
+    original: &str,
+    corrected: &str,
+    frequency: u32,
+    confidence: f64,
+    is_active: bool,
+    user_approved: bool,
+) -> CorrectionAutoApply {
+    use crate::settings::correction_defaults;
+
+    let min_frequency = correction_defaults::MIN_FREQUENCY;
+    let min_confidence = correction_defaults::MIN_CONFIDENCE;
+    let confirmations_remaining = min_frequency.saturating_sub(frequency);
+
+    if !is_active {
+        return CorrectionAutoApply {
+            status: CorrectionAutoApplyStatus::Disabled,
+            eligible: false,
+            effective_confidence: confidence,
+            min_frequency,
+            min_confidence,
+            confirmations_remaining,
+        };
+    }
+
+    if user_approved {
+        return CorrectionAutoApply {
+            status: CorrectionAutoApplyStatus::Manual,
+            eligible: true,
+            effective_confidence: 1.0,
+            min_frequency,
+            min_confidence,
+            confirmations_remaining: 0,
+        };
+    }
+
+    let auto_score = auto_correction_score(original, corrected);
+    let effective_confidence = auto_score.map_or(confidence, |score| confidence.max(score));
+
+    let status = if auto_score.is_none() {
+        CorrectionAutoApplyStatus::Blocked
+    } else if confirmations_remaining > 0 {
+        CorrectionAutoApplyStatus::Candidate
+    } else if effective_confidence < min_confidence {
+        CorrectionAutoApplyStatus::LowConfidence
+    } else {
+        CorrectionAutoApplyStatus::Active
+    };
+
+    let eligible = matches!(status, CorrectionAutoApplyStatus::Active);
+
+    CorrectionAutoApply {
+        status,
+        eligible,
+        effective_confidence,
+        min_frequency,
+        min_confidence,
+        confirmations_remaining,
+    }
+}
+
 /// Map frequency × confidence to a 0-255 priority scale.
 /// Auto-corrections get lower priority than manual entries (which typically use 0-100).
 /// We cap at 200 to leave headroom for manual entries.
@@ -505,6 +619,10 @@ mod tests {
         assert_eq!(all[0].original, "teh");
         assert_eq!(all[0].corrected, "the");
         assert_eq!(all[0].frequency, 1);
+        assert!(matches!(
+            all[0].auto_apply.status,
+            CorrectionAutoApplyStatus::Candidate
+        ));
     }
 
     #[test]
@@ -880,5 +998,82 @@ mod tests {
             "Expected no new corrections when field text matches pasted text, got: {:?}",
             new_corrections
         );
+    }
+
+    #[test]
+    fn test_default_auto_apply_requires_repeated_safe_evidence() {
+        let (store, _dir) = setup_store();
+        let pair = make_pair("teh", "the");
+
+        add_n_times(&store, &pair, 2);
+        let entries = store
+            .get_dictionary_entries(
+                true,
+                crate::settings::correction_defaults::MIN_FREQUENCY,
+                crate::settings::correction_defaults::MIN_CONFIDENCE,
+            )
+            .unwrap();
+        assert!(
+            entries.is_empty(),
+            "Two observations should remain candidate-only under production defaults"
+        );
+
+        store.add_correction(&pair).unwrap();
+        let entries = store
+            .get_dictionary_entries(
+                true,
+                crate::settings::correction_defaults::MIN_FREQUENCY,
+                crate::settings::correction_defaults::MIN_CONFIDENCE,
+            )
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].spoken, "teh");
+        assert_eq!(entries[0].written, "the");
+    }
+
+    #[test]
+    fn test_unsafe_legacy_entries_do_not_auto_apply() {
+        let (store, _dir) = setup_store();
+        let bad_pair = CorrectionPair {
+            original: "box".to_string(),
+            corrected: "Chatterbox".to_string(),
+            confidence: 0.95,
+            source_app: None,
+            first_seen: 1000,
+            last_seen: 1000,
+        };
+
+        add_n_times(&store, &bad_pair, 5);
+        let entries = store.get_dictionary_entries(true, 3, 0.74).unwrap();
+        assert!(
+            entries.is_empty(),
+            "Unsafe legacy correction should be listed but never exported as an auto dictionary rule"
+        );
+    }
+
+    #[test]
+    fn test_safe_legacy_entries_are_rescored_for_auto_apply() {
+        let (store, _dir) = setup_store();
+        let legacy_pair = CorrectionPair {
+            original: "teh".to_string(),
+            corrected: "the".to_string(),
+            confidence: 0.34,
+            source_app: None,
+            first_seen: 1000,
+            last_seen: 1000,
+        };
+
+        add_n_times(&store, &legacy_pair, 3);
+        let entries = store.get_dictionary_entries(true, 3, 0.74).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].spoken, "teh");
+        assert_eq!(entries[0].written, "the");
+
+        let all = store.list_all().unwrap();
+        assert!(matches!(
+            all[0].auto_apply.status,
+            CorrectionAutoApplyStatus::Active
+        ));
+        assert!(all[0].auto_apply.eligible);
     }
 }

@@ -6,7 +6,14 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Search, Trash2, X, SpellCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  Plus,
+  Search,
+  Trash2,
+  X,
+  SpellCheck,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import type { StoredCorrection } from "@/bindings";
@@ -27,8 +34,13 @@ interface CorrectionGroup {
   corrected: string;
   entries: StoredCorrection[];
   totalFrequency: number;
-  avgConfidence: number;
+  avgEffectiveConfidence: number;
   allActive: boolean;
+  manualCount: number;
+  eligibleCount: number;
+  lowConfidenceCount: number;
+  blockedCount: number;
+  disabledCount: number;
 }
 
 const getCorrectionGroupKey = (group: CorrectionGroup): string => {
@@ -54,16 +66,37 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
   const groups: CorrectionGroup[] = [];
   for (const entries of map.values()) {
     const totalFrequency = entries.reduce((sum, e) => sum + e.frequency, 0);
-    const avgConfidence =
-      entries.reduce((sum, e) => sum + e.confidence, 0) / entries.length;
+    const avgEffectiveConfidence =
+      entries.reduce(
+        (sum, e) => sum + (e.auto_apply?.effective_confidence ?? e.confidence),
+        0,
+      ) / entries.length;
     const allActive = entries.every((e) => e.is_active);
+    const manualCount = entries.filter((e) => e.user_approved).length;
+    const eligibleCount = entries.filter(
+      (e) => !e.user_approved && e.auto_apply?.eligible,
+    ).length;
+    const lowConfidenceCount = entries.filter(
+      (e) => e.auto_apply?.status === "low_confidence",
+    ).length;
+    const blockedCount = entries.filter(
+      (e) => e.auto_apply?.status === "blocked",
+    ).length;
+    const disabledCount = entries.filter(
+      (e) => e.auto_apply?.status === "disabled",
+    ).length;
 
     groups.push({
       corrected: entries[0].corrected,
       entries,
       totalFrequency,
-      avgConfidence,
+      avgEffectiveConfidence,
       allActive,
+      manualCount,
+      eligibleCount,
+      lowConfidenceCount,
+      blockedCount,
+      disabledCount,
     });
   }
 
@@ -76,6 +109,143 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
 
   return groups;
 }
+
+type CorrectionAutoApply = NonNullable<StoredCorrection["auto_apply"]>;
+
+const getEntryAutoApply = (entry: StoredCorrection): CorrectionAutoApply => {
+  return (
+    entry.auto_apply ?? {
+      status: entry.user_approved ? "manual" : "candidate",
+      eligible: entry.user_approved,
+      effective_confidence: entry.user_approved ? 1 : entry.confidence,
+      min_frequency: 3,
+      min_confidence: 0.74,
+      confirmations_remaining: entry.user_approved
+        ? 0
+        : Math.max(0, 3 - entry.frequency),
+    }
+  );
+};
+
+const getEntryAutoStatus = (
+  entry: StoredCorrection,
+): CorrectionAutoApply["status"] => {
+  return getEntryAutoApply(entry).status;
+};
+
+const getEntryStatusLabel = (entry: StoredCorrection): string => {
+  const status = getEntryAutoStatus(entry);
+  switch (status) {
+    case "manual":
+      return "Manual";
+    case "active":
+      return "Auto";
+    case "candidate":
+      return getEntryAutoApply(entry).confirmations_remaining > 0
+        ? `Needs ${getEntryAutoApply(entry).confirmations_remaining}`
+        : "Learning";
+    case "low_confidence":
+      return "Low conf";
+    case "blocked":
+      return "Review";
+    case "disabled":
+      return "Off";
+    default:
+      return "Learning";
+  }
+};
+
+const getEntryStatusTitle = (entry: StoredCorrection): string => {
+  const status = getEntryAutoStatus(entry);
+  switch (status) {
+    case "manual":
+      return "Manually approved. Applies whenever enabled.";
+    case "active":
+      return "Auto-learned and eligible to apply.";
+    case "candidate":
+      return getEntryAutoApply(entry).confirmations_remaining > 0
+        ? `Needs ${getEntryAutoApply(entry).confirmations_remaining} more confirmation(s) before auto-applying.`
+        : "Still learning before auto-applying.";
+    case "low_confidence":
+      return "Seen enough times, but confidence is below the auto-apply threshold.";
+    case "blocked":
+      return "Will not auto-apply because it looks like a rewrite, partial capture, or unsafe correction.";
+    case "disabled":
+      return "Disabled. This correction will not apply.";
+    default:
+      return "Learning status unavailable.";
+  }
+};
+
+const getEntryStatusClassName = (entry: StoredCorrection): string => {
+  const status = getEntryAutoStatus(entry);
+  switch (status) {
+    case "manual":
+      return "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]";
+    case "active":
+      return "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]";
+    case "blocked":
+    case "low_confidence":
+      return "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]";
+    case "disabled":
+      return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]";
+    case "candidate":
+    default:
+      return "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]";
+  }
+};
+
+const getGroupStatus = (group: CorrectionGroup) => {
+  const total = group.entries.length;
+  if (group.disabledCount === total) {
+    return {
+      label: "Off",
+      title: "All corrections in this group are disabled.",
+      className:
+        "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
+    };
+  }
+  if (group.manualCount === total) {
+    return {
+      label: "Manual",
+      title: "All corrections in this group are manually approved.",
+      className:
+        "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]",
+    };
+  }
+  if (group.manualCount + group.eligibleCount === total) {
+    return {
+      label: "Applying",
+      title: "Every enabled correction in this group is eligible to apply.",
+      className:
+        "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]",
+    };
+  }
+  if (group.blockedCount > 0) {
+    return {
+      label: "Review",
+      title:
+        "At least one correction in this group is blocked from auto-apply until approved.",
+      className:
+        "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
+    };
+  }
+  if (group.lowConfidenceCount > 0) {
+    return {
+      label: "Low conf",
+      title:
+        "At least one correction has enough observations but low confidence.",
+      className:
+        "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
+    };
+  }
+
+  return {
+    label: "Learning",
+    title: "Waiting for more confirmations before auto-applying.",
+    className: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
+  };
+};
 
 function groupMatchesSearch(group: CorrectionGroup, normalizedQuery: string) {
   if (!normalizedQuery) {
@@ -179,10 +349,7 @@ export const CorrectionDictionaryView: React.FC<
       for (const entry of group.entries) {
         await commands.toggleCorrection(entry.id, newActive);
       }
-      const ids = new Set(group.entries.map((e) => e.id));
-      setCorrections((prev) =>
-        prev.map((c) => (ids.has(c.id) ? { ...c, is_active: newActive } : c)),
-      );
+      await loadCorrections();
     } catch (error) {
       console.error("Failed to toggle group:", error);
     }
@@ -199,10 +366,7 @@ export const CorrectionDictionaryView: React.FC<
       for (const entry of group.entries) {
         await commands.updateCorrection(entry.id, entry.original, trimmed);
       }
-      const ids = new Set(group.entries.map((e) => e.id));
-      setCorrections((prev) =>
-        prev.map((c) => (ids.has(c.id) ? { ...c, corrected: trimmed } : c)),
-      );
+      await loadCorrections();
     } catch (error) {
       console.error("Failed to update corrected text:", error);
     }
@@ -222,14 +386,25 @@ export const CorrectionDictionaryView: React.FC<
         entry.corrected,
       );
       if (result.status === "ok") {
-        setCorrections((prev) =>
-          prev.map((c) =>
-            c.id === entry.id ? { ...c, original: trimmed } : c,
-          ),
-        );
+        await loadCorrections();
       }
     } catch (error) {
       console.error("Failed to update original:", error);
+    }
+  };
+
+  const handleApprove = async (entry: StoredCorrection) => {
+    try {
+      const result = await commands.addManualCorrection(
+        entry.original,
+        entry.corrected,
+        entry.exact_only ?? false,
+      );
+      if (result.status === "ok") {
+        await loadCorrections();
+      }
+    } catch (error) {
+      console.error("Failed to approve correction:", error);
     }
   };
 
@@ -534,7 +709,7 @@ export const CorrectionDictionaryView: React.FC<
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
+            <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
               <span>
                 {t("settings.corrections.dictionary.columns.original")}
               </span>
@@ -549,7 +724,7 @@ export const CorrectionDictionaryView: React.FC<
             {filteredGroups.map((group) => (
               <div
                 key={getCorrectionGroupKey(group)}
-                className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_8rem_5.75rem] md:items-center md:gap-4 ${
+                className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] md:items-center md:gap-4 ${
                   !group.allActive
                     ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
                     : ""
@@ -566,6 +741,7 @@ export const CorrectionDictionaryView: React.FC<
                         entry={entry}
                         onUpdate={handleUpdateOriginal}
                         onDelete={handleDelete}
+                        onApprove={handleApprove}
                       />
                     ))}
                     {addingTo === group.corrected ? (
@@ -636,7 +812,13 @@ export const CorrectionDictionaryView: React.FC<
                   />
                 </div>
 
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroupStatus(group).className}`}
+                    title={getGroupStatus(group).title}
+                  >
+                    {getGroupStatus(group).label}
+                  </span>
                   <span className="block text-[var(--text)]">
                     {t("settings.corrections.dictionary.columns.frequency", {
                       defaultValue: "Uses",
@@ -647,7 +829,7 @@ export const CorrectionDictionaryView: React.FC<
                     {t("settings.corrections.dictionary.columns.confidence", {
                       defaultValue: "Confidence",
                     })}
-                    : {(group.avgConfidence * 100).toFixed(0)}%
+                    : {(group.avgEffectiveConfidence * 100).toFixed(0)}%
                   </span>
                 </div>
 
@@ -696,7 +878,8 @@ const OriginalChip: React.FC<{
   entry: StoredCorrection;
   onUpdate: (entry: StoredCorrection, newOriginal: string) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-}> = ({ entry, onUpdate, onDelete }) => {
+  onApprove: (entry: StoredCorrection) => Promise<void>;
+}> = ({ entry, onUpdate, onDelete, onApprove }) => {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.original);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -751,6 +934,23 @@ const OriginalChip: React.FC<{
       >
         {entry.original}
       </button>
+      <span
+        className={`ml-1 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getEntryStatusClassName(entry)}`}
+        title={getEntryStatusTitle(entry)}
+      >
+        {getEntryStatusLabel(entry)}
+      </span>
+      {!entry.user_approved ? (
+        <button
+          type="button"
+          className="shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--success)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => void onApprove(entry)}
+          aria-label={`Approve correction ${entry.original} to ${entry.corrected}`}
+          title="Approve and always apply"
+        >
+          <CheckCircle2 className="h-3 w-3" aria-hidden />
+        </button>
+      ) : null}
       <button
         type="button"
         className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"

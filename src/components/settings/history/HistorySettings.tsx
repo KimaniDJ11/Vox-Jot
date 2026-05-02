@@ -80,10 +80,11 @@ export const HistorySettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const historyEntryCountRef = useRef(0);
 
   const loadHistoryEntries = useCallback(
     async (reset = true) => {
-      const offset = reset ? 0 : historyEntries.length;
+      const offset = reset ? 0 : historyEntryCountRef.current;
       if (reset) {
         setLoading(true);
       } else {
@@ -96,9 +97,13 @@ export const HistorySettings: React.FC = () => {
           HISTORY_PAGE_SIZE,
         );
         if (result.status === "ok") {
-          setHistoryEntries((current) =>
-            reset ? result.data.entries : [...current, ...result.data.entries],
-          );
+          setHistoryEntries((current) => {
+            const next = reset
+              ? result.data.entries
+              : [...current, ...result.data.entries];
+            historyEntryCountRef.current = next.length;
+            return next;
+          });
           setHasMore(result.data.has_more);
         } else {
           console.error("Failed to load history entries:", result.error);
@@ -125,7 +130,7 @@ export const HistorySettings: React.FC = () => {
         }
       }
     },
-    [historyEntries.length, t],
+    [t],
   );
 
   useEffect(() => {

@@ -1575,9 +1575,9 @@ fn ensure_model_platform_defaults(settings: &mut AppSettings) -> bool {
 /// These are optimized defaults that "just work."
 pub mod correction_defaults {
     /// Minimum times a correction must be seen before auto-applying.
-    pub const MIN_FREQUENCY: u32 = 1;
+    pub const MIN_FREQUENCY: u32 = 3;
     /// Minimum confidence score (0.0–1.0) for auto-applying a correction.
-    pub const MIN_CONFIDENCE: f64 = 0.5;
+    pub const MIN_CONFIDENCE: f64 = 0.74;
 }
 
 fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
@@ -2684,12 +2684,9 @@ pub fn get_bindings(app: &AppHandle) -> HashMap<String, ShortcutBinding> {
     settings.bindings
 }
 
-pub fn get_stored_binding(app: &AppHandle, id: &str) -> ShortcutBinding {
+pub fn get_stored_binding(app: &AppHandle, id: &str) -> Option<ShortcutBinding> {
     let bindings = get_bindings(app);
-
-    let binding = bindings.get(id).unwrap().clone();
-
-    binding
+    bindings.get(id).cloned()
 }
 
 pub fn get_history_limit(app: &AppHandle) -> usize {

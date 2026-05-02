@@ -51,8 +51,8 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-        <div className="grid grid-cols-[minmax(9rem,0.8fr)_minmax(12rem,1.2fr)_3rem] gap-2 border-b border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2 text-xs font-semibold uppercase text-[var(--muted)]">
+      <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
+        <div className="grid grid-cols-[minmax(9rem,0.8fr)_minmax(12rem,1.2fr)_3rem] gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-semibold uppercase text-[var(--muted)]">
           <span>{characterLabel}</span>
           <span>{voicePresetLabel}</span>
           <span className="sr-only">{actionLabel}</span>

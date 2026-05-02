@@ -137,6 +137,8 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
   }
 
   const buttonClassName = `inline-flex items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[color-mix(in_srgb,var(--accent),transparent_80%)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`;
+  const permissionCardClassName =
+    "flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center";
 
   const permissionContent = (
     <>
@@ -150,7 +152,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       </div>
 
       {!permissions.accessibility && (
-        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+        <div className={permissionCardClassName}>
           <div>
             <p className="text-sm font-semibold">
               {t("onboarding.permissions.accessibility.title")}
@@ -171,7 +173,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       )}
 
       {!permissions.inputMonitoring && (
-        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+        <div className={permissionCardClassName}>
           <div>
             <p className="text-sm font-semibold">
               {t("onboarding.permissions.inputMonitoring.title")}
@@ -195,7 +197,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
       )}
 
       {!permissions.screenRecording && (
-        <div className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center">
+        <div className={permissionCardClassName}>
           <div>
             <p className="text-sm font-semibold">
               {t("onboarding.permissions.screenRecording.title", {

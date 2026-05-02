@@ -348,7 +348,7 @@ export const HistorySettings: React.FC = () => {
               {[0, 1, 2].map((row) => (
                 <div
                   key={row}
-                  className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 rounded-xl border border-[var(--ring-hairline)] px-4 py-4"
+                  className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 rounded-xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-4 py-4"
                 >
                   <Skeleton className="h-3.5 w-12" />
                   <div className="space-y-3">
@@ -405,7 +405,7 @@ interface HistoryEntryProps {
 const sectionLabelClassName =
   "text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted)]";
 const sectionCardClassName =
-  "rounded-xl border border-mid-gray/20 bg-[color-mix(in_srgb,var(--background),white_2%)] px-3 py-3";
+  "rounded-xl border border-mid-gray/20 bg-[var(--panel-bg)] px-3 py-3";
 
 /** Time + main transcript line: same font, size, and line-height for alignment. */
 const historyEntryPrimaryLineClass =

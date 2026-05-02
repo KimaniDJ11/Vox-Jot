@@ -98,13 +98,19 @@ const selectStyles: StylesConfig<SelectOption, false> = {
   option: (base, state) => ({
     ...base,
     backgroundColor: state.isSelected
-      ? focusBackground
+      ? "var(--accent-soft)"
       : state.isFocused
         ? hoverBackground
         : "transparent",
-    color: "var(--text)",
+    color: state.isSelected ? "var(--accent)" : "var(--text)",
     cursor: state.isDisabled ? "not-allowed" : base.cursor,
     opacity: state.isDisabled ? 0.5 : 1,
+    fontWeight: state.isSelected ? 600 : base.fontWeight,
+    ":active": {
+      backgroundColor: state.isSelected
+        ? "var(--accent-soft)"
+        : focusBackground,
+    },
   }),
   placeholder: (base) => ({
     ...base,

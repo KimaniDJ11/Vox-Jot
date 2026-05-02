@@ -115,6 +115,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       <div
         ref={menuRef}
         className="fixed z-[200] max-h-[min(15rem,70vh)] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]"
+        role="listbox"
         style={{
           top: menuRect.top,
           left: menuRect.left,
@@ -130,10 +131,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
             <button
               key={option.value}
               type="button"
-              className={`w-full px-3 py-2.5 text-start text-[14px] text-[var(--text)] transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+              role="option"
+              aria-selected={selectedValue === option.value}
+              className={`w-full px-3 py-2.5 text-start text-[14px] transition-colors duration-150 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                 selectedValue === option.value
-                  ? "bg-logo-primary text-[var(--inverse-text)] font-semibold"
-                  : ""
+                  ? "bg-[var(--accent-soft)] font-semibold !text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_86%)]"
+                  : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)]"
               } ${option.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
               onClick={() => handleSelect(option.value)}
               disabled={option.disabled}

@@ -364,7 +364,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                 }}
                 className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
                   languageFilter === "all"
-                    ? "bg-logo-primary font-semibold text-[var(--inverse-text)]"
+                    ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
                     : "hover:bg-mid-gray/10"
                 }`}
               >
@@ -381,7 +381,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                   }}
                   className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
                     languageFilter === lang.value
-                      ? "bg-logo-primary font-semibold text-[var(--inverse-text)]"
+                      ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
                       : "hover:bg-mid-gray/10"
                   }`}
                 >

@@ -777,6 +777,21 @@ body,
   opacity: 1;
 }
 
+/* ── Native Select Popups ─────────────────────────────────────
+ * WebKit can render native option popups with the app text color. Keep
+ * selected rows on a soft theme accent so labels remain readable.
+ */
+select option {
+  background-color: var(--card);
+  color: var(--text);
+}
+
+select option:checked {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ── Range Input (Slider) Track ────────────────────────────── */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;

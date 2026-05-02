@@ -855,7 +855,7 @@ const PostProcessPreviewTester: React.FC<ProviderSectionProps> = ({
         {error && <Alert variant="error">{error}</Alert>}
 
         {result && (
-          <div className="space-y-3 rounded-md border border-mid-gray/20 p-3">
+          <div className="space-y-3 rounded-md border border-mid-gray/20 bg-[var(--panel-bg)] p-3">
             {result.dictionary_hits.length > 0 && (
               <div className="text-xs text-[var(--muted)]">
                 {t("settings.postProcessing.preview.dictionaryHits", {

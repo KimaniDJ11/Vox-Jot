@@ -668,6 +668,10 @@
           "system": "System"
         }
       },
+      "fontScale": {
+        "title": "Text Size",
+        "description": "Increase or decrease readable text across Vox Jot."
+      },
       "overlay": {
         "title": "Overlay Position",
         "description": "Display visual feedback overlay during recording and transcription. On Linux 'None' is recommended.",

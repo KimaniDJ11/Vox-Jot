@@ -70,6 +70,7 @@ import { AudioDucking } from "@/components/settings/AudioDucking";
 import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
+import { AppFontScale } from "@/components/settings/AppFontScale";
 import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { HistorySettings } from "@/components/settings/history/HistorySettings";
 import { WriteRulesSettings } from "@/components/settings/write-rules/WriteRulesSettings";
@@ -641,6 +642,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
 
       <SettingsGroup title="App">
         <ThemeSelector descriptionMode="tooltip" grouped={true} />
+        <AppFontScale />
         <StartHidden descriptionMode="tooltip" grouped={true} />
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
         <ShowTrayIcon descriptionMode="tooltip" grouped={true} />

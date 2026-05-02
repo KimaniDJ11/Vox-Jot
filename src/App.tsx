@@ -45,6 +45,7 @@ import AccessibilityPermissions from "./components/AccessibilityPermissions";
 import Footer from "./components/footer";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { useMinWidth769 } from "@/hooks/useMinWidth769";
+import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
 import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
 import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
@@ -239,12 +240,14 @@ function App() {
   const refreshSettings = useRefreshSettings();
   const {
     app_theme: appTheme,
+    app_font_scale: appFontScale,
     debug_mode: debugMode,
     post_process_enabled: postProcessEnabled,
     selected_language: selectedLanguage,
     translation_target_language: translationTargetLanguage,
   } = useSettingsSlice([
     "app_theme",
+    "app_font_scale",
     "debug_mode",
     "post_process_enabled",
     "selected_language",
@@ -528,14 +531,7 @@ function App() {
     initializeRTL(i18n.language);
   }, [i18n.language]);
 
-  useEffect(() => {
-    const theme = appTheme ?? "system";
-    if (theme === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", theme);
-    }
-  }, [appTheme]);
+  useApplyAppearanceSettings(appTheme, appFontScale);
 
   useEffect(() => {
     if (onboardingStep === "done" && !hasCompletedPostOnboardingInit.current) {

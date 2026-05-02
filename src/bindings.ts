@@ -61,6 +61,14 @@ async changeAppThemeSetting(theme: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changeAppFontScaleSetting(scale: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_app_font_scale_setting", { scale }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changeStartHiddenSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_start_hidden_setting", { enabled }) };
@@ -2203,7 +2211,7 @@ screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_m
  * legacy app-aware-tone toggle so we don't surprise existing
  * users on first upgrade.
  */
-write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; continuous_improvement_hq_capture?: boolean;
+write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
 /**
  * Folders Vox Jot watches; new audio files dropped into these are
  * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).

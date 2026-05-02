@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
 import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
+import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
 import {
   DictateHistorySection,
   DictateModelsSection,
@@ -77,17 +78,11 @@ function getSectionFromUrl(): string {
 
 const DetailApp: React.FC = () => {
   const [sectionId, setSectionId] = useState(getSectionFromUrl);
-  const { app_theme: appTheme } = useSettingsSlice(["app_theme"] as const);
+  const { app_theme: appTheme, app_font_scale: appFontScale } =
+    useSettingsSlice(["app_theme", "app_font_scale"] as const);
   const refreshSettings = useRefreshSettings();
 
-  useEffect(() => {
-    const theme = appTheme ?? "system";
-    if (theme === "system") {
-      document.documentElement.removeAttribute("data-theme");
-    } else {
-      document.documentElement.setAttribute("data-theme", theme);
-    }
-  }, [appTheme]);
+  useApplyAppearanceSettings(appTheme, appFontScale);
 
   /** Detail is a separate WebView; re-fetch when focused so theme matches the main window. */
   useEffect(() => {

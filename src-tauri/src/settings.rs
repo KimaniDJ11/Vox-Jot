@@ -817,6 +817,8 @@ pub struct AppSettings {
     pub snippets: Vec<Snippet>,
     #[serde(default = "default_app_theme")]
     pub app_theme: String,
+    #[serde(default = "default_app_font_scale")]
+    pub app_font_scale: f32,
     #[serde(default)]
     pub continuous_improvement_hq_capture: bool,
     /// Folders Vox Jot watches; new audio files dropped into these are
@@ -888,6 +890,10 @@ fn default_experimental_enabled() -> bool {
 
 fn default_app_theme() -> String {
     "system".to_string()
+}
+
+pub fn default_app_font_scale() -> f32 {
+    1.0
 }
 
 fn default_model() -> String {
@@ -1992,6 +1998,7 @@ pub fn get_default_settings() -> AppSettings {
         snippets_enabled: default_snippets_enabled(),
         snippets: Vec::new(),
         app_theme: default_app_theme(),
+        app_font_scale: default_app_font_scale(),
         continuous_improvement_hq_capture: false,
         watch_folders: Vec::new(),
         http_api_enabled: false,

@@ -18,8 +18,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { HighlightTrack } from "@/motion/HighlightTrack";
 import { Kbd } from "@/components/ui/Kbd";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
 import { crisp } from "@/motion/springs";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
+import { useSettingsSlice } from "@/hooks/useSettings";
 import { commands } from "@/bindings";
 import {
   interactiveFocusRingClass,
@@ -75,6 +77,10 @@ const ScratchpadApp: React.FC = () => {
   const activeNoteIdRef = useRef<number | null>(null);
   const titleValueRef = useRef("");
   const contentValueRef = useRef("");
+  const { app_theme: appTheme, app_font_scale: appFontScale } =
+    useSettingsSlice(["app_theme", "app_font_scale"] as const);
+
+  useApplyAppearanceSettings(appTheme, appFontScale);
 
   const setEditorArmed = useCallback(async (armed: boolean) => {
     const result = await commands.setScratchpadEditorArmed(armed);

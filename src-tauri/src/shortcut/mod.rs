@@ -568,6 +568,15 @@ pub fn change_app_theme_setting(app: AppHandle, theme: String) -> Result<(), Str
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_app_font_scale_setting(app: AppHandle, scale: f32) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.app_font_scale = scale.clamp(0.9, 1.3);
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_translate_to_english_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.translate_to_english = enabled;

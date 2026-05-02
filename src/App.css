@@ -1167,6 +1167,14 @@ input[type="range"]::-moz-range-thumb:active {
     z-index: 1;
   }
 
+  .app-macos-titlebar-overlay__drag-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
   /* Reserve space up to the title region (after traffic lights); env() is correct in WK when overlay title bar is used */
   .app-macos-titlebar-overlay__traffic-shim {
     pointer-events: none;

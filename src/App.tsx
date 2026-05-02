@@ -910,15 +910,23 @@ function App() {
           dir="ltr"
         >
           <div
+            className="app-macos-titlebar-overlay__drag-layer"
+            data-tauri-drag-region
+            aria-hidden
+          />
+          <div
             className="app-macos-titlebar-overlay__traffic-shim"
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
+          <div
+            className="app-macos-titlebar-overlay__leading flex"
+            data-tauri-drag-region
+          >
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
+              className={`app-no-drag border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
               onClick={toggleSidebarCollapsed}
               aria-label={
                 sidebarCollapsed

@@ -421,13 +421,21 @@ const ScratchpadApp: React.FC = () => {
         className={`app-macos-titlebar-overlay${macosWindowFullscreen ? " app-macos-titlebar-overlay--fullscreen" : ""}`}
         dir="ltr"
       >
+        <div
+          className="app-macos-titlebar-overlay__drag-layer"
+          data-tauri-drag-region
+          aria-hidden
+        />
         <div className="app-macos-titlebar-overlay__traffic-shim" aria-hidden />
-        <div className="app-macos-titlebar-overlay__leading app-no-drag flex">
+        <div
+          className="app-macos-titlebar-overlay__leading flex"
+          data-tauri-drag-region
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
+            className={`app-no-drag border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleCreateNote()}
             aria-label={t("jotPad.newNote")}
             title={t("jotPad.newNote")}
@@ -438,7 +446,7 @@ const ScratchpadApp: React.FC = () => {
             type="button"
             variant="ghost"
             size="icon-sm"
-            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
+            className={`app-no-drag border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleSpeakNote()}
             aria-label="Play note"
             title="Play note"
@@ -450,7 +458,7 @@ const ScratchpadApp: React.FC = () => {
             type="button"
             variant="ghost"
             size="icon-sm"
-            className={`border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
+            className={`app-no-drag border-transparent text-[var(--muted)] hover:text-[var(--accent)] ${titleBarOverlayButtonFocusClass}`}
             onClick={() => void handleStopSpeaking()}
             aria-label="Stop speaking"
             title="Stop speaking"

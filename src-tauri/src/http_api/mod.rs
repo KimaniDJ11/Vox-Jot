@@ -209,7 +209,7 @@ async fn handle_models(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     if let Err(response) = require_api_token(&state.app, &headers) {
-        return response;
+        return *response;
     }
     handle_models_authorized(state).await
 }
@@ -261,7 +261,7 @@ async fn handle_transcribe(
     mut multipart: Multipart,
 ) -> impl IntoResponse {
     if let Err(response) = require_api_token(&state.app, &headers) {
-        return response;
+        return *response;
     }
 
     // Pull the first file field — `file=@audio.wav` matches the way
@@ -350,7 +350,10 @@ async fn handle_transcribe(
     }
 }
 
-fn require_api_token(app: &AppHandle, headers: &HeaderMap) -> Result<(), axum::response::Response> {
+fn require_api_token(
+    app: &AppHandle,
+    headers: &HeaderMap,
+) -> Result<(), Box<axum::response::Response>> {
     let expected = get_settings_without_secrets(app).http_api_token;
     let expected = expected.trim();
     let provided = headers
@@ -369,13 +372,13 @@ fn require_api_token(app: &AppHandle, headers: &HeaderMap) -> Result<(), axum::r
         return Ok(());
     }
 
-    Err((
+    Err(Box::new((
         StatusCode::UNAUTHORIZED,
         Json(ErrorResponse {
             error: format!("missing or invalid {API_TOKEN_HEADER}"),
         }),
     )
-        .into_response())
+        .into_response()))
 }
 
 fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {

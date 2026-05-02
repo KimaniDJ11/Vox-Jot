@@ -80,6 +80,7 @@ import {
   RefinePhraseKeysSection,
   RefineTranslationSection,
   ShortcutsSettingsSection,
+  StoryAudioHistoryAppSection,
   StoryStudioAppSection,
 } from "@/components/AppSections";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
@@ -361,6 +362,13 @@ function App() {
           icon: BookOpen,
           title: "Story Studio",
           content: <StoryStudioAppSection />,
+        },
+        {
+          id: "story-audio-history",
+          label: "Generated Audio",
+          icon: FileAudio,
+          title: "Generated Audio",
+          content: <StoryAudioHistoryAppSection />,
         },
       ],
       settings: [

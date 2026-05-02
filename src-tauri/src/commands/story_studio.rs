@@ -6,10 +6,11 @@ use rodio::Source;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
@@ -54,12 +55,25 @@ pub struct StoryRenderResult {
     pub line_count: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryAudioItem {
+    pub id: String,
+    pub title: String,
+    pub script_text: String,
+    pub output_path: String,
+    pub created_at_ms: i64,
+    pub duration_ms: u32,
+    pub line_count: u32,
+    pub starred: bool,
+}
+
 struct ActiveStoryRender {
     render_id: String,
     stop_flag: Arc<AtomicBool>,
 }
 
 static ACTIVE_STORY_RENDER: Lazy<Mutex<Option<ActiveStoryRender>>> = Lazy::new(|| Mutex::new(None));
+static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
 
 #[tauri::command]
 #[specta::specta]
@@ -117,18 +131,99 @@ pub async fn play_story_audio(app: AppHandle, path: String) -> Result<(), String
     let output_device = settings.selected_output_device.clone();
     let volume = settings.tts_volume.clamp(0.0, 1.0);
     let path = PathBuf::from(path);
-    tokio::task::spawn_blocking(move || {
-        crate::audio_playback::play_audio_file_blocking(&path, output_device, volume)
-            .map_err(|err| format!("Failed to play story audio: {err}"))
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    {
+        let mut active = ACTIVE_STORY_PLAYBACK
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        if let Some(previous_flag) = active.as_ref() {
+            previous_flag.store(true, Ordering::Relaxed);
+        }
+        *active = Some(Arc::clone(&stop_flag));
+    }
+
+    let playback_flag = Arc::clone(&stop_flag);
+    let result = tokio::task::spawn_blocking(move || {
+        crate::audio_playback::play_audio_file_with_stop(
+            &path,
+            output_device,
+            volume,
+            &playback_flag,
+        )
+        .map_err(|err| format!("Failed to play story audio: {err}"))
     })
     .await
-    .map_err(|err| format!("Story audio playback task failed: {err}"))?
+    .map_err(|err| format!("Story audio playback task failed: {err}"))
+    .and_then(|result| result);
+
+    let mut active = ACTIVE_STORY_PLAYBACK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    if active
+        .as_ref()
+        .is_some_and(|active_flag| Arc::ptr_eq(active_flag, &stop_flag))
+    {
+        *active = None;
+    }
+
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn stop_story_audio() -> Result<(), String> {
+    if let Some(stop_flag) = ACTIVE_STORY_PLAYBACK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .as_ref()
+    {
+        stop_flag.store(true, Ordering::Relaxed);
+    }
+    Ok(())
 }
 
 #[tauri::command]
 #[specta::specta]
 pub fn reveal_story_audio(path: String) -> Result<(), String> {
     reveal_path(Path::new(&path))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_story_audio(app: AppHandle) -> Result<Vec<StoryAudioItem>, String> {
+    read_story_audio_items(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn toggle_story_audio_starred(app: AppHandle, id: String) -> Result<StoryAudioItem, String> {
+    let mut items = read_story_audio_items(&app)?;
+    let Some(item) = items.iter_mut().find(|item| item.id == id) else {
+        return Err("Story audio item no longer exists.".to_string());
+    };
+    item.starred = !item.starred;
+    let updated = item.clone();
+    write_story_audio_items(&app, &items)?;
+    emit_story_audio_updated(&app);
+    Ok(updated)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
+    let mut items = read_story_audio_items(&app)?;
+    let Some(index) = items.iter().position(|item| item.id == id) else {
+        return Err("Story audio item no longer exists.".to_string());
+    };
+    let item = items.remove(index);
+    let path = PathBuf::from(&item.output_path);
+    if path.exists() {
+        fs::remove_file(&path)
+            .map_err(|err| format!("Failed to delete story audio file: {err}"))?;
+    }
+    write_story_audio_items(&app, &items)?;
+    emit_story_audio_updated(&app);
+    Ok(())
 }
 
 async fn render_story_audio_inner(
@@ -224,12 +319,29 @@ async fn render_story_audio_inner(
         "complete",
     );
 
-    Ok(StoryRenderResult {
-        render_id: request.render_id,
-        output_path: output_path.to_string_lossy().to_string(),
+    let output_path = output_path.to_string_lossy().to_string();
+    let result = StoryRenderResult {
+        render_id: request.render_id.clone(),
+        output_path: output_path.clone(),
         duration_ms,
         line_count: total_lines,
-    })
+    };
+    upsert_story_audio_item(
+        &app,
+        StoryAudioItem {
+            id: request.render_id,
+            title: story_title_label(&request.title),
+            script_text: request.script_text,
+            output_path,
+            created_at_ms: now_ms(),
+            duration_ms,
+            line_count: total_lines,
+            starred: false,
+        },
+    )?;
+    emit_story_audio_updated(&app);
+
+    Ok(result)
 }
 
 fn emit_progress(
@@ -331,29 +443,187 @@ fn normalize_name(value: &str) -> String {
     value.trim().to_ascii_lowercase()
 }
 
-fn output_path_for_story(app: &AppHandle, title: &str) -> Result<PathBuf, String> {
+fn story_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = crate::portable::app_data_dir(app)
         .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
     let stories_dir = app_data_dir.join("stories");
     std::fs::create_dir_all(&stories_dir)
         .map_err(|err| format!("Failed to create stories directory: {err}"))?;
+    Ok(stories_dir)
+}
+
+fn story_audio_index_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(story_audio_dir(app)?.join("story-audio-index.json"))
+}
+
+fn output_path_for_story(app: &AppHandle, title: &str) -> Result<PathBuf, String> {
+    let stories_dir = story_audio_dir(app)?;
     let title = sanitize_file_stem(title)
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "Story Studio".to_string());
     Ok(stories_dir.join(format!("{title}-{}.wav", Uuid::new_v4())))
 }
 
+fn read_story_audio_items(app: &AppHandle) -> Result<Vec<StoryAudioItem>, String> {
+    let mut items = read_story_audio_index(app)?;
+    let mut seen_paths = items
+        .iter()
+        .map(|item| item.output_path.clone())
+        .collect::<HashSet<_>>();
+    let mut changed = false;
+    for item in discover_story_audio_files(app)? {
+        if seen_paths.insert(item.output_path.clone()) {
+            items.push(item);
+            changed = true;
+        }
+    }
+    let before_retain = items.len();
+    items.retain(|item| Path::new(&item.output_path).exists());
+    changed |= items.len() != before_retain;
+    sort_story_audio_items(&mut items);
+    if changed {
+        write_story_audio_items(app, &items)?;
+    }
+    Ok(items)
+}
+
+fn read_story_audio_index(app: &AppHandle) -> Result<Vec<StoryAudioItem>, String> {
+    let path = story_audio_index_path(app)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let bytes =
+        fs::read(&path).map_err(|err| format!("Failed to read story audio index: {err}"))?;
+    serde_json::from_slice::<Vec<StoryAudioItem>>(&bytes)
+        .map_err(|err| format!("Failed to parse story audio index: {err}"))
+}
+
+fn write_story_audio_items(app: &AppHandle, items: &[StoryAudioItem]) -> Result<(), String> {
+    let mut items = items.to_vec();
+    sort_story_audio_items(&mut items);
+    let path = story_audio_index_path(app)?;
+    let bytes = serde_json::to_vec_pretty(&items)
+        .map_err(|err| format!("Failed to serialize story audio index: {err}"))?;
+    fs::write(path, bytes).map_err(|err| format!("Failed to write story audio index: {err}"))
+}
+
+fn upsert_story_audio_item(app: &AppHandle, item: StoryAudioItem) -> Result<(), String> {
+    let mut items = read_story_audio_items(app)?;
+    items.retain(|current| current.id != item.id && current.output_path != item.output_path);
+    items.push(item);
+    write_story_audio_items(app, &items)
+}
+
+fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, String> {
+    let stories_dir = story_audio_dir(app)?;
+    let mut items = Vec::new();
+    for entry in fs::read_dir(stories_dir)
+        .map_err(|err| format!("Failed to read story audio directory: {err}"))?
+    {
+        let entry = entry.map_err(|err| format!("Failed to read story audio entry: {err}"))?;
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("wav") {
+            continue;
+        }
+        let metadata = entry
+            .metadata()
+            .map_err(|err| format!("Failed to inspect story audio file: {err}"))?;
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("story-audio.wav")
+            .to_string();
+        let title = path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .map(story_title_from_file_stem)
+            .unwrap_or_else(|| "Untitled Story".to_string());
+        items.push(StoryAudioItem {
+            id: format!("file:{file_name}"),
+            title,
+            script_text: String::new(),
+            output_path: path.to_string_lossy().to_string(),
+            created_at_ms: metadata_time_ms(&metadata),
+            duration_ms: wav_duration_ms(&path).unwrap_or(0),
+            line_count: 0,
+            starred: false,
+        });
+    }
+    Ok(items)
+}
+
+fn sort_story_audio_items(items: &mut [StoryAudioItem]) {
+    items.sort_by(|left, right| {
+        right
+            .starred
+            .cmp(&left.starred)
+            .then_with(|| right.created_at_ms.cmp(&left.created_at_ms))
+    });
+}
+
+fn story_title_label(title: &str) -> String {
+    let title = title.trim();
+    if title.is_empty() {
+        "Untitled Story".to_string()
+    } else {
+        title.to_string()
+    }
+}
+
+fn story_title_from_file_stem(stem: &str) -> String {
+    let without_uuid = stem
+        .rsplit_once('-')
+        .map(|(prefix, suffix)| {
+            if Uuid::parse_str(suffix).is_ok() {
+                prefix
+            } else {
+                stem
+            }
+        })
+        .unwrap_or(stem);
+    let title = without_uuid.replace('-', " ");
+    story_title_label(&title)
+}
+
+fn metadata_time_ms(metadata: &fs::Metadata) -> i64 {
+    metadata
+        .created()
+        .or_else(|_| metadata.modified())
+        .ok()
+        .and_then(system_time_ms)
+        .unwrap_or_else(now_ms)
+}
+
+fn system_time_ms(time: SystemTime) -> Option<i64> {
+    time.duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| i64::try_from(duration.as_millis()).ok())
+}
+
+fn now_ms() -> i64 {
+    system_time_ms(SystemTime::now()).unwrap_or(0)
+}
+
+fn wav_duration_ms(path: &Path) -> Result<u32, String> {
+    let reader = hound::WavReader::open(path)
+        .map_err(|err| format!("Failed to read story WAV metadata: {err}"))?;
+    let spec = reader.spec();
+    if spec.sample_rate == 0 || spec.channels == 0 {
+        return Ok(0);
+    }
+    let frames = reader.duration() as f64 / f64::from(spec.channels);
+    Ok(((frames / f64::from(spec.sample_rate)) * 1000.0).round() as u32)
+}
+
+fn emit_story_audio_updated(app: &AppHandle) {
+    let _ = app.emit("story-audio-updated", ());
+}
+
 fn sanitize_file_stem(value: &str) -> Option<String> {
     let sanitized = value
         .trim()
         .chars()
-        .filter_map(|ch| {
-            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == ' ' {
-                Some(ch)
-            } else {
-                None
-            }
-        })
+        .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_' || *ch == ' ')
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -382,7 +652,7 @@ fn assemble_story_wav(
             samples.append(&mut line_samples);
         }
         if line_index + 1 < line_files.len() && silence_len > 0 {
-            samples.extend(std::iter::repeat(0.0).take(silence_len));
+            samples.extend(std::iter::repeat_n(0.0, silence_len));
         }
     }
 

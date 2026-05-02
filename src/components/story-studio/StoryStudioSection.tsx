@@ -46,6 +46,14 @@ interface StoryRenderRequest {
 
 const defaultScript =
   "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it.";
+const emptyVoicesTitle = "Save a voice before building a story";
+const emptyVoicesDescription =
+  "Story Studio uses Listen/My Voices presets as the cast. Create or save at least one voice preset, then come back here to assign characters.";
+const openMyVoicesLabel = "Open My Voices";
+const refreshLabel = "Refresh";
+const storyTitleLabel = "Story title";
+const scriptLinesLabel = "Script lines";
+const fixBeforeRenderingLabel = "Fix before rendering";
 
 export const StoryStudioSection: React.FC = () => {
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
@@ -55,9 +63,11 @@ export const StoryStudioSection: React.FC = () => {
   const [scriptText, setScriptText] = useState(defaultScript);
   const [pauseMs, setPauseMs] = useState(500);
   const [isRendering, setIsRendering] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState<StoryRenderProgress | null>(null);
   const [lastResult, setLastResult] = useState<StoryRenderResult | null>(null);
   const activeRenderIdRef = useRef<string | null>(null);
+  const activePlaybackIdRef = useRef<string | null>(null);
 
   const refreshPresets = useCallback(async () => {
     setIsLoadingPresets(true);
@@ -100,6 +110,7 @@ export const StoryStudioSection: React.FC = () => {
   const canRender =
     !isLoadingPresets &&
     !isRendering &&
+    !isPlaying &&
     presets.length > 0 &&
     validation.errors.length === 0;
 
@@ -186,26 +197,33 @@ export const StoryStudioSection: React.FC = () => {
   }, []);
 
   const handlePlay = useCallback(async () => {
-    if (!lastResult) {
+    if (!lastResult || isPlaying) {
       return;
     }
+    const playbackId = crypto.randomUUID();
+    activePlaybackIdRef.current = playbackId;
+    setIsPlaying(true);
     try {
       await invoke("play_story_audio", { path: lastResult.output_path });
     } catch (error) {
       toast.error(normalizeError(error, "Could not play story audio."));
+    } finally {
+      if (activePlaybackIdRef.current === playbackId) {
+        activePlaybackIdRef.current = null;
+        setIsPlaying(false);
+      }
     }
-  }, [lastResult]);
+  }, [isPlaying, lastResult]);
 
-  const handleReveal = useCallback(async () => {
-    if (!lastResult) {
-      return;
-    }
+  const handleStop = useCallback(async () => {
+    activePlaybackIdRef.current = null;
+    setIsPlaying(false);
     try {
-      await invoke("reveal_story_audio", { path: lastResult.output_path });
+      await invoke("stop_story_audio");
     } catch (error) {
-      toast.error(normalizeError(error, "Could not reveal story audio."));
+      toast.error(normalizeError(error, "Could not stop story audio."));
     }
-  }, [lastResult]);
+  }, []);
 
   const progressLabel = progress ? formatProgress(progress) : null;
   const visibleValidationErrors = validation.errors.slice(0, 4);
@@ -218,12 +236,10 @@ export const StoryStudioSection: React.FC = () => {
         <div className="max-w-md text-center">
           <Volume2 className="mx-auto mb-4 h-8 w-8 text-[var(--accent)]" />
           <h3 className="text-lg font-semibold text-[var(--text)]">
-            Save a voice before building a story
+            {emptyVoicesTitle}
           </h3>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Story Studio uses Listen/My Voices presets as the cast. Create or
-            save at least one voice preset, then come back here to assign
-            characters.
+            {emptyVoicesDescription}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Button
@@ -231,7 +247,7 @@ export const StoryStudioSection: React.FC = () => {
               variant="primary"
               onClick={() => void commands.showDetailView("my-voices")}
             >
-              Open My Voices
+              {openMyVoicesLabel}
             </Button>
             <Button
               type="button"
@@ -239,7 +255,7 @@ export const StoryStudioSection: React.FC = () => {
               onClick={() => void refreshPresets()}
             >
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              {refreshLabel}
             </Button>
           </div>
         </div>
@@ -248,11 +264,11 @@ export const StoryStudioSection: React.FC = () => {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto px-6 py-5">
-      <div className="mx-auto flex min-h-full max-w-5xl flex-col gap-4 pb-4">
+    <div className="px-6 py-5">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-4">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
           <label className="text-sm font-medium text-[var(--text)]">
-            Story title
+            {storyTitleLabel}
             <Input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -262,7 +278,7 @@ export const StoryStudioSection: React.FC = () => {
           </label>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
             <div className="text-xs font-semibold uppercase text-[var(--muted)]">
-              Script lines
+              {scriptLinesLabel}
             </div>
             <div className="mt-1 text-2xl font-semibold text-[var(--text)]">
               {validation.lines.length}
@@ -320,7 +336,7 @@ export const StoryStudioSection: React.FC = () => {
               >
                 <div className="mb-1 flex items-center gap-2 font-semibold">
                   <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
-                  Fix before rendering
+                  {fixBeforeRenderingLabel}
                 </div>
                 <ul className="space-y-1 pl-6">
                   {visibleValidationErrors.map((error) => (
@@ -330,8 +346,7 @@ export const StoryStudioSection: React.FC = () => {
                   ))}
                   {hiddenValidationErrorCount > 0 ? (
                     <li className="list-disc">
-                      {hiddenValidationErrorCount} more issue
-                      {hiddenValidationErrorCount === 1 ? "" : "s"}.
+                      {formatHiddenIssueCount(hiddenValidationErrorCount)}
                     </li>
                   ) : null}
                 </ul>
@@ -342,6 +357,7 @@ export const StoryStudioSection: React.FC = () => {
           <RenderControls
             canRender={canRender}
             isRendering={isRendering}
+            isPlaying={isPlaying}
             progressLabel={progressLabel}
             validationErrorCount={validation.errors.length}
             outputPath={lastResult?.output_path ?? null}
@@ -354,7 +370,7 @@ export const StoryStudioSection: React.FC = () => {
             onRender={handleRender}
             onCancel={handleCancel}
             onPlay={handlePlay}
-            onReveal={handleReveal}
+            onStop={handleStop}
             className="lg:sticky lg:top-0"
           />
         </div>
@@ -415,6 +431,10 @@ function formatProgress(progress: StoryRenderProgress): string {
   }
   const speaker = progress.speaker ? ` (${progress.speaker})` : "";
   return `Rendering line ${progress.current_line} of ${progress.total_lines}${speaker}...`;
+}
+
+function formatHiddenIssueCount(count: number): string {
+  return `${count} more issue${count === 1 ? "" : "s"}.`;
 }
 
 function normalizeError(error: unknown, fallback: string): string {

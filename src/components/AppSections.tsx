@@ -88,7 +88,10 @@ import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings"
 import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
 import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
-import { StoryStudioSection } from "@/components/story-studio";
+import {
+  StoryAudioHistorySection,
+  StoryStudioSection,
+} from "@/components/story-studio";
 import UpdateChecker from "@/components/update-checker";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
@@ -1169,8 +1172,12 @@ export const AboutSection: React.FC = () => {
 
 export const StoryStudioAppSection: React.FC = () => {
   return (
-    <div className="-mx-6 -mt-5 md:-mx-8 flex h-[calc(100vh-14rem)] flex-col">
+    <div className="-mx-6 -mt-5 md:-mx-8">
       <StoryStudioSection />
     </div>
   );
+};
+
+export const StoryAudioHistoryAppSection: React.FC = () => {
+  return <StoryAudioHistorySection />;
 };

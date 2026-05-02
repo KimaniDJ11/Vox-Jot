@@ -2,16 +2,23 @@ import React from "react";
 import {
   AlertCircle,
   CheckCircle2,
-  FolderOpen,
   Play,
   Square,
   WandSparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
+const outputTitle = "Output";
+const pauseBetweenLinesLabel = "Pause between lines";
+const cancelRenderLabel = "Cancel Render";
+const generateStoryAudioLabel = "Generate Story Audio";
+const playLabel = "Play";
+const stopLabel = "Stop";
+
 interface RenderControlsProps {
   canRender: boolean;
   isRendering: boolean;
+  isPlaying: boolean;
   progressLabel: string | null;
   validationErrorCount: number;
   outputPath: string | null;
@@ -22,13 +29,14 @@ interface RenderControlsProps {
   onRender: () => void;
   onCancel: () => void;
   onPlay: () => void;
-  onReveal: () => void;
+  onStop: () => void;
   className?: string;
 }
 
 export const RenderControls: React.FC<RenderControlsProps> = ({
   canRender,
   isRendering,
+  isPlaying,
   progressLabel,
   validationErrorCount,
   outputPath,
@@ -39,7 +47,7 @@ export const RenderControls: React.FC<RenderControlsProps> = ({
   onRender,
   onCancel,
   onPlay,
-  onReveal,
+  onStop,
   className = "",
 }) => {
   const durationLabel =
@@ -60,7 +68,9 @@ export const RenderControls: React.FC<RenderControlsProps> = ({
     >
       <div className="grid gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text)]">Output</h3>
+          <h3 className="text-sm font-semibold text-[var(--text)]">
+            {outputTitle}
+          </h3>
           <div
             className="mt-1 flex items-center gap-2 text-sm text-[var(--muted)]"
             aria-live="polite"
@@ -74,7 +84,7 @@ export const RenderControls: React.FC<RenderControlsProps> = ({
           </div>
         </div>
         <label className="text-sm font-medium text-[var(--text)]">
-          Pause between lines
+          {pauseBetweenLinesLabel}
           <input
             type="number"
             min={0}
@@ -114,7 +124,7 @@ export const RenderControls: React.FC<RenderControlsProps> = ({
             className="w-full sm:w-auto lg:w-full"
           >
             <Square className="h-4 w-4" />
-            Cancel Render
+            {cancelRenderLabel}
           </Button>
         ) : (
           <Button
@@ -125,28 +135,28 @@ export const RenderControls: React.FC<RenderControlsProps> = ({
             className="w-full sm:w-auto lg:w-full"
           >
             <WandSparkles className="h-4 w-4" />
-            Generate Story Audio
+            {generateStoryAudioLabel}
           </Button>
         )}
         <Button
           type="button"
           variant="secondary"
           onClick={onPlay}
-          disabled={!outputPath || isRendering}
+          disabled={!outputPath || isRendering || isPlaying}
           className="flex-1 sm:flex-none lg:flex-1"
         >
           <Play className="h-4 w-4" />
-          Play
+          {playLabel}
         </Button>
         <Button
           type="button"
           variant="secondary"
-          onClick={onReveal}
-          disabled={!outputPath || isRendering}
+          onClick={onStop}
+          disabled={!isPlaying || isRendering}
           className="flex-1 sm:flex-none lg:flex-1"
         >
-          <FolderOpen className="h-4 w-4" />
-          Reveal
+          <Square className="h-4 w-4" />
+          {stopLabel}
         </Button>
       </div>
     </section>

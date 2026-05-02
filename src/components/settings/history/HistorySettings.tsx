@@ -414,6 +414,8 @@ const historyActionButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyDangerActionButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+const historyConfirmDeleteButtonClassName =
+  "inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 
 const HistoryDetailSection: React.FC<{
   title: string;
@@ -806,31 +808,26 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
             />
           </button>
           {showDeleteConfirm ? (
-            <div className="flex items-center gap-1 rounded-full border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-1">
-              <span className="text-sm text-[var(--danger)]">
-                {t("common.delete")}?
-              </span>
-              <Button
+            <>
+              <button
                 type="button"
-                size="sm"
-                variant="danger-ghost"
                 onClick={() => void handleDeleteEntry()}
-                className="h-8 w-8 rounded-full p-0"
+                className={historyConfirmDeleteButtonClassName}
+                title={t("settings.history.delete")}
                 aria-label={t("settings.history.delete")}
               >
-                <Check width={14} height={14} />
-              </Button>
-              <Button
+                <Trash2 width={14} height={14} />
+              </button>
+              <button
                 type="button"
-                size="sm"
-                variant="ghost"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="h-8 w-8 rounded-full p-0 text-[var(--muted)]"
+                className={historyActionButtonClassName}
+                title={t("common.cancel")}
                 aria-label={t("common.cancel")}
               >
                 <X width={14} height={14} />
-              </Button>
-            </div>
+              </button>
+            </>
           ) : (
             <button
               type="button"

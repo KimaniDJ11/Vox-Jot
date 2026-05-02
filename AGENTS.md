@@ -5,6 +5,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Frontend UX Heuristics Policy
+
+For any frontend design or UI change, agents and AI coding tools must use the UX heuristics guardrails before changing code. In Codex, use the `ux-ai-guardrails` / Heuristics skill; in other tools, apply the same Nielsen usability heuristics, WCAG accessibility checks, and project-specific UI constraints from this file.
+
+- Preserve primary flows, visible status, keyboard access, focus visibility, target sizes, and existing component patterns unless explicitly asked to change them.
+- Do not add steps, hide information, reorder navigation, reduce contrast, or introduce decorative UI treatment without a functional reason.
+- When completing frontend work, mention the heuristic/accessibility check performed and any latency impact.
+
+## Commit and Push Quality Gate
+
+Whenever the user asks an agent or AI coding tool to commit and push, or the agent is about to commit and push on its own, the agent must first run and report a full bug, issue, error, security, and leak check appropriate to the changed scope.
+
+- Run available build, typecheck, lint, test, and Rust checks before committing. For this repo that usually means `bun run build`, `bun run lint`, `cargo check --manifest-path src-tauri/Cargo.toml`, and relevant `cargo test --manifest-path src-tauri/Cargo.toml` coverage unless the user explicitly narrows validation.
+- Run dependency/security and secret/leak checks when tooling is available, and report when a tool is missing rather than silently skipping it.
+- Inspect `git diff` / `git diff --check` and stage only intentional files. Do not stage unrelated user changes.
+- Do not run the macOS installed-app build path (`bun run mac:update-installed-app` / `mac:build-install`) unless explicitly requested.
+- Include the validation summary in the final response after commit and push.
+
 ## Latency Policy
 
 Vox Jot is a latency-sensitive dictation app. All agents and AI coding tools must treat latency as a hard product constraint.

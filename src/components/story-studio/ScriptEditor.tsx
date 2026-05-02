@@ -1,6 +1,10 @@
 import React from "react";
 import { Textarea } from "@/components/ui/Textarea";
 
+const scriptTitle = "Script";
+const scriptDescription =
+  "Use one line per spoken part in Character: dialogue format.";
+
 interface ScriptEditorProps {
   value: string;
   disabled?: boolean;
@@ -15,10 +19,10 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-[var(--text)]">Script</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Use one line per spoken part in Character: dialogue format.
-        </p>
+        <h3 className="text-sm font-semibold text-[var(--text)]">
+          {scriptTitle}
+        </h3>
+        <p className="mt-1 text-sm text-[var(--muted)]">{scriptDescription}</p>
       </div>
       <Textarea
         value={value}

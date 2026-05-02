@@ -129,11 +129,10 @@ describe("SidebarModelLaunchers", () => {
       root.render(<SidebarModelLaunchers />);
     });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("PP-OCRv5");
     });
 
-    expect(container.textContent).toContain("PP-OCRv5");
     expect(container.textContent).not.toContain("Smart (default)");
 
     await act(async () => {

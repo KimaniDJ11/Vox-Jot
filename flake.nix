@@ -143,7 +143,6 @@
               libevdev
               libx11
               libxtst
-              gtk-layer-shell
               openssl
               vulkan-loader
               vulkan-headers
@@ -161,6 +160,7 @@
               LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
               BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${lib.getVersion pkgs.llvmPackages.libclang}/include -isystem ${pkgs.glibc.dev}/include";
               ORT_LIB_LOCATION = "${pkgs.onnxruntime}/lib";
+              ORT_PREFER_DYNAMIC_LINK = "1";
               OPENSSL_NO_VENDOR = "1";
 
               # Tell Gstreamer where to find plugins
@@ -229,7 +229,6 @@
               libsoup_3
               webkitgtk_4_1
               gtk3
-              gtk-layer-shell
               glib
               libxtst
               libevdev

@@ -843,6 +843,7 @@ pub fn run(cli_args: CliArgs) {
         commands::get_detail_target_section,
         commands::list_installed_apps,
         commands::get_app_icon,
+        commands::get_file_icon,
         commands::convo::convo_check_availability,
         commands::convo::convo_prepare_session,
         commands::convo::convo_send_text_turn,

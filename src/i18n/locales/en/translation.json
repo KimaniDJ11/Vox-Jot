@@ -114,6 +114,7 @@
   "dictate": {
     "fileTranscription": {
       "title": "File Transcription",
+      "description": "Transcribe one audio or video file, or watch folders and save transcripts automatically.",
       "dropHint": "Drag & drop an audio or video file here",
       "orLabel": "or",
       "pickFile": "Pick File",

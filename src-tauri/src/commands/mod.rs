@@ -506,3 +506,97 @@ pub async fn get_app_icon(app: AppHandle, bundle_id: String) -> Result<Option<St
         Ok(None)
     }
 }
+
+/// Resolve a filesystem item to a base64-encoded PNG data URL of its native icon.
+///
+/// On macOS this asks `NSWorkspace` for the same icon Finder would show, so
+/// custom folder icons and color treatments come through when the OS exposes
+/// them. Other platforms return `None` and the frontend uses its folder glyph.
+#[specta::specta]
+#[tauri::command]
+pub async fn get_file_icon(app: AppHandle, path: String) -> Result<Option<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if path.trim().is_empty() || !std::path::Path::new(&path).exists() {
+            return Ok(None);
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.run_on_main_thread(move || {
+            let _ = tx.send(macos_file_icon_data_url(&path));
+        })
+        .map_err(|err| format!("Failed to schedule icon lookup: {}", err))?;
+
+        rx.recv()
+            .map_err(|err| format!("Failed to receive icon lookup result: {}", err))?
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, path);
+        Ok(None)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_file_icon_data_url(path: &str) -> Result<Option<String>, String> {
+    use base64::Engine;
+    use objc::runtime::Object;
+    use objc::{class, msg_send, sel, sel_impl};
+
+    let png_bytes = unsafe {
+        let pool: *mut Object = msg_send![class!(NSAutoreleasePool), new];
+        let ns_path: *mut Object = msg_send![class!(NSString), alloc];
+        let ns_path: *mut Object = msg_send![
+            ns_path,
+            initWithBytes:path.as_ptr()
+            length:path.len()
+            encoding:4usize
+        ];
+        if ns_path.is_null() {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+
+        let workspace: *mut Object = msg_send![class!(NSWorkspace), sharedWorkspace];
+        let icon: *mut Object = msg_send![workspace, iconForFile: ns_path];
+        let _: () = msg_send![ns_path, release];
+        if icon.is_null() {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+
+        let tiff_data: *mut Object = msg_send![icon, TIFFRepresentation];
+        if tiff_data.is_null() {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+
+        let bitmap: *mut Object = msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff_data];
+        if bitmap.is_null() {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+
+        let props: *mut Object = msg_send![class!(NSDictionary), dictionary];
+        let png_data: *mut Object =
+            msg_send![bitmap, representationUsingType:4usize properties:props];
+        if png_data.is_null() {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+
+        let bytes: *const u8 = msg_send![png_data, bytes];
+        let len: usize = msg_send![png_data, length];
+        if bytes.is_null() || len == 0 {
+            let _: () = msg_send![pool, drain];
+            return Ok(None);
+        }
+        let copied = std::slice::from_raw_parts(bytes, len).to_vec();
+        let _: () = msg_send![pool, drain];
+        copied
+    };
+
+    let encoded = base64::engine::general_purpose::STANDARD.encode(png_bytes);
+    Ok(Some(format!("data:image/png;base64,{}", encoded)))
+}

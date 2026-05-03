@@ -1393,7 +1393,7 @@ async transcribeFile(path: string) : Promise<Result<TranscriptionFileResult, str
 },
 /**
  * Render `segments` as SubRip (`.srt`) text and write it to `path`.
- * 
+ *
  * The frontend chooses the path via the standard save dialog so the user
  * retains full control over where files land. Returns the byte count
  * written for the in-app toast message.
@@ -1623,7 +1623,7 @@ async updateFieldSnapshot(id: number, snapshotText: string) : Promise<Result<nul
 },
 /**
  * Checks if the Mac is a laptop by detecting battery presence
- * 
+ *
  * This uses pmset to check for battery information.
  * Returns true if a battery is detected (laptop), false otherwise (desktop)
  */
@@ -2036,7 +2036,7 @@ async getDetailTargetSection() : Promise<Result<string | null, string>> {
 },
 /**
  * List GUI applications installed on the user's system.
- * 
+ *
  * On macOS this uses Spotlight (`mdfind`) to enumerate `.app` bundles and
  * reads each bundle's `CFBundleIdentifier` + `CFBundleName` from its
  * `Info.plist`.  On other platforms an empty list is returned.
@@ -2051,19 +2051,34 @@ async listInstalledApps() : Promise<Result<InstalledApp[], string>> {
 },
 /**
  * Resolve a bundle id to a base64-encoded PNG data URL of the app's icon.
- * 
+ *
  * On macOS we look up the `.app` via Spotlight, read `CFBundleIconFile` from
  * `Info.plist`, and convert the `.icns` to a 128×128 PNG using the system
  * `sips` tool. The PNG is cached on disk under
  * `<app_data>/app-icons/<bundle_id>.png` so subsequent calls are a single
  * file read.
- * 
+ *
  * Returns `Ok(None)` for unknown apps, missing icons, or non-macOS targets —
  * the frontend falls back to a letter monogram in that case.
  */
 async getAppIcon(bundleId: string) : Promise<Result<string | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_app_icon", { bundleId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Resolve a filesystem item to a base64-encoded PNG data URL of its native icon.
+ *
+ * On macOS this asks `NSWorkspace` for the same icon Finder would show, so
+ * custom folder icons and color treatments come through when the OS exposes
+ * them. Other platforms return `None` and the frontend uses its folder glyph.
+ */
+async getFileIcon(path: string) : Promise<Result<string | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_file_icon", { path }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2258,7 +2273,7 @@ async convoIsAudioCapturing() : Promise<Result<ConvoAudioCaptureStatus, string>>
 /** user-defined types **/
 
 export type ActiveAppContext = { bundle_id: string; localized_name: string }
-export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_engine?: ScreenContextOcrEngine; 
+export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding }>; push_to_talk: boolean; audio_feedback: boolean; audio_feedback_volume?: number; sound_theme?: SoundTheme; start_hidden?: boolean; autostart_enabled?: boolean; update_checks_enabled?: boolean; selected_model?: string; selected_stt_provider_id?: string; selected_stt_model_id?: string; always_on_microphone?: boolean; selected_microphone?: string | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; translation_output_mode?: TranslationOutputMode; translation_target_language?: string; translation_route_preference?: TranslationRoutePreference; translation_provider_id?: string; translation_model_ids?: Partial<{ [key in string]: string }>; translation_bilingual_layout?: TranslationBilingualLayout; translation_translate_snippets?: boolean; translation_destination_mode?: TranslationDestinationMode; selection_translation_destination_mode?: SelectionTranslationDestinationMode; tts_enabled?: boolean; tts_engine_preference?: TtsEnginePreference; tts_auto_readback_mode?: TtsAutoReadbackMode; tts_auto_readback_scope?: TtsAutoReadbackScope; tts_readback_text_mode?: TtsReadbackTextMode; tts_default_voice_id?: string | null; selected_tts_provider_id?: string; selected_tts_model_id?: string | null; selected_tts_voice_id?: string | null; selected_tts_profile_id?: string | null; tts_active_preset_id?: string | null; tts_voice_presets?: TtsVoicePreset[]; tts_rate?: number; tts_volume?: number; tts_stop_on_record?: boolean; speech_runtime_path?: string | null; tts_model_store_path?: string | null; speech_backend_override?: string | null; audio_enhancement_enabled?: boolean; audio_enhancement_model?: string; overlay_position?: OverlayPosition; recording_overlay_style?: RecordingOverlayStyle; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; local_privacy_mode?: boolean; screen_context_enabled?: boolean; screen_context_excluded_bundle_ids?: string[]; screen_context_pause_on_idle?: boolean; screen_context_idle_threshold_ms?: number; context_capture_mode?: ContextCaptureMode; screen_context_ocr_quality?: OcrQualityMode; screen_context_ocr_engine?: ScreenContextOcrEngine;
 /**
  * When set, points at a `OcrModelDescriptor.id` from the OCR catalog.
  * `None` means "use the built-in routing policy in
@@ -2266,7 +2281,7 @@ export type AppSettings = { bindings: Partial<{ [key in string]: ShortcutBinding
  * the catalog UI today — actual neural inference is gated on a
  * follow-up backend (see `ocr_models::OcrBackendKind`).
  */
-screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean; 
+screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_ms?: number; screen_context_token_budget?: number; screen_context_stale_threshold_ms?: number; post_process_mode?: PostProcessMode; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_key_status?: Partial<{ [key in string]: boolean }>; post_process_models?: Partial<{ [key in string]: string }>; selected_llm_provider_id?: string; selected_llm_model_id?: string; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; post_process_prompt_policy_version?: number; mute_while_recording?: boolean; audio_ducking_enabled?: boolean; append_trailing_space?: boolean; app_language?: string; global_language_sync_enabled?: boolean; experimental_enabled?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; typing_tool?: TypingTool; external_script_path: string | null; custom_filler_words?: string[] | null; personal_dictionary?: DictionaryEntry[]; max_rewrite_strength?: number; show_preview_before_paste?: boolean; fallback_to_raw_on_failure?: boolean; app_aware_tone_enabled?: boolean; tone_definitions?: ToneDefinition[]; write_rules?: WriteRule[]; write_rules_url_capture_enabled?: boolean;
 /**
  * Master toggle for the Write Profiles rule engine. Decoupled
  * from `app_aware_tone_enabled` so users can keep tone mappings
@@ -2275,22 +2290,22 @@ screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_m
  * legacy app-aware-tone toggle so we don't surprise existing
  * users on first upgrade.
  */
-write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean; 
+write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
 /**
  * Folders Vox Jot watches; new audio files dropped into these are
  * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
  */
-watch_folders?: WatchFolderConfig[]; 
+watch_folders?: WatchFolderConfig[];
 /**
  * Whether the loopback HTTP API server is enabled. Off by default;
  * flipping this on starts an `axum` server on `127.0.0.1` so the
  * `vox-jot` CLI and other tools can drive transcription externally.
  */
-http_api_enabled?: boolean; 
+http_api_enabled?: boolean;
 /**
  * Port the loopback API binds to when `http_api_enabled` is true.
  */
-http_api_port?: number; 
+http_api_port?: number;
 /**
  * Bearer token required by state-changing/local-control HTTP API routes.
  */
@@ -2322,23 +2337,23 @@ export type CustomSounds = { start: boolean; stop: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
  */
-export type DictationStats = { 
+export type DictationStats = {
 /**
  * Total words transcribed (lifetime).
  */
-total_words: number; 
+total_words: number;
 /**
  * Words transcribed today (local time).
  */
-today_words: number; 
+today_words: number;
 /**
  * Current daily streak (consecutive days with at least one transcription).
  */
-streak_days: number; 
+streak_days: number;
 /**
  * Accuracy percentage (0–100). Based on correction/snapshot data when available.
  */
-accuracy_percent: number | null; 
+accuracy_percent: number | null;
 /**
  * Total number of transcriptions (lifetime).
  */
@@ -2353,7 +2368,7 @@ export type HttpApiStatus = { enabled: boolean; port: number; token: string }
 /**
  * Result of changing keyboard implementation
  */
-export type ImplementationChangeResult = { success: boolean; 
+export type ImplementationChangeResult = { success: boolean;
 /**
  * List of binding IDs that were reset to defaults due to incompatibility
  */
@@ -2376,20 +2391,20 @@ export type Note = { id: number; title: string; content: string; created_at: num
  * Inference runtime an entry uses once its files and backend are available.
  * Rows become runnable when their expected local assets are present.
  */
-export type OcrBackendKind = 
+export type OcrBackendKind =
 /**
  * Paddle-style detector + recognizer pair (PP-OCRv5).
  */
-"paddle_det_rec" | 
+"paddle_det_rec" |
 /**
  * PaddleOCR-VL stacks (one model handles end-to-end OCR/VL).
  */
-"paddle_vl" | 
+"paddle_vl" |
 /**
  * Generic transformers VL stack (LightOnOCR, Chandra, Qwen2.5-VL,
  * Nemotron, GLM-OCR, DeepSeek-OCR, Dots.OCR, olmOCR-2).
  */
-"transformers_vl" | 
+"transformers_vl" |
 /**
  * Tesseract `tessdata_best` traineddata packs — feeds the existing
  * backup engine, not a "neural" backend.
@@ -2399,28 +2414,28 @@ export type OcrBackendKind =
  * How the catalog entry expects to be imported. Phase 1 only supports
  * `LocalDirectory` (user-picked folder).
  */
-export type OcrCatalogSourceKind = 
+export type OcrCatalogSourceKind =
 /**
  * Copied from a folder the user picks (or auto-migrated from a known
  * developer staging path on first launch).
  */
-"local_directory" | 
+"local_directory" |
 /**
  * Reserved for Phase 2 in-app HuggingFace download.
  */
 "hugging_face"
 export type OcrModelCatalog = { install_root: string; models: OcrModelDescriptor[] }
-export type OcrModelDescriptor = { id: string; title: string; vendor: string; description: string; source_kind: OcrCatalogSourceKind; backend: OcrBackendKind; size_hint_label: string; languages_label: string; installed: boolean; install_path: string | null; selected: boolean; 
+export type OcrModelDescriptor = { id: string; title: string; vendor: string; description: string; source_kind: OcrCatalogSourceKind; backend: OcrBackendKind; size_hint_label: string; languages_label: string; installed: boolean; install_path: string | null; selected: boolean;
 /**
  * Whether the app currently knows how to run inference for this entry.
  * Whether the app can attempt inference for this entry with the files
  * currently installed on disk.
  */
-runnable: boolean; 
+runnable: boolean;
 /**
  * HuggingFace repo the in-app downloader pulls from.
  */
-hf_repo_id: string; 
+hf_repo_id: string;
 /**
  * Public web URL pointing at the HF repo, surfaced in the UI for users
  * who want to inspect the mirror before downloading.
@@ -2438,22 +2453,22 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
-export type RecordingOverlayStyle = 
+export type RecordingOverlayStyle =
 /**
  * Pill-shaped overlay with a small waveform — the historical
  * default. Sits at the chosen `OverlayPosition`.
  */
-"compact" | 
+"compact" |
 /**
  * Wider overlay with a full waveform, partial-text strip, and a
  * cancel button.
  */
-"detailed" | 
+"detailed" |
 /**
  * Tiny dot in the corner — the smallest possible "I'm recording"
  * indicator. Useful when you want zero distraction.
  */
-"minimal" | 
+"minimal" |
 /**
  * macOS-only: hugs the camera notch area at the top of the
  * screen. Outside macOS this falls back to `Compact` at the top.
@@ -2470,7 +2485,7 @@ export type ScreenContextDiagnostics = { status: ContextCaptureStatus; has_scree
 export type ScreenContextHistoryMetadata = { source: string | null; capture_status: ContextCaptureStatus; cache_age_ms: number | null; summary: string | null; active_app_bundle_id: string | null; active_app_name: string | null; sent_externally: boolean; changed_output: boolean }
 /**
  * Selects which OCR engine the screen-context worker should use.
- * 
+ *
  * `NativeThenBackup` is the default: try the platform's built-in OCR first
  * (macOS Vision, Windows.Media.Ocr) and fall back to the bundled cross-platform
  * backup (Tesseract) on failure, timeout, or empty result. Linux always falls
@@ -2498,7 +2513,7 @@ export type StoryRenderRequest = { render_id: string; title: string; cast: Story
 export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.
- * 
+ *
  * `start_ms` and `end_ms` are absolute offsets from the start of the
  * source audio, expressed in milliseconds. `text` is the segment's
  * transcript without leading/trailing whitespace.
@@ -2540,13 +2555,13 @@ export type VoiceInfo = { id: string; label: string; locale: string | null; engi
  * so settings writes from the UI never collide with concurrent watcher
  * events for the same folder.
  */
-export type WatchFolderConfig = { id: string; path: string; output_format?: WatchFolderOutputFormat; 
+export type WatchFolderConfig = { id: string; path: string; output_format?: WatchFolderOutputFormat;
 /**
  * When true, the source audio file is deleted after a successful
  * transcription. Defaults to false because losing recordings to a
  * silent typo would be very bad.
  */
-delete_after?: boolean; 
+delete_after?: boolean;
 /**
  * Soft on/off for the row in the UI. The watcher service skips
  * disabled rows entirely so users can pause without removing them.
@@ -2555,32 +2570,32 @@ enabled?: boolean }
 /**
  * Output format for files written by the watch-folder service.
  */
-export type WatchFolderOutputFormat = 
+export type WatchFolderOutputFormat =
 /**
  * Plain transcript next to the source file as `<basename>.txt`.
  */
-"text" | 
+"text" |
 /**
  * SubRip subtitles (`.srt`); only meaningful when the engine
  * produced timed segments (Whisper / Parakeet today).
  */
-"srt" | 
+"srt" |
 /**
  * WebVTT subtitles (`.vtt`); same caveat as SRT.
  */
 "vtt"
 export type WindowsMicrophonePermissionStatus = { supported: boolean; overall_access: PermissionAccess; device_access: PermissionAccess; app_access: PermissionAccess; desktop_app_access: PermissionAccess }
 export type WriteRule = { id: string; name: string; enabled: boolean; priority: number; matchers: WriteRuleMatchers; overrides: WriteRuleOverrides }
-export type WriteRuleMatchers = { 
+export type WriteRuleMatchers = {
 /**
  * Empty means the rule can match any app.
  */
-bundle_ids?: string[]; 
+bundle_ids?: string[];
 /**
  * Empty means no URL constraint. Patterns match normalized host+path.
  */
 url_patterns?: string[] }
-export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null; 
+export type WriteRuleOverrides = { stt_model_id?: string | null; stt_language?: string | null; translate_to_english?: boolean | null; tone_id?: string | null; post_process_prompt_id?: string | null; auto_submit?: boolean | null; paste_method?: PasteMethod | null; append_trailing_space?: boolean | null; mute_while_recording?: boolean | null;
 /**
  * Force post-processing on/off when this rule matches, regardless of
  * which shortcut was pressed. `None` keeps the action's default behavior

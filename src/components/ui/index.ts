@@ -4,5 +4,6 @@ export { ToggleSwitch } from "./ToggleSwitch";
 export { SwitchControl } from "./SwitchControl";
 export { SettingContainer } from "./SettingContainer";
 export { SettingsGroup } from "./SettingsGroup";
+export { SegmentedControl } from "./SegmentedControl";
 export { Textarea } from "./Textarea";
 export { EmptyState } from "./EmptyState";

@@ -32,7 +32,7 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SettingsGroup } from "@/components/ui";
+import { SegmentedControl, SettingsGroup } from "@/components/ui";
 import { WriteRuleEditor } from "./WriteRuleEditor";
 import {
   groupWriteRules,
@@ -197,26 +197,24 @@ export const WriteRulesSettings: React.FC = () => {
             <Plus className="h-3.5 w-3.5" />
             {t("refine.writeRules.newRule")}
           </Button>
-          <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "individual" ? "primary-soft" : "ghost"}
-              className="border-transparent px-3"
-              onClick={() => setViewMode("individual")}
-            >
-              {t("refine.writeRules.view.individual")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "grouped" ? "primary-soft" : "ghost"}
-              className="border-transparent px-3"
-              onClick={() => setViewMode("grouped")}
-            >
-              {t("refine.writeRules.view.grouped")}
-            </Button>
-          </div>
+          <SegmentedControl<ViewMode>
+            value={viewMode}
+            onChange={setViewMode}
+            layoutId="write-profiles-view-toggle"
+            ariaLabel={t("refine.writeRules.view.ariaLabel", {
+              defaultValue: "Write profile view",
+            })}
+            items={[
+              {
+                value: "individual",
+                label: t("refine.writeRules.view.individual"),
+              },
+              {
+                value: "grouped",
+                label: t("refine.writeRules.view.grouped"),
+              },
+            ]}
+          />
         </div>
       </SettingsGroup>
 

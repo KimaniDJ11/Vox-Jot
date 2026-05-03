@@ -13,6 +13,7 @@ import {
   AppWindow,
   BookOpen,
   Cpu,
+  Dna,
   FileAudio,
   FlaskConical,
   History,
@@ -71,7 +72,7 @@ import {
   DiagnosticsSettingsSection,
   GeneralAppSettingsSection,
   JotPadSection,
-  ListenAutoReadbackSection,
+  ListenCreateVoicesSection,
   ListenMyVoicesSection,
   ListenVoiceCloningSection,
   OutputPasteSettingsSection,
@@ -87,7 +88,7 @@ import {
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 
 type OnboardingStep = "onboarding" | "done";
-type PrimaryMode = "dictate" | "refine" | "listen" | "story_studio";
+type PrimaryMode = "dictate" | "refine" | "listen";
 type RootView = PrimaryMode | "settings";
 
 type PostProcessPreviewRequest = {
@@ -131,7 +132,6 @@ const PrimaryModeSwitcher: React.FC<{
     { id: "dictate", label: "Dictate" },
     { id: "refine", label: "Refine" },
     { id: "listen", label: "Listen" },
-    { id: "story_studio", label: "Story Studio" },
   ];
 
   return (
@@ -337,6 +337,13 @@ function App() {
       ],
       listen: [
         {
+          id: "create-voices",
+          label: "Create Voices",
+          icon: WandSparkles,
+          title: "Create Voices",
+          content: <ListenCreateVoicesSection />,
+        },
+        {
           id: "my-voices",
           label: "My Voices",
           icon: Volume2,
@@ -346,24 +353,15 @@ function App() {
         {
           id: "voice-cloning",
           label: "Voice Cloning",
-          icon: WandSparkles,
+          icon: Dna,
           title: "Voice Cloning",
           content: <ListenVoiceCloningSection />,
         },
         {
-          id: "auto-readback",
-          label: "Auto-Readback",
-          icon: Play,
-          title: "Auto-Readback",
-          content: <ListenAutoReadbackSection />,
-        },
-      ],
-      story_studio: [
-        {
           id: "story-studio",
-          label: "Story Studio",
+          label: "Studio",
           icon: BookOpen,
-          title: "Story Studio",
+          title: "Studio",
           content: <StoryStudioAppSection />,
         },
         {
@@ -839,12 +837,14 @@ function App() {
         return;
       }
 
-      if (
-        view === "dictate" ||
-        view === "refine" ||
-        view === "listen" ||
-        view === "story_studio"
-      ) {
+      if (view === "story_studio") {
+        handleModeSelect("listen");
+        setActiveSectionId("story-studio");
+        lastSectionByView.current.listen = "story-studio";
+        return;
+      }
+
+      if (view === "dictate" || view === "refine" || view === "listen") {
         handleModeSelect(view);
       }
     });

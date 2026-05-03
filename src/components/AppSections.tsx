@@ -79,6 +79,7 @@ import { CorrectionDictionaryView } from "@/components/settings/corrections/Corr
 import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
 import {
   AutoReadbackSection as AutoReadbackPanel,
+  CreateVoicesSection as CreateVoicesPanel,
   MyVoicesSection as MyVoicesPanel,
   SpeechPackManagerSection,
   ListenVoiceCloningSection as VoiceCloningPanel,
@@ -473,18 +474,18 @@ export const ListenMyVoicesSection: React.FC = () => {
   );
 };
 
-export const ListenVoiceCloningSection: React.FC = () => {
+export const ListenCreateVoicesSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <VoiceCloningPanel showGroupTitle={false} />
+      <CreateVoicesPanel showGroupTitle={false} />
     </div>
   );
 };
 
-export const ListenAutoReadbackSection: React.FC = () => {
+export const ListenVoiceCloningSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <AutoReadbackPanel showGroupTitle={false} />
+      <VoiceCloningPanel showGroupTitle={false} />
     </div>
   );
 };
@@ -662,6 +663,8 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
         <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
+
+      <AutoReadbackPanel />
     </div>
   );
 };

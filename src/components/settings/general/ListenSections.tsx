@@ -165,6 +165,43 @@ function dedupeCatalogModels(
 
   return Array.from(deduped.values());
 }
+
+function voiceModelSelectionValue(
+  model: Pick<CatalogModelDescriptor, "provider_id" | "id"> | null | undefined,
+): string {
+  if (!model) return "__none__";
+  return `${model.provider_id}::${model.id}`;
+}
+
+function parseVoiceModelSelectionValue(value: string): {
+  providerId: string;
+  modelId: string;
+} {
+  const separatorIndex = value.indexOf("::");
+  if (separatorIndex === -1) {
+    return { providerId: "", modelId: "" };
+  }
+
+  return {
+    providerId: value.slice(0, separatorIndex),
+    modelId: value.slice(separatorIndex + 2),
+  };
+}
+
+function resolveVoiceModelSelection(
+  models: CatalogModelDescriptor[],
+  providerId: string,
+  modelId: string,
+): CatalogModelDescriptor | null {
+  return (
+    models.find(
+      (model) => model.provider_id === providerId && model.id === modelId,
+    ) ??
+    models.find((model) => model.provider_id === providerId) ??
+    models[0] ??
+    null
+  );
+}
 const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
   "openvoice",
   "chatterbox",
@@ -1377,19 +1414,13 @@ const VoiceArchitectSection: React.FC<{
   useEffect(() => {
     if (!speech.settings || !speech.activePreset) return;
 
-    const providerIdForControls =
-      speech.providerOptions.find(
-        (provider) => provider.value === draftProviderId,
-      )?.value ??
-      speech.providerOptions[0]?.value ??
-      "";
-    const modelOptionsForProvider = speech.visibleModels.filter(
-      (model) => model.provider_id === providerIdForControls,
+    const selectedModel = resolveVoiceModelSelection(
+      speech.visibleModels,
+      draftProviderId,
+      draftModelId,
     );
-    const modelIdForControls =
-      modelOptionsForProvider.find((model) => model.id === draftModelId)?.id ??
-      modelOptionsForProvider[0]?.id ??
-      "";
+    const providerIdForControls = selectedModel?.provider_id ?? "";
+    const modelIdForControls = selectedModel?.id ?? "";
     const matchesActiveModel =
       providerIdForControls === speech.activePreset.provider_id &&
       modelIdForControls === speech.activePreset.model_id;
@@ -1409,7 +1440,6 @@ const VoiceArchitectSection: React.FC<{
     draftModelId,
     draftProviderId,
     speech.activePreset,
-    speech.providerOptions,
     speech.settings,
     speech.visibleModels,
   ]);
@@ -1417,19 +1447,13 @@ const VoiceArchitectSection: React.FC<{
   useEffect(() => {
     if (!speech.settings || !speech.activePreset) return;
 
-    const providerIdForControls =
-      speech.providerOptions.find(
-        (provider) => provider.value === draftProviderId,
-      )?.value ??
-      speech.providerOptions[0]?.value ??
-      "";
-    const modelOptionsForProvider = speech.visibleModels.filter(
-      (model) => model.provider_id === providerIdForControls,
+    const selectedModel = resolveVoiceModelSelection(
+      speech.visibleModels,
+      draftProviderId,
+      draftModelId,
     );
-    const modelIdForControls =
-      modelOptionsForProvider.find((model) => model.id === draftModelId)?.id ??
-      modelOptionsForProvider[0]?.id ??
-      "";
+    const providerIdForControls = selectedModel?.provider_id ?? "";
+    const modelIdForControls = selectedModel?.id ?? "";
     const matchesActiveModel =
       providerIdForControls === speech.activePreset.provider_id &&
       modelIdForControls === speech.activePreset.model_id;
@@ -1487,7 +1511,6 @@ const VoiceArchitectSection: React.FC<{
     draftProviderId,
     speech.activePreset,
     speech.loadingVoices,
-    speech.providerOptions,
     speech.settings,
     speech.setStatusMessage,
     speech.visibleModels,
@@ -1513,24 +1536,31 @@ const VoiceArchitectSection: React.FC<{
     "Auto";
   const saveProfileName = saveProfileNameDraft.trim();
   const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
+  const draftSelectedModelForControls = resolveVoiceModelSelection(
+    speech.visibleModels,
+    draftProviderId,
+    draftModelId,
+  );
   const draftProviderIdForControls =
-    speech.providerOptions.find(
-      (provider) => provider.value === draftProviderId,
-    )?.value ??
+    draftSelectedModelForControls?.provider_id ??
     speech.providerOptions[0]?.value ??
     "";
   const supportsDraftManualVoiceId =
     draftProviderIdForControls === "local_sidecar_api";
-  const draftModelOptions = speech.visibleModels
-    .filter((model) => model.provider_id === draftProviderIdForControls)
-    .map((model) => ({
-      value: model.id,
-      label: `${formatSelectableLabel(model.label, modelOptionContext(model))}${model.installed ? "" : " (Download required)"}`,
-    }));
+  const draftModelOptions = speech.visibleModels.map((model) => {
+    const providerLabel =
+      speech.allProviders.find((provider) => provider.id === model.provider_id)
+        ?.label ?? model.provider_id;
+    return {
+      value: voiceModelSelectionValue(model),
+      label: `${providerLabel} - ${formatSelectableLabel(model.label, modelOptionContext(model))}${model.installed ? "" : " (Download required)"}`,
+    };
+  });
   const draftModelIdForControls =
-    draftModelOptions.find((model) => model.value === draftModelId)?.value ??
-    draftModelOptions[0]?.value ??
-    "";
+    draftSelectedModelForControls?.id ?? speech.visibleModels[0]?.id ?? "";
+  const draftModelSelectionValue = voiceModelSelectionValue(
+    draftSelectedModelForControls,
+  );
   const draftSelectedModel =
     speech.allModels.find(
       (model) =>
@@ -1848,43 +1878,30 @@ const VoiceArchitectSection: React.FC<{
             </div>
           </div>
 
-          {/* Right: Provider / Model / Voice selects */}
+          {/* Right: Model / Voice selects */}
           <div className={whiteWorkflowCardClassName}>
             <div className="grid content-start gap-2 md:grid-cols-2">
-              <WorkflowField label="Provider">
-                <SelectField
-                  value={draftProviderIdForControls}
-                  onChange={(value) => {
-                    const nextModelId =
-                      speech.visibleModels.find(
-                        (model) => model.provider_id === value,
-                      )?.id ?? "";
-                    lastDraftSelectionKeyRef.current = null;
-                    setDraftVoiceErrorMessage(null);
-                    setDraftProviderId(value);
-                    setDraftModelId(nextModelId);
-                  }}
-                  disabled={!speech.ttsEnabled || speech.loadingPlatform}
-                  options={speech.providerOptions}
-                />
-              </WorkflowField>
-
-              <WorkflowField label="Model">
-                <SelectField
-                  value={draftModelIdForControls}
-                  onChange={(value) => {
-                    lastDraftSelectionKeyRef.current = null;
-                    setDraftVoiceErrorMessage(null);
-                    setDraftModelId(value);
-                  }}
-                  disabled={
-                    !speech.ttsEnabled ||
-                    speech.loadingPlatform ||
-                    draftModelOptions.length === 0
-                  }
-                  options={draftModelOptions}
-                />
-              </WorkflowField>
+              <div className="md:col-span-2">
+                <WorkflowField label="Model">
+                  <SelectField
+                    value={draftModelSelectionValue}
+                    onChange={(value) => {
+                      const { providerId, modelId } =
+                        parseVoiceModelSelectionValue(value);
+                      lastDraftSelectionKeyRef.current = null;
+                      setDraftVoiceErrorMessage(null);
+                      setDraftProviderId(providerId);
+                      setDraftModelId(modelId);
+                    }}
+                    disabled={
+                      !speech.ttsEnabled ||
+                      speech.loadingPlatform ||
+                      draftModelOptions.length === 0
+                    }
+                    options={draftModelOptions}
+                  />
+                </WorkflowField>
+              </div>
 
               {!isVoiceFixedToModel(draftProviderIdForControls) &&
               !supportsDraftManualVoiceId ? (
@@ -1978,101 +1995,131 @@ const VoiceArchitectSection: React.FC<{
           title="Tuning"
           surfaceClassName={whiteWorkflowCardClassName}
         />
-
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-[var(--text)]">
-            {t("listen.myVoices.savedProfiles")}
-          </p>
-
-          <div className="grid max-h-[320px] gap-2 overflow-y-auto pe-1 lg:grid-cols-2">
-            {speech.presets.map((preset) => {
-              const isActive = preset.id === speech.activePreset?.id;
-              const presetVoiceLabel =
-                preset.voice_label_snapshot ?? preset.voice_id ?? "Automatic";
-
-              return (
-                <div
-                  key={preset.id}
-                  className={
-                    isActive
-                      ? "rounded-xl border border-[var(--accent)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-md)]"
-                      : "rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
-                  }
-                >
-                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                    <div className="min-w-0 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate text-sm font-semibold leading-none text-[var(--text)]">
-                          {preset.label}
-                        </p>
-                        {isActive ? (
-                          <Badge
-                            variant="primary"
-                            className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            {t("listen.myVoices.active")}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                        <Badge variant="secondary">{preset.model_id}</Badge>
-                        <Badge variant="secondary">{presetVoiceLabel}</Badge>
-                        {preset.voice_profile_id ? (
-                          <Badge variant="secondary">
-                            {t("listen.myVoices.clone")}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5 sm:justify-end">
-                      {!isActive ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => void speech.setActivePreset(preset.id)}
-                          disabled={!speech.ttsEnabled}
-                        >
-                          {t("listen.myVoices.useThisVoice")}
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          void speech.previewPreset(preset.id, previewTextDraft)
-                        }
-                        disabled={speech.previewingPresetId === preset.id}
-                        className="inline-flex items-center gap-1.5"
-                      >
-                        <Play className="h-3.5 w-3.5" />
-                        {t("listen.myVoices.preview")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger-ghost"
-                        size="icon-sm"
-                        onClick={() => void speech.removePreset(preset.id)}
-                        disabled={
-                          !speech.ttsEnabled || speech.presets.length <= 1
-                        }
-                        title={`Delete ${preset.label}`}
-                        aria-label={`Delete ${preset.label}`}
-                      >
-                        <Trash2 aria-hidden />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </>
+  );
+
+  if (!showTitle) {
+    return content;
+  }
+
+  return <SettingsGroup title="Create Voices">{content}</SettingsGroup>;
+};
+
+const SavedVoiceProfilesSection: React.FC<{
+  speech: ListenSpeechState;
+  showTitle?: boolean;
+}> = ({ speech, showTitle = true }) => {
+  const { t } = useTranslation();
+
+  if (!speech.settings || !speech.activePreset) return null;
+
+  const content = (
+    <div
+      className={`space-y-3 px-4 py-3 ${
+        !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
+      }`}
+    >
+      {speech.statusMessage ? (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
+          {speech.statusMessage}
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-[var(--text)]">
+          {t("listen.myVoices.savedProfiles")}
+        </p>
+
+        <div className="grid max-h-[520px] gap-2 overflow-y-auto pe-1 lg:grid-cols-2">
+          {speech.presets.map((preset) => {
+            const isActive = preset.id === speech.activePreset?.id;
+            const presetVoiceLabel =
+              preset.voice_label_snapshot ?? preset.voice_id ?? "Automatic";
+
+            return (
+              <div
+                key={preset.id}
+                className={
+                  isActive
+                    ? "rounded-xl border border-[var(--accent)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-md)]"
+                    : "rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-logo-primary/50 hover:bg-logo-primary/5 hover:shadow-md"
+                }
+              >
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate text-sm font-semibold leading-none text-[var(--text)]">
+                        {preset.label}
+                      </p>
+                      {isActive ? (
+                        <Badge
+                          variant="primary"
+                          className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {t("listen.myVoices.active")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+                      <Badge variant="secondary">{preset.model_id}</Badge>
+                      <Badge variant="secondary">{presetVoiceLabel}</Badge>
+                      {preset.voice_profile_id ? (
+                        <Badge variant="secondary">
+                          {t("listen.myVoices.clone")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                    {!isActive ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => void speech.setActivePreset(preset.id)}
+                        disabled={!speech.ttsEnabled}
+                      >
+                        {t("listen.myVoices.useThisVoice")}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        void speech.previewPreset(
+                          preset.id,
+                          DEFAULT_TTS_PREVIEW_TEXT,
+                        )
+                      }
+                      disabled={speech.previewingPresetId === preset.id}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      {t("listen.myVoices.preview")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger-ghost"
+                      size="icon-sm"
+                      onClick={() => void speech.removePreset(preset.id)}
+                      disabled={!speech.ttsEnabled || speech.presets.length <= 1}
+                      title={`Delete ${preset.label}`}
+                      aria-label={`Delete ${preset.label}`}
+                    >
+                      <Trash2 aria-hidden />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 
   if (!showTitle) {
@@ -3480,6 +3527,15 @@ const AutoReadbackPanel: React.FC<{
 };
 
 export const MyVoicesSection: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
+  const speech = useListenSpeechState();
+  return (
+    <SavedVoiceProfilesSection speech={speech} showTitle={showGroupTitle} />
+  );
+};
+
+export const CreateVoicesSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
   const speech = useListenSpeechState();

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { Settings } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 
@@ -53,6 +54,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { t } = useTranslation();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [generatedAudioPulse, setGeneratedAudioPulse] = useState(false);
+  const generatedAudioPulseTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const unlisten = listen("story-audio-updated", () => {
+      setGeneratedAudioPulse(true);
+      if (generatedAudioPulseTimerRef.current !== null) {
+        window.clearTimeout(generatedAudioPulseTimerRef.current);
+      }
+      generatedAudioPulseTimerRef.current = window.setTimeout(() => {
+        setGeneratedAudioPulse(false);
+        generatedAudioPulseTimerRef.current = null;
+      }, 6000);
+    });
+
+    return () => {
+      void unlisten.then((fn) => fn());
+      if (generatedAudioPulseTimerRef.current !== null) {
+        window.clearTimeout(generatedAudioPulseTimerRef.current);
+      }
+    };
+  }, []);
 
   const itemLayoutClass = collapsed
     ? "justify-center px-0 py-2"
@@ -121,9 +144,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -6 }}
                 transition={crisp}
-                className="sidebar__nav-label truncate text-[13px] font-semibold leading-5 tracking-[-0.005em]"
+                className="sidebar__nav-label flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold leading-5 tracking-[-0.005em]"
               >
-                {label}
+                <span className="truncate">{label}</span>
+                {id === "story-audio-history" && generatedAudioPulse ? (
+                  <span
+                    className="ms-auto inline-flex h-5 shrink-0 items-end gap-0.5 rounded-full bg-[var(--accent-soft)] px-2 py-1"
+                    aria-hidden="true"
+                  >
+                    {[0, 1, 2].map((index) => (
+                      <span
+                        key={index}
+                        className="h-2 w-1 rounded-full bg-[var(--accent)] animate-[pulse_0.8s_ease-in-out_infinite]"
+                        style={{ animationDelay: `${index * 120}ms` }}
+                      />
+                    ))}
+                  </span>
+                ) : null}
               </motion.span>
             )}
           </AnimatePresence>

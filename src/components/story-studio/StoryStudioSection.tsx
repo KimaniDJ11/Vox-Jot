@@ -8,16 +8,25 @@ import React, {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle2, RefreshCw, Volume2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  Search,
+  Volume2,
+  WandSparkles,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import {
   listTtsVoicePresets,
   type TtsVoicePreset,
 } from "@/lib/ttsVoicePresets";
 import { commands } from "@/bindings";
 import { CastBuilder } from "./CastBuilder";
-import { RenderControls } from "./RenderControls";
 import { ScriptEditor } from "./ScriptEditor";
 import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
 
@@ -52,8 +61,16 @@ const emptyVoicesDescription =
 const openMyVoicesLabel = "Open My Voices";
 const refreshLabel = "Refresh";
 const storyTitleLabel = "Story title";
-const scriptLinesLabel = "Script lines";
 const fixBeforeRenderingLabel = "Fix before rendering";
+const generateLabel = "Generate";
+const cancelLabel = "Cancel";
+const studioToolAriaLabel = "Studio tools";
+const searchScriptLabel = "Search script";
+const clearSearchLabel = "Clear script search";
+const generatedAudioNotice = "Generated audio will appear in Generated Audio.";
+const pauseBetweenLinesLabel = "Pause between lines";
+
+type StudioTool = "script" | "cast";
 
 export const StoryStudioSection: React.FC = () => {
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
@@ -62,12 +79,11 @@ export const StoryStudioSection: React.FC = () => {
   const [cast, setCast] = useState<StoryCastMemberDraft[]>([]);
   const [scriptText, setScriptText] = useState(defaultScript);
   const [pauseMs, setPauseMs] = useState(500);
+  const [activeTool, setActiveTool] = useState<StudioTool>("script");
+  const [scriptSearchQuery, setScriptSearchQuery] = useState("");
   const [isRendering, setIsRendering] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState<StoryRenderProgress | null>(null);
-  const [lastResult, setLastResult] = useState<StoryRenderResult | null>(null);
   const activeRenderIdRef = useRef<string | null>(null);
-  const activePlaybackIdRef = useRef<string | null>(null);
 
   const refreshPresets = useCallback(async () => {
     setIsLoadingPresets(true);
@@ -110,9 +126,16 @@ export const StoryStudioSection: React.FC = () => {
   const canRender =
     !isLoadingPresets &&
     !isRendering &&
-    !isPlaying &&
     presets.length > 0 &&
     validation.errors.length === 0;
+  const readySummary =
+    validation.errors.length > 0
+      ? `${validation.errors.length} issue${validation.errors.length === 1 ? "" : "s"} to fix`
+      : `Ready to render: ${validation.lines.length} script line${validation.lines.length === 1 ? "" : "s"} and ${cast.length} cast member${cast.length === 1 ? "" : "s"}.`;
+  const scriptSearchMatchCount = useMemo(
+    () => countScriptSearchMatches(scriptText, scriptSearchQuery),
+    [scriptSearchQuery, scriptText],
+  );
 
   const addCharacter = useCallback(() => {
     setCast((currentCast) => [
@@ -170,8 +193,9 @@ export const StoryStudioSection: React.FC = () => {
       const result = await invoke<StoryRenderResult>("render_story_audio", {
         request,
       });
-      setLastResult(result);
-      toast.success("Story audio rendered.");
+      toast.success(
+        `Story audio rendered. Open Generated Audio to play ${result.line_count} line${result.line_count === 1 ? "" : "s"}.`,
+      );
     } catch (error) {
       const message = normalizeError(error, "Story render failed.");
       if (!message.toLocaleLowerCase().includes("cancelled")) {
@@ -193,35 +217,6 @@ export const StoryStudioSection: React.FC = () => {
       toast.message("Story render cancelled.");
     } catch (error) {
       toast.error(normalizeError(error, "Could not cancel story render."));
-    }
-  }, []);
-
-  const handlePlay = useCallback(async () => {
-    if (!lastResult || isPlaying) {
-      return;
-    }
-    const playbackId = crypto.randomUUID();
-    activePlaybackIdRef.current = playbackId;
-    setIsPlaying(true);
-    try {
-      await invoke("play_story_audio", { path: lastResult.output_path });
-    } catch (error) {
-      toast.error(normalizeError(error, "Could not play story audio."));
-    } finally {
-      if (activePlaybackIdRef.current === playbackId) {
-        activePlaybackIdRef.current = null;
-        setIsPlaying(false);
-      }
-    }
-  }, [isPlaying, lastResult]);
-
-  const handleStop = useCallback(async () => {
-    activePlaybackIdRef.current = null;
-    setIsPlaying(false);
-    try {
-      await invoke("stop_story_audio");
-    } catch (error) {
-      toast.error(normalizeError(error, "Could not stop story audio."));
     }
   }, []);
 
@@ -264,56 +259,173 @@ export const StoryStudioSection: React.FC = () => {
   }
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-6 pb-5">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-4">
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
-          <label className="text-sm font-medium text-[var(--text)]">
-            {storyTitleLabel}
-            <Input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              disabled={isRendering}
-              className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="primary-soft"
+              size="sm"
+              onClick={() => {
+                if (isRendering) {
+                  void handleCancel();
+                  return;
+                }
+                void handleRender();
+              }}
+              disabled={!isRendering && !canRender}
+            >
+              {isRendering ? (
+                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+              ) : (
+                <WandSparkles className="h-3.5 w-3.5" />
+              )}
+              {isRendering ? cancelLabel : generateLabel}
+            </Button>
+
+            <SegmentedControl<StudioTool>
+              value={activeTool}
+              onChange={setActiveTool}
+              layoutId="story-studio-tool-toggle"
+              ariaLabel={studioToolAriaLabel}
+              items={[
+                { value: "script", label: "Script" },
+                { value: "cast", label: "Cast" },
+              ]}
             />
-          </label>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
-            <div className="text-xs font-semibold uppercase text-[var(--muted)]">
-              {scriptLinesLabel}
-            </div>
-            <div className="mt-1 text-2xl font-semibold text-[var(--text)]">
-              {validation.lines.length}
-            </div>
           </div>
-        </div>
 
-        <div
-          className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
-            validation.errors.length > 0
-              ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--text)]"
-              : "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
-          }`}
-        >
-          {validation.errors.length > 0 ? (
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+          {activeTool === "script" ? (
+            <div className="ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
+              <label
+                className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
+                aria-label={searchScriptLabel}
+              >
+                <Search
+                  className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  value={scriptSearchQuery}
+                  onChange={(event) => setScriptSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && scriptSearchQuery) {
+                      setScriptSearchQuery("");
+                      event.preventDefault();
+                    }
+                  }}
+                  placeholder={searchScriptLabel}
+                  className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                />
+                {scriptSearchQuery ? (
+                  <button
+                    type="button"
+                    className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                    onClick={() => setScriptSearchQuery("")}
+                    aria-label={clearSearchLabel}
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                ) : null}
+              </label>
+              {scriptSearchQuery ? (
+                <span className="text-xs font-medium text-[var(--muted)]">
+                  {formatScriptSearchMatchCount(scriptSearchMatchCount)}
+                </span>
+              ) : null}
+            </div>
           ) : (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" />
+            <div
+              className={`ms-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
+                validation.errors.length > 0
+                  ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--text)]"
+                  : "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
+              }`}
+              aria-live="polite"
+            >
+              {validation.errors.length > 0 ? (
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
+              )}
+              <span className="truncate">{readySummary}</span>
+            </div>
           )}
-          <div>
-            <div className="font-semibold">
-              {validation.errors.length > 0
-                ? "Review needed before rendering"
-                : "Ready to render"}
-            </div>
-            <div className="mt-0.5 text-[var(--muted)]">
-              {validation.errors.length > 0
-                ? "Fix the listed cast or script issues, then generate the WAV."
-                : `${validation.lines.length} script line${validation.lines.length === 1 ? "" : "s"} and ${cast.length} cast member${cast.length === 1 ? "" : "s"} are ready.`}
-            </div>
-          </div>
         </div>
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-          <div className="min-w-0 space-y-4">
+        {isRendering ? (
+          <div
+            className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-sm)]"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold text-[var(--text)]">
+                {progressLabel ?? "Preparing story render..."}
+              </span>
+              <span className="shrink-0 text-xs font-medium text-[var(--muted)]">
+                {generatedAudioNotice}
+              </span>
+            </div>
+            <div
+              className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--panel-bg)]"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={getProgressPercent(progress)}
+            >
+              <div
+                className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-200"
+                style={{ width: `${getProgressPercent(progress)}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {validation.errors.length > 0 ? (
+          <div
+            className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
+            role="alert"
+          >
+            <div className="mb-1 flex items-center gap-2 font-semibold">
+              <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
+              {fixBeforeRenderingLabel}
+            </div>
+            <ul className="space-y-1 pl-6">
+              {visibleValidationErrors.map((error) => (
+                <li key={error} className="list-disc">
+                  {error}
+                </li>
+              ))}
+              {hiddenValidationErrorCount > 0 ? (
+                <li className="list-disc">
+                  {formatHiddenIssueCount(hiddenValidationErrorCount)}
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        ) : null}
+
+        {activeTool === "script" ? (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+            <label className="mb-4 block text-sm font-medium text-[var(--text)]">
+              {storyTitleLabel}
+              <Input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                disabled={isRendering}
+                className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
+              />
+            </label>
+            <ScriptEditor
+              value={scriptText}
+              onChange={setScriptText}
+              disabled={isRendering}
+            />
+          </div>
+        ) : (
+          <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
             <CastBuilder
               cast={cast}
               presets={presets}
@@ -323,57 +435,28 @@ export const StoryStudioSection: React.FC = () => {
               onUpdate={updateCharacter}
             />
 
-            <ScriptEditor
-              value={scriptText}
-              onChange={setScriptText}
-              disabled={isRendering}
-            />
-
-            {validation.errors.length > 0 ? (
-              <div
-                className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--text)]"
-                role="alert"
-              >
-                <div className="mb-1 flex items-center gap-2 font-semibold">
-                  <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
-                  {fixBeforeRenderingLabel}
-                </div>
-                <ul className="space-y-1 pl-6">
-                  {visibleValidationErrors.map((error) => (
-                    <li key={error} className="list-disc">
-                      {error}
-                    </li>
-                  ))}
-                  {hiddenValidationErrorCount > 0 ? (
-                    <li className="list-disc">
-                      {formatHiddenIssueCount(hiddenValidationErrorCount)}
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
-            ) : null}
+            <label className="block text-sm font-medium text-[var(--text)]">
+              {pauseBetweenLinesLabel}
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                step={100}
+                value={pauseMs}
+                onChange={(event) =>
+                  setPauseMs(
+                    Math.min(
+                      Math.max(Number.parseInt(event.target.value, 10) || 0, 0),
+                      10000,
+                    ),
+                  )
+                }
+                disabled={isRendering}
+                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+              />
+            </label>
           </div>
-
-          <RenderControls
-            canRender={canRender}
-            isRendering={isRendering}
-            isPlaying={isPlaying}
-            progressLabel={progressLabel}
-            validationErrorCount={validation.errors.length}
-            outputPath={lastResult?.output_path ?? null}
-            durationMs={lastResult?.duration_ms ?? null}
-            lineCount={lastResult?.line_count ?? validation.lines.length}
-            pauseMs={pauseMs}
-            onPauseChange={(value) =>
-              setPauseMs(Math.min(Math.max(value, 0), 10000))
-            }
-            onRender={handleRender}
-            onCancel={handleCancel}
-            onPlay={handlePlay}
-            onStop={handleStop}
-            className="lg:sticky lg:top-0"
-          />
-        </div>
+        )}
       </div>
     </div>
   );
@@ -435,6 +518,54 @@ function formatProgress(progress: StoryRenderProgress): string {
 
 function formatHiddenIssueCount(count: number): string {
   return `${count} more issue${count === 1 ? "" : "s"}.`;
+}
+
+function countScriptSearchMatches(scriptText: string, query: string): number {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  let count = 0;
+  let index = 0;
+  const normalizedScript = scriptText.toLocaleLowerCase();
+
+  while (index < normalizedScript.length) {
+    const nextIndex = normalizedScript.indexOf(normalizedQuery, index);
+    if (nextIndex === -1) {
+      break;
+    }
+    count += 1;
+    index = nextIndex + normalizedQuery.length;
+  }
+
+  return count;
+}
+
+function formatScriptSearchMatchCount(count: number): string {
+  return `${count} match${count === 1 ? "" : "es"}`;
+}
+
+function getProgressPercent(progress: StoryRenderProgress | null): number {
+  if (!progress) {
+    return 8;
+  }
+  if (progress.status === "assembling") {
+    return 92;
+  }
+  if (progress.status === "complete") {
+    return 100;
+  }
+  if (progress.status === "validating" || progress.status === "queued") {
+    return 8;
+  }
+  if (progress.total_lines <= 0) {
+    return 8;
+  }
+  return Math.min(
+    90,
+    Math.max(8, Math.round((progress.current_line / progress.total_lines) * 90)),
+  );
 }
 
 function normalizeError(error: unknown, fallback: string): string {

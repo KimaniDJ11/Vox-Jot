@@ -1392,7 +1392,7 @@
       "searchLanguages": "Search languages",
       "voiceProfileName": "New voice profile name",
       "voiceProfileNote": "Optional note about this speaker",
-      "voiceProfileTranscript": "Optional transcript of the reference audio"
+      "voiceProfileTranscript": "Use the exact words spoken when you have them."
     }
   },
   "refine": {

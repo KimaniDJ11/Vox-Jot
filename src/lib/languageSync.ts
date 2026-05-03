@@ -17,8 +17,6 @@ const AUTO_TTS_PROVIDER_PREFERENCE: Record<string, number> = {
 const EXCLUDED_AUTO_TTS_PROVIDER_IDS = new Set([
   "qwen3_native",
   "local_sidecar_api",
-  "tada_local",
-  "hf_s2s_local",
 ]);
 
 export function appLanguageToSttLanguage(

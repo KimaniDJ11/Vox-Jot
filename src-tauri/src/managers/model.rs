@@ -26,7 +26,6 @@ pub enum EngineType {
     MoonshineStreaming,
     SenseVoice,
     GigaAM,
-    QwenAudio,
     MlxAudioStt,
     AppleSpeech,
     AppleSpeechStreaming,
@@ -102,7 +101,6 @@ impl ModelManager {
             EngineType::MoonshineStreaming => "stt_moonshine_streaming",
             EngineType::SenseVoice => "stt_sensevoice",
             EngineType::GigaAM => "stt_gigaam",
-            EngineType::QwenAudio => "stt_qwen",
             EngineType::MlxAudioStt => "stt_mlx_audio",
             EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => "stt_apple_speech",
         }
@@ -924,32 +922,6 @@ impl ModelManager {
                 supports_translation: false,
                 is_recommended: false,
                 supported_languages: gigaam_languages,
-                is_custom: false,
-            },
-        );
-
-        available_models.insert(
-            "qwen2-audio-7b".to_string(),
-            ModelInfo {
-                id: "qwen2-audio-7b".to_string(),
-                name: "Qwen2 Audio 7B".to_string(),
-                description:
-                    "Advanced Audio-LLM for transcription and understanding. (Coming Soon)"
-                        .to_string(),
-                filename: "qwen2-audio-7b".to_string(),
-                url: None, // Placeholder for now
-                sha256: None,
-                size_mb: 14000,
-                is_downloaded: false,
-                is_downloading: false,
-                partial_size: 0,
-                is_directory: true,
-                engine_type: EngineType::QwenAudio,
-                accuracy_score: 0.95,
-                speed_score: 0.20,
-                supports_translation: true,
-                is_recommended: false,
-                supported_languages: vec!["en".to_string(), "zh".to_string()],
                 is_custom: false,
             },
         );

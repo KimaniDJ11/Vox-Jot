@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
@@ -30,6 +31,8 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
   onRemove,
   onUpdate,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -69,7 +72,7 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
                   onUpdate(member.id, { characterName: event.target.value })
                 }
                 disabled={disabled}
-                placeholder="Narrator"
+                placeholder={t("storyStudio.cast.characterPlaceholder")}
                 className="w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
               />
               <select

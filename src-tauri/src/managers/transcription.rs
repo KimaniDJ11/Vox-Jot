@@ -537,11 +537,6 @@ impl TranscriptionManager {
                 })?;
                 LoadedEngine::GigaAM(engine)
             }
-            EngineType::QwenAudio => {
-                return Err(anyhow::anyhow!(
-                    "QwenAudio engine implementation is coming soon."
-                ));
-            }
             EngineType::MlxAudioStt => {
                 let sidecar = self
                     .app_handle

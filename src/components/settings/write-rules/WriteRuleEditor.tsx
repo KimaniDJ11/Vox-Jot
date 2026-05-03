@@ -13,6 +13,7 @@
 
 import React, { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { LLMPrompt, ToneDefinition, WriteRule } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -28,7 +29,6 @@ const backLabel = "Back to profiles";
 const newProfileTitle = "New profile";
 const editProfileTitle = "Edit profile";
 const nameLabel = "Profile name";
-const namePlaceholder = "e.g. Slack & Discord chats";
 const enabledLabel = "Enabled";
 const enabledDescription =
   "Disabled profiles are kept in the list but ignored during dictation.";
@@ -73,6 +73,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   onCancel,
   saveError,
 }) => {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<WriteRule>(rule ?? createRule());
   const [activeTab, setActiveTab] = useState<OverrideTab>("speech");
   const isNew = !rule;
@@ -144,7 +145,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           </label>
           <Input
             value={draft.name}
-            placeholder={namePlaceholder}
+            placeholder={t("refine.writeRules.editor.namePlaceholder")}
             onChange={(event) =>
               setDraft({ ...draft, name: event.target.value })
             }

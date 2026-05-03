@@ -296,12 +296,6 @@ fn stt_provider_meta(
             "Sber / Vox Jot assets",
             "GigaAM engine",
         ),
-        EngineType::QwenAudio => (
-            "stt_qwen",
-            "Alibaba Qwen Audio",
-            "Alibaba Cloud / Qwen",
-            "Qwen Audio engine",
-        ),
         EngineType::MlxAudioStt => (
             "stt_mlx_audio",
             "MLX Audio Runtime",
@@ -486,6 +480,44 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             }
         })
         .collect();
+
+    if catalog_models
+        .iter()
+        .any(|model| model.provider_id == "stt_qwen")
+        && !providers.iter().any(|provider| provider.id == "stt_qwen")
+    {
+        providers.push(ProviderDescriptor {
+            id: "stt_qwen".to_string(),
+            domain: ModelDomain::Stt,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "Alibaba Qwen ASR".to_string(),
+            description:
+                "Qwen speech recognition models served through the shared local transcription runtime."
+                    .to_string(),
+            source_label: "Alibaba Cloud / Qwen".to_string(),
+            runtime: RuntimeRequirement {
+                id: "stt_mlx_audio".to_string(),
+                label: "Shared mlx-audio sidecar".to_string(),
+                engine_family: "qwen_asr".to_string(),
+                auto_routed: true,
+            },
+            available: true,
+            local_only: true,
+            coming_soon: false,
+            license_label: None,
+            capabilities: CapabilityFlags {
+                downloadable: true,
+                loadable: true,
+                local_only: true,
+                supports_translation: false,
+                supports_streaming: false,
+                supports_voice_cloning: false,
+                supports_instruction_prompt: false,
+                supports_inline_tags: false,
+                coming_soon: false,
+            },
+        });
+    }
 
     let stt_collection = fetch_hf_collection_repo_ids(&stt_collection_slug()).await;
     if !stt_collection.is_empty() {
@@ -1258,7 +1290,11 @@ pub async fn set_stt_platform_selection(
         .ok_or_else(|| format!("Model not found: {}", resolved_model_id))?;
 
     let expected_provider_id = stt_provider_meta(&model_info.engine_type).0;
-    if provider_id != expected_provider_id && provider_id != STT_HF_VERIFIED_PROVIDER_ID {
+    let catalog_provider_id = stt_catalog_provider_id(&model_info, expected_provider_id);
+    if provider_id != expected_provider_id
+        && provider_id != catalog_provider_id
+        && provider_id != STT_HF_VERIFIED_PROVIDER_ID
+    {
         return Err(format!(
             "Model '{}' belongs to provider '{}' rather than '{}'",
             resolved_model_id, expected_provider_id, provider_id

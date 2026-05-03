@@ -623,9 +623,6 @@ fn transcribe_audio(
                 .map_err(|err| anyhow!("GigaAM transcription failed: {}", err))?;
             result.text
         }
-        EngineType::QwenAudio => {
-            return Err(anyhow!("QwenAudio regression is not yet implemented."));
-        }
         EngineType::MlxAudioStt => {
             return Err(anyhow!(
                 "mlx-audio regression runs are not implemented for the CLI path yet."

@@ -274,7 +274,17 @@
         "triggerPlaceholder": "Was du sagst (z. B. meine E-Mail)",
         "expansionPlaceholder": "Was eingefügt wird (z. B. user@example.com)",
         "emptyDescription": "Phrase keys expand short spoken triggers into saved text while you dictate.",
-        "emptyExample": "For example, say “my email” to insert “hello@example.com.”"
+        "emptyExample": "For example, say “my email” to insert “hello@example.com.”",
+        "myKeys": "My keys",
+        "importedKeys": "Imported keys",
+        "viewLabel": "Phrase keys view",
+        "importDropHint": "Drag & drop a phrase keys JSON file here",
+        "pickImportFile": "Pick JSON file",
+        "importSuccess": "Phrase keys imported.",
+        "importFailed": "Failed to import phrase keys.",
+        "importJsonOnly": "Choose a JSON phrase keys file.",
+        "importTooLarge": "That file is too large to import.",
+        "duplicateTrigger": "A phrase key already uses that spoken trigger."
       }
     },
     "styles": {
@@ -892,7 +902,8 @@
       "audioDucking": {
         "label": "Audio Ducking",
         "description": "Lower other apps' volume while recording, then restore it when recording stops."
-      }
+      },
+      "routeInputPlaceholder": "Paste some dictated text to inspect the cleanup route."
     },
     "about": {
       "title": "Info",
@@ -1099,6 +1110,14 @@
         "errorPrefix": "API error:",
         "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt"
       }
+    },
+    "speechCleanup": {
+      "fillerWordsPlaceholder": "um\nuh\nlike"
+    },
+    "translation": {
+      "providerPlaceholder": "Choose a provider",
+      "modelPlaceholder": "Choose or type a model",
+      "customModelPlaceholder": "Type a custom translation model id"
     }
   },
   "footer": {
@@ -1355,6 +1374,15 @@
       "needsReferenceAudio": "Needs reference audio",
       "audioFile": "Audio file",
       "transcript": "Transcript"
+    },
+    "placeholders": {
+      "styleInstructions": "Warm, calm, confident, closer to a product demo than a podcast host.",
+      "savedVoiceName": "Name this saved voice",
+      "manualVoiceId": "Speaker / voice ID",
+      "searchLanguages": "Search languages",
+      "voiceProfileName": "New voice profile name",
+      "voiceProfileNote": "Optional note about this speaker",
+      "voiceProfileTranscript": "Optional transcript of the reference audio"
     }
   },
   "refine": {
@@ -1375,7 +1403,8 @@
       "matchers": {
         "appsLabel": "Apps",
         "urlsLabel": "URLs",
-        "addUrlPattern": "Add URL pattern (e.g. *.gmail.com)"
+        "addUrlPattern": "Add URL pattern (e.g. *.gmail.com)",
+        "searchAppsPlaceholder": "Search apps…"
       },
       "overrides": {
         "speech": "Speech",
@@ -1388,7 +1417,10 @@
         "result": "Matched: {{rule}}",
         "noMatch": "No rule matches."
       },
-      "overlayBadgeOpen": "Open profile in settings"
+      "overlayBadgeOpen": "Open profile in settings",
+      "editor": {
+        "namePlaceholder": "e.g. Slack & Discord chats"
+      }
     }
   },
   "dictate": {
@@ -1411,7 +1443,8 @@
       },
       "exportSrt": "Save .srt",
       "exportVtt": "Save .vtt",
-      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export."
+      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export.",
+      "description": "Transcribe one audio or video file, or watch folders and save transcripts automatically."
     },
     "watchFolders": {
       "title": "Watched folders",
@@ -1512,6 +1545,17 @@
     "tts": {
       "remove": "Remove {{modelName}}",
       "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
+    }
+  },
+  "commandMenu": {
+    "searchPlaceholder": "Type a command or search..."
+  },
+  "storyStudio": {
+    "cast": {
+      "characterPlaceholder": "Narrator"
+    },
+    "script": {
+      "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
     }
   }
 }

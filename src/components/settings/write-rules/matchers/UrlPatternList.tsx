@@ -10,11 +10,11 @@
 
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/Input";
 
 const fieldLabel = "URLs";
 const helpHint = "Optional. Use `*` as a wildcard. Skip `https://`.";
-const placeholder = "Add URL pattern (e.g. *.gmail.com)";
 const removeUrlPatternLabel = "Remove URL pattern";
 const noConstraintChip = "No URL constraint";
 const examplesLabel = "Examples:";
@@ -39,6 +39,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   patterns,
   onChange,
 }) => {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -104,7 +105,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
             addPattern(draft);
           }
         }}
-        placeholder={placeholder}
+        placeholder={t("refine.writeRules.matchers.addUrlPattern")}
         className="w-full"
       />
 

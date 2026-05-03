@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Textarea } from "@/components/ui/Textarea";
 
 const scriptTitle = "Script";
@@ -16,6 +17,8 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   disabled = false,
   onChange,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <section className="space-y-3">
       <div>
@@ -30,9 +33,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
         disabled={disabled}
         spellCheck={true}
         className="min-h-[180px] resize-y font-mono text-[13px] leading-6 lg:min-h-[220px]"
-        placeholder={
-          "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
-        }
+        placeholder={t("storyStudio.script.placeholder")}
       />
     </section>
   );

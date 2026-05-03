@@ -79,11 +79,6 @@ describe("resolveModelProviderId", () => {
         expected: "stt_gigaam",
       },
       {
-        title: "Qwen2 Audio 7B",
-        runtimeProviderId: "stt_qwen",
-        expected: "stt_qwen",
-      },
-      {
         title: "Qwen3 ASR MLX",
         runtimeProviderId: "stt_mlx_audio",
         expected: "stt_qwen",
@@ -323,7 +318,6 @@ describe("resolveModelProviderId", () => {
       "chatterbox",
       "kokoro",
       "xtts",
-      "tada_local",
       "mlx_kokoro",
       "mlx_chatterbox",
       "mlx_qwen3tts",

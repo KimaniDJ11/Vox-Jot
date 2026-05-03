@@ -690,6 +690,7 @@ export const ShortcutsSettingsSection: React.FC = () => {
 };
 
 const CustomFillerWordsSetting: React.FC = () => {
+  const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const fillerWords = getSetting("custom_filler_words");
   const [draft, setDraft] = useState((fillerWords || []).join("\n"));
@@ -722,7 +723,7 @@ const CustomFillerWordsSetting: React.FC = () => {
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={"um\nuh\nlike"}
+          placeholder={t("settings.speechCleanup.fillerWordsPlaceholder")}
           className="min-h-[120px]"
         />
         <div className="flex gap-2">
@@ -828,6 +829,7 @@ export const OutputPasteSettingsSection: React.FC = () => {
 };
 
 const TranslationProviderSettingsCard: React.FC = () => {
+  const { t } = useTranslation();
   const {
     getSetting,
     updateSetting,
@@ -878,7 +880,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
               void fetchPostProcessModels(value);
             }}
             options={providerOptions}
-            placeholder="Choose a provider"
+            placeholder={t("settings.translation.providerPlaceholder")}
           />
         </SettingContainer>
 
@@ -907,14 +909,14 @@ const TranslationProviderSettingsCard: React.FC = () => {
                   onRefresh={() => {
                     void fetchPostProcessModels(providerId);
                   }}
-                  placeholder="Choose or type a model"
+                  placeholder={t("settings.translation.modelPlaceholder")}
                 />
               )}
               <div className="flex flex-col gap-3 md:flex-row">
                 <Input
                   value={modelDraft}
                   onChange={(event) => setModelDraft(event.target.value)}
-                  placeholder="Type a custom translation model id"
+                  placeholder={t("settings.translation.customModelPlaceholder")}
                   className="flex-1 min-h-[44px]"
                 />
                 <Button size="sm" onClick={() => void saveModel()}>
@@ -1036,6 +1038,7 @@ export const DiagnosticsSettingsSection: React.FC = () => {
 };
 
 const DebugDiagnosticsPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [routeInput, setRouteInput] = useState("");
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -1117,7 +1120,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
         <Textarea
           value={routeInput}
           onChange={(event) => setRouteInput(event.target.value)}
-          placeholder="Paste some dictated text to inspect the cleanup route."
+          placeholder={t("settings.debug.routeInputPlaceholder")}
           className="min-h-[120px]"
         />
         <div className="flex gap-2">

@@ -221,8 +221,8 @@ describe("languageSync", () => {
       supported_languages: ["fr"],
     });
     const excludedModel = createModel({
-      id: "tada-fr",
-      provider_id: "tada_local",
+      id: "qwen3-fr",
+      provider_id: "qwen3_native",
       supported_languages: ["fr"],
     });
     const localeFallback = createModel({

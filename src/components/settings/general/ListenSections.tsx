@@ -450,8 +450,6 @@ function formatEngineFamilyLabel(engineFamily: string | null | undefined) {
     system: "System",
     sherpa_onnx: "Sherpa ONNX",
     sidecar: "Speech Runtime",
-    tada: "TADA",
-    speech_to_speech: "Speech to Speech",
   };
 
   if (knownLabels[normalized]) {
@@ -1328,7 +1326,7 @@ const VoiceTuningCard: React.FC<{
             }
             disabled={!ttsEnabled}
             className="min-h-[84px] !rounded-2xl"
-            placeholder="Warm, calm, confident, closer to a product demo than a podcast host."
+            placeholder={t("listen.placeholders.styleInstructions")}
           />
         </div>
       ) : null}
@@ -1849,7 +1847,7 @@ const VoiceArchitectSection: React.FC<{
                         }
                       }}
                       disabled={!speech.ttsEnabled}
-                      placeholder="Name this saved voice"
+                      placeholder={t("listen.placeholders.savedVoiceName")}
                       className="min-w-0 flex-1 max-w-none"
                     />
                     <Button
@@ -1976,7 +1974,7 @@ const VoiceArchitectSection: React.FC<{
                         voice_label_snapshot: event.target.value || null,
                       })
                     }
-                    placeholder="Speaker / voice ID"
+                    placeholder={t("listen.placeholders.manualVoiceId")}
                     disabled={!speech.ttsEnabled}
                     className="w-full max-w-none"
                   />
@@ -2826,7 +2824,7 @@ const EngineLibraryPanel: React.FC<{
                     setLanguageSearch("");
                   }
                 }}
-                placeholder="Search languages"
+                placeholder={t("listen.placeholders.searchLanguages")}
                 className="w-full rounded-md border border-mid-gray/40 bg-mid-gray/10 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-logo-primary"
               />
             </div>
@@ -3342,7 +3340,7 @@ const VoiceCloningSection: React.FC<{
           <Input
             value={speech.profileNameDraft}
             onChange={(event) => speech.setProfileNameDraft(event.target.value)}
-            placeholder="New voice profile name"
+            placeholder={t("listen.placeholders.voiceProfileName")}
             disabled={!speech.ttsEnabled}
             className="w-full"
           />
@@ -3351,7 +3349,7 @@ const VoiceCloningSection: React.FC<{
             onChange={(event) =>
               speech.setProfileDescriptionDraft(event.target.value)
             }
-            placeholder="Optional note about this speaker"
+            placeholder={t("listen.placeholders.voiceProfileNote")}
             disabled={!speech.ttsEnabled}
             className="w-full"
           />
@@ -3360,7 +3358,7 @@ const VoiceCloningSection: React.FC<{
             onChange={(event) =>
               speech.setProfileTranscriptDraft(event.target.value)
             }
-            placeholder="Optional transcript of the reference audio"
+            placeholder={t("listen.placeholders.voiceProfileTranscript")}
             disabled={!speech.ttsEnabled}
             className="min-h-[92px]"
           />

@@ -9,6 +9,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { commands, type InstalledApp } from "@/bindings";
 import { Input } from "@/components/ui/Input";
 import { AppMonogram } from "../AppMonogram";
@@ -17,7 +18,6 @@ const matchAnyChip = "Any app";
 const fieldLabel = "Apps";
 const helpHint =
   "Leave empty to match any app. Typing a name shows suggestions.";
-const placeholder = "Search apps…";
 const removeAppLabel = "Remove app";
 
 interface AppMultiPickerProps {
@@ -29,6 +29,7 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
   bundleIds,
   onChange,
 }) => {
+  const { t } = useTranslation();
   const [apps, setApps] = useState<InstalledApp[]>([]);
   const [query, setQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -139,7 +140,7 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
               setShowSuggestions(false);
             }
           }}
-          placeholder={placeholder}
+          placeholder={t("refine.writeRules.matchers.searchAppsPlaceholder")}
           className="w-full"
         />
         {showSuggestions && suggestions.length > 0 ? (

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Moon,
   Sun,
@@ -70,6 +71,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
   sectionJumps = [],
   onJumpToSection,
 }) => {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
 
@@ -344,7 +346,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
                 </svg>
                 <Command.Input
                   autoFocus
-                  placeholder="Type a command or search..."
+                  placeholder={t("commandMenu.searchPlaceholder")}
                   className="h-12 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
                 />
                 {/* eslint-disable-next-line i18next/no-literal-string */}

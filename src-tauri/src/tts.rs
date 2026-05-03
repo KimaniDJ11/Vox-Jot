@@ -10,16 +10,15 @@ use crate::settings::{
     TtsEnginePreference, TtsReadbackTextMode, TtsStyleControlValue, TtsVoicePreset,
     TtsVoiceTuningSettings, TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID,
     TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID, TTS_MODEL_SYSTEM_DEFAULT_ID,
-    TTS_MODEL_VIBEVOICE_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_HF_S2S_LOCAL_ID,
-    TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LFM_AUDIO_GGUF_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
-    TTS_PROVIDER_MLX_BARK_ID, TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID,
-    TTS_PROVIDER_MLX_DIA_ID, TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_KOKORO_ID,
-    TTS_PROVIDER_MLX_KUGEL_ID, TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_MING_OMNI_ID,
-    TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
-    TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID,
-    TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID,
-    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_TADA_LOCAL_ID, TTS_PROVIDER_VIBEVOICE_ID,
-    TTS_PROVIDER_XTTS_ID,
+    TTS_MODEL_VIBEVOICE_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_KOKORO_ID,
+    TTS_PROVIDER_LFM_AUDIO_GGUF_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_MLX_BARK_ID,
+    TTS_PROVIDER_MLX_CHATTERBOX_ID, TTS_PROVIDER_MLX_CSM_ID, TTS_PROVIDER_MLX_DIA_ID,
+    TTS_PROVIDER_MLX_FISH_AUDIO_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_KUGEL_ID,
+    TTS_PROVIDER_MLX_LFM_AUDIO_ID, TTS_PROVIDER_MLX_MING_OMNI_ID, TTS_PROVIDER_MLX_OUTE_ID,
+    TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID, TTS_PROVIDER_MLX_SPARK_ID,
+    TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID,
+    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
 use crate::translation::TranslationOrigin;
@@ -2629,7 +2628,7 @@ impl TtsManager {
             supports_voice_cloning: false,
             supports_instruction_prompt: false,
             supports_inline_tags: false,
-            coming_soon: !settings.experimental_enabled,
+            coming_soon: false,
         };
         let vv_runtime = RuntimeRequirement {
             id: "vibevoice".to_string(),
@@ -2650,7 +2649,7 @@ impl TtsManager {
             available: settings.experimental_enabled
                 && self.ensure_vibevoice_supported(settings).is_ok(),
             local_only: true,
-            coming_soon: !settings.experimental_enabled,
+            coming_soon: false,
             license_label: Some("Research-only".to_string()),
             capabilities: vv_capabilities,
         });
@@ -2781,7 +2780,7 @@ impl TtsManager {
                 supports_voice_cloning: false,
                 supports_instruction_prompt: false,
                 supports_inline_tags: false,
-                coming_soon: !settings.experimental_enabled,
+                coming_soon: false,
             },
             delivery_support: self.builtin_delivery_support(TTS_PROVIDER_VIBEVOICE_ID),
         });
@@ -2926,23 +2925,17 @@ impl TtsManager {
             auto_routed: true,
         };
 
-        let planned_capabilities = CapabilityFlags {
-            downloadable: false,
-            loadable: false,
+        let qwen3_capabilities = CapabilityFlags {
+            downloadable: true,
+            loadable: true,
             local_only: true,
             supports_translation: false,
             supports_streaming: true,
             supports_voice_cloning: true,
             supports_instruction_prompt: true,
-            supports_inline_tags: true,
-            coming_soon: true,
+            supports_inline_tags: false,
+            coming_soon: false,
         };
-
-        let mut qwen3_capabilities = planned_capabilities.clone();
-        qwen3_capabilities.downloadable = true;
-        qwen3_capabilities.loadable = true;
-        qwen3_capabilities.supports_inline_tags = false;
-        qwen3_capabilities.coming_soon = false;
         let qwen3_models = QWEN3_PACK_DEFINITIONS.iter().collect::<Vec<_>>();
 
         let mut providers = vec![
@@ -3029,69 +3022,27 @@ impl TtsManager {
             });
         }
 
-        providers.extend([
-            ProviderDescriptor {
-                id: TTS_PROVIDER_QWEN3_NATIVE_ID.to_string(),
-                domain: ModelDomain::Tts,
-                source_kind: CatalogSourceKind::Builtin,
-                label: "Qwen3 Native".to_string(),
-                description:
-                    "Native Qwen3 runtime with preset voices, instructions, and cloning support."
-                        .to_string(),
-                source_label: "Provider-hosted model weights".to_string(),
-                runtime: RuntimeRequirement {
-                    id: "qwen3_native".to_string(),
-                    label: "Qwen3 native runtime".to_string(),
-                    engine_family: "qwen3".to_string(),
-                    auto_routed: true,
-                },
-                available: qwen3_runtime_definition().is_some(),
-                local_only: true,
-                coming_soon: false,
-                license_label: Some("Apache-2.0".to_string()),
-                capabilities: qwen3_capabilities.clone(),
+        providers.push(ProviderDescriptor {
+            id: TTS_PROVIDER_QWEN3_NATIVE_ID.to_string(),
+            domain: ModelDomain::Tts,
+            source_kind: CatalogSourceKind::Builtin,
+            label: "Qwen3 Native".to_string(),
+            description:
+                "Native Qwen3 runtime with preset voices, instructions, and cloning support."
+                    .to_string(),
+            source_label: "Provider-hosted model weights".to_string(),
+            runtime: RuntimeRequirement {
+                id: "qwen3_native".to_string(),
+                label: "Qwen3 native runtime".to_string(),
+                engine_family: "qwen3".to_string(),
+                auto_routed: true,
             },
-            ProviderDescriptor {
-                id: TTS_PROVIDER_TADA_LOCAL_ID.to_string(),
-                domain: ModelDomain::Tts,
-                source_kind: CatalogSourceKind::Builtin,
-                label: "TADA Local".to_string(),
-                description: "Planned local sidecar integration for Hume TADA models.".to_string(),
-                source_label: "Provider-hosted model weights".to_string(),
-                runtime: RuntimeRequirement {
-                    id: "tada_local".to_string(),
-                    label: "TADA local sidecar".to_string(),
-                    engine_family: "tada".to_string(),
-                    auto_routed: true,
-                },
-                available: false,
-                local_only: true,
-                coming_soon: true,
-                license_label: Some("Llama 3.2".to_string()),
-                capabilities: planned_capabilities.clone(),
-            },
-            ProviderDescriptor {
-                id: TTS_PROVIDER_HF_S2S_LOCAL_ID.to_string(),
-                domain: ModelDomain::Tts,
-                source_kind: CatalogSourceKind::Builtin,
-                label: "HF Speech-to-Speech".to_string(),
-                description:
-                    "Planned local adapter for the Hugging Face speech-to-speech pipeline."
-                        .to_string(),
-                source_label: "Local pipeline adapter".to_string(),
-                runtime: RuntimeRequirement {
-                    id: "hf_s2s_local".to_string(),
-                    label: "speech-to-speech local pipeline".to_string(),
-                    engine_family: "speech_to_speech".to_string(),
-                    auto_routed: true,
-                },
-                available: false,
-                local_only: true,
-                coming_soon: true,
-                license_label: None,
-                capabilities: planned_capabilities.clone(),
-            },
-        ]);
+            available: qwen3_runtime_definition().is_some(),
+            local_only: true,
+            coming_soon: false,
+            license_label: Some("Apache-2.0".to_string()),
+            capabilities: qwen3_capabilities.clone(),
+        });
 
         providers.extend(self.managed_runtime_provider_descriptors());
         providers.extend(self.local_binary_provider_descriptors(settings));
@@ -3272,70 +3223,6 @@ impl TtsManager {
                 delivery_support: self.builtin_delivery_support(TTS_PROVIDER_SHERPA_PACK_ID),
             }
         }));
-
-        // Planned builtin model placeholders for providers not yet served by the runtime.
-        models.extend(
-            [
-                (
-                    "tada-1b",
-                    TTS_PROVIDER_TADA_LOCAL_ID,
-                    "TADA 1B",
-                    "English voice cloning and long-form generation.",
-                    Some("Llama 3.2"),
-                ),
-                (
-                    "tada-3b-ml",
-                    TTS_PROVIDER_TADA_LOCAL_ID,
-                    "TADA 3B ML",
-                    "Multilingual local sidecar model.",
-                    Some("Llama 3.2"),
-                ),
-                (
-                    "hf-s2s-default",
-                    TTS_PROVIDER_HF_S2S_LOCAL_ID,
-                    "speech-to-speech Adapter",
-                    "Local adapter that orchestrates external TTS backends.",
-                    None,
-                ),
-            ]
-            .into_iter()
-            .map(
-                |(id, provider_id, label, description, license_label)| CatalogModelDescriptor {
-                    id: id.to_string(),
-                    provider_id: provider_id.to_string(),
-                    domain: ModelDomain::Tts,
-                    source_kind: CatalogSourceKind::Builtin,
-                    label: label.to_string(),
-                    description: description.to_string(),
-                    installed: false,
-                    selected: selected_provider_id == provider_id
-                        && selected_model_id.as_deref() == Some(id),
-                    active: false,
-                    runnable: false,
-                    downloadable: false,
-                    source_label: "Planned provider integration".to_string(),
-                    runtime: providers
-                        .iter()
-                        .find(|provider| provider.id == provider_id)
-                        .map(|provider| provider.runtime.clone())
-                        .unwrap_or(RuntimeRequirement {
-                            id: provider_id.to_string(),
-                            label: provider_id.to_string(),
-                            engine_family: provider_id.to_string(),
-                            auto_routed: true,
-                        }),
-                    license_label: license_label.map(|value| value.to_string()),
-                    locale: None,
-                    supported_languages: Vec::new(),
-                    readiness_status: Some("coming_soon".to_string()),
-                    readiness_issues: vec![
-                        "This provider is not implemented in Vox Jot yet.".to_string()
-                    ],
-                    capabilities: planned_capabilities.clone(),
-                    delivery_support: self.builtin_delivery_support(provider_id),
-                },
-            ),
-        );
 
         if let Some(runtime_state) = runtime_listen_state {
             let current_platform = current_runtime_platform_id();
@@ -4363,17 +4250,6 @@ impl TtsManager {
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
             | TTS_PROVIDER_XTTS_ID => return self.ensure_sidecar_supported(settings),
-            TTS_PROVIDER_TADA_LOCAL_ID => {
-                return Err(
-                    "TADA local TTS is planned but not available in this build yet.".to_string(),
-                )
-            }
-            TTS_PROVIDER_HF_S2S_LOCAL_ID => {
-                return Err(
-                    "HF speech-to-speech TTS is planned but not available in this build yet."
-                        .to_string(),
-                )
-            }
             other if !other.is_empty() => {
                 // Unknown provider IDs are assumed to be runtime-managed providers
                 // served through the sidecar.
@@ -6654,8 +6530,6 @@ fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
             | TTS_PROVIDER_XTTS_ID
-            | TTS_PROVIDER_TADA_LOCAL_ID
-            | TTS_PROVIDER_HF_S2S_LOCAL_ID
             | TTS_PROVIDER_MLX_KOKORO_ID
             | TTS_PROVIDER_MLX_CHATTERBOX_ID
             | TTS_PROVIDER_MLX_CSM_ID

@@ -23,7 +23,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
-  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -1661,23 +1660,8 @@ const VoiceArchitectSection: React.FC<{
     speech.voices,
   ]);
 
-  const activeEngineFamily = formatEngineFamilyLabel(
-    speech.activeModel?.runtime.engine_family ??
-      speech.activeProvider?.runtime.engine_family ??
-      null,
-  );
-  const activeCloneProfile =
-    speech.compatibleProfiles.find(
-      (profile) => profile.id === speech.activePreset?.voice_profile_id,
-    ) ?? null;
   const activeModelLabel =
     speech.activeModel?.label ?? speech.activePreset?.model_id ?? "";
-  const activeProviderLabel =
-    speech.activeProvider?.label ?? speech.activePreset?.provider_id ?? "";
-  const activeLocaleLabel =
-    speech.activePreset?.locale_snapshot ??
-    speech.activeModel?.locale ??
-    "Auto";
   const saveProfileName = saveProfileNameDraft.trim();
   const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
   const draftSelectedModelForControls = resolveVoiceModelSelection(
@@ -1698,10 +1682,6 @@ const VoiceArchitectSection: React.FC<{
       (model) =>
         model.provider_id === draftProviderIdForControls &&
         model.id === draftModelIdForControls,
-    ) ?? null;
-  const draftSelectedProvider =
-    speech.allProviders.find(
-      (provider) => provider.id === draftProviderIdForControls,
     ) ?? null;
   const draftSupportsVoiceCloning =
     draftSelectedModel?.capabilities.supports_voice_cloning ?? false;
@@ -1730,11 +1710,6 @@ const VoiceArchitectSection: React.FC<{
   const draftMatchesActiveModel =
     draftProviderIdForControls === (speech.activePreset?.provider_id ?? "") &&
     draftModelIdForControls === (speech.activePreset?.model_id ?? "");
-  const draftProviderLabel =
-    draftSelectedProvider?.label ?? activeProviderLabel;
-  const draftLocaleLabel = draftMatchesActiveModel
-    ? activeLocaleLabel
-    : (draftSelectedModel?.locale ?? "Auto");
   const draftVoiceInventory = draftMatchesActiveModel
     ? speech.voices
     : draftVoices;
@@ -1826,12 +1801,24 @@ const VoiceArchitectSection: React.FC<{
       .toLowerCase();
     return haystack.includes(normalizedModelSearch);
   });
-  const downloadedDraftModels = filteredDraftModels.filter(
-    (model) => model.installed,
-  );
-  const availableDraftModels = filteredDraftModels.filter(
-    (model) => !model.installed,
-  );
+  const orderedDraftModels = [...filteredDraftModels].sort((first, second) => {
+    const firstIsDraft =
+      first.provider_id === draftProviderIdForControls &&
+      first.id === draftModelIdForControls;
+    const secondIsDraft =
+      second.provider_id === draftProviderIdForControls &&
+      second.id === draftModelIdForControls;
+
+    if (firstIsDraft !== secondIsDraft) {
+      return firstIsDraft ? -1 : 1;
+    }
+
+    if (first.installed !== second.installed) {
+      return first.installed ? -1 : 1;
+    }
+
+    return 0;
+  });
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
     const providerOrModelChanged =
@@ -1914,45 +1901,6 @@ const VoiceArchitectSection: React.FC<{
     }
     setTuningWindowOpen(true);
   };
-
-  const renderDraftModelSection = (
-    title: string,
-    models: CatalogModelDescriptor[],
-  ) =>
-    models.length > 0 ? (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text)]">
-            {title}
-          </h4>
-          <Badge
-            variant="secondary"
-            className="min-w-7 justify-center border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 font-semibold"
-          >
-            {models.length}
-          </Badge>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {models.map((model) => (
-            <DraftVoiceModelLibraryCard
-              key={`${model.provider_id}::${model.id}`}
-              model={model}
-              provider={
-                speech.visibleProviders.find(
-                  (provider) => provider.id === model.provider_id,
-                ) ?? null
-              }
-              selected={
-                model.provider_id === draftProviderIdForControls &&
-                model.id === draftModelIdForControls
-              }
-              disabled={!speech.ttsEnabled}
-              onSelect={() => handleSelectDraftModel(model)}
-            />
-          ))}
-        </div>
-      </div>
-    ) : null;
 
   const modelWindow = createPortal(
     <AnimatePresence>
@@ -2060,19 +2008,24 @@ const VoiceArchitectSection: React.FC<{
 
             <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
               {filteredDraftModels.length > 0 ? (
-                <div className="space-y-5">
-                  {renderDraftModelSection(
-                    t("modelHub.sections.downloaded", {
-                      defaultValue: "Downloaded",
-                    }),
-                    downloadedDraftModels,
-                  )}
-                  {renderDraftModelSection(
-                    t("modelHub.sections.available", {
-                      defaultValue: "Available",
-                    }),
-                    availableDraftModels,
-                  )}
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {orderedDraftModels.map((model) => (
+                    <DraftVoiceModelLibraryCard
+                      key={`${model.provider_id}::${model.id}`}
+                      model={model}
+                      provider={
+                        speech.visibleProviders.find(
+                          (provider) => provider.id === model.provider_id,
+                        ) ?? null
+                      }
+                      selected={
+                        model.provider_id === draftProviderIdForControls &&
+                        model.id === draftModelIdForControls
+                      }
+                      disabled={!speech.ttsEnabled}
+                      onSelect={() => handleSelectDraftModel(model)}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className={speechLibraryCardClassName}>
@@ -2114,7 +2067,9 @@ const VoiceArchitectSection: React.FC<{
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="create-voice-tuning-title"
+            aria-label={t("listen.createVoices.tuning", {
+              defaultValue: "Tuning",
+            })}
             className="relative max-h-[min(88vh,860px)] w-full max-w-[760px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -2122,20 +2077,7 @@ const VoiceArchitectSection: React.FC<{
             transition={modal}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <h3
-                  id="create-voice-tuning-title"
-                  className="truncate text-sm font-semibold text-[var(--text)]"
-                >
-                  {t("listen.createVoices.tuning", {
-                    defaultValue: "Tuning",
-                  })}
-                </h3>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {draftModelLabel}
-                </p>
-              </div>
+            <div className="absolute right-3 top-3 z-10">
               <Button
                 type="button"
                 variant="ghost"
@@ -2147,7 +2089,7 @@ const VoiceArchitectSection: React.FC<{
                 <X aria-hidden />
               </Button>
             </div>
-            <div className="max-h-[calc(min(88vh,860px)-57px)] overflow-y-auto p-4">
+            <div className="max-h-[min(88vh,860px)] overflow-y-auto p-4 pt-12">
               <VoiceTuningCard
                 preset={buildDraftPresetInput()}
                 onUpdatePreset={updateDraftPreset}
@@ -2167,111 +2109,107 @@ const VoiceArchitectSection: React.FC<{
   );
 
   const isPreviewingDraft = speech.previewingPresetId === "__draft__";
+  const contentSpacingClassName = showTitle
+    ? "space-y-3 px-4 py-3"
+    : "space-y-3";
   const content = (
     <>
       {modelWindow}
       {tuningWindow}
       <div
-        className={`space-y-3 px-4 py-3 ${
+        className={`${contentSpacingClassName} ${
           !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
         }`}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="primary-soft"
-            size="sm"
-            onClick={() => {
-              if (isPreviewingDraft) {
-                void commands.ttsStop();
-                return;
-              }
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="primary-soft"
+              size="sm"
+              onClick={() => {
+                if (isPreviewingDraft) {
+                  void commands.ttsStop();
+                  return;
+                }
 
-              void speech.previewPresetDraft(
-                buildDraftPresetInput(),
-                previewTextDraft,
-              );
-            }}
-            disabled={!speech.ttsEnabled}
-          >
-            {isPreviewingDraft ? (
-              <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-            {isPreviewingDraft
-              ? t("common.cancel", { defaultValue: "Cancel" })
-              : t("listen.myVoices.preview")}
-          </Button>
-
-          <SegmentedControl<"models" | "tuning">
-            value={createVoiceTool}
-            onChange={handleCreateVoiceToolChange}
-            layoutId="create-voice-tool-toggle"
-            ariaLabel={t("listen.createVoices.toolAriaLabel", {
-              defaultValue: "Create voice tools",
-            })}
-            items={[
-              {
-                value: "models",
-                label: t("listen.createVoices.models", {
-                  defaultValue: "Models",
-                }),
-              },
-              {
-                value: "tuning",
-                label: t("listen.createVoices.tuning", {
-                  defaultValue: "Tuning",
-                }),
-              },
-            ]}
-          />
-        </div>
-
-        {/* Preview card — full width at top for a larger textarea */}
-        <div className={whiteWorkflowCardClassName}>
-          <div className="min-w-0 space-y-2">
-            <p className={workflowFieldLabelClassName}>
-              {t("listen.myVoices.previewText")}
-            </p>
-            <Textarea
-              value={previewTextDraft}
-              onChange={(event) => setPreviewTextDraft(event.target.value)}
-              placeholder={DEFAULT_TTS_PREVIEW_TEXT}
+                void speech.previewPresetDraft(
+                  buildDraftPresetInput(),
+                  previewTextDraft,
+                );
+              }}
               disabled={!speech.ttsEnabled}
-              className="w-full min-h-[120px] !rounded-2xl"
+            >
+              {isPreviewingDraft ? (
+                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              {isPreviewingDraft
+                ? t("common.cancel", { defaultValue: "Cancel" })
+                : t("listen.myVoices.preview")}
+            </Button>
+
+            <SegmentedControl<"models" | "tuning">
+              value={createVoiceTool}
+              onChange={handleCreateVoiceToolChange}
+              layoutId="create-voice-tool-toggle"
+              ariaLabel={t("listen.createVoices.toolAriaLabel", {
+                defaultValue: "Create voice tools",
+              })}
+              items={[
+                {
+                  value: "models",
+                  label: t("listen.createVoices.models", {
+                    defaultValue: "Models",
+                  }),
+                },
+                {
+                  value: "tuning",
+                  label: t("listen.createVoices.tuning", {
+                    defaultValue: "Tuning",
+                  }),
+                },
+              ]}
             />
-            {draftSupportsInlineTags ? (
-              <InlineCueHint modelLabel={draftSelectedModel?.label} />
-            ) : null}
+          </div>
+
+          <div className="ms-auto flex min-w-[min(100%,22rem)] flex-1 flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
+            <Input
+              value={saveProfileNameDraft}
+              onChange={(event) => setSaveProfileNameDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSaveCurrent();
+                }
+              }}
+              disabled={!speech.ttsEnabled}
+              aria-label={t("listen.myVoices.saveAs")}
+              placeholder={t("listen.placeholders.savedVoiceName")}
+              className="h-11 min-w-[min(100%,16rem)] flex-1 max-w-none"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleSaveCurrent()}
+              disabled={
+                !speech.ttsEnabled ||
+                !saveProfileName ||
+                !draftProviderIdForControls ||
+                !draftModelIdForControls
+              }
+              className="h-11 shrink-0"
+            >
+              {t("listen.myVoices.saveCurrent")}
+            </Button>
           </div>
         </div>
 
         <div className={whiteWorkflowCardClassName}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge
-                  variant="primary"
-                  className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
-                >
-                  <Star className="h-3.5 w-3.5" />
-                  {t("listen.myVoices.active")}
-                </Badge>
-                <Badge variant="secondary">{activeEngineFamily}</Badge>
-                <Badge variant="secondary">{draftProviderLabel}</Badge>
-                <Badge variant="secondary">{draftModelLabel}</Badge>
-              </div>
-              <p className="text-sm text-[var(--muted)]">
-                <Trans
-                  i18nKey="listen.myVoices.activePreset"
-                  values={{ name: speech.activePreset.label }}
-                  components={{
-                    bold: <span className="font-semibold text-[var(--text)]" />,
-                  }}
-                />
-              </p>
-
               {!isVoiceFixedToModel(draftProviderIdForControls) &&
               !supportsDraftManualVoiceId ? (
                 <WorkflowField label="Voice">
@@ -2351,49 +2289,30 @@ const VoiceArchitectSection: React.FC<{
                   />
                 </WorkflowField>
               ) : null}
-
-              <div className="space-y-1">
-                <p className={workflowFieldLabelClassName}>
-                  {t("listen.myVoices.saveAs")}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    value={saveProfileNameDraft}
-                    onChange={(event) =>
-                      setSaveProfileNameDraft(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void handleSaveCurrent();
-                      }
-                    }}
-                    disabled={!speech.ttsEnabled}
-                    placeholder={t("listen.placeholders.savedVoiceName")}
-                    className="min-w-0 flex-1 max-w-none"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void handleSaveCurrent()}
-                    disabled={
-                      !speech.ttsEnabled ||
-                      !saveProfileName ||
-                      !draftProviderIdForControls ||
-                      !draftModelIdForControls
-                    }
-                    className="shrink-0"
-                  >
-                    {t("listen.myVoices.saveCurrent")}
-                  </Button>
-                </div>
-              </div>
             </div>
             {statusMessage ? (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
                 {statusMessage}
               </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Preview card — full width at top for a larger textarea */}
+        <div className={whiteWorkflowCardClassName}>
+          <div className="min-w-0 space-y-2">
+            <p className={workflowFieldLabelClassName}>
+              {t("listen.myVoices.previewText")}
+            </p>
+            <Textarea
+              value={previewTextDraft}
+              onChange={(event) => setPreviewTextDraft(event.target.value)}
+              placeholder={DEFAULT_TTS_PREVIEW_TEXT}
+              disabled={!speech.ttsEnabled}
+              className="w-full min-h-[120px] !rounded-2xl"
+            />
+            {draftSupportsInlineTags ? (
+              <InlineCueHint modelLabel={draftSelectedModel?.label} />
             ) : null}
           </div>
         </div>

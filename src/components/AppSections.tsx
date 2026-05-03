@@ -467,9 +467,22 @@ export const ListenMyVoicesSection: React.FC = () => {
 };
 
 export const ListenCreateVoicesSection: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
-      <CreateVoicesPanel showGroupTitle={false} />
+      <SettingsGroup
+        noCard
+        title={t("listen.createVoices.title", {
+          defaultValue: "Create Voices",
+        })}
+        description={t("listen.createVoices.description", {
+          defaultValue:
+            "Preview models, tune delivery, and save a new voice profile without changing the active voice.",
+        })}
+      >
+        <CreateVoicesPanel showGroupTitle={false} />
+      </SettingsGroup>
     </div>
   );
 };

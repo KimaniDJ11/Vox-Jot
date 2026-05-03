@@ -387,12 +387,7 @@ export const RefineTranslationSection: React.FC = () => {
 };
 
 export const RefinePhraseKeysSection: React.FC = () => {
-  return (
-    <SnippetSettings
-      showEnabledToggle={false}
-      titleActionTargetId="phrase-keys-section-actions"
-    />
-  );
+  return <SnippetSettings showEnabledToggle={false} />;
 };
 
 export const RefineProfilesSection: React.FC = () => {

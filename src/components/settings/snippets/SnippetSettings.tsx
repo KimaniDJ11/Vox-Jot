@@ -6,7 +6,17 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, X, Pencil, Check, WholeWord } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Trash2,
+  X,
+  Pencil,
+  Check,
+  WholeWord,
+  Plus,
+  Upload,
+  FileJson,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Snippet } from "@/bindings";
 import { commands } from "@/bindings";
@@ -14,14 +24,18 @@ import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
-import { ListActionButtons } from "../../ui/ListActionButtons";
+import { SegmentedControl } from "../../ui/SegmentedControl";
+import { subtleCardClassName } from "../../ui/subtleCard";
 import { useSettings } from "../../../hooks/useSettings";
-import { usePortalTarget } from "../../../hooks/usePortalTarget";
 import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
-import { downloadJsonFile, pickJsonFileText } from "@/lib/fileIo";
+import { pickJsonFileText } from "@/lib/fileIo";
+import { modal } from "@/motion/springs";
 
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
+const IMPORT_MAX_BYTES = 3 * 1024 * 1024;
+
+type PhraseKeysView = "myKeys" | "importedKeys";
 
 function generateId(): string {
   return `snippet_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -29,32 +43,65 @@ function generateId(): string {
 
 interface SnippetSettingsProps {
   showEnabledToggle?: boolean;
-  titleActionTargetId?: string;
 }
 
 export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   showEnabledToggle = true,
-  titleActionTargetId,
 }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
 
   const snippets: Snippet[] = getSetting("snippets") ?? [];
+  const snippetsUpdating = isUpdating("snippets");
 
+  const [view, setView] = useState<PhraseKeysView>("myKeys");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTrigger, setEditTrigger] = useState("");
   const [editExpansion, setEditExpansion] = useState("");
   const [adding, setAdding] = useState(false);
   const [newTrigger, setNewTrigger] = useState("");
   const [newExpansion, setNewExpansion] = useState("");
+  const [isImportDragOver, setIsImportDragOver] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
+  const [importError, setImportError] = useState("");
   const triggerInputRef = useRef<HTMLInputElement>(null);
   const newTriggerRef = useRef<HTMLInputElement>(null);
+
+  const duplicateNewTrigger = snippets.some(
+    (s) =>
+      newTrigger.trim().length > 0 &&
+      s.trigger.trim().toLowerCase() === newTrigger.trim().toLowerCase(),
+  );
+
+  const openAddDialog = useCallback(() => {
+    setAdding(true);
+    setNewTrigger("");
+    setNewExpansion("");
+  }, []);
+
+  const closeAddDialog = useCallback(() => {
+    setAdding(false);
+    setNewTrigger("");
+    setNewExpansion("");
+  }, []);
 
   useEffect(() => {
     if (adding && newTriggerRef.current) {
       newTriggerRef.current.focus();
     }
   }, [adding]);
+
+  useEffect(() => {
+    if (!adding) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAddDialog();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [adding, closeAddDialog]);
 
   useEffect(() => {
     if (editingId && triggerInputRef.current) {
@@ -72,12 +119,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   const handleAdd = async () => {
     const trigger = newTrigger.trim();
     const expansion = newExpansion.trim();
-    if (!trigger || !expansion) return;
-
-    const duplicate = snippets.some(
-      (s) => s.trigger.toLowerCase() === trigger.toLowerCase(),
-    );
-    if (duplicate) return;
+    if (!trigger || !expansion || duplicateNewTrigger) return;
 
     const snippet: Snippet = {
       id: generateId(),
@@ -87,9 +129,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     };
 
     await saveSnippets([...snippets, snippet]);
-    setNewTrigger("");
-    setNewExpansion("");
-    setAdding(false);
+    closeAddDialog();
   };
 
   const handleDelete = async (id: string) => {
@@ -125,333 +165,520 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     setEditingId(null);
   };
 
-  const handleClearAll = async () => {
-    await saveSnippets([]);
-  };
-
-  const handleExport = async () => {
-    try {
-      const result = await commands.exportSnippets();
-      if (result.status === "ok") {
-        downloadJsonFile("vox-jot-snippets.json", result.data);
-      }
-    } catch (error) {
-      console.error("Failed to export snippets:", error);
-    }
-  };
-
-  const handleImport = async () => {
-    const text = await pickJsonFileText({ maxBytes: 3 * 1024 * 1024 });
-    if (text === null) return;
-    try {
-      const result = await commands.importSnippets(text);
-      if (result.status === "ok") {
-        const settingsResult = await commands.getAppSettings();
-        if (settingsResult.status === "ok") {
-          await updateSetting("snippets", settingsResult.data.snippets);
+  const importSnippetsText = useCallback(
+    async (text: string) => {
+      setImportError("");
+      setImportMessage("");
+      try {
+        const result = await commands.importSnippets(text);
+        if (result.status === "error") {
+          setImportError(result.error);
+          return;
         }
-      }
-    } catch (error) {
-      console.error("Failed to import snippets:", error);
-    }
-  };
 
-  const bulkDisabled = snippets.length === 0;
-  const portalTarget = usePortalTarget(titleActionTargetId);
+        const settingsResult = await commands.getAppSettings();
+        if (settingsResult.status === "error") {
+          setImportError(settingsResult.error);
+          return;
+        }
+
+        await updateSetting("snippets", settingsResult.data.snippets);
+        setImportMessage(
+          t("settings.snippets.list.importSuccess", {
+            defaultValue: "Phrase keys imported.",
+          }),
+        );
+      } catch (error) {
+        console.error("Failed to import snippets:", error);
+        setImportError(
+          error instanceof Error
+            ? error.message
+            : t("settings.snippets.list.importFailed", {
+                defaultValue: "Failed to import phrase keys.",
+              }),
+        );
+      }
+    },
+    [t, updateSetting],
+  );
+
+  const handleImport = useCallback(async () => {
+    const text = await pickJsonFileText({ maxBytes: IMPORT_MAX_BYTES });
+    if (text === null) return;
+    await importSnippetsText(text);
+  }, [importSnippetsText]);
+
+  const handleDroppedImport = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+      setImportError("");
+      setImportMessage("");
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        setImportError(
+          t("settings.snippets.list.importJsonOnly", {
+            defaultValue: "Choose a JSON phrase keys file.",
+          }),
+        );
+        return;
+      }
+      if (file.size > IMPORT_MAX_BYTES) {
+        setImportError(
+          t("settings.snippets.list.importTooLarge", {
+            defaultValue: "That file is too large to import.",
+          }),
+        );
+        return;
+      }
+      try {
+        await importSnippetsText(await file.text());
+      } catch (error) {
+        console.error("Failed to read dropped snippet import:", error);
+        setImportError(
+          error instanceof Error
+            ? error.message
+            : t("settings.snippets.list.importFailed", {
+                defaultValue: "Failed to import phrase keys.",
+              }),
+        );
+      }
+    },
+    [importSnippetsText, t],
+  );
+
+  const phraseKeyViews = useMemo(
+    () => [
+      {
+        value: "myKeys" as const,
+        label: t("settings.snippets.list.myKeys", {
+          defaultValue: "My keys",
+        }),
+      },
+      {
+        value: "importedKeys" as const,
+        label: t("settings.snippets.list.importedKeys", {
+          defaultValue: "Imported keys",
+        }),
+      },
+    ],
+    [t],
+  );
 
   const actionButtons = useMemo(
     () => (
-      <ListActionButtons
-        labels={{
-          add: t("settings.snippets.list.add"),
-          import: t("settings.snippets.list.import"),
-          export: t("settings.snippets.list.export"),
-          clearAll: t("settings.snippets.list.clearAll"),
-        }}
-        onAdd={() => {
-          setAdding(true);
-          setNewTrigger("");
-          setNewExpansion("");
-        }}
-        onImport={handleImport}
-        onExport={handleExport}
-        onClear={handleClearAll}
-        bulkDisabled={bulkDisabled}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="primary-soft"
+          onClick={openAddDialog}
+          aria-haspopup="dialog"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          {t("settings.snippets.list.add")}
+        </Button>
+        <SegmentedControl
+          items={phraseKeyViews}
+          value={view}
+          onChange={setView}
+          ariaLabel={t("settings.snippets.list.viewLabel", {
+            defaultValue: "Phrase keys view",
+          })}
+          layoutId="phrase-keys-view"
+        />
+      </div>
     ),
-    [bulkDisabled, t],
+    [openAddDialog, phraseKeyViews, t, view],
   );
 
-  const shouldPortalActions = !showEnabledToggle && !!portalTarget;
+  const addDialog = createPortal(
+    <AnimatePresence>
+      {adding ? (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={closeAddDialog}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-phrase-key-title"
+            className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2
+                id="add-phrase-key-title"
+                className="min-w-0 truncate text-base font-semibold text-[var(--text)]"
+              >
+                {t("settings.snippets.list.add")}
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={closeAddDialog}
+                aria-label={t("common.close", { defaultValue: "Close" })}
+                title={t("common.close", { defaultValue: "Close" })}
+              >
+                <X />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  {t("settings.snippets.list.trigger")}
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={newTriggerRef}
+                    type="text"
+                    value={newTrigger}
+                    onChange={(e) =>
+                      setNewTrigger(e.target.value.slice(0, TRIGGER_MAX))
+                    }
+                    placeholder={t("settings.snippets.list.triggerPlaceholder")}
+                    className="min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                  <span className="shrink-0 text-xs text-[var(--muted)]">
+                    {newTrigger.length}/{TRIGGER_MAX}
+                  </span>
+                </div>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  {t("settings.snippets.list.expansion")}
+                </span>
+                <div className="flex items-start gap-2">
+                  <textarea
+                    value={newExpansion}
+                    onChange={(e) =>
+                      setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
+                    }
+                    placeholder={t("settings.snippets.list.expansionPlaceholder")}
+                    rows={5}
+                    className="min-w-0 flex-1 resize-y rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                  <span className="shrink-0 pt-2 text-xs text-[var(--muted)]">
+                    {newExpansion.length}/{EXPANSION_MAX}
+                  </span>
+                </div>
+              </label>
+              {duplicateNewTrigger ? (
+                <div className="text-xs text-[var(--danger)]" role="alert">
+                  {t("settings.snippets.list.duplicateTrigger", {
+                    defaultValue: "A phrase key already uses that spoken trigger.",
+                  })}
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={closeAddDialog}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handleAdd()}
+                disabled={
+                  snippetsUpdating ||
+                  duplicateNewTrigger ||
+                  !newTrigger.trim() ||
+                  !newExpansion.trim()
+                }
+              >
+                {t("settings.snippets.list.add")}
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
+
+  const renderMyKeys = () => (
+    <div className="flat-card overflow-visible">
+      {snippets.length === 0 ? (
+        <EmptyState
+          framed={false}
+          icon={<WholeWord className="h-5 w-5" aria-hidden />}
+          title={t("settings.snippets.list.empty")}
+          description={t("settings.snippets.list.emptyDescription")}
+          example={t("settings.snippets.list.emptyExample")}
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="primary-soft"
+              onClick={openAddDialog}
+            >
+              {t("settings.snippets.list.add")}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="divide-y divide-[var(--border)]">
+          {snippets.map((snippet) => {
+            const snippetEnabled = snippet.enabled ?? true;
+
+            return (
+              <div
+                key={snippet.id}
+                className={`space-y-1.5 px-5 py-3 transition-opacity ${
+                  !snippetEnabled ? "opacity-50" : ""
+                }`}
+              >
+                {editingId === snippet.id ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        {t("settings.snippets.list.trigger")}
+                      </span>
+                      <input
+                        ref={triggerInputRef}
+                        type="text"
+                        value={editTrigger}
+                        onChange={(e) =>
+                          setEditTrigger(e.target.value.slice(0, TRIGGER_MAX))
+                        }
+                        className="min-w-0 flex-1 rounded-full border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-[var(--accent)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingId(null);
+                          if (e.key === "Enter") void commitEdit();
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-16 shrink-0 pt-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        {t("settings.snippets.list.expansion")}
+                      </span>
+                      <textarea
+                        value={editExpansion}
+                        onChange={(e) =>
+                          setEditExpansion(
+                            e.target.value.slice(0, EXPANSION_MAX),
+                          )
+                        }
+                        rows={2}
+                        className="min-w-0 flex-1 resize-y rounded-2xl border border-[var(--border)] bg-transparent px-2 py-1 text-sm outline-none focus:border-[var(--accent)]"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingId(null)}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void commitEdit()}
+                      >
+                        <Check className="mr-1 h-3.5 w-3.5" />
+                        {t("common.save")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        {t("settings.snippets.list.trigger")}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                        {snippet.trigger}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => startEdit(snippet)}
+                          title={t("common.edit", {
+                            defaultValue: "Edit",
+                          })}
+                          aria-label={t("common.edit", {
+                            defaultValue: "Edit",
+                          })}
+                        >
+                          <Pencil />
+                        </Button>
+                        <SwitchControl
+                          checked={snippetEnabled}
+                          onChange={(checked) =>
+                            void handleToggle(snippet.id, checked)
+                          }
+                          size="compact"
+                          frame="icon"
+                          title={
+                            snippetEnabled
+                              ? t("common.disable", {
+                                  defaultValue: "Disable",
+                                })
+                              : t("common.enable", {
+                                  defaultValue: "Enable",
+                                })
+                          }
+                          ariaLabel={
+                            snippetEnabled
+                              ? t("common.disable", {
+                                  defaultValue: "Disable",
+                                })
+                              : t("common.enable", {
+                                  defaultValue: "Enable",
+                                })
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="danger-ghost"
+                          size="icon-sm"
+                          onClick={() => void handleDelete(snippet.id)}
+                          title={t("common.delete")}
+                          aria-label={t("common.delete")}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        {t("settings.snippets.list.expansion")}
+                      </span>
+                      <span className="line-clamp-2 min-w-0 text-xs leading-relaxed text-[var(--muted)]">
+                        {snippet.expansion}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderImportedKeys = () => (
+    <div
+      className={[
+        subtleCardClassName,
+        "flex flex-col items-center justify-center gap-3 border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150",
+        isImportDragOver
+          ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
+          : "",
+      ].join(" ")}
+      style={{ minHeight: 220 }}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setIsImportDragOver(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setIsImportDragOver(true);
+      }}
+      onDragLeave={(event) => {
+        event.preventDefault();
+        setIsImportDragOver(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setIsImportDragOver(false);
+        void handleDroppedImport(event.dataTransfer.files?.[0]);
+      }}
+    >
+      <div
+        className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+        aria-hidden="true"
+      >
+        {isImportDragOver ? <Upload size={22} /> : <FileJson size={22} />}
+      </div>
+      <div className="space-y-1">
+        <div className="text-sm font-medium text-[var(--text)]">
+          {t("settings.snippets.list.importDropHint", {
+            defaultValue: "Drag & drop a phrase keys JSON file here",
+          })}
+        </div>
+        <div className="text-xs text-[var(--muted)]">
+          {t("dictate.fileTranscription.orLabel", { defaultValue: "or" })}
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleImport}
+        disabled={snippetsUpdating}
+      >
+        {t("settings.snippets.list.pickImportFile", {
+          defaultValue: "Pick JSON file",
+        })}
+      </Button>
+      {importMessage ? (
+        <div className="text-xs font-medium text-[var(--accent)]" role="status">
+          {importMessage}
+        </div>
+      ) : null}
+      {importError ? (
+        <div className="max-w-[32rem] text-xs text-[var(--danger)]" role="alert">
+          {importError}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="w-full space-y-6">
+      {addDialog}
       {showEnabledToggle && (
         <SettingsGroup title={t("settings.snippets.toggle.title")}>
           <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
         </SettingsGroup>
       )}
 
+      {!showEnabledToggle ? (
+        <SettingsGroup
+          noCard
+          title={t("settings.snippets.toggle.title")}
+          description={t("settings.snippets.toggle.description")}
+        >
+          {actionButtons}
+        </SettingsGroup>
+      ) : null}
+
       <section className="space-y-2">
-        {shouldPortalActions ? createPortal(actionButtons, portalTarget) : null}
-
-        {!showEnabledToggle && !shouldPortalActions ? (
-          <div className="mb-3 flex justify-end px-5">{actionButtons}</div>
-        ) : null}
-
         {showEnabledToggle ? (
-          <div className="px-5 mb-3 flex items-center justify-between gap-3 min-w-0">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
+          <div className="mb-3 flex min-w-0 items-center justify-between gap-3 px-5">
+            <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-widest text-[var(--text)]">
               {t("settings.snippets.list.title")}
             </h2>
-            <div className="flex gap-1 shrink-0">{actionButtons}</div>
+            <div className="flex shrink-0 gap-1">{actionButtons}</div>
           </div>
         ) : null}
 
-        <div className="flat-card overflow-visible">
-          {/* Add new snippet form */}
-          {adding && (
-            <div className="px-5 py-3 border-b border-[var(--border)] space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
-                  {t("settings.snippets.list.trigger")}
-                </span>
-                <input
-                  ref={newTriggerRef}
-                  type="text"
-                  value={newTrigger}
-                  onChange={(e) =>
-                    setNewTrigger(e.target.value.slice(0, TRIGGER_MAX))
-                  }
-                  placeholder={t("settings.snippets.list.triggerPlaceholder")}
-                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      setAdding(false);
-                    }
-                  }}
-                />
-                <span className="text-xs text-[var(--muted)] shrink-0">
-                  {newTrigger.length}/{TRIGGER_MAX}
-                </span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
-                  {t("settings.snippets.list.expansion")}
-                </span>
-                <textarea
-                  value={newExpansion}
-                  onChange={(e) =>
-                    setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
-                  }
-                  placeholder={t("settings.snippets.list.expansionPlaceholder")}
-                  rows={2}
-                  className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      setAdding(false);
-                    }
-                  }}
-                />
-                <span className="text-xs text-[var(--muted)] shrink-0 pt-1.5">
-                  {newExpansion.length}/{EXPANSION_MAX}
-                </span>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setAdding(false)}
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void handleAdd()}
-                  disabled={!newTrigger.trim() || !newExpansion.trim()}
-                >
-                  {t("settings.snippets.list.add")}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Snippet list */}
-          {snippets.length === 0 && !adding ? (
-            <EmptyState
-              framed={false}
-              icon={<WholeWord className="h-5 w-5" aria-hidden />}
-              title={t("settings.snippets.list.empty")}
-              description={t("settings.snippets.list.emptyDescription")}
-              example={t("settings.snippets.list.emptyExample")}
-              action={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary-soft"
-                  onClick={() => {
-                    setAdding(true);
-                    setNewTrigger("");
-                    setNewExpansion("");
-                  }}
-                >
-                  {t("settings.snippets.list.add")}
-                </Button>
-              }
-            />
-          ) : (
-            <div className="divide-y divide-[var(--border)]">
-              {snippets.map((snippet) => {
-                const snippetEnabled = snippet.enabled ?? true;
-
-                return (
-                  <div
-                    key={snippet.id}
-                    className={`px-5 py-3 space-y-1.5 transition-opacity ${
-                      !snippetEnabled ? "opacity-50" : ""
-                    }`}
-                  >
-                    {editingId === snippet.id ? (
-                      /* Edit mode */
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16">
-                            {t("settings.snippets.list.trigger")}
-                          </span>
-                          <input
-                            ref={triggerInputRef}
-                            type="text"
-                            value={editTrigger}
-                            onChange={(e) =>
-                              setEditTrigger(
-                                e.target.value.slice(0, TRIGGER_MAX),
-                              )
-                            }
-                            className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-full focus:outline-none focus:border-[var(--accent)] min-w-0"
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setEditingId(null);
-                              if (e.key === "Enter") void commitEdit();
-                            }}
-                          />
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0 w-16 pt-1.5">
-                            {t("settings.snippets.list.expansion")}
-                          </span>
-                          <textarea
-                            value={editExpansion}
-                            onChange={(e) =>
-                              setEditExpansion(
-                                e.target.value.slice(0, EXPANSION_MAX),
-                              )
-                            }
-                            rows={2}
-                            className="flex-1 px-2 py-1 text-sm bg-transparent border border-[var(--border)] rounded-2xl focus:outline-none focus:border-[var(--accent)] min-w-0 resize-y"
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setEditingId(null);
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingId(null)}
-                          >
-                            {t("common.cancel")}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => void commitEdit()}
-                          >
-                            <Check className="h-3.5 w-3.5 mr-1" />
-                            {t("common.save")}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* View mode */
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
-                            {t("settings.snippets.list.trigger")}
-                          </span>
-                          <span className="text-sm font-semibold truncate flex-1 min-w-0">
-                            {snippet.trigger}
-                          </span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => startEdit(snippet)}
-                              title={t("common.edit", {
-                                defaultValue: "Edit",
-                              })}
-                              aria-label={t("common.edit", {
-                                defaultValue: "Edit",
-                              })}
-                            >
-                              <Pencil />
-                            </Button>
-                            <SwitchControl
-                              checked={snippetEnabled}
-                              onChange={(checked) =>
-                                void handleToggle(snippet.id, checked)
-                              }
-                              size="compact"
-                              frame="icon"
-                              title={
-                                snippetEnabled
-                                  ? t("common.disable", {
-                                      defaultValue: "Disable",
-                                    })
-                                  : t("common.enable", {
-                                      defaultValue: "Enable",
-                                    })
-                              }
-                              ariaLabel={
-                                snippetEnabled
-                                  ? t("common.disable", {
-                                      defaultValue: "Disable",
-                                    })
-                                  : t("common.enable", {
-                                      defaultValue: "Enable",
-                                    })
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="danger-ghost"
-                              size="icon-sm"
-                              onClick={() => void handleDelete(snippet.id)}
-                              title={t("common.delete")}
-                              aria-label={t("common.delete")}
-                            >
-                              <Trash2 />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] shrink-0">
-                            {t("settings.snippets.list.expansion")}
-                          </span>
-                          <span className="text-xs text-[var(--muted)] leading-relaxed line-clamp-2 min-w-0">
-                            {snippet.expansion}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {view === "myKeys" ? renderMyKeys() : renderImportedKeys()}
       </section>
     </div>
   );

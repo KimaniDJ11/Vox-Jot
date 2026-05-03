@@ -12,11 +12,12 @@
 // anything?" answer.
 
 import React, { useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LLMPrompt, ToneDefinition, WriteRule } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { SwitchControl } from "@/components/ui/SwitchControl";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Tabs } from "@/components/ui/Tabs";
 import { AppMultiPicker } from "./matchers/AppMultiPicker";
@@ -52,6 +53,8 @@ interface WriteRuleEditorProps {
   onSave: (rule: WriteRule) => void;
   onCancel: () => void;
   saveError?: string | null;
+  presentation?: "page" | "dialog";
+  titleId?: string;
 }
 
 const createRule = (): WriteRule => ({
@@ -72,11 +75,14 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   onSave,
   onCancel,
   saveError,
+  presentation = "page",
+  titleId,
 }) => {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<WriteRule>(rule ?? createRule());
   const [activeTab, setActiveTab] = useState<OverrideTab>("speech");
   const isNew = !rule;
+  const isDialog = presentation === "dialog";
   const trimmedName = draft.name.trim();
   const canSave = trimmedName.length > 0;
 
@@ -100,87 +106,146 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     return { speech, refine, output, total: speech + refine + output };
   }, [draft.overrides]);
 
+  const title = isNew ? newProfileTitle : trimmedName || editProfileTitle;
+  const saveButton = (
+    <Button
+      type="button"
+      size="sm"
+      onClick={() => onSave({ ...draft, name: trimmedName })}
+      disabled={!canSave}
+    >
+      {saveLabel}
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Sticky header — keeps Save/Cancel always reachable. */}
-      <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/80">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            className="text-[var(--muted)]"
+      {isDialog ? (
+        <div className="flex items-center gap-3">
+          <h2
+            id={titleId}
+            className="min-w-0 flex-1 truncate text-lg font-semibold text-[var(--text)]"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {backLabel}
-          </Button>
-          <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
-            {isNew ? newProfileTitle : trimmedName || editProfileTitle}
+            {title}
           </h2>
           <Button
             type="button"
-            variant="secondary"
-            size="sm"
+            variant="ghost"
+            size="icon-sm"
             onClick={onCancel}
+            aria-label={cancelLabel}
+            title={cancelLabel}
           >
-            {cancelLabel}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => onSave({ ...draft, name: trimmedName })}
-            disabled={!canSave}
-          >
-            {saveLabel}
+            <X className="h-4 w-4" />
           </Button>
         </div>
-      </div>
+      ) : (
+        <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/80">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+              className="text-[var(--muted)]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {backLabel}
+            </Button>
+            <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
+              {title}
+            </h2>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onCancel}
+            >
+              {cancelLabel}
+            </Button>
+            {saveButton}
+          </div>
+        </div>
+      )}
 
       {/* Identity card — name + enabled */}
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--muted)]">
-            {nameLabel}
-          </label>
-          <Input
-            value={draft.name}
-            placeholder={t("refine.writeRules.editor.namePlaceholder")}
-            onChange={(event) =>
-              setDraft({ ...draft, name: event.target.value })
-            }
-          />
-          {!canSave ? (
-            <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
-          ) : null}
-          {saveError ? (
-            <p className="text-xs font-medium text-[var(--danger)]">
-              {saveError}
-            </p>
+      <section
+        className={
+          isDialog
+            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
+            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+        }
+      >
+        <div
+          className={
+            isDialog
+              ? "grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]"
+              : "space-y-1.5"
+          }
+        >
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[var(--muted)]">
+              {nameLabel}
+            </label>
+            <Input
+              value={draft.name}
+              placeholder={t("refine.writeRules.editor.namePlaceholder")}
+              onChange={(event) =>
+                setDraft({ ...draft, name: event.target.value })
+              }
+            />
+            {!canSave ? (
+              <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
+            ) : null}
+            {saveError ? (
+              <p className="text-xs font-medium text-[var(--danger)]">
+                {saveError}
+              </p>
+            ) : null}
+          </div>
+          {isDialog ? (
+            <label className="flex min-h-10 items-center justify-between gap-3 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 md:mt-5">
+              <span className="text-sm font-medium text-[var(--text)]">
+                {enabledLabel}
+              </span>
+              <SwitchControl
+                checked={draft.enabled}
+                onChange={(enabled) => setDraft({ ...draft, enabled })}
+              />
+            </label>
           ) : null}
         </div>
-        <div className="mt-3">
-          <ToggleSwitch
-            grouped
-            label={enabledLabel}
-            description={enabledDescription}
-            checked={draft.enabled}
-            onChange={(enabled) => setDraft({ ...draft, enabled })}
-          />
-        </div>
+        {!isDialog ? (
+          <div className="mt-3">
+            <ToggleSwitch
+              grouped
+              label={enabledLabel}
+              description={enabledDescription}
+              checked={draft.enabled}
+              onChange={(enabled) => setDraft({ ...draft, enabled })}
+            />
+          </div>
+        ) : null}
       </section>
 
       {/* Match card */}
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+      <section
+        className={
+          isDialog
+            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
+            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+        }
+      >
         <header className="mb-3">
           <h3 className="text-sm font-semibold text-[var(--text)]">
             {matchHeading}
           </h3>
           <p className="mt-0.5 text-xs text-[var(--muted)]">{matchHelp}</p>
         </header>
-        <div className="grid gap-4">
+        <div className={isDialog ? "grid gap-4 md:grid-cols-2" : "grid gap-4"}>
           <AppMultiPicker
             bundleIds={draft.matchers.bundle_ids ?? []}
+            compact={isDialog}
             onChange={(bundle_ids) =>
               setDraft({
                 ...draft,
@@ -190,6 +255,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           />
           <UrlPatternList
             patterns={draft.matchers.url_patterns ?? []}
+            compact={isDialog}
             onChange={(url_patterns) =>
               setDraft({
                 ...draft,
@@ -201,7 +267,13 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
       </section>
 
       {/* Overrides card with tabs */}
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+      <section
+        className={
+          isDialog
+            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
+            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+        }
+      >
         <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text)]">
@@ -249,6 +321,14 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           ) : null}
         </div>
       </section>
+      {isDialog ? (
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+          {saveButton}
+        </div>
+      ) : null}
     </div>
   );
 };

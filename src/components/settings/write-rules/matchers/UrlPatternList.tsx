@@ -24,6 +24,7 @@ const EXAMPLES = ["mail.google.com", "*.gmail.com", "github.com/orgs/*"];
 interface UrlPatternListProps {
   patterns: string[];
   onChange: (patterns: string[]) => void;
+  compact?: boolean;
 }
 
 const validatePattern = (pattern: string) => {
@@ -38,6 +39,7 @@ const validatePattern = (pattern: string) => {
 export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   patterns,
   onChange,
+  compact = false,
 }) => {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
@@ -63,7 +65,9 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
         <label className="text-xs font-medium text-[var(--muted)]">
           {fieldLabel}
         </label>
-        <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+        {!compact ? (
+          <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">

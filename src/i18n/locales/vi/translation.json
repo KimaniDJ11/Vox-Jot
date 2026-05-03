@@ -967,7 +967,17 @@
           "active": "Active"
         },
         "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
-        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling."
+        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling.",
+        "emptyDictionary": "No dictionary entries yet.",
+        "emptyDictionaryDescription": "Add or import correction entries to make Vox Jot prefer those spellings.",
+        "emptyDictionaryExample": "For example, map “swift ui” to “SwiftUI.”",
+        "importSuccess": "Imported {{count}} corrections.",
+        "importFailed": "Failed to import corrections.",
+        "views": {
+          "ariaLabel": "Corrections view",
+          "corrections": "Corrections",
+          "dictionary": "Dictionary"
+        }
       }
     },
     "dataPrivacy": {

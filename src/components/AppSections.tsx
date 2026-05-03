@@ -422,9 +422,7 @@ export const RefineModelsSection: React.FC<{
 };
 
 export const CorrectionsSection: React.FC = () => {
-  return (
-    <LearnedCorrectionsSection titleActionTargetId="corrections-section-actions" />
-  );
+  return <LearnedCorrectionsSection />;
 };
 
 /** Full dictionary & correction controls (info, toggles, boosts). Shown in Settings. */
@@ -449,13 +447,12 @@ export const CorrectionsSettingsSection: React.FC = () => {
 
 export const LearnedCorrectionsSection: React.FC<{
   titleActionTargetId?: string;
-}> = ({ titleActionTargetId }) => {
+}> = () => {
   return (
     <div className="space-y-6">
       <CorrectionDictionaryView
-        sectionTitle="Learned Corrections"
+        sectionTitle="Corrections"
         showHeaderTitle={false}
-        titleActionTargetId={titleActionTargetId}
       />
     </div>
   );

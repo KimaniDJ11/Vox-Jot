@@ -1,13 +1,8 @@
 // Write Profiles top-level settings page (Refine → Write profiles).
 //
-// This page now operates in two mutually-exclusive modes:
-//
-//   • LIST MODE   — shows the controls (toggle, URL capture, test) and
-//                   the rule list. "Active now" pill marks whichever
-//                   rule currently matches the frontmost app.
-//   • EDIT MODE   — shows the editor only. List is hidden so the user
-//                   has a single place to focus. A sticky header inside
-//                   the editor lets them get back without losing work.
+// This page now keeps the profile list visible while create/edit happens
+// in a dialog. That preserves the user's place in the grid and keeps the
+// add/edit flow consistent with the rest of the settings windows.
 //
 // The parent loads `apps` / `models` once and threads them through to
 // the list so each row can resolve raw ids (com.openai.codex, "coding")
@@ -15,6 +10,8 @@
 // scannability win versus the previous list (Nielsen heuristic #2).
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { Plus, WandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -39,6 +36,7 @@ import {
   WriteProfileGroupCard,
 } from "./WriteProfileGroupCard";
 import { WriteRuleRow } from "./WriteRuleRow";
+import { modal } from "@/motion/springs";
 
 const emptyTitle = "No write profiles yet";
 const emptyBody =
@@ -72,7 +70,25 @@ export const WriteRulesSettings: React.FC = () => {
   const editingRule = editingId
     ? rules.find((rule) => rule.id === editingId)
     : undefined;
-  const inEditMode = adding || !!editingRule;
+  const isProfileWindowOpen = adding || !!editingRule;
+
+  const openAddProfileWindow = useCallback(() => {
+    setEditingId(null);
+    setSaveError(null);
+    setAdding(true);
+  }, []);
+
+  const openEditProfileWindow = useCallback((rule: WriteRule) => {
+    setAdding(false);
+    setSaveError(null);
+    setEditingId(rule.id);
+  }, []);
+
+  const closeProfileWindow = useCallback(() => {
+    setAdding(false);
+    setEditingId(null);
+    setSaveError(null);
+  }, []);
 
   const loadRules = useCallback(async () => {
     const result = await commands.listWriteRules();
@@ -120,13 +136,25 @@ export const WriteRulesSettings: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (inEditMode) return; // pause while user is editing
+    if (adding || editingId) return; // pause while user is editing
     void refreshActiveRule();
     const id = window.setInterval(() => {
       void refreshActiveRule();
     }, 4000);
     return () => window.clearInterval(id);
-  }, [refreshActiveRule, inEditMode, rules.length]);
+  }, [adding, editingId, refreshActiveRule, rules.length]);
+
+  useEffect(() => {
+    if (!isProfileWindowOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeProfileWindow();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeProfileWindow, isProfileWindowOpen]);
 
   const saveRule = async (rule: WriteRule) => {
     setSaveError(null);
@@ -158,27 +186,56 @@ export const WriteRulesSettings: React.FC = () => {
     }
   };
 
-  // ─── EDIT MODE ────────────────────────────────────────────────────
-  if (inEditMode) {
-    return (
-      <WriteRuleEditor
-        rule={editingRule}
-        tones={tones}
-        prompts={prompts}
-        onSave={(rule) => void saveRule(rule)}
-        onCancel={() => {
-          setAdding(false);
-          setEditingId(null);
-          setSaveError(null);
-        }}
-        saveError={saveError}
-      />
-    );
-  }
+  const profileWindow = createPortal(
+    <AnimatePresence>
+      {isProfileWindowOpen ? (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={closeProfileWindow}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="write-profile-dialog-title"
+            className="relative max-h-[min(88vh,920px)] w-full max-w-[840px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="max-h-[min(88vh,920px)] overflow-y-auto p-4">
+              <WriteRuleEditor
+                rule={editingRule}
+                tones={tones}
+                prompts={prompts}
+                onSave={(rule) => void saveRule(rule)}
+                onCancel={closeProfileWindow}
+                saveError={saveError}
+                presentation="dialog"
+                titleId="write-profile-dialog-title"
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
 
   // ─── LIST MODE ────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {profileWindow}
       <SettingsGroup
         noCard
         title={t("refine.writeRules.title")}
@@ -189,10 +246,7 @@ export const WriteRulesSettings: React.FC = () => {
             type="button"
             size="sm"
             variant="primary-soft"
-            onClick={() => {
-              setEditingId(null);
-              setAdding(true);
-            }}
+            onClick={openAddProfileWindow}
           >
             <Plus className="h-3.5 w-3.5" />
             {t("refine.writeRules.newRule")}
@@ -234,10 +288,7 @@ export const WriteRulesSettings: React.FC = () => {
               type="button"
               size="sm"
               variant="primary-soft"
-              onClick={() => {
-                setEditingId(null);
-                setAdding(true);
-              }}
+              onClick={openAddProfileWindow}
             >
               <Plus className="h-3.5 w-3.5" />
               {t("settings.styles.createFirstProfile", {
@@ -257,10 +308,7 @@ export const WriteRulesSettings: React.FC = () => {
               prompts={prompts}
               models={models}
               activeRuleId={activeRuleId}
-              onEdit={(rule) => {
-                setAdding(false);
-                setEditingId(rule.id);
-              }}
+              onEdit={openEditProfileWindow}
               onDelete={(id) => void deleteRule(id)}
             />
           ))}
@@ -276,10 +324,7 @@ export const WriteRulesSettings: React.FC = () => {
               prompts={prompts}
               models={models}
               isActive={rule.id === activeRuleId}
-              onEdit={() => {
-                setAdding(false);
-                setEditingId(rule.id);
-              }}
+              onEdit={() => openEditProfileWindow(rule)}
               onDelete={() => void deleteRule(rule.id)}
             />
           ))}

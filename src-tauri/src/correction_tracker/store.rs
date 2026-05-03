@@ -473,18 +473,22 @@ impl CorrectionStore {
                  ON CONFLICT(original, corrected) DO UPDATE SET
                     frequency = MAX(auto_corrections.frequency, excluded.frequency),
                     confidence = MAX(auto_corrections.confidence, excluded.confidence),
-                    last_seen = MAX(auto_corrections.last_seen, excluded.last_seen)",
+                    exact_only = excluded.exact_only,
+                    source_app = excluded.source_app,
+                    last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
+                    is_active = 1,
+                    user_approved = 1",
                 params![
                     correction.original,
                     correction.corrected,
                     correction.frequency,
                     correction.confidence,
                     correction.exact_only,
-                    correction.source_app,
+                    "imported",
                     correction.first_seen,
                     correction.last_seen,
                     correction.is_active,
-                    correction.user_approved,
+                    true,
                 ],
             )?;
             imported += 1;

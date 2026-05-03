@@ -23,11 +23,13 @@ const removeAppLabel = "Remove app";
 interface AppMultiPickerProps {
   bundleIds: string[];
   onChange: (bundleIds: string[]) => void;
+  compact?: boolean;
 }
 
 export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
   bundleIds,
   onChange,
+  compact = false,
 }) => {
   const { t } = useTranslation();
   const [apps, setApps] = useState<InstalledApp[]>([]);
@@ -89,7 +91,9 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
         <label className="text-xs font-medium text-[var(--muted)]">
           {fieldLabel}
         </label>
-        <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+        {!compact ? (
+          <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">

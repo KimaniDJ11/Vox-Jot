@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   Plus,
@@ -13,6 +14,7 @@ import {
   Trash2,
   X,
   SpellCheck,
+  FileJson,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
@@ -22,13 +24,16 @@ import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
 import { Input } from "../../ui/Input";
 import { SwitchControl } from "../../ui/SwitchControl";
-import { ListActionButtons } from "../../ui/ListActionButtons";
-import { usePortalTarget } from "../../../hooks/usePortalTarget";
-import { downloadJsonFile, pickJsonFileText } from "@/lib/fileIo";
+import { SettingsGroup } from "../../ui/SettingsGroup";
+import { SegmentedControl } from "../../ui/SegmentedControl";
+import { pickJsonFileText } from "@/lib/fileIo";
+import { modal } from "@/motion/springs";
+
+type CorrectionViewMode = "corrections" | "dictionary";
 
 /**
  * A group of corrections that share the same corrected word.
- * Multiple originals → one corrected target.
+ * Multiple originals -> one corrected target.
  */
 interface CorrectionGroup {
   corrected: string;
@@ -53,37 +58,38 @@ const getCorrectionGroupKey = (group: CorrectionGroup): string => {
 function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
   const map = new Map<string, StoredCorrection[]>();
 
-  for (const c of corrections) {
-    const key = c.corrected.toLowerCase();
+  for (const correction of corrections) {
+    const key = correction.corrected.toLowerCase();
     const existing = map.get(key);
     if (existing) {
-      existing.push(c);
+      existing.push(correction);
     } else {
-      map.set(key, [c]);
+      map.set(key, [correction]);
     }
   }
 
   const groups: CorrectionGroup[] = [];
   for (const entries of map.values()) {
-    const totalFrequency = entries.reduce((sum, e) => sum + e.frequency, 0);
+    const totalFrequency = entries.reduce((sum, entry) => sum + entry.frequency, 0);
     const avgEffectiveConfidence =
       entries.reduce(
-        (sum, e) => sum + (e.auto_apply?.effective_confidence ?? e.confidence),
+        (sum, entry) =>
+          sum + (entry.auto_apply?.effective_confidence ?? entry.confidence),
         0,
       ) / entries.length;
-    const allActive = entries.every((e) => e.is_active);
-    const manualCount = entries.filter((e) => e.user_approved).length;
+    const allActive = entries.every((entry) => entry.is_active);
+    const manualCount = entries.filter((entry) => entry.user_approved).length;
     const eligibleCount = entries.filter(
-      (e) => !e.user_approved && e.auto_apply?.eligible,
+      (entry) => !entry.user_approved && entry.auto_apply?.eligible,
     ).length;
     const lowConfidenceCount = entries.filter(
-      (e) => e.auto_apply?.status === "low_confidence",
+      (entry) => entry.auto_apply?.status === "low_confidence",
     ).length;
     const blockedCount = entries.filter(
-      (e) => e.auto_apply?.status === "blocked",
+      (entry) => entry.auto_apply?.status === "blocked",
     ).length;
     const disabledCount = entries.filter(
-      (e) => e.auto_apply?.status === "disabled",
+      (entry) => entry.auto_apply?.status === "disabled",
     ).length;
 
     groups.push({
@@ -100,10 +106,9 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
     });
   }
 
-  // Sort by most recent activity
   groups.sort((a, b) => {
-    const aMax = Math.max(...a.entries.map((e) => e.last_seen));
-    const bMax = Math.max(...b.entries.map((e) => e.last_seen));
+    const aMax = Math.max(...a.entries.map((entry) => entry.last_seen));
+    const bMax = Math.max(...b.entries.map((entry) => entry.last_seen));
     return bMax - aMax;
   });
 
@@ -233,8 +238,7 @@ const getGroupStatus = (group: CorrectionGroup) => {
   if (group.lowConfidenceCount > 0) {
     return {
       label: "Low conf",
-      title:
-        "At least one correction has enough observations but low confidence.",
+      title: "At least one correction has enough observations but low confidence.",
       className:
         "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
     };
@@ -261,10 +265,8 @@ function groupMatchesSearch(group: CorrectionGroup, normalizedQuery: string) {
 }
 
 interface CorrectionDictionaryViewProps {
-  /** Shown in the row above the card, with import/export/clear icons trailing right. */
   sectionTitle: string;
   showHeaderTitle?: boolean;
-  titleActionTargetId?: string;
 }
 
 type ManualCorrectionDraft = {
@@ -281,7 +283,7 @@ const emptyManualCorrectionDraft = (): ManualCorrectionDraft => ({
 
 export const CorrectionDictionaryView: React.FC<
   CorrectionDictionaryViewProps
-> = ({ sectionTitle, showHeaderTitle = true, titleActionTargetId }) => {
+> = ({ sectionTitle, showHeaderTitle = true }) => {
   const { t } = useTranslation();
   const [corrections, setCorrections] = useState<StoredCorrection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -292,8 +294,11 @@ export const CorrectionDictionaryView: React.FC<
     emptyManualCorrectionDraft,
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const portalTarget = usePortalTarget(titleActionTargetId);
+  const [viewMode, setViewMode] = useState<CorrectionViewMode>("corrections");
+  const [importError, setImportError] = useState("");
+  const [importMessage, setImportMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
+  const manualOriginalRef = useRef<HTMLInputElement>(null);
 
   const loadCorrections = useCallback(async () => {
     try {
@@ -318,11 +323,29 @@ export const CorrectionDictionaryView: React.FC<
     }
   }, [addingTo]);
 
+  useEffect(() => {
+    if (showManualEditor && manualOriginalRef.current) {
+      manualOriginalRef.current.focus();
+    }
+  }, [showManualEditor]);
+
+  useEffect(() => {
+    if (!showManualEditor) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        resetManualEditor();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showManualEditor]);
+
   const handleDelete = async (id: number) => {
     try {
       const result = await commands.deleteCorrection(id);
       if (result.status === "ok") {
-        setCorrections((prev) => prev.filter((c) => c.id !== id));
+        setCorrections((prev) => prev.filter((correction) => correction.id !== id));
       }
     } catch (error) {
       console.error("Failed to delete correction:", error);
@@ -334,8 +357,8 @@ export const CorrectionDictionaryView: React.FC<
       for (const entry of group.entries) {
         await commands.deleteCorrection(entry.id);
       }
-      const ids = new Set(group.entries.map((e) => e.id));
-      setCorrections((prev) => prev.filter((c) => !ids.has(c.id)));
+      const ids = new Set(group.entries.map((entry) => entry.id));
+      setCorrections((prev) => prev.filter((correction) => !ids.has(correction.id)));
     } catch (error) {
       console.error("Failed to delete group:", error);
     }
@@ -401,6 +424,7 @@ export const CorrectionDictionaryView: React.FC<
         entry.exact_only ?? false,
       );
       if (result.status === "ok") {
+        setViewMode("dictionary");
         await loadCorrections();
       }
     } catch (error) {
@@ -413,14 +437,11 @@ export const CorrectionDictionaryView: React.FC<
     if (!trimmed) return;
 
     try {
-      const result = await commands.addManualCorrection(
-        trimmed,
-        corrected,
-        false,
-      );
+      const result = await commands.addManualCorrection(trimmed, corrected, false);
       if (result.status === "ok") {
         setNewOriginal("");
         setAddingTo(null);
+        setViewMode("dictionary");
         await loadCorrections();
       }
     } catch (error) {
@@ -428,10 +449,15 @@ export const CorrectionDictionaryView: React.FC<
     }
   };
 
-  const resetManualEditor = () => {
+  function resetManualEditor() {
     setShowManualEditor(false);
     setManualDraft(emptyManualCorrectionDraft());
-  };
+  }
+
+  const openManualEditor = useCallback(() => {
+    setShowManualEditor(true);
+    setManualDraft(emptyManualCorrectionDraft());
+  }, []);
 
   const handleAddManualCorrection = async () => {
     const original = manualDraft.original.trim();
@@ -449,6 +475,7 @@ export const CorrectionDictionaryView: React.FC<
       );
       if (result.status === "ok") {
         resetManualEditor();
+        setViewMode("dictionary");
         await loadCorrections();
       }
     } catch (error) {
@@ -456,44 +483,49 @@ export const CorrectionDictionaryView: React.FC<
     }
   };
 
-  const handleClearAll = async () => {
-    try {
-      const result = await commands.clearAllCorrections();
-      if (result.status === "ok") {
-        setCorrections([]);
-      }
-    } catch (error) {
-      console.error("Failed to clear corrections:", error);
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const result = await commands.exportCorrections();
-      if (result.status === "ok") {
-        downloadJsonFile("vox-jot-corrections.json", result.data);
-      }
-    } catch (error) {
-      console.error("Failed to export corrections:", error);
-    }
-  };
-
-  const handleImport = async () => {
+  const handleImport = useCallback(async () => {
     const text = await pickJsonFileText();
     if (text === null) return;
+    setImportError("");
+    setImportMessage("");
     try {
       const result = await commands.importCorrections(text);
       if (result.status === "ok") {
-        loadCorrections();
+        setViewMode("dictionary");
+        setImportMessage(
+          t("settings.corrections.dictionary.importSuccess", {
+            count: result.data,
+            defaultValue: "Imported {{count}} corrections.",
+          }),
+        );
+        void loadCorrections();
+      } else {
+        setImportError(result.error);
       }
     } catch (error) {
       console.error("Failed to import corrections:", error);
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : t("settings.corrections.dictionary.importFailed", {
+              defaultValue: "Failed to import corrections.",
+            }),
+      );
     }
-  };
+  }, [loadCorrections, t]);
 
+  const visibleCorrections = useMemo(
+    () =>
+      corrections.filter((correction) =>
+        viewMode === "dictionary"
+          ? correction.user_approved
+          : !correction.user_approved,
+      ),
+    [corrections, viewMode],
+  );
   const groups = useMemo(
-    () => (loading ? [] : groupCorrections(corrections)),
-    [corrections, loading],
+    () => (loading ? [] : groupCorrections(visibleCorrections)),
+    [visibleCorrections, loading],
   );
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filteredGroups = useMemo(
@@ -503,11 +535,28 @@ export const CorrectionDictionaryView: React.FC<
       ),
     [groups, normalizedSearchQuery],
   );
-  const bulkActionsDisabled = loading || corrections.length === 0;
+
+  const viewItems = useMemo(
+    () => [
+      {
+        value: "corrections" as const,
+        label: t("settings.corrections.dictionary.views.corrections", {
+          defaultValue: "Corrections",
+        }),
+      },
+      {
+        value: "dictionary" as const,
+        label: t("settings.corrections.dictionary.views.dictionary", {
+          defaultValue: "Dictionary",
+        }),
+      },
+    ],
+    [t],
+  );
 
   const searchField = (
     <label
-      className="relative flex h-8 w-full min-w-[11rem] max-w-60 items-center"
+      className="relative flex h-9 w-[min(20rem,100%)] min-w-[12rem] items-center"
       aria-label={t("settings.corrections.dictionary.search.ariaLabel", {
         defaultValue: "Search learned corrections",
       })}
@@ -517,7 +566,6 @@ export const CorrectionDictionaryView: React.FC<
         aria-hidden
       />
       <Input
-        autoFocus
         type="search"
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
@@ -530,12 +578,12 @@ export const CorrectionDictionaryView: React.FC<
         placeholder={t("settings.corrections.dictionary.search.placeholder", {
           defaultValue: "Search corrections",
         })}
-        className="h-8 w-full pl-8 pr-8 text-xs text-[var(--text)] placeholder:text-[var(--muted)]"
+        className="h-9 w-full pl-8 pr-8 text-xs text-[var(--text)] placeholder:text-[var(--muted)]"
       />
       {searchQuery ? (
         <button
           type="button"
-          className="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)]"
+          className="absolute right-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           onClick={() => setSearchQuery("")}
           aria-label={t("settings.corrections.dictionary.search.clear", {
             defaultValue: "Clear search",
@@ -547,60 +595,87 @@ export const CorrectionDictionaryView: React.FC<
     </label>
   );
 
-  const actionButtons = useMemo(
-    () => (
-      <ListActionButtons
-        labels={{
-          add: t("settings.postProcessing.dictionary.add", {
-            defaultValue: "Add entry",
-          }),
-          import: t("settings.corrections.dictionary.import"),
-          export: t("settings.corrections.dictionary.export"),
-          clearAll: t("settings.corrections.dictionary.clearAll"),
-        }}
-        onAdd={() => {
-          setShowManualEditor(true);
-          setManualDraft(emptyManualCorrectionDraft());
-        }}
-        onImport={handleImport}
-        onExport={handleExport}
-        onClear={handleClearAll}
-        bulkDisabled={bulkActionsDisabled}
+  const actionButtons = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="primary-soft"
+        onClick={openManualEditor}
+        aria-haspopup="dialog"
+      >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+        {t("settings.postProcessing.dictionary.add", {
+          defaultValue: "Add entry",
+        })}
+      </Button>
+      <SegmentedControl<CorrectionViewMode>
+        value={viewMode}
+        onChange={setViewMode}
+        layoutId="corrections-view-toggle"
+        ariaLabel={t("settings.corrections.dictionary.views.ariaLabel", {
+          defaultValue: "Corrections view",
+        })}
+        items={viewItems}
       />
-    ),
-    [bulkActionsDisabled, t],
-  );
-  const headerControls = (
-    <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
       {searchField}
-      <div className="flex shrink-0 gap-1">{actionButtons}</div>
     </div>
   );
-  const shouldPortalActions = !showHeaderTitle && !!portalTarget;
 
-  return (
-    <section className="space-y-2">
-      {shouldPortalActions ? createPortal(headerControls, portalTarget) : null}
-      <div className="px-5 mb-3 flex flex-wrap items-center justify-between gap-3 min-w-0">
-        {showHeaderTitle || !shouldPortalActions ? (
-          <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text)] min-w-0 truncate">
-            {sectionTitle}
-          </h2>
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
-        {!shouldPortalActions ? headerControls : null}
-      </div>
-
-      <div className="flat-card overflow-visible">
-        {showManualEditor && (
-          <div className="space-y-3 border-b border-[var(--border)] px-5 py-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[var(--muted)]">
+  const addDialog = createPortal(
+    <AnimatePresence>
+      {showManualEditor ? (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={resetManualEditor}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-correction-title"
+            className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2
+                id="add-correction-title"
+                className="min-w-0 truncate text-base font-semibold text-[var(--text)]"
+              >
+                {t("settings.postProcessing.dictionary.add", {
+                  defaultValue: "Add entry",
+                })}
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={resetManualEditor}
+                aria-label={t("common.close", { defaultValue: "Close" })}
+                title={t("common.close", { defaultValue: "Close" })}
+              >
+                <X />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   {t("settings.postProcessing.dictionary.columns.spoken")}
-                </label>
-                <Input
+                </span>
+                <input
+                  ref={manualOriginalRef}
                   value={manualDraft.original}
                   onChange={(event) =>
                     setManualDraft((current) => ({
@@ -608,16 +683,13 @@ export const CorrectionDictionaryView: React.FC<
                       original: event.target.value,
                     }))
                   }
-                  placeholder={t(
-                    "settings.postProcessing.dictionary.placeholders.spoken",
-                  )}
-                  className="w-full"
+                  className="w-full rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm font-semibold text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-[var(--accent)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)]"
                 />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[var(--muted)]">
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                   {t("settings.postProcessing.dictionary.columns.written")}
-                </label>
+                </span>
                 <Input
                   value={manualDraft.corrected}
                   onChange={(event) =>
@@ -626,31 +698,26 @@ export const CorrectionDictionaryView: React.FC<
                       corrected: event.target.value,
                     }))
                   }
-                  placeholder={t(
-                    "settings.postProcessing.dictionary.placeholders.written",
-                  )}
-                  className="w-full"
+                  className="w-full bg-[var(--input)] text-[var(--text)]"
                 />
-              </div>
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm text-[var(--text)]">
+                <input
+                  type="checkbox"
+                  checked={manualDraft.exactOnly}
+                  onChange={(event) =>
+                    setManualDraft((current) => ({
+                      ...current,
+                      exactOnly: event.target.checked,
+                    }))
+                  }
+                />
+                <span>
+                  {t("settings.postProcessing.dictionary.columns.exactOnly")}
+                </span>
+              </label>
             </div>
-
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={manualDraft.exactOnly}
-                onChange={(event) =>
-                  setManualDraft((current) => ({
-                    ...current,
-                    exactOnly: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                {t("settings.postProcessing.dictionary.columns.exactOnly")}
-              </span>
-            </label>
-
-            <div className="flex justify-end gap-2">
+            <div className="mt-5 flex justify-end gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -670,202 +737,275 @@ export const CorrectionDictionaryView: React.FC<
                 {t("common.save")}
               </Button>
             </div>
-          </div>
-        )}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
 
-        {loading ? (
-          <div className="px-5 py-4 text-sm text-[var(--muted)]">
-            {t("common.loading")}
-          </div>
-        ) : groups.length === 0 ? (
-          <EmptyState
-            framed={false}
-            icon={<SpellCheck className="h-5 w-5" aria-hidden />}
-            title={t("settings.corrections.dictionary.empty")}
-            description={t("settings.corrections.dictionary.emptyDescription")}
-            example={t("settings.corrections.dictionary.emptyExample")}
-            action={
-              <Button
-                type="button"
-                size="sm"
-                variant="primary-soft"
-                onClick={() => {
-                  setShowManualEditor(true);
-                  setManualDraft(emptyManualCorrectionDraft());
-                }}
-              >
-                {t("settings.postProcessing.dictionary.add", {
+  const emptyStateText =
+    viewMode === "dictionary"
+      ? {
+          title: t("settings.corrections.dictionary.emptyDictionary", {
+            defaultValue: "No dictionary entries yet.",
+          }),
+          description: t(
+            "settings.corrections.dictionary.emptyDictionaryDescription",
+            {
+              defaultValue:
+                "Add or import correction entries to make Vox Jot prefer those spellings.",
+            },
+          ),
+          example: t("settings.corrections.dictionary.emptyDictionaryExample", {
+            defaultValue: "For example, map “swift ui” to “SwiftUI.”",
+          }),
+        }
+      : {
+          title: t("settings.corrections.dictionary.empty"),
+          description: t("settings.corrections.dictionary.emptyDescription"),
+          example: t("settings.corrections.dictionary.emptyExample"),
+        };
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="px-5 py-4 text-sm text-[var(--muted)]">
+          {t("common.loading")}
+        </div>
+      );
+    }
+
+    if (groups.length === 0) {
+      return (
+        <EmptyState
+          framed={false}
+          icon={<SpellCheck className="h-5 w-5" aria-hidden />}
+          title={emptyStateText.title}
+          description={emptyStateText.description}
+          example={emptyStateText.example}
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="primary-soft"
+              onClick={viewMode === "dictionary" ? handleImport : openManualEditor}
+            >
+              {viewMode === "dictionary" ? (
+                <>
+                  <FileJson className="h-3.5 w-3.5" aria-hidden />
+                  {t("settings.corrections.dictionary.import")}
+                </>
+              ) : (
+                t("settings.postProcessing.dictionary.add", {
                   defaultValue: "Add entry",
-                })}
-              </Button>
-            }
-          />
-        ) : filteredGroups.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
-            {t("settings.corrections.dictionary.search.empty", {
-              query: searchQuery.trim(),
-              defaultValue: "No corrections match your search for '{{query}}'.",
-            })}
-          </div>
-        ) : (
-          <div className="divide-y divide-[var(--border)]">
-            <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
-              <span>
+                })
+              )}
+            </Button>
+          }
+        />
+      );
+    }
+
+    if (filteredGroups.length === 0) {
+      return (
+        <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
+          {t("settings.corrections.dictionary.search.empty", {
+            query: searchQuery.trim(),
+            defaultValue: "No corrections match your search for '{{query}}'.",
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-[var(--border)]">
+        <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] items-center gap-4 bg-[var(--surface-muted)] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:grid">
+          <span>{t("settings.corrections.dictionary.columns.original")}</span>
+          <span>{t("settings.corrections.dictionary.columns.corrected")}</span>
+          <span>{t("common.status", { defaultValue: "Stats" })}</span>
+          <span className="text-right">
+            {t("common.actions", { defaultValue: "Actions" })}
+          </span>
+        </div>
+        {filteredGroups.map((group) => (
+          <div
+            key={getCorrectionGroupKey(group)}
+            className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] md:items-center md:gap-4 ${
+              !group.allActive
+                ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
+                : ""
+            }`}
+          >
+            <div className="min-w-0 space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
                 {t("settings.corrections.dictionary.columns.original")}
               </span>
-              <span>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {group.entries.map((entry) => (
+                  <OriginalChip
+                    key={entry.id}
+                    entry={entry}
+                    onUpdate={handleUpdateOriginal}
+                    onDelete={handleDelete}
+                    onApprove={handleApprove}
+                  />
+                ))}
+                {addingTo === group.corrected ? (
+                  <form
+                    className="inline-flex items-center gap-1"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleAddOriginal(group.corrected);
+                    }}
+                  >
+                    <input
+                      ref={addInputRef}
+                      type="text"
+                      value={newOriginal}
+                      onChange={(event) => setNewOriginal(event.target.value)}
+                      onBlur={() => {
+                        if (!newOriginal.trim()) {
+                          setAddingTo(null);
+                          setNewOriginal("");
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          setAddingTo(null);
+                          setNewOriginal("");
+                        }
+                      }}
+                      className="h-7 w-28 rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                      placeholder={t("common.add", {
+                        defaultValue: "Add...",
+                      })}
+                    />
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                    onClick={() => {
+                      setAddingTo(group.corrected);
+                      setNewOriginal("");
+                    }}
+                    title={t("common.add", { defaultValue: "Add" })}
+                    aria-label={t("common.add", { defaultValue: "Add" })}
+                  >
+                    <Plus className="h-3 w-3" aria-hidden />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0 space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
                 {t("settings.corrections.dictionary.columns.corrected")}
               </span>
-              <span>{t("common.status", { defaultValue: "Stats" })}</span>
-              <span className="text-right">
-                {t("common.actions", { defaultValue: "Actions" })}
+              <Input
+                variant="compact"
+                aria-label={t("settings.corrections.dictionary.columns.corrected")}
+                className="min-h-9 w-full min-w-0 rounded-[999px] px-3 font-semibold text-[var(--text)]"
+                defaultValue={group.corrected}
+                onBlur={(event) =>
+                  handleUpdateCorrected(group, event.target.value)
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    (event.target as HTMLInputElement).blur();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
+              <span
+                className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroupStatus(group).className}`}
+                title={getGroupStatus(group).title}
+              >
+                {getGroupStatus(group).label}
+              </span>
+              <span className="block text-[var(--text)]">
+                {t("settings.corrections.dictionary.columns.frequency", {
+                  defaultValue: "Uses",
+                })}
+                : {group.totalFrequency}
+              </span>
+              <span className="block">
+                {t("settings.corrections.dictionary.columns.confidence", {
+                  defaultValue: "Confidence",
+                })}
+                : {(group.avgEffectiveConfidence * 100).toFixed(0)}%
               </span>
             </div>
-            {filteredGroups.map((group) => (
-              <div
-                key={getCorrectionGroupKey(group)}
-                className={`grid grid-cols-1 gap-3 px-5 py-3.5 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_10rem_5.75rem] md:items-center md:gap-4 ${
-                  !group.allActive
-                    ? "bg-[color-mix(in_srgb,var(--text)_3%,transparent)]"
-                    : ""
-                }`}
+
+            <div className="flex items-center justify-end gap-1.5">
+              <SwitchControl
+                checked={group.allActive}
+                onChange={(checked) => handleToggleGroup(group, checked)}
+                size="compact"
+                frame="icon"
+                title={
+                  group.allActive
+                    ? t("common.disable", { defaultValue: "Disable" })
+                    : t("common.enable", { defaultValue: "Enable" })
+                }
+                ariaLabel={
+                  group.allActive
+                    ? t("common.disable", { defaultValue: "Disable" })
+                    : t("common.enable", { defaultValue: "Enable" })
+                }
+              />
+              <Button
+                type="button"
+                variant="danger-ghost"
+                size="icon-sm"
+                onClick={() => handleDeleteGroup(group)}
+                title={t("common.delete")}
+                aria-label={t("common.delete")}
               >
-                <div className="min-w-0 space-y-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
-                    {t("settings.corrections.dictionary.columns.original")}
-                  </span>
-                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                    {group.entries.map((entry) => (
-                      <OriginalChip
-                        key={entry.id}
-                        entry={entry}
-                        onUpdate={handleUpdateOriginal}
-                        onDelete={handleDelete}
-                        onApprove={handleApprove}
-                      />
-                    ))}
-                    {addingTo === group.corrected ? (
-                      <form
-                        className="inline-flex items-center gap-1"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          void handleAddOriginal(group.corrected);
-                        }}
-                      >
-                        <input
-                          ref={addInputRef}
-                          type="text"
-                          value={newOriginal}
-                          onChange={(e) => setNewOriginal(e.target.value)}
-                          onBlur={() => {
-                            if (!newOriginal.trim()) {
-                              setAddingTo(null);
-                              setNewOriginal("");
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") {
-                              setAddingTo(null);
-                              setNewOriginal("");
-                            }
-                          }}
-                          className="h-7 w-28 rounded-full border border-[var(--border-strong)] bg-[var(--input)] px-2 text-xs text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                          placeholder={t("common.add", {
-                            defaultValue: "Add...",
-                          })}
-                        />
-                      </form>
-                    ) : (
-                      <button
-                        type="button"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                        onClick={() => {
-                          setAddingTo(group.corrected);
-                          setNewOriginal("");
-                        }}
-                        title={t("common.add", { defaultValue: "Add" })}
-                        aria-label={t("common.add", { defaultValue: "Add" })}
-                      >
-                        <Plus className="h-3 w-3" aria-hidden />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="min-w-0 space-y-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)] md:hidden">
-                    {t("settings.corrections.dictionary.columns.corrected")}
-                  </span>
-                  <Input
-                    variant="compact"
-                    aria-label={t(
-                      "settings.corrections.dictionary.columns.corrected",
-                    )}
-                    className="min-h-9 w-full min-w-0 rounded-[999px] px-3 font-semibold text-[var(--text)]"
-                    defaultValue={group.corrected}
-                    onBlur={(e) => handleUpdateCorrected(group, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        (e.target as HTMLInputElement).blur();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
-                  <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroupStatus(group).className}`}
-                    title={getGroupStatus(group).title}
-                  >
-                    {getGroupStatus(group).label}
-                  </span>
-                  <span className="block text-[var(--text)]">
-                    {t("settings.corrections.dictionary.columns.frequency", {
-                      defaultValue: "Uses",
-                    })}
-                    : {group.totalFrequency}
-                  </span>
-                  <span className="block">
-                    {t("settings.corrections.dictionary.columns.confidence", {
-                      defaultValue: "Confidence",
-                    })}
-                    : {(group.avgEffectiveConfidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end gap-1.5">
-                  <SwitchControl
-                    checked={group.allActive}
-                    onChange={(checked) => handleToggleGroup(group, checked)}
-                    size="compact"
-                    frame="icon"
-                    title={
-                      group.allActive
-                        ? t("common.disable", { defaultValue: "Disable" })
-                        : t("common.enable", { defaultValue: "Enable" })
-                    }
-                    ariaLabel={
-                      group.allActive
-                        ? t("common.disable", { defaultValue: "Disable" })
-                        : t("common.enable", { defaultValue: "Enable" })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="danger-ghost"
-                    size="icon-sm"
-                    onClick={() => handleDeleteGroup(group)}
-                    title={t("common.delete")}
-                    aria-label={t("common.delete")}
-                  >
-                    <Trash2 aria-hidden />
-                  </Button>
-                </div>
-              </div>
-            ))}
+                <Trash2 aria-hidden />
+              </Button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
+    );
+  };
+
+  return (
+    <section className="space-y-4">
+      {addDialog}
+      {showHeaderTitle ? (
+        <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3 px-5">
+          <h2 className="min-w-0 truncate text-sm font-bold uppercase tracking-widest text-[var(--text)]">
+            {sectionTitle}
+          </h2>
+          {actionButtons}
+        </div>
+      ) : (
+        <SettingsGroup
+          noCard
+          title={sectionTitle}
+          description={t("settings.corrections.description")}
+        >
+          {actionButtons}
+        </SettingsGroup>
+      )}
+
+      {importMessage ? (
+        <div className="px-1 text-xs font-medium text-[var(--accent)]" role="status">
+          {importMessage}
+        </div>
+      ) : null}
+      {importError ? (
+        <div className="px-1 text-xs text-[var(--danger)]" role="alert">
+          {importError}
+        </div>
+      ) : null}
+
+      <div className="flat-card overflow-visible">{renderContent()}</div>
     </section>
   );
 };
@@ -906,16 +1046,16 @@ const OriginalChip: React.FC<{
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(event) => setValue(event.target.value)}
         onBlur={commitEdit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commitEdit();
-          if (e.key === "Escape") {
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commitEdit();
+          if (event.key === "Escape") {
             setValue(entry.original);
             setEditing(false);
           }
         }}
-        className="px-2 py-0.5 text-xs font-mono bg-mid-gray/10 border border-[var(--accent)]/60 rounded-full focus:outline-none focus:border-[var(--accent)] min-w-[3rem]"
+        className="min-w-[3rem] rounded-full border border-[var(--accent)]/60 bg-mid-gray/10 px-2 py-0.5 font-mono text-xs focus:border-[var(--accent)] focus:outline-none"
         style={{ width: `${Math.max(value.length, 3) + 2}ch` }}
       />
     );
@@ -957,7 +1097,7 @@ const OriginalChip: React.FC<{
         onClick={() => void onDelete(entry.id)}
         aria-label="Delete original phrase"
       >
-        <X className="h-2.5 w-2.5" />
+        <X className="h-2.5 w-2.5" aria-hidden />
       </button>
     </Badge>
   );

@@ -439,9 +439,19 @@
         "empty": "No learned corrections yet.",
         "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
         "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling.",
+        "emptyDictionary": "No dictionary entries yet.",
+        "emptyDictionaryDescription": "Add or import correction entries to make Vox Jot prefer those spellings.",
+        "emptyDictionaryExample": "For example, map “swift ui” to “SwiftUI.”",
         "import": "Import",
+        "importSuccess": "Imported {{count}} corrections.",
+        "importFailed": "Failed to import corrections.",
         "export": "Export",
         "clearAll": "Clear All",
+        "views": {
+          "ariaLabel": "Corrections view",
+          "corrections": "Corrections",
+          "dictionary": "Dictionary"
+        },
         "search": {
           "placeholder": "Search corrections",
           "ariaLabel": "Search learned corrections",

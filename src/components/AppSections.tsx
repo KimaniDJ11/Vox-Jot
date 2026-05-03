@@ -120,6 +120,20 @@ const aboutSummaryPrimary =
   "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
 const aboutSummarySecondary =
   "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.";
+const recentHistoryDescription =
+  "Review transcripts, playback recordings, and reuse or save past dictations.";
+const jotPadDescription =
+  "Capture quick notes in the floating pad and reopen them when you need to keep working.";
+const translationDescription =
+  "Set the target language and choose how translated dictation should be processed.";
+const myVoicesDescription =
+  "Manage saved voice profiles and choose which one Vox Jot uses for spoken output.";
+const voiceCloningDescription =
+  "Create clone profiles from reference audio, then turn them into saved Listen voices.";
+const studioDescription =
+  "Assign saved voices to characters, edit a script, and render story audio.";
+const generatedAudioDescription =
+  "Replay, reveal, copy, star, or remove audio rendered from Studio.";
 const smartCorrectionsDemoTitle = "Smart corrections demo";
 const smartCorrectionsDemoDescription =
   "Shows how learned fixes become visible without relying on color alone.";
@@ -137,6 +151,16 @@ const day1Label = "Day 1";
 const day7Label = "Day 7";
 const day30Label = "Day 30";
 const routeMonitorLabel = "Route monitor";
+
+const SectionIntro: React.FC<{
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}> = ({ title, description, children }) => (
+  <SettingsGroup noCard title={title} description={description}>
+    {children}
+  </SettingsGroup>
+);
 
 const MiniStatusPill: React.FC<{
   icon: React.ReactNode;
@@ -363,7 +387,9 @@ export const DictateModelsSection: React.FC<{
 export const DictateHistorySection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <HistorySettings />
+      <SectionIntro title="Recent History" description={recentHistoryDescription}>
+        <HistorySettings />
+      </SectionIntro>
     </div>
   );
 };
@@ -379,7 +405,7 @@ export const FileTranscriptionSection: React.FC = () => {
 export const RefineTranslationSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Translation">
+      <SettingsGroup title="Translation" description={translationDescription}>
         <TranslationSettingsCard />
       </SettingsGroup>
     </div>
@@ -461,7 +487,9 @@ export const LearnedCorrectionsSection: React.FC<{
 export const ListenMyVoicesSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <MyVoicesPanel showGroupTitle={false} />
+      <SectionIntro title="My Voices" description={myVoicesDescription}>
+        <MyVoicesPanel showGroupTitle={false} />
+      </SectionIntro>
     </div>
   );
 };
@@ -490,7 +518,9 @@ export const ListenCreateVoicesSection: React.FC = () => {
 export const ListenVoiceCloningSection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <VoiceCloningPanel showGroupTitle={false} />
+      <SectionIntro title="Voice Cloning" description={voiceCloningDescription}>
+        <VoiceCloningPanel showGroupTitle={false} />
+      </SectionIntro>
     </div>
   );
 };
@@ -598,43 +628,45 @@ export const JotPadSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {isLoading ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
-          Loading notes...
-        </div>
-      ) : notes.length === 0 ? (
-        <EmptyState
-          icon={<NotebookPen className="h-5 w-5" aria-hidden />}
-          title={t("jotPad.empty", { defaultValue: jotPadEmptyTitle })}
-          description={t("jotPad.emptyDescription", {
-            defaultValue: jotPadEmptyDescription,
-          })}
-          example={t("jotPad.emptyExample", {
-            defaultValue:
-              "For example, dictate meeting notes here, then refine them into a clean summary.",
-          })}
-          action={
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => void createNote()}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              {t("jotPad.createFirst", { defaultValue: createNoteLabel })}
-            </Button>
-          }
-        />
-      ) : (
-        <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
-          {sortedNotes.map((note) => (
-            <NoteRow
-              key={note.id}
-              note={note}
-              onOpen={() => void openNoteInJotPad(note.id)}
-            />
-          ))}
-        </div>
-      )}
+      <SectionIntro title="Jot Pad" description={jotPadDescription}>
+        {isLoading ? (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
+            Loading notes...
+          </div>
+        ) : notes.length === 0 ? (
+          <EmptyState
+            icon={<NotebookPen className="h-5 w-5" aria-hidden />}
+            title={t("jotPad.empty", { defaultValue: jotPadEmptyTitle })}
+            description={t("jotPad.emptyDescription", {
+              defaultValue: jotPadEmptyDescription,
+            })}
+            example={t("jotPad.emptyExample", {
+              defaultValue:
+                "For example, dictate meeting notes here, then refine them into a clean summary.",
+            })}
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void createNote()}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                {t("jotPad.createFirst", { defaultValue: createNoteLabel })}
+              </Button>
+            }
+          />
+        ) : (
+          <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
+            {sortedNotes.map((note) => (
+              <NoteRow
+                key={note.id}
+                note={note}
+                onOpen={() => void openNoteInJotPad(note.id)}
+              />
+            ))}
+          </div>
+        )}
+      </SectionIntro>
     </div>
   );
 };
@@ -1185,12 +1217,25 @@ export const AboutSection: React.FC = () => {
 
 export const StoryStudioAppSection: React.FC = () => {
   return (
-    <div className="-mx-6 -mt-5 md:-mx-8">
-      <StoryStudioSection />
+    <div className="space-y-4">
+      <SectionIntro title="Studio" description={studioDescription}>
+        <div className="-mx-6 md:-mx-8">
+          <StoryStudioSection />
+        </div>
+      </SectionIntro>
     </div>
   );
 };
 
 export const StoryAudioHistoryAppSection: React.FC = () => {
-  return <StoryAudioHistorySection />;
+  return (
+    <div className="space-y-6">
+      <SectionIntro
+        title="Generated Audio"
+        description={generatedAudioDescription}
+      >
+        <StoryAudioHistorySection />
+      </SectionIntro>
+    </div>
+  );
 };

@@ -67,7 +67,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-5 px-4 py-4">
+        <div className="space-y-5 py-4">
           {groupedItems.map((group) => (
             <section key={group.key} className="space-y-2.5">
               <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">

@@ -1248,22 +1248,6 @@ const DraftVoiceModelLibraryCard: React.FC<{
         modelName: model.label,
         defaultValue: "{{modelName}} details",
       })}
-      trailing={
-        selected
-          ? {
-              kind: "custom",
-              node: (
-                <Badge
-                  variant="primary"
-                  className="gap-1 text-[var(--inverse-text)]"
-                >
-                  <Check className="h-3 w-3" aria-hidden />
-                  {t("listen.createVoices.draft", { defaultValue: "Draft" })}
-                </Badge>
-              ),
-            }
-          : null
-      }
       onClick={onSelect}
       disabled={disabled}
       active={selected}

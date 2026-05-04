@@ -6,7 +6,7 @@ use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
@@ -756,7 +756,47 @@ impl HistoryManager {
         limit: usize,
     ) -> Result<HistoryEntriesPage> {
         let conn = self.get_connection()?;
+        self.remove_missing_recording_entries_with_conn(&conn)?;
         Self::get_history_entries_page_with_conn(&conn, offset, limit)
+    }
+
+    fn remove_missing_recording_entries_with_conn(&self, conn: &Connection) -> Result<usize> {
+        Self::remove_missing_recording_entries_for_dir(conn, &self.recordings_dir)
+    }
+
+    fn remove_missing_recording_entries_for_dir(
+        conn: &Connection,
+        recordings_dir: &Path,
+    ) -> Result<usize> {
+        let mut stmt = conn.prepare("SELECT id, file_name FROM transcription_history")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, i64>("id")?, row.get::<_, String>("file_name")?))
+        })?;
+
+        let mut missing_ids = Vec::new();
+        for row in rows {
+            let (id, file_name) = row?;
+            if !recordings_dir.join(file_name).exists() {
+                missing_ids.push(id);
+            }
+        }
+        drop(stmt);
+
+        for id in &missing_ids {
+            conn.execute(
+                "DELETE FROM transcription_history WHERE id = ?1",
+                params![id],
+            )?;
+        }
+
+        if !missing_ids.is_empty() {
+            debug!(
+                "Removed {} history entries with missing recording files",
+                missing_ids.len()
+            );
+        }
+
+        Ok(missing_ids.len())
     }
 
     fn get_history_entries_page_with_conn(
@@ -795,6 +835,7 @@ impl HistoryManager {
 
     pub fn get_latest_entry(&self) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
+        self.remove_missing_recording_entries_with_conn(&conn)?;
         Self::get_latest_entry_with_conn(&conn)
     }
 
@@ -1058,5 +1099,25 @@ mod tests {
         assert!(!next_page.has_more);
         assert_eq!(next_page.entries.len(), 1);
         assert_eq!(next_page.entries[0].timestamp, 100);
+    }
+
+    #[test]
+    fn remove_missing_recording_entries_prunes_stale_rows() {
+        let conn = setup_conn();
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+
+        insert_entry(&conn, 100, "missing", None);
+        insert_entry(&conn, 200, "present", None);
+        fs::write(temp_dir.path().join("vox-jot-200.wav"), []).expect("write wav placeholder");
+
+        let removed =
+            HistoryManager::remove_missing_recording_entries_for_dir(&conn, temp_dir.path())
+                .expect("prune missing recordings");
+        let page = HistoryManager::get_history_entries_page_with_conn(&conn, 0, 10)
+            .expect("fetch entries");
+
+        assert_eq!(removed, 1);
+        assert_eq!(page.total, 1);
+        assert_eq!(page.entries[0].timestamp, 200);
     }
 }

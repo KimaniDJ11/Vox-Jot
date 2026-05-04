@@ -64,6 +64,8 @@ pub struct StoryAudioItem {
     pub created_at_ms: i64,
     pub duration_ms: u32,
     pub line_count: u32,
+    #[serde(default)]
+    pub cast_count: u32,
     pub starred: bool,
 }
 
@@ -210,6 +212,24 @@ pub fn toggle_story_audio_starred(app: AppHandle, id: String) -> Result<StoryAud
 
 #[tauri::command]
 #[specta::specta]
+pub fn update_story_audio_title(
+    app: AppHandle,
+    id: String,
+    title: String,
+) -> Result<StoryAudioItem, String> {
+    let mut items = read_story_audio_items(&app)?;
+    let Some(item) = items.iter_mut().find(|item| item.id == id) else {
+        return Err("Story audio item no longer exists.".to_string());
+    };
+    item.title = story_title_label(&title);
+    let updated = item.clone();
+    write_story_audio_items(&app, &items)?;
+    emit_story_audio_updated(&app);
+    Ok(updated)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
     let mut items = read_story_audio_items(&app)?;
     let Some(index) = items.iter().position(|item| item.id == id) else {
@@ -336,6 +356,7 @@ async fn render_story_audio_inner(
             created_at_ms: now_ms(),
             duration_ms,
             line_count: total_lines,
+            cast_count: request.cast.len() as u32,
             starred: false,
         },
     )?;
@@ -477,6 +498,12 @@ fn read_story_audio_items(app: &AppHandle) -> Result<Vec<StoryAudioItem>, String
             changed = true;
         }
     }
+    for item in &mut items {
+        if item.cast_count == 0 && !item.script_text.trim().is_empty() {
+            item.cast_count = story_cast_count_from_script(&item.script_text);
+            changed |= item.cast_count > 0;
+        }
+    }
     let before_retain = items.len();
     items.retain(|item| Path::new(&item.output_path).exists());
     changed |= items.len() != before_retain;
@@ -546,6 +573,7 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             created_at_ms: metadata_time_ms(&metadata),
             duration_ms: wav_duration_ms(&path).unwrap_or(0),
             line_count: 0,
+            cast_count: 0,
             starred: false,
         });
     }
@@ -583,6 +611,17 @@ fn story_title_from_file_stem(stem: &str) -> String {
         .unwrap_or(stem);
     let title = without_uuid.replace('-', " ");
     story_title_label(&title)
+}
+
+fn story_cast_count_from_script(script_text: &str) -> u32 {
+    let Ok(lines) = parse_script(script_text) else {
+        return 0;
+    };
+    let cast = lines
+        .iter()
+        .map(|line| normalize_name(&line.speaker))
+        .collect::<HashSet<_>>();
+    cast.len().min(u32::MAX as usize) as u32
 }
 
 fn metadata_time_ms(metadata: &fs::Metadata) -> i64 {

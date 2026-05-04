@@ -34,6 +34,7 @@ import {
 import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
+import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 const getHistoryDateKey = (timestamp: number): string => {
   const date = new Date(timestamp * 1000);
@@ -83,10 +84,12 @@ export const HistorySettings: React.FC = () => {
   const historyEntryCountRef = useRef(0);
 
   const loadHistoryEntries = useCallback(
-    async (reset = true) => {
+    async (reset = true, showLoading = true) => {
       const offset = reset ? 0 : historyEntryCountRef.current;
       if (reset) {
-        setLoading(true);
+        if (showLoading) {
+          setLoading(true);
+        }
       } else {
         setIsLoadingMore(true);
       }
@@ -124,7 +127,9 @@ export const HistorySettings: React.FC = () => {
         );
       } finally {
         if (reset) {
-          setLoading(false);
+          if (showLoading) {
+            setLoading(false);
+          }
         } else {
           setIsLoadingMore(false);
         }
@@ -183,6 +188,8 @@ export const HistorySettings: React.FC = () => {
       cleanupPromise.then((cleanup) => cleanup());
     };
   }, [loadHistoryEntries, t]);
+
+  useRefreshOnWindowFocus(() => loadHistoryEntries(true, false));
 
   const toggleSaved = async (id: number) => {
     try {

@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Check, Copy, FolderOpen, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
+import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 export interface StoryAudioItem {
   id: string;
@@ -14,6 +15,7 @@ export interface StoryAudioItem {
   created_at_ms: number;
   duration_ms: number;
   line_count: number;
+  cast_count: number;
   starred: boolean;
 }
 
@@ -22,6 +24,7 @@ interface StoryAudioHistoryProps {
   isLoading: boolean;
   onReveal: (item: StoryAudioItem) => void;
   onToggleStarred: (item: StoryAudioItem) => void;
+  onUpdateTitle: (item: StoryAudioItem, title: string) => Promise<void>;
   onDelete: (item: StoryAudioItem) => void;
 }
 
@@ -45,6 +48,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
   isLoading,
   onReveal,
   onToggleStarred,
+  onUpdateTitle,
   onDelete,
 }) => {
   const groupedItems = groupStoryAudioItems(items);
@@ -82,6 +86,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
                     item={item}
                     onReveal={onReveal}
                     onToggleStarred={onToggleStarred}
+                    onUpdateTitle={onUpdateTitle}
                     onDelete={onDelete}
                   />
                 ))}
@@ -98,8 +103,10 @@ export const StoryAudioSidebar: React.FC = () => {
   const [items, setItems] = useState<StoryAudioItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadItems = useCallback(async () => {
-    setIsLoading(true);
+  const loadItems = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const nextItems = await invoke<StoryAudioItem[]>("list_story_audio");
       setItems(sortStoryAudioItems(nextItems));
@@ -107,13 +114,17 @@ export const StoryAudioSidebar: React.FC = () => {
       console.error("Failed to load generated story audio:", error);
       toast.error("Could not load generated story audio.");
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useRefreshOnWindowFocus(() => loadItems(false));
 
   useEffect(() => {
     const unlisten = listen("story-audio-updated", () => {
@@ -154,6 +165,32 @@ export const StoryAudioSidebar: React.FC = () => {
     }
   }, []);
 
+  const handleUpdateTitle = useCallback(
+    async (item: StoryAudioItem, title: string) => {
+      try {
+        const updated = await invoke<StoryAudioItem>(
+          "update_story_audio_title",
+          {
+            id: item.id,
+            title,
+          },
+        );
+        setItems((current) =>
+          sortStoryAudioItems(
+            current.map((currentItem) =>
+              currentItem.id === updated.id ? updated : currentItem,
+            ),
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to rename story audio:", error);
+        toast.error("Could not rename story audio.");
+        throw error;
+      }
+    },
+    [],
+  );
+
   const handleDelete = useCallback(async (item: StoryAudioItem) => {
     try {
       await invoke("delete_story_audio", { id: item.id });
@@ -173,6 +210,7 @@ export const StoryAudioSidebar: React.FC = () => {
       isLoading={isLoading}
       onReveal={handleReveal}
       onToggleStarred={handleToggleStarred}
+      onUpdateTitle={handleUpdateTitle}
       onDelete={handleDelete}
     />
   );
@@ -184,6 +222,7 @@ interface StoryAudioHistoryCardProps {
   item: StoryAudioItem;
   onReveal: (item: StoryAudioItem) => void;
   onToggleStarred: (item: StoryAudioItem) => void;
+  onUpdateTitle: (item: StoryAudioItem, title: string) => Promise<void>;
   onDelete: (item: StoryAudioItem) => void;
 }
 
@@ -191,11 +230,30 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
   item,
   onReveal,
   onToggleStarred,
+  onUpdateTitle,
   onDelete,
 }) => {
   const [showCopied, setShowCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(item.title || "Untitled Story");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const isCommittingTitleRef = useRef(false);
   const hasScript = item.script_text.trim().length > 0;
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setTitleDraft(item.title || "Untitled Story");
+    }
+  }, [isEditingTitle, item.title]);
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [isEditingTitle]);
 
   const handleLoadAudio = useCallback(async () => {
     try {
@@ -223,15 +281,77 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
     }
   };
 
+  const commitTitle = useCallback(async () => {
+    if (isCommittingTitleRef.current) {
+      return;
+    }
+    const nextTitle = normalizeStoryAudioTitle(titleDraft);
+    const currentTitle = item.title || "Untitled Story";
+
+    if (nextTitle === currentTitle) {
+      setTitleDraft(currentTitle);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    isCommittingTitleRef.current = true;
+    setIsSavingTitle(true);
+    try {
+      await onUpdateTitle(item, nextTitle);
+      setTitleDraft(nextTitle);
+      setIsEditingTitle(false);
+    } finally {
+      isCommittingTitleRef.current = false;
+      setIsSavingTitle(false);
+    }
+  }, [item, onUpdateTitle, titleDraft]);
+
+  const cancelTitleEdit = useCallback(() => {
+    setTitleDraft(item.title || "Untitled Story");
+    setIsEditingTitle(false);
+  }, [item.title]);
+
   return (
     <article className="card-linear group/story-audio relative grid grid-cols-1 gap-y-3 px-4 py-4 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
       <div className="min-w-0 tabular text-[12px] font-medium leading-5 text-[var(--muted)]">
         {formatStoryTime(item.created_at_ms)}
       </div>
 
-      <p className="m-0 min-w-0 cursor-text select-text font-[var(--font-body)] text-base font-normal leading-6 text-[var(--text)]">
-        {item.title || "Untitled Story"}
-      </p>
+      {isEditingTitle ? (
+        <input
+          ref={titleInputRef}
+          value={titleDraft}
+          onChange={(event) => setTitleDraft(event.target.value)}
+          onBlur={() => void commitTitle()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void commitTitle();
+              return;
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancelTitleEdit();
+            }
+          }}
+          className="min-h-8 w-full min-w-0 rounded-md border border-[var(--accent)] bg-[var(--card)] px-2 py-1 font-[var(--font-body)] text-base font-normal leading-6 text-[var(--text)] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] sm:w-auto sm:min-w-64"
+          disabled={isSavingTitle}
+          maxLength={120}
+          aria-label="Story audio title"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsEditingTitle(true)}
+          className="-mx-1 min-h-8 min-w-0 cursor-text rounded-md px-1 text-left font-[var(--font-body)] text-base font-normal leading-6 text-[var(--text)] transition-colors hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          title="Rename story audio"
+          aria-label={`Rename story audio titled ${item.title || "Untitled Story"}`}
+        >
+          <span className="block max-w-full break-words">
+            {item.title || "Untitled Story"}
+          </span>
+        </button>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 md:col-start-2">
         <AudioPlayer
@@ -326,6 +446,11 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
             ? `${item.line_count} line${item.line_count === 1 ? "" : "s"}`
             : "Audio file"}
         </span>
+        {item.cast_count > 0 ? (
+          <span className={storyChipClassName}>
+            {item.cast_count === 1 ? "1 cast member" : `${item.cast_count} cast`}
+          </span>
+        ) : null}
         <span className={storyChipClassName}>
           {formatDuration(item.duration_ms)}
         </span>
@@ -420,6 +545,11 @@ function formatDuration(durationMs: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function normalizeStoryAudioTitle(title: string): string {
+  const trimmed = title.trim();
+  return trimmed.length > 0 ? trimmed : "Untitled Story";
 }
 
 function sortStoryAudioItems(items: StoryAudioItem[]): StoryAudioItem[] {

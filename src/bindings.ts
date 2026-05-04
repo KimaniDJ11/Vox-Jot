@@ -2507,9 +2507,10 @@ export type SoundTheme = "marimba" | "pop" | "custom"
  * A stored correction entry, as returned to the frontend.
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
-export type StoryAudioItem = { id: string; title: string; script_text: string; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; starred: boolean }
+export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
-export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number }
+export type StoryLineInstructionOverride = { line_number: number; style_instructions: string }
+export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[] }
 export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.

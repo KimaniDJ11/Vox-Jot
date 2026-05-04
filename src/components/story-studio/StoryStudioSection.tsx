@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   Loader2,
   RefreshCw,
-  Search,
+  Sparkles,
   Volume2,
   WandSparkles,
   X,
@@ -21,13 +21,29 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Textarea } from "@/components/ui/Textarea";
+import {
+  getModelPlatformOverview,
+  type CatalogModelDescriptor,
+} from "@/lib/modelPlatform";
+import {
+  expressionCapabilityForModel,
+  INSTRUCTION_PRESETS,
+  supportsExpressionControls,
+  type TtsExpressionCapability,
+  type TtsExpressionTag,
+} from "@/lib/ttsExpressionControls";
 import {
   listTtsVoicePresets,
   type TtsVoicePreset,
 } from "@/lib/ttsVoicePresets";
 import { commands } from "@/bindings";
 import { CastBuilder } from "./CastBuilder";
-import { ScriptEditor } from "./ScriptEditor";
+import {
+  ScriptEditor,
+  type ScriptEditorHandle,
+  type ScriptTextSelection,
+} from "./ScriptEditor";
 import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
 
 interface StoryRenderProgress {
@@ -51,6 +67,7 @@ interface StoryRenderRequest {
   cast: Array<{ character_name: string; preset_id: string }>;
   script_text: string;
   pause_ms_between_lines: number;
+  line_instructions: Array<{ line_number: number; style_instructions: string }>;
 }
 
 const defaultScript =
@@ -65,8 +82,16 @@ const fixBeforeRenderingLabel = "Fix before rendering";
 const generateLabel = "Generate";
 const cancelLabel = "Cancel";
 const studioToolAriaLabel = "Studio tools";
-const searchScriptLabel = "Search script";
-const clearSearchLabel = "Clear script search";
+const expressionTagsLabel = "Expression tags";
+const clearExpressionSearchLabel = "Clear expression tag search";
+const expressionControlsTitle = "Expression controls";
+const noExpressionTagMatchesLabel = "No expression tags match this search.";
+const customTagPlaceholder = "Custom tag";
+const addCustomTagLabel = "Add";
+const lineInstructionLabel = "Line instruction";
+const lineInstructionPlaceholder =
+  "Describe how this line should be performed.";
+const closeExpressionControlsLabel = "Close expression controls";
 const generatedAudioNotice = "Generated audio will appear in Generated Audio.";
 const pauseBetweenLinesLabel = "Pause between lines";
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
@@ -79,7 +104,18 @@ interface StoryStudioDraft {
   scriptText: string;
   pauseMs: number;
   activeTool: StudioTool;
-  scriptSearchQuery: string;
+  lineInstructions: Record<string, string>;
+}
+
+interface ExpressionContext {
+  line: { speaker: string; text: string; lineNumber: number } | null;
+  preset: TtsVoicePreset | null;
+  model: Pick<
+    CatalogModelDescriptor,
+    "id" | "provider_id" | "label" | "capabilities"
+  > | null;
+  capability: TtsExpressionCapability;
+  label: string;
 }
 
 const defaultStudioDraft: StoryStudioDraft = {
@@ -88,7 +124,7 @@ const defaultStudioDraft: StoryStudioDraft = {
   scriptText: defaultScript,
   pauseMs: 500,
   activeTool: "script",
-  scriptSearchQuery: "",
+  lineInstructions: {},
 };
 
 export const StoryStudioSection: React.FC = () => {
@@ -103,9 +139,18 @@ export const StoryStudioSection: React.FC = () => {
   const [activeTool, setActiveTool] = useState<StudioTool>(
     initialDraft.activeTool,
   );
-  const [scriptSearchQuery, setScriptSearchQuery] = useState(
-    initialDraft.scriptSearchQuery,
+  const [lineInstructions, setLineInstructions] = useState(
+    initialDraft.lineInstructions,
   );
+  const [expressionQuery, setExpressionQuery] = useState("");
+  const [expressionPopoverOpen, setExpressionPopoverOpen] = useState(false);
+  const [scriptSelection, setScriptSelection] = useState<ScriptTextSelection>({
+    start: scriptText.length,
+    end: scriptText.length,
+    lineNumber: scriptText.split("\n").length,
+  });
+  const [ttsModels, setTtsModels] = useState<CatalogModelDescriptor[]>([]);
+  const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState<StoryRenderProgress | null>(null);
   const activeRenderIdRef = useRef<string | null>(null);
@@ -131,15 +176,31 @@ export const StoryStudioSection: React.FC = () => {
   }, [refreshPresets]);
 
   useEffect(() => {
+    let cancelled = false;
+    void getModelPlatformOverview()
+      .then((overview) => {
+        if (!cancelled) {
+          setTtsModels(overview.tts.models);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load Story Studio expression metadata:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     writeStoredStudioDraft({
       title,
       cast,
       scriptText,
       pauseMs,
       activeTool,
-      scriptSearchQuery,
+      lineInstructions,
     });
-  }, [activeTool, cast, pauseMs, scriptSearchQuery, scriptText, title]);
+  }, [activeTool, cast, lineInstructions, pauseMs, scriptText, title]);
 
   useEffect(() => {
     const unlisten = listen<StoryRenderProgress>(
@@ -168,10 +229,25 @@ export const StoryStudioSection: React.FC = () => {
     validation.errors.length > 0
       ? `${validation.errors.length} issue${validation.errors.length === 1 ? "" : "s"} to fix`
       : `Ready to render: ${validation.lines.length} script line${validation.lines.length === 1 ? "" : "s"} and ${cast.length} cast member${cast.length === 1 ? "" : "s"}.`;
-  const scriptSearchMatchCount = useMemo(
-    () => countScriptSearchMatches(scriptText, scriptSearchQuery),
-    [scriptSearchQuery, scriptText],
+  const expressionContext = useMemo(
+    () =>
+      resolveExpressionContext({
+        cast,
+        lineNumber: scriptSelection.lineNumber,
+        presets,
+        ttsModels,
+        validationLines: validation.lines,
+      }),
+    [cast, presets, scriptSelection.lineNumber, ttsModels, validation.lines],
   );
+  const expressionCapability = expressionContext.capability;
+  const expressionEnabled = supportsExpressionControls(expressionCapability);
+  const currentInstructionKey = expressionContext.line?.lineNumber
+    ? String(expressionContext.line.lineNumber)
+    : null;
+  const currentInstruction = currentInstructionKey
+    ? (lineInstructions[currentInstructionKey] ?? "")
+    : "";
 
   const addCharacter = useCallback(() => {
     setCast((currentCast) => [
@@ -223,6 +299,7 @@ export const StoryStudioSection: React.FC = () => {
       })),
       script_text: scriptText,
       pause_ms_between_lines: pauseMs,
+      line_instructions: buildLineInstructions(validation.lines, lineInstructions),
     };
 
     try {
@@ -241,7 +318,15 @@ export const StoryStudioSection: React.FC = () => {
       activeRenderIdRef.current = null;
       setIsRendering(false);
     }
-  }, [canRender, cast, pauseMs, scriptText, title, validation.lines.length]);
+  }, [
+    canRender,
+    cast,
+    lineInstructions,
+    pauseMs,
+    scriptText,
+    title,
+    validation.lines,
+  ]);
 
   const handleCancel = useCallback(async () => {
     const renderId = activeRenderIdRef.current;
@@ -334,43 +419,81 @@ export const StoryStudioSection: React.FC = () => {
 
           {activeTool === "script" ? (
             <div className="ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
-              <label
-                className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
-                aria-label={searchScriptLabel}
-              >
-                <Search
-                  className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                  aria-hidden
-                />
-                <Input
-                  type="search"
-                  value={scriptSearchQuery}
-                  onChange={(event) => setScriptSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape" && scriptSearchQuery) {
-                      setScriptSearchQuery("");
-                      event.preventDefault();
+              <div className="relative">
+                <label
+                  className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
+                  aria-label={expressionTagsLabel}
+                >
+                  <Sparkles
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <Input
+                    type="search"
+                    value={expressionQuery}
+                    onChange={(event) => {
+                      setExpressionQuery(event.target.value);
+                      setExpressionPopoverOpen(true);
+                    }}
+                    onFocus={() => {
+                      if (expressionEnabled) {
+                        setExpressionPopoverOpen(true);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setExpressionPopoverOpen(false);
+                        setExpressionQuery("");
+                        event.preventDefault();
+                      }
+                    }}
+                    placeholder={
+                      expressionEnabled
+                        ? expressionTagsLabel
+                        : expressionCapability.emptyLabel
                     }
-                  }}
-                  placeholder={searchScriptLabel}
-                  className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                />
-                {scriptSearchQuery ? (
-                  <button
-                    type="button"
-                    className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    onClick={() => setScriptSearchQuery("")}
-                    aria-label={clearSearchLabel}
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
+                    disabled={!expressionEnabled || isRendering}
+                    aria-haspopup="listbox"
+                    aria-expanded={expressionPopoverOpen}
+                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                  />
+                  {expressionQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => setExpressionQuery("")}
+                      aria-label={clearExpressionSearchLabel}
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                {expressionPopoverOpen && expressionEnabled ? (
+                  <ExpressionPopover
+                    capability={expressionCapability}
+                    contextLabel={expressionContext.label}
+                    filter={expressionQuery}
+                    instruction={currentInstruction}
+                    onClose={() => setExpressionPopoverOpen(false)}
+                    onInsertTag={(tag) => {
+                      scriptEditorRef.current?.insertText(tag);
+                      setExpressionPopoverOpen(true);
+                    }}
+                    onInstructionChange={(value) => {
+                      if (!currentInstructionKey) return;
+                      setLineInstructions((current) => {
+                        const next = { ...current };
+                        if (value.trim()) {
+                          next[currentInstructionKey] = value;
+                        } else {
+                          delete next[currentInstructionKey];
+                        }
+                        return next;
+                      });
+                    }}
+                  />
                 ) : null}
-              </label>
-              {scriptSearchQuery ? (
-                <span className="text-xs font-medium text-[var(--muted)]">
-                  {formatScriptSearchMatchCount(scriptSearchMatchCount)}
-                </span>
-              ) : null}
+              </div>
             </div>
           ) : (
             <div
@@ -455,8 +578,10 @@ export const StoryStudioSection: React.FC = () => {
               />
             </label>
             <ScriptEditor
+              ref={scriptEditorRef}
               value={scriptText}
               onChange={setScriptText}
+              onCursorChange={setScriptSelection}
               disabled={isRendering}
             />
           </div>
@@ -531,6 +656,249 @@ function reconcileCastWithPresets(
   }));
 }
 
+const ExpressionPopover: React.FC<{
+  capability: TtsExpressionCapability;
+  contextLabel: string;
+  filter: string;
+  instruction: string;
+  onClose: () => void;
+  onInsertTag: (tag: string) => void;
+  onInstructionChange: (value: string) => void;
+}> = ({
+  capability,
+  contextLabel,
+  filter,
+  instruction,
+  onClose,
+  onInsertTag,
+  onInstructionChange,
+}) => {
+  const [customTag, setCustomTag] = useState("");
+  const normalizedFilter = filter.trim().toLocaleLowerCase();
+  const filteredTags = capability.tags.filter(
+    (tag) =>
+      !normalizedFilter ||
+      tag.label.toLocaleLowerCase().includes(normalizedFilter) ||
+      tag.value.toLocaleLowerCase().includes(normalizedFilter) ||
+      tag.group.toLocaleLowerCase().includes(normalizedFilter),
+  );
+  const groupedTags = groupExpressionTags(filteredTags);
+  const showTags =
+    capability.kind === "fixed_inline_tags" ||
+    capability.kind === "freeform_inline_tags" ||
+    capability.kind === "both";
+  const showInstructions =
+    capability.kind === "instruction_prompt" || capability.kind === "both";
+
+  return (
+    <div
+      className="absolute right-0 z-30 mt-2 w-[min(26rem,calc(100vw-3rem))] rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      role="dialog"
+      aria-label={expressionControlsTitle}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-[var(--text)]">
+            {expressionControlsTitle}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+            {contextLabel}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={onClose}
+          aria-label={closeExpressionControlsLabel}
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </div>
+
+      {showTags ? (
+        <div className="space-y-3">
+          {groupedTags.length > 0 ? (
+            groupedTags.map(([group, tags]) => (
+              <div key={group} className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase text-[var(--muted)]">
+                  {group}
+                </p>
+                <div className="flex flex-wrap gap-1.5" role="listbox">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag.value}
+                      type="button"
+                      className="min-h-9 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => onInsertTag(tag.value)}
+                    >
+                      {tag.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted)]">
+              {noExpressionTagMatchesLabel}
+            </p>
+          )}
+
+          {capability.allowCustomTags ? (
+            <div className="flex gap-2 border-t border-[var(--border)] pt-3">
+              <Input
+                value={customTag}
+                onChange={(event) => setCustomTag(event.target.value)}
+                placeholder={customTagPlaceholder}
+                className="h-10 min-w-0 flex-1 rounded-lg text-sm"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!customTag.trim()}
+                onClick={() => {
+                  const value = customTag.trim();
+                  if (!value) return;
+                  onInsertTag(value.startsWith("[") ? value : `[${value}]`);
+                  setCustomTag("");
+                }}
+              >
+                {addCustomTagLabel}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showInstructions ? (
+        <div className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}>
+          <p className="text-xs font-semibold uppercase text-[var(--muted)]">
+            {lineInstructionLabel}
+          </p>
+          <Textarea
+            value={instruction}
+            onChange={(event) => onInstructionChange(event.target.value)}
+            placeholder={lineInstructionPlaceholder}
+            className="min-h-[84px] !rounded-xl text-sm"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {INSTRUCTION_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 text-xs font-medium text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                onClick={() => onInstructionChange(preset)}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+function resolveExpressionContext({
+  cast,
+  lineNumber,
+  presets,
+  ttsModels,
+  validationLines,
+}: {
+  cast: StoryCastMemberDraft[];
+  lineNumber: number;
+  presets: TtsVoicePreset[];
+  ttsModels: CatalogModelDescriptor[];
+  validationLines: Array<{ speaker: string; text: string; lineNumber: number }>;
+}): ExpressionContext {
+  const line =
+    validationLines.find((candidate) => candidate.lineNumber === lineNumber) ??
+    null;
+  const member = line
+    ? cast.find(
+        (candidate) =>
+          normalizeStoryName(candidate.characterName) ===
+          normalizeStoryName(line.speaker),
+      )
+    : null;
+  const preset = member
+    ? (presets.find((candidate) => candidate.id === member.presetId) ?? null)
+    : null;
+  const model = preset
+    ? (ttsModels.find(
+        (candidate) =>
+          candidate.provider_id === preset.provider_id &&
+          candidate.id === preset.model_id,
+      ) ?? fallbackExpressionModel(preset))
+    : null;
+  const capability = expressionCapabilityForModel(model);
+  const label = line
+    ? `${line.speaker} · ${model?.label ?? preset?.label ?? "Unknown voice"} · line ${line.lineNumber}`
+    : "Move the cursor to a Character: dialogue line";
+
+  return { line, preset, model, capability, label };
+}
+
+function fallbackExpressionModel(
+  preset: TtsVoicePreset,
+): Pick<CatalogModelDescriptor, "id" | "provider_id" | "label" | "capabilities"> {
+  const modelId = preset.model_id.toLowerCase();
+  const providerId = preset.provider_id.toLowerCase();
+  const supportsInstructionPrompt =
+    providerId.includes("qwen") ||
+    modelId.includes("qwen") ||
+    modelId.includes("ming-omni") ||
+    modelId.includes("lfm2-5-audio");
+  const supportsInlineTags =
+    modelId.includes("fish-audio-s2-pro") ||
+    modelId.includes("chatterbox-turbo") ||
+    modelId === "dia-1.6b" ||
+    modelId === "bark-small";
+
+  return {
+    id: preset.model_id,
+    provider_id: preset.provider_id,
+    label: preset.voice_label_snapshot ?? preset.model_id,
+    capabilities: {
+      downloadable: false,
+      loadable: true,
+      local_only: true,
+      supports_translation: false,
+      supports_streaming: false,
+      supports_voice_cloning: false,
+      supports_instruction_prompt: supportsInstructionPrompt,
+      supports_inline_tags: supportsInlineTags,
+      coming_soon: false,
+    },
+  };
+}
+
+function groupExpressionTags(tags: TtsExpressionTag[]) {
+  const groups = new Map<string, TtsExpressionTag[]>();
+  for (const tag of tags) {
+    const current = groups.get(tag.group) ?? [];
+    current.push(tag);
+    groups.set(tag.group, current);
+  }
+  return Array.from(groups.entries());
+}
+
+function buildLineInstructions(
+  lines: Array<{ lineNumber: number }>,
+  lineInstructions: Record<string, string>,
+) {
+  const validLineNumbers = new Set(lines.map((line) => String(line.lineNumber)));
+  return Object.entries(lineInstructions)
+    .filter(([lineNumber, instruction]) => {
+      return validLineNumbers.has(lineNumber) && instruction.trim().length > 0;
+    })
+    .map(([lineNumber, instruction]) => ({
+      line_number: Number.parseInt(lineNumber, 10),
+      style_instructions: instruction.trim(),
+    }));
+}
+
 function readStoredStudioDraft(): StoryStudioDraft {
   if (typeof window === "undefined") {
     return defaultStudioDraft;
@@ -587,11 +955,23 @@ function normalizeStoredStudioDraft(
         ? Math.min(Math.max(Math.round(draft.pauseMs), 0), 10_000)
         : defaultStudioDraft.pauseMs,
     activeTool: draft.activeTool === "cast" ? "cast" : "script",
-    scriptSearchQuery:
-      typeof draft.scriptSearchQuery === "string"
-        ? draft.scriptSearchQuery
-        : defaultStudioDraft.scriptSearchQuery,
+    lineInstructions: normalizeStoredLineInstructions(draft.lineInstructions),
   };
+}
+
+function normalizeStoredLineInstructions(
+  value: unknown,
+): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([lineNumber, instruction]) => {
+      return /^\d+$/.test(lineNumber) && typeof instruction === "string";
+    })
+    .map(([lineNumber, instruction]) => [lineNumber, instruction as string]);
+  return Object.fromEntries(entries);
 }
 
 function normalizeStoredCastMember(
@@ -644,32 +1024,6 @@ function formatHiddenIssueCount(count: number): string {
   return `${count} more issue${count === 1 ? "" : "s"}.`;
 }
 
-function countScriptSearchMatches(scriptText: string, query: string): number {
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  if (!normalizedQuery) {
-    return 0;
-  }
-
-  let count = 0;
-  let index = 0;
-  const normalizedScript = scriptText.toLocaleLowerCase();
-
-  while (index < normalizedScript.length) {
-    const nextIndex = normalizedScript.indexOf(normalizedQuery, index);
-    if (nextIndex === -1) {
-      break;
-    }
-    count += 1;
-    index = nextIndex + normalizedQuery.length;
-  }
-
-  return count;
-}
-
-function formatScriptSearchMatchCount(count: number): string {
-  return `${count} match${count === 1 ? "" : "es"}`;
-}
-
 function getProgressPercent(progress: StoryRenderProgress | null): number {
   if (!progress) {
     return 8;
@@ -700,4 +1054,8 @@ function normalizeError(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
+}
+
+function normalizeStoryName(value: string): string {
+  return value.trim().toLocaleLowerCase();
 }

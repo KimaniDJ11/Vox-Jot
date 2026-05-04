@@ -36,6 +36,14 @@ pub struct StoryRenderRequest {
     pub cast: Vec<StoryCastMember>,
     pub script_text: String,
     pub pause_ms_between_lines: u32,
+    #[serde(default)]
+    pub line_instructions: Vec<StoryLineInstructionOverride>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryLineInstructionOverride {
+    pub line_number: u32,
+    pub style_instructions: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -60,6 +68,8 @@ pub struct StoryAudioItem {
     pub id: String,
     pub title: String,
     pub script_text: String,
+    #[serde(default)]
+    pub line_instructions: Vec<StoryLineInstructionOverride>,
     pub output_path: String,
     pub created_at_ms: i64,
     pub duration_ms: u32,
@@ -240,6 +250,7 @@ async fn render_story_audio_inner(
     let cast = validate_cast(&request.cast, &preset_by_id)?;
     let lines = parse_script(&request.script_text)?;
     validate_script_speakers(&lines, &cast)?;
+    let line_instructions = normalize_line_instructions(&request.line_instructions);
 
     let total_lines = lines.len() as u32;
     emit_progress(&app, &request.render_id, 0, total_lines, None, "validating");
@@ -261,10 +272,13 @@ async fn render_story_audio_inner(
             "rendering",
         );
 
-        let preset = cast
+        let mut preset = cast
             .get(&normalize_name(&line.speaker))
             .ok_or_else(|| format!("No voice is assigned to '{}'.", line.speaker))?
             .clone();
+        if let Some(instruction) = line_instructions.get(&(index as u32 + 1)) {
+            preset.tuning.style_instructions = Some(instruction.clone());
+        }
         let files = manager
             .synthesize_to_temp_files(
                 SpeakRequest {
@@ -332,6 +346,7 @@ async fn render_story_audio_inner(
             id: request.render_id,
             title: story_title_label(&request.title),
             script_text: request.script_text,
+            line_instructions: request.line_instructions,
             output_path,
             created_at_ms: now_ms(),
             duration_ms,
@@ -342,6 +357,22 @@ async fn render_story_audio_inner(
     emit_story_audio_updated(&app);
 
     Ok(result)
+}
+
+fn normalize_line_instructions(
+    instructions: &[StoryLineInstructionOverride],
+) -> HashMap<u32, String> {
+    instructions
+        .iter()
+        .filter_map(|instruction| {
+            let value = instruction.style_instructions.trim();
+            if instruction.line_number == 0 || value.is_empty() {
+                None
+            } else {
+                Some((instruction.line_number, value.to_string()))
+            }
+        })
+        .collect()
 }
 
 fn emit_progress(
@@ -542,6 +573,7 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             id: format!("file:{file_name}"),
             title,
             script_text: String::new(),
+            line_instructions: Vec::new(),
             output_path: path.to_string_lossy().to_string(),
             created_at_ms: metadata_time_ms(&metadata),
             duration_ms: wav_duration_ms(&path).unwrap_or(0),
@@ -800,6 +832,30 @@ mod tests {
     fn rejects_malformed_script_line() {
         let error = parse_script("Narrator says hello").unwrap_err();
         assert!(error.contains("Line 1"));
+    }
+
+    #[test]
+    fn normalizes_line_instruction_overrides() {
+        let instructions = normalize_line_instructions(&[
+            StoryLineInstructionOverride {
+                line_number: 2,
+                style_instructions: "  whisper this line  ".to_string(),
+            },
+            StoryLineInstructionOverride {
+                line_number: 0,
+                style_instructions: "ignored".to_string(),
+            },
+            StoryLineInstructionOverride {
+                line_number: 3,
+                style_instructions: "   ".to_string(),
+            },
+        ]);
+
+        assert_eq!(instructions.len(), 1);
+        assert_eq!(
+            instructions.get(&2).map(String::as_str),
+            Some("whisper this line")
+        );
     }
 
     #[test]

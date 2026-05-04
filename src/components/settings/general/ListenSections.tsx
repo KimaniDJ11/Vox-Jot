@@ -405,7 +405,41 @@ type VoiceArchitectDraftState = {
   tuning: TtsVoiceTuningSettings;
 };
 
+type VoiceArchitectUiDraftState = {
+  saveProfileNameDraft: string;
+  previewTextDraft: string;
+  modelSearchQuery: string;
+  createVoiceTool: "models" | "tuning";
+};
+
+type VoiceCloningDraftState = {
+  selectedCloneModelValue: string;
+  selectedProfileId: string;
+  voiceCloneTool: "models" | "profiles";
+  modelSearchQuery: string;
+  referenceAudioPathDraft: string;
+  referenceTranscriptDraft: string;
+};
+
 let cachedVoiceArchitectDraft: VoiceArchitectDraftState | null = null;
+const voiceArchitectUiDraftStorageKey = "vox-jot-create-voice-draft-v1";
+const voiceCloningDraftStorageKey = "vox-jot-voice-cloning-draft-v1";
+
+const defaultVoiceArchitectUiDraft: VoiceArchitectUiDraftState = {
+  saveProfileNameDraft: "",
+  previewTextDraft: DEFAULT_TTS_PREVIEW_TEXT,
+  modelSearchQuery: "",
+  createVoiceTool: "models",
+};
+
+const defaultVoiceCloningDraft: VoiceCloningDraftState = {
+  selectedCloneModelValue: "__none__",
+  selectedProfileId: "__none__",
+  voiceCloneTool: "models",
+  modelSearchQuery: "",
+  referenceAudioPathDraft: "",
+  referenceTranscriptDraft: "",
+};
 
 function buildVoiceArchitectDraftFromPreset(
   preset: TtsVoicePreset | null | undefined,
@@ -424,6 +458,130 @@ function saveVoiceArchitectDraft(draft: VoiceArchitectDraftState) {
   cachedVoiceArchitectDraft = {
     ...draft,
     tuning: { ...draft.tuning },
+  };
+}
+
+function readVoiceArchitectUiDraft(): VoiceArchitectUiDraftState {
+  if (typeof window === "undefined") {
+    return defaultVoiceArchitectUiDraft;
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(
+      voiceArchitectUiDraftStorageKey,
+    );
+    if (!rawDraft) {
+      return defaultVoiceArchitectUiDraft;
+    }
+    return normalizeVoiceArchitectUiDraft(
+      JSON.parse(rawDraft) as Partial<VoiceArchitectUiDraftState>,
+    );
+  } catch (error) {
+    console.warn("Failed to read Create Voices draft:", error);
+    return defaultVoiceArchitectUiDraft;
+  }
+}
+
+function writeVoiceArchitectUiDraft(draft: VoiceArchitectUiDraftState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      voiceArchitectUiDraftStorageKey,
+      JSON.stringify(normalizeVoiceArchitectUiDraft(draft)),
+    );
+  } catch (error) {
+    console.warn("Failed to store Create Voices draft:", error);
+  }
+}
+
+function normalizeVoiceArchitectUiDraft(
+  draft: Partial<VoiceArchitectUiDraftState>,
+): VoiceArchitectUiDraftState {
+  return {
+    saveProfileNameDraft:
+      typeof draft.saveProfileNameDraft === "string"
+        ? draft.saveProfileNameDraft
+        : defaultVoiceArchitectUiDraft.saveProfileNameDraft,
+    previewTextDraft:
+      typeof draft.previewTextDraft === "string"
+        ? draft.previewTextDraft
+        : defaultVoiceArchitectUiDraft.previewTextDraft,
+    modelSearchQuery:
+      typeof draft.modelSearchQuery === "string"
+        ? draft.modelSearchQuery
+        : defaultVoiceArchitectUiDraft.modelSearchQuery,
+    createVoiceTool:
+      draft.createVoiceTool === "tuning"
+        ? "tuning"
+        : defaultVoiceArchitectUiDraft.createVoiceTool,
+  };
+}
+
+function readVoiceCloningDraft(): VoiceCloningDraftState {
+  if (typeof window === "undefined") {
+    return defaultVoiceCloningDraft;
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(voiceCloningDraftStorageKey);
+    if (!rawDraft) {
+      return defaultVoiceCloningDraft;
+    }
+    return normalizeVoiceCloningDraft(
+      JSON.parse(rawDraft) as Partial<VoiceCloningDraftState>,
+    );
+  } catch (error) {
+    console.warn("Failed to read Voice Cloning draft:", error);
+    return defaultVoiceCloningDraft;
+  }
+}
+
+function writeVoiceCloningDraft(draft: VoiceCloningDraftState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      voiceCloningDraftStorageKey,
+      JSON.stringify(normalizeVoiceCloningDraft(draft)),
+    );
+  } catch (error) {
+    console.warn("Failed to store Voice Cloning draft:", error);
+  }
+}
+
+function normalizeVoiceCloningDraft(
+  draft: Partial<VoiceCloningDraftState>,
+): VoiceCloningDraftState {
+  return {
+    selectedCloneModelValue:
+      typeof draft.selectedCloneModelValue === "string"
+        ? draft.selectedCloneModelValue
+        : defaultVoiceCloningDraft.selectedCloneModelValue,
+    selectedProfileId:
+      typeof draft.selectedProfileId === "string"
+        ? draft.selectedProfileId
+        : defaultVoiceCloningDraft.selectedProfileId,
+    voiceCloneTool:
+      draft.voiceCloneTool === "profiles"
+        ? "profiles"
+        : defaultVoiceCloningDraft.voiceCloneTool,
+    modelSearchQuery:
+      typeof draft.modelSearchQuery === "string"
+        ? draft.modelSearchQuery
+        : defaultVoiceCloningDraft.modelSearchQuery,
+    referenceAudioPathDraft:
+      typeof draft.referenceAudioPathDraft === "string"
+        ? draft.referenceAudioPathDraft
+        : defaultVoiceCloningDraft.referenceAudioPathDraft,
+    referenceTranscriptDraft:
+      typeof draft.referenceTranscriptDraft === "string"
+        ? draft.referenceTranscriptDraft
+        : defaultVoiceCloningDraft.referenceTranscriptDraft,
   };
 }
 
@@ -1480,7 +1638,10 @@ const VoiceArchitectSection: React.FC<{
     }
     return buildVoiceArchitectDraftFromPreset(speech.activePreset);
   }, [speech.activePreset]);
-  const [saveProfileNameDraft, setSaveProfileNameDraft] = useState("");
+  const initialUiDraft = useMemo(readVoiceArchitectUiDraft, []);
+  const [saveProfileNameDraft, setSaveProfileNameDraft] = useState(
+    initialUiDraft.saveProfileNameDraft,
+  );
   const [draftProviderId, setDraftProviderId] = useState(
     initialDraft.providerId,
   );
@@ -1496,19 +1657,31 @@ const VoiceArchitectSection: React.FC<{
   >(null);
   const [draftTuning, setDraftTuning] = useState(initialDraft.tuning);
   const [previewTextDraft, setPreviewTextDraft] = useState(
-    DEFAULT_TTS_PREVIEW_TEXT,
+    initialUiDraft.previewTextDraft,
   );
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
-  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [modelSearchQuery, setModelSearchQuery] = useState(
+    initialUiDraft.modelSearchQuery,
+  );
   const [tuningWindowOpen, setTuningWindowOpen] = useState(false);
   const [createVoiceTool, setCreateVoiceTool] = useState<"models" | "tuning">(
-    "models",
+    initialUiDraft.createVoiceTool,
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setSaveProfileNameDraft("");
-  }, [speech.activePreset?.id]);
+    writeVoiceArchitectUiDraft({
+      saveProfileNameDraft,
+      previewTextDraft,
+      modelSearchQuery,
+      createVoiceTool,
+    });
+  }, [
+    createVoiceTool,
+    modelSearchQuery,
+    previewTextDraft,
+    saveProfileNameDraft,
+  ]);
 
   useEffect(() => {
     if (!speech.activePreset) return;
@@ -3276,16 +3449,23 @@ const VoiceCloningSection: React.FC<{
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
+  const initialDraft = useMemo(readVoiceCloningDraft, []);
   const [selectedCloneModelValue, setSelectedCloneModelValue] =
-    useState("__none__");
+    useState(initialDraft.selectedCloneModelValue);
   const [voiceCloneTool, setVoiceCloneTool] = useState<"models" | "profiles">(
-    "models",
+    initialDraft.voiceCloneTool,
   );
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
   const [profilesWindowOpen, setProfilesWindowOpen] = useState(false);
-  const [modelSearchQuery, setModelSearchQuery] = useState("");
-  const [referenceAudioPathDraft, setReferenceAudioPathDraft] = useState("");
-  const [referenceTranscriptDraft, setReferenceTranscriptDraft] = useState("");
+  const [modelSearchQuery, setModelSearchQuery] = useState(
+    initialDraft.modelSearchQuery,
+  );
+  const [referenceAudioPathDraft, setReferenceAudioPathDraft] = useState(
+    initialDraft.referenceAudioPathDraft,
+  );
+  const [referenceTranscriptDraft, setReferenceTranscriptDraft] = useState(
+    initialDraft.referenceTranscriptDraft,
+  );
   const [isReferenceAudioDragOver, setIsReferenceAudioDragOver] =
     useState(false);
   const selectedCloneModel =
@@ -3297,9 +3477,34 @@ const VoiceCloningSection: React.FC<{
         profileSupportsModel(profile, selectedCloneModel),
       )
     : speech.profiles;
-  const [selectedProfileId, setSelectedProfileId] = useState("__none__");
+  const [selectedProfileId, setSelectedProfileId] = useState(
+    initialDraft.selectedProfileId,
+  );
   const selectedProfile =
     visibleProfiles.find((profile) => profile.id === selectedProfileId) ?? null;
+  const lastSyncedProfileIdRef = useRef<string | null>(
+    initialDraft.selectedProfileId !== "__none__"
+      ? initialDraft.selectedProfileId
+      : null,
+  );
+
+  useEffect(() => {
+    writeVoiceCloningDraft({
+      selectedCloneModelValue,
+      selectedProfileId,
+      voiceCloneTool,
+      modelSearchQuery,
+      referenceAudioPathDraft,
+      referenceTranscriptDraft,
+    });
+  }, [
+    modelSearchQuery,
+    referenceAudioPathDraft,
+    referenceTranscriptDraft,
+    selectedCloneModelValue,
+    selectedProfileId,
+    voiceCloneTool,
+  ]);
 
   useEffect(() => {
     const activeCloneModel = speech.activeModel?.capabilities
@@ -3338,6 +3543,11 @@ const VoiceCloningSection: React.FC<{
   }, [visibleProfiles]);
 
   useEffect(() => {
+    const nextProfileId = selectedProfile?.id ?? null;
+    if (lastSyncedProfileIdRef.current === nextProfileId) {
+      return;
+    }
+    lastSyncedProfileIdRef.current = nextProfileId;
     setReferenceAudioPathDraft("");
     setReferenceTranscriptDraft(selectedProfile?.transcript ?? "");
   }, [selectedProfile?.id, selectedProfile?.transcript]);

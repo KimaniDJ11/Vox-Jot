@@ -69,18 +69,43 @@ const searchScriptLabel = "Search script";
 const clearSearchLabel = "Clear script search";
 const generatedAudioNotice = "Generated audio will appear in Generated Audio.";
 const pauseBetweenLinesLabel = "Pause between lines";
+const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
 type StudioTool = "script" | "cast";
 
+interface StoryStudioDraft {
+  title: string;
+  cast: StoryCastMemberDraft[];
+  scriptText: string;
+  pauseMs: number;
+  activeTool: StudioTool;
+  scriptSearchQuery: string;
+}
+
+const defaultStudioDraft: StoryStudioDraft = {
+  title: "Untitled Story",
+  cast: [],
+  scriptText: defaultScript,
+  pauseMs: 500,
+  activeTool: "script",
+  scriptSearchQuery: "",
+};
+
 export const StoryStudioSection: React.FC = () => {
+  const initialDraft = useMemo(readStoredStudioDraft, []);
+
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-  const [title, setTitle] = useState("Untitled Story");
-  const [cast, setCast] = useState<StoryCastMemberDraft[]>([]);
-  const [scriptText, setScriptText] = useState(defaultScript);
-  const [pauseMs, setPauseMs] = useState(500);
-  const [activeTool, setActiveTool] = useState<StudioTool>("script");
-  const [scriptSearchQuery, setScriptSearchQuery] = useState("");
+  const [title, setTitle] = useState(initialDraft.title);
+  const [cast, setCast] = useState<StoryCastMemberDraft[]>(initialDraft.cast);
+  const [scriptText, setScriptText] = useState(initialDraft.scriptText);
+  const [pauseMs, setPauseMs] = useState(initialDraft.pauseMs);
+  const [activeTool, setActiveTool] = useState<StudioTool>(
+    initialDraft.activeTool,
+  );
+  const [scriptSearchQuery, setScriptSearchQuery] = useState(
+    initialDraft.scriptSearchQuery,
+  );
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState<StoryRenderProgress | null>(null);
   const activeRenderIdRef = useRef<string | null>(null);
@@ -104,6 +129,17 @@ export const StoryStudioSection: React.FC = () => {
   useEffect(() => {
     void refreshPresets();
   }, [refreshPresets]);
+
+  useEffect(() => {
+    writeStoredStudioDraft({
+      title,
+      cast,
+      scriptText,
+      pauseMs,
+      activeTool,
+      scriptSearchQuery,
+    });
+  }, [activeTool, cast, pauseMs, scriptSearchQuery, scriptText, title]);
 
   useEffect(() => {
     const unlisten = listen<StoryRenderProgress>(
@@ -467,7 +503,7 @@ function reconcileCastWithPresets(
   presets: TtsVoicePreset[],
 ): StoryCastMemberDraft[] {
   if (presets.length === 0) {
-    return [];
+    return currentCast;
   }
   if (currentCast.length === 0) {
     return [
@@ -493,6 +529,94 @@ function reconcileCastWithPresets(
     ...member,
     presetId: presetIds.has(member.presetId) ? member.presetId : presets[0].id,
   }));
+}
+
+function readStoredStudioDraft(): StoryStudioDraft {
+  if (typeof window === "undefined") {
+    return defaultStudioDraft;
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(storyStudioDraftStorageKey);
+    if (!rawDraft) {
+      return defaultStudioDraft;
+    }
+
+    const parsed = JSON.parse(rawDraft) as Partial<StoryStudioDraft>;
+    return normalizeStoredStudioDraft(parsed);
+  } catch (error) {
+    console.warn("Failed to read Story Studio draft:", error);
+    return defaultStudioDraft;
+  }
+}
+
+function writeStoredStudioDraft(draft: StoryStudioDraft) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      storyStudioDraftStorageKey,
+      JSON.stringify(normalizeStoredStudioDraft(draft)),
+    );
+  } catch (error) {
+    console.warn("Failed to store Story Studio draft:", error);
+  }
+}
+
+function normalizeStoredStudioDraft(
+  draft: Partial<StoryStudioDraft>,
+): StoryStudioDraft {
+  return {
+    title:
+      typeof draft.title === "string"
+        ? draft.title
+        : defaultStudioDraft.title,
+    cast: Array.isArray(draft.cast)
+      ? draft.cast
+          .map(normalizeStoredCastMember)
+          .filter((member): member is StoryCastMemberDraft => member !== null)
+      : defaultStudioDraft.cast,
+    scriptText:
+      typeof draft.scriptText === "string"
+        ? draft.scriptText
+        : defaultStudioDraft.scriptText,
+    pauseMs:
+      typeof draft.pauseMs === "number" && Number.isFinite(draft.pauseMs)
+        ? Math.min(Math.max(Math.round(draft.pauseMs), 0), 10_000)
+        : defaultStudioDraft.pauseMs,
+    activeTool: draft.activeTool === "cast" ? "cast" : "script",
+    scriptSearchQuery:
+      typeof draft.scriptSearchQuery === "string"
+        ? draft.scriptSearchQuery
+        : defaultStudioDraft.scriptSearchQuery,
+  };
+}
+
+function normalizeStoredCastMember(
+  member: unknown,
+): StoryCastMemberDraft | null {
+  if (!member || typeof member !== "object") {
+    return null;
+  }
+
+  const candidate = member as Partial<StoryCastMemberDraft>;
+  if (
+    typeof candidate.characterName !== "string" ||
+    typeof candidate.presetId !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id:
+      typeof candidate.id === "string" && candidate.id
+        ? candidate.id
+        : crypto.randomUUID(),
+    characterName: candidate.characterName,
+    presetId: candidate.presetId,
+  };
 }
 
 function nextCharacterName(index: number): string {

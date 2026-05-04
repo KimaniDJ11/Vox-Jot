@@ -14,6 +14,10 @@ export interface StoryAudioItem {
   created_at_ms: number;
   duration_ms: number;
   line_count: number;
+  generation_time_ms?: number;
+  sample_rate_hz?: number;
+  expression_tags_used?: boolean;
+  inline_prompt_used?: boolean;
   starred: boolean;
 }
 
@@ -39,6 +43,9 @@ const noGeneratedAudioTitle = "No generated audio yet";
 const noGeneratedAudioDescription =
   "Generated stories will appear here after the first render.";
 const starredLabel = "Starred";
+const generatedInLabel = "Generated in";
+const expressionTagsUsedLabel = "Expression tags";
+const inlinePromptUsedLabel = "Inline prompt";
 
 export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
   items,
@@ -329,6 +336,17 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
         <span className={storyChipClassName}>
           {formatDuration(item.duration_ms)}
         </span>
+        {typeof item.generation_time_ms === "number" &&
+        item.generation_time_ms > 0 ? (
+          <span className={storyChipClassName}>
+            {generatedInLabel} {formatGenerationTime(item.generation_time_ms)}
+          </span>
+        ) : null}
+        {typeof item.sample_rate_hz === "number" && item.sample_rate_hz > 0 ? (
+          <span className={storyChipClassName}>
+            {formatSampleRate(item.sample_rate_hz)}
+          </span>
+        ) : null}
         <span
           className={`${storyChipClassName} ${
             hasScript
@@ -338,6 +356,12 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
         >
           {hasScript ? "Script saved" : "Audio only"}
         </span>
+        {item.expression_tags_used ? (
+          <span className={storyChipClassName}>{expressionTagsUsedLabel}</span>
+        ) : null}
+        {item.inline_prompt_used ? (
+          <span className={storyChipClassName}>{inlinePromptUsedLabel}</span>
+        ) : null}
         {item.starred ? (
           <span className="inline-flex max-w-full min-w-0 items-center rounded-full border border-[color-mix(in_srgb,var(--accent),transparent_55%)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold leading-4 text-[var(--accent)]">
             {starredLabel}
@@ -420,6 +444,23 @@ function formatDuration(durationMs: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatGenerationTime(durationMs: number): string {
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+}
+
+function formatSampleRate(sampleRateHz: number): string {
+  if (sampleRateHz >= 1000) {
+    return `${Number.parseFloat((sampleRateHz / 1000).toFixed(1))} kHz`;
+  }
+  return `${sampleRateHz} Hz`;
 }
 
 function sortStoryAudioItems(items: StoryAudioItem[]): StoryAudioItem[] {

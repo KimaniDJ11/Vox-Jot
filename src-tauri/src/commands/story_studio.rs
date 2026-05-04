@@ -10,7 +10,7 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
@@ -74,6 +74,14 @@ pub struct StoryAudioItem {
     pub created_at_ms: i64,
     pub duration_ms: u32,
     pub line_count: u32,
+    #[serde(default)]
+    pub generation_time_ms: u32,
+    #[serde(default = "default_story_sample_rate")]
+    pub sample_rate_hz: u32,
+    #[serde(default)]
+    pub expression_tags_used: bool,
+    #[serde(default)]
+    pub inline_prompt_used: bool,
     pub starred: bool,
 }
 
@@ -241,6 +249,7 @@ async fn render_story_audio_inner(
     request: StoryRenderRequest,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<StoryRenderResult, String> {
+    let render_started_at = Instant::now();
     let settings = get_settings(&app);
     let preset_by_id = settings
         .tts_voice_presets
@@ -251,6 +260,8 @@ async fn render_story_audio_inner(
     let lines = parse_script(&request.script_text)?;
     validate_script_speakers(&lines, &cast)?;
     let line_instructions = normalize_line_instructions(&request.line_instructions);
+    let expression_tags_used = lines.iter().any(|line| contains_expression_tag(&line.text));
+    let inline_prompt_used = !line_instructions.is_empty();
 
     let total_lines = lines.len() as u32;
     emit_progress(&app, &request.render_id, 0, total_lines, None, "validating");
@@ -351,6 +362,10 @@ async fn render_story_audio_inner(
             created_at_ms: now_ms(),
             duration_ms,
             line_count: total_lines,
+            generation_time_ms: elapsed_ms_u32(render_started_at),
+            sample_rate_hz: STORY_SAMPLE_RATE,
+            expression_tags_used,
+            inline_prompt_used,
             starred: false,
         },
     )?;
@@ -373,6 +388,31 @@ fn normalize_line_instructions(
             }
         })
         .collect()
+}
+
+fn contains_expression_tag(text: &str) -> bool {
+    contains_balanced_marker(text, '[', ']') || contains_balanced_marker(text, '(', ')')
+}
+
+fn contains_balanced_marker(text: &str, open: char, close: char) -> bool {
+    let mut started = false;
+    let mut has_content = false;
+    for ch in text.chars() {
+        if !started {
+            started = ch == open;
+            has_content = false;
+            continue;
+        }
+        if ch == close {
+            if has_content {
+                return true;
+            }
+            started = false;
+            continue;
+        }
+        has_content |= !ch.is_whitespace();
+    }
+    false
 }
 
 fn emit_progress(
@@ -578,6 +618,10 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             created_at_ms: metadata_time_ms(&metadata),
             duration_ms: wav_duration_ms(&path).unwrap_or(0),
             line_count: 0,
+            generation_time_ms: 0,
+            sample_rate_hz: wav_sample_rate_hz(&path).unwrap_or(STORY_SAMPLE_RATE),
+            expression_tags_used: false,
+            inline_prompt_used: false,
             starred: false,
         });
     }
@@ -634,6 +678,20 @@ fn system_time_ms(time: SystemTime) -> Option<i64> {
 
 fn now_ms() -> i64 {
     system_time_ms(SystemTime::now()).unwrap_or(0)
+}
+
+fn elapsed_ms_u32(started_at: Instant) -> u32 {
+    u32::try_from(started_at.elapsed().as_millis()).unwrap_or(u32::MAX)
+}
+
+fn default_story_sample_rate() -> u32 {
+    STORY_SAMPLE_RATE
+}
+
+fn wav_sample_rate_hz(path: &Path) -> Result<u32, String> {
+    let reader = hound::WavReader::open(path)
+        .map_err(|err| format!("Failed to read story WAV metadata: {err}"))?;
+    Ok(reader.spec().sample_rate)
 }
 
 fn wav_duration_ms(path: &Path) -> Result<u32, String> {
@@ -856,6 +914,15 @@ mod tests {
             instructions.get(&2).map(String::as_str),
             Some("whisper this line")
         );
+    }
+
+    #[test]
+    fn detects_expression_tags_in_script_text() {
+        assert!(contains_expression_tag("[whispering] Hello."));
+        assert!(contains_expression_tag("Hello (laughs)."));
+        assert!(contains_expression_tag("Hello [] [happy]."));
+        assert!(!contains_expression_tag("Hello without cue markers."));
+        assert!(!contains_expression_tag("Hello [] without cue content."));
     }
 
     #[test]

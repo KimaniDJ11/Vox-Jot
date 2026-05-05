@@ -103,6 +103,8 @@ pub struct StoryAudioItem {
     pub duration_ms: u32,
     pub line_count: u32,
     #[serde(default)]
+    pub cast_count: u32,
+    #[serde(default)]
     pub generation_time_ms: u32,
     #[serde(default = "default_story_sample_rate")]
     pub sample_rate_hz: u32,
@@ -531,6 +533,16 @@ pub fn rename_story_audio(
 
 #[tauri::command]
 #[specta::specta]
+pub fn update_story_audio_title(
+    app: AppHandle,
+    id: String,
+    title: String,
+) -> Result<StoryAudioItem, String> {
+    rename_story_audio(app, id, title)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
     let mut items = read_story_audio_items(&app)?;
     let Some(index) = items.iter().position(|item| item.id == id) else {
@@ -585,6 +597,7 @@ pub fn create_processed_story_audio(
         created_at_ms: now_ms(),
         duration_ms,
         line_count: source.line_count,
+        cast_count: source.cast_count,
         generation_time_ms: source.generation_time_ms,
         sample_rate_hz: output_sample_rate,
         expression_tags_used: source.expression_tags_used,
@@ -715,6 +728,7 @@ async fn render_story_audio_inner(
             created_at_ms: now_ms(),
             duration_ms,
             line_count: total_lines,
+            cast_count: request.cast.len() as u32,
             generation_time_ms: elapsed_ms_u32(render_started_at),
             sample_rate_hz: STORY_SAMPLE_RATE,
             expression_tags_used,
@@ -970,6 +984,7 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             created_at_ms: metadata_time_ms(&metadata),
             duration_ms: wav_duration_ms(&path).unwrap_or(0),
             line_count: 0,
+            cast_count: 0,
             generation_time_ms: 0,
             sample_rate_hz: wav_sample_rate_hz(&path).unwrap_or(STORY_SAMPLE_RATE),
             expression_tags_used: false,
@@ -1523,6 +1538,7 @@ mod tests {
             created_at_ms,
             duration_ms: 0,
             line_count: 0,
+            cast_count: 0,
             generation_time_ms: 0,
             sample_rate_hz: STORY_SAMPLE_RATE,
             expression_tags_used: false,

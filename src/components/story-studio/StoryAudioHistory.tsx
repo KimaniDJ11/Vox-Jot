@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 export interface StoryAudioItem {
   id: string;
@@ -32,6 +33,7 @@ export interface StoryAudioItem {
   created_at_ms: number;
   duration_ms: number;
   line_count: number;
+  cast_count?: number;
   generation_time_ms?: number;
   sample_rate_hz?: number;
   expression_tags_used?: boolean;
@@ -147,7 +149,8 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
   const selectedIndex = selectedItem
     ? sortedItems.findIndex((item) => item.id === selectedItem.id)
     : -1;
-  const previousItem = selectedIndex > 0 ? sortedItems[selectedIndex - 1] : null;
+  const previousItem =
+    selectedIndex > 0 ? sortedItems[selectedIndex - 1] : null;
   const nextItem =
     selectedIndex >= 0 && selectedIndex + 1 < sortedItems.length
       ? sortedItems[selectedIndex + 1]
@@ -252,8 +255,10 @@ export const StoryAudioSidebar: React.FC = () => {
   const [view, setView] = useState<StoryAudioView>("timeline");
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
 
-  const loadItems = useCallback(async () => {
-    setIsLoading(true);
+  const loadItems = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const nextItems = await invoke<StoryAudioItem[]>("list_story_audio");
       const sortedItems = sortStoryAudioItems(nextItems);
@@ -261,19 +266,23 @@ export const StoryAudioSidebar: React.FC = () => {
       setSelectedAudioId((current) =>
         current && sortedItems.some((item) => item.id === current)
           ? current
-          : sortedItems[0]?.id ?? null,
+          : (sortedItems[0]?.id ?? null),
       );
     } catch (error) {
       console.error("Failed to load generated story audio:", error);
       toast.error("Could not load generated story audio.");
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
+
+  useRefreshOnWindowFocus(() => loadItems(false));
 
   const loadJobs = useCallback(async () => {
     try {
@@ -328,7 +337,10 @@ export const StoryAudioSidebar: React.FC = () => {
       }
       return;
     }
-    if (!selectedAudioId || !items.some((item) => item.id === selectedAudioId)) {
+    if (
+      !selectedAudioId ||
+      !items.some((item) => item.id === selectedAudioId)
+    ) {
       setSelectedAudioId(items[0].id);
     }
   }, [items, selectedAudioId]);
@@ -373,25 +385,28 @@ export const StoryAudioSidebar: React.FC = () => {
     }
   }, []);
 
-  const handleRename = useCallback(async (item: StoryAudioItem, title: string) => {
-    try {
-      const updated = await invoke<StoryAudioItem>("rename_story_audio", {
-        id: item.id,
-        title,
-      });
-      setItems((current) =>
-        sortStoryAudioItems(
-          current.map((currentItem) =>
-            currentItem.id === updated.id ? updated : currentItem,
+  const handleRename = useCallback(
+    async (item: StoryAudioItem, title: string) => {
+      try {
+        const updated = await invoke<StoryAudioItem>("rename_story_audio", {
+          id: item.id,
+          title,
+        });
+        setItems((current) =>
+          sortStoryAudioItems(
+            current.map((currentItem) =>
+              currentItem.id === updated.id ? updated : currentItem,
+            ),
           ),
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to rename story audio:", error);
-      toast.error("Could not rename story audio.");
-      throw error;
-    }
-  }, []);
+        );
+      } catch (error) {
+        console.error("Failed to rename story audio:", error);
+        toast.error("Could not rename story audio.");
+        throw error;
+      }
+    },
+    [],
+  );
 
   const handleDelete = useCallback(async (item: StoryAudioItem) => {
     try {
@@ -402,7 +417,7 @@ export const StoryAudioSidebar: React.FC = () => {
         );
         setSelectedAudioId((currentSelectedId) =>
           currentSelectedId === item.id
-            ? nextItems[0]?.id ?? null
+            ? (nextItems[0]?.id ?? null)
             : currentSelectedId,
         );
         return nextItems;
@@ -646,6 +661,13 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
       {formatDuration(item.duration_ms)}
     </span>,
   ];
+  if (typeof item.cast_count === "number" && item.cast_count > 0) {
+    parts.push(
+      <span key="cast">
+        {item.cast_count === 1 ? "1 cast member" : `${item.cast_count} cast`}
+      </span>,
+    );
+  }
   if (
     typeof item.generation_time_ms === "number" &&
     item.generation_time_ms > 0
@@ -658,9 +680,7 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
     );
   }
   if (typeof item.sample_rate_hz === "number" && item.sample_rate_hz > 0) {
-    parts.push(
-      <span key="sr">{formatSampleRate(item.sample_rate_hz)}</span>,
-    );
+    parts.push(<span key="sr">{formatSampleRate(item.sample_rate_hz)}</span>);
   }
   parts.push(
     <span
@@ -869,7 +889,9 @@ const StoryAudioPlayerView: React.FC<{
   };
 
   const progressPercent =
-    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+    duration > 0
+      ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
+      : 0;
   const sampleRateOptions = [
     item?.sample_rate_hz || 24_000,
     ...fixedSampleRateOptions,
@@ -967,25 +989,30 @@ interface DockedStoryAudioPlayerProps {
   onReveal: (item: StoryAudioItem) => void;
   onRenameTitle: (item: StoryAudioItem, title: string) => Promise<void>;
   onSaveProcessed: () => void;
-  onAudioLoadedMetadata: (event: React.SyntheticEvent<HTMLAudioElement>) => void;
+  onAudioLoadedMetadata: (
+    event: React.SyntheticEvent<HTMLAudioElement>,
+  ) => void;
   onAudioPlay: () => void;
   onAudioPause: () => void;
   onAudioEnded: () => void;
 }
 
 const DOCKED_TICK_COUNT = 64;
-const DOCKED_TICK_HEIGHTS = Array.from({ length: DOCKED_TICK_COUNT }, (_, i) => {
-  const phase = i / (DOCKED_TICK_COUNT - 1);
-  const wave =
-    0.4 +
-    0.6 *
-      Math.abs(
-        Math.sin(i * 0.5 + 0.4) *
-          Math.cos(i * 0.27 + 1.3) *
-          (1 - 0.2 * Math.abs(phase - 0.5)),
-      );
-  return Math.max(20, Math.min(100, Math.round(wave * 100)));
-});
+const DOCKED_TICK_HEIGHTS = Array.from(
+  { length: DOCKED_TICK_COUNT },
+  (_, i) => {
+    const phase = i / (DOCKED_TICK_COUNT - 1);
+    const wave =
+      0.4 +
+      0.6 *
+        Math.abs(
+          Math.sin(i * 0.5 + 0.4) *
+            Math.cos(i * 0.27 + 1.3) *
+            (1 - 0.2 * Math.abs(phase - 0.5)),
+        );
+    return Math.max(20, Math.min(100, Math.round(wave * 100)));
+  },
+);
 
 const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   item,
@@ -1191,8 +1218,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             className="absolute inset-0 flex items-center gap-[2px]"
           >
             {DOCKED_TICK_HEIGHTS.map((heightPercent, index) => {
-              const tickProgress =
-                ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
+              const tickProgress = ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
               const isFilled = hasAudio && tickProgress <= progressPercent;
               return (
                 <span
@@ -1349,7 +1375,10 @@ function renderStoryScriptText(text: string): React.ReactNode[] {
       parts.push(leadingWhitespace);
     }
     parts.push(
-      <span key={`speaker-${lineIndex}`} className="font-bold text-[var(--text)]">
+      <span
+        key={`speaker-${lineIndex}`}
+        className="font-bold text-[var(--text)]"
+      >
         {speakerLabel}
       </span>,
     );

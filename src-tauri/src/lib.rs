@@ -872,6 +872,7 @@ pub fn run(cli_args: CliArgs) {
         commands::story_studio::list_story_audio,
         commands::story_studio::toggle_story_audio_starred,
         commands::story_studio::rename_story_audio,
+        commands::story_studio::update_story_audio_title,
         commands::story_studio::delete_story_audio,
         commands::story_studio::create_processed_story_audio,
         commands::show_detail_view,

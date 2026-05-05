@@ -2026,6 +2026,14 @@ async renameStoryAudio(id: string, title: string) : Promise<Result<StoryAudioIte
     else return { status: "error", error: e  as any };
 }
 },
+async updateStoryAudioTitle(id: string, title: string) : Promise<Result<StoryAudioItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_story_audio_title", { id, title }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async deleteStoryAudio(id: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_story_audio", { id }) };
@@ -2532,7 +2540,7 @@ export type SoundTheme = "marimba" | "pop" | "custom"
  * A stored correction entry, as returned to the frontend.
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
-export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; starred: boolean }
+export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; cast_count?: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
 export type StoryLineInstructionOverride = { line_number: number; style_instructions: string }
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }

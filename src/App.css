@@ -1435,13 +1435,15 @@ input[type="range"]::-moz-range-thumb:active {
   .story-audio-docked-player {
     position: fixed;
     bottom: max(1rem, env(safe-area-inset-bottom));
-    left: calc(240px + max(1.25rem, (100vw - 240px - 64rem) / 2));
-    right: max(1.25rem, (100vw - 240px - 64rem) / 2);
+    left: calc(
+      240px + max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem)
+    );
+    right: max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem);
   }
 
   .shell.shell--sidebar-collapsed .story-audio-docked-player {
-    left: max(1.25rem, (100vw - 64rem) / 2);
-    right: max(1.25rem, (100vw - 64rem) / 2);
+    left: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
+    right: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
   }
 
   .story-audio-top-scrubber-shell {
@@ -1522,8 +1524,8 @@ input[type="range"]::-moz-range-thumb:active {
 
     .story-audio-docked-player,
     .shell.shell--sidebar-collapsed .story-audio-docked-player {
-      left: 1rem;
-      right: 1rem;
+      left: 0.75rem;
+      right: 0.75rem;
     }
   }
 

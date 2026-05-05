@@ -2018,6 +2018,14 @@ async toggleStoryAudioStarred(id: string) : Promise<Result<StoryAudioItem, strin
     else return { status: "error", error: e  as any };
 }
 },
+async renameStoryAudio(id: string, title: string) : Promise<Result<StoryAudioItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("rename_story_audio", { id, title }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async deleteStoryAudio(id: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_story_audio", { id }) };

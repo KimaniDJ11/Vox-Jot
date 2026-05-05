@@ -1,10 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause } from "lucide-react";
+import { Loader2, Pause, Play } from "lucide-react";
 
-import {
-  interactiveFocusRingClass,
-  minTapTargetSquareClass,
-} from "@/lib/interactiveFocus";
+import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
 interface AudioPlayerProps {
   /** Audio source URL. If not provided, onLoadRequest must be provided. */
@@ -13,13 +10,51 @@ interface AudioPlayerProps {
   onLoadRequest?: () => Promise<string | null>;
   className?: string;
   autoPlay?: boolean;
+  /** Optional title shown above the scrubber. */
+  title?: React.ReactNode;
+  /**
+   * Optional inline meta line shown below the scrubber.
+   * Pre-formatted string or ReactNode. Truncates with ellipsis.
+   */
+  meta?: React.ReactNode;
+  /**
+   * Optional action strip rendered to the right of the title.
+   * Hidden by default; revealed on hover/focus inside the cassette.
+   */
+  actions?: React.ReactNode;
+  /** When true, a small accent star pin is always shown beside the title. */
+  starred?: boolean;
+  /** When true, the cassette tile gets a stronger accent ring (selected state). */
+  selected?: boolean;
 }
+
+const STARRED_GLYPH = "★";
+const TICK_COUNT = 36;
+// Deterministic pseudo-waveform — same shape across renders so the row never
+// shifts. Sine + cosine combination gives a music-like "envelope".
+const TICK_HEIGHTS: number[] = Array.from({ length: TICK_COUNT }, (_, i) => {
+  const phase = i / (TICK_COUNT - 1);
+  const wave =
+    0.45 +
+    0.55 *
+      Math.abs(
+        Math.sin(i * 0.7 + 0.3) *
+          Math.cos(i * 0.32 + 1.1) *
+          (1 - 0.25 * Math.abs(phase - 0.5)),
+      );
+  return Math.max(22, Math.min(100, Math.round(wave * 100)));
+});
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src: initialSrc,
   onLoadRequest,
   className = "",
   autoPlay = false,
+  title,
+  meta,
+  actions,
+  starred = false,
+  selected = false,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -29,50 +64,37 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const src = loadedSrc;
   const animationRef = useRef<number>();
   const dragTimeRef = useRef<number>(0);
 
-  // Use refs to avoid stale closures in animation loop
   const isPlayingRef = useRef(false);
   const isDraggingRef = useRef(false);
 
-  // Keep refs in sync with state
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
-
   useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
 
-  // Stable animation loop with no dependencies
   const tick = useCallback(() => {
     if (audioRef.current && !isDraggingRef.current) {
-      const time = audioRef.current.currentTime;
-      setCurrentTime(time);
+      setCurrentTime(audioRef.current.currentTime);
     }
-
     if (isPlayingRef.current) {
       animationRef.current = requestAnimationFrame(tick);
     }
-  }, []); // Empty dependency array is key!
+  }, []);
 
-  // Manage animation loop lifecycle
   useEffect(() => {
     if (isPlaying && !isDragging) {
-      // Only start if not already running
       if (!animationRef.current) {
         animationRef.current = requestAnimationFrame(tick);
       }
-    } else {
-      // Stop animation loop
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = undefined;
-      }
+    } else if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = undefined;
     }
-
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -81,29 +103,23 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [isPlaying, isDragging, tick]);
 
-  // Audio event handlers
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const handleLoadedMetadata = () => {
       setDuration(audio.duration || 0);
       setCurrentTime(0);
     };
-
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(audio.duration || 0);
     };
-
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
-
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
@@ -112,29 +128,22 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, []);
 
-  // Auto-play when src becomes available (via onLoadRequest or autoPlay prop)
   const prevLoadedSrc = useRef<string | null>(null);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    // Play when loadedSrc changes from null to a value (lazy load case)
     if (loadedSrc && !prevLoadedSrc.current && onLoadRequest) {
       audio.play().catch((error) => {
         console.error("Auto-play failed:", error);
       });
-    }
-    // Or when autoPlay is set with initial src
-    else if (autoPlay && initialSrc && !prevLoadedSrc.current) {
+    } else if (autoPlay && initialSrc && !prevLoadedSrc.current) {
       audio.play().catch((error) => {
         console.error("Auto-play failed:", error);
       });
     }
-
     prevLoadedSrc.current = loadedSrc;
   }, [loadedSrc, autoPlay, initialSrc, onLoadRequest]);
 
-  // Global drag handlers
   const handleMouseUp = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
@@ -149,7 +158,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     if (isDragging) {
       document.addEventListener("mouseup", handleMouseUp);
       document.addEventListener("touchend", handleMouseUp);
-
       return () => {
         document.removeEventListener("mouseup", handleMouseUp);
         document.removeEventListener("touchend", handleMouseUp);
@@ -157,7 +165,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   }, [isDragging, handleMouseUp]);
 
-  // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
       if (loadedSrc?.startsWith("blob:")) {
@@ -168,110 +175,197 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const togglePlay = async () => {
     const audio = audioRef.current;
-    if (!audio) return;
-    if (isLoading) return;
-
+    if (!audio || isLoading) return;
     try {
       if (isPlaying) {
         audio.pause();
-      } else {
-        // If no src loaded yet, request it
-        if (!src && onLoadRequest) {
-          setIsLoading(true);
-          const newSrc = await onLoadRequest();
-          setIsLoading(false);
-          if (newSrc) {
-            setLoadedSrc(newSrc);
-            // Playback will be triggered by the useEffect watching loadedSrc
-          }
-        } else if (src) {
-          await audio.play();
+        return;
+      }
+      if (!loadedSrc && onLoadRequest) {
+        setIsLoading(true);
+        const newSrc = await onLoadRequest();
+        setIsLoading(false);
+        if (newSrc) {
+          setLoadedSrc(newSrc);
+          // playback will fire from the loadedSrc effect
         }
+      } else if (loadedSrc) {
+        await audio.play();
       }
     } catch (error) {
       console.error("Playback failed:", error);
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
+  const handleSeek = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(event.target.value);
     dragTimeRef.current = newTime;
     setCurrentTime(newTime);
-
     if (!isDragging && audioRef.current) {
       audioRef.current.currentTime = newTime;
     }
   };
 
-  const handleSliderMouseDown = () => {
-    setIsDragging(true);
-  };
-
-  const handleSliderTouchStart = () => {
-    setIsDragging(true);
-  };
+  const handleSliderMouseDown = () => setIsDragging(true);
+  const handleSliderTouchStart = () => setIsDragging(true);
 
   const formatTime = (time: number): string => {
-    if (!isFinite(time)) return "0:00";
-
+    if (!isFinite(time) || time < 0) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  // Fix playhead positioning with better edge case handling
-  const getProgressPercent = (): number => {
-    if (duration <= 0) return 0;
+  const progressPercent =
+    duration > 0
+      ? duration - currentTime < 0.1
+        ? 100
+        : Math.min(100, Math.max(0, (currentTime / duration) * 100))
+      : 0;
 
-    // Handle the end case - if we're within 0.1 seconds of the end, show 100%
-    if (duration - currentTime < 0.1) return 100;
-
-    const percent = (currentTime / duration) * 100;
-    return Math.min(100, Math.max(0, percent));
-  };
-
-  const progressPercent = getProgressPercent();
+  const hasAudio = duration > 0;
+  const isReady = !!loadedSrc || !!initialSrc;
+  const tileLabel = isLoading
+    ? "Loading audio"
+    : isPlaying
+      ? "Pause"
+      : "Play";
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <audio ref={audioRef} src={src ?? undefined} preload="metadata" />
+    <div
+      className={`group/audio relative flex items-stretch gap-3 ${className}`}
+    >
+      <audio ref={audioRef} src={loadedSrc ?? undefined} preload="metadata" />
 
       <button
+        type="button"
         onClick={togglePlay}
         disabled={isLoading}
-        className={`inline-flex cursor-pointer items-center justify-center rounded-lg text-text transition-colors hover:text-[var(--accent)] disabled:opacity-50 ${interactiveFocusRingClass} ${minTapTargetSquareClass}`}
-        aria-label={isPlaying ? "Pause" : "Play"}
+        aria-label={tileLabel}
+        title={tileLabel}
+        className={[
+          "relative inline-flex h-12 w-12 shrink-0 items-center justify-center self-center",
+          "rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]",
+          "transition-all duration-200 ease-out",
+          "hover:scale-[1.04] hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_10%)]",
+          "active:scale-[0.97]",
+          interactiveFocusRingClass,
+          "disabled:opacity-60 disabled:hover:scale-100",
+          isPlaying
+            ? "shadow-[0_10px_28px_-12px_color-mix(in_srgb,var(--accent),transparent_25%)] ring-1 ring-[color-mix(in_srgb,var(--accent),transparent_60%)]"
+            : "",
+          selected
+            ? "ring-2 ring-[color-mix(in_srgb,var(--accent),transparent_55%)]"
+            : "",
+        ].join(" ")}
       >
-        {isPlaying ? (
-          <Pause width={20} height={20} fill="currentColor" />
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+        ) : isPlaying ? (
+          <Pause className="h-5 w-5" fill="currentColor" aria-hidden />
         ) : (
-          <Play width={20} height={20} fill="currentColor" />
+          <Play
+            className="h-5 w-5 translate-x-[1px]"
+            fill="currentColor"
+            aria-hidden
+          />
         )}
+        {isPlaying ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-[color-mix(in_srgb,var(--accent),transparent_70%)]"
+          />
+        ) : null}
       </button>
 
-      <div className="flex-1 flex items-center gap-2">
-        <span className="text-xs text-[var(--muted)] min-w-[30px] tabular-nums">
-          {formatTime(currentTime)}
-        </span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        {title || actions || starred ? (
+          <div className="flex min-w-0 items-center gap-2">
+            {title ? (
+              <p className="m-0 min-w-0 truncate text-sm font-semibold leading-5 text-[var(--text)]">
+                {title}
+              </p>
+            ) : null}
+            {starred ? (
+              <span
+                aria-label="Starred"
+                title="Starred"
+                className="inline-flex h-4 shrink-0 items-center rounded-full bg-[var(--accent-soft)] px-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]"
+              >
+                {STARRED_GLYPH}
+              </span>
+            ) : null}
+            {actions ? (
+              <div
+                onClick={(event) => event.stopPropagation()}
+                className="ml-auto flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/audio:opacity-100 focus-within:opacity-100"
+              >
+                {actions}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
-        <input
-          type="range"
-          min="0"
-          max={duration || 0}
-          step="0.01"
-          value={currentTime}
-          onChange={handleSeek}
-          onMouseDown={handleSliderMouseDown}
-          onTouchStart={handleSliderTouchStart}
-          className={`flex-1 h-1 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-logo-primary ${progressPercent >= 99.5 ? "[&::-webkit-slider-thumb]:translate-x-0.5 [&::-moz-range-thumb]:translate-x-0.5" : ""}`}
-          style={{
-            background: `linear-gradient(to right, var(--accent-gold) 0%, var(--accent-gold) ${progressPercent}%, color-mix(in srgb, var(--text), transparent 85%) ${progressPercent}%, color-mix(in srgb, var(--text), transparent 85%) 100%)`,
-          }}
-        />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="relative flex h-3 flex-1 items-center">
+            {/* Static waveform tick marks */}
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center gap-[2px]"
+            >
+              {TICK_HEIGHTS.map((heightPercent, index) => {
+                const tickProgress = ((index + 0.5) / TICK_COUNT) * 100;
+                const isFilled = hasAudio && tickProgress <= progressPercent;
+                return (
+                  <span
+                    key={index}
+                    className="flex-1 rounded-full transition-colors duration-100"
+                    style={{
+                      height: `${heightPercent}%`,
+                      background: isFilled
+                        ? "var(--accent)"
+                        : isReady
+                          ? "color-mix(in srgb, var(--muted), transparent 55%)"
+                          : "color-mix(in srgb, var(--muted), transparent 75%)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {/* Hover thumb at playhead position */}
+            {hasAudio ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 h-3 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] opacity-0 shadow-[0_2px_6px_color-mix(in_srgb,var(--accent),transparent_60%)] transition-opacity duration-150 group-hover/audio:opacity-100"
+                style={{ left: `${progressPercent}%` }}
+              />
+            ) : null}
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.01}
+              value={currentTime}
+              onChange={handleSeek}
+              onMouseDown={handleSliderMouseDown}
+              onTouchStart={handleSliderTouchStart}
+              disabled={!hasAudio}
+              aria-label="Audio timeline"
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
+            />
+          </div>
+          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[var(--muted)]">
+            {hasAudio
+              ? `${formatTime(currentTime)} / ${formatTime(duration)}`
+              : "—:—"}
+          </span>
+        </div>
 
-        <span className="text-xs text-[var(--muted)] min-w-[30px] tabular-nums">
-          {formatTime(duration)}
-        </span>
+        {meta ? (
+          <div className="flex min-w-0 items-center gap-1.5 truncate text-[11px] leading-4 text-[var(--muted)]">
+            {meta}
+          </div>
+        ) : null}
       </div>
     </div>
   );

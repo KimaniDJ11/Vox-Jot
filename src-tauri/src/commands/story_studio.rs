@@ -513,6 +513,24 @@ pub fn toggle_story_audio_starred(app: AppHandle, id: String) -> Result<StoryAud
 
 #[tauri::command]
 #[specta::specta]
+pub fn rename_story_audio(
+    app: AppHandle,
+    id: String,
+    title: String,
+) -> Result<StoryAudioItem, String> {
+    let mut items = read_story_audio_items(&app)?;
+    let Some(item) = items.iter_mut().find(|item| item.id == id) else {
+        return Err("Story audio item no longer exists.".to_string());
+    };
+    item.title = story_title_label(&title);
+    let updated = item.clone();
+    write_story_audio_items(&app, &items)?;
+    emit_story_audio_updated(&app);
+    Ok(updated)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
     let mut items = read_story_audio_items(&app)?;
     let Some(index) = items.iter().position(|item| item.id == id) else {

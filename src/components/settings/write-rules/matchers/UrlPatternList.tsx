@@ -44,6 +44,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const shouldShowChips = !compact || patterns.length > 0;
 
   const addPattern = (raw: string) => {
     const next = raw.trim();
@@ -60,48 +61,49 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className={compact ? "space-y-1.5" : "space-y-2"}>
       <div className="flex items-baseline justify-between">
         <label className="text-xs font-medium text-[var(--muted)]">
           {fieldLabel}
         </label>
+        {compact && patterns.length === 0 ? (
+          <span className="text-xs italic text-[var(--muted)]">
+            {noConstraintChip}
+          </span>
+        ) : null}
         {!compact ? (
           <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 min-h-[26px]">
-        {patterns.length === 0 ? (
-          compact ? (
-            <span className="text-xs italic text-[var(--muted)]">
-              {noConstraintChip}
-            </span>
-          ) : (
+      {shouldShowChips ? (
+        <div className="flex min-h-[26px] flex-wrap items-center gap-2">
+          {patterns.length === 0 ? (
             <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
               {noConstraintChip}
             </span>
-          )
-        ) : (
-          patterns.map((pattern) => (
-            <span
-              key={pattern}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-3 pr-2 text-xs font-medium text-[var(--text)]"
-            >
-              {pattern}
-              <button
-                type="button"
-                className="text-[var(--muted)] hover:text-[var(--danger)]"
-                onClick={() =>
-                  onChange(patterns.filter((item) => item !== pattern))
-                }
-                aria-label={removeUrlPatternLabel}
+          ) : (
+            patterns.map((pattern) => (
+              <span
+                key={pattern}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-3 pr-2 text-xs font-medium text-[var(--text)]"
               >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))
-        )}
-      </div>
+                {pattern}
+                <button
+                  type="button"
+                  className="text-[var(--muted)] hover:text-[var(--danger)]"
+                  onClick={() =>
+                    onChange(patterns.filter((item) => item !== pattern))
+                  }
+                  aria-label={removeUrlPatternLabel}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))
+          )}
+        </div>
+      ) : null}
 
       <Input
         value={draft}
@@ -121,7 +123,7 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
 
       {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--muted)]">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--muted)]">
         <span>{compact ? "Try:" : examplesLabel}</span>
         {EXAMPLES.map((example, index) => (
           <React.Fragment key={example}>

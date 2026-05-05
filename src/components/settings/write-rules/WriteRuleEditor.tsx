@@ -165,7 +165,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Sticky title bar */}
-        <header className="flex items-start gap-3 border-b border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-6 py-4">
+        <header className="flex shrink-0 items-start gap-3 border-b border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
           <div className="min-w-0 flex-1">
             <h2
               id={titleId}
@@ -190,11 +190,11 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         </header>
 
         {/* Scrollable body */}
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {/* Identity row — no card chrome, just inline form fields */}
-          <section className="grid items-end gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-[var(--muted)]">
+          <section className="grid items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+              <label className="text-xs font-medium text-[var(--muted)] sm:whitespace-nowrap">
                 {nameLabel}
               </label>
               <Input
@@ -205,17 +205,17 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
                 }
               />
               {!canSave ? (
-                <p className="text-xs text-[var(--muted)]">
+                <p className="text-xs text-[var(--muted)] sm:col-start-2">
                   {nameRequiredHelp}
                 </p>
               ) : null}
               {saveError ? (
-                <p className="text-xs font-medium text-[var(--danger)]">
+                <p className="text-xs font-medium text-[var(--danger)] sm:col-start-2">
                   {saveError}
                 </p>
               ) : null}
             </div>
-            <div className="inline-flex h-9 items-center gap-2.5 self-end pb-0.5">
+            <div className="inline-flex min-h-10 items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
               <SwitchControl
                 checked={draft.enabled}
                 onChange={(enabled) => setDraft({ ...draft, enabled })}
@@ -228,14 +228,14 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           </section>
 
           {/* Match card */}
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
-            <header className="mb-4">
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <header className="mb-3">
               <h3 className="text-sm font-semibold text-[var(--text)]">
                 {matchHeading}
               </h3>
               <p className="mt-0.5 text-xs text-[var(--muted)]">{matchHelp}</p>
             </header>
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <AppMultiPicker
                 bundleIds={draft.matchers.bundle_ids ?? []}
                 compact
@@ -260,22 +260,24 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           </section>
 
           {/* Overrides card with tabs as primary nav */}
-          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
-            <header className="mb-4">
-              <h3 className="text-sm font-semibold text-[var(--text)]">
-                {overridesHeading}
-              </h3>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">
-                {overridesHelp}
-              </p>
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-[var(--text)]">
+                  {overridesHeading}
+                </h3>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  {overridesHelp}
+                </p>
+              </div>
+              {tabsControl}
             </header>
-            <div className="mb-4 flex justify-center">{tabsControl}</div>
             <div>{overridePanel}</div>
           </section>
         </div>
 
         {/* Sticky footer */}
-        <footer className="flex items-center justify-end gap-2 border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-6 py-3">
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-5 py-3">
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
             {cancelLabel}
           </Button>

@@ -85,54 +85,57 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
     setShowSuggestions(false);
   };
 
+  const shouldShowChips = !compact || bundleIds.length > 0;
+
   return (
-    <div ref={containerRef} className="space-y-2">
+    <div ref={containerRef} className={compact ? "space-y-1.5" : "space-y-2"}>
       <div className="flex items-baseline justify-between">
         <label className="text-xs font-medium text-[var(--muted)]">
           {fieldLabel}
         </label>
+        {compact && bundleIds.length === 0 ? (
+          <span className="text-xs italic text-[var(--muted)]">
+            {matchAnyChip}
+          </span>
+        ) : null}
         {!compact ? (
           <span className="text-[11px] text-[var(--muted)]">{helpHint}</span>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 min-h-[26px]">
-        {bundleIds.length === 0 ? (
-          compact ? (
-            <span className="text-xs italic text-[var(--muted)]">
-              {matchAnyChip}
-            </span>
-          ) : (
+      {shouldShowChips ? (
+        <div className="flex min-h-[26px] flex-wrap items-center gap-2">
+          {bundleIds.length === 0 ? (
             <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
               {matchAnyChip}
             </span>
-          )
-        ) : (
-          bundleIds.map((bundleId) => {
-            const app = appsByBundleId.get(bundleId);
-            return (
-              <span
-                key={bundleId}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
-                title={bundleId}
-              >
-                <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
-                {app?.name ?? bundleId}
-                <button
-                  type="button"
-                  className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
-                  onClick={() =>
-                    onChange(bundleIds.filter((id) => id !== bundleId))
-                  }
-                  aria-label={removeAppLabel}
+          ) : (
+            bundleIds.map((bundleId) => {
+              const app = appsByBundleId.get(bundleId);
+              return (
+                <span
+                  key={bundleId}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
+                  title={bundleId}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            );
-          })
-        )}
-      </div>
+                  <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
+                  {app?.name ?? bundleId}
+                  <button
+                    type="button"
+                    className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
+                    onClick={() =>
+                      onChange(bundleIds.filter((id) => id !== bundleId))
+                    }
+                    aria-label={removeAppLabel}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })
+          )}
+        </div>
+      ) : null}
 
       <div className="relative">
         <Input

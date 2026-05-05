@@ -263,7 +263,6 @@ fn is_metal_backend_load_failure(_error: &str) -> bool {
     false
 }
 
-#[derive(Clone)]
 pub struct TranscriptionManager {
     engine: Arc<Mutex<Option<LoadedEngine>>>,
     transcribe_lock: Arc<Mutex<()>>,
@@ -273,6 +272,7 @@ pub struct TranscriptionManager {
     current_model_id: Arc<Mutex<Option<String>>>,
     last_activity: Arc<AtomicU64>,
     shutdown_signal: Arc<AtomicBool>,
+    shutdown_started: Arc<AtomicBool>,
     watcher_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
     is_loading: Arc<Mutex<bool>>,
     loading_condvar: Arc<Condvar>,
@@ -280,6 +280,31 @@ pub struct TranscriptionManager {
     partial_generation: Arc<AtomicU64>,
     processing_generation: Arc<AtomicU64>,
     canceled_processing_generation: Arc<AtomicU64>,
+    shutdown_on_drop: bool,
+}
+
+impl Clone for TranscriptionManager {
+    fn clone(&self) -> Self {
+        Self {
+            engine: Arc::clone(&self.engine),
+            transcribe_lock: Arc::clone(&self.transcribe_lock),
+            lifecycle_lock: Arc::clone(&self.lifecycle_lock),
+            model_manager: Arc::clone(&self.model_manager),
+            app_handle: self.app_handle.clone(),
+            current_model_id: Arc::clone(&self.current_model_id),
+            last_activity: Arc::clone(&self.last_activity),
+            shutdown_signal: Arc::clone(&self.shutdown_signal),
+            shutdown_started: Arc::clone(&self.shutdown_started),
+            watcher_handle: Arc::clone(&self.watcher_handle),
+            is_loading: Arc::clone(&self.is_loading),
+            loading_condvar: Arc::clone(&self.loading_condvar),
+            partial_session: Arc::clone(&self.partial_session),
+            partial_generation: Arc::clone(&self.partial_generation),
+            processing_generation: Arc::clone(&self.processing_generation),
+            canceled_processing_generation: Arc::clone(&self.canceled_processing_generation),
+            shutdown_on_drop: false,
+        }
+    }
 }
 
 impl TranscriptionManager {
@@ -298,6 +323,7 @@ impl TranscriptionManager {
                     .as_millis() as u64,
             )),
             shutdown_signal: Arc::new(AtomicBool::new(false)),
+            shutdown_started: Arc::new(AtomicBool::new(false)),
             watcher_handle: Arc::new(Mutex::new(None)),
             is_loading: Arc::new(Mutex::new(false)),
             loading_condvar: Arc::new(Condvar::new()),
@@ -305,6 +331,7 @@ impl TranscriptionManager {
             partial_generation: Arc::new(AtomicU64::new(0)),
             processing_generation: Arc::new(AtomicU64::new(0)),
             canceled_processing_generation: Arc::new(AtomicU64::new(0)),
+            shutdown_on_drop: true,
         };
 
         // Start the idle watcher
@@ -407,6 +434,47 @@ impl TranscriptionManager {
 
     pub fn is_processing_cancelled(&self, generation: u64) -> bool {
         self.canceled_processing_generation.load(Ordering::Relaxed) >= generation
+    }
+
+    /// Release long-lived transcription resources before native runtime
+    /// finalizers run during application quit.
+    pub fn shutdown(&self) {
+        if self.shutdown_started.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        self.shutdown_signal.store(true, Ordering::Relaxed);
+        self.cancel_active_processing();
+        self.stop_partial_session_internal();
+
+        {
+            let mut engine = self.lock_engine();
+            *engine = None;
+        }
+        {
+            let mut current_model = self
+                .current_model_id
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            *current_model = None;
+        }
+
+        let watcher_handle = self
+            .watcher_handle
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+
+        if let Some(handle) = watcher_handle {
+            if handle.thread().id() == thread::current().id() {
+                return;
+            }
+            if let Err(e) = handle.join() {
+                warn!("Failed to join idle watcher thread: {:?}", e);
+            } else {
+                debug!("Idle watcher thread joined successfully");
+            }
+        }
     }
 
     fn stop_partial_session_internal(&self) {
@@ -1442,35 +1510,8 @@ impl TranscriptionManager {
 
 impl Drop for TranscriptionManager {
     fn drop(&mut self) {
-        // `TranscriptionManager` is `Clone` (shared `Arc` state), so every cloned
-        // copy runs this Drop when it goes out of scope — including the clone
-        // captured by the watcher thread itself. We must release the
-        // `watcher_handle` mutex BEFORE joining, otherwise the watcher thread's
-        // own Drop will block on that same mutex while we wait on `join()`.
-
-        // Signal the watcher thread to shut down. Do this first so it can make
-        // progress while we release locks.
-        self.shutdown_signal.store(true, Ordering::Relaxed);
-
-        self.stop_partial_session_internal();
-
-        // Take the handle out of the mutex and drop the guard immediately.
-        // Only the first clone to race here will observe `Some(handle)` and
-        // perform the join; subsequent drops see `None` and return quickly.
-        let watcher_handle = self
-            .watcher_handle
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
-
-        if let Some(handle) = watcher_handle {
-            // Lock guard has been dropped above — the watcher thread can now
-            // finish cleanly even though its own clone runs Drop on exit.
-            if let Err(e) = handle.join() {
-                warn!("Failed to join idle watcher thread: {:?}", e);
-            } else {
-                debug!("Idle watcher thread joined successfully");
-            }
+        if self.shutdown_on_drop {
+            self.shutdown();
         }
     }
 }

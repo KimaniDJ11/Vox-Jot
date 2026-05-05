@@ -62,6 +62,9 @@ pub struct WatchFolderManager {
     app: AppHandle,
     /// Sentinel that tells the supervisor thread to shut down on app exit.
     shutdown: Arc<AtomicBool>,
+    /// Join handle for the supervisor thread. Tauri does not guarantee managed
+    /// state drops before native finalizers run, so shutdown is explicit.
+    supervisor_handle: Mutex<Option<thread::JoinHandle<()>>>,
     /// Files we've already started processing — guard against the same
     /// `notify` event firing twice (which is common across editors).
     in_flight: Arc<Mutex<HashSet<PathBuf>>>,
@@ -75,15 +78,20 @@ impl WatchFolderManager {
         let manager = Arc::new(Self {
             app: app.clone(),
             shutdown: Arc::new(AtomicBool::new(false)),
+            supervisor_handle: Mutex::new(None),
             in_flight: Arc::new(Mutex::new(HashSet::new())),
             config_version: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         });
 
         let manager_for_thread = Arc::clone(&manager);
-        thread::Builder::new()
+        let handle = thread::Builder::new()
             .name("watch-folders".into())
             .spawn(move || manager_for_thread.run_supervisor())
             .expect("failed to spawn watch-folders supervisor thread");
+        *manager
+            .supervisor_handle
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(handle);
 
         manager
     }
@@ -92,6 +100,30 @@ impl WatchFolderManager {
     /// rebuilds its watch list on the next tick.
     pub fn reload_from_settings(&self) {
         self.config_version.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Stop the supervisor and join it before process teardown reaches native
+    /// filesystem watcher finalizers.
+    pub fn shutdown(&self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+        self.config_version.fetch_add(1, Ordering::Relaxed);
+
+        let handle = self
+            .supervisor_handle
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take();
+
+        if let Some(handle) = handle {
+            if handle.thread().id() == thread::current().id() {
+                return;
+            }
+            if let Err(err) = handle.join() {
+                warn!("watch-folders: supervisor thread panicked during shutdown: {err:?}");
+            } else {
+                debug!("watch-folders: supervisor joined during shutdown");
+            }
+        }
     }
 
     fn run_supervisor(self: Arc<Self>) {
@@ -322,7 +354,7 @@ impl WatchFolderManager {
 
 impl Drop for WatchFolderManager {
     fn drop(&mut self) {
-        self.shutdown.store(true, Ordering::Relaxed);
+        self.shutdown();
     }
 }
 

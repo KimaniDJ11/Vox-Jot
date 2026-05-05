@@ -92,7 +92,7 @@ use post_processing::PreviewManager;
 use signal_hook::consts::{SIGUSR1, SIGUSR2};
 #[cfg(unix)]
 use signal_hook::iterator::Signals;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 pub use transcription_coordinator::TranscriptionCoordinator;
 
@@ -111,6 +111,7 @@ use crate::tts::TtsManager;
 // Global atomic to store the file log level filter
 // We use u8 to store the log::LevelFilter as a number
 pub static FILE_LOG_LEVEL: AtomicU8 = AtomicU8::new(log::LevelFilter::Debug as u8);
+static APP_SHUTDOWN_STARTED: AtomicBool = AtomicBool::new(false);
 
 fn level_filter_from_u8(value: u8) -> log::LevelFilter {
     match value {
@@ -542,6 +543,37 @@ fn initialize_core_logic(app_handle: &AppHandle) {
 
     // Auto-start and preload Ollama if it's the configured post-process provider.
     tauri::async_runtime::spawn(maybe_warm_selected_ollama_model(settings));
+}
+
+fn shutdown_core_logic(app: &AppHandle) {
+    if APP_SHUTDOWN_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    log::info!("Starting Vox Jot shutdown");
+    crate::utils::cancel_current_operation(app);
+
+    if let Some(watch_folders) = app.try_state::<Arc<WatchFolderManager>>() {
+        watch_folders.shutdown();
+    }
+
+    if let Some(http_api) = app.try_state::<Arc<HttpApiManager>>() {
+        let http_api = http_api.inner().clone();
+        tauri::async_runtime::block_on(async move {
+            http_api.stop().await;
+        });
+    }
+
+    if let Some(transcription) = app.try_state::<Arc<TranscriptionManager>>() {
+        transcription.shutdown();
+    }
+
+    if let Some(sidecar) = app.try_state::<Arc<SidecarManager>>() {
+        sidecar.stop();
+    }
+
+    crate::ocr_runtime::shared().shutdown();
+    log::info!("Finished Vox Jot shutdown");
 }
 
 #[tauri::command]
@@ -1130,6 +1162,9 @@ pub fn run(cli_args: CliArgs) {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = &event {
+                shutdown_core_logic(app);
+            }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = &event {
                 show_main_window(app);

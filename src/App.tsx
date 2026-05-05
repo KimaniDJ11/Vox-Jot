@@ -335,9 +335,9 @@ function App() {
         },
         {
           id: "corrections",
-          label: "Corrections",
+          label: "Dictionary",
           icon: SpellCheck,
-          title: "Corrections",
+          title: "Dictionary",
           content: <CorrectionsSection />,
         },
         {

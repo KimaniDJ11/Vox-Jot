@@ -294,7 +294,7 @@ export const CorrectionDictionaryView: React.FC<
     emptyManualCorrectionDraft,
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<CorrectionViewMode>("corrections");
+  const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -539,15 +539,15 @@ export const CorrectionDictionaryView: React.FC<
   const viewItems = useMemo(
     () => [
       {
-        value: "corrections" as const,
-        label: t("settings.corrections.dictionary.views.corrections", {
-          defaultValue: "Corrections",
-        }),
-      },
-      {
         value: "dictionary" as const,
         label: t("settings.corrections.dictionary.views.dictionary", {
           defaultValue: "Dictionary",
+        }),
+      },
+      {
+        value: "corrections" as const,
+        label: t("settings.corrections.dictionary.views.corrections", {
+          defaultValue: "Corrections",
         }),
       },
     ],
@@ -557,9 +557,15 @@ export const CorrectionDictionaryView: React.FC<
   const searchField = (
     <label
       className="relative flex h-9 w-[min(20rem,100%)] min-w-[12rem] items-center"
-      aria-label={t("settings.corrections.dictionary.search.ariaLabel", {
-        defaultValue: "Search learned corrections",
-      })}
+      aria-label={
+        viewMode === "dictionary"
+          ? t("settings.corrections.dictionary.search.dictionaryAriaLabel", {
+              defaultValue: "Search dictionary",
+            })
+          : t("settings.corrections.dictionary.search.ariaLabel", {
+              defaultValue: "Search learned corrections",
+            })
+      }
     >
       <Search
         className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[var(--muted)]"
@@ -575,9 +581,15 @@ export const CorrectionDictionaryView: React.FC<
             event.preventDefault();
           }
         }}
-        placeholder={t("settings.corrections.dictionary.search.placeholder", {
-          defaultValue: "Search corrections",
-        })}
+        placeholder={
+          viewMode === "dictionary"
+            ? t("settings.corrections.dictionary.search.dictionaryPlaceholder", {
+                defaultValue: "Search dictionary",
+              })
+            : t("settings.corrections.dictionary.search.placeholder", {
+                defaultValue: "Search corrections",
+              })
+        }
         className="h-9 w-full pl-8 pr-8 text-xs text-[var(--text)] placeholder:text-[var(--muted)]"
       />
       {searchQuery ? (
@@ -614,7 +626,7 @@ export const CorrectionDictionaryView: React.FC<
         onChange={setViewMode}
         layoutId="corrections-view-toggle"
         ariaLabel={t("settings.corrections.dictionary.views.ariaLabel", {
-          defaultValue: "Corrections view",
+          defaultValue: "Dictionary view",
         })}
         items={viewItems}
       />
@@ -810,10 +822,16 @@ export const CorrectionDictionaryView: React.FC<
     if (filteredGroups.length === 0) {
       return (
         <div className="px-5 py-8 text-center text-sm text-[var(--muted)]">
-          {t("settings.corrections.dictionary.search.empty", {
-            query: searchQuery.trim(),
-            defaultValue: "No corrections match your search for '{{query}}'.",
-          })}
+          {viewMode === "dictionary"
+            ? t("settings.corrections.dictionary.search.dictionaryEmpty", {
+                query: searchQuery.trim(),
+                defaultValue:
+                  "No dictionary entries match your search for '{{query}}'.",
+              })
+            : t("settings.corrections.dictionary.search.empty", {
+                query: searchQuery.trim(),
+                defaultValue: "No corrections match your search for '{{query}}'.",
+              })}
         </div>
       );
     }

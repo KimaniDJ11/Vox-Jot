@@ -477,7 +477,7 @@ export const LearnedCorrectionsSection: React.FC<{
   return (
     <div className="space-y-6">
       <CorrectionDictionaryView
-        sectionTitle="Corrections"
+        sectionTitle="Dictionary"
         showHeaderTitle={false}
       />
     </div>

@@ -217,16 +217,18 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
                 </p>
               ) : null}
             </div>
-            <div className="inline-flex min-h-10 items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
-              <SwitchControl
-                checked={draft.enabled}
-                onChange={(enabled) => setDraft({ ...draft, enabled })}
-                ariaLabel={enabledLabel}
-              />
-              <span className="text-sm font-medium text-[var(--text)]">
-                {enabledLabel}
-              </span>
-            </div>
+            {!isNew ? (
+              <div className="inline-flex min-h-10 items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
+                <SwitchControl
+                  checked={draft.enabled}
+                  onChange={(enabled) => setDraft({ ...draft, enabled })}
+                  ariaLabel={enabledLabel}
+                />
+                <span className="text-sm font-medium text-[var(--text)]">
+                  {enabledLabel}
+                </span>
+              </div>
+            ) : null}
           </section>
 
           {/* Match card */}

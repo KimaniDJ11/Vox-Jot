@@ -96,11 +96,17 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-h-[26px]">
         {bundleIds.length === 0 ? (
-          <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-            {matchAnyChip}
-          </span>
+          compact ? (
+            <span className="text-xs italic text-[var(--muted)]">
+              {matchAnyChip}
+            </span>
+          ) : (
+            <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
+              {matchAnyChip}
+            </span>
+          )
         ) : (
           bundleIds.map((bundleId) => {
             const app = appsByBundleId.get(bundleId);

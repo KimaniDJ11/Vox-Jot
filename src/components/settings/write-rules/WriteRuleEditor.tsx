@@ -1,15 +1,17 @@
 // Editor for one Write Profile, used in "edit mode" of the Write
 // Profiles settings page. The parent renders either the list OR this
 // editor — never both at once — so the user keeps a clear sense of
-// place (Nielsen #3, user control). A sticky header keeps the Save /
-// Cancel actions visible no matter how far the user scrolls inside
-// the override panels.
+// place (Nielsen #3, user control).
 //
-// The three override panels (Speech / Refine / Output) used to be
-// stacked cards. We collapsed them into a tabbed control so the
-// editor fits on a laptop screen without scrolling and so users see
-// a count of overrides per tab — a one-line "did I customize
-// anything?" answer.
+// Two presentations:
+//   - "page"   → inline in the settings page with a sticky top bar
+//                that holds back/cancel/save.
+//   - "dialog" → a true modal: sticky header / scrolling body /
+//                sticky footer, anchored Cancel + Save.
+//
+// The three override panels (Speech / Refine / Output) are a tabbed
+// control so the editor fits on a laptop screen without scrolling and
+// users see a count of overrides per tab.
 
 import React, { useMemo, useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
@@ -29,14 +31,16 @@ import { OutputOverrides } from "./overrides/OutputOverrides";
 const backLabel = "Back to profiles";
 const newProfileTitle = "New profile";
 const editProfileTitle = "Edit profile";
+const newProfileSubtitle =
+  "Run different dictation behavior in different apps and URLs.";
 const nameLabel = "Profile name";
 const enabledLabel = "Enabled";
 const enabledDescription =
   "Disabled profiles are kept in the list but ignored during dictation.";
-const matchHeading = "Match";
+const matchHeading = "Where it runs";
 const matchHelp =
-  "Pick the apps and/or URL patterns this profile should fire on. Leave blank to match anything.";
-const overridesHeading = "Overrides";
+  "Pick the apps and URL patterns this profile fires on. Leave both blank to match anything.";
+const overridesHeading = "What it changes";
 const overridesHelp =
   "Anything you don't override here keeps the global setting.";
 const speechTab = "Speech";
@@ -107,6 +111,44 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   }, [draft.overrides]);
 
   const title = isNew ? newProfileTitle : trimmedName || editProfileTitle;
+
+  const overridePanel = (
+    <>
+      {activeTab === "speech" ? (
+        <SpeechOverrides
+          overrides={draft.overrides}
+          onChange={(overrides) => setDraft({ ...draft, overrides })}
+        />
+      ) : null}
+      {activeTab === "refine" ? (
+        <RefineOverrides
+          overrides={draft.overrides}
+          tones={tones}
+          prompts={prompts}
+          onChange={(overrides) => setDraft({ ...draft, overrides })}
+        />
+      ) : null}
+      {activeTab === "output" ? (
+        <OutputOverrides
+          overrides={draft.overrides}
+          onChange={(overrides) => setDraft({ ...draft, overrides })}
+        />
+      ) : null}
+    </>
+  );
+
+  const tabsControl = (
+    <Tabs<OverrideTab>
+      items={[
+        { value: "speech", label: speechTab, badge: counts.speech },
+        { value: "refine", label: refineTab, badge: counts.refine },
+        { value: "output", label: outputTab, badge: counts.output },
+      ]}
+      active={activeTab}
+      onChange={setActiveTab}
+    />
+  );
+
   const saveButton = (
     <Button
       type="button"
@@ -118,16 +160,23 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
     </Button>
   );
 
-  return (
-    <div className="space-y-4">
-      {isDialog ? (
-        <div className="flex items-center gap-3">
-          <h2
-            id={titleId}
-            className="min-w-0 flex-1 truncate text-lg font-semibold text-[var(--text)]"
-          >
-            {title}
-          </h2>
+  // ─── DIALOG MODE ─────────────────────────────────────────────────
+  if (isDialog) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Sticky title bar */}
+        <header className="flex items-start gap-3 border-b border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-6 py-4">
+          <div className="min-w-0 flex-1">
+            <h2
+              id={titleId}
+              className="truncate text-base font-semibold text-[var(--text)]"
+            >
+              {title}
+            </h2>
+            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+              {newProfileSubtitle}
+            </p>
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -138,114 +187,178 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           >
             <X className="h-4 w-4" />
           </Button>
-        </div>
-      ) : (
-        <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/80">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onCancel}
-              className="text-[var(--muted)]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {backLabel}
-            </Button>
-            <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
-              {title}
-            </h2>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={onCancel}
-            >
-              {cancelLabel}
-            </Button>
-            {saveButton}
-          </div>
-        </div>
-      )}
+        </header>
 
-      {/* Identity card — name + enabled */}
-      <section
-        className={
-          isDialog
-            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
-            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
-        }
-      >
-        <div
-          className={
-            isDialog
-              ? "grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]"
-              : "space-y-1.5"
-          }
-        >
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[var(--muted)]">
-              {nameLabel}
-            </label>
-            <Input
-              value={draft.name}
-              placeholder={t("refine.writeRules.editor.namePlaceholder")}
-              onChange={(event) =>
-                setDraft({ ...draft, name: event.target.value })
-              }
-            />
-            {!canSave ? (
-              <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
-            ) : null}
-            {saveError ? (
-              <p className="text-xs font-medium text-[var(--danger)]">
-                {saveError}
-              </p>
-            ) : null}
-          </div>
-          {isDialog ? (
-            <label className="flex min-h-10 items-center justify-between gap-3 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-2 md:mt-5">
-              <span className="text-sm font-medium text-[var(--text)]">
-                {enabledLabel}
-              </span>
+        {/* Scrollable body */}
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+          {/* Identity row — no card chrome, just inline form fields */}
+          <section className="grid items-end gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-[var(--muted)]">
+                {nameLabel}
+              </label>
+              <Input
+                value={draft.name}
+                placeholder={t("refine.writeRules.editor.namePlaceholder")}
+                onChange={(event) =>
+                  setDraft({ ...draft, name: event.target.value })
+                }
+              />
+              {!canSave ? (
+                <p className="text-xs text-[var(--muted)]">
+                  {nameRequiredHelp}
+                </p>
+              ) : null}
+              {saveError ? (
+                <p className="text-xs font-medium text-[var(--danger)]">
+                  {saveError}
+                </p>
+              ) : null}
+            </div>
+            <div className="inline-flex h-9 items-center gap-2.5 self-end pb-0.5">
               <SwitchControl
                 checked={draft.enabled}
                 onChange={(enabled) => setDraft({ ...draft, enabled })}
+                ariaLabel={enabledLabel}
               />
-            </label>
+              <span className="text-sm font-medium text-[var(--text)]">
+                {enabledLabel}
+              </span>
+            </div>
+          </section>
+
+          {/* Match card */}
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <header className="mb-4">
+              <h3 className="text-sm font-semibold text-[var(--text)]">
+                {matchHeading}
+              </h3>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">{matchHelp}</p>
+            </header>
+            <div className="grid gap-5 md:grid-cols-2">
+              <AppMultiPicker
+                bundleIds={draft.matchers.bundle_ids ?? []}
+                compact
+                onChange={(bundle_ids) =>
+                  setDraft({
+                    ...draft,
+                    matchers: { ...draft.matchers, bundle_ids },
+                  })
+                }
+              />
+              <UrlPatternList
+                patterns={draft.matchers.url_patterns ?? []}
+                compact
+                onChange={(url_patterns) =>
+                  setDraft({
+                    ...draft,
+                    matchers: { ...draft.matchers, url_patterns },
+                  })
+                }
+              />
+            </div>
+          </section>
+
+          {/* Overrides card with tabs as primary nav */}
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <header className="mb-4">
+              <h3 className="text-sm font-semibold text-[var(--text)]">
+                {overridesHeading}
+              </h3>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                {overridesHelp}
+              </p>
+            </header>
+            <div className="mb-4 flex justify-center">{tabsControl}</div>
+            <div>{overridePanel}</div>
+          </section>
+        </div>
+
+        {/* Sticky footer */}
+        <footer className="flex items-center justify-end gap-2 border-t border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-6 py-3">
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+          {saveButton}
+        </footer>
+      </div>
+    );
+  }
+
+  // ─── PAGE MODE ───────────────────────────────────────────────────
+  return (
+    <div className="space-y-4">
+      <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-[var(--card)]/80">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-[var(--muted)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            {backLabel}
+          </Button>
+          <h2 className="flex-1 truncate text-base font-semibold text-[var(--text)]">
+            {title}
+          </h2>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </Button>
+          {saveButton}
+        </div>
+      </div>
+
+      {/* Identity card — name + enabled */}
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--muted)]">
+            {nameLabel}
+          </label>
+          <Input
+            value={draft.name}
+            placeholder={t("refine.writeRules.editor.namePlaceholder")}
+            onChange={(event) =>
+              setDraft({ ...draft, name: event.target.value })
+            }
+          />
+          {!canSave ? (
+            <p className="text-xs text-[var(--muted)]">{nameRequiredHelp}</p>
+          ) : null}
+          {saveError ? (
+            <p className="text-xs font-medium text-[var(--danger)]">
+              {saveError}
+            </p>
           ) : null}
         </div>
-        {!isDialog ? (
-          <div className="mt-3">
-            <ToggleSwitch
-              grouped
-              label={enabledLabel}
-              description={enabledDescription}
-              checked={draft.enabled}
-              onChange={(enabled) => setDraft({ ...draft, enabled })}
-            />
-          </div>
-        ) : null}
+        <div className="mt-3">
+          <ToggleSwitch
+            grouped
+            label={enabledLabel}
+            description={enabledDescription}
+            checked={draft.enabled}
+            onChange={(enabled) => setDraft({ ...draft, enabled })}
+          />
+        </div>
       </section>
 
       {/* Match card */}
-      <section
-        className={
-          isDialog
-            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
-            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
-        }
-      >
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
         <header className="mb-3">
           <h3 className="text-sm font-semibold text-[var(--text)]">
             {matchHeading}
           </h3>
           <p className="mt-0.5 text-xs text-[var(--muted)]">{matchHelp}</p>
         </header>
-        <div className={isDialog ? "grid gap-4 md:grid-cols-2" : "grid gap-4"}>
+        <div className="grid gap-4">
           <AppMultiPicker
             bundleIds={draft.matchers.bundle_ids ?? []}
-            compact={isDialog}
             onChange={(bundle_ids) =>
               setDraft({
                 ...draft,
@@ -255,7 +368,6 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           />
           <UrlPatternList
             patterns={draft.matchers.url_patterns ?? []}
-            compact={isDialog}
             onChange={(url_patterns) =>
               setDraft({
                 ...draft,
@@ -267,13 +379,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
       </section>
 
       {/* Overrides card with tabs */}
-      <section
-        className={
-          isDialog
-            ? "rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
-            : "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
-        }
-      >
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
         <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text)]">
@@ -288,47 +394,10 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
               {overridesHelp}
             </p>
           </div>
-          <Tabs<OverrideTab>
-            items={[
-              { value: "speech", label: speechTab, badge: counts.speech },
-              { value: "refine", label: refineTab, badge: counts.refine },
-              { value: "output", label: outputTab, badge: counts.output },
-            ]}
-            active={activeTab}
-            onChange={setActiveTab}
-          />
+          {tabsControl}
         </header>
-        <div className="pt-1">
-          {activeTab === "speech" ? (
-            <SpeechOverrides
-              overrides={draft.overrides}
-              onChange={(overrides) => setDraft({ ...draft, overrides })}
-            />
-          ) : null}
-          {activeTab === "refine" ? (
-            <RefineOverrides
-              overrides={draft.overrides}
-              tones={tones}
-              prompts={prompts}
-              onChange={(overrides) => setDraft({ ...draft, overrides })}
-            />
-          ) : null}
-          {activeTab === "output" ? (
-            <OutputOverrides
-              overrides={draft.overrides}
-              onChange={(overrides) => setDraft({ ...draft, overrides })}
-            />
-          ) : null}
-        </div>
+        <div className="pt-1">{overridePanel}</div>
       </section>
-      {isDialog ? (
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            {cancelLabel}
-          </Button>
-          {saveButton}
-        </div>
-      ) : null}
     </div>
   );
 };

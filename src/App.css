@@ -1087,7 +1087,7 @@ input[type="range"]::-moz-range-thumb:active {
     background: color-mix(in srgb, var(--sidebar-bg) 72%, transparent);
     /* Allow focus rings / controls to paint; do not clip (title bar is shorter than sm Button min-height) */
     overflow: visible;
-    pointer-events: none;
+    pointer-events: auto;
   }
 
   /* Collapsed: only traffic-light reserve + sidebar toggle (no icon rail) */
@@ -1167,17 +1167,9 @@ input[type="range"]::-moz-range-thumb:active {
     z-index: 1;
   }
 
-  .app-macos-titlebar-overlay__drag-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    -webkit-app-region: drag;
-    app-region: drag;
-  }
-
   /* Reserve space up to the title region (after traffic lights); env() is correct in WK when overlay title bar is used */
   .app-macos-titlebar-overlay__traffic-shim {
-    pointer-events: none;
+    pointer-events: auto;
     flex: 0 0 auto;
     align-self: stretch;
     width: var(--macos-traffic-shim-width);
@@ -1254,8 +1246,6 @@ input[type="range"]::-moz-range-thumb:active {
     min-width: 0;
     min-height: 32px;
     align-self: stretch;
-    -webkit-app-region: drag;
-    app-region: drag;
   }
 
   .app-macos-titlebar-overlay__trailing {
@@ -1267,8 +1257,25 @@ input[type="range"]::-moz-range-thumb:active {
     z-index: 2;
   }
 
-  /* Clickable controls over the drag region (macOS traffic lights) */
-  .app-no-drag {
+  /* Clickable controls over the custom drag handler (macOS traffic lights). */
+  .app-no-drag,
+  .app-no-drag *,
+  .app-macos-titlebar-overlay button,
+  .app-macos-titlebar-overlay button *,
+  .app-macos-titlebar-overlay [role="tab"],
+  .app-macos-titlebar-overlay [role="button"],
+  .app-macos-titlebar-overlay a,
+  .app-macos-titlebar-overlay input,
+  .app-macos-titlebar-overlay select,
+  .app-macos-titlebar-overlay textarea,
+  .app-window-toolbar button,
+  .app-window-toolbar button *,
+  .app-window-toolbar [role="tab"],
+  .app-window-toolbar [role="button"],
+  .app-window-toolbar a,
+  .app-window-toolbar input,
+  .app-window-toolbar select,
+  .app-window-toolbar textarea {
     -webkit-app-region: no-drag;
     app-region: no-drag;
   }

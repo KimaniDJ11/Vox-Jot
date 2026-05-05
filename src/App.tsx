@@ -8,6 +8,7 @@ import React, {
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import {
   AppWindow,
@@ -88,6 +89,34 @@ import {
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 
 type OnboardingStep = "onboarding" | "done";
+
+const titlebarNoDragSelector = [
+  ".app-no-drag",
+  ".app-mode-switcher",
+  "button",
+  "a",
+  "input",
+  "select",
+  "textarea",
+  "[role='button']",
+  "[role='tab']",
+  "[contenteditable='true']",
+].join(",");
+
+const shouldStartWindowDrag = (
+  event: React.MouseEvent<HTMLElement>,
+): boolean => {
+  if (event.button !== 0 || event.buttons !== 1) {
+    return false;
+  }
+
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return !target.closest(titlebarNoDragSelector);
+};
 type PrimaryMode = "dictate" | "refine" | "listen";
 type RootView = PrimaryMode | "settings";
 
@@ -274,6 +303,20 @@ function App() {
 
   const macosWindowFullscreen = useMacosWindowFullscreen();
   const isDesktopLayout = useMinWidth769();
+
+  const handleWindowTitlebarMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      if (!shouldStartWindowDrag(event)) {
+        return;
+      }
+
+      event.preventDefault();
+      void getCurrentWindow().startDragging().catch((error) => {
+        console.warn("Failed to start window drag:", error);
+      });
+    },
+    [],
+  );
 
   const handleSectionJump = useCallback((sectionId: string) => {
     setActiveSectionId(sectionId);
@@ -908,20 +951,13 @@ function App() {
         <header
           className={`app-macos-titlebar-overlay${macosWindowFullscreen ? " app-macos-titlebar-overlay--fullscreen" : ""}`}
           dir="ltr"
+          onMouseDown={handleWindowTitlebarMouseDown}
         >
-          <div
-            className="app-macos-titlebar-overlay__drag-layer"
-            data-tauri-drag-region
-            aria-hidden
-          />
           <div
             className="app-macos-titlebar-overlay__traffic-shim"
             aria-hidden
           />
-          <div
-            className="app-macos-titlebar-overlay__leading flex"
-            data-tauri-drag-region
-          >
+          <div className="app-macos-titlebar-overlay__leading flex">
             <Button
               type="button"
               variant="ghost"
@@ -954,15 +990,18 @@ function App() {
           </div>
           <div
             className="app-macos-titlebar-overlay__drag"
-            data-tauri-drag-region
             aria-hidden
           />
-          <div className="app-macos-titlebar-overlay__trailing app-no-drag flex items-center gap-4">
+          <div className="app-macos-titlebar-overlay__trailing flex items-center gap-4">
             <AccessibilityPermissions presentation="titleBar" />
           </div>
         </header>
       ) : (
-        <header className="app-window-toolbar" dir="ltr">
+        <header
+          className="app-window-toolbar"
+          dir="ltr"
+          onMouseDown={handleWindowTitlebarMouseDown}
+        >
           <div className="app-window-toolbar__sidebar-toggle app-no-drag flex items-center ps-1 pe-1">
             <Button
               type="button"
@@ -988,18 +1027,14 @@ function App() {
               )}
             </Button>
           </div>
-          <div className="app-window-toolbar__center app-no-drag">
+          <div className="app-window-toolbar__center">
             <PrimaryModeSwitcher
               activeMode={activeMode}
               onSelect={handleModeSelect}
             />
           </div>
-          <div
-            className="app-window-toolbar__drag"
-            data-tauri-drag-region
-            aria-hidden
-          />
-          <div className="app-no-drag flex items-center gap-4 pe-2">
+          <div className="app-window-toolbar__drag" aria-hidden />
+          <div className="flex items-center gap-4 pe-2">
             <AccessibilityPermissions presentation="titleBar" />
           </div>
         </header>

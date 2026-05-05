@@ -1432,6 +1432,47 @@ input[type="range"]::-moz-range-thumb:active {
     background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
   }
 
+  .story-audio-docked-player {
+    position: fixed;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    left: calc(240px + max(1.25rem, (100vw - 240px - 64rem) / 2));
+    right: max(1.25rem, (100vw - 240px - 64rem) / 2);
+  }
+
+  .shell.shell--sidebar-collapsed .story-audio-docked-player {
+    left: max(1.25rem, (100vw - 64rem) / 2);
+    right: max(1.25rem, (100vw - 64rem) / 2);
+  }
+
+  .story-audio-top-scrubber-shell {
+    position: relative;
+    height: 0.75rem;
+  }
+
+  .story-audio-top-scrubber-shell:focus-within {
+    box-shadow: inset 0 0 0 2px var(--accent-glow);
+  }
+
+  .story-audio-top-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 0.25rem;
+    background: var(--accent);
+    pointer-events: none;
+  }
+
+  .story-audio-top-scrubber {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+    opacity: 0;
+  }
+
   .shell.shell--macos-titlebar-overlay .sidebar {
     margin-top: 0;
     padding-top: 0.35rem;
@@ -1477,6 +1518,12 @@ input[type="range"]::-moz-range-thumb:active {
     .shell.shell--macos-titlebar-overlay .main-content {
       grid-row: 2;
       grid-column: 1;
+    }
+
+    .story-audio-docked-player,
+    .shell.shell--sidebar-collapsed .story-audio-docked-player {
+      left: 1rem;
+      right: 1rem;
     }
   }
 

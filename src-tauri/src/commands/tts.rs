@@ -28,7 +28,7 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
 fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings, provider_id: &str, model_id: &str) {
     tuning.tempo_rate = tuning.tempo_rate.clamp(0.5, 2.0);
     tuning.expressiveness = tuning.expressiveness.clamp(0.0, 1.0);
-    tuning.exaggeration = tuning.exaggeration.clamp(0.0, 1.0);
+    tuning.exaggeration = tuning.exaggeration.clamp(0.0, 2.0);
     tuning.randomness = tuning.randomness.clamp(0.0, 1.0);
     tuning.guidance = tuning.guidance.clamp(0.0, 1.0);
     tuning.stability = tuning.stability.clamp(0.0, 1.0);

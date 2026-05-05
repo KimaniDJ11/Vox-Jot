@@ -1954,7 +1954,7 @@ async getDictationStats() : Promise<Result<DictationStats, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRenderResult, string>> {
+async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRenderEnqueueResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("render_story_audio", { request }) };
 } catch (e) {
@@ -1965,6 +1965,14 @@ async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRender
 async cancelStoryRender(renderId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("cancel_story_render", { renderId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listStoryRenderJobs() : Promise<Result<StoryRenderJobSummary[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_story_render_jobs") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2013,6 +2021,14 @@ async toggleStoryAudioStarred(id: string) : Promise<Result<StoryAudioItem, strin
 async deleteStoryAudio(id: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_story_audio", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createProcessedStoryAudio(request: ProcessStoryAudioRequest) : Promise<Result<StoryAudioItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_processed_story_audio", { request }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -2452,6 +2468,7 @@ export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
+export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
 export type RecordingOverlayStyle =
 /**
@@ -2510,8 +2527,9 @@ export type StoredCorrection = { id: number; original: string; corrected: string
 export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
 export type StoryLineInstructionOverride = { line_number: number; style_instructions: string }
+export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
+export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
 export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[] }
-export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.
  *
@@ -2548,7 +2566,7 @@ export type TtsStyleControlValue = { kind: "number"; value: number } | { kind: "
 export type TtsVoicePreset = { id: string; label: string; provider_id: string; model_id: string; voice_id?: string | null; voice_profile_id?: string | null; voice_label_snapshot?: string | null; locale_snapshot?: string | null; tuning: TtsVoiceTuningSettings }
 export type TtsVoicePresetInput = { label?: string | null; provider_id: string; model_id: string; voice_id?: string | null; voice_profile_id?: string | null; voice_label_snapshot?: string | null; locale_snapshot?: string | null; tuning: TtsVoiceTuningSettings }
 export type TtsVoiceProfileDescriptor = { id: string; label: string; description: string | null; transcript: string | null; compatible_provider_ids: string[]; compatible_model_ids: string[]; has_reference_audio: boolean; reference_audio_path: string | null; sample_rate_hz: number | null; ready: boolean; continuous_improvement_enabled: boolean; collected_audio_duration_secs: number; satisfactory_threshold_secs: number; fully_optimized: boolean }
-export type TtsVoiceTuningSettings = { tempo_rate?: number; expressiveness?: number; exaggeration?: number; randomness?: number; guidance?: number; stability?: number; repetition_penalty?: number; style_instructions?: string | null }
+export type TtsVoiceTuningSettings = { tempo_rate?: number; expressiveness?: number; exaggeration?: number; randomness?: number; guidance?: number; stability?: number; repetition_penalty?: number; style_instructions?: string | null; advanced_overrides?: Partial<{ [key in string]: TtsStyleControlValue }> }
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
 export type VoiceInfo = { id: string; label: string; locale: string | null; engine: TtsEngineKind; installed: boolean; available: boolean }
 /**

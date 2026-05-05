@@ -60,12 +60,14 @@ impl VibeVoiceContext {
         text: &str,
         output_path: &Path,
         speaker: Option<&str>,
+        cfg_scale: Option<f32>,
     ) -> Result<(), String> {
         let speaker = speaker.unwrap_or(DEFAULT_SPEAKER);
         let runtime_cwd = self.bridge_script.parent().ok_or_else(|| {
             "VibeVoice bridge script path must have a parent directory.".to_string()
         })?;
-        let output = Command::new(&self.python_path)
+        let mut command = Command::new(&self.python_path);
+        command
             .current_dir(runtime_cwd)
             .arg(&self.bridge_script)
             .arg("--model-path")
@@ -79,7 +81,15 @@ impl VibeVoiceContext {
             .arg("--speaker")
             .arg(speaker)
             .env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
-            .env("PYTHONUNBUFFERED", "1")
+            .env("PYTHONUNBUFFERED", "1");
+
+        if let Some(cfg_scale) = cfg_scale {
+            command
+                .arg("--cfg-scale")
+                .arg(cfg_scale.clamp(0.0, 5.0).to_string());
+        }
+
+        let output = command
             .output()
             .map_err(|err| format!("Failed to spawn VibeVoice bridge: {err}"))?;
 

@@ -22,6 +22,8 @@ interface SliderProps {
   layout?: "horizontal" | "stacked" | "compact";
   showValue?: boolean;
   formatValue?: (value: number) => string;
+  defaultValue?: number;
+  rangeHint?: { left: string; right: string };
 }
 
 // Commits to `onChange` only on pointer/key release so dragging doesn't
@@ -73,6 +75,8 @@ export const Slider: React.FC<SliderProps> = ({
   layout = "horizontal",
   showValue = true,
   formatValue = (v) => v.toFixed(2),
+  defaultValue,
+  rangeHint,
 }) => {
   const { localValue, handleChange, commit } = useDeferredSliderValue(
     value,
@@ -85,6 +89,14 @@ export const Slider: React.FC<SliderProps> = ({
   const trackStyle = {
     "--slider-bg": `linear-gradient(to right, var(--accent) 0%, var(--accent) ${fillPercent}%, color-mix(in srgb, var(--accent), white 78%) ${fillPercent}%, color-mix(in srgb, var(--text), transparent 82%) 100%)`,
   } as React.CSSProperties;
+  const defaultPercent =
+    defaultValue !== undefined && max !== min
+      ? Math.min(100, Math.max(0, ((defaultValue - min) / (max - min)) * 100))
+      : null;
+  const handleResetToDefault = () => {
+    if (defaultValue === undefined || disabled) return;
+    if (defaultValue !== value) onChange(defaultValue);
+  };
 
   if (layout === "compact") {
     return (
@@ -102,6 +114,10 @@ export const Slider: React.FC<SliderProps> = ({
         trackStyle={trackStyle}
         handleChange={handleChange}
         commit={commit}
+        defaultPercent={defaultPercent}
+        defaultValue={defaultValue}
+        onResetToDefault={handleResetToDefault}
+        rangeHint={rangeHint}
       />
     );
   }
@@ -157,6 +173,10 @@ const CompactSlider: React.FC<{
   trackStyle: React.CSSProperties;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   commit: () => void;
+  defaultPercent: number | null;
+  defaultValue?: number;
+  onResetToDefault: () => void;
+  rangeHint?: { left: string; right: string };
 }> = ({
   label,
   description,
@@ -171,9 +191,16 @@ const CompactSlider: React.FC<{
   trackStyle,
   handleChange,
   commit,
+  defaultPercent,
+  defaultValue,
+  onResetToDefault,
+  rangeHint,
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
+  const canReset = defaultValue !== undefined && !disabled;
+  const isAtDefault = defaultValue !== undefined && value === defaultValue;
+  const valueResetTitle = canReset ? "Double-click to reset to default" : undefined;
 
   return (
     <div className="py-2 px-1">
@@ -194,7 +221,7 @@ const CompactSlider: React.FC<{
             aria-label="More information"
           >
             <svg
-              className="h-2.5 w-2.5 select-none"
+              className="h-3.5 w-3.5 select-none"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -203,7 +230,7 @@ const CompactSlider: React.FC<{
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2.5}
+                strokeWidth={2.25}
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
@@ -217,25 +244,56 @@ const CompactSlider: React.FC<{
           </button>
         ) : null}
         {showValue && (
-          <span className="ml-auto text-xs font-semibold text-[var(--muted)] tabular-nums">
+          <button
+            type="button"
+            onClick={canReset ? onResetToDefault : undefined}
+            disabled={!canReset}
+            title={valueResetTitle}
+            aria-label={
+              canReset
+                ? `${label} ${formatValue(value)} — click to reset`
+                : `${label} ${formatValue(value)}`
+            }
+            className={`ml-auto rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums transition-colors ${
+              isAtDefault
+                ? "text-[var(--muted)]"
+                : "text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+            } disabled:cursor-default disabled:hover:bg-transparent`}
+          >
             {formatValue(value)}
-          </span>
+          </button>
         )}
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={handleChange}
-        onPointerUp={commit}
-        onKeyUp={commit}
-        onBlur={commit}
-        disabled={disabled}
-        className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-        style={trackStyle}
-      />
+      <div className="relative">
+        {defaultPercent !== null ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 z-10 h-3 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--text),transparent_55%)]"
+            style={{ left: `${defaultPercent}%` }}
+          />
+        ) : null}
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={handleChange}
+          onPointerUp={commit}
+          onKeyUp={commit}
+          onBlur={commit}
+          onDoubleClick={canReset ? onResetToDefault : undefined}
+          disabled={disabled}
+          className="relative z-0 h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          style={trackStyle}
+        />
+      </div>
+      {rangeHint ? (
+        <div className="mt-1 flex justify-between text-[10px] uppercase tracking-[0.06em] text-[color-mix(in_srgb,var(--muted),transparent_25%)]">
+          <span>{rangeHint.left}</span>
+          <span>{rangeHint.right}</span>
+        </div>
+      ) : null}
     </div>
   );
 };

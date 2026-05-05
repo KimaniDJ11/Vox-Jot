@@ -1409,6 +1409,7 @@
     "create": "Create",
     "update": "Update",
     "close": "Close",
+    "done": "Done",
     "open": "Open",
     "default": "Default",
     "enabled": "Enabled",
@@ -1486,7 +1487,18 @@
   },
   "listen": {
     "tuning": {
-      "styleInstructions": "Style notes"
+      "styleInstructions": "Style notes",
+      "appliedTo": "Tuning applies to {{model}}",
+      "resetAll": "Reset all",
+      "resetAllHint": "Reset every parameter to its default value",
+      "noExtraControls": "No verified generation controls are available for this model in Vox Jot yet.",
+      "groups": {
+        "delivery": "Delivery",
+        "style": "Style",
+        "sampler": "Sampler",
+        "guidance": "Guidance",
+        "advanced": "Advanced"
+      }
     },
     "myVoices": {
       "active": "Active",

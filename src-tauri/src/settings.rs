@@ -471,6 +471,8 @@ pub struct TtsVoiceTuningSettings {
     pub repetition_penalty: f32,
     #[serde(default)]
     pub style_instructions: Option<String>,
+    #[serde(default)]
+    pub advanced_overrides: HashMap<String, TtsStyleControlValue>,
 }
 
 #[derive(Deserialize, Default)]
@@ -546,6 +548,7 @@ impl<'de> Deserialize<'de> for TtsVoiceTuningSettings {
                     .style_instructions
                     .or_else(|| legacy_text("style_instructions")),
             ),
+            advanced_overrides: compat.advanced_overrides,
         })
     }
 }
@@ -2296,7 +2299,7 @@ fn fallback_tts_preset_label(
 
 pub(crate) fn sanitize_tts_voice_tuning_for_target(
     tuning: &mut TtsVoiceTuningSettings,
-    _provider_id: &str,
+    provider_id: &str,
     _model_id: &str,
 ) -> bool {
     let mut changed = false;
@@ -2310,7 +2313,12 @@ pub(crate) fn sanitize_tts_voice_tuning_for_target(
         tuning.expressiveness = next_expressiveness;
         changed = true;
     }
-    let next_exaggeration = tuning.exaggeration.clamp(0.0, 1.0);
+    let exaggeration_max = if provider_id.contains("chatterbox") {
+        2.0
+    } else {
+        1.0
+    };
+    let next_exaggeration = tuning.exaggeration.clamp(0.0, exaggeration_max);
     if (tuning.exaggeration - next_exaggeration).abs() > f32::EPSILON {
         tuning.exaggeration = next_exaggeration;
         changed = true;
@@ -2416,6 +2424,7 @@ fn build_tts_preset_from_legacy(
             stability: default_tts_stability(),
             repetition_penalty: default_tts_repetition_penalty(),
             style_instructions: None,
+            advanced_overrides: HashMap::new(),
         },
     }
 }
@@ -3012,6 +3021,7 @@ mod tests {
             stability: default_tts_stability(),
             repetition_penalty: default_tts_repetition_penalty(),
             style_instructions: None,
+            advanced_overrides: HashMap::new(),
         };
         settings.tts_voice_presets = vec![
             TtsVoicePreset {

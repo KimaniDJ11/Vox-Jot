@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Settings } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
@@ -36,6 +37,10 @@ interface SidebarProps {
   onSettingsClick: () => void;
 }
 
+interface StoryRenderJobSummary {
+  status: string;
+}
+
 /**
  * Sentinel id used for the "Settings" footer row so the hover highlight
  * can spring between nav rows and the settings row inside a single
@@ -55,10 +60,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useTranslation();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [generatedAudioPulse, setGeneratedAudioPulse] = useState(false);
+  const [renderQueueActive, setRenderQueueActive] = useState(false);
   const generatedAudioPulseTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const unlisten = listen("story-audio-updated", () => {
+    let cancelled = false;
+    void invoke<StoryRenderJobSummary[]>("list_story_render_jobs")
+      .then((jobs) => {
+        if (!cancelled) {
+          setRenderQueueActive(jobs.some(isActiveStoryRenderJob));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load story render queue state:", error);
+      });
+
+    const unlistenAudio = listen("story-audio-updated", () => {
       setGeneratedAudioPulse(true);
       if (generatedAudioPulseTimerRef.current !== null) {
         window.clearTimeout(generatedAudioPulseTimerRef.current);
@@ -68,9 +85,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         generatedAudioPulseTimerRef.current = null;
       }, 6000);
     });
+    const unlistenQueue = listen<StoryRenderJobSummary[]>(
+      "story-render-queue-updated",
+      (event) => {
+        setRenderQueueActive(event.payload.some(isActiveStoryRenderJob));
+      },
+    );
 
     return () => {
-      void unlisten.then((fn) => fn());
+      cancelled = true;
+      void unlistenAudio.then((fn) => fn());
+      void unlistenQueue.then((fn) => fn());
       if (generatedAudioPulseTimerRef.current !== null) {
         window.clearTimeout(generatedAudioPulseTimerRef.current);
       }
@@ -91,6 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onClick: () => void,
   ) => {
     const isHovered = hoveredId === id;
+    const showGeneratedAudioActivity =
+      id === "story-audio-history" &&
+      (generatedAudioPulse || renderQueueActive);
 
     return (
       <motion.button
@@ -147,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="sidebar__nav-label flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold leading-5 tracking-[-0.005em]"
               >
                 <span className="truncate">{label}</span>
-                {id === "story-audio-history" && generatedAudioPulse ? (
+                {showGeneratedAudioActivity ? (
                   <span
                     className="ms-auto inline-flex h-5 shrink-0 items-end gap-0.5 rounded-full bg-[var(--accent-soft)] px-2 py-1"
                     aria-hidden="true"
@@ -220,3 +248,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+
+function isActiveStoryRenderJob(job: StoryRenderJobSummary): boolean {
+  return (
+    job.status === "queued" ||
+    job.status === "rendering" ||
+    job.status === "assembling"
+  );
+}

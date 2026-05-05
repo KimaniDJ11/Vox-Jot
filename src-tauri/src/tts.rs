@@ -143,6 +143,8 @@ struct RuntimeStyleControl {
     max: Option<f64>,
     step: Option<f64>,
     unit: Option<String>,
+    #[serde(default, alias = "default")]
+    default_value: Option<f64>,
     options: Option<Vec<RuntimeStyleControlOption>>,
 }
 
@@ -2114,7 +2116,9 @@ impl TtsManager {
                     label: option.label,
                 })
                 .collect(),
-            default_value: None,
+            default_value: control
+                .default_value
+                .map(|value| TtsStyleControlValue::Number(value as f32)),
         })
     }
 
@@ -2160,50 +2164,199 @@ impl TtsManager {
         }
     }
 
+    fn tempo_advanced_control(description: &str) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "tempo_rate",
+            TtsControlGroup::Tempo,
+            "Tempo",
+            description,
+            0.5,
+            2.0,
+            0.05,
+            1.0,
+            Some("x"),
+        )
+    }
+
+    fn randomness_advanced_control(default_value: f32) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "randomness",
+            TtsControlGroup::Sampler,
+            "Temperature",
+            "Controls sampling variation during audio generation.",
+            0.0,
+            1.0,
+            0.05,
+            default_value,
+            None,
+        )
+    }
+
+    fn repetition_penalty_advanced_control(default_value: f32) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "repetition_penalty",
+            TtsControlGroup::Guidance,
+            "Repetition Penalty",
+            "Discourages repeated words or token loops in longer reads.",
+            1.0,
+            3.0,
+            0.1,
+            default_value,
+            None,
+        )
+    }
+
+    fn top_p_advanced_control(default_value: f32) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "top_p",
+            TtsControlGroup::Sampler,
+            "Top P",
+            "Keeps sampling inside the most likely token mass.",
+            0.5,
+            1.0,
+            0.05,
+            default_value,
+            None,
+        )
+    }
+
+    fn top_k_advanced_control(default_value: f32) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "top_k",
+            TtsControlGroup::Sampler,
+            "Top K",
+            "Caps how many candidate audio tokens can be sampled.",
+            1.0,
+            100.0,
+            1.0,
+            default_value,
+            None,
+        )
+    }
+
+    fn min_p_advanced_control(default_value: f32) -> TtsAdvancedControlDescriptor {
+        Self::slider_advanced_control(
+            "min_p",
+            TtsControlGroup::Sampler,
+            "Min P",
+            "Filters very unlikely audio tokens while keeping expressive options open.",
+            0.0,
+            1.0,
+            0.01,
+            default_value,
+            None,
+        )
+    }
+
     fn runtime_fallback_advanced_controls(
         &self,
         provider_id: &str,
     ) -> Vec<TtsAdvancedControlDescriptor> {
         let provider_id = provider_id.to_ascii_lowercase();
 
-        if provider_id == TTS_PROVIDER_MLX_FISH_AUDIO_ID {
+        if provider_id == TTS_PROVIDER_MLX_KOKORO_ID {
+            return vec![Self::tempo_advanced_control(
+                "Adjusts Kokoro delivery speed for this preset.",
+            )];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_CHATTERBOX_ID {
             return vec![
+                Self::tempo_advanced_control(
+                    "Adjusts MLX Chatterbox delivery speed when supported by the model.",
+                ),
+                Self::randomness_advanced_control(0.7),
                 Self::slider_advanced_control(
-                    "randomness",
-                    TtsControlGroup::Sampler,
-                    "Randomness",
-                    "Balances stable reads with more expressive sampling.",
+                    "cfg_weight",
+                    TtsControlGroup::Guidance,
+                    "Guidance",
+                    "Controls how strongly Chatterbox follows its conditioning signal.",
                     0.0,
                     1.0,
                     0.05,
-                    0.7,
+                    0.5,
                     None,
                 ),
                 Self::slider_advanced_control(
-                    "repetition_penalty",
-                    TtsControlGroup::Guidance,
-                    "Repetition Penalty",
-                    "Helps reduce repeated words or loops in longer reads.",
-                    1.0,
-                    3.0,
+                    "exaggeration",
+                    TtsControlGroup::Style,
+                    "Exaggeration",
+                    "Pushes Chatterbox toward a more pronounced style.",
+                    0.25,
+                    2.0,
                     0.05,
-                    1.2,
+                    0.5,
                     None,
                 ),
+                Self::repetition_penalty_advanced_control(1.2),
+                Self::top_p_advanced_control(0.95),
+                Self::min_p_advanced_control(0.05),
             ];
         }
 
-        if provider_id.contains("kokoro") {
+        if provider_id == TTS_PROVIDER_MLX_QWEN3TTS_ID
+            || provider_id == TTS_PROVIDER_MLX_FISH_AUDIO_ID
+        {
+            return vec![
+                Self::tempo_advanced_control(
+                    "Adjusts delivery speed when supported by this MLX model.",
+                ),
+                Self::randomness_advanced_control(0.7),
+                Self::repetition_penalty_advanced_control(1.2),
+                Self::top_p_advanced_control(0.8),
+                Self::top_k_advanced_control(50.0),
+            ];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_DIA_ID
+            || provider_id == TTS_PROVIDER_MLX_SPARK_ID
+            || provider_id == TTS_PROVIDER_MLX_VOXTRAL_TTS_ID
+        {
+            return vec![
+                Self::randomness_advanced_control(0.7),
+                Self::top_p_advanced_control(0.8),
+                Self::top_k_advanced_control(50.0),
+            ];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_MING_OMNI_ID {
+            return vec![
+                Self::tempo_advanced_control("Adjusts Ming Omni delivery speed."),
+                Self::randomness_advanced_control(0.7),
+                Self::top_p_advanced_control(0.8),
+                Self::top_k_advanced_control(50.0),
+            ];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_LFM_AUDIO_ID {
+            return vec![Self::randomness_advanced_control(0.7)];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_POCKET_TTS_ID {
+            return vec![Self::randomness_advanced_control(0.7)];
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_KUGEL_ID || provider_id == TTS_PROVIDER_MLX_BARK_ID {
+            return Vec::new();
+        }
+
+        if provider_id == TTS_PROVIDER_MLX_VOXCPM_ID {
             return vec![Self::slider_advanced_control(
-                "tempo_rate",
-                TtsControlGroup::Tempo,
-                "Tempo",
-                "Adjusts Kokoro delivery speed for this preset.",
-                0.5,
+                "cfg_weight",
+                TtsControlGroup::Guidance,
+                "Guidance",
+                "Controls VoxCPM2 conditioning strength.",
+                0.0,
+                5.0,
+                0.1,
                 2.0,
-                0.05,
-                1.0,
-                Some("x"),
+                None,
+            )];
+        }
+
+        if provider_id.contains("kokoro") {
+            return vec![Self::tempo_advanced_control(
+                "Adjusts Kokoro delivery speed for this preset.",
             )];
         }
 
@@ -2220,11 +2373,66 @@ impl TtsManager {
                     0.5,
                     None,
                 ),
+                Self::randomness_advanced_control(0.8),
                 Self::slider_advanced_control(
-                    "randomness",
+                    "exaggeration",
+                    TtsControlGroup::Style,
+                    "Exaggeration",
+                    "Pushes Chatterbox toward a more pronounced style.",
+                    0.25,
+                    2.0,
+                    0.05,
+                    0.5,
+                    None,
+                ),
+                Self::repetition_penalty_advanced_control(1.2),
+                Self::top_p_advanced_control(0.95),
+                Self::min_p_advanced_control(0.05),
+            ];
+        }
+
+        if provider_id.contains("xtts") || provider_id.contains("coqui") {
+            return vec![
+                Self::tempo_advanced_control("Adjusts XTTS delivery speed."),
+                Self::randomness_advanced_control(0.65),
+                Self::repetition_penalty_advanced_control(2.0),
+                Self::top_p_advanced_control(0.8),
+                Self::top_k_advanced_control(50.0),
+            ];
+        }
+
+        if provider_id.contains("openvoice") {
+            return vec![
+                Self::tempo_advanced_control(
+                    "Speeds OpenVoice up or down for a tighter delivery fit.",
+                ),
+                Self::slider_advanced_control(
+                    "sdp_ratio",
+                    TtsControlGroup::Style,
+                    "SDP Ratio",
+                    "Balances deterministic and stochastic duration prediction.",
+                    0.0,
+                    1.0,
+                    0.05,
+                    0.2,
+                    None,
+                ),
+                Self::slider_advanced_control(
+                    "noise_scale",
                     TtsControlGroup::Sampler,
-                    "Randomness",
-                    "Balances predictable versus more varied delivery.",
+                    "Noise Scale",
+                    "Controls base voice acoustic variation before tone conversion.",
+                    0.0,
+                    1.0,
+                    0.05,
+                    0.6,
+                    None,
+                ),
+                Self::slider_advanced_control(
+                    "noise_scale_w",
+                    TtsControlGroup::Sampler,
+                    "Duration Noise",
+                    "Controls stochastic duration variation in the base voice.",
                     0.0,
                     1.0,
                     0.05,
@@ -2232,69 +2440,17 @@ impl TtsManager {
                     None,
                 ),
                 Self::slider_advanced_control(
-                    "exaggeration",
+                    "tau",
                     TtsControlGroup::Style,
-                    "Exaggeration",
-                    "Pushes Chatterbox toward a more pronounced style.",
+                    "Tone Blend",
+                    "Adjusts tone-color conversion strength for cloned voices.",
                     0.0,
                     1.0,
                     0.05,
-                    0.5,
-                    None,
-                ),
-                Self::slider_advanced_control(
-                    "repetition_penalty",
-                    TtsControlGroup::Guidance,
-                    "Repetition Penalty",
-                    "Discourages repeated words in longer reads.",
-                    1.0,
-                    3.0,
-                    0.1,
-                    1.2,
+                    0.3,
                     None,
                 ),
             ];
-        }
-
-        if provider_id.contains("xtts") || provider_id.contains("coqui") {
-            return vec![
-                Self::slider_advanced_control(
-                    "randomness",
-                    TtsControlGroup::Sampler,
-                    "Randomness",
-                    "Balances stable reads with more expressive sampling.",
-                    0.0,
-                    1.0,
-                    0.05,
-                    0.65,
-                    None,
-                ),
-                Self::slider_advanced_control(
-                    "repetition_penalty",
-                    TtsControlGroup::Guidance,
-                    "Repetition Penalty",
-                    "Discourages repeated tokens in longer generations.",
-                    1.0,
-                    3.0,
-                    0.1,
-                    2.0,
-                    None,
-                ),
-            ];
-        }
-
-        if provider_id.contains("openvoice") {
-            return vec![Self::slider_advanced_control(
-                "tempo_rate",
-                TtsControlGroup::Tempo,
-                "Tempo",
-                "Speeds OpenVoice up or down for a tighter delivery fit.",
-                0.5,
-                2.0,
-                0.05,
-                1.0,
-                Some("x"),
-            )];
         }
 
         Vec::new()
@@ -2307,10 +2463,18 @@ impl TtsManager {
             TtsExpressivenessMode::Unsupported
         };
 
-        TtsDeliverySupport {
-            expressiveness_mode,
-            advanced_controls: if provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
-                vec![TtsAdvancedControlDescriptor {
+        let advanced_controls = match provider_id {
+            TTS_PROVIDER_SYSTEM_BUILTIN_ID => vec![Self::tempo_advanced_control(
+                "Adjusts the operating system voice speaking rate.",
+            )],
+            TTS_PROVIDER_SHERPA_PACK_ID => vec![Self::tempo_advanced_control(
+                "Adjusts Sherpa VITS length scale for faster or slower delivery.",
+            )],
+            TTS_PROVIDER_LOCAL_SIDECAR_API_ID => vec![
+                Self::tempo_advanced_control(
+                    "Sends a speed hint to compatible local speech APIs.",
+                ),
+                TtsAdvancedControlDescriptor {
                     id: "style_instructions".to_string(),
                     group: TtsControlGroup::Steering,
                     label: "Style Instructions".to_string(),
@@ -2325,10 +2489,26 @@ impl TtsManager {
                     unit: None,
                     options: Vec::new(),
                     default_value: None,
-                }]
-            } else {
-                Vec::new()
-            },
+                },
+            ],
+            TTS_PROVIDER_VIBEVOICE_ID => vec![Self::slider_advanced_control(
+                "cfg_weight",
+                TtsControlGroup::Guidance,
+                "Guidance",
+                "Controls VibeVoice classifier-free guidance strength.",
+                0.0,
+                5.0,
+                0.1,
+                1.3,
+                None,
+            )],
+            TTS_PROVIDER_LFM_AUDIO_GGUF_ID => Vec::new(),
+            _ => Vec::new(),
+        };
+
+        TtsDeliverySupport {
+            expressiveness_mode,
+            advanced_controls,
         }
     }
 
@@ -2346,10 +2526,10 @@ impl TtsManager {
             "steering" => TtsControlGroup::Steering,
             "tempo_rate" | "speed" => TtsControlGroup::Tempo,
             "expressiveness" | "exaggeration" => TtsControlGroup::Style,
-            "randomness" | "temperature" | "top_p" | "top_k" => TtsControlGroup::Sampler,
-            "guidance" | "cfg_weight" | "stability" | "repetition_penalty" => {
-                TtsControlGroup::Guidance
-            }
+            "randomness" | "temperature" | "top_p" | "top_k" | "min_p" | "noise_scale"
+            | "noise_scale_w" => TtsControlGroup::Sampler,
+            "guidance" | "cfg_weight" | "stability" | "repetition_penalty" | "sdp_ratio"
+            | "tau" => TtsControlGroup::Guidance,
             "style_instructions" => TtsControlGroup::Steering,
             _ => TtsControlGroup::Style,
         }
@@ -2359,19 +2539,23 @@ impl TtsManager {
         &self,
         model: &RuntimeListenModelCatalogEntry,
     ) -> TtsDeliverySupport {
+        let controls = self.runtime_advanced_controls(model);
         TtsDeliverySupport {
-            expressiveness_mode: TtsExpressivenessMode::Native,
-            advanced_controls: self.runtime_advanced_controls(model),
+            expressiveness_mode: if controls
+                .iter()
+                .any(|control| control.id == "expressiveness")
+            {
+                TtsExpressivenessMode::Native
+            } else {
+                TtsExpressivenessMode::Unsupported
+            },
+            advanced_controls: controls,
         }
     }
 
     fn qwen3_delivery_support(&self, features: Qwen3PackFeatures) -> TtsDeliverySupport {
         TtsDeliverySupport {
-            expressiveness_mode: if features.supports_instruction_prompt {
-                TtsExpressivenessMode::Native
-            } else {
-                TtsExpressivenessMode::Unsupported
-            },
+            expressiveness_mode: TtsExpressivenessMode::Unsupported,
             advanced_controls: if features.supports_instruction_prompt {
                 vec![Self::instruction_prompt_control(
                     "Optional Qwen3 style instruction for 1.7B CustomVoice voices.",
@@ -3865,6 +4049,7 @@ impl TtsManager {
                 stability: 0.5,
                 repetition_penalty: 1.2,
                 style_instructions: None,
+                advanced_overrides: std::collections::HashMap::new(),
             });
         let trigger = request.trigger.clone();
 
@@ -3973,6 +4158,7 @@ impl TtsManager {
                             &chunk,
                             context,
                             preferred_voice_id.as_deref(),
+                            &tuning,
                             tts_volume,
                             output_device.clone(),
                             &stop_flag,
@@ -4124,6 +4310,7 @@ impl TtsManager {
                 stability: 0.5,
                 repetition_penalty: 1.2,
                 style_instructions: None,
+                advanced_overrides: std::collections::HashMap::new(),
             });
 
         info!(
@@ -4210,6 +4397,7 @@ impl TtsManager {
                             &chunk,
                             context,
                             preferred_voice_id.as_deref(),
+                            &tuning,
                             &stop_flag,
                         )?
                     }
@@ -5679,6 +5867,7 @@ fn synthesize_vibevoice_chunk(
     text: &str,
     context: &crate::vibevoice::VibeVoiceContext,
     preferred_voice_id: Option<&str>,
+    tuning: &TtsVoiceTuningSettings,
     stop_flag: &AtomicBool,
 ) -> Result<PathBuf, String> {
     if stop_flag.load(Ordering::Relaxed) {
@@ -5692,7 +5881,8 @@ fn synthesize_vibevoice_chunk(
         .map_err(|err| format!("Failed to create temp VibeVoice dir: {err}"))?;
     let out_wav = temp_cwd.join("output.wav");
 
-    let synth_result = context.synthesize(text, &out_wav, preferred_voice_id);
+    let cfg_scale = tuning_number_override(tuning, "cfg_weight");
+    let synth_result = context.synthesize(text, &out_wav, preferred_voice_id, cfg_scale);
     if let Err(err) = synth_result {
         let _ = std::fs::remove_dir_all(&temp_cwd);
         return Err(err);
@@ -5714,11 +5904,12 @@ fn speak_vibevoice_chunk(
     text: &str,
     context: &crate::vibevoice::VibeVoiceContext,
     preferred_voice_id: Option<&str>,
+    tuning: &TtsVoiceTuningSettings,
     volume: f32,
     output_device: Option<String>,
     stop_flag: &AtomicBool,
 ) -> Result<(), String> {
-    let out_wav = synthesize_vibevoice_chunk(text, context, preferred_voice_id, stop_flag)?;
+    let out_wav = synthesize_vibevoice_chunk(text, context, preferred_voice_id, tuning, stop_flag)?;
 
     let play_result =
         audio_playback::play_audio_file_with_stop(&out_wav, output_device, volume, stop_flag)
@@ -5904,6 +6095,13 @@ fn repair_wav_riff_header(path: &Path) {
     }
 }
 
+fn tuning_number_override(tuning: &TtsVoiceTuningSettings, key: &str) -> Option<f32> {
+    match tuning.advanced_overrides.get(key) {
+        Some(TtsStyleControlValue::Number(value)) => Some(*value),
+        _ => None,
+    }
+}
+
 fn synthesize_mlx_audio_chunk(
     text: &str,
     context: &MlxAudioContext,
@@ -5952,6 +6150,32 @@ fn synthesize_mlx_audio_chunk(
         .env("PYTHONUNBUFFERED", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+
+    if let Some(top_p) = tuning_number_override(tuning, "top_p") {
+        command
+            .arg("--top-p")
+            .arg(top_p.clamp(0.0, 1.0).to_string());
+    }
+    if let Some(top_k) = tuning_number_override(tuning, "top_k") {
+        command
+            .arg("--top-k")
+            .arg(top_k.clamp(1.0, 500.0).round().to_string());
+    }
+    if let Some(min_p) = tuning_number_override(tuning, "min_p") {
+        command
+            .arg("--min-p")
+            .arg(min_p.clamp(0.0, 1.0).to_string());
+    }
+    if let Some(cfg_weight) = tuning_number_override(tuning, "cfg_weight") {
+        command
+            .arg("--cfg-weight")
+            .arg(cfg_weight.clamp(0.0, 5.0).to_string());
+    }
+    if let Some(exaggeration) = tuning_number_override(tuning, "exaggeration") {
+        command
+            .arg("--exaggeration")
+            .arg(exaggeration.clamp(0.0, 2.0).to_string());
+    }
 
     if let Some(voice_id) = preferred_voice_id
         .map(str::trim)
@@ -6494,6 +6718,8 @@ fn build_sidecar_request_payload(
         "locale": locale,
         "language": locale,
         "format": "wav",
+        "speed": sanitized_tuning.tempo_rate.clamp(0.5, 2.0),
+        "instructions": sanitized_tuning.style_instructions.clone(),
         "profile_id": profile_id,
         "extra_controls": if provider_id.is_empty() || provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
             serde_json::json!({
@@ -7057,6 +7283,7 @@ mod tests {
             stability: 0.5,
             repetition_penalty: 1.6,
             style_instructions: Some("warm and steady".to_string()),
+            advanced_overrides: std::collections::HashMap::new(),
         };
 
         let payload = build_sidecar_request_payload(
@@ -7106,6 +7333,7 @@ mod tests {
             stability: 0.5,
             repetition_penalty: 1.2,
             style_instructions: None,
+            advanced_overrides: std::collections::HashMap::new(),
         };
 
         let payload = build_sidecar_request_payload(
@@ -7137,6 +7365,7 @@ mod tests {
             stability: 0.5,
             repetition_penalty: 1.2,
             style_instructions: None,
+            advanced_overrides: std::collections::HashMap::new(),
         };
 
         let payload = build_sidecar_request_payload(

@@ -14,6 +14,7 @@ export interface TtsVoiceTuningSettings {
   stability: number;
   repetition_penalty: number;
   style_instructions?: string | null;
+  advanced_overrides?: Record<string, TtsStyleControlValue>;
 }
 
 export interface TtsVoicePreset {

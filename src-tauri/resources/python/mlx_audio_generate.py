@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    parser.add_argument("--top-p", type=float, default=None)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--min-p", type=float, default=None)
+    parser.add_argument("--cfg-weight", type=float, default=None)
+    parser.add_argument("--exaggeration", type=float, default=None)
     parser.add_argument("--ref-audio", default=None)
     parser.add_argument("--ref-text", default=None)
     parser.add_argument("--max-tokens", type=int, default=1200)
@@ -189,6 +194,11 @@ def build_generation_kwargs(
         "ref_text": ref_text,
         "temperature": args.temperature,
         "repetition_penalty": args.repetition_penalty,
+        "top_p": args.top_p,
+        "top_k": args.top_k,
+        "min_p": args.min_p,
+        "cfg_weight": args.cfg_weight,
+        "exaggeration": args.exaggeration,
         "max_tokens": args.max_tokens,
         "stream": False,
         "verbose": False,
@@ -913,7 +923,7 @@ def generate_voxcpm2_audio(args: argparse.Namespace):
         prompt_audio=prompt_audio,
         prompt_text=args.ref_text.strip() if args.ref_text else None,
         inference_timesteps=10,
-        cfg_value=2.0,
+        cfg_value=args.cfg_weight if args.cfg_weight is not None else 2.0,
     )
     out_sr = voxcpm2_output_sample_rate_from_config(args.model)
     if out_sr is not None and out_sr > 0:

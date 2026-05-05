@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use rodio::Source;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -64,6 +64,34 @@ pub struct StoryRenderResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryRenderEnqueueResult {
+    pub render_id: String,
+    pub queue_position: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ProcessStoryAudioRequest {
+    pub id: String,
+    pub playback_rate: f32,
+    pub sample_rate_hz: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryRenderJobSummary {
+    pub render_id: String,
+    pub title: String,
+    pub status: String,
+    pub created_at_ms: i64,
+    pub queued_at_ms: i64,
+    pub started_at_ms: Option<i64>,
+    pub current_line: u32,
+    pub total_lines: u32,
+    pub speaker: Option<String>,
+    pub error: Option<String>,
+    pub queue_position: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryAudioItem {
     pub id: String,
     pub title: String,
@@ -85,12 +113,73 @@ pub struct StoryAudioItem {
     pub starred: bool,
 }
 
-struct ActiveStoryRender {
-    render_id: String,
-    stop_flag: Arc<AtomicBool>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StoryRenderJobStatus {
+    Queued,
+    Rendering,
+    Assembling,
+    Completed,
+    Failed,
+    Cancelled,
 }
 
-static ACTIVE_STORY_RENDER: Lazy<Mutex<Option<ActiveStoryRender>>> = Lazy::new(|| Mutex::new(None));
+impl StoryRenderJobStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Rendering => "rendering",
+            Self::Assembling => "assembling",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        matches!(self, Self::Queued | Self::Rendering | Self::Assembling)
+    }
+}
+
+#[derive(Clone)]
+struct StoryRenderJob {
+    request: StoryRenderRequest,
+    stop_flag: Arc<AtomicBool>,
+    status: StoryRenderJobStatus,
+    created_at_ms: i64,
+    queued_at_ms: i64,
+    started_at_ms: Option<i64>,
+    current_line: u32,
+    total_lines: u32,
+    speaker: Option<String>,
+    error: Option<String>,
+}
+
+impl StoryRenderJob {
+    fn summary(&self, queue_position: Option<u32>) -> StoryRenderJobSummary {
+        StoryRenderJobSummary {
+            render_id: self.request.render_id.clone(),
+            title: story_title_label(&self.request.title),
+            status: self.status.as_str().to_string(),
+            created_at_ms: self.created_at_ms,
+            queued_at_ms: self.queued_at_ms,
+            started_at_ms: self.started_at_ms,
+            current_line: self.current_line,
+            total_lines: self.total_lines,
+            speaker: self.speaker.clone(),
+            error: self.error.clone(),
+            queue_position,
+        }
+    }
+}
+
+#[derive(Default)]
+struct StoryRenderQueueState {
+    jobs: VecDeque<StoryRenderJob>,
+    worker_running: bool,
+}
+
+static STORY_RENDER_QUEUE: Lazy<Mutex<StoryRenderQueueState>> =
+    Lazy::new(|| Mutex::new(StoryRenderQueueState::default()));
 static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
 
 #[tauri::command]
@@ -98,48 +187,244 @@ static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|
 pub async fn render_story_audio(
     app: AppHandle,
     request: StoryRenderRequest,
-) -> Result<StoryRenderResult, String> {
+) -> Result<StoryRenderEnqueueResult, String> {
     let stop_flag = Arc::new(AtomicBool::new(false));
-    {
-        let mut active = ACTIVE_STORY_RENDER
+    let now = now_ms();
+    let render_id = request.render_id.clone();
+    let (queue_position, should_start_worker) = {
+        let mut queue = STORY_RENDER_QUEUE
             .lock()
             .unwrap_or_else(|err| err.into_inner());
-        if active.is_some() {
-            return Err("A Story Studio render is already running.".to_string());
-        }
-        *active = Some(ActiveStoryRender {
-            render_id: request.render_id.clone(),
-            stop_flag: Arc::clone(&stop_flag),
+        queue.jobs.push_back(StoryRenderJob {
+            request,
+            stop_flag,
+            status: StoryRenderJobStatus::Queued,
+            created_at_ms: now,
+            queued_at_ms: now,
+            started_at_ms: None,
+            current_line: 0,
+            total_lines: 0,
+            speaker: None,
+            error: None,
         });
+        let queue_position = queue_position_for_locked(&queue, &render_id).unwrap_or(1);
+        let should_start_worker = !queue.worker_running;
+        if should_start_worker {
+            queue.worker_running = true;
+        }
+        (queue_position, should_start_worker)
+    };
+
+    emit_story_render_queue_updated(&app);
+    if should_start_worker {
+        tauri::async_runtime::spawn(story_render_worker(app.clone()));
     }
 
-    let result = render_story_audio_inner(app, request, Arc::clone(&stop_flag)).await;
-
-    let mut active = ACTIVE_STORY_RENDER
-        .lock()
-        .unwrap_or_else(|err| err.into_inner());
-    if active
-        .as_ref()
-        .is_some_and(|active| Arc::ptr_eq(&active.stop_flag, &stop_flag))
-    {
-        *active = None;
-    }
-
-    result
+    Ok(StoryRenderEnqueueResult {
+        render_id,
+        queue_position,
+    })
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn cancel_story_render(render_id: String) -> Result<(), String> {
-    let active = ACTIVE_STORY_RENDER
-        .lock()
-        .unwrap_or_else(|err| err.into_inner());
-    if let Some(active) = active.as_ref() {
-        if active.render_id == render_id {
-            active.stop_flag.store(true, Ordering::Relaxed);
-        }
+pub fn cancel_story_render(app: AppHandle, render_id: String) -> Result<(), String> {
+    let changed = {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        cancel_story_render_locked(&mut queue, &render_id)
+    };
+    if changed {
+        emit_story_render_queue_updated(&app);
     }
     Ok(())
+}
+
+fn cancel_story_render_locked(queue: &mut StoryRenderQueueState, render_id: &str) -> bool {
+    let Some(job) = queue
+        .jobs
+        .iter_mut()
+        .find(|job| job.request.render_id == render_id && job.status.is_active())
+    else {
+        return false;
+    };
+    job.stop_flag.store(true, Ordering::Relaxed);
+    if job.status == StoryRenderJobStatus::Queued {
+        job.status = StoryRenderJobStatus::Cancelled;
+        job.error = None;
+    }
+    true
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_story_render_jobs() -> Result<Vec<StoryRenderJobSummary>, String> {
+    Ok(story_render_job_summaries())
+}
+
+async fn story_render_worker(app: AppHandle) {
+    loop {
+        let Some((request, stop_flag)) = take_next_story_render_job(&app) else {
+            return;
+        };
+        let render_id = request.render_id.clone();
+        let result = render_story_audio_inner(app.clone(), request, Arc::clone(&stop_flag)).await;
+        match result {
+            Ok(_) => {
+                mark_story_render_job_completed(&app, &render_id);
+                emit_story_audio_updated(&app);
+                remove_story_render_job(&app, &render_id);
+            }
+            Err(error) => {
+                if stop_flag.load(Ordering::Relaxed)
+                    || error.to_ascii_lowercase().contains("cancelled")
+                {
+                    mark_story_render_job_cancelled(&app, &render_id);
+                } else {
+                    mark_story_render_job_failed(&app, &render_id, error);
+                }
+            }
+        }
+    }
+}
+
+fn take_next_story_render_job(app: &AppHandle) -> Option<(StoryRenderRequest, Arc<AtomicBool>)> {
+    let next = {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let Some(index) = queue
+            .jobs
+            .iter()
+            .position(|job| job.status == StoryRenderJobStatus::Queued)
+        else {
+            queue.worker_running = false;
+            return None;
+        };
+        let job = &mut queue.jobs[index];
+        job.status = StoryRenderJobStatus::Rendering;
+        job.started_at_ms = Some(now_ms());
+        job.error = None;
+        (job.request.clone(), Arc::clone(&job.stop_flag))
+    };
+    emit_story_render_queue_updated(app);
+    Some(next)
+}
+
+fn update_story_render_job_progress(progress: &StoryRenderProgress) {
+    let mut queue = STORY_RENDER_QUEUE
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    if let Some(job) = queue
+        .jobs
+        .iter_mut()
+        .find(|job| job.request.render_id == progress.render_id)
+    {
+        job.current_line = progress.current_line;
+        job.total_lines = progress.total_lines;
+        job.speaker = progress.speaker.clone();
+        job.status = match progress.status.as_str() {
+            "assembling" => StoryRenderJobStatus::Assembling,
+            "complete" => StoryRenderJobStatus::Completed,
+            "rendering" | "validating" => StoryRenderJobStatus::Rendering,
+            _ => job.status.clone(),
+        };
+    }
+}
+
+fn mark_story_render_job_completed(app: &AppHandle, render_id: &str) {
+    {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        if let Some(job) = queue
+            .jobs
+            .iter_mut()
+            .find(|job| job.request.render_id == render_id)
+        {
+            job.status = StoryRenderJobStatus::Completed;
+            job.speaker = None;
+        }
+    }
+    emit_story_render_queue_updated(app);
+}
+
+fn remove_story_render_job(app: &AppHandle, render_id: &str) {
+    {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        queue.jobs.retain(|job| job.request.render_id != render_id);
+    }
+    emit_story_render_queue_updated(app);
+}
+
+fn mark_story_render_job_cancelled(app: &AppHandle, render_id: &str) {
+    {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        if let Some(job) = queue
+            .jobs
+            .iter_mut()
+            .find(|job| job.request.render_id == render_id)
+        {
+            job.status = StoryRenderJobStatus::Cancelled;
+            job.speaker = None;
+            job.error = None;
+        }
+    }
+    emit_story_render_queue_updated(app);
+}
+
+fn mark_story_render_job_failed(app: &AppHandle, render_id: &str, error: String) {
+    {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        if let Some(job) = queue
+            .jobs
+            .iter_mut()
+            .find(|job| job.request.render_id == render_id)
+        {
+            job.status = StoryRenderJobStatus::Failed;
+            job.speaker = None;
+            job.error = Some(error);
+        }
+    }
+    emit_story_render_queue_updated(app);
+}
+
+fn story_render_job_summaries() -> Vec<StoryRenderJobSummary> {
+    let queue = STORY_RENDER_QUEUE
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    queue
+        .jobs
+        .iter()
+        .map(|job| {
+            let queue_position = if job.status == StoryRenderJobStatus::Queued {
+                queue_position_for_locked(&queue, &job.request.render_id)
+            } else {
+                None
+            };
+            job.summary(queue_position)
+        })
+        .collect()
+}
+
+fn queue_position_for_locked(queue: &StoryRenderQueueState, render_id: &str) -> Option<u32> {
+    queue
+        .jobs
+        .iter()
+        .filter(|job| job.status == StoryRenderJobStatus::Queued)
+        .position(|job| job.request.render_id == render_id)
+        .and_then(|index| u32::try_from(index + 1).ok())
+}
+
+fn emit_story_render_queue_updated(app: &AppHandle) {
+    let _ = app.emit("story-render-queue-updated", story_render_job_summaries());
 }
 
 #[tauri::command]
@@ -242,6 +527,56 @@ pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
     write_story_audio_items(&app, &items)?;
     emit_story_audio_updated(&app);
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn create_processed_story_audio(
+    app: AppHandle,
+    request: ProcessStoryAudioRequest,
+) -> Result<StoryAudioItem, String> {
+    let playback_rate = validate_story_audio_playback_rate(request.playback_rate)?;
+    let output_sample_rate = validate_story_audio_sample_rate(request.sample_rate_hz)?;
+    let mut items = read_story_audio_items(&app)?;
+    let Some(source) = items.iter().find(|item| item.id == request.id).cloned() else {
+        return Err("Story audio item no longer exists.".to_string());
+    };
+    let source_path = PathBuf::from(&source.output_path);
+    if !source_path.exists() {
+        return Err("Story audio file no longer exists.".to_string());
+    }
+
+    let source_sample_rate = wav_sample_rate_hz(&source_path).unwrap_or(source.sample_rate_hz);
+    let source_samples = decode_audio_file_mono(&source_path, source_sample_rate)?;
+    let sped_samples = apply_story_audio_playback_rate(&source_samples, playback_rate);
+    let mut output_samples = resample_linear(&sped_samples, source_sample_rate, output_sample_rate);
+    normalize_story_samples(&mut output_samples);
+
+    let title = processed_story_title(&source.title, playback_rate, output_sample_rate);
+    let output_path = output_path_for_story(&app, &title)?;
+    write_story_wav(&output_samples, output_sample_rate, &output_path)?;
+    let duration_ms =
+        ((output_samples.len() as f64 / output_sample_rate as f64) * 1000.0).round() as u32;
+    let output_path_string = output_path.to_string_lossy().to_string();
+    let processed = StoryAudioItem {
+        id: Uuid::new_v4().to_string(),
+        title,
+        script_text: source.script_text,
+        line_instructions: source.line_instructions,
+        output_path: output_path_string,
+        created_at_ms: now_ms(),
+        duration_ms,
+        line_count: source.line_count,
+        generation_time_ms: source.generation_time_ms,
+        sample_rate_hz: output_sample_rate,
+        expression_tags_used: source.expression_tags_used,
+        inline_prompt_used: source.inline_prompt_used,
+        starred: false,
+    };
+    items.push(processed.clone());
+    write_story_audio_items(&app, &items)?;
+    emit_story_audio_updated(&app);
+    Ok(processed)
 }
 
 async fn render_story_audio_inner(
@@ -369,7 +704,6 @@ async fn render_story_audio_inner(
             starred: false,
         },
     )?;
-    emit_story_audio_updated(&app);
 
     Ok(result)
 }
@@ -423,16 +757,16 @@ fn emit_progress(
     speaker: Option<String>,
     status: &str,
 ) {
-    let _ = app.emit(
-        "story-render-progress",
-        StoryRenderProgress {
-            render_id: render_id.to_string(),
-            current_line,
-            total_lines,
-            speaker,
-            status: status.to_string(),
-        },
-    );
+    let progress = StoryRenderProgress {
+        render_id: render_id.to_string(),
+        current_line,
+        total_lines,
+        speaker,
+        status: status.to_string(),
+    };
+    update_story_render_job_progress(&progress);
+    let _ = app.emit("story-render-progress", progress);
+    emit_story_render_queue_updated(app);
 }
 
 fn validate_cast(
@@ -746,25 +1080,86 @@ fn assemble_story_wav(
         }
     }
 
+    normalize_story_samples(&mut samples);
+
+    write_story_wav(&samples, STORY_SAMPLE_RATE, output_path)?;
+
+    Ok(((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32)
+}
+
+fn validate_story_audio_playback_rate(value: f32) -> Result<f32, String> {
+    if !value.is_finite() {
+        return Err("Playback speed must be a finite number.".to_string());
+    }
+    let rounded = (value * 100.0).round() / 100.0;
+    const SUPPORTED: &[f32] = &[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    if SUPPORTED
+        .iter()
+        .any(|supported| (rounded - supported).abs() < 0.001)
+    {
+        Ok(rounded)
+    } else {
+        Err("Choose a supported playback speed.".to_string())
+    }
+}
+
+fn validate_story_audio_sample_rate(value: u32) -> Result<u32, String> {
+    match value {
+        16_000 | 24_000 | 44_100 | 48_000 => Ok(value),
+        _ => Err("Choose a supported sample rate.".to_string()),
+    }
+}
+
+fn processed_story_title(title: &str, playback_rate: f32, sample_rate_hz: u32) -> String {
+    format!(
+        "{} (processed {}x {})",
+        story_title_label(title),
+        format_story_playback_rate(playback_rate),
+        format_story_sample_rate(sample_rate_hz)
+    )
+}
+
+fn format_story_playback_rate(value: f32) -> String {
+    if (value.fract()).abs() < 0.001 {
+        format!("{value:.0}")
+    } else {
+        format!("{value:.2}")
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string()
+    }
+}
+
+fn format_story_sample_rate(sample_rate_hz: u32) -> String {
+    if sample_rate_hz % 1000 == 0 {
+        format!("{} kHz", sample_rate_hz / 1000)
+    } else {
+        format!("{:.1} kHz", sample_rate_hz as f32 / 1000.0)
+    }
+}
+
+fn normalize_story_samples(samples: &mut [f32]) {
     let peak = samples
         .iter()
         .fold(0.0_f32, |peak, sample| peak.max(sample.abs()));
     if peak > STORY_PEAK_TARGET {
         let scale = STORY_PEAK_TARGET / peak;
-        for sample in &mut samples {
+        for sample in samples {
             *sample *= scale;
         }
     }
+}
 
+fn write_story_wav(samples: &[f32], sample_rate: u32, output_path: &Path) -> Result<(), String> {
     let spec = WavSpec {
         channels: 1,
-        sample_rate: STORY_SAMPLE_RATE,
+        sample_rate,
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
     };
     let mut writer =
         WavWriter::create(output_path, spec).map_err(|err| format!("WAV write error: {err}"))?;
-    for sample in &samples {
+    for sample in samples {
         let sample_i16 = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
         writer
             .write_sample(sample_i16)
@@ -773,8 +1168,16 @@ fn assemble_story_wav(
     writer
         .finalize()
         .map_err(|err| format!("WAV finalize error: {err}"))?;
+    Ok(())
+}
 
-    Ok(((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32)
+fn apply_story_audio_playback_rate(samples: &[f32], playback_rate: f32) -> Vec<f32> {
+    if samples.is_empty() || (playback_rate - 1.0).abs() < f32::EPSILON {
+        return samples.to_vec();
+    }
+
+    let output_len = ((samples.len() as f64) / playback_rate as f64).round() as usize;
+    resample_to_len(samples, output_len.max(1))
 }
 
 fn decode_audio_file_mono(path: &Path, target_sample_rate: u32) -> Result<Vec<f32>, String> {
@@ -812,6 +1215,32 @@ fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f
     }
 
     let ratio = source_rate as f64 / target_rate as f64;
+    (0..output_len)
+        .map(|index| {
+            let source_pos = index as f64 * ratio;
+            let left = source_pos.floor() as usize;
+            let right = (left + 1).min(samples.len() - 1);
+            let frac = (source_pos - left as f64) as f32;
+            samples[left] * (1.0 - frac) + samples[right] * frac
+        })
+        .collect()
+}
+
+fn resample_to_len(samples: &[f32], output_len: usize) -> Vec<f32> {
+    if samples.is_empty() || samples.len() == output_len {
+        return samples.to_vec();
+    }
+    if output_len == 0 {
+        return Vec::new();
+    }
+    if output_len == 1 {
+        return vec![samples[0]];
+    }
+    if samples.len() == 1 {
+        return vec![samples[0]; output_len];
+    }
+
+    let ratio = (samples.len() - 1) as f64 / (output_len - 1) as f64;
     (0..output_len)
         .map(|index| {
             let source_pos = index as f64 * ratio;
@@ -949,6 +1378,139 @@ mod tests {
         let stop = AtomicBool::new(true);
         let error = assemble_story_wav(&[vec![first]], 0, &out, &stop).unwrap_err();
         assert!(error.contains("cancelled"));
+    }
+
+    #[test]
+    fn queued_render_jobs_get_fifo_positions() {
+        let mut queue = StoryRenderQueueState::default();
+        queue
+            .jobs
+            .push_back(test_job("first", StoryRenderJobStatus::Queued));
+        queue
+            .jobs
+            .push_back(test_job("second", StoryRenderJobStatus::Queued));
+        queue
+            .jobs
+            .push_back(test_job("third", StoryRenderJobStatus::Queued));
+
+        assert_eq!(queue_position_for_locked(&queue, "first"), Some(1));
+        assert_eq!(queue_position_for_locked(&queue, "second"), Some(2));
+        assert_eq!(queue_position_for_locked(&queue, "third"), Some(3));
+    }
+
+    #[test]
+    fn cancelling_queued_render_marks_only_that_job() {
+        let mut queue = StoryRenderQueueState::default();
+        queue
+            .jobs
+            .push_back(test_job("first", StoryRenderJobStatus::Queued));
+        queue
+            .jobs
+            .push_back(test_job("second", StoryRenderJobStatus::Queued));
+        queue
+            .jobs
+            .push_back(test_job("third", StoryRenderJobStatus::Queued));
+
+        assert!(cancel_story_render_locked(&mut queue, "second"));
+        assert_eq!(queue.jobs[0].status, StoryRenderJobStatus::Queued);
+        assert_eq!(queue.jobs[1].status, StoryRenderJobStatus::Cancelled);
+        assert!(queue.jobs[1].stop_flag.load(Ordering::Relaxed));
+        assert_eq!(queue.jobs[2].status, StoryRenderJobStatus::Queued);
+        assert_eq!(queue_position_for_locked(&queue, "third"), Some(2));
+    }
+
+    #[test]
+    fn cancelling_active_render_trips_stop_flag() {
+        let mut queue = StoryRenderQueueState::default();
+        queue
+            .jobs
+            .push_back(test_job("active", StoryRenderJobStatus::Rendering));
+
+        assert!(cancel_story_render_locked(&mut queue, "active"));
+        assert_eq!(queue.jobs[0].status, StoryRenderJobStatus::Rendering);
+        assert!(queue.jobs[0].stop_flag.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn story_audio_items_sort_starred_then_newest() {
+        let mut items = vec![
+            test_audio_item("old", 1, false),
+            test_audio_item("starred", 2, true),
+            test_audio_item("new", 3, false),
+        ];
+
+        sort_story_audio_items(&mut items);
+
+        assert_eq!(items[0].id, "starred");
+        assert_eq!(items[1].id, "new");
+        assert_eq!(items[2].id, "old");
+    }
+
+    #[test]
+    fn validates_supported_processed_audio_options() {
+        assert_eq!(validate_story_audio_playback_rate(1.25).unwrap(), 1.25);
+        assert_eq!(validate_story_audio_sample_rate(44_100).unwrap(), 44_100);
+        assert!(validate_story_audio_playback_rate(1.1).is_err());
+        assert!(validate_story_audio_sample_rate(22_050).is_err());
+    }
+
+    #[test]
+    fn playback_rate_processing_changes_sample_length() {
+        let samples = vec![0.0; 24_000];
+        assert_eq!(apply_story_audio_playback_rate(&samples, 2.0).len(), 12_000);
+        assert_eq!(apply_story_audio_playback_rate(&samples, 0.5).len(), 48_000);
+    }
+
+    #[test]
+    fn writes_processed_wav_at_requested_sample_rate() {
+        let dir = tempdir().unwrap();
+        let out = dir.path().join("processed.wav");
+        let mut samples = apply_story_audio_playback_rate(&[0.25; 24_000], 2.0);
+        samples = resample_linear(&samples, STORY_SAMPLE_RATE, 48_000);
+        write_story_wav(&samples, 48_000, &out).unwrap();
+
+        assert_eq!(wav_sample_rate_hz(&out).unwrap(), 48_000);
+        assert_eq!(wav_duration_ms(&out).unwrap(), 500);
+    }
+
+    fn test_job(render_id: &str, status: StoryRenderJobStatus) -> StoryRenderJob {
+        StoryRenderJob {
+            request: StoryRenderRequest {
+                render_id: render_id.to_string(),
+                title: render_id.to_string(),
+                cast: Vec::new(),
+                script_text: String::new(),
+                pause_ms_between_lines: 0,
+                line_instructions: Vec::new(),
+            },
+            stop_flag: Arc::new(AtomicBool::new(false)),
+            status,
+            created_at_ms: 0,
+            queued_at_ms: 0,
+            started_at_ms: None,
+            current_line: 0,
+            total_lines: 0,
+            speaker: None,
+            error: None,
+        }
+    }
+
+    fn test_audio_item(id: &str, created_at_ms: i64, starred: bool) -> StoryAudioItem {
+        StoryAudioItem {
+            id: id.to_string(),
+            title: id.to_string(),
+            script_text: String::new(),
+            line_instructions: Vec::new(),
+            output_path: format!("{id}.wav"),
+            created_at_ms,
+            duration_ms: 0,
+            line_count: 0,
+            generation_time_ms: 0,
+            sample_rate_hz: STORY_SAMPLE_RATE,
+            expression_tags_used: false,
+            inline_prompt_used: false,
+            starred,
+        }
     }
 
     fn write_test_wav(path: &Path, samples: &[f32]) -> Result<(), String> {

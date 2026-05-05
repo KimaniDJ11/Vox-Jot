@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -46,19 +45,9 @@ import {
 } from "./ScriptEditor";
 import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
 
-interface StoryRenderProgress {
+interface StoryRenderEnqueueResult {
   render_id: string;
-  current_line: number;
-  total_lines: number;
-  speaker: string | null;
-  status: string;
-}
-
-interface StoryRenderResult {
-  render_id: string;
-  output_path: string;
-  duration_ms: number;
-  line_count: number;
+  queue_position: number;
 }
 
 interface StoryRenderRequest {
@@ -80,7 +69,7 @@ const refreshLabel = "Refresh";
 const storyTitleLabel = "Story title";
 const fixBeforeRenderingLabel = "Fix before rendering";
 const generateLabel = "Generate";
-const cancelLabel = "Cancel";
+const queuedLabel = "Queued";
 const studioToolAriaLabel = "Studio tools";
 const expressionTagsLabel = "Expression tags";
 const clearExpressionSearchLabel = "Clear expression tag search";
@@ -92,7 +81,6 @@ const lineInstructionLabel = "Line instruction";
 const lineInstructionPlaceholder =
   "Describe how this line should be performed.";
 const closeExpressionControlsLabel = "Close expression controls";
-const generatedAudioNotice = "Generated audio will appear in Generated Audio.";
 const pauseBetweenLinesLabel = "Pause between lines";
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
@@ -151,9 +139,9 @@ export const StoryStudioSection: React.FC = () => {
   });
   const [ttsModels, setTtsModels] = useState<CatalogModelDescriptor[]>([]);
   const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
-  const [isRendering, setIsRendering] = useState(false);
-  const [progress, setProgress] = useState<StoryRenderProgress | null>(null);
-  const activeRenderIdRef = useRef<string | null>(null);
+  const [isQueueingRender, setIsQueueingRender] = useState(false);
+  const [showQueuedAck, setShowQueuedAck] = useState(false);
+  const queuedAckTimerRef = useRef<number | null>(null);
 
   const refreshPresets = useCallback(async () => {
     setIsLoadingPresets(true);
@@ -184,7 +172,10 @@ export const StoryStudioSection: React.FC = () => {
         }
       })
       .catch((error) => {
-        console.error("Failed to load Story Studio expression metadata:", error);
+        console.error(
+          "Failed to load Story Studio expression metadata:",
+          error,
+        );
       });
     return () => {
       cancelled = true;
@@ -203,16 +194,10 @@ export const StoryStudioSection: React.FC = () => {
   }, [activeTool, cast, lineInstructions, pauseMs, scriptText, title]);
 
   useEffect(() => {
-    const unlisten = listen<StoryRenderProgress>(
-      "story-render-progress",
-      (event) => {
-        if (event.payload.render_id === activeRenderIdRef.current) {
-          setProgress(event.payload);
-        }
-      },
-    );
     return () => {
-      void unlisten.then((fn) => fn());
+      if (queuedAckTimerRef.current !== null) {
+        window.clearTimeout(queuedAckTimerRef.current);
+      }
     };
   }, []);
 
@@ -222,7 +207,7 @@ export const StoryStudioSection: React.FC = () => {
   );
   const canRender =
     !isLoadingPresets &&
-    !isRendering &&
+    !isQueueingRender &&
     presets.length > 0 &&
     validation.errors.length === 0;
   const readySummary =
@@ -280,15 +265,7 @@ export const StoryStudioSection: React.FC = () => {
       return;
     }
     const renderId = crypto.randomUUID();
-    activeRenderIdRef.current = renderId;
-    setIsRendering(true);
-    setProgress({
-      render_id: renderId,
-      current_line: 0,
-      total_lines: validation.lines.length,
-      speaker: null,
-      status: "queued",
-    });
+    setIsQueueingRender(true);
 
     const request: StoryRenderRequest = {
       render_id: renderId,
@@ -299,15 +276,29 @@ export const StoryStudioSection: React.FC = () => {
       })),
       script_text: scriptText,
       pause_ms_between_lines: pauseMs,
-      line_instructions: buildLineInstructions(validation.lines, lineInstructions),
+      line_instructions: buildLineInstructions(
+        validation.lines,
+        lineInstructions,
+      ),
     };
 
     try {
-      const result = await invoke<StoryRenderResult>("render_story_audio", {
-        request,
-      });
-      toast.success(
-        `Story audio rendered. Open Generated Audio to play ${result.line_count} line${result.line_count === 1 ? "" : "s"}.`,
+      const result = await invoke<StoryRenderEnqueueResult>(
+        "render_story_audio",
+        {
+          request,
+        },
+      );
+      setShowQueuedAck(true);
+      if (queuedAckTimerRef.current !== null) {
+        window.clearTimeout(queuedAckTimerRef.current);
+      }
+      queuedAckTimerRef.current = window.setTimeout(() => {
+        setShowQueuedAck(false);
+        queuedAckTimerRef.current = null;
+      }, 1000);
+      toast.message(
+        `Story audio queued${result.queue_position > 1 ? ` at position ${result.queue_position}` : ""}. Open Generated Audio to track it.`,
       );
     } catch (error) {
       const message = normalizeError(error, "Story render failed.");
@@ -315,8 +306,7 @@ export const StoryStudioSection: React.FC = () => {
         toast.error(message);
       }
     } finally {
-      activeRenderIdRef.current = null;
-      setIsRendering(false);
+      setIsQueueingRender(false);
     }
   }, [
     canRender,
@@ -327,21 +317,6 @@ export const StoryStudioSection: React.FC = () => {
     title,
     validation.lines,
   ]);
-
-  const handleCancel = useCallback(async () => {
-    const renderId = activeRenderIdRef.current;
-    if (!renderId) {
-      return;
-    }
-    try {
-      await invoke("cancel_story_render", { renderId });
-      toast.message("Story render cancelled.");
-    } catch (error) {
-      toast.error(normalizeError(error, "Could not cancel story render."));
-    }
-  }, []);
-
-  const progressLabel = progress ? formatProgress(progress) : null;
   const visibleValidationErrors = validation.errors.slice(0, 4);
   const hiddenValidationErrorCount =
     validation.errors.length - visibleValidationErrors.length;
@@ -388,21 +363,15 @@ export const StoryStudioSection: React.FC = () => {
               type="button"
               variant="primary-soft"
               size="sm"
-              onClick={() => {
-                if (isRendering) {
-                  void handleCancel();
-                  return;
-                }
-                void handleRender();
-              }}
-              disabled={!isRendering && !canRender}
+              onClick={() => void handleRender()}
+              disabled={!canRender}
             >
-              {isRendering ? (
+              {isQueueingRender || showQueuedAck ? (
                 <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
               ) : (
                 <WandSparkles className="h-3.5 w-3.5" />
               )}
-              {isRendering ? cancelLabel : generateLabel}
+              {isQueueingRender || showQueuedAck ? queuedLabel : generateLabel}
             </Button>
 
             <SegmentedControl<StudioTool>
@@ -452,7 +421,7 @@ export const StoryStudioSection: React.FC = () => {
                         ? expressionTagsLabel
                         : expressionCapability.emptyLabel
                     }
-                    disabled={!expressionEnabled || isRendering}
+                    disabled={!expressionEnabled}
                     aria-haspopup="listbox"
                     aria-expanded={expressionPopoverOpen}
                     className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
@@ -514,34 +483,6 @@ export const StoryStudioSection: React.FC = () => {
           )}
         </div>
 
-        {isRendering ? (
-          <div
-            className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-sm)]"
-            aria-live="polite"
-          >
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-[var(--text)]">
-                {progressLabel ?? "Preparing story render..."}
-              </span>
-              <span className="shrink-0 text-xs font-medium text-[var(--muted)]">
-                {generatedAudioNotice}
-              </span>
-            </div>
-            <div
-              className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--panel-bg)]"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={getProgressPercent(progress)}
-            >
-              <div
-                className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-200"
-                style={{ width: `${getProgressPercent(progress)}%` }}
-              />
-            </div>
-          </div>
-        ) : null}
-
         {validation.errors.length > 0 ? (
           <div
             className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
@@ -573,7 +514,6 @@ export const StoryStudioSection: React.FC = () => {
               <Input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                disabled={isRendering}
                 className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
               />
             </label>
@@ -582,7 +522,6 @@ export const StoryStudioSection: React.FC = () => {
               value={scriptText}
               onChange={setScriptText}
               onCursorChange={setScriptSelection}
-              disabled={isRendering}
             />
           </div>
         ) : (
@@ -590,7 +529,7 @@ export const StoryStudioSection: React.FC = () => {
             <CastBuilder
               cast={cast}
               presets={presets}
-              disabled={isRendering || isLoadingPresets}
+              disabled={isLoadingPresets}
               onAdd={addCharacter}
               onRemove={removeCharacter}
               onUpdate={updateCharacter}
@@ -612,7 +551,6 @@ export const StoryStudioSection: React.FC = () => {
                     ),
                   )
                 }
-                disabled={isRendering}
                 className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
               />
             </label>
@@ -771,7 +709,9 @@ const ExpressionPopover: React.FC<{
       ) : null}
 
       {showInstructions ? (
-        <div className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}>
+        <div
+          className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}
+        >
           <p className="text-xs font-semibold uppercase text-[var(--muted)]">
             {lineInstructionLabel}
           </p>
@@ -842,7 +782,10 @@ function resolveExpressionContext({
 
 function fallbackExpressionModel(
   preset: TtsVoicePreset,
-): Pick<CatalogModelDescriptor, "id" | "provider_id" | "label" | "capabilities"> {
+): Pick<
+  CatalogModelDescriptor,
+  "id" | "provider_id" | "label" | "capabilities"
+> {
   const modelId = preset.model_id.toLowerCase();
   const providerId = preset.provider_id.toLowerCase();
   const supportsInstructionPrompt =
@@ -888,7 +831,9 @@ function buildLineInstructions(
   lines: Array<{ lineNumber: number }>,
   lineInstructions: Record<string, string>,
 ) {
-  const validLineNumbers = new Set(lines.map((line) => String(line.lineNumber)));
+  const validLineNumbers = new Set(
+    lines.map((line) => String(line.lineNumber)),
+  );
   return Object.entries(lineInstructions)
     .filter(([lineNumber, instruction]) => {
       return validLineNumbers.has(lineNumber) && instruction.trim().length > 0;
@@ -938,9 +883,7 @@ function normalizeStoredStudioDraft(
 ): StoryStudioDraft {
   return {
     title:
-      typeof draft.title === "string"
-        ? draft.title
-        : defaultStudioDraft.title,
+      typeof draft.title === "string" ? draft.title : defaultStudioDraft.title,
     cast: Array.isArray(draft.cast)
       ? draft.cast
           .map(normalizeStoredCastMember)
@@ -1006,44 +949,8 @@ function nextCharacterName(index: number): string {
   return `Character ${index + 1}`;
 }
 
-function formatProgress(progress: StoryRenderProgress): string {
-  if (progress.status === "assembling") {
-    return "Assembling final WAV file...";
-  }
-  if (progress.status === "complete") {
-    return "Story audio rendered.";
-  }
-  if (progress.status === "validating" || progress.status === "queued") {
-    return "Preparing story render...";
-  }
-  const speaker = progress.speaker ? ` (${progress.speaker})` : "";
-  return `Rendering line ${progress.current_line} of ${progress.total_lines}${speaker}...`;
-}
-
 function formatHiddenIssueCount(count: number): string {
   return `${count} more issue${count === 1 ? "" : "s"}.`;
-}
-
-function getProgressPercent(progress: StoryRenderProgress | null): number {
-  if (!progress) {
-    return 8;
-  }
-  if (progress.status === "assembling") {
-    return 92;
-  }
-  if (progress.status === "complete") {
-    return 100;
-  }
-  if (progress.status === "validating" || progress.status === "queued") {
-    return 8;
-  }
-  if (progress.total_lines <= 0) {
-    return 8;
-  }
-  return Math.min(
-    90,
-    Math.max(8, Math.round((progress.current_line / progress.total_lines) * 90)),
-  );
 }
 
 function normalizeError(error: unknown, fallback: string): string {

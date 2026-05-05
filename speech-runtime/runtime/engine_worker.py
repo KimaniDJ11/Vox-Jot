@@ -285,6 +285,7 @@ class EngineWorker:
             temperature=float(controls.get("temperature", 0.8)),
             repetition_penalty=float(controls.get("repetition_penalty", 1.2)),
             top_p=float(controls.get("top_p", 0.95)),
+            min_p=float(controls.get("min_p", 0.05)),
             exaggeration=float(
                 controls.get("exaggeration", controls.get("expressiveness", 0.5))
             ),
@@ -458,9 +459,12 @@ class EngineWorker:
         return voices
 
     def _synthesize_openvoice(self, payload: dict[str, Any], output_path: Path) -> None:
+        import inspect
+
         locale = payload.get("locale")
         language = self._openvoice_language(locale)
-        speed = float(payload.get("controls", {}).get("speed", 1.0))
+        controls = payload.get("controls", {})
+        speed = float(controls.get("speed", 1.0))
         checkpoints = self._openvoice_checkpoint_root()
         model = self._openvoice_melo(language)
         speaker_key = self._openvoice_speaker_key(model, payload.get("voice"), language)
@@ -471,19 +475,45 @@ class EngineWorker:
         with tempfile.TemporaryDirectory(prefix="vox-jot-openvoice-") as temp_dir:
             temp_dir_path = Path(temp_dir)
             raw_path = temp_dir_path / "raw.wav"
-            model.tts_to_file(payload["text"], speaker_id, str(raw_path), speed=speed)
+            tts_kwargs = {
+                "speed": speed,
+                "sdp_ratio": float(controls.get("sdp_ratio", 0.2)),
+                "noise_scale": float(controls.get("noise_scale", 0.6)),
+                "noise_scale_w": float(controls.get("noise_scale_w", 0.8)),
+            }
+            tts_signature = inspect.signature(model.tts_to_file)
+            supported_tts_kwargs = {
+                key: value
+                for key, value in tts_kwargs.items()
+                if key in tts_signature.parameters
+            }
+            model.tts_to_file(
+                payload["text"],
+                speaker_id,
+                str(raw_path),
+                **supported_tts_kwargs,
+            )
             reference_audio = payload.get("reference_audio_path")
             if reference_audio:
                 target_se = converter.extract_se(
                     reference_audio,
                     se_save_path=str(temp_dir_path / "target_se.pth"),
                 )
+                convert_kwargs = {
+                    "audio_src_path": str(raw_path),
+                    "src_se": source_se.to(self.device),
+                    "tgt_se": target_se,
+                    "output_path": str(output_path),
+                    "tau": float(controls.get("tau", 0.3)),
+                    "message": "@VoxJot",
+                }
+                convert_signature = inspect.signature(converter.convert)
                 converter.convert(
-                    audio_src_path=str(raw_path),
-                    src_se=source_se.to(self.device),
-                    tgt_se=target_se,
-                    output_path=str(output_path),
-                    message="@VoxJot",
+                    **{
+                        key: value
+                        for key, value in convert_kwargs.items()
+                        if key in convert_signature.parameters
+                    }
                 )
             else:
                 output_path.write_bytes(raw_path.read_bytes())

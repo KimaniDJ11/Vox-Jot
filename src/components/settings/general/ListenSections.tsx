@@ -74,6 +74,7 @@ import {
   type ModelPlatformOverview,
   type ProviderDescriptor,
   type TtsAdvancedControlDescriptor,
+  type TtsControlGroup,
 } from "@/lib/modelPlatform";
 import {
   clearProfileCollectedData,
@@ -349,6 +350,7 @@ function defaultVoiceTuning(): TtsVoiceTuningSettings {
     stability: 0.5,
     repetition_penalty: 1.2,
     style_instructions: null,
+    advanced_overrides: {},
   };
 }
 
@@ -944,6 +946,10 @@ function useListenSpeechState() {
         tuning: {
           ...current.tuning,
           ...(patch.tuning ?? {}),
+          advanced_overrides: {
+            ...(current.tuning.advanced_overrides ?? {}),
+            ...(patch.tuning?.advanced_overrides ?? {}),
+          },
         },
       };
       await savePreset(activePreset, nextInput);
@@ -1221,10 +1227,6 @@ const workflowFieldLabelClassName =
   "text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]";
 const workflowHintClassName = "text-xs leading-5 text-[var(--muted)]";
 
-function tuningDescriptorMap(controls: TtsAdvancedControlDescriptor[]) {
-  return new Map(controls.map((control) => [control.id, control]));
-}
-
 function tuningNumberLabel(
   control: TtsAdvancedControlDescriptor | undefined,
   fallbackLabel: string,
@@ -1237,6 +1239,531 @@ function tuningDescription(
   fallbackDescription: string,
 ) {
   return control?.description ?? fallbackDescription;
+}
+
+function sliderTuningControl(
+  id: string,
+  group: TtsControlGroup,
+  label: string,
+  description: string,
+  min: number,
+  max: number,
+  step: number,
+  defaultValue: number,
+  unit: string | null = null,
+): TtsAdvancedControlDescriptor {
+  return {
+    id,
+    group,
+    label,
+    description,
+    kind: "slider",
+    min,
+    max,
+    step,
+    unit,
+    options: [],
+    default_value: { kind: "number", value: defaultValue },
+  };
+}
+
+function tempoTuningControl(description: string) {
+  return sliderTuningControl(
+    "tempo_rate",
+    "tempo",
+    "Tempo",
+    description,
+    0.5,
+    2,
+    0.05,
+    1,
+    "x",
+  );
+}
+
+function randomnessTuningControl(defaultValue = 0.7) {
+  return sliderTuningControl(
+    "randomness",
+    "sampler",
+    "Temperature",
+    "Controls sampling variation during audio generation.",
+    0,
+    1,
+    0.05,
+    defaultValue,
+  );
+}
+
+function repetitionTuningControl(defaultValue = 1.2) {
+  return sliderTuningControl(
+    "repetition_penalty",
+    "guidance",
+    "Repetition Penalty",
+    "Discourages repeated words or token loops in longer reads.",
+    1,
+    3,
+    0.1,
+    defaultValue,
+  );
+}
+
+function topPTuningControl(defaultValue = 0.8) {
+  return sliderTuningControl(
+    "top_p",
+    "sampler",
+    "Top P",
+    "Keeps sampling inside the most likely token mass.",
+    0.5,
+    1,
+    0.05,
+    defaultValue,
+  );
+}
+
+function topKTuningControl(defaultValue = 50) {
+  return sliderTuningControl(
+    "top_k",
+    "sampler",
+    "Top K",
+    "Caps how many candidate audio tokens can be sampled.",
+    1,
+    100,
+    1,
+    defaultValue,
+  );
+}
+
+function minPTuningControl(defaultValue = 0.05) {
+  return sliderTuningControl(
+    "min_p",
+    "sampler",
+    "Min P",
+    "Filters very unlikely audio tokens while keeping expressive options open.",
+    0,
+    1,
+    0.01,
+    defaultValue,
+  );
+}
+
+function styleInstructionsControl(
+  description: string,
+): TtsAdvancedControlDescriptor {
+  return {
+    id: "style_instructions",
+    group: "steering",
+    label: "Style Instructions",
+    description,
+    kind: "text",
+    min: null,
+    max: null,
+    step: null,
+    unit: null,
+    options: [],
+    default_value: null,
+  };
+}
+
+function fallbackTuningControlsForModel(
+  model: CatalogModelDescriptor | null | undefined,
+): TtsAdvancedControlDescriptor[] {
+  if (!model) return [];
+
+  const providerId = model.provider_id.toLowerCase();
+  const modelId = model.id.toLowerCase();
+  const familyKey = `${providerId} ${modelId}`;
+
+  if (providerId === "system_builtin") {
+    return [
+      tempoTuningControl("Adjusts the operating system voice speaking rate."),
+    ];
+  }
+
+  if (providerId === "sherpa_pack") {
+    return [
+      tempoTuningControl(
+        "Adjusts Sherpa VITS length scale for faster or slower delivery.",
+      ),
+    ];
+  }
+
+  if (providerId === "local_sidecar_api") {
+    return [
+      tempoTuningControl("Sends a speed hint to compatible local speech APIs."),
+      styleInstructionsControl(
+        "Optional sidecar-specific instructions passed through with speech generation.",
+      ),
+    ];
+  }
+
+  if (providerId === "vibevoice") {
+    return [
+      sliderTuningControl(
+        "cfg_weight",
+        "guidance",
+        "Guidance",
+        "Controls VibeVoice classifier-free guidance strength.",
+        0,
+        5,
+        0.1,
+        1.3,
+      ),
+    ];
+  }
+
+  if (familyKey.includes("kokoro")) {
+    return [
+      tempoTuningControl("Adjusts Kokoro delivery speed for this preset."),
+    ];
+  }
+
+  if (familyKey.includes("chatterbox")) {
+    const isMlx = providerId.includes("mlx");
+    return [
+      isMlx
+        ? tempoTuningControl(
+            "Adjusts MLX Chatterbox delivery speed when supported by the model.",
+          )
+        : null,
+      sliderTuningControl(
+        isMlx ? "cfg_weight" : "guidance",
+        "guidance",
+        "Guidance",
+        "Controls how strongly Chatterbox follows its conditioning signal.",
+        0,
+        1,
+        0.05,
+        0.5,
+      ),
+      randomnessTuningControl(isMlx ? 0.7 : 0.8),
+      sliderTuningControl(
+        "exaggeration",
+        "style",
+        "Exaggeration",
+        "Pushes Chatterbox toward a more pronounced style.",
+        0.25,
+        2,
+        0.05,
+        0.5,
+      ),
+      repetitionTuningControl(1.2),
+      topPTuningControl(0.95),
+      minPTuningControl(0.05),
+    ].filter(Boolean) as TtsAdvancedControlDescriptor[];
+  }
+
+  if (familyKey.includes("xtts") || familyKey.includes("coqui")) {
+    return [
+      tempoTuningControl("Adjusts XTTS delivery speed."),
+      randomnessTuningControl(0.65),
+      repetitionTuningControl(2),
+      topPTuningControl(0.8),
+      topKTuningControl(50),
+    ];
+  }
+
+  if (familyKey.includes("openvoice")) {
+    return [
+      tempoTuningControl(
+        "Speeds OpenVoice up or down for a tighter delivery fit.",
+      ),
+      sliderTuningControl(
+        "sdp_ratio",
+        "style",
+        "SDP Ratio",
+        "Balances deterministic and stochastic duration prediction.",
+        0,
+        1,
+        0.05,
+        0.2,
+      ),
+      sliderTuningControl(
+        "noise_scale",
+        "sampler",
+        "Noise Scale",
+        "Controls base voice acoustic variation before tone conversion.",
+        0,
+        1,
+        0.05,
+        0.6,
+      ),
+      sliderTuningControl(
+        "noise_scale_w",
+        "sampler",
+        "Duration Noise",
+        "Controls stochastic duration variation in the base voice.",
+        0,
+        1,
+        0.05,
+        0.8,
+      ),
+      sliderTuningControl(
+        "tau",
+        "style",
+        "Tone Blend",
+        "Adjusts tone-color conversion strength for cloned voices.",
+        0,
+        1,
+        0.05,
+        0.3,
+      ),
+    ];
+  }
+
+  if (providerId === "mlx_qwen3tts" || providerId === "mlx_fish_audio") {
+    return [
+      tempoTuningControl(
+        "Adjusts delivery speed when supported by this MLX model.",
+      ),
+      randomnessTuningControl(0.7),
+      repetitionTuningControl(1.2),
+      topPTuningControl(0.8),
+      topKTuningControl(50),
+    ];
+  }
+
+  if (
+    providerId === "mlx_dia" ||
+    providerId === "mlx_spark" ||
+    providerId === "mlx_voxtral_tts"
+  ) {
+    return [
+      randomnessTuningControl(0.7),
+      topPTuningControl(0.8),
+      topKTuningControl(50),
+    ];
+  }
+
+  if (providerId === "mlx_ming_omni") {
+    return [
+      tempoTuningControl("Adjusts Ming Omni delivery speed."),
+      randomnessTuningControl(0.7),
+      topPTuningControl(0.8),
+      topKTuningControl(50),
+    ];
+  }
+
+  if (providerId === "mlx_lfm_audio" || providerId === "mlx_pocket_tts") {
+    return [randomnessTuningControl(0.7)];
+  }
+
+  if (providerId === "mlx_voxcpm") {
+    return [
+      sliderTuningControl(
+        "cfg_weight",
+        "guidance",
+        "Guidance",
+        "Controls VoxCPM2 conditioning strength.",
+        0,
+        5,
+        0.1,
+        2,
+      ),
+    ];
+  }
+
+  return [];
+}
+
+function resolvedTuningControlsForModel(
+  model: CatalogModelDescriptor | null | undefined,
+) {
+  const catalogControls = model?.delivery_support.advanced_controls ?? [];
+  const controls =
+    catalogControls.length > 0
+      ? [...catalogControls]
+      : fallbackTuningControlsForModel(model);
+
+  if (
+    model?.capabilities.supports_instruction_prompt &&
+    !controls.some((control) => control.id === "style_instructions")
+  ) {
+    controls.push(
+      styleInstructionsControl(
+        "Optional provider-specific speaking instructions passed through with speech generation.",
+      ),
+    );
+  }
+
+  return controls;
+}
+
+function modelHasTuningControls(model: CatalogModelDescriptor) {
+  return (
+    resolvedTuningControlsForModel(model).length > 0 ||
+    (model.delivery_support.expressiveness_mode ?? "unsupported") !==
+      "unsupported"
+  );
+}
+
+const DIRECT_TUNING_CONTROL_IDS = new Set([
+  "tempo_rate",
+  "speed",
+  "expressiveness",
+  "exaggeration",
+  "randomness",
+  "guidance",
+  "stability",
+  "repetition_penalty",
+  "style_instructions",
+]);
+
+function tuningNumberDefault(
+  control: TtsAdvancedControlDescriptor,
+  fallback: number,
+) {
+  return control.default_value?.kind === "number"
+    ? control.default_value.value
+    : fallback;
+}
+
+function tuningFallbackDefault(control: TtsAdvancedControlDescriptor) {
+  switch (control.id) {
+    case "tempo_rate":
+    case "speed":
+      return 1;
+    case "randomness":
+      return 0.7;
+    case "top_p":
+      return 0.8;
+    case "top_k":
+      return 50;
+    case "min_p":
+      return 0.05;
+    case "cfg_weight":
+    case "guidance":
+      return 0.5;
+    case "sdp_ratio":
+      return 0.2;
+    case "noise_scale":
+      return 0.6;
+    case "noise_scale_w":
+      return 0.8;
+    case "tau":
+      return 0.3;
+    case "repetition_penalty":
+      return 1.2;
+    default:
+      return control.min ?? 0.5;
+  }
+}
+
+function tuningNumberValue(
+  tuning: TtsVoiceTuningSettings,
+  control: TtsAdvancedControlDescriptor,
+) {
+  switch (control.id) {
+    case "tempo_rate":
+    case "speed":
+      return tuning.tempo_rate ?? tuningNumberDefault(control, 1);
+    case "expressiveness":
+      return tuning.expressiveness ?? tuningNumberDefault(control, 0.5);
+    case "exaggeration":
+      return tuning.exaggeration ?? tuningNumberDefault(control, 0.5);
+    case "randomness":
+      return tuning.randomness ?? tuningNumberDefault(control, 0.7);
+    case "guidance":
+      return tuning.guidance ?? tuningNumberDefault(control, 0.5);
+    case "stability":
+      return tuning.stability ?? tuningNumberDefault(control, 0.5);
+    case "repetition_penalty":
+      return tuning.repetition_penalty ?? tuningNumberDefault(control, 1.2);
+    default: {
+      const override = tuning.advanced_overrides?.[control.id];
+      return override?.kind === "number"
+        ? override.value
+        : tuningNumberDefault(control, tuningFallbackDefault(control));
+    }
+  }
+}
+
+function tuningNumberPatch(
+  tuning: TtsVoiceTuningSettings,
+  control: TtsAdvancedControlDescriptor,
+  value: number,
+): Partial<TtsVoiceTuningSettings> {
+  switch (control.id) {
+    case "tempo_rate":
+    case "speed":
+      return { tempo_rate: value };
+    case "expressiveness":
+      return { expressiveness: value };
+    case "exaggeration":
+      return { exaggeration: value };
+    case "randomness":
+      return { randomness: value };
+    case "guidance":
+      return { guidance: value };
+    case "stability":
+      return { stability: value };
+    case "repetition_penalty":
+      return { repetition_penalty: value };
+    default:
+      return {
+        advanced_overrides: {
+          ...(tuning.advanced_overrides ?? {}),
+          [control.id]: { kind: "number", value },
+        },
+      };
+  }
+}
+
+function tuningFormatValue(control: TtsAdvancedControlDescriptor) {
+  if (
+    control.unit === "x" ||
+    control.id === "tempo_rate" ||
+    control.id === "speed"
+  ) {
+    return (value: number) => `${value.toFixed(2)}x`;
+  }
+  if (
+    control.id.includes("top_p") ||
+    control.id.includes("min_p") ||
+    control.id === "randomness" ||
+    control.id === "guidance" ||
+    control.id === "cfg_weight" ||
+    control.id === "sdp_ratio" ||
+    control.id === "noise_scale" ||
+    control.id === "noise_scale_w" ||
+    control.id === "tau" ||
+    control.id === "expressiveness" ||
+    control.id === "exaggeration" ||
+    control.id === "stability"
+  ) {
+    return (value: number) => `${Math.round(value * 100)}%`;
+  }
+  if (control.id.includes("top_k") || control.id.includes("tokens")) {
+    return (value: number) => `${Math.round(value)}`;
+  }
+  return (value: number) => value.toFixed(2);
+}
+
+function tuningRangeHint(control: TtsAdvancedControlDescriptor) {
+  switch (control.id) {
+    case "tempo_rate":
+    case "speed":
+      return { left: "Slower", right: "Faster" };
+    case "expressiveness":
+      return { left: "Calm", right: "Vivid" };
+    case "exaggeration":
+      return { left: "Subtle", right: "Pushed" };
+    case "randomness":
+      return { left: "Predictable", right: "Varied" };
+    case "guidance":
+    case "cfg_weight":
+      return { left: "Loose", right: "On-style" };
+    case "stability":
+      return { left: "Loose", right: "Steady" };
+    case "repetition_penalty":
+      return { left: "Light", right: "Strong" };
+    case "top_p":
+    case "min_p":
+      return { left: "Focused", right: "Open" };
+    case "top_k":
+      return { left: "Narrow", right: "Wide" };
+    default:
+      return undefined;
+  }
 }
 
 const InlineCueHint: React.FC<{ modelLabel?: string | null }> = ({
@@ -1291,9 +1818,7 @@ const DraftVoiceModelLibraryCard: React.FC<{
   const { t } = useTranslation();
   const isLocal = model.capabilities.local_only || provider?.local_only;
   const languageCoverage = formatLanguageCoverage(model);
-  const supportsStyle =
-    (model.delivery_support.expressiveness_mode ?? "unsupported") !==
-    "unsupported";
+  const supportsStyle = modelHasTuningControls(model);
   const availabilityLabel = model.installed
     ? t("modelHub.tts.downloaded", { defaultValue: "Downloaded" })
     : model.downloadable
@@ -1422,6 +1947,24 @@ const DraftVoiceModelLibraryCard: React.FC<{
   );
 };
 
+const TuningGroup: React.FC<{
+  label: string;
+  count?: number;
+  children: React.ReactNode;
+}> = ({ label, count, children }) => (
+  <section className="space-y-1.5">
+    <div className="flex items-center gap-2">
+      <p className={workflowFieldLabelClassName}>{label}</p>
+      {typeof count === "number" ? (
+        <span className="text-[10px] font-semibold tabular-nums text-[color-mix(in_srgb,var(--muted),transparent_25%)]">
+          {count}
+        </span>
+      ) : null}
+    </div>
+    {children}
+  </section>
+);
+
 const VoiceTuningCard: React.FC<{
   preset: TtsVoicePreset | TtsVoicePresetInput;
   onUpdatePreset: (patch: TtsVoicePresetPatch) => void;
@@ -1431,6 +1974,10 @@ const VoiceTuningCard: React.FC<{
   title: string;
   embedded?: boolean;
   surfaceClassName?: string;
+  modelLabel?: string | null;
+  onResetAll?: () => void;
+  onClose?: () => void;
+  footerSlot?: React.ReactNode;
 }> = ({
   preset,
   onUpdatePreset,
@@ -1440,171 +1987,228 @@ const VoiceTuningCard: React.FC<{
   title,
   embedded = false,
   surfaceClassName = workflowCardClassName,
+  modelLabel,
+  onResetAll,
+  onClose,
+  footerSlot,
 }) => {
   const { t } = useTranslation();
-  const descriptors = tuningDescriptorMap(controls);
+  const visibleSliderControls = controls.filter(
+    (control) =>
+      control.kind === "slider" && control.id !== "style_instructions",
+  );
+  const controlsByGroup = {
+    delivery: visibleSliderControls.filter(
+      (control) =>
+        control.group === "tempo" ||
+        control.id === "tempo_rate" ||
+        control.id === "speed" ||
+        control.id === "expressiveness",
+    ),
+    style: visibleSliderControls.filter(
+      (control) =>
+        control.group === "style" &&
+        control.id !== "tempo_rate" &&
+        control.id !== "speed" &&
+        control.id !== "expressiveness",
+    ),
+    sampler: visibleSliderControls.filter(
+      (control) => control.group === "sampler",
+    ),
+    guidance: visibleSliderControls.filter(
+      (control) => control.group === "guidance",
+    ),
+    other: visibleSliderControls.filter(
+      (control) =>
+        !["tempo", "style", "sampler", "guidance"].includes(control.group) &&
+        !DIRECT_TUNING_CONTROL_IDS.has(control.id),
+    ),
+  };
+  if (
+    supportsExpressiveness &&
+    !visibleSliderControls.some((control) => control.id === "expressiveness")
+  ) {
+    controlsByGroup.delivery.push({
+      id: "expressiveness",
+      group: "style",
+      label: "Expressiveness",
+      description:
+        "Overall energy and liveliness. Lower is calm and even, higher is animated.",
+      kind: "slider",
+      min: 0,
+      max: 1,
+      step: 0.05,
+      unit: null,
+      options: [],
+      default_value: { kind: "number", value: 0.5 },
+    });
+  }
   const controlIds = new Set(controls.map((control) => control.id));
+  const has = (id: string) => controlIds.has(id);
+  const trimmedModelLabel = modelLabel?.trim();
+
+  const deliveryCount = controlsByGroup.delivery.length;
+  const styleCount = controlsByGroup.style.length;
+  const samplerCount = controlsByGroup.sampler.length;
+  const guidanceCount = controlsByGroup.guidance.length;
+  const otherCount = controlsByGroup.other.length;
+  const hasAnyOptionalControl =
+    deliveryCount > 0 ||
+    styleCount > 0 ||
+    samplerCount > 0 ||
+    guidanceCount > 0 ||
+    otherCount > 0 ||
+    has("style_instructions");
+  const renderSliderControl = (control: TtsAdvancedControlDescriptor) => {
+    const fallbackDefault = tuningFallbackDefault(control);
+    const defaultValue = tuningNumberDefault(control, fallbackDefault);
+    return (
+      <Slider
+        key={control.id}
+        value={tuningNumberValue(preset.tuning, control)}
+        onChange={(value) =>
+          onUpdatePreset({
+            tuning: tuningNumberPatch(preset.tuning, control, value),
+          })
+        }
+        min={control.min ?? 0}
+        max={control.max ?? 1}
+        step={control.step ?? 0.05}
+        label={tuningNumberLabel(control, control.id)}
+        description={tuningDescription(
+          control,
+          "Model-specific generation control.",
+        )}
+        descriptionMode="tooltip"
+        grouped
+        layout="compact"
+        formatValue={tuningFormatValue(control)}
+        defaultValue={defaultValue}
+        rangeHint={tuningRangeHint(control)}
+        disabled={!ttsEnabled}
+      />
+    );
+  };
 
   return (
-    <div className={embedded ? "space-y-3" : surfaceClassName}>
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-[var(--text)]">{title}</h3>
+    <div className={embedded ? "space-y-4" : surfaceClassName}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-base font-semibold text-[var(--text)]">
+            {title}
+          </h3>
+          {trimmedModelLabel ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]"
+              title={t("listen.tuning.appliedTo", {
+                defaultValue: "Tuning applies to {{model}}",
+                model: trimmedModelLabel,
+              })}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]"
+                aria-hidden
+              />
+              {trimmedModelLabel}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1">
+          {onResetAll ? (
+            <button
+              type="button"
+              onClick={onResetAll}
+              disabled={!ttsEnabled}
+              className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)]"
+              title={t("listen.tuning.resetAllHint", {
+                defaultValue: "Reset every parameter to its default value",
+              })}
+            >
+              {t("listen.tuning.resetAll", { defaultValue: "Reset all" })}
+            </button>
+          ) : null}
+          {onClose ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              aria-label={t("common.close", { defaultValue: "Close" })}
+              title={t("common.close", { defaultValue: "Close" })}
+            >
+              <X aria-hidden />
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-3 grid gap-x-5 gap-y-2 md:grid-cols-2">
-        <Slider
-          value={preset.tuning.tempo_rate ?? 1}
-          onChange={(value) =>
-            onUpdatePreset({ tuning: { tempo_rate: value } })
-          }
-          min={0.5}
-          max={2}
-          step={0.05}
-          label="Tempo"
-          description="Saved per profile so every voice can be brisk, measured, or cinematic."
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="compact"
-          formatValue={(value) => `${value.toFixed(2)}x`}
-          disabled={!ttsEnabled}
-        />
-        <Slider
-          value={preset.tuning.expressiveness ?? 0.5}
-          onChange={(value) =>
-            onUpdatePreset({ tuning: { expressiveness: value } })
-          }
-          min={0}
-          max={1}
-          step={0.05}
-          label="Expressiveness"
-          description="Overall energy and liveliness for the active profile."
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="compact"
-          formatValue={(value) => `${Math.round(value * 100)}%`}
-          disabled={!ttsEnabled || !supportsExpressiveness}
-        />
-        {controlIds.has("exaggeration") ? (
-          <Slider
-            value={preset.tuning.exaggeration ?? 0.5}
-            onChange={(value) =>
-              onUpdatePreset({ tuning: { exaggeration: value } })
-            }
-            min={descriptors.get("exaggeration")?.min ?? 0}
-            max={descriptors.get("exaggeration")?.max ?? 1}
-            step={descriptors.get("exaggeration")?.step ?? 0.05}
-            label={tuningNumberLabel(
-              descriptors.get("exaggeration"),
-              "Exaggeration",
-            )}
-            description={tuningDescription(
-              descriptors.get("exaggeration"),
-              "Pushes the style further when the model supports it.",
-            )}
-            descriptionMode="tooltip"
-            grouped={true}
-            layout="compact"
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={!ttsEnabled}
-          />
-        ) : null}
-        {controlIds.has("randomness") ? (
-          <Slider
-            value={preset.tuning.randomness ?? 0.7}
-            onChange={(value) =>
-              onUpdatePreset({ tuning: { randomness: value } })
-            }
-            min={descriptors.get("randomness")?.min ?? 0}
-            max={descriptors.get("randomness")?.max ?? 1}
-            step={descriptors.get("randomness")?.step ?? 0.05}
-            label={tuningNumberLabel(
-              descriptors.get("randomness"),
-              "Randomness",
-            )}
-            description={tuningDescription(
-              descriptors.get("randomness"),
-              "Higher values make the read less predictable and more varied.",
-            )}
-            descriptionMode="tooltip"
-            grouped={true}
-            layout="compact"
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={!ttsEnabled}
-          />
-        ) : null}
-        {controlIds.has("guidance") ? (
-          <Slider
-            value={preset.tuning.guidance ?? 0.5}
-            onChange={(value) =>
-              onUpdatePreset({ tuning: { guidance: value } })
-            }
-            min={descriptors.get("guidance")?.min ?? 0}
-            max={descriptors.get("guidance")?.max ?? 1}
-            step={descriptors.get("guidance")?.step ?? 0.05}
-            label={tuningNumberLabel(descriptors.get("guidance"), "Guidance")}
-            description={tuningDescription(
-              descriptors.get("guidance"),
-              "Higher values keep delivery more consistent with your chosen style.",
-            )}
-            descriptionMode="tooltip"
-            grouped={true}
-            layout="compact"
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={!ttsEnabled}
-          />
-        ) : null}
-        {controlIds.has("stability") ? (
-          <Slider
-            value={preset.tuning.stability ?? 0.5}
-            onChange={(value) =>
-              onUpdatePreset({ tuning: { stability: value } })
-            }
-            min={descriptors.get("stability")?.min ?? 0}
-            max={descriptors.get("stability")?.max ?? 1}
-            step={descriptors.get("stability")?.step ?? 0.05}
-            label={tuningNumberLabel(descriptors.get("stability"), "Stability")}
-            description={tuningDescription(
-              descriptors.get("stability"),
-              "Only available for voice models that support a stability control.",
-            )}
-            descriptionMode="tooltip"
-            grouped={true}
-            layout="compact"
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={!ttsEnabled}
-          />
-        ) : null}
-        {controlIds.has("repetition_penalty") ? (
-          <Slider
-            value={preset.tuning.repetition_penalty ?? 1.2}
-            onChange={(value) =>
-              onUpdatePreset({ tuning: { repetition_penalty: value } })
-            }
-            min={descriptors.get("repetition_penalty")?.min ?? 1}
-            max={descriptors.get("repetition_penalty")?.max ?? 3}
-            step={descriptors.get("repetition_penalty")?.step ?? 0.1}
-            label={tuningNumberLabel(
-              descriptors.get("repetition_penalty"),
-              "Repetition Penalty",
-            )}
-            description={tuningDescription(
-              descriptors.get("repetition_penalty"),
-              "Helps reduce repeated words or loops in longer reads.",
-            )}
-            descriptionMode="tooltip"
-            grouped={true}
-            layout="compact"
-            formatValue={(value) => value.toFixed(2)}
-            disabled={!ttsEnabled}
-          />
-        ) : null}
-      </div>
+      {deliveryCount > 0 ? (
+        <TuningGroup
+          label={t("listen.tuning.groups.delivery", {
+            defaultValue: "Delivery",
+          })}
+          count={deliveryCount}
+        >
+          <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
+            {controlsByGroup.delivery.map(renderSliderControl)}
+          </div>
+        </TuningGroup>
+      ) : null}
 
-      {controlIds.has("style_instructions") ? (
-        <div className="mt-3 space-y-2">
-          <p className={workflowFieldLabelClassName}>
-            {t("listen.tuning.styleInstructions")}
-          </p>
+      {styleCount > 0 ? (
+        <TuningGroup
+          label={t("listen.tuning.groups.style", { defaultValue: "Style" })}
+          count={styleCount}
+        >
+          <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
+            {controlsByGroup.style.map(renderSliderControl)}
+          </div>
+        </TuningGroup>
+      ) : null}
+
+      {samplerCount > 0 ? (
+        <TuningGroup
+          label={t("listen.tuning.groups.sampler", { defaultValue: "Sampler" })}
+          count={samplerCount}
+        >
+          <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
+            {controlsByGroup.sampler.map(renderSliderControl)}
+          </div>
+        </TuningGroup>
+      ) : null}
+
+      {guidanceCount > 0 ? (
+        <TuningGroup
+          label={t("listen.tuning.groups.guidance", {
+            defaultValue: "Guidance",
+          })}
+          count={guidanceCount}
+        >
+          <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
+            {controlsByGroup.guidance.map(renderSliderControl)}
+          </div>
+        </TuningGroup>
+      ) : null}
+
+      {otherCount > 0 ? (
+        <TuningGroup
+          label={t("listen.tuning.groups.advanced", {
+            defaultValue: "Advanced",
+          })}
+          count={otherCount}
+        >
+          <div className="grid gap-x-5 gap-y-1 md:grid-cols-2">
+            {controlsByGroup.other.map(renderSliderControl)}
+          </div>
+        </TuningGroup>
+      ) : null}
+
+      {has("style_instructions") ? (
+        <TuningGroup
+          label={t("listen.tuning.styleInstructions", {
+            defaultValue: "Style notes",
+          })}
+        >
           <Textarea
             value={preset.tuning.style_instructions ?? ""}
             onChange={(event) =>
@@ -1618,8 +2222,19 @@ const VoiceTuningCard: React.FC<{
             className="min-h-[84px] !rounded-2xl"
             placeholder={t("listen.placeholders.styleInstructions")}
           />
-        </div>
+        </TuningGroup>
       ) : null}
+
+      {!hasAnyOptionalControl ? (
+        <p className="rounded-lg border border-dashed border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          {t("listen.tuning.noExtraControls", {
+            defaultValue:
+              "No verified generation controls are available for this model in Vox Jot yet.",
+          })}
+        </p>
+      ) : null}
+
+      {footerSlot}
     </div>
   );
 };
@@ -1865,13 +2480,10 @@ const VoiceArchitectSection: React.FC<{
       label: !profile.ready ? `${profile.label} (Needs audio)` : profile.label,
     })),
   ];
-  const controls =
-    draftSelectedModel?.delivery_support.advanced_controls ??
-    speech.activeModel?.delivery_support.advanced_controls ??
-    [];
+  const selectedTuningModel = draftSelectedModel ?? speech.activeModel;
+  const controls = resolvedTuningControlsForModel(selectedTuningModel);
   const supportsExpressiveness =
-    (draftSelectedModel?.delivery_support.expressiveness_mode ??
-      speech.activeModel?.delivery_support.expressiveness_mode ??
+    (selectedTuningModel?.delivery_support.expressiveness_mode ??
       "unsupported") !== "unsupported";
   const draftMatchesActiveModel =
     draftProviderIdForControls === (speech.activePreset?.provider_id ?? "") &&
@@ -1985,6 +2597,7 @@ const VoiceArchitectSection: React.FC<{
 
     return 0;
   });
+  const isPreviewingDraft = speech.previewingPresetId === "__draft__";
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
     const providerOrModelChanged =
@@ -2025,6 +2638,10 @@ const VoiceArchitectSection: React.FC<{
     setDraftTuning((current) => ({
       ...current,
       ...patch.tuning,
+      advanced_overrides: {
+        ...(current.advanced_overrides ?? {}),
+        ...(patch.tuning?.advanced_overrides ?? {}),
+      },
     }));
   };
   const handleSaveCurrent = async () => {
@@ -2236,35 +2853,68 @@ const VoiceArchitectSection: React.FC<{
             aria-label={t("listen.createVoices.tuning", {
               defaultValue: "Tuning",
             })}
-            className="relative max-h-[min(88vh,860px)] w-full max-w-[760px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative max-h-[min(88vh,860px)] w-full max-w-[780px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="absolute right-3 top-3 z-10">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setTuningWindowOpen(false)}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </Button>
-            </div>
-            <div className="max-h-[min(88vh,860px)] overflow-y-auto p-4 pt-12">
+            <div className="max-h-[min(88vh,860px)] overflow-y-auto p-5">
               <VoiceTuningCard
                 preset={buildDraftPresetInput()}
                 onUpdatePreset={updateDraftPreset}
                 ttsEnabled={speech.ttsEnabled}
                 controls={controls}
                 supportsExpressiveness={supportsExpressiveness}
-                title="Tuning"
+                title={t("listen.createVoices.tuning", {
+                  defaultValue: "Tuning",
+                })}
                 embedded
-                surfaceClassName="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]"
+                modelLabel={
+                  draftSelectedModel?.label ?? speech.activeModel?.label
+                }
+                onResetAll={() =>
+                  updateDraftPreset({ tuning: defaultVoiceTuning() })
+                }
+                onClose={() => setTuningWindowOpen(false)}
+                footerSlot={
+                  <div className="-mx-1 mt-3 flex items-center justify-between gap-3 border-t border-[var(--ring-hairline)] pt-3">
+                    <Button
+                      type="button"
+                      variant="primary-soft"
+                      size="sm"
+                      onClick={() => {
+                        if (isPreviewingDraft) {
+                          void commands.ttsStop();
+                          return;
+                        }
+                        void speech.previewPresetDraft(
+                          buildDraftPresetInput(),
+                          previewTextDraft,
+                        );
+                      }}
+                      disabled={!speech.ttsEnabled}
+                    >
+                      {isPreviewingDraft ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      {isPreviewingDraft
+                        ? t("listen.soundTuning.stop", { defaultValue: "Stop" })
+                        : t("listen.soundTuning.preview")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setTuningWindowOpen(false)}
+                    >
+                      {t("common.done", { defaultValue: "Done" })}
+                    </Button>
+                  </div>
+                }
               />
             </div>
           </motion.div>
@@ -2274,7 +2924,6 @@ const VoiceArchitectSection: React.FC<{
     document.body,
   );
 
-  const isPreviewingDraft = speech.previewingPresetId === "__draft__";
   const contentSpacingClassName = showTitle
     ? "space-y-3 px-4 py-3"
     : "space-y-3";
@@ -2629,7 +3278,7 @@ const SoundDesignSection: React.FC<{
 
   if (!speech.settings || !speech.activePreset) return null;
 
-  const controls = speech.activeModel?.delivery_support.advanced_controls ?? [];
+  const controls = resolvedTuningControlsForModel(speech.activeModel);
   const supportsExpressiveness =
     (speech.activeModel?.delivery_support.expressiveness_mode ??
       "unsupported") !== "unsupported";
@@ -2718,6 +3367,10 @@ const SoundDesignSection: React.FC<{
           controls={controls}
           supportsExpressiveness={supportsExpressiveness}
           title="Shape how the current voice performs"
+          modelLabel={speech.activeModel?.label}
+          onResetAll={() =>
+            void speech.updateActivePreset({ tuning: defaultVoiceTuning() })
+          }
         />
       </div>
     </SettingsGroup>
@@ -2777,9 +3430,7 @@ const SpeechModelLibraryCard: React.FC<{
   const subline = sublineParts.join(" · ");
   const isLocal = model.capabilities.local_only || provider?.local_only;
   const languageCoverage = formatLanguageCoverage(model);
-  const supportsStyle =
-    (model.delivery_support.expressiveness_mode ?? "unsupported") !==
-    "unsupported";
+  const supportsStyle = modelHasTuningControls(model);
   const capabilityChips: CompactBadgeItem[] = [
     {
       id: "capability-deployment",
@@ -3450,8 +4101,9 @@ const VoiceCloningSection: React.FC<{
 }> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
   const initialDraft = useMemo(readVoiceCloningDraft, []);
-  const [selectedCloneModelValue, setSelectedCloneModelValue] =
-    useState(initialDraft.selectedCloneModelValue);
+  const [selectedCloneModelValue, setSelectedCloneModelValue] = useState(
+    initialDraft.selectedCloneModelValue,
+  );
   const [voiceCloneTool, setVoiceCloneTool] = useState<"models" | "profiles">(
     initialDraft.voiceCloneTool,
   );
@@ -3596,7 +4248,8 @@ const VoiceCloningSection: React.FC<{
     return haystack.includes(normalizedModelSearch);
   });
   const orderedCloneModels = [...filteredCloneModels].sort((first, second) => {
-    const firstIsDraft = cloneModelSelectionValue(first) === selectedCloneModelValue;
+    const firstIsDraft =
+      cloneModelSelectionValue(first) === selectedCloneModelValue;
     const secondIsDraft =
       cloneModelSelectionValue(second) === selectedCloneModelValue;
 
@@ -3629,12 +4282,7 @@ const VoiceCloningSection: React.FC<{
 
   const acceptReferenceAudioPath = useCallback(
     (path: string) => {
-      if (
-        path
-          .split(".")
-          .pop()
-          ?.toLowerCase() !== "wav"
-      ) {
+      if (path.split(".").pop()?.toLowerCase() !== "wav") {
         speech.setStatusMessage(
           "Voice cloning currently requires a WAV reference file.",
         );
@@ -3664,29 +4312,31 @@ const VoiceCloningSection: React.FC<{
 
     let unlisten: (() => void) | undefined;
     let disposed = false;
-    void getCurrentWebview().onDragDropEvent((event) => {
-      const payload = event.payload;
-      if (payload.type === "enter" || payload.type === "over") {
-        setIsReferenceAudioDragOver(true);
-        return;
-      }
-      if (payload.type === "leave") {
-        setIsReferenceAudioDragOver(false);
-        return;
-      }
-      if (payload.type === "drop") {
-        setIsReferenceAudioDragOver(false);
-        const first = payload.paths?.[0];
-        if (!first) return;
-        acceptReferenceAudioPath(first);
-      }
-    }).then((fn) => {
-      if (disposed) {
-        fn();
-      } else {
-        unlisten = fn;
-      }
-    });
+    void getCurrentWebview()
+      .onDragDropEvent((event) => {
+        const payload = event.payload;
+        if (payload.type === "enter" || payload.type === "over") {
+          setIsReferenceAudioDragOver(true);
+          return;
+        }
+        if (payload.type === "leave") {
+          setIsReferenceAudioDragOver(false);
+          return;
+        }
+        if (payload.type === "drop") {
+          setIsReferenceAudioDragOver(false);
+          const first = payload.paths?.[0];
+          if (!first) return;
+          acceptReferenceAudioPath(first);
+        }
+      })
+      .then((fn) => {
+        if (disposed) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      });
 
     return () => {
       disposed = true;
@@ -3713,7 +4363,10 @@ const VoiceCloningSection: React.FC<{
         setReferenceTranscriptDraft(profileForPreset.transcript ?? "");
       }
 
-      await speech.createPresetFromProfile(profileForPreset, selectedCloneModel);
+      await speech.createPresetFromProfile(
+        profileForPreset,
+        selectedCloneModel,
+      );
       setProfilesWindowOpen(false);
     } catch (error) {
       speech.setStatusMessage(
@@ -4040,9 +4693,7 @@ const VoiceCloningSection: React.FC<{
                         </p>
                       </div>
                       <SwitchControl
-                        checked={
-                          selectedProfile.continuous_improvement_enabled
-                        }
+                        checked={selectedProfile.continuous_improvement_enabled}
                         disabled={
                           !speech.ttsEnabled || selectedProfile.fully_optimized
                         }

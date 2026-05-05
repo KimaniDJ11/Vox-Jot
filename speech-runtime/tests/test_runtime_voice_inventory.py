@@ -81,6 +81,21 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(worker._xtts_reference_for_voice("sample:zh-cn", "en"), str(samples / "zh-cn-sample.wav"))
         self.assertEqual(worker._xtts_reference_for_voice(None, "zh"), str(samples / "zh-cn-sample.wav"))
 
+    def test_chatterbox_turbo_accepts_official_hf_snapshot_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox-turbo")
+        (worker.model_dir / "t3_turbo_v1.safetensors").write_text("", encoding="utf-8")
+        (worker.model_dir / "s3gen_meanflow.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), worker.model_dir)
+
+    def test_chatterbox_base_accepts_legacy_checkpoint_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox")
+        base = worker.model_dir / "checkpoints" / "base"
+        base.mkdir(parents=True, exist_ok=True)
+        (base / "t3_cfg.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), base)
+
 
 if __name__ == "__main__":
     unittest.main()

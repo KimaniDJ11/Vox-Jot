@@ -1,5 +1,6 @@
 import unittest
 
+from runtime.config import ENGINE_SPECS
 from runtime.control_mapping import map_controls_for_engine, normalize_controls
 
 
@@ -40,6 +41,15 @@ class RuntimeControlsTest(unittest.TestCase):
         self.assertEqual(mapped["temperature"], 0.35)
         self.assertEqual(mapped["exaggeration"], 0.8)
         self.assertEqual(mapped["repetition_penalty"], 1.7)
+
+    def test_chatterbox_turbo_is_cataloged_as_clone_and_tag_capable(self):
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "chatterbox-turbo")
+
+        self.assertEqual(spec.provider_id, "chatterbox")
+        self.assertEqual(spec.license_label, "MIT")
+        self.assertTrue(spec.supports_voice_cloning)
+        self.assertTrue(spec.supports_inline_tags)
+        self.assertIn("chatterbox-turbo/chatterbox-turbo", spec.model_dirs)
 
     def test_unsupported_fields_are_ignored_for_openvoice(self):
         mapped = map_controls_for_engine(

@@ -134,15 +134,15 @@ class EngineWorker:
             return
 
         if self.provider_id == "chatterbox":
-            checkpoints = self.model_dir / "checkpoints"
-            if (checkpoints / "turbo").exists():
+            checkpoints = self._chatterbox_checkpoint_root()
+            if self.model_id == "chatterbox-turbo" or self._is_chatterbox_turbo_root(checkpoints):
                 from chatterbox.tts_turbo import ChatterboxTurboTTS
 
-                self.engine = ChatterboxTurboTTS.from_local(checkpoints / "turbo", self.device)
+                self.engine = ChatterboxTurboTTS.from_local(checkpoints, self.device)
             else:
                 from chatterbox.tts import ChatterboxTTS
 
-                self.engine = ChatterboxTTS.from_local(checkpoints / "base", self.device)
+                self.engine = ChatterboxTTS.from_local(checkpoints, self.device)
             return
 
         if self.provider_id == "xtts":
@@ -256,6 +256,31 @@ class EngineWorker:
                 )
             )
         return voices
+
+    def _is_chatterbox_turbo_root(self, candidate: Path) -> bool:
+        return (candidate / "t3_turbo_v1.safetensors").exists() or (
+            candidate / "t3_turbo_v1.yaml"
+        ).exists()
+
+    def _is_chatterbox_base_root(self, candidate: Path) -> bool:
+        return (
+            (candidate / "t3_cfg.safetensors").exists()
+            or (candidate / "t3_cfg.pt").exists()
+            or (candidate / "t3_cfg.yaml").exists()
+        )
+
+    def _chatterbox_checkpoint_root(self) -> Path:
+        candidates = (
+            self.model_dir / "checkpoints" / "turbo",
+            self.model_dir / "checkpoints" / "base",
+            self.model_dir / "chatterbox-turbo",
+            self.model_dir / "chatterbox",
+            self.model_dir,
+        )
+        for candidate in candidates:
+            if self._is_chatterbox_turbo_root(candidate) or self._is_chatterbox_base_root(candidate):
+                return candidate
+        raise RuntimeError("Chatterbox checkpoints are missing.")
 
     def _synthesize_kokoro(self, payload: dict[str, Any], output_path: Path) -> None:
         import numpy as np

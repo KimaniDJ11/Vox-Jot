@@ -206,7 +206,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
                   setDraft({ ...draft, name: event.target.value })
                 }
               />
-              {!canSave ? (
+              {!canSave && !isNew ? (
                 <p className="text-xs text-[var(--muted)]">
                   {nameRequiredHelp}
                 </p>

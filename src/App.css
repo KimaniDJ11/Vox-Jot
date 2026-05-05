@@ -690,7 +690,7 @@ body,
   padding: 0;
   overflow: hidden;
   font-family: var(--font-body);
-  font-size: calc(16px * var(--app-font-scale, 1));
+  font-size: calc(17px * var(--app-font-scale, 1));
   line-height: 1.5;
   color: var(--text);
   background: transparent;
@@ -978,7 +978,7 @@ input[type="range"]::-moz-range-thumb:active {
     align-items: center;
     min-width: 18px;
     padding: 2px 5px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -1052,6 +1052,10 @@ input[type="range"]::-moz-range-thumb:active {
       border-right-width: 0;
       visibility: hidden;
       pointer-events: none;
+    }
+
+    .sidebar__lower-stack {
+      transform: translateY(1.25rem);
     }
   }
 

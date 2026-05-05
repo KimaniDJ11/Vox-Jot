@@ -21,7 +21,7 @@ interface AppMonogramProps {
   name?: string | null;
   /** Bundle id used as a stable hash for the background tint. */
   bundleId: string;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
@@ -30,6 +30,7 @@ const SIZE_PX: Record<NonNullable<AppMonogramProps["size"]>, number> = {
   sm: 24,
   md: 32,
   lg: 40,
+  xl: 48,
 };
 
 /**
@@ -165,7 +166,15 @@ export const AppMonogram: React.FC<AppMonogramProps> = ({
         height: px,
         backgroundColor: pickTint(bundleId),
         fontSize:
-          size === "xs" ? 9 : size === "md" ? 13 : size === "lg" ? 16 : 11,
+          size === "xs"
+            ? 9
+            : size === "md"
+              ? 13
+              : size === "lg"
+                ? 16
+                : size === "xl"
+                  ? 18
+                  : 11,
       }}
       aria-hidden="true"
     >

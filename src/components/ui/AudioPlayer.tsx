@@ -26,6 +26,8 @@ interface AudioPlayerProps {
   starred?: boolean;
   /** When true, the cassette tile gets a stronger accent ring (selected state). */
   selected?: boolean;
+  /** Optional artwork shown in the play tile, with controls revealed above it. */
+  artwork?: React.ReactNode;
 }
 
 const STARRED_GLYPH = "★";
@@ -55,6 +57,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   actions,
   starred = false,
   selected = false,
+  artwork,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -225,11 +228,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const hasAudio = duration > 0;
   const isReady = !!loadedSrc || !!initialSrc;
-  const tileLabel = isLoading
-    ? "Loading audio"
-    : isPlaying
-      ? "Pause"
-      : "Play";
+  const tileLabel = isLoading ? "Loading audio" : isPlaying ? "Pause" : "Play";
+  const controlIcon = isLoading ? (
+    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+  ) : isPlaying ? (
+    <Pause className="h-5 w-5" fill="currentColor" aria-hidden />
+  ) : (
+    <Play
+      className="h-5 w-5 translate-x-[1px]"
+      fill="currentColor"
+      aria-hidden
+    />
+  );
 
   return (
     <div
@@ -244,10 +254,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         aria-label={tileLabel}
         title={tileLabel}
         className={[
-          "relative inline-flex h-12 w-12 shrink-0 items-center justify-center self-center",
-          "rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]",
+          "group/play-tile relative inline-flex h-12 w-12 shrink-0 items-center justify-center self-center overflow-hidden",
+          artwork
+            ? "rounded-xl bg-transparent text-[var(--accent)]"
+            : "rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)]",
           "transition-all duration-200 ease-out",
-          "hover:scale-[1.04] hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_10%)]",
+          artwork
+            ? "hover:scale-[1.04]"
+            : "hover:scale-[1.04] hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_10%)]",
           "active:scale-[0.97]",
           interactiveFocusRingClass,
           "disabled:opacity-60 disabled:hover:scale-100",
@@ -259,16 +273,33 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             : "",
         ].join(" ")}
       >
-        {isLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-        ) : isPlaying ? (
-          <Pause className="h-5 w-5" fill="currentColor" aria-hidden />
+        {artwork ? (
+          <>
+            <span
+              className={`relative z-0 flex items-center justify-center transition-transform duration-150 ${
+                isLoading || isPlaying
+                  ? "scale-95 opacity-45"
+                  : "group-hover/audio:scale-105"
+              }`}
+              aria-hidden
+            >
+              {artwork}
+            </span>
+            <span
+              className={`absolute inset-0 z-10 flex items-center justify-center bg-[color-mix(in_srgb,var(--bg),transparent_45%)] transition-opacity duration-150 ${
+                isLoading || isPlaying
+                  ? "opacity-100"
+                  : "opacity-0 group-hover/audio:opacity-100 group-focus-within/audio:opacity-100"
+              }`}
+              aria-hidden
+            >
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--card)_88%,transparent)] text-[var(--accent)] shadow-[0_6px_16px_color-mix(in_srgb,var(--text),transparent_82%)] backdrop-blur-sm">
+                {controlIcon}
+              </span>
+            </span>
+          </>
         ) : (
-          <Play
-            className="h-5 w-5 translate-x-[1px]"
-            fill="currentColor"
-            aria-hidden
-          />
+          controlIcon
         )}
         {isPlaying ? (
           <span

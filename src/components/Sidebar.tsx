@@ -227,21 +227,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </nav>
 
-          {showStatusCards && !collapsed && (
-            <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
-              <SidebarStatsGrid />
-              <SidebarModelLaunchers variant="stats" />
-            </div>
-          )}
-
-          <div className="sidebar__footer mt-4 pt-3">
-            {renderRow(
-              SETTINGS_ROW_ID,
-              t("sidebar.settingsButton", { defaultValue: "Settings" }),
-              Settings,
-              settingsActive,
-              onSettingsClick,
+          <div className="sidebar__lower-stack">
+            {showStatusCards && !collapsed && (
+              <div className="sidebar__status-cards mt-3 flex flex-col gap-2">
+                <SidebarStatsGrid />
+                <SidebarModelLaunchers variant="stats" />
+              </div>
             )}
+
+            <div className="sidebar__footer mt-4 pt-3">
+              {renderRow(
+                SETTINGS_ROW_ID,
+                t("sidebar.settingsButton", { defaultValue: "Settings" }),
+                Settings,
+                settingsActive,
+                onSettingsClick,
+              )}
+            </div>
           </div>
         </LayoutGroup>
       </div>

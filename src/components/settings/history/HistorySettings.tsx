@@ -9,7 +9,6 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
-import Badge from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
 import {
@@ -26,11 +25,7 @@ import {
 } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
-import {
-  commands,
-  type FieldSnapshotStatus,
-  type HistoryEntry,
-} from "@/bindings";
+import { commands, type HistoryEntry } from "@/bindings";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
@@ -305,7 +300,7 @@ export const HistorySettings: React.FC = () => {
     }, []);
 
     return (
-      <div className="space-y-5 px-4 py-4" data-testid="history-entries">
+      <div className="space-y-5 py-4" data-testid="history-entries">
         {groupedEntries.map((group) => (
           <section key={group.key} className="space-y-2.5">
             <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
@@ -313,7 +308,7 @@ export const HistorySettings: React.FC = () => {
                 {group.label}
               </p>
             </div>
-            <div className="card-linear overflow-hidden divide-y divide-[var(--ring-hairline,var(--border))]">
+            <div className="space-y-3">
               {group.entries.map((entry) => {
                 const fallbackText = entry.transcription_text;
                 const displayText =
@@ -412,15 +407,14 @@ const sectionLabelClassName =
 const sectionCardClassName =
   "rounded-xl border border-mid-gray/20 bg-[var(--panel-bg)] px-3 py-3";
 
-/** Time + main transcript line: same font, size, and line-height for alignment. */
-const historyEntryPrimaryLineClass =
-  "font-[var(--font-body)] text-base font-normal leading-6 text-[var(--text)]";
 const historyActionButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyDangerActionButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyConfirmDeleteButtonClassName =
   "inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+const historyMetaSeparatorClassName =
+  "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
 
 const HistoryDetailSection: React.FC<{
   title: string;
@@ -558,17 +552,6 @@ const HistoryBadgeHoverPanel: React.FC<{
   );
 };
 
-const snapshotToneClasses: Record<FieldSnapshotStatus, string> = {
-  not_requested: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
-  pending:
-    "border-[var(--warning)]/25 bg-[var(--warning-soft)] text-[var(--warning)]",
-  captured:
-    "border-[var(--success)]/25 bg-[var(--success-soft)] text-[var(--success)]",
-  skipped: "border-[var(--info)]/25 bg-[var(--info-soft)] text-[var(--info)]",
-  failed:
-    "border-[var(--danger)]/25 bg-[var(--danger-soft)] text-[var(--danger)]",
-};
-
 const getHistoryEntryAppLabel = (entry: HistoryEntry): string | null => {
   const metadata = entry.screen_context_metadata;
   const appName = metadata?.active_app_name?.trim();
@@ -666,6 +649,90 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     fieldSnapshotStatus !== "not_requested" &&
     fieldSnapshotStatus !== "skipped";
 
+  const actions = (
+    <>
+      <button
+        type="button"
+        onClick={handleCopyText}
+        className={historyActionButtonClassName}
+        title={t("settings.history.copyToClipboard")}
+        aria-label={t("settings.history.copyToClipboard")}
+      >
+        {showCopied ? (
+          <Check width={14} height={14} />
+        ) : (
+          <Copy width={14} height={14} />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={onRevealInFolder}
+        className={historyActionButtonClassName}
+        title={t("settings.history.showRecordingInFolder")}
+        aria-label={t("settings.history.showRecordingInFolder")}
+      >
+        <FolderOpen width={14} height={14} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleSaved}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+          entry.saved
+            ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
+            : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+        }`}
+        title={
+          entry.saved
+            ? t("settings.history.unsave")
+            : t("settings.history.save")
+        }
+        aria-label={
+          entry.saved
+            ? t("settings.history.unsave")
+            : t("settings.history.save")
+        }
+      >
+        <Star
+          width={14}
+          height={14}
+          fill={entry.saved ? "currentColor" : "none"}
+        />
+      </button>
+      {showDeleteConfirm ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void handleDeleteEntry()}
+            className={historyConfirmDeleteButtonClassName}
+            title={t("settings.history.delete")}
+            aria-label={t("settings.history.delete")}
+          >
+            <Trash2 width={14} height={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(false)}
+            className={historyActionButtonClassName}
+            title={t("common.cancel")}
+            aria-label={t("common.cancel")}
+          >
+            <X width={14} height={14} />
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowDeleteConfirm(true)}
+          className={historyDangerActionButtonClassName}
+          title={t("settings.history.delete")}
+          aria-label={t("settings.history.delete")}
+        >
+          <Trash2 width={14} height={14} />
+        </button>
+      )}
+    </>
+  );
+
   const postProcessBadgePanel = (
     <div className="space-y-2">
       <HistoryDetailSection
@@ -744,172 +811,98 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
     </div>
   );
 
+  const metaParts: React.ReactNode[] = [
+    <span key="time">{formattedTime}</span>,
+  ];
+
+  if (postProcessApplied) {
+    metaParts.push(
+      <HistoryBadgeHoverPanel key="post-process" panel={postProcessBadgePanel}>
+        <span className="inline-flex items-center gap-1 font-semibold text-[var(--success)]">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-[var(--success)]"
+          />
+          {t("settings.history.badges.postProcessOn", {
+            defaultValue: "Post processed",
+          })}
+        </span>
+      </HistoryBadgeHoverPanel>,
+    );
+  }
+
+  if (dictionaryApplied) {
+    metaParts.push(
+      <HistoryBadgeHoverPanel key="dictionary" panel={dictionaryBadgePanel}>
+        <span className="inline-flex items-center gap-1 font-semibold text-[var(--success)]">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-[var(--success)]"
+          />
+          {t("settings.history.badges.dictionaryOn", {
+            defaultValue: "Dictionary applied",
+          })}
+        </span>
+      </HistoryBadgeHoverPanel>,
+    );
+  }
+
+  if (showFieldObservationBadge) {
+    const fieldToneClass =
+      fieldSnapshotStatus === "failed"
+        ? "font-semibold text-[var(--danger)]"
+        : fieldSnapshotStatus === "pending"
+          ? "font-semibold text-[var(--warning)]"
+          : "font-semibold text-[var(--success)]";
+    metaParts.push(
+      <HistoryBadgeHoverPanel key="field" panel={fieldBadgePanel}>
+        <span className={fieldToneClass}>{fieldStatusLabel}</span>
+      </HistoryBadgeHoverPanel>,
+    );
+  }
+
   return (
-    <div className="group/history-row relative grid grid-cols-1 gap-y-3 px-4 py-4 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_5%,transparent)] md:grid-cols-[5.75rem_minmax(0,1fr)] md:items-baseline md:gap-x-4 md:gap-y-2.5">
-      <div
-        className={`min-w-0 tabular text-[12px] font-medium leading-5 text-[var(--muted)]`}
-      >
-        {formattedTime}
-      </div>
-
-      <p
-        className={`m-0 min-w-0 cursor-text select-text ${historyEntryPrimaryLineClass}`}
-      >
-        {displayText}
-      </p>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 md:col-start-2">
+    <article className="card-linear group/history-row relative px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)]">
+      <div>
         <AudioPlayer
           onLoadRequest={handleLoadAudio}
-          className="min-w-0 flex-1 sm:min-w-[220px]"
-        />
-
-        <div className="flex items-center gap-1 opacity-100 transition-opacity duration-150">
-          <button
-            type="button"
-            onClick={handleCopyText}
-            className={historyActionButtonClassName}
-            title={t("settings.history.copyToClipboard")}
-            aria-label={t("settings.history.copyToClipboard")}
-          >
-            {showCopied ? (
-              <Check width={14} height={14} />
-            ) : (
-              <Copy width={14} height={14} />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onRevealInFolder}
-            className={historyActionButtonClassName}
-            title={t("settings.history.showRecordingInFolder")}
-            aria-label={t("settings.history.showRecordingInFolder")}
-          >
-            <FolderOpen width={14} height={14} aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={onToggleSaved}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-              entry.saved
-                ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
-                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-            }`}
-            title={
-              entry.saved
-                ? t("settings.history.unsave")
-                : t("settings.history.save")
-            }
-            aria-label={
-              entry.saved
-                ? t("settings.history.unsave")
-                : t("settings.history.save")
-            }
-          >
-            <Star
-              width={14}
-              height={14}
-              fill={entry.saved ? "currentColor" : "none"}
-            />
-          </button>
-          {showDeleteConfirm ? (
+          className="min-w-0"
+          title={
+            <span
+              className="block min-w-0 truncate select-text"
+              title={displayText}
+            >
+              {displayText}
+            </span>
+          }
+          meta={
             <>
-              <button
-                type="button"
-                onClick={() => void handleDeleteEntry()}
-                className={historyConfirmDeleteButtonClassName}
-                title={t("settings.history.delete")}
-                aria-label={t("settings.history.delete")}
-              >
-                <Trash2 width={14} height={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className={historyActionButtonClassName}
-                title={t("common.cancel")}
-                aria-label={t("common.cancel")}
-              >
-                <X width={14} height={14} />
-              </button>
+              {metaParts.map((part, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 ? (
+                    <span aria-hidden className={historyMetaSeparatorClassName}>
+                      ·
+                    </span>
+                  ) : null}
+                  {part}
+                </React.Fragment>
+              ))}
             </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className={historyDangerActionButtonClassName}
-              title={t("settings.history.delete")}
-              aria-label={t("settings.history.delete")}
-            >
-              <Trash2 width={14} height={14} />
-            </button>
-          )}
-        </div>
+          }
+          actions={actions}
+          starred={entry.saved}
+          artwork={
+            appDisplayName && appBundleId ? (
+              <AppMonogram
+                bundleId={appBundleId}
+                name={appDisplayName}
+                size="xl"
+                className="rounded-xl"
+              />
+            ) : undefined
+          }
+        />
       </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 md:col-start-2">
-        {appLabel && appDisplayName && (
-          <span
-            title={appBundleId ?? appLabel}
-            aria-label={t("settings.history.badges.appA11y", {
-              appName: appDisplayName,
-              defaultValue: "Application: {{appName}}",
-            })}
-          >
-            <Badge
-              variant="secondary"
-              className="inline-flex max-w-full min-w-0 items-center gap-1.5 border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
-            >
-              {appBundleId ? (
-                <AppMonogram
-                  bundleId={appBundleId}
-                  name={appDisplayName}
-                  size="sm"
-                />
-              ) : null}
-              <span className="min-w-0 max-w-[14rem] truncate sm:max-w-[18rem]">
-                {appDisplayName}
-              </span>
-            </Badge>
-          </span>
-        )}
-        <HistoryBadgeHoverPanel panel={postProcessBadgePanel}>
-          <Badge
-            variant="secondary"
-            className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
-          >
-            {postProcessApplied
-              ? t("settings.history.badges.postProcessOn", {
-                  defaultValue: "Post process on",
-                })
-              : t("settings.history.badges.postProcessOff", {
-                  defaultValue: "Raw transcript",
-                })}
-          </Badge>
-        </HistoryBadgeHoverPanel>
-        {dictionaryApplied && (
-          <HistoryBadgeHoverPanel panel={dictionaryBadgePanel}>
-            <Badge
-              variant="secondary"
-              className="border border-mid-gray/20 px-2.5 py-1 text-[var(--muted)]"
-            >
-              {t("settings.history.badges.dictionaryOn", {
-                defaultValue: "Dictionary applied",
-              })}
-            </Badge>
-          </HistoryBadgeHoverPanel>
-        )}
-        {showFieldObservationBadge ? (
-          <HistoryBadgeHoverPanel panel={fieldBadgePanel}>
-            <Badge
-              variant="secondary"
-              className={`border px-2.5 py-1 ${snapshotToneClasses[fieldSnapshotStatus]}`}
-            >
-              {fieldStatusLabel}
-            </Badge>
-          </HistoryBadgeHoverPanel>
-        ) : null}
-      </div>
-    </div>
+    </article>
   );
 };

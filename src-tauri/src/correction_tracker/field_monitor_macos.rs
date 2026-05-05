@@ -12,12 +12,18 @@ use super::field_monitor::FieldTextReader;
 pub struct MacosFieldTextReader {
     /// Bundle identifier of the target application at the time the span was recorded.
     target_app_identifier: Option<String>,
+    /// Process id of the focused application at the time monitoring started.
+    target_app_pid: Option<i32>,
 }
 
 impl MacosFieldTextReader {
     pub fn new(target_app_identifier: Option<String>) -> Self {
         Self {
             target_app_identifier,
+            target_app_pid: current_focused_app_pid()
+                .inspect_err(|err| debug!("Could not capture focused app pid: {}", err))
+                .ok()
+                .flatten(),
         }
     }
 
@@ -47,6 +53,91 @@ impl MacosFieldTextReader {
     }
 }
 
+fn copy_attribute(
+    element: accessibility_sys::AXUIElementRef,
+    attr: &str,
+) -> (i32, Option<core_foundation::base::CFType>) {
+    use accessibility_sys::AXUIElementCopyAttributeValue;
+    use core_foundation::base::{CFType, CFTypeRef, TCFType};
+    use core_foundation::string::CFString;
+
+    let cf_attr = CFString::new(attr);
+    let mut out: CFTypeRef = std::ptr::null_mut();
+    let err =
+        unsafe { AXUIElementCopyAttributeValue(element, cf_attr.as_concrete_TypeRef(), &mut out) };
+
+    if err == 0 && !out.is_null() {
+        (err, Some(unsafe { CFType::wrap_under_create_rule(out) }))
+    } else {
+        (err, None)
+    }
+}
+
+fn copied_string_value(value: core_foundation::base::CFType) -> Option<String> {
+    use core_foundation::base::CFType;
+    use core_foundation::string::CFString;
+
+    CFType::downcast_into::<CFString>(value).map(|value| value.to_string())
+}
+
+fn string_attribute(
+    element: accessibility_sys::AXUIElementRef,
+    attr: &str,
+) -> (i32, Option<String>) {
+    let (err, value) = copy_attribute(element, attr);
+    let string = value.and_then(copied_string_value);
+    (err, string)
+}
+
+fn system_wide_element() -> Option<core_foundation::base::CFType> {
+    use accessibility_sys::AXUIElementCreateSystemWide;
+    use core_foundation::base::{CFType, TCFType};
+
+    let element = unsafe { AXUIElementCreateSystemWide() };
+    if element.is_null() {
+        return None;
+    }
+
+    let element = unsafe { CFType::wrap_under_create_rule(element as _) };
+    unsafe {
+        accessibility_sys::AXUIElementSetMessagingTimeout(
+            element.as_CFTypeRef() as accessibility_sys::AXUIElementRef,
+            0.25,
+        );
+    }
+    Some(element)
+}
+
+fn current_focused_app_pid() -> Result<Option<i32>> {
+    use accessibility_sys::{kAXFocusedApplicationAttribute, AXUIElementGetPid, AXUIElementRef};
+    use anyhow::anyhow;
+    use core_foundation::base::TCFType;
+
+    let Some(system_element) = system_wide_element() else {
+        return Ok(None);
+    };
+    let system_ref = system_element.as_CFTypeRef() as AXUIElementRef;
+    let (err, app) = copy_attribute(system_ref, kAXFocusedApplicationAttribute);
+    let Some(app) = app else {
+        return if err == 0 {
+            Ok(None)
+        } else {
+            Err(anyhow!(
+                "AXFocusedApplication unavailable (AXError={})",
+                err
+            ))
+        };
+    };
+
+    let mut pid = 0;
+    let err = unsafe { AXUIElementGetPid(app.as_CFTypeRef() as AXUIElementRef, &mut pid) };
+    if err == 0 {
+        Ok(Some(pid))
+    } else {
+        Err(anyhow!("AXUIElementGetPid failed (AXError={})", err))
+    }
+}
+
 impl FieldTextReader for MacosFieldTextReader {
     fn read_focused_field_text(&self) -> Result<Option<String>> {
         // Trigger the Accessibility permission prompt on first use if needed.
@@ -57,116 +148,92 @@ impl FieldTextReader for MacosFieldTextReader {
 
         use accessibility_sys::{
             kAXFocusedUIElementAttribute, kAXSelectedTextAttribute, kAXTitleAttribute,
-            kAXValueAttribute, AXUIElementCopyAttributeValue, AXUIElementCreateSystemWide,
-            AXUIElementRef,
+            kAXValueAttribute, AXUIElementRef,
         };
-        use core_foundation::base::{CFTypeRef, TCFType};
-        use core_foundation::string::CFString;
+        use core_foundation::base::TCFType;
 
-        unsafe {
-            let system_element: AXUIElementRef = AXUIElementCreateSystemWide();
-            if system_element.is_null() {
-                warn!("AXUIElementCreateSystemWide returned null");
+        let Some(system_element) = system_wide_element() else {
+            warn!("AXUIElementCreateSystemWide returned null");
+            return Ok(None);
+        };
+
+        // Get the currently focused UI element
+        let (focused_err, focused_opt) = copy_attribute(
+            system_element.as_CFTypeRef() as AXUIElementRef,
+            kAXFocusedUIElementAttribute,
+        );
+        let focused_ref = match focused_opt {
+            Some(v) => v,
+            None => {
+                warn!(
+                    "No focused UI element from accessibility (AXError={})",
+                    focused_err
+                );
                 return Ok(None);
             }
+        };
+        let focused_ref = focused_ref.as_CFTypeRef() as AXUIElementRef;
 
-            // Helper to copy an attribute value from an AXUIElementRef
-            unsafe fn copy_attribute(
-                element: AXUIElementRef,
-                attr: &str,
-            ) -> (i32, Option<CFTypeRef>) {
-                let cf_attr = CFString::new(attr);
-                let mut out: CFTypeRef = std::ptr::null_mut();
-                let err =
-                    AXUIElementCopyAttributeValue(element, cf_attr.as_concrete_TypeRef(), &mut out);
-                if err == 0 && !out.is_null() {
-                    (err, Some(out))
-                } else {
-                    (err, None)
-                }
+        // Try AXValue first - most editable text fields/text views expose this.
+        let (value_err, value_opt) = string_attribute(focused_ref, kAXValueAttribute);
+        if let Some(s) = value_opt {
+            if !s.is_empty() {
+                debug!("Read {} chars from AXValue", s.len());
+                return Ok(Some(s));
             }
-
-            // Get the currently focused UI element
-            let (focused_err, focused_opt) =
-                copy_attribute(system_element, kAXFocusedUIElementAttribute);
-            let focused_ref = match focused_opt {
-                Some(v) => v,
-                None => {
-                    warn!(
-                        "No focused UI element from accessibility (AXError={})",
-                        focused_err
-                    );
-                    return Ok(None);
-                }
-            };
-
-            // Try AXValue first – most editable text fields/text views expose this
-            let (value_err, value_opt) =
-                copy_attribute(focused_ref as AXUIElementRef, kAXValueAttribute);
-            if let Some(val_ref) = value_opt {
-                let s = CFString::wrap_under_get_rule(val_ref as _).to_string();
-                if !s.is_empty() {
-                    debug!("Read {} chars from AXValue", s.len());
-                    return Ok(Some(s));
-                }
-            } else {
-                debug!("AXValue unavailable (AXError={})", value_err);
-            }
-
-            // Fallback: selected text
-            let (sel_err, sel_opt) =
-                copy_attribute(focused_ref as AXUIElementRef, kAXSelectedTextAttribute);
-            if let Some(sel_ref) = sel_opt {
-                let s = CFString::wrap_under_get_rule(sel_ref as _).to_string();
-                if !s.is_empty() {
-                    debug!("Read {} chars from AXSelectedText", s.len());
-                    return Ok(Some(s));
-                }
-            } else {
-                debug!("AXSelectedText unavailable (AXError={})", sel_err);
-            }
-
-            // Fallback: title (useful for simpler fields/labels)
-            let (title_err, title_opt) =
-                copy_attribute(focused_ref as AXUIElementRef, kAXTitleAttribute);
-            if let Some(title_ref) = title_opt {
-                let s = CFString::wrap_under_get_rule(title_ref as _).to_string();
-                if !s.is_empty() {
-                    debug!("Read {} chars from AXTitle", s.len());
-                    return Ok(Some(s));
-                }
-            } else {
-                debug!("AXTitle unavailable (AXError={})", title_err);
-            }
-
-            debug!("Could not read text from focused element via AX APIs");
-            Ok(None)
+        } else {
+            debug!("AXValue unavailable or non-string (AXError={})", value_err);
         }
+
+        // Fallback: selected text
+        let (sel_err, sel_opt) = string_attribute(focused_ref, kAXSelectedTextAttribute);
+        if let Some(s) = sel_opt {
+            if !s.is_empty() {
+                debug!("Read {} chars from AXSelectedText", s.len());
+                return Ok(Some(s));
+            }
+        } else {
+            debug!(
+                "AXSelectedText unavailable or non-string (AXError={})",
+                sel_err
+            );
+        }
+
+        // Fallback: title (useful for simpler fields/labels)
+        let (title_err, title_opt) = string_attribute(focused_ref, kAXTitleAttribute);
+        if let Some(s) = title_opt {
+            if !s.is_empty() {
+                debug!("Read {} chars from AXTitle", s.len());
+                return Ok(Some(s));
+            }
+        } else {
+            debug!("AXTitle unavailable or non-string (AXError={})", title_err);
+        }
+
+        debug!("Could not read text from focused element via AX APIs");
+        Ok(None)
     }
 
     fn is_same_field_focused(&self) -> Result<bool> {
-        let Some(target_app_identifier) = self.target_app_identifier.as_ref() else {
+        if self.target_app_identifier.is_none() {
+            return Ok(true);
+        }
+
+        let Some(target_app_pid) = self.target_app_pid else {
+            debug!("No target app pid captured; skipping focused app comparison");
             return Ok(true);
         };
 
-        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-        {
-            match crate::apple_intelligence::get_frontmost_app_context() {
-                Ok(context) => Ok(context.bundle_id == *target_app_identifier),
-                Err(err) => {
-                    warn!(
-                        "Could not compare frontmost app during field monitoring: {}",
-                        err
-                    );
-                    Ok(false)
-                }
+        match current_focused_app_pid() {
+            Ok(Some(current_pid)) => Ok(current_pid == target_app_pid),
+            Ok(None) => Ok(false),
+            Err(err) => {
+                warn!(
+                    "Could not compare focused app during field monitoring: {}",
+                    err
+                );
+                Ok(false)
             }
-        }
-
-        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
-        {
-            let _ = target_app_identifier;
-            Ok(true)
         }
     }
 }

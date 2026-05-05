@@ -123,30 +123,22 @@ export const UrlPatternList: React.FC<UrlPatternListProps> = ({
 
       {error ? <p className="text-xs text-[var(--danger)]">{error}</p> : null}
 
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--muted)]">
-        <span>{compact ? "Try:" : examplesLabel}</span>
-        {EXAMPLES.map((example, index) => (
-          <React.Fragment key={example}>
-            {compact && index > 0 ? (
-              <span aria-hidden="true" className="text-[var(--border)]">
-                ·
-              </span>
-            ) : null}
+      {!compact ? (
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--muted)]">
+          <span>{examplesLabel}</span>
+          {EXAMPLES.map((example) => (
             <button
+              key={example}
               type="button"
               onClick={() => addPattern(example)}
               disabled={patterns.includes(example)}
-              className={
-                compact
-                  ? "inline-flex min-h-7 items-center rounded-md px-1.5 py-1 font-mono text-[11px] text-[var(--muted)] underline-offset-2 hover:text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--panel-bg)] disabled:opacity-40"
-                  : "rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
-              }
+              className="rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
             >
               {example}
             </button>
-          </React.Fragment>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };

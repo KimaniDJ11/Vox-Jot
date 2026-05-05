@@ -154,6 +154,10 @@ struct PreparedActiveAppContext {
 static PREPARED_ACTIVE_APP_CONTEXTS: Lazy<Mutex<HashMap<String, PreparedActiveAppContext>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+const VOX_JOT_BUNDLE_ID: &str = "com.iriedinamik.voxjot";
+const VOX_JOT_APP_NAME: &str = "Vox Jot";
+const RECORDING_OVERLAY_WINDOW_LABEL: &str = "recording_overlay";
+
 fn remember_prepared_active_app_context(
     binding_id: &str,
     prepared_context: PreparedActiveAppContext,
@@ -177,6 +181,24 @@ fn clear_prepared_active_app_context(binding_id: &str) {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .remove(binding_id);
+}
+
+fn vox_jot_app_context() -> ActiveAppContext {
+    ActiveAppContext {
+        bundle_id: VOX_JOT_BUNDLE_ID.to_string(),
+        localized_name: VOX_JOT_APP_NAME.to_string(),
+    }
+}
+
+fn focused_vox_jot_window(app: &AppHandle) -> bool {
+    app.webview_windows()
+        .iter()
+        .filter(|(label, _)| label.as_str() != RECORDING_OVERLAY_WINDOW_LABEL)
+        .any(|(_, window)| window.is_focused().unwrap_or(false))
+}
+
+fn capture_vox_jot_context_if_focused(app: &AppHandle) -> Option<ActiveAppContext> {
+    focused_vox_jot_window(app).then(vox_jot_app_context)
 }
 
 fn first_match_index(text: &str, patterns: &[&str]) -> Option<usize> {
@@ -1645,7 +1667,10 @@ fn apple_fallback_result(
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+fn capture_active_app_context(
+    app: &AppHandle,
+    _settings: &AppSettings,
+) -> Option<ActiveAppContext> {
     // Always attempt to capture the frontmost app context.
     // This is needed for correction tracking and field snapshots,
     // not just app-aware tone post-processing.
@@ -1653,7 +1678,7 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
         Ok(context) => Some(context),
         Err(err) => {
             debug!("Could not detect frontmost app: {}", err);
-            None
+            capture_vox_jot_context_if_focused(app)
         }
     }
 }
@@ -1662,7 +1687,10 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
     target_os = "windows",
     not(all(target_os = "macos", target_arch = "aarch64"))
 ))]
-fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+fn capture_active_app_context(
+    app: &AppHandle,
+    _settings: &AppSettings,
+) -> Option<ActiveAppContext> {
     // Windows path: use the Win32 API to find the foreground window's
     // owning process, then read the executable's product name from
     // its version info. This gives us a friendly localized_name plus
@@ -1681,20 +1709,20 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
     unsafe {
         let hwnd = GetForegroundWindow();
         if hwnd.0.is_null() {
-            return None;
+            return capture_vox_jot_context_if_focused(app);
         }
 
         let mut pid: u32 = 0;
         GetWindowThreadProcessId(hwnd, Some(&mut pid));
         if pid == 0 {
-            return None;
+            return capture_vox_jot_context_if_focused(app);
         }
 
         let process: HANDLE = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
             Ok(handle) => handle,
             Err(err) => {
                 debug!("Failed to OpenProcess for pid {}: {}", pid, err);
-                return None;
+                return capture_vox_jot_context_if_focused(app);
             }
         };
 
@@ -1710,14 +1738,14 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
         let _ = CloseHandle(process);
 
         if result.is_err() || size == 0 {
-            return None;
+            return capture_vox_jot_context_if_focused(app);
         }
 
         let path = OsString::from_wide(&buffer[..size as usize])
             .to_string_lossy()
             .into_owned();
         if path.is_empty() {
-            return None;
+            return capture_vox_jot_context_if_focused(app);
         }
 
         // Friendly name: take the file stem ("Slack.exe" → "Slack").
@@ -1744,12 +1772,15 @@ fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContex
     all(target_os = "macos", target_arch = "aarch64"),
     target_os = "windows"
 )))]
-fn capture_active_app_context(_settings: &AppSettings) -> Option<ActiveAppContext> {
+fn capture_active_app_context(
+    app: &AppHandle,
+    _settings: &AppSettings,
+) -> Option<ActiveAppContext> {
     // Linux + Intel macOS + everything else — no frontmost-app
     // detection yet. Returning None means write profiles can still
     // match purely on URL patterns (when the user enables URL capture)
     // but app-only rules effectively never fire on these platforms.
-    None
+    capture_vox_jot_context_if_focused(app)
 }
 
 fn capture_active_browser_url(
@@ -1768,8 +1799,11 @@ fn capture_active_browser_url(
     crate::browser_url::active_browser_url(bundle_id)
 }
 
-fn capture_prepared_write_context(settings: &AppSettings) -> PreparedActiveAppContext {
-    let active_app_context = capture_active_app_context(settings);
+fn capture_prepared_write_context(
+    app: &AppHandle,
+    settings: &AppSettings,
+) -> PreparedActiveAppContext {
+    let active_app_context = capture_active_app_context(app, settings);
     let active_url = capture_active_browser_url(settings, active_app_context.as_ref());
     PreparedActiveAppContext {
         active_app_context,
@@ -3112,7 +3146,7 @@ impl ShortcutAction for TranscribeAction {
         }
 
         if recording_error.is_none() {
-            let prepared_context = capture_prepared_write_context(&settings);
+            let prepared_context = capture_prepared_write_context(app, &settings);
             let resolved_rule = resolve_active_write_rule(&settings, &prepared_context);
             emit_write_rule_resolution(app, resolved_rule.as_ref());
             let effective_settings =
@@ -3211,7 +3245,7 @@ impl ShortcutAction for TranscribeAction {
                 let fallback_context = if prepared_write_context.active_app_context.is_some() {
                     None
                 } else {
-                    capture_active_app_context(&settings)
+                    capture_active_app_context(&ah, &settings)
                 };
                 let active_app_context = prepared_write_context
                     .active_app_context

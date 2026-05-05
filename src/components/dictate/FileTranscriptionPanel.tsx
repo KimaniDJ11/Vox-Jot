@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 type FileTranscriptionView = "file" | "folders";
 
@@ -263,7 +264,9 @@ export const FileTranscriptionPanel: React.FC = () => {
               {t("dictate.fileTranscription.selectedLabel", {
                 defaultValue: "Selected:",
               })}{" "}
-              <span className="text-[var(--text)]">{basename(selectedPath)}</span>
+              <span className="text-[var(--text)]">
+                {basename(selectedPath)}
+              </span>
             </div>
           )}
 
@@ -343,7 +346,9 @@ export const FileTranscriptionPanel: React.FC = () => {
                   onClick={copyResult}
                   disabled={!transcription.trim() || isRunning}
                 >
-                  {t("dictate.fileTranscription.copy", { defaultValue: "Copy" })}
+                  {t("dictate.fileTranscription.copy", {
+                    defaultValue: "Copy",
+                  })}
                 </Button>
               </div>
             </div>
@@ -407,12 +412,6 @@ const formatLabel = (format?: WatchFolderOutputFormat): string => {
     default:
       return "Text";
   }
-};
-
-const parentPath = (path: string): string => {
-  const normalized = path.replace(/[\\/]+$/, "");
-  const index = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
-  return index > 0 ? normalized.slice(0, index) : normalized;
 };
 
 const NativeFolderIcon: React.FC<{ path: string; name: string }> = ({
@@ -575,24 +574,29 @@ const WatchedFoldersGroup: React.FC = () => {
   }, []);
 
   const removeFolder = useCallback(
-    async (id: string) => {
+    async (folder: WatchFolderConfig) => {
+      const folderName = basename(folder.path);
+      if (
+        !confirmDestructiveAction(
+          t("dictate.watchFolders.removeConfirm", {
+            folderName,
+            defaultValue:
+              "Remove {{folderName}} from watched folders? The folder and its files will stay on disk.",
+          }),
+        )
+      ) {
+        return;
+      }
+
       setBusy(true);
       try {
-        const r = await commands.removeWatchFolder(id);
+        const r = await commands.removeWatchFolder(folder.id);
         if (r.status === "ok") await refresh();
       } finally {
         setBusy(false);
       }
     },
-    [refresh],
-  );
-
-  const toggleFolder = useCallback(
-    async (id: string, enabled: boolean) => {
-      const r = await commands.setWatchFolderEnabled(id, enabled);
-      if (r.status === "ok") await refresh();
-    },
-    [refresh],
+    [refresh, t],
   );
 
   const updateFormat = useCallback(
@@ -642,32 +646,21 @@ const WatchedFoldersGroup: React.FC = () => {
           className="py-5"
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <ul className="flex flex-wrap gap-2">
           {folders.map((f) => (
             <li
               key={f.id}
-              className={[
-                "group flex min-h-[132px] flex-col rounded-2xl border bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-sm)] transition-shadow hover:shadow-[var(--shadow-md)]",
-                f.enabled ? "border-[var(--border)]" : "border-[var(--border)] opacity-60",
-              ].join(" ")}
+              className="group flex min-h-[104px] w-32 flex-col items-center justify-center rounded-xl px-2 py-2 transition-colors hover:bg-[var(--input)] focus-within:bg-[var(--input)]"
             >
-              <div className="flex flex-1 items-center gap-3">
-                <NativeFolderIcon path={f.path} name={basename(f.path)} />
-                <div className="min-w-0 flex-1">
-                  <h3
-                    className="truncate text-lg font-semibold text-[var(--text)]"
-                    title={basename(f.path)}
-                  >
-                    {basename(f.path)}
-                  </h3>
-                  <p
-                    className="mt-1 truncate text-sm leading-5 text-[var(--muted)]"
-                    title={f.path}
-                  >
-                    {parentPath(f.path)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
+              <NativeFolderIcon path={f.path} name={basename(f.path)} />
+              <div className="relative mt-2 flex h-8 w-full min-w-0 items-center justify-center">
+                <h3
+                  className="max-w-full truncate px-1 text-center text-sm font-medium text-[var(--text)] transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0"
+                  title={basename(f.path)}
+                >
+                  {basename(f.path)}
+                </h3>
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
                   <select
                     value={f.output_format}
                     onChange={(e) =>
@@ -676,7 +669,7 @@ const WatchedFoldersGroup: React.FC = () => {
                         e.target.value as WatchFolderOutputFormat,
                       )
                     }
-                    className="h-8 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-xs font-medium text-[var(--text)]"
+                    className="h-7 max-w-[5.5rem] rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 text-xs font-medium text-[var(--text)]"
                     aria-label={t("dictate.watchFolders.formatAria", {
                       defaultValue: "Output format",
                     })}
@@ -703,8 +696,8 @@ const WatchedFoldersGroup: React.FC = () => {
                   <Button
                     type="button"
                     variant="danger-ghost"
-                    size="icon-sm"
-                    onClick={() => void removeFolder(f.id)}
+                    size="icon-xs"
+                    onClick={() => void removeFolder(f)}
                     aria-label={t("dictate.watchFolders.remove", {
                       defaultValue: "Remove folder",
                     })}
@@ -713,23 +706,6 @@ const WatchedFoldersGroup: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              <label className="mt-3 inline-flex w-fit items-center gap-2 text-xs font-medium text-[var(--muted)]">
-                <input
-                  type="checkbox"
-                  checked={f.enabled}
-                  onChange={(e) => void toggleFolder(f.id, e.target.checked)}
-                  aria-label={t("dictate.watchFolders.toggleAria", {
-                    defaultValue: "Enable or disable this watched folder",
-                  })}
-                />
-                {f.enabled
-                  ? t("dictate.watchFolders.enabled", {
-                      defaultValue: "Enabled",
-                    })
-                  : t("dictate.watchFolders.disabled", {
-                      defaultValue: "Disabled",
-                    })}
-              </label>
             </li>
           ))}
         </ul>

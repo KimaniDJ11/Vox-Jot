@@ -23,6 +23,7 @@ import {
   useUpdateSetting,
 } from "@/hooks/useSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 const REFRESH_INTERVAL_MS = 5000;
 const screenContextPreviewTitle = "Context capture preview";
@@ -187,6 +188,20 @@ const ScreenContextSettingsSection: React.FC = () => {
   }, [excluded, installedApps, resolvedAppNames]);
 
   const removeExcludedApp = async (bundleId: string) => {
+    const appName =
+      excludedEntries.find((entry) => entry.bundle_id === bundleId)?.name ??
+      bundleId;
+    if (
+      !confirmDestructiveAction(
+        t("settings.screenContext.removeExclusionConfirm", {
+          appName,
+          defaultValue: 'Remove "{{appName}}" from screen context exclusions?',
+        }),
+      )
+    ) {
+      return;
+    }
+
     const next = excludedEntries
       .filter((entry) => entry.bundle_id !== bundleId)
       .map((entry) => entry.bundle_id);

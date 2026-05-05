@@ -5,6 +5,7 @@ import { useSettings } from "../../hooks/useSettings";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { SettingContainer } from "../ui/SettingContainer";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 interface CustomWordsProps {
   descriptionMode?: "inline" | "tooltip";
@@ -57,6 +58,17 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
     };
 
     const handleRemoveWord = (wordToRemove: string) => {
+      if (
+        !confirmDestructiveAction(
+          t("settings.advanced.customWords.removeConfirm", {
+            word: wordToRemove,
+            defaultValue: 'Remove custom word "{{word}}"?',
+          }),
+        )
+      ) {
+        return;
+      }
+
       updateSetting(
         "custom_words",
         customWords.filter((word) => word !== wordToRemove),

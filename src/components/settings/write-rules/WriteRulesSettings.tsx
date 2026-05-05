@@ -37,6 +37,7 @@ import {
 } from "./WriteProfileGroupCard";
 import { WriteRuleRow } from "./WriteRuleRow";
 import { modal } from "@/motion/springs";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 const emptyTitle = "No write profiles yet";
 const emptyBody =
@@ -179,6 +180,22 @@ export const WriteRulesSettings: React.FC = () => {
   };
 
   const deleteRule = async (id: string) => {
+    const ruleName =
+      rules.find((rule) => rule.id === id)?.name ??
+      t("refine.writeRules.profileFallback", {
+        defaultValue: "this write profile",
+      });
+    if (
+      !confirmDestructiveAction(
+        t("refine.writeRules.deleteConfirm", {
+          ruleName,
+          defaultValue: 'Delete write profile "{{ruleName}}"?',
+        }),
+      )
+    ) {
+      return;
+    }
+
     const result = await commands.deleteWriteRule(id);
     if (result.status === "ok") {
       await loadRules();
@@ -206,25 +223,23 @@ export const WriteRulesSettings: React.FC = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="write-profile-dialog-title"
-            className="relative max-h-[min(88vh,920px)] w-full max-w-[840px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            className="relative flex max-h-[min(88vh,920px)] w-full max-w-[840px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="max-h-[min(88vh,920px)] overflow-y-auto p-4">
-              <WriteRuleEditor
-                rule={editingRule}
-                tones={tones}
-                prompts={prompts}
-                onSave={(rule) => void saveRule(rule)}
-                onCancel={closeProfileWindow}
-                saveError={saveError}
-                presentation="dialog"
-                titleId="write-profile-dialog-title"
-              />
-            </div>
+            <WriteRuleEditor
+              rule={editingRule}
+              tones={tones}
+              prompts={prompts}
+              onSave={(rule) => void saveRule(rule)}
+              onCancel={closeProfileWindow}
+              saveError={saveError}
+              presentation="dialog"
+              titleId="write-profile-dialog-title"
+            />
           </motion.div>
         </motion.div>
       ) : null}

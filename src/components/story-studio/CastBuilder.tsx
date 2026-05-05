@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import type { StoryCastMemberDraft } from "./storyScript";
 
 const castTitle = "Cast";
@@ -94,7 +95,15 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
                 type="button"
                 variant="danger-ghost"
                 size="icon-sm"
-                onClick={() => onRemove(member.id)}
+                onClick={() => {
+                  if (
+                    confirmDestructiveAction(
+                      `Remove character "${member.characterName}"?`,
+                    )
+                  ) {
+                    onRemove(member.id);
+                  }
+                }}
                 disabled={disabled || cast.length <= 1}
                 title="Remove character"
               >

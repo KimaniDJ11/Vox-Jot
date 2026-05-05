@@ -98,6 +98,7 @@ import {
   type TtsVoicePresetInput,
   type TtsVoiceTuningSettings,
 } from "@/lib/ttsVoicePresets";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 function SelectField({
   value,
@@ -666,6 +667,7 @@ function previewErrorMessage(
 }
 
 function useListenSpeechState() {
+  const { t } = useTranslation();
   const { settings, updateSetting, isUpdating, refreshSettings } =
     useSettings();
   const [platformOverview, setPlatformOverview] =
@@ -973,10 +975,24 @@ function useListenSpeechState() {
 
   const removePreset = useCallback(
     async (presetId: string) => {
+      const presetLabel =
+        presets.find((preset) => preset.id === presetId)?.label ??
+        t("listen.myVoices.voiceFallback", { defaultValue: "this voice" });
+      if (
+        !confirmDestructiveAction(
+          t("listen.myVoices.deletePresetConfirm", {
+            presetLabel,
+            defaultValue: 'Delete voice "{{presetLabel}}"?',
+          }),
+        )
+      ) {
+        return;
+      }
+
       await deleteTtsVoicePreset(presetId);
       await refreshAll();
     },
-    [refreshAll],
+    [presets, refreshAll, t],
   );
 
   const ensureModelInstalled = useCallback(
@@ -3731,6 +3747,17 @@ const SpeechPackManagerCard: React.FC<{
                     size="sm"
                     disabled={speech.busyPackId === pack.id}
                     onClick={async () => {
+                      if (
+                        !confirmDestructiveAction(
+                          t("listen.packManager.removeConfirm", {
+                            packLabel: pack.label,
+                            defaultValue: 'Remove speech pack "{{packLabel}}"?',
+                          }),
+                        )
+                      ) {
+                        return;
+                      }
+
                       speech.setBusyPackId(pack.id);
                       const result = await commands.removeTtsPack(pack.id);
                       if (result.status !== "ok") {
@@ -4642,6 +4669,18 @@ const VoiceCloningSection: React.FC<{
                           speech.busyProfileAction === "delete"
                         }
                         onClick={async () => {
+                          if (
+                            !confirmDestructiveAction(
+                              t("listen.voiceCloning.deleteProfileConfirm", {
+                                profileLabel: selectedProfile.label,
+                                defaultValue:
+                                  'Delete voice profile "{{profileLabel}}"?',
+                              }),
+                            )
+                          ) {
+                            return;
+                          }
+
                           speech.setBusyProfileAction("delete");
                           try {
                             await deleteTtsVoiceProfile(selectedProfile.id);

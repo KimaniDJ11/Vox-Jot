@@ -26,6 +26,7 @@ import {
 import { ShortcutInput } from "../ShortcutInput";
 import { PostProcessingToggle } from "../PostProcessingToggle";
 import { useSettings } from "../../../hooks/useSettings";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 interface ProviderSectionProps {
   disabled?: boolean;
@@ -279,6 +280,18 @@ const PostProcessingSettingsPromptsComponent: React.FC<
 
   const handleDeletePrompt = async (promptId: string) => {
     if (!promptId || disabled) return;
+    const promptName =
+      prompts.find((prompt) => prompt.id === promptId)?.name ?? draftName;
+    if (
+      !confirmDestructiveAction(
+        t("settings.postProcessing.prompts.deleteConfirm", {
+          promptName,
+          defaultValue: 'Delete post-processing prompt "{{promptName}}"?',
+        }),
+      )
+    ) {
+      return;
+    }
 
     try {
       const result = await commands.deletePostProcessPrompt(promptId);

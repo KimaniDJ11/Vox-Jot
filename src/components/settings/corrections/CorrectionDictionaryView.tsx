@@ -27,6 +27,7 @@ import { SwitchControl } from "../../ui/SwitchControl";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { pickJsonFileText } from "@/lib/fileIo";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
 
 type CorrectionViewMode = "corrections" | "dictionary";
@@ -70,7 +71,10 @@ function groupCorrections(corrections: StoredCorrection[]): CorrectionGroup[] {
 
   const groups: CorrectionGroup[] = [];
   for (const entries of map.values()) {
-    const totalFrequency = entries.reduce((sum, entry) => sum + entry.frequency, 0);
+    const totalFrequency = entries.reduce(
+      (sum, entry) => sum + entry.frequency,
+      0,
+    );
     const avgEffectiveConfidence =
       entries.reduce(
         (sum, entry) =>
@@ -238,7 +242,8 @@ const getGroupStatus = (group: CorrectionGroup) => {
   if (group.lowConfidenceCount > 0) {
     return {
       label: "Low conf",
-      title: "At least one correction has enough observations but low confidence.",
+      title:
+        "At least one correction has enough observations but low confidence.",
       className:
         "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
     };
@@ -342,10 +347,26 @@ export const CorrectionDictionaryView: React.FC<
   }, [showManualEditor]);
 
   const handleDelete = async (id: number) => {
+    const entry = corrections.find((correction) => correction.id === id);
+    const phrase =
+      entry?.original ?? t("common.delete", { defaultValue: "Delete" });
+    if (
+      !confirmDestructiveAction(
+        t("settings.corrections.dictionary.deleteConfirm", {
+          phrase,
+          defaultValue: 'Delete correction "{{phrase}}"?',
+        }),
+      )
+    ) {
+      return;
+    }
+
     try {
       const result = await commands.deleteCorrection(id);
       if (result.status === "ok") {
-        setCorrections((prev) => prev.filter((correction) => correction.id !== id));
+        setCorrections((prev) =>
+          prev.filter((correction) => correction.id !== id),
+        );
       }
     } catch (error) {
       console.error("Failed to delete correction:", error);
@@ -353,12 +374,27 @@ export const CorrectionDictionaryView: React.FC<
   };
 
   const handleDeleteGroup = async (group: CorrectionGroup) => {
+    if (
+      !confirmDestructiveAction(
+        t("settings.corrections.dictionary.deleteGroupConfirm", {
+          phrase: group.corrected,
+          count: group.entries.length,
+          defaultValue:
+            'Delete "{{phrase}}" and its {{count}} correction entries?',
+        }),
+      )
+    ) {
+      return;
+    }
+
     try {
       for (const entry of group.entries) {
         await commands.deleteCorrection(entry.id);
       }
       const ids = new Set(group.entries.map((entry) => entry.id));
-      setCorrections((prev) => prev.filter((correction) => !ids.has(correction.id)));
+      setCorrections((prev) =>
+        prev.filter((correction) => !ids.has(correction.id)),
+      );
     } catch (error) {
       console.error("Failed to delete group:", error);
     }
@@ -437,7 +473,11 @@ export const CorrectionDictionaryView: React.FC<
     if (!trimmed) return;
 
     try {
-      const result = await commands.addManualCorrection(trimmed, corrected, false);
+      const result = await commands.addManualCorrection(
+        trimmed,
+        corrected,
+        false,
+      );
       if (result.status === "ok") {
         setNewOriginal("");
         setAddingTo(null);
@@ -583,9 +623,12 @@ export const CorrectionDictionaryView: React.FC<
         }}
         placeholder={
           viewMode === "dictionary"
-            ? t("settings.corrections.dictionary.search.dictionaryPlaceholder", {
-                defaultValue: "Search dictionary",
-              })
+            ? t(
+                "settings.corrections.dictionary.search.dictionaryPlaceholder",
+                {
+                  defaultValue: "Search dictionary",
+                },
+              )
             : t("settings.corrections.dictionary.search.placeholder", {
                 defaultValue: "Search corrections",
               })
@@ -801,7 +844,9 @@ export const CorrectionDictionaryView: React.FC<
               type="button"
               size="sm"
               variant="primary-soft"
-              onClick={viewMode === "dictionary" ? handleImport : openManualEditor}
+              onClick={
+                viewMode === "dictionary" ? handleImport : openManualEditor
+              }
             >
               {viewMode === "dictionary" ? (
                 <>
@@ -830,7 +875,8 @@ export const CorrectionDictionaryView: React.FC<
               })
             : t("settings.corrections.dictionary.search.empty", {
                 query: searchQuery.trim(),
-                defaultValue: "No corrections match your search for '{{query}}'.",
+                defaultValue:
+                  "No corrections match your search for '{{query}}'.",
               })}
         </div>
       );
@@ -923,7 +969,9 @@ export const CorrectionDictionaryView: React.FC<
               </span>
               <Input
                 variant="compact"
-                aria-label={t("settings.corrections.dictionary.columns.corrected")}
+                aria-label={t(
+                  "settings.corrections.dictionary.columns.corrected",
+                )}
                 className="min-h-9 w-full min-w-0 rounded-[999px] px-3 font-semibold text-[var(--text)]"
                 defaultValue={group.corrected}
                 onBlur={(event) =>
@@ -1013,7 +1061,10 @@ export const CorrectionDictionaryView: React.FC<
       )}
 
       {importMessage ? (
-        <div className="px-1 text-xs font-medium text-[var(--accent)]" role="status">
+        <div
+          className="px-1 text-xs font-medium text-[var(--accent)]"
+          role="status"
+        >
           {importMessage}
         </div>
       ) : null}

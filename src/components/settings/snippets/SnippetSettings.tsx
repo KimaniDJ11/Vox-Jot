@@ -29,6 +29,7 @@ import { subtleCardClassName } from "../../ui/subtleCard";
 import { useSettings } from "../../../hooks/useSettings";
 import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
 import { pickJsonFileText } from "@/lib/fileIo";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
 
 const TRIGGER_MAX = 60;
@@ -132,8 +133,19 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     closeAddDialog();
   };
 
-  const handleDelete = async (id: string) => {
-    await saveSnippets(snippets.filter((s) => s.id !== id));
+  const handleDelete = async (snippet: Snippet) => {
+    if (
+      !confirmDestructiveAction(
+        t("settings.snippets.list.deleteConfirm", {
+          trigger: snippet.trigger,
+          defaultValue: 'Delete phrase key "{{trigger}}"?',
+        }),
+      )
+    ) {
+      return;
+    }
+
+    await saveSnippets(snippets.filter((s) => s.id !== snippet.id));
   };
 
   const handleToggle = async (id: string, enabled: boolean) => {
@@ -366,7 +378,9 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                     onChange={(e) =>
                       setNewExpansion(e.target.value.slice(0, EXPANSION_MAX))
                     }
-                    placeholder={t("settings.snippets.list.expansionPlaceholder")}
+                    placeholder={t(
+                      "settings.snippets.list.expansionPlaceholder",
+                    )}
                     rows={5}
                     className="min-w-0 flex-1 resize-y rounded-2xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
                   />
@@ -378,7 +392,8 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
               {duplicateNewTrigger ? (
                 <div className="text-xs text-[var(--danger)]" role="alert">
                   {t("settings.snippets.list.duplicateTrigger", {
-                    defaultValue: "A phrase key already uses that spoken trigger.",
+                    defaultValue:
+                      "A phrase key already uses that spoken trigger.",
                   })}
                 </div>
               ) : null}
@@ -556,7 +571,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           type="button"
                           variant="danger-ghost"
                           size="icon-sm"
-                          onClick={() => void handleDelete(snippet.id)}
+                          onClick={() => void handleDelete(snippet)}
                           title={t("common.delete")}
                           aria-label={t("common.delete")}
                         >
@@ -642,7 +657,10 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
         </div>
       ) : null}
       {importError ? (
-        <div className="max-w-[32rem] text-xs text-[var(--danger)]" role="alert">
+        <div
+          className="max-w-[32rem] text-xs text-[var(--danger)]"
+          role="alert"
+        >
           {importError}
         </div>
       ) : null}

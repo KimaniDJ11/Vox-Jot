@@ -197,24 +197,22 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {/* Identity row — no card chrome, just inline form fields */}
           <section className="grid items-center gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
-              <label className="text-xs font-medium text-[var(--muted)] sm:whitespace-nowrap">
-                {nameLabel}
-              </label>
+            <div className="space-y-1.5">
               <Input
                 value={draft.name}
                 placeholder={namePlaceholder}
+                aria-label={nameLabel}
                 onChange={(event) =>
                   setDraft({ ...draft, name: event.target.value })
                 }
               />
               {!canSave ? (
-                <p className="text-xs text-[var(--muted)] sm:col-start-2">
+                <p className="text-xs text-[var(--muted)]">
                   {nameRequiredHelp}
                 </p>
               ) : null}
               {saveError ? (
-                <p className="text-xs font-medium text-[var(--danger)] sm:col-start-2">
+                <p className="text-xs font-medium text-[var(--danger)]">
                   {saveError}
                 </p>
               ) : null}

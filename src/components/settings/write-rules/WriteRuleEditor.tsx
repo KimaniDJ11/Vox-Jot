@@ -49,6 +49,7 @@ const outputTab = "Output";
 const cancelLabel = "Cancel";
 const saveLabel = "Save profile";
 const nameRequiredHelp = "Give the profile a short, descriptive name.";
+const createNamePlaceholder = "Create a profile name";
 
 interface WriteRuleEditorProps {
   rule?: WriteRule;
@@ -63,7 +64,7 @@ interface WriteRuleEditorProps {
 
 const createRule = (): WriteRule => ({
   id: crypto.randomUUID(),
-  name: "New profile",
+  name: "",
   enabled: true,
   priority: 0,
   matchers: { bundle_ids: [], url_patterns: [] },
@@ -111,6 +112,9 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
   }, [draft.overrides]);
 
   const title = isNew ? newProfileTitle : trimmedName || editProfileTitle;
+  const namePlaceholder = isNew
+    ? createNamePlaceholder
+    : t("refine.writeRules.editor.namePlaceholder");
 
   const overridePanel = (
     <>
@@ -199,7 +203,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
               </label>
               <Input
                 value={draft.name}
-                placeholder={t("refine.writeRules.editor.namePlaceholder")}
+                placeholder={namePlaceholder}
                 onChange={(event) =>
                   setDraft({ ...draft, name: event.target.value })
                 }
@@ -325,7 +329,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           </label>
           <Input
             value={draft.name}
-            placeholder={t("refine.writeRules.editor.namePlaceholder")}
+            placeholder={namePlaceholder}
             onChange={(event) =>
               setDraft({ ...draft, name: event.target.value })
             }

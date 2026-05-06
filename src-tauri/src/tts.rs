@@ -427,6 +427,7 @@ struct ManagedRuntimeModelDefinition {
     supported_languages: &'static [&'static str],
     supports_voice_cloning: bool,
     supports_instruction_prompt: bool,
+    supports_inline_tags: bool,
     /// HuggingFace repo ID for models too large for GitHub release assets (>2 GB).
     hf_repo_id: Option<&'static str>,
 }
@@ -446,6 +447,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en", "es", "fr", "zh", "ja", "ko"],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
+        supports_inline_tags: false,
         hf_repo_id: None,
     },
     ManagedRuntimeModelDefinition {
@@ -462,7 +464,26 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
+        supports_inline_tags: false,
         hf_repo_id: Some("ResembleAI/chatterbox"),
+    },
+    ManagedRuntimeModelDefinition {
+        provider_id: TTS_PROVIDER_CHATTERBOX_ID,
+        model_id: "chatterbox-turbo",
+        label: "Chatterbox Turbo",
+        description:
+            "Lower-latency Chatterbox voice cloning with native paralinguistic tags.",
+        archive_name: "tts-chatterbox-turbo.tar.gz",
+        install_subdir: "chatterbox-turbo",
+        source_repo_dir: Some("chatterbox-turbo"),
+        engine_family: "chatterbox",
+        license_label: Some("MIT"),
+        locale: Some("en"),
+        supported_languages: &["en"],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+        supports_inline_tags: true,
+        hf_repo_id: Some("ResembleAI/chatterbox-turbo"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_KOKORO_ID,
@@ -478,6 +499,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supported_languages: &["en", "es", "fr", "hi", "it", "pt", "ja", "zh"],
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
+        supports_inline_tags: false,
         hf_repo_id: None,
     },
     ManagedRuntimeModelDefinition {
@@ -497,6 +519,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         ],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
+        supports_inline_tags: false,
         hf_repo_id: Some("coqui/XTTS-v2"),
     },
 ];
@@ -2666,6 +2689,11 @@ impl TtsManager {
                 continue;
             }
 
+            let provider_definitions = MANAGED_RUNTIME_MODEL_DEFINITIONS
+                .iter()
+                .filter(|candidate| candidate.provider_id == definition.provider_id)
+                .collect::<Vec<_>>();
+
             providers.push(ProviderDescriptor {
                 id: definition.provider_id.to_string(),
                 domain: ModelDomain::Tts,
@@ -2692,9 +2720,15 @@ impl TtsManager {
                     local_only: true,
                     supports_translation: false,
                     supports_streaming: false,
-                    supports_voice_cloning: definition.supports_voice_cloning,
-                    supports_instruction_prompt: definition.supports_instruction_prompt,
-                    supports_inline_tags: false,
+                    supports_voice_cloning: provider_definitions
+                        .iter()
+                        .any(|candidate| candidate.supports_voice_cloning),
+                    supports_instruction_prompt: provider_definitions
+                        .iter()
+                        .any(|candidate| candidate.supports_instruction_prompt),
+                    supports_inline_tags: provider_definitions
+                        .iter()
+                        .any(|candidate| candidate.supports_inline_tags),
                     coming_soon: false,
                 },
             });
@@ -2757,7 +2791,7 @@ impl TtsManager {
                         supports_streaming: false,
                         supports_voice_cloning: definition.supports_voice_cloning,
                         supports_instruction_prompt: definition.supports_instruction_prompt,
-                        supports_inline_tags: false,
+                        supports_inline_tags: definition.supports_inline_tags,
                         coming_soon: false,
                     },
                     delivery_support: self.builtin_delivery_support(definition.provider_id),
@@ -7246,6 +7280,20 @@ mod tests {
 
         assert_eq!(base_pack.label, "Qwen3 0.6B Base");
         assert_eq!(base_pack.locale, "mul");
+    }
+
+    #[test]
+    fn managed_catalog_includes_chatterbox_turbo() {
+        let turbo = MANAGED_RUNTIME_MODEL_DEFINITIONS
+            .iter()
+            .find(|definition| definition.model_id == "chatterbox-turbo")
+            .expect("Chatterbox Turbo should stay in the managed TTS catalog");
+
+        assert_eq!(turbo.provider_id, TTS_PROVIDER_CHATTERBOX_ID);
+        assert_eq!(turbo.hf_repo_id, Some("ResembleAI/chatterbox-turbo"));
+        assert_eq!(turbo.license_label, Some("MIT"));
+        assert!(turbo.supports_voice_cloning);
+        assert!(turbo.supports_inline_tags);
     }
 
     #[test]

@@ -200,6 +200,7 @@ const MANAGED_SPEECH_RUNTIME_PROVIDER_IDS = new Set([
 const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   openvoice: "~1.6 GB",
   chatterbox: "~3.0 GB",
+  "chatterbox-turbo": "~4.1 GB",
   "kokoro-82m-v1.0": "~350 MB",
   "kokoro-82m": "~350 MB",
   "xtts-v2": "~1.9 GB",
@@ -1430,6 +1431,24 @@ function fallbackTuningControlsForModel(
   if (familyKey.includes("kokoro")) {
     return [
       tempoTuningControl("Adjusts Kokoro delivery speed for this preset."),
+    ];
+  }
+
+  if (modelId.includes("chatterbox-turbo")) {
+    return [
+      randomnessTuningControl(0.8),
+      repetitionTuningControl(1.2),
+      topPTuningControl(0.95),
+      sliderTuningControl(
+        "top_k",
+        "sampler",
+        "Top K",
+        "Caps how many candidate speech tokens can be sampled.",
+        1,
+        1000,
+        1,
+        1000,
+      ),
     ];
   }
 

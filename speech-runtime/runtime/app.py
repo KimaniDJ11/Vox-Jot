@@ -284,7 +284,7 @@ async def audio_speech(body: SpeechRequest) -> Response:
     profile_id = body.profile_id or selection.profile_id
     reference_audio_path, reference_transcript = load_profile(profile_id)
     controls = normalize_controls(body.extra_controls)
-    engine_controls = map_controls_for_engine(spec.provider_id, controls)
+    engine_controls = map_controls_for_engine(spec.provider_id, controls, spec.model_id)
 
     try:
         audio = await asyncio.to_thread(

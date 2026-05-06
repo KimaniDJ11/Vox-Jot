@@ -1,5 +1,6 @@
 import unittest
 
+from runtime.config import ENGINE_SPECS
 from runtime.control_mapping import map_controls_for_engine, normalize_controls
 
 
@@ -41,6 +42,20 @@ class RuntimeControlsTest(unittest.TestCase):
         self.assertEqual(mapped["exaggeration"], 0.8)
         self.assertEqual(mapped["repetition_penalty"], 1.7)
 
+    def test_chatterbox_turbo_is_cataloged_as_clone_and_tag_capable(self):
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "chatterbox-turbo")
+
+        self.assertEqual(spec.provider_id, "chatterbox")
+        self.assertEqual(spec.license_label, "MIT")
+        self.assertTrue(spec.supports_voice_cloning)
+        self.assertTrue(spec.supports_inline_tags)
+        self.assertIn("chatterbox-turbo/chatterbox-turbo", spec.model_dirs)
+        control_ids = {control["id"] for control in spec.style_controls}
+        self.assertEqual(
+            control_ids,
+            {"randomness", "repetition_penalty", "top_p", "top_k"},
+        )
+
     def test_unsupported_fields_are_ignored_for_openvoice(self):
         mapped = map_controls_for_engine(
             "openvoice",
@@ -52,6 +67,31 @@ class RuntimeControlsTest(unittest.TestCase):
         )
 
         self.assertEqual(mapped, {"speed": 1.3})
+
+    def test_chatterbox_turbo_mapping_omits_ignored_controls(self):
+        mapped = map_controls_for_engine(
+            "chatterbox",
+            {
+                "randomness": 0.4,
+                "guidance": 0.9,
+                "exaggeration": 1.4,
+                "repetition_penalty": 1.6,
+                "top_p": 0.85,
+                "top_k": 250,
+                "min_p": 0.1,
+            },
+            "chatterbox-turbo",
+        )
+
+        self.assertEqual(
+            mapped,
+            {
+                "temperature": 0.4,
+                "repetition_penalty": 1.6,
+                "top_p": 0.85,
+                "top_k": 250,
+            },
+        )
 
 
 if __name__ == "__main__":

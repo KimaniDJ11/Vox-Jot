@@ -3,7 +3,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from runtime.config import RuntimeConfig
 from runtime.engine_worker import EngineWorker
+from runtime.worker_host import WorkerHost
 
 
 class RuntimeVoiceInventoryTest(unittest.TestCase):
@@ -80,6 +82,86 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(voice_ids, ["sample:en", "sample:zh-cn", "sample:ja"])
         self.assertEqual(worker._xtts_reference_for_voice("sample:zh-cn", "en"), str(samples / "zh-cn-sample.wav"))
         self.assertEqual(worker._xtts_reference_for_voice(None, "zh"), str(samples / "zh-cn-sample.wav"))
+
+    def test_chatterbox_turbo_accepts_official_hf_snapshot_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox-turbo")
+        (worker.model_dir / "t3_turbo_v1.safetensors").write_text("", encoding="utf-8")
+        (worker.model_dir / "s3gen_meanflow.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), worker.model_dir)
+
+    def test_chatterbox_base_accepts_legacy_checkpoint_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox")
+        base = worker.model_dir / "checkpoints" / "base"
+        base.mkdir(parents=True, exist_ok=True)
+        (base / "t3_cfg.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), base)
+
+    def test_chatterbox_turbo_installs_package_from_base_source(self):
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-runtime-install-"))
+        config = RuntimeConfig(
+            listen_host="127.0.0.1",
+            listen_port=0,
+            model_store=temp_root / "store",
+            state_dir=temp_root / "state",
+            profiles_dir=None,
+        )
+        turbo_dir = config.model_store / "chatterbox-turbo" / "chatterbox-turbo"
+        source_dir = config.model_store / "chatterbox"
+        turbo_dir.mkdir(parents=True)
+        source_dir.mkdir(parents=True)
+        (source_dir / "pyproject.toml").write_text("[project]\nname='chatterbox'\n", encoding="utf-8")
+
+        host = WorkerHost(config)
+
+        self.assertEqual(host._chatterbox_package_source(turbo_dir), source_dir)
+
+    def test_chatterbox_turbo_synthesis_only_passes_supported_controls(self):
+        worker = self.make_worker("chatterbox", "chatterbox-turbo")
+
+        class DummyEngine:
+            sr = 24000
+
+            def __init__(self):
+                self.kwargs = None
+
+            def generate(self, text, **kwargs):
+                self.kwargs = kwargs
+                return [0.0, 0.0, 0.0]
+
+        engine = DummyEngine()
+        worker.engine = engine
+        output = worker.model_dir / "out.wav"
+
+        worker._synthesize_chatterbox(
+            {
+                "text": "hello",
+                "reference_audio_path": None,
+                "controls": {
+                    "temperature": 0.4,
+                    "repetition_penalty": 1.6,
+                    "top_p": 0.85,
+                    "top_k": 250,
+                    "cfg_weight": 0.9,
+                    "min_p": 0.2,
+                    "exaggeration": 1.5,
+                },
+            },
+            output,
+        )
+
+        self.assertEqual(
+            engine.kwargs,
+            {
+                "audio_prompt_path": None,
+                "temperature": 0.4,
+                "repetition_penalty": 1.6,
+                "top_p": 0.85,
+                "top_k": 250,
+            },
+        )
+        self.assertTrue(output.exists())
 
 
 if __name__ == "__main__":

@@ -303,18 +303,28 @@ class EngineWorker:
 
         controls = payload.get("controls", {})
         audio_prompt = payload.get("reference_audio_path")
-        wav = self.engine.generate(
-            payload["text"],
-            audio_prompt_path=audio_prompt,
-            cfg_weight=float(controls.get("cfg_weight", 0.5)),
-            temperature=float(controls.get("temperature", 0.8)),
-            repetition_penalty=float(controls.get("repetition_penalty", 1.2)),
-            top_p=float(controls.get("top_p", 0.95)),
-            min_p=float(controls.get("min_p", 0.05)),
-            exaggeration=float(
-                controls.get("exaggeration", controls.get("expressiveness", 0.5))
-            ),
-        )
+        if self.model_id == "chatterbox-turbo":
+            wav = self.engine.generate(
+                payload["text"],
+                audio_prompt_path=audio_prompt,
+                temperature=float(controls.get("temperature", 0.8)),
+                repetition_penalty=float(controls.get("repetition_penalty", 1.2)),
+                top_p=float(controls.get("top_p", 0.95)),
+                top_k=int(controls.get("top_k", 1000)),
+            )
+        else:
+            wav = self.engine.generate(
+                payload["text"],
+                audio_prompt_path=audio_prompt,
+                cfg_weight=float(controls.get("cfg_weight", 0.5)),
+                temperature=float(controls.get("temperature", 0.8)),
+                repetition_penalty=float(controls.get("repetition_penalty", 1.2)),
+                top_p=float(controls.get("top_p", 0.95)),
+                min_p=float(controls.get("min_p", 0.05)),
+                exaggeration=float(
+                    controls.get("exaggeration", controls.get("expressiveness", 0.5))
+                ),
+            )
         if hasattr(wav, "detach"):
             wav = wav.detach().cpu().numpy()
         write_wav(output_path, np.asarray(wav).reshape(-1), self.engine.sr)

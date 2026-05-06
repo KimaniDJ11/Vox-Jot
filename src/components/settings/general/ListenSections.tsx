@@ -1434,6 +1434,24 @@ function fallbackTuningControlsForModel(
     ];
   }
 
+  if (modelId.includes("chatterbox-turbo")) {
+    return [
+      randomnessTuningControl(0.8),
+      repetitionTuningControl(1.2),
+      topPTuningControl(0.95),
+      sliderTuningControl(
+        "top_k",
+        "sampler",
+        "Top K",
+        "Caps how many candidate speech tokens can be sampled.",
+        1,
+        1000,
+        1,
+        1000,
+      ),
+    ];
+  }
+
   if (familyKey.includes("chatterbox")) {
     const isMlx = providerId.includes("mlx");
     return [

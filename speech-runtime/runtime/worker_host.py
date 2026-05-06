@@ -168,6 +168,11 @@ except Exception:
             self._bootstrap_unidic(env_python)
             return
 
+        if spec.provider_id == "chatterbox":
+            source_dir = self._chatterbox_package_source(model_dir)
+            self._pip_install(env_python, "-e", str(source_dir))
+            return
+
         if spec.provider_id == "xtts":
             self._pip_install(env_python, "-e", str(model_dir))
             self._pip_install(env_python, *XTTS_RUNTIME_DEPENDENCIES)
@@ -182,6 +187,19 @@ except Exception:
                 "--no-deps",
                 KOKORO_SPACY_MODEL_URL,
             )
+
+    def _chatterbox_package_source(self, model_dir: Path) -> Path:
+        candidates = (
+            model_dir,
+            self.config.model_store / "chatterbox",
+            self.config.model_store / "Chatterbox",
+            model_dir.parent / "chatterbox",
+            model_dir.parent / "Chatterbox",
+        )
+        for candidate in candidates:
+            if (candidate / "pyproject.toml").exists() or (candidate / "setup.py").exists():
+                return candidate
+        return model_dir
 
     def env_python_for(self, spec: EngineSpec, model_dir: Path) -> Path | None:
         for candidate in (

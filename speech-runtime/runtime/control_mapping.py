@@ -42,7 +42,11 @@ def normalize_controls(extra_controls: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def map_controls_for_engine(provider_id: str, controls: dict[str, Any]) -> dict[str, Any]:
+def map_controls_for_engine(
+    provider_id: str,
+    controls: dict[str, Any],
+    model_id: str | None = None,
+) -> dict[str, Any]:
     randomness = max(0.0, min(1.0, float(controls.get("randomness", 0.7))))
     top_p = 0.5 + (randomness * 0.5)
     mapped: dict[str, Any] = {}
@@ -55,7 +59,19 @@ def map_controls_for_engine(provider_id: str, controls: dict[str, Any]) -> dict[
             if controls.get(key) is not None:
                 mapped[key] = float(controls[key])
 
-    if provider_id == "chatterbox":
+    if provider_id == "chatterbox" and model_id == "chatterbox-turbo":
+        mapped["temperature"] = max(0.1, randomness)
+        mapped["repetition_penalty"] = float(controls.get("repetition_penalty", 1.2))
+        mapped["top_p"] = (
+            float(controls["top_p"]) if controls.get("top_p") is not None else 0.95
+        )
+        mapped["top_k"] = (
+            int(controls["top_k"])
+            if controls.get("top_k") is not None
+            else 1000
+        )
+
+    if provider_id == "chatterbox" and model_id != "chatterbox-turbo":
         mapped["cfg_weight"] = float(controls.get("guidance", 0.5))
         mapped["temperature"] = max(0.1, randomness)
         mapped["repetition_penalty"] = float(controls.get("repetition_penalty", 1.2))

@@ -5,6 +5,7 @@ pub mod history;
 pub mod http_api;
 pub mod models;
 pub mod notes;
+pub mod speech_analysis;
 pub mod stats;
 pub mod story_studio;
 pub mod transcription;

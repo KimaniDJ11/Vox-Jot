@@ -52,6 +52,7 @@ mod shortcut;
 mod sidecar;
 mod signal_handle;
 pub mod snippets;
+pub mod speech_analysis;
 mod storage_paths;
 mod transcription_coordinator;
 mod translation;
@@ -65,7 +66,7 @@ mod write_rules;
 
 /// Main settings window default / minimum size (logical pixels).
 const MAIN_WINDOW_DEFAULT_W: f64 = 1200.0;
-const MAIN_WINDOW_DEFAULT_H: f64 = 900.0;
+const MAIN_WINDOW_DEFAULT_H: f64 = 1020.0;
 const MAIN_WINDOW_MIN_W: f64 = 940.0;
 const MAIN_WINDOW_MIN_H: f64 = 760.0;
 
@@ -803,6 +804,17 @@ pub fn run(cli_args: CliArgs) {
         commands::transcription::remove_watch_folder,
         commands::transcription::set_watch_folder_enabled,
         commands::transcription::update_watch_folder_format,
+        commands::speech_analysis::get_speech_analysis_catalog,
+        commands::speech_analysis::get_speech_analysis_model,
+        commands::speech_analysis::get_speech_analysis_selection,
+        commands::speech_analysis::set_speech_analysis_selection,
+        commands::speech_analysis::download_speech_analysis_model,
+        commands::speech_analysis::delete_speech_analysis_model,
+        commands::speech_analysis::get_active_speech_analysis_downloads,
+        commands::speech_analysis::get_hugging_face_token_status,
+        commands::speech_analysis::set_hugging_face_token,
+        commands::speech_analysis::clear_hugging_face_token,
+        commands::speech_analysis::open_speech_analysis_model_access_page,
         commands::write_rules::list_write_rules,
         commands::write_rules::upsert_write_rule,
         commands::write_rules::delete_write_rule,

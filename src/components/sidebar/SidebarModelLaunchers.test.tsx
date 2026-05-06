@@ -17,17 +17,24 @@ const sidebarState = vi.hoisted(() => ({
   selectedTtsProviderId: "xtts",
   ocrEngine: "native_then_backup",
   ocrNeuralModelId: null as string | null,
+  analysisAsrModelId: "current_dictation_engine",
+  analysisDiarizationModelId: "no_speaker_labels",
 }));
 
 const commandMocks = vi.hoisted(() => ({
   showDetailView: vi.fn(),
   getOcrModelCatalog: vi.fn(),
+  getSpeechAnalysisCatalog: vi.fn(),
+}));
+
+const translationMock = vi.hoisted(() => ({
+  t: (_key: string, options?: { defaultValue?: string }) =>
+    options?.defaultValue ?? _key,
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? _key,
+    t: translationMock.t,
   }),
 }));
 
@@ -35,6 +42,7 @@ vi.mock("@/bindings", () => ({
   commands: {
     showDetailView: commandMocks.showDetailView,
     getOcrModelCatalog: commandMocks.getOcrModelCatalog,
+    getSpeechAnalysisCatalog: commandMocks.getSpeechAnalysisCatalog,
   },
 }));
 
@@ -63,6 +71,9 @@ vi.mock("@/hooks/useSettings", () => ({
     selected_tts_provider_id: sidebarState.selectedTtsProviderId,
     screen_context_ocr_engine: sidebarState.ocrEngine,
     screen_context_ocr_neural_model_id: sidebarState.ocrNeuralModelId,
+    file_transcription_asr_model_id: sidebarState.analysisAsrModelId,
+    file_transcription_diarization_model_id:
+      sidebarState.analysisDiarizationModelId,
   }),
 }));
 
@@ -81,6 +92,8 @@ describe("SidebarModelLaunchers", () => {
     sidebarState.selectedTtsProviderId = "xtts";
     sidebarState.ocrEngine = "native_then_backup";
     sidebarState.ocrNeuralModelId = null;
+    sidebarState.analysisAsrModelId = "current_dictation_engine";
+    sidebarState.analysisDiarizationModelId = "no_speaker_labels";
     commandMocks.showDetailView.mockResolvedValue(undefined);
     commandMocks.getOcrModelCatalog.mockResolvedValue({
       status: "ok",
@@ -90,6 +103,25 @@ describe("SidebarModelLaunchers", () => {
           {
             id: "pp-ocrv5",
             title: "PP-OCRv5",
+          },
+        ],
+      },
+    });
+    commandMocks.getSpeechAnalysisCatalog.mockResolvedValue({
+      status: "ok",
+      data: {
+        selection: {
+          asr_model_id: "current_dictation_engine",
+          diarization_model_id: "no_speaker_labels",
+        },
+        models: [
+          {
+            id: "current_dictation_engine",
+            label: "Current Dictation Engine",
+          },
+          {
+            id: "no_speaker_labels",
+            label: "No Speaker Labels",
           },
         ],
       },

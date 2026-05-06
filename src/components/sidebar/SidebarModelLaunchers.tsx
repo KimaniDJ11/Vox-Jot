@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, Mic, ScanText, Sparkles, Volume2 } from "lucide-react";
+import {
+  AudioLines,
+  ChevronRight,
+  Mic,
+  ScanText,
+  Sparkles,
+  Volume2,
+} from "lucide-react";
 import { commands, type ScreenContextOcrEngine } from "@/bindings";
 import { useModelStore } from "@/stores/modelStore";
 import { useSettingsSlice } from "@/hooks/useSettings";
@@ -142,6 +149,8 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     selected_tts_provider_id: selectedTtsProviderId,
     screen_context_ocr_engine: ocrEngineValue,
     screen_context_ocr_neural_model_id: ocrNeuralModelIdValue,
+    file_transcription_asr_model_id: analysisAsrModelIdValue,
+    file_transcription_diarization_model_id: analysisDiarizationModelIdValue,
   } = useSettingsSlice([
     "post_process_provider_id",
     "post_process_providers",
@@ -150,8 +159,11 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     "selected_tts_provider_id",
     "screen_context_ocr_engine",
     "screen_context_ocr_neural_model_id",
+    "file_transcription_asr_model_id",
+    "file_transcription_diarization_model_id",
   ] as const);
   const [ocrCatalogLabel, setOcrCatalogLabel] = useState<string | null>(null);
+  const [analysisLabel, setAnalysisLabel] = useState<string | null>(null);
 
   const sttIconSize = variant === "stats" ? "sm" : "md";
   const otherIconSize = variant === "stats" ? "sm" : "md";
@@ -259,6 +271,46 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
     };
   }, [ocrNeuralModelId]);
 
+  const analysisAsrModelId = analysisAsrModelIdValue ?? "";
+  const analysisDiarizationModelId = analysisDiarizationModelIdValue ?? "";
+
+  useEffect(() => {
+    let isCurrent = true;
+    setAnalysisLabel(null);
+
+    void commands
+      .getSpeechAnalysisCatalog()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result.status !== "ok") {
+          setAnalysisLabel(null);
+          return;
+        }
+        const selectedAsr = result.data.models.find(
+          (model) => model.id === result.data.selection.asr_model_id,
+        );
+        const selectedSpeaker = result.data.models.find(
+          (model) => model.id === result.data.selection.diarization_model_id,
+        );
+        const asrLabel =
+          selectedAsr?.label ||
+          analysisAsrModelId ||
+          t("footer.modelNotSet", { defaultValue: "Not set" });
+        const speakerLabel =
+          selectedSpeaker?.label ||
+          analysisDiarizationModelId ||
+          t("footer.modelNotSet", { defaultValue: "Not set" });
+        setAnalysisLabel(`${speakerLabel} + ${asrLabel}`);
+      })
+      .catch(() => {
+        if (isCurrent) setAnalysisLabel(null);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [analysisAsrModelId, analysisDiarizationModelId, t]);
+
   const ocrLabel = useMemo(() => {
     if (ocrNeuralModelId) {
       return ocrCatalogLabel ?? ocrNeuralModelId;
@@ -307,6 +359,17 @@ const SidebarModelLaunchers: React.FC<SidebarModelLaunchersProps> = ({
         value={sttLabel}
         variant={variant}
         onClick={() => void openModelHub("stt")}
+      />
+      <LauncherRow
+        icon={<AudioLines className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        iconBg="color-mix(in srgb, var(--warning, #f59e0b) 16%, transparent)"
+        iconColor="var(--warning, #f59e0b)"
+        label={hubTabLabel("analysis")}
+        value={
+          analysisLabel ?? t("footer.modelNotSet", { defaultValue: "Not set" })
+        }
+        variant={variant}
+        onClick={() => void openModelHub("analysis")}
       />
       <LauncherRow
         icon={

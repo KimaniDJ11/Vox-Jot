@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::{HashMap, HashSet};
 
 const POST_PROCESS_KEY_SERVICE: &str = "com.voxjot.post_process_api_keys";
+const HUGGING_FACE_TOKEN_ACCOUNT: &str = "hugging_face:hub_token";
 
 pub trait SecretStore: Send + Sync {
     fn get_secret(&self, account: &str) -> Result<Option<String>, String>;
@@ -98,6 +99,18 @@ pub fn set_post_process_api_key(provider_id: &str, api_key: &str) -> Result<(), 
 
 pub fn clear_post_process_api_key(provider_id: &str) -> Result<(), String> {
     store().clear_secret(&provider_account(provider_id))
+}
+
+pub fn get_hugging_face_token() -> Result<Option<String>, String> {
+    store().get_secret(HUGGING_FACE_TOKEN_ACCOUNT)
+}
+
+pub fn set_hugging_face_token(token: &str) -> Result<(), String> {
+    store().set_secret(HUGGING_FACE_TOKEN_ACCOUNT, token)
+}
+
+pub fn clear_hugging_face_token() -> Result<(), String> {
+    store().clear_secret(HUGGING_FACE_TOKEN_ACCOUNT)
 }
 
 #[cfg(test)]

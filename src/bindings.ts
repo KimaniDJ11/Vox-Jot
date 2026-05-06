@@ -1457,6 +1457,89 @@ async updateWatchFolderFormat(id: string, outputFormat: WatchFolderOutputFormat)
     else return { status: "error", error: e  as any };
 }
 },
+async getSpeechAnalysisCatalog() : Promise<Result<SpeechAnalysisCatalog, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_speech_analysis_catalog") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSpeechAnalysisModel(modelId: string) : Promise<Result<SpeechAnalysisModelDescriptor | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_speech_analysis_model", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSpeechAnalysisSelection() : Promise<Result<SpeechAnalysisSelection, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_speech_analysis_selection") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setSpeechAnalysisSelection(asrModelId: string, diarizationModelId: string) : Promise<Result<SpeechAnalysisSelection, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_speech_analysis_selection", { asrModelId, diarizationModelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async downloadSpeechAnalysisModel(modelId: string) : Promise<Result<SpeechAnalysisModelDescriptor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_speech_analysis_model", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSpeechAnalysisModel(modelId: string) : Promise<Result<SpeechAnalysisModelDescriptor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_speech_analysis_model", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getActiveSpeechAnalysisDownloads() : Promise<string[]> {
+    return await TAURI_INVOKE("get_active_speech_analysis_downloads");
+},
+async getHuggingFaceTokenStatus() : Promise<Result<HuggingFaceTokenStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_hugging_face_token_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setHuggingFaceToken(token: string) : Promise<Result<HuggingFaceTokenStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_hugging_face_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async clearHuggingFaceToken() : Promise<Result<HuggingFaceTokenStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clear_hugging_face_token") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async openSpeechAnalysisModelAccessPage(modelId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("open_speech_analysis_model_access_page", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async listWriteRules() : Promise<Result<WriteRule[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_write_rules") };
@@ -2322,7 +2405,7 @@ screen_context_ocr_neural_model_id?: string | null; screen_context_ocr_timeout_m
  * legacy app-aware-tone toggle so we don't surprise existing
  * users on first upgrade.
  */
-write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
+write_rules_enabled_override?: boolean | null; correction_tracking_enabled?: boolean; file_transcription_apply_dictionary?: boolean; file_transcription_asr_model_id?: string; file_transcription_diarization_model_id?: string; snippets_enabled?: boolean; snippets?: Snippet[]; app_theme?: string; app_font_scale?: number; continuous_improvement_hq_capture?: boolean;
 /**
  * Folders Vox Jot watches; new audio files dropped into these are
  * auto-transcribed in the background (Phase 1 / TypeWhisper gap A2).
@@ -2397,6 +2480,7 @@ export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "sk
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null; screen_context_metadata: ScreenContextHistoryMetadata | null }
 export type HttpApiStatus = { enabled: boolean; port: number; token: string }
+export type HuggingFaceTokenStatus = { configured: boolean; source: string | null }
 /**
  * Result of changing keyboard implementation
  */
@@ -2536,6 +2620,16 @@ export type ShortcutBinding = { id: string; name: string; description: string; d
  */
 export type Snippet = { id: string; trigger: string; expansion: string; enabled?: boolean }
 export type SoundTheme = "marimba" | "pop" | "custom"
+export type SpeakerLabeledSegment = { speaker_id: string; start_ms: number; end_ms: number; text: string; confidence: number | null }
+export type SpeechAnalysisCapabilityFlags = { file_transcription: boolean; live_dictation: boolean; speaker_labels: boolean; timestamps: boolean; word_timestamps: boolean; requires_hf_token: boolean; requires_trust_remote_code: boolean; requires_cloud_gpu_validation: boolean; supports_onnx: boolean; supports_coreml: boolean; supports_mlx: boolean }
+export type SpeechAnalysisCatalog = { models: SpeechAnalysisModelDescriptor[]; selection: SpeechAnalysisSelection }
+export type SpeechAnalysisEngine = "current_dictation" | "transformers" | "onnx_runtime" | "pyannote" | "diarizen" | "nemo" | "reverb" | "whisper_diarization" | "core_ml" | "mlx"
+export type SpeechAnalysisModelDescriptor = { id: string; label: string; provider: string; repo_id: string | null; source_kind: SpeechAnalysisSourceKind; source_url: string | null; license_label: string | null; gated: boolean; downloadable: boolean; installed: boolean; local_path: string | null; size_hint_label: string | null; task: SpeechAnalysisTask; engine: SpeechAnalysisEngine; runtime: SpeechAnalysisRuntime; description: string; readiness: SpeechAnalysisReadiness; supported_languages: string[]; output_contract: string[]; capabilities: SpeechAnalysisCapabilityFlags }
+export type SpeechAnalysisReadiness = "built_in" | "requires_runtime_install" | "requires_model_download" | "requires_hf_token" | "ready"
+export type SpeechAnalysisRuntime = "in_process" | "python_sidecar" | "onnx_core_ml" | "onnx_cpu" | "mlx_native" | "core_ml_native"
+export type SpeechAnalysisSelection = { asr_model_id: string; diarization_model_id: string }
+export type SpeechAnalysisSourceKind = "built_in" | "hugging_face" | "git_hub" | "local_onnx_bundle" | "runtime_managed"
+export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization"
 /**
  * A stored correction entry, as returned to the frontend.
  */
@@ -2561,7 +2655,7 @@ export type ToneDefinition = { id: string; label: string; instruction: string }
  * today). The frontend uses an empty list as the signal to disable
  * SRT/WebVTT export buttons.
  */
-export type TranscriptionFileResult = { text: string; segments: TimedSegment[] }
+export type TranscriptionFileResult = { text: string; segments: TimedSegment[]; speaker_segments: SpeakerLabeledSegment[] }
 export type TranslationBilingualLayout = "translation_then_source" | "source_then_translation"
 export type TranslationDestinationMode = "paste_in_place" | "preview_then_paste" | "open_in_jot_pad"
 export type TranslationOutputMode = "source" | "translated" | "bilingual"

@@ -5,9 +5,13 @@ use crate::managers::watch_folders::WatchFolderManager;
 use crate::settings::{
     get_settings, write_settings, ModelUnloadTimeout, WatchFolderConfig, WatchFolderOutputFormat,
 };
-use serde::Serialize;
+use crate::speech_analysis::{
+    self, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment, CURRENT_DICTATION_ASR_ID,
+};
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -209,6 +213,171 @@ pub(crate) fn decode_with_ffmpeg_blocking(
     Ok(samples)
 }
 
+fn write_temp_wav_16k(samples: &[f32]) -> Result<PathBuf, String> {
+    let path = std::env::temp_dir().join(format!(
+        "vox-jot-speech-analysis-{}.wav",
+        uuid::Uuid::new_v4()
+    ));
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: 16_000,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer = hound::WavWriter::create(&path, spec)
+        .map_err(|e| format!("Failed to write temporary speech-analysis WAV: {}", e))?;
+    for sample in samples {
+        let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+        writer
+            .write_sample(value)
+            .map_err(|e| format!("Failed to encode speech-analysis WAV sample: {}", e))?;
+    }
+    writer
+        .finalize()
+        .map_err(|e| format!("Failed to finalize speech-analysis WAV: {}", e))?;
+    Ok(path)
+}
+
+#[derive(Debug, Deserialize)]
+struct SpeechAnalysisSidecarOutput {
+    ok: bool,
+    text: Option<String>,
+    segments: Option<Vec<TimedSegment>>,
+    speaker_turns: Option<Vec<SpeakerTurn>>,
+    error: Option<String>,
+}
+
+fn speech_analysis_python_path() -> PathBuf {
+    if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_PYTHON") {
+        return PathBuf::from(path);
+    }
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join(".venv")
+        .join("bin")
+        .join("python")
+}
+
+fn speech_analysis_sidecar_path() -> PathBuf {
+    if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_SIDECAR") {
+        return PathBuf::from(path);
+    }
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("scripts")
+        .join("speech_analysis_sidecar.py")
+}
+
+fn run_speech_analysis_sidecar(
+    app: &AppHandle,
+    audio_16k: &[f32],
+    asr_model_id: &str,
+    diarization_model_id: &str,
+) -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
+    let python = speech_analysis_python_path();
+    if !python.exists() {
+        return Err(format!(
+            "Speech-analysis Python runtime not found at {}. Run scripts/bootstrap-speech-analysis-runtime.sh first.",
+            python.display()
+        ));
+    }
+
+    let sidecar = speech_analysis_sidecar_path();
+    if !sidecar.exists() {
+        return Err(format!(
+            "Speech-analysis sidecar not found at {}",
+            sidecar.display()
+        ));
+    }
+
+    let wav = write_temp_wav_16k(audio_16k)?;
+    let model_root = crate::storage_paths::speech_analysis_models_dir(app)
+        .map_err(|e| format!("Failed to resolve speech-analysis model directory: {e}"))?;
+    let mut command = Command::new(&python);
+    command.env("VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT", &model_root);
+    if let Some(token) = speech_analysis::hugging_face_token_for_runtime() {
+        command.env("HF_TOKEN", token);
+    }
+    let output_result = command
+        .arg(&sidecar)
+        .arg("--audio")
+        .arg(&wav)
+        .arg("--asr-model")
+        .arg(asr_model_id)
+        .arg("--diarization-model")
+        .arg(diarization_model_id)
+        .output();
+    let _ = std::fs::remove_file(&wav);
+    let output =
+        output_result.map_err(|e| format!("Failed to run speech-analysis sidecar: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = if !stderr.trim().is_empty() {
+            stderr.trim()
+        } else {
+            stdout.trim()
+        };
+        return Err(format!(
+            "Speech-analysis sidecar failed for ASR '{}' and diarization '{}': {}",
+            asr_model_id, diarization_model_id, detail
+        ));
+    }
+
+    let payload: SpeechAnalysisSidecarOutput = serde_json::from_slice(&output.stdout)
+        .map_err(|e| format!("Invalid speech-analysis sidecar JSON: {}", e))?;
+    if !payload.ok {
+        return Err(payload
+            .error
+            .unwrap_or_else(|| "Speech-analysis sidecar returned ok=false".to_string()));
+    }
+
+    Ok((
+        payload.text.unwrap_or_default(),
+        payload.segments.unwrap_or_default(),
+        payload.speaker_turns.unwrap_or_default(),
+    ))
+}
+
+fn timed_segments_to_analysis_segments(segments: &[TimedSegment]) -> Vec<SpeechAnalysisSegment> {
+    segments
+        .iter()
+        .map(|segment| SpeechAnalysisSegment {
+            start_ms: segment.start_ms,
+            end_ms: segment.end_ms,
+            text: segment.text.clone(),
+        })
+        .collect()
+}
+
+fn whole_file_segment(audio_16k: &[f32], text: &str) -> Vec<TimedSegment> {
+    if text.trim().is_empty() {
+        return Vec::new();
+    }
+    vec![TimedSegment {
+        start_ms: 0,
+        end_ms: ((audio_16k.len() as f64 / 16_000.0) * 1000.0).round() as u64,
+        text: text.trim().to_string(),
+    }]
+}
+
+fn format_speaker_labeled_text(
+    labeled_segments: &[SpeakerLabeledSegment],
+    fallback_text: &str,
+) -> String {
+    if labeled_segments.is_empty() {
+        return fallback_text.to_string();
+    }
+
+    labeled_segments
+        .iter()
+        .filter(|segment| !segment.text.trim().is_empty())
+        .map(|segment| format!("{}: {}", segment.speaker_id, segment.text.trim()))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// Return type for `transcribe_file`. `segments` is empty when the
 /// underlying engine did not expose timestamps (Moonshine/GigaAM/MLX
 /// today). The frontend uses an empty list as the signal to disable
@@ -217,6 +386,7 @@ pub(crate) fn decode_with_ffmpeg_blocking(
 pub struct TranscriptionFileResult {
     pub text: String,
     pub segments: Vec<TimedSegment>,
+    pub speaker_segments: Vec<SpeakerLabeledSegment>,
 }
 
 #[tauri::command]
@@ -228,15 +398,21 @@ pub async fn transcribe_file(
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
     let manager = transcription_manager.inner().clone();
+    let selection = speech_analysis::selection_from_settings(&app);
+    let asr_model_id = selection.asr_model_id.clone();
+    let diarization_model_id = selection.diarization_model_id.clone();
+    let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
+    let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
     let is_wav = path.to_ascii_lowercase().ends_with(".wav");
+    let sidecar_app = app.clone();
     let ffmpeg_exe = if is_wav {
         None
     } else {
         Some(resolve_ffmpeg_exe())
     };
 
-    let (raw_text, raw_segments) =
-        tokio::task::spawn_blocking(move || -> Result<(String, Vec<TimedSegment>), String> {
+    let (raw_text, raw_segments, raw_speaker_turns) = tokio::task::spawn_blocking(
+        move || -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
             let audio_16k = if is_wav {
                 let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
                 resample_linear(&mono, sample_rate, 16_000)
@@ -245,12 +421,44 @@ pub async fn transcribe_file(
                 decode_with_ffmpeg_blocking(&ff, &path)?
             };
 
-            manager
-                .transcribe_with_segments(Arc::new(audio_16k))
-                .map_err(|e| format!("Failed to transcribe file: {}", e))
-        })
-        .await
-        .map_err(|e| format!("Task join error: {}", e))??;
+            if use_sidecar_asr {
+                let (sidecar_text, mut sidecar_segments, speaker_turns) =
+                    run_speech_analysis_sidecar(
+                        &sidecar_app,
+                        &audio_16k,
+                        &asr_model_id,
+                        &diarization_model_id,
+                    )?;
+                if sidecar_segments.is_empty() {
+                    sidecar_segments = whole_file_segment(&audio_16k, &sidecar_text);
+                }
+                return Ok((sidecar_text, sidecar_segments, speaker_turns));
+            }
+
+            let (current_text, mut current_segments) = manager
+                .transcribe_with_segments(Arc::new(audio_16k.clone()))
+                .map_err(|e| format!("Failed to transcribe file: {}", e))?;
+            if current_segments.is_empty() {
+                current_segments = whole_file_segment(&audio_16k, &current_text);
+            }
+
+            let speaker_turns = if use_diarization {
+                let (_, _, speaker_turns) = run_speech_analysis_sidecar(
+                    &sidecar_app,
+                    &audio_16k,
+                    CURRENT_DICTATION_ASR_ID,
+                    &diarization_model_id,
+                )?;
+                speaker_turns
+            } else {
+                Vec::new()
+            };
+
+            Ok((current_text, current_segments, speaker_turns))
+        },
+    )
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     let settings = get_settings(&app);
     let mut text = raw_text;
@@ -270,9 +478,22 @@ pub async fn transcribe_file(
         }
     }
 
+    let speaker_segments = if raw_speaker_turns.is_empty() {
+        Vec::new()
+    } else {
+        speech_analysis::align_segments_to_speakers(
+            &timed_segments_to_analysis_segments(&raw_segments),
+            &raw_speaker_turns,
+        )
+    };
+    if !speaker_segments.is_empty() {
+        text = format_speaker_labeled_text(&speaker_segments, &text);
+    }
+
     Ok(TranscriptionFileResult {
         text,
         segments: raw_segments,
+        speaker_segments,
     })
 }
 
@@ -398,4 +619,136 @@ pub fn update_watch_folder_format(
     write_settings(&app, settings);
     watch_manager.reload_from_settings();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::speech_analysis::{
+        align_segments_to_speakers, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment,
+    };
+
+    fn labeled(speaker: &str, start_ms: u64, end_ms: u64, text: &str) -> SpeakerLabeledSegment {
+        SpeakerLabeledSegment {
+            speaker_id: speaker.to_string(),
+            start_ms,
+            end_ms,
+            text: text.to_string(),
+            confidence: None,
+        }
+    }
+
+    #[test]
+    fn whole_file_segment_uses_audio_duration_in_ms() {
+        // 24_000 samples at 16 kHz = 1.5 s = 1500 ms.
+        let audio = vec![0.0_f32; 24_000];
+        let segments = whole_file_segment(&audio, "  hello world  ");
+
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].start_ms, 0);
+        assert_eq!(segments[0].end_ms, 1_500);
+        assert_eq!(segments[0].text, "hello world");
+    }
+
+    #[test]
+    fn whole_file_segment_returns_empty_for_blank_text() {
+        let audio = vec![0.0_f32; 16_000];
+        assert!(whole_file_segment(&audio, "   \n\t  ").is_empty());
+        assert!(whole_file_segment(&audio, "").is_empty());
+    }
+
+    #[test]
+    fn timed_segments_to_analysis_segments_preserves_fields() {
+        let segments = vec![
+            TimedSegment {
+                start_ms: 100,
+                end_ms: 500,
+                text: "alpha".into(),
+            },
+            TimedSegment {
+                start_ms: 600,
+                end_ms: 1_200,
+                text: "beta".into(),
+            },
+        ];
+        let converted = timed_segments_to_analysis_segments(&segments);
+
+        assert_eq!(converted.len(), 2);
+        assert_eq!(
+            converted[0],
+            SpeechAnalysisSegment {
+                start_ms: 100,
+                end_ms: 500,
+                text: "alpha".into()
+            }
+        );
+        assert_eq!(
+            converted[1],
+            SpeechAnalysisSegment {
+                start_ms: 600,
+                end_ms: 1_200,
+                text: "beta".into()
+            }
+        );
+    }
+
+    #[test]
+    fn format_speaker_labeled_text_falls_back_when_segments_empty() {
+        let result = format_speaker_labeled_text(&[], "raw transcript");
+        assert_eq!(result, "raw transcript");
+    }
+
+    #[test]
+    fn format_speaker_labeled_text_joins_speakers_one_per_line() {
+        let labeled_segments = vec![
+            labeled("SPEAKER_00", 0, 1_000, " hello "),
+            labeled("SPEAKER_01", 1_000, 2_000, "world"),
+        ];
+
+        let result = format_speaker_labeled_text(&labeled_segments, "fallback");
+        assert_eq!(result, "SPEAKER_00: hello\nSPEAKER_01: world");
+    }
+
+    #[test]
+    fn format_speaker_labeled_text_skips_blank_text_segments() {
+        // Only the second segment has text, so the first should be dropped.
+        let labeled_segments = vec![
+            labeled("SPEAKER_00", 0, 1_000, "   "),
+            labeled("SPEAKER_01", 1_000, 2_000, "ok"),
+        ];
+
+        let result = format_speaker_labeled_text(&labeled_segments, "fallback");
+        assert_eq!(result, "SPEAKER_01: ok");
+    }
+
+    #[test]
+    fn align_segments_to_speakers_breaks_overlap_ties_by_confidence() {
+        // Both turns cover the segment fully, so overlap is equal — the
+        // higher-confidence speaker should win.
+        let segments = vec![SpeechAnalysisSegment {
+            start_ms: 1_000,
+            end_ms: 3_000,
+            text: "shared".to_string(),
+        }];
+        let turns = vec![
+            SpeakerTurn {
+                speaker_id: "LOW".to_string(),
+                start_ms: 0,
+                end_ms: 4_000,
+                confidence: Some(0.30),
+                source_model_id: "test".into(),
+            },
+            SpeakerTurn {
+                speaker_id: "HIGH".to_string(),
+                start_ms: 0,
+                end_ms: 4_000,
+                confidence: Some(0.95),
+                source_model_id: "test".into(),
+            },
+        ];
+
+        let labeled = align_segments_to_speakers(&segments, &turns);
+        assert_eq!(labeled[0].speaker_id, "HIGH");
+        assert_eq!(labeled[0].confidence, Some(0.95));
+    }
 }

@@ -20,6 +20,7 @@ const LFM_AUDIO_GGUF_DIR: &str = "lfm-audio-gguf";
 const VIBEVOICE_DIR: &str = "vibevoice";
 const LFM2_TOOL_DIR: &str = "lfm2-tool";
 const OCR_MODELS_DIR: &str = "ocr";
+const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 
 // LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
 // while remaining production-quality for dictation readback).
@@ -136,6 +137,12 @@ pub fn lfm_audio_gguf_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 /// directory at runtime.
 pub fn ocr_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(OCR_MODELS_DIR))
+}
+
+/// Root for file-ASR and speaker-isolation assets managed by the app.
+/// Each catalog entry installs to `<this>/<model_id>/`.
+pub fn speech_analysis_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(SPEECH_ANALYSIS_MODELS_DIR))
 }
 
 /// Per-repo install root for TTS models pulled in from the verified HF
@@ -359,6 +366,10 @@ pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
     }
 
     ensure_dir(&ocr_models_dir(app).map_err(|err| format!("Failed to resolve OCR dir: {err}"))?)?;
+    ensure_dir(
+        &speech_analysis_models_dir(app)
+            .map_err(|err| format!("Failed to resolve speech analysis dir: {err}"))?,
+    )?;
 
     migrate_legacy_stt_layout(app)?;
     migrate_legacy_llm_layout(app)?;

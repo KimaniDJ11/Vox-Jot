@@ -1,5 +1,5 @@
 /** Shared Model Hub tab ids + i18n keys (sidebar launchers + hub tab bar). */
-export type ModelHubTabId = "stt" | "llm" | "tts" | "ocr";
+export type ModelHubTabId = "stt" | "analysis" | "llm" | "tts" | "ocr";
 
 export const MODEL_HUB_TAB_DEFS: Array<{
   id: ModelHubTabId;
@@ -7,6 +7,11 @@ export const MODEL_HUB_TAB_DEFS: Array<{
   defaultLabel: string;
 }> = [
   { id: "stt", labelKey: "modelHub.tabs.stt", defaultLabel: "Speech (STT)" },
+  {
+    id: "analysis",
+    labelKey: "modelHub.tabs.analysis",
+    defaultLabel: "Speech Analysis",
+  },
   {
     id: "llm",
     labelKey: "modelHub.tabs.llm",

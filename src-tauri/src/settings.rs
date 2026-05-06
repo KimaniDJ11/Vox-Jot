@@ -812,6 +812,10 @@ pub struct AppSettings {
     pub correction_tracking_enabled: bool,
     #[serde(default = "default_file_transcription_apply_dictionary")]
     pub file_transcription_apply_dictionary: bool,
+    #[serde(default = "default_file_transcription_asr_model_id")]
+    pub file_transcription_asr_model_id: String,
+    #[serde(default = "default_file_transcription_diarization_model_id")]
+    pub file_transcription_diarization_model_id: String,
     #[serde(default = "default_snippets_enabled")]
     pub snippets_enabled: bool,
     #[serde(default)]
@@ -1363,6 +1367,14 @@ fn default_correction_tracking_enabled() -> bool {
 
 fn default_file_transcription_apply_dictionary() -> bool {
     true
+}
+
+fn default_file_transcription_asr_model_id() -> String {
+    crate::speech_analysis::default_asr_model_id()
+}
+
+fn default_file_transcription_diarization_model_id() -> String {
+    crate::speech_analysis::default_diarization_model_id()
 }
 
 fn default_snippets_enabled() -> bool {
@@ -1996,6 +2008,8 @@ pub fn get_default_settings() -> AppSettings {
         write_rules_enabled_override: None,
         correction_tracking_enabled: default_correction_tracking_enabled(),
         file_transcription_apply_dictionary: default_file_transcription_apply_dictionary(),
+        file_transcription_asr_model_id: default_file_transcription_asr_model_id(),
+        file_transcription_diarization_model_id: default_file_transcription_diarization_model_id(),
         snippets_enabled: default_snippets_enabled(),
         snippets: Vec::new(),
         app_theme: default_app_theme(),

@@ -10,6 +10,7 @@ import {
 } from "@/components/AppSections";
 import { EngineLibrarySection } from "@/components/settings/general/ListenSections";
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
+import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";
 import { press } from "@/motion/springs";
 import { MODEL_HUB_TAB_STORAGE_KEY } from "@/components/sidebar/SidebarModelLaunchers";
 import {
@@ -19,15 +20,14 @@ import {
 
 const TABS = MODEL_HUB_TAB_DEFS;
 
+function isModelHubTabId(value: string | null): value is ModelHubTabId {
+  return TABS.some((tab) => tab.id === value);
+}
+
 function readInitialTab(): ModelHubTabId {
   try {
     const stored = localStorage.getItem(MODEL_HUB_TAB_STORAGE_KEY);
-    if (
-      stored === "stt" ||
-      stored === "llm" ||
-      stored === "tts" ||
-      stored === "ocr"
-    ) {
+    if (isModelHubTabId(stored)) {
       return stored;
     }
   } catch {
@@ -47,12 +47,7 @@ const ModelHubSection: React.FC = () => {
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== MODEL_HUB_TAB_STORAGE_KEY || !event.newValue) return;
-      if (
-        event.newValue === "stt" ||
-        event.newValue === "llm" ||
-        event.newValue === "tts" ||
-        event.newValue === "ocr"
-      ) {
+      if (isModelHubTabId(event.newValue)) {
         setActiveTab(event.newValue);
       }
     };
@@ -160,6 +155,10 @@ const ModelHubSection: React.FC = () => {
               hubSearchQuery={query}
               hubFilterLabels
             />
+          </div>
+
+          <div className={activeTab === "analysis" ? "block" : "hidden"}>
+            <SpeechAnalysisEnginesSection hubSearchQuery={query} />
           </div>
 
           <div className={activeTab === "llm" ? "block" : "hidden"}>

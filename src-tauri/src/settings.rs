@@ -2516,24 +2516,22 @@ fn migrate_legacy_post_process_api_keys(settings: &mut AppSettings) -> bool {
                     .post_process_api_key_status
                     .insert(provider_id.clone(), true);
             }
-            Ok(_) => {
-                match secret_store::set_post_process_api_key(&provider_id, &api_key) {
-                    Ok(()) => {
-                        settings
-                            .post_process_api_key_status
-                            .insert(provider_id.clone(), true);
-                    }
-                    Err(secret_error) => {
-                        settings
-                            .post_process_api_key_status
-                            .insert(provider_id.clone(), false);
-                        error!(
+            Ok(_) => match secret_store::set_post_process_api_key(&provider_id, &api_key) {
+                Ok(()) => {
+                    settings
+                        .post_process_api_key_status
+                        .insert(provider_id.clone(), true);
+                }
+                Err(secret_error) => {
+                    settings
+                        .post_process_api_key_status
+                        .insert(provider_id.clone(), false);
+                    error!(
                             "Failed to migrate legacy API key for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
                             provider_id, secret_error
                         );
-                    }
                 }
-            }
+            },
             Err(secret_error) => {
                 settings
                     .post_process_api_key_status

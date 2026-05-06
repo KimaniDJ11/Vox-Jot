@@ -200,7 +200,9 @@ const CompactSlider: React.FC<{
   const tooltipRef = useRef<HTMLButtonElement>(null);
   const canReset = defaultValue !== undefined && !disabled;
   const isAtDefault = defaultValue !== undefined && value === defaultValue;
-  const valueResetTitle = canReset ? "Double-click to reset to default" : undefined;
+  const valueResetTitle = canReset
+    ? "Double-click to reset to default"
+    : undefined;
 
   return (
     <div className="py-2 px-1">

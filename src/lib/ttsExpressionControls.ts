@@ -125,11 +125,7 @@ const FISH_S2_TAGS = [
     "Fish advanced emotions",
   ),
   ...tags(
-    [
-      "[in a hurry tone]",
-      "[screaming]",
-      "[soft tone]",
-    ],
+    ["[in a hurry tone]", "[screaming]", "[soft tone]"],
     "Fish tone markers",
   ),
   ...tags(
@@ -229,7 +225,10 @@ export const INSTRUCTION_PRESETS = [
 ];
 
 export function expressionCapabilityForModel(
-  model: Pick<CatalogModelDescriptor, "id" | "provider_id" | "label" | "capabilities"> | null,
+  model: Pick<
+    CatalogModelDescriptor,
+    "id" | "provider_id" | "label" | "capabilities"
+  > | null,
 ): TtsExpressionCapability {
   if (!model) {
     return noneCapability("Move the cursor to a character line.");
@@ -302,7 +301,9 @@ export function expressionCapabilityForModel(
   return noneCapability("No expression controls for this voice");
 }
 
-export function supportsExpressionControls(capability: TtsExpressionCapability) {
+export function supportsExpressionControls(
+  capability: TtsExpressionCapability,
+) {
   return capability.kind !== "none";
 }
 

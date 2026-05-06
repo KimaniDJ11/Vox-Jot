@@ -311,9 +311,11 @@ function App() {
       }
 
       event.preventDefault();
-      void getCurrentWindow().startDragging().catch((error) => {
-        console.warn("Failed to start window drag:", error);
-      });
+      void getCurrentWindow()
+        .startDragging()
+        .catch((error) => {
+          console.warn("Failed to start window drag:", error);
+        });
     },
     [],
   );
@@ -988,10 +990,7 @@ function App() {
               onSelect={handleModeSelect}
             />
           </div>
-          <div
-            className="app-macos-titlebar-overlay__drag"
-            aria-hidden
-          />
+          <div className="app-macos-titlebar-overlay__drag" aria-hidden />
           <div className="app-macos-titlebar-overlay__trailing flex items-center gap-4">
             <AccessibilityPermissions presentation="titleBar" />
           </div>

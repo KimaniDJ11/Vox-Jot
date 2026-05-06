@@ -387,7 +387,10 @@ export const DictateModelsSection: React.FC<{
 export const DictateHistorySection: React.FC = () => {
   return (
     <div className="space-y-6">
-      <SectionIntro title="Recent History" description={recentHistoryDescription}>
+      <SectionIntro
+        title="Recent History"
+        description={recentHistoryDescription}
+      >
         <HistorySettings />
       </SectionIntro>
     </div>

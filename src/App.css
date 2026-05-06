@@ -1446,9 +1446,7 @@ input[type="range"]::-moz-range-thumb:active {
   .story-audio-docked-player {
     position: fixed;
     bottom: max(1rem, env(safe-area-inset-bottom));
-    left: calc(
-      240px + max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem)
-    );
+    left: calc(240px + max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem));
     right: max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem);
   }
 

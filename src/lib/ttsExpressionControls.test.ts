@@ -31,26 +31,30 @@ function model(
 
 describe("ttsExpressionControls", () => {
   it("marks Fish S2 Pro as free-form inline tags", () => {
-    const capability = expressionCapabilityForModel(
-      model("fish-audio-s2-pro"),
-    );
+    const capability = expressionCapabilityForModel(model("fish-audio-s2-pro"));
 
     expect(capability.kind).toBe("freeform_inline_tags");
     expect(capability.allowCustomTags).toBe(true);
     expect(capability.tags.some((tag) => tag.value === "[sigh]")).toBe(true);
-    expect(capability.tags.some((tag) => tag.value === "[determined]")).toBe(true);
-    expect(capability.tags.some((tag) => tag.value === "[rustling sound]")).toBe(true);
+    expect(capability.tags.some((tag) => tag.value === "[determined]")).toBe(
+      true,
+    );
+    expect(
+      capability.tags.some((tag) => tag.value === "[rustling sound]"),
+    ).toBe(true);
   });
 
   it("includes the complete Chatterbox Turbo added-token set", () => {
-    const capability = expressionCapabilityForModel(
-      model("chatterbox-turbo"),
-    );
+    const capability = expressionCapabilityForModel(model("chatterbox-turbo"));
 
     expect(capability.kind).toBe("fixed_inline_tags");
     expect(capability.tags).toHaveLength(19);
-    expect(capability.tags.some((tag) => tag.value === "[advertisement]")).toBe(true);
-    expect(capability.tags.some((tag) => tag.value === "[whispering]")).toBe(true);
+    expect(capability.tags.some((tag) => tag.value === "[advertisement]")).toBe(
+      true,
+    );
+    expect(capability.tags.some((tag) => tag.value === "[whispering]")).toBe(
+      true,
+    );
   });
 
   it("keeps Qwen models as instruction prompts", () => {

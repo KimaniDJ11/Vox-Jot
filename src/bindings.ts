@@ -2383,9 +2383,9 @@ today_words: number;
  */
 streak_days: number;
 /**
- * Accuracy percentage (0–100). Based on correction/snapshot data when available.
+ * Number of unique apps where dictation history has app context.
  */
-accuracy_percent: number | null;
+unique_app_count: number;
 /**
  * Total number of transcriptions (lifetime).
  */

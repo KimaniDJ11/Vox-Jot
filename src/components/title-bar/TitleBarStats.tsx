@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Flame, LetterText, Target } from "lucide-react";
+import { AppWindow, Flame, LetterText } from "lucide-react";
 import { useDictationStats } from "@/hooks/useDictationStats";
 
 const formatNumber = (n: number): string => {
@@ -60,16 +60,20 @@ const TitleBarStats: React.FC = () => {
         </div>
       )}
 
-      {/* Accuracy */}
-      {stats.accuracy_percent !== null && (
+      {/* Apps used */}
+      {stats.unique_app_count > 0 && (
         <div
           className="flex items-center gap-1.5"
-          title={t("titleBar.accuracy", {
-            value: Math.round(stats.accuracy_percent),
+          title={t("titleBar.appsUsed", {
+            count: stats.unique_app_count,
+            defaultValue:
+              stats.unique_app_count === 1
+                ? "{{count}} app used"
+                : "{{count}} apps used",
           })}
         >
-          <Target className="h-4 w-4 shrink-0" aria-hidden />
-          <span>{Math.round(stats.accuracy_percent)}%</span>
+          <AppWindow className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{formatNumber(stats.unique_app_count)}</span>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ use crate::managers::history::HistoryManager;
 use chrono::{Local, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -14,14 +15,26 @@ pub struct DictationStats {
     pub today_words: u64,
     /// Current daily streak (consecutive days with at least one transcription).
     pub streak_days: u32,
-    /// Accuracy percentage (0–100). Based on correction/snapshot data when available.
-    pub accuracy_percent: Option<f64>,
+    /// Number of unique apps where dictation history has app context.
+    pub unique_app_count: u64,
     /// Total number of transcriptions (lifetime).
     pub total_sessions: u64,
 }
 
 fn count_words(text: &str) -> u64 {
     text.split_whitespace().count() as u64
+}
+
+fn normalized_app_key(bundle_id: Option<&str>, app_name: Option<&str>) -> Option<String> {
+    let bundle_id = bundle_id.map(str::trim).filter(|value| !value.is_empty());
+    if let Some(bundle_id) = bundle_id {
+        return Some(format!("bundle:{}", bundle_id.to_ascii_lowercase()));
+    }
+
+    app_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|app_name| format!("name:{}", app_name.to_ascii_lowercase()))
 }
 
 #[tauri::command]
@@ -48,11 +61,8 @@ pub async fn get_dictation_stats(
     let total_sessions = entries.len() as u64;
 
     // Collect unique days (local time) that have transcriptions for streak calc
-    let mut unique_days = std::collections::BTreeSet::new();
-
-    // Track accuracy: count entries where field snapshot matches pasted text
-    let mut accuracy_total: u64 = 0;
-    let mut accuracy_matches: u64 = 0;
+    let mut unique_days = BTreeSet::new();
+    let mut unique_apps = BTreeSet::new();
 
     for entry in &entries {
         // Use the best available text for word count
@@ -73,15 +83,12 @@ pub async fn get_dictation_stats(
             unique_days.insert(local_date);
         }
 
-        // Accuracy: if we have both pasted_text and field_snapshot_text, compare
-        if let (Some(pasted), Some(snapshot)) = (&entry.pasted_text, &entry.field_snapshot_text) {
-            accuracy_total += 1;
-            // Normalize whitespace for comparison
-            let pasted_normalized: String = pasted.split_whitespace().collect::<Vec<_>>().join(" ");
-            let snapshot_normalized: String =
-                snapshot.split_whitespace().collect::<Vec<_>>().join(" ");
-            if pasted_normalized == snapshot_normalized {
-                accuracy_matches += 1;
+        if let Some(metadata) = entry.screen_context_metadata.as_ref() {
+            if let Some(app_key) = normalized_app_key(
+                metadata.active_app_bundle_id.as_deref(),
+                metadata.active_app_name.as_deref(),
+            ) {
+                unique_apps.insert(app_key);
             }
         }
     }
@@ -100,17 +107,37 @@ pub async fn get_dictation_stats(
         }
     }
 
-    let accuracy_percent = if accuracy_total > 0 {
-        Some((accuracy_matches as f64 / accuracy_total as f64) * 100.0)
-    } else {
-        None
-    };
-
     Ok(DictationStats {
         total_words,
         today_words,
         streak_days,
-        accuracy_percent,
+        unique_app_count: unique_apps.len() as u64,
         total_sessions,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalized_app_key;
+
+    #[test]
+    fn normalized_app_key_prefers_case_insensitive_bundle_id() {
+        assert_eq!(
+            normalized_app_key(Some("  COM.Apple.Safari  "), Some("Safari")),
+            Some("bundle:com.apple.safari".to_string())
+        );
+    }
+
+    #[test]
+    fn normalized_app_key_falls_back_to_app_name() {
+        assert_eq!(
+            normalized_app_key(None, Some("  TextEdit  ")),
+            Some("name:textedit".to_string())
+        );
+    }
+
+    #[test]
+    fn normalized_app_key_ignores_blank_context() {
+        assert_eq!(normalized_app_key(Some("  "), Some("")), None);
+    }
 }

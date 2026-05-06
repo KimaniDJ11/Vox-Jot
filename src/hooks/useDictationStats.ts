@@ -6,7 +6,7 @@ export interface DictationStats {
   total_words: number;
   today_words: number;
   streak_days: number;
-  accuracy_percent: number | null;
+  unique_app_count: number;
   total_sessions: number;
 }
 

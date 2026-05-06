@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, Flame, LetterText, Target } from "lucide-react";
+import { AppWindow, CalendarDays, Flame, LetterText } from "lucide-react";
 import { useDictationStats } from "@/hooks/useDictationStats";
 
 const formatNumber = (n: number): string => {
@@ -60,11 +60,6 @@ const SidebarStatsGrid: React.FC = () => {
     );
   }
 
-  const accuracyValue =
-    stats.accuracy_percent !== null
-      ? `${Math.round(stats.accuracy_percent)}%`
-      : "—";
-
   return (
     <div className="grid grid-cols-2 gap-2">
       <StatCard
@@ -98,18 +93,18 @@ const SidebarStatsGrid: React.FC = () => {
         title={t("titleBar.todayWords", { count: stats.today_words })}
       />
       <StatCard
-        icon={<Target className="h-4 w-4" strokeWidth={2} aria-hidden />}
+        icon={<AppWindow className="h-4 w-4" strokeWidth={2} aria-hidden />}
         iconBg="color-mix(in srgb, var(--accent) 14%, transparent)"
         iconColor="var(--accent)"
-        value={accuracyValue}
-        label={t("titleBar.accuracyLabel", { defaultValue: "Accuracy" })}
-        title={
-          stats.accuracy_percent !== null
-            ? t("titleBar.accuracy", {
-                value: Math.round(stats.accuracy_percent),
-              })
-            : undefined
-        }
+        value={formatNumber(stats.unique_app_count)}
+        label={t("titleBar.appsLabel", { defaultValue: "Apps" })}
+        title={t("titleBar.appsUsed", {
+          count: stats.unique_app_count,
+          defaultValue:
+            stats.unique_app_count === 1
+              ? "{{count}} app used"
+              : "{{count}} apps used",
+        })}
       />
     </div>
   );

@@ -1709,12 +1709,16 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         if settings.post_process_provider_id == "openai" {
-            let openai_key = settings
+            let has_openai_key_status = settings
+                .post_process_api_key_status
+                .get("openai")
+                .copied()
+                .unwrap_or(false);
+            let has_legacy_openai_key = settings
                 .post_process_api_keys
                 .get("openai")
-                .cloned()
-                .unwrap_or_default();
-            if openai_key.trim().is_empty() {
+                .is_some_and(|api_key| !api_key.trim().is_empty());
+            if !has_openai_key_status && !has_legacy_openai_key {
                 debug!("Migrating unconfigured OpenAI provider to Apple Intelligence");
                 settings.post_process_provider_id = APPLE_INTELLIGENCE_PROVIDER_ID.to_string();
                 settings.post_process_enabled = true;
@@ -2473,24 +2477,21 @@ fn post_process_provider_ids(settings: &AppSettings) -> Vec<String> {
         .collect()
 }
 
-fn sync_post_process_api_key_statuses(settings: &mut AppSettings) {
+fn normalize_post_process_api_key_statuses(settings: &mut AppSettings) {
     let provider_ids = post_process_provider_ids(settings);
     settings
         .post_process_api_key_status
         .retain(|provider_id, _| provider_ids.iter().any(|id| id == provider_id));
 
     for provider_id in provider_ids {
-        let has_api_key = settings
-            .post_process_api_keys
-            .get(&provider_id)
-            .is_some_and(|value| !value.trim().is_empty());
         settings
             .post_process_api_key_status
-            .insert(provider_id, has_api_key);
+            .entry(provider_id)
+            .or_insert(false);
     }
 }
 
-fn migrate_legacy_post_process_api_keys(settings: &AppSettings) -> bool {
+fn migrate_legacy_post_process_api_keys(settings: &mut AppSettings) -> bool {
     let legacy_entries: Vec<(String, String)> = settings
         .post_process_api_keys
         .iter()
@@ -2510,18 +2511,33 @@ fn migrate_legacy_post_process_api_keys(settings: &AppSettings) -> bool {
 
     for (provider_id, api_key) in legacy_entries {
         match secret_store::get_post_process_api_key(&provider_id) {
-            Ok(Some(existing)) if !existing.trim().is_empty() => continue,
+            Ok(Some(existing)) if !existing.trim().is_empty() => {
+                settings
+                    .post_process_api_key_status
+                    .insert(provider_id.clone(), true);
+            }
             Ok(_) => {
-                if let Err(secret_error) =
-                    secret_store::set_post_process_api_key(&provider_id, &api_key)
-                {
-                    error!(
-                        "Failed to migrate legacy API key for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
-                        provider_id, secret_error
-                    );
+                match secret_store::set_post_process_api_key(&provider_id, &api_key) {
+                    Ok(()) => {
+                        settings
+                            .post_process_api_key_status
+                            .insert(provider_id.clone(), true);
+                    }
+                    Err(secret_error) => {
+                        settings
+                            .post_process_api_key_status
+                            .insert(provider_id.clone(), false);
+                        error!(
+                            "Failed to migrate legacy API key for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
+                            provider_id, secret_error
+                        );
+                    }
                 }
             }
             Err(secret_error) => {
+                settings
+                    .post_process_api_key_status
+                    .insert(provider_id.clone(), false);
                 error!(
                     "Failed to inspect secure credential for provider '{}': {}. The plaintext key will be removed from settings and treated as missing.",
                     provider_id, secret_error
@@ -2530,28 +2546,8 @@ fn migrate_legacy_post_process_api_keys(settings: &AppSettings) -> bool {
         }
     }
 
-    true
-}
-
-pub fn hydrate_post_process_api_keys(_app: &AppHandle, settings: &mut AppSettings) {
     settings.post_process_api_keys.clear();
-
-    for provider_id in post_process_provider_ids(settings) {
-        match secret_store::get_post_process_api_key(&provider_id) {
-            Ok(Some(api_key)) if !api_key.trim().is_empty() => {
-                settings.post_process_api_keys.insert(provider_id, api_key);
-            }
-            Ok(_) => {}
-            Err(secret_error) => {
-                warn!(
-                    "Failed to load secure API key for provider '{}': {}",
-                    provider_id, secret_error
-                );
-            }
-        }
-    }
-
-    sync_post_process_api_key_statuses(settings);
+    true
 }
 
 pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
@@ -2605,8 +2601,8 @@ pub fn load_or_create_app_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
-    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
-    hydrate_post_process_api_keys(app, &mut settings);
+    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
+    normalize_post_process_api_key_statuses(&mut settings);
 
     if translation_changed
         || tts_changed
@@ -2643,8 +2639,8 @@ pub fn get_settings(app: &AppHandle) -> AppSettings {
     let model_platform_changed = ensure_model_platform_defaults(&mut settings);
     let tts_changed = ensure_tts_defaults(&mut settings);
     let http_api_changed = ensure_http_api_defaults(&mut settings);
-    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&settings);
-    hydrate_post_process_api_keys(app, &mut settings);
+    let migrated_legacy_keys = migrate_legacy_post_process_api_keys(&mut settings);
+    normalize_post_process_api_key_statuses(&mut settings);
 
     if translation_changed
         || tts_changed
@@ -2682,13 +2678,15 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
     ensure_model_platform_defaults(&mut settings);
     ensure_tts_defaults(&mut settings);
     ensure_http_api_defaults(&mut settings);
+    normalize_post_process_api_key_statuses(&mut settings);
 
     settings
 }
 
 pub fn write_settings(app: &AppHandle, settings: AppSettings) {
     let mut settings = settings;
-    hydrate_post_process_api_keys(app, &mut settings);
+    settings.post_process_api_keys.clear();
+    normalize_post_process_api_key_statuses(&mut settings);
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
         .expect("Failed to initialize store");
@@ -2957,6 +2955,24 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    fn ensure_post_process_defaults_preserves_openai_keychain_status() {
+        let mut settings = get_default_settings();
+        // Simulate a user whose plaintext key was already migrated into Keychain.
+        settings.post_process_provider_id = "openai".to_string();
+        settings.post_process_enabled = true;
+        settings.post_process_api_keys.clear();
+        settings
+            .post_process_api_key_status
+            .insert("openai".to_string(), true);
+
+        let _changed = ensure_post_process_defaults(&mut settings);
+
+        assert_eq!(settings.post_process_provider_id, "openai");
+        assert!(settings.post_process_enabled);
+    }
+
+    #[test]
     fn default_settings_include_tts_defaults_and_shortcuts() {
         let settings = get_default_settings();
 
@@ -3091,7 +3107,7 @@ mod tests {
             .post_process_api_keys
             .insert("openai".to_string(), "sk-test-key".to_string());
 
-        assert!(migrate_legacy_post_process_api_keys(&settings));
+        assert!(migrate_legacy_post_process_api_keys(&mut settings));
         assert_eq!(
             secret_store::get_post_process_api_key("openai").expect("read migrated API key"),
             Some("sk-test-key".to_string())

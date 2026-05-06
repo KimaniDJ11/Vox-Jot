@@ -15,7 +15,9 @@ pub mod write_rules;
 use crate::actions::PostProcessRouteDebug;
 use crate::post_processing::{ActiveAppContext, InstalledApp, PostProcessResult, PreviewManager};
 use crate::screen_context::{ContextCaptureManager, ScreenContextDiagnostics};
-use crate::settings::{get_settings, write_settings, AppSettings, LogLevel};
+use crate::settings::{
+    get_settings, get_settings_without_secrets, write_settings, AppSettings, LogLevel,
+};
 use crate::utils::cancel_current_operation;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
@@ -39,15 +41,13 @@ pub fn get_app_dir_path(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn get_app_settings(app: AppHandle) -> Result<AppSettings, String> {
-    Ok(get_settings(&app))
+    Ok(get_settings_without_secrets(&app))
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_default_settings(app: AppHandle) -> Result<AppSettings, String> {
-    let mut settings = crate::settings::get_default_settings();
-    crate::settings::hydrate_post_process_api_keys(&app, &mut settings);
-    Ok(settings)
+pub fn get_default_settings(_app: AppHandle) -> Result<AppSettings, String> {
+    Ok(crate::settings::get_default_settings())
 }
 
 #[tauri::command]

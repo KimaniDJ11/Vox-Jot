@@ -1562,13 +1562,19 @@ pub fn change_post_process_api_key_setting(
     provider_id: String,
     api_key: String,
 ) -> Result<(), String> {
-    let settings = settings::get_settings(&app);
+    let mut settings = settings::get_settings(&app);
     validate_provider_exists(&settings, &provider_id)?;
 
     if api_key.trim().is_empty() {
         secret_store::clear_post_process_api_key(&provider_id)?;
+        settings
+            .post_process_api_key_status
+            .insert(provider_id.clone(), false);
     } else {
         secret_store::set_post_process_api_key(&provider_id, api_key.trim())?;
+        settings
+            .post_process_api_key_status
+            .insert(provider_id.clone(), true);
     }
 
     settings::write_settings(&app, settings);

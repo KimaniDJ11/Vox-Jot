@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Globe } from "lucide-react";
+import { ChevronDown, Globe, SlidersHorizontal } from "lucide-react";
 import type { ModelCardStatus } from "@/components/onboarding";
 import { ModelCard } from "@/components/onboarding";
 import { useModelStore } from "@/stores/modelStore";
@@ -150,6 +150,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
         ?.label || idle
     );
   }, [hubFilterLabels, providerFilter, sttProviderOptions]);
+  const hasActiveProviderFilter = providerFilter !== "all";
 
   const sttCatalogById = useMemo(() => {
     return new Map(
@@ -295,41 +296,71 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
 
   const filterAction = (
     <div className="flex items-center gap-2">
-      <div className="relative inline-flex w-36">
+      <div
+        className={`relative inline-flex ${hubFilterLabels ? "h-10 w-10 shrink-0" : "w-36"}`}
+      >
         <select
           value={providerFilter}
           onChange={(event) => setProviderFilter(event.target.value)}
-          className="min-h-9 w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-1.5 pe-9 ps-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          className={`${hubFilterLabels ? "h-full" : "min-h-9"} w-full appearance-none rounded-full border py-1.5 text-xs font-semibold shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+            hubFilterLabels
+              ? hasActiveProviderFilter
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] px-0 text-transparent"
+                : "border-[var(--border)] bg-[var(--card)] px-0 text-transparent"
+              : "border-[var(--border)] bg-[var(--card)] pe-9 ps-3 text-[var(--text)]"
+          }`}
+          aria-label={`Filter speech models by provider: ${selectedProviderLabel}`}
+          title={`Provider: ${selectedProviderLabel}`}
         >
           {sttProviderOptions.map((provider) => (
-            <option key={provider.value} value={provider.value}>
+            <option
+              key={provider.value}
+              value={provider.value}
+              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
+            >
               {provider.label}
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+        {hubFilterLabels ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            {hasActiveProviderFilter ? (
+              <ProviderIcon providerId={providerFilter} size="sm" />
+            ) : (
+              <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
+            )}
+          </div>
+        ) : (
+          <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+        )}
       </div>
       <div className="relative" ref={languageDropdownRef}>
         <button
           type="button"
           onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex min-h-9 w-36 items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
             hasActiveFilter
               ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
               : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
-          }`}
+          } ${hubFilterLabels ? "h-10 w-10 px-0" : "min-h-9 w-36 px-3"}`}
           aria-haspopup="listbox"
           aria-expanded={languageDropdownOpen}
+          aria-label={`Filter speech models by language: ${selectedLanguageLabel}`}
+          title={`Language: ${selectedLanguageLabel}`}
         >
-          <Globe className="h-3 w-3" />
-          <span className="min-w-0 flex-1 truncate text-left">
-            {selectedLanguageLabel}
-          </span>
-          <ChevronDown
-            className={`h-3 w-3 transition-transform ${
-              languageDropdownOpen ? "rotate-180" : ""
-            }`}
-          />
+          <Globe className={hubFilterLabels ? "h-4 w-4" : "h-3 w-3"} />
+          {hubFilterLabels ? null : (
+            <>
+              <span className="min-w-0 flex-1 truncate text-left">
+                {selectedLanguageLabel}
+              </span>
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${
+                  languageDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </>
+          )}
         </button>
 
         {languageDropdownOpen && (

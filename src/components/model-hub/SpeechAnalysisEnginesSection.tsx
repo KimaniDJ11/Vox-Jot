@@ -1,8 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   CheckCircle2,
   Cpu,
@@ -30,20 +35,16 @@ import {
 import { Button } from "@/components/ui/Button";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 interface SpeechAnalysisEnginesSectionProps {
   hubSearchQuery?: string;
+  onHeaderTitleChange?: (title: string | null) => void;
 }
 
 type AnalysisGroup = "asr" | "diarization";
-
-const FILE_ASR_COLLECTION_URL =
-  "https://huggingface.co/collections/IrieDinamik/vox-jot-file-asr-verified-69fb458008ebd2dd60c61e8b";
-const SPEAKER_ISOLATION_COLLECTION_URL =
-  "https://huggingface.co/collections/IrieDinamik/vox-jot-speaker-isolation-verified-69fb4581d04c83c1eb5fb7d0";
 
 interface SpeechAnalysisDownloadProgress {
   model_id: string;
@@ -108,7 +109,7 @@ const modelMatchesQuery = (
 
 const SpeechAnalysisEnginesSection: React.FC<
   SpeechAnalysisEnginesSectionProps
-> = ({ hubSearchQuery = "" }) => {
+> = ({ hubSearchQuery = "", onHeaderTitleChange }) => {
   const { t } = useTranslation();
   const [catalog, setCatalog] = useState<SpeechAnalysisCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +118,9 @@ const SpeechAnalysisEnginesSection: React.FC<
     Record<string, SpeechAnalysisDownloadProgress>
   >({});
   const [activeDownloads, setActiveDownloads] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [cancellingDownloads, setCancellingDownloads] = useState<Set<string>>(
     () => new Set(),
   );
   const [hfTokenStatus, setHfTokenStatus] =
@@ -129,6 +133,8 @@ const SpeechAnalysisEnginesSection: React.FC<
   const [deleteConfirmModelId, setDeleteConfirmModelId] = useState<
     string | null
   >(null);
+  const [activeGroup, setActiveGroup] = useState<AnalysisGroup>("asr");
+  const viewSwitcherRef = useRef<HTMLDivElement>(null);
 
   const loadCatalog = useCallback(async () => {
     const result = await commands.getSpeechAnalysisCatalog();
@@ -172,14 +178,40 @@ const SpeechAnalysisEnginesSection: React.FC<
         }));
         setActiveDownloads((current) => {
           const next = new Set(current);
-          if (progress.phase === "complete" || progress.phase === "failed") {
+          if (
+            progress.phase === "complete" ||
+            progress.phase === "failed" ||
+            progress.phase === "cancelled"
+          ) {
             next.delete(progress.model_id);
           } else {
             next.add(progress.model_id);
           }
           return next;
         });
+        setCancellingDownloads((current) => {
+          const next = new Set(current);
+          if (progress.phase === "cancelling") {
+            next.add(progress.model_id);
+          }
+          if (
+            progress.phase === "complete" ||
+            progress.phase === "failed" ||
+            progress.phase === "cancelled"
+          ) {
+            next.delete(progress.model_id);
+          }
+          return next;
+        });
         if (progress.phase === "complete") {
+          void loadCatalog();
+        }
+        if (progress.phase === "cancelled") {
+          setDownloadProgress((current) => {
+            const next = { ...current };
+            delete next[progress.model_id];
+            return next;
+          });
           void loadCatalog();
         }
         if (progress.phase === "failed" && progress.error) {
@@ -236,8 +268,15 @@ const SpeechAnalysisEnginesSection: React.FC<
         setBusyModelId(null);
         return true;
       } else {
-        setError(result.error);
+        if (result.error !== "Download cancelled.") {
+          setError(result.error);
+        }
         setActiveDownloads((current) => {
+          const next = new Set(current);
+          next.delete(modelId);
+          return next;
+        });
+        setCancellingDownloads((current) => {
           const next = new Set(current);
           next.delete(modelId);
           return next;
@@ -262,6 +301,24 @@ const SpeechAnalysisEnginesSection: React.FC<
       void startDownload(model.id);
     },
     [loadHfTokenStatus, startDownload],
+  );
+
+  const cancelDownload = useCallback(
+    async (model: SpeechAnalysisModelDescriptor) => {
+      if (!activeDownloads.has(model.id)) return;
+      setError(null);
+      setCancellingDownloads((current) => new Set(current).add(model.id));
+      const result = await commands.cancelSpeechAnalysisDownload(model.id);
+      if (result.status === "error") {
+        setCancellingDownloads((current) => {
+          const next = new Set(current);
+          next.delete(model.id);
+          return next;
+        });
+        setError(result.error);
+      }
+    },
+    [activeDownloads],
   );
 
   const closeGatedDownload = useCallback(() => {
@@ -370,6 +427,78 @@ const SpeechAnalysisEnginesSection: React.FC<
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
     [catalog, hubSearchQuery],
   );
+  const analysisViews = useMemo(
+    () => [
+      {
+        group: "asr" as const,
+        label: t("modelHub.analysis.asr.title", {
+          defaultValue: "File ASR",
+        }),
+        description: t("modelHub.analysis.asr.description", {
+          defaultValue:
+            "Optional file-transcription ASR engines. These are for long audio and model experiments, not the live dictation hot path.",
+        }),
+        models: asrModels,
+        selectedModelId: catalog?.selection.asr_model_id ?? "",
+      },
+      {
+        group: "diarization" as const,
+        label: t("modelHub.analysis.diarization.title", {
+          defaultValue: "Speaker Isolation",
+        }),
+        description: t("modelHub.analysis.diarization.description", {
+          defaultValue:
+            "Speaker diarization engines that assign who-spoke-when labels for file transcripts.",
+        }),
+        models: diarizationModels,
+        selectedModelId: catalog?.selection.diarization_model_id ?? "",
+      },
+    ],
+    [
+      asrModels,
+      catalog?.selection.asr_model_id,
+      catalog?.selection.diarization_model_id,
+      diarizationModels,
+      t,
+    ],
+  );
+  const activeView =
+    analysisViews.find((view) => view.group === activeGroup) ??
+    analysisViews[0];
+
+  useEffect(() => {
+    if (!onHeaderTitleChange) return;
+    const switcher = viewSwitcherRef.current;
+    if (!switcher) return;
+
+    const scrollParent =
+      switcher.closest(".overflow-y-auto") ??
+      switcher.ownerDocument.scrollingElement ??
+      window;
+
+    const updateTitle = () => {
+      const stickyHeader = switcher.ownerDocument.querySelector(
+        "[data-model-hub-sticky-header]",
+      );
+      const headerBottom =
+        stickyHeader instanceof HTMLElement
+          ? stickyHeader.getBoundingClientRect().bottom
+          : 0;
+      const switcherRect = switcher.getBoundingClientRect();
+      onHeaderTitleChange(
+        switcherRect.bottom <= headerBottom ? activeView.label : null,
+      );
+    };
+
+    updateTitle();
+    window.addEventListener("resize", updateTitle);
+    scrollParent.addEventListener("scroll", updateTitle, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateTitle);
+      scrollParent.removeEventListener("scroll", updateTitle);
+      onHeaderTitleChange(null);
+    };
+  }, [activeView.label, onHeaderTitleChange]);
 
   if (!catalog) {
     return (
@@ -384,46 +513,19 @@ const SpeechAnalysisEnginesSection: React.FC<
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-[var(--text)]">
-            {t("modelHub.analysis.title", {
-              defaultValue: "File ASR and Speaker Isolation",
-            })}
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm leading-5 text-[var(--muted)]">
-            {t("modelHub.analysis.description", {
-              defaultValue:
-                "Choose the engines used by file transcription for heavier ASR and speaker-labeled output. Live dictation keeps using the low-latency speech model selected in Speech (STT).",
-            })}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => void openUrl(FILE_ASR_COLLECTION_URL)}
-            className={interactiveFocusRingClass}
-          >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-            {t("modelHub.analysis.collections.fileAsr", {
-              defaultValue: "File ASR collection",
-            })}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => void openUrl(SPEAKER_ISOLATION_COLLECTION_URL)}
-            className={interactiveFocusRingClass}
-          >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-            {t("modelHub.analysis.collections.speakerIsolation", {
-              defaultValue: "Speaker collection",
-            })}
-          </Button>
-        </div>
+      <div ref={viewSwitcherRef}>
+        <SegmentedControl<AnalysisGroup>
+          value={activeGroup}
+          onChange={setActiveGroup}
+          layoutId="speech-analysis-view-toggle"
+          ariaLabel={t("modelHub.analysis.viewSwitcherLabel", {
+            defaultValue: "Speech analysis view",
+          })}
+          items={analysisViews.map((view) => ({
+            value: view.group,
+            label: view.label,
+          }))}
+        />
       </div>
 
       {error ? (
@@ -433,44 +535,20 @@ const SpeechAnalysisEnginesSection: React.FC<
       ) : null}
 
       <EngineGroup
-        title={t("modelHub.analysis.asr.title", {
-          defaultValue: "File ASR",
-        })}
-        description={t("modelHub.analysis.asr.description", {
-          defaultValue:
-            "Optional file-transcription ASR engines. These are for long audio and model experiments, not the live dictation hot path.",
-        })}
-        group="asr"
-        models={asrModels}
-        selectedModelId={catalog.selection.asr_model_id}
+        title={activeView.label}
+        description={activeView.description}
+        group={activeView.group}
+        models={activeView.models}
+        selectedModelId={activeView.selectedModelId}
+        showIntro={false}
         busyModelId={busyModelId}
         activeDownloads={activeDownloads}
+        cancellingDownloads={cancellingDownloads}
         downloadProgress={downloadProgress}
         deleteConfirmModelId={deleteConfirmModelId}
         onSelect={selectModel}
         onDownload={requestDownload}
-        onRequestDelete={(modelId) => setDeleteConfirmModelId(modelId)}
-        onCancelDelete={() => setDeleteConfirmModelId(null)}
-        onDelete={deleteModel}
-      />
-
-      <EngineGroup
-        title={t("modelHub.analysis.diarization.title", {
-          defaultValue: "Speaker Isolation",
-        })}
-        description={t("modelHub.analysis.diarization.description", {
-          defaultValue:
-            "Speaker diarization engines that assign who-spoke-when labels for file transcripts.",
-        })}
-        group="diarization"
-        models={diarizationModels}
-        selectedModelId={catalog.selection.diarization_model_id}
-        busyModelId={busyModelId}
-        activeDownloads={activeDownloads}
-        downloadProgress={downloadProgress}
-        deleteConfirmModelId={deleteConfirmModelId}
-        onSelect={selectModel}
-        onDownload={requestDownload}
+        onCancelDownload={cancelDownload}
         onRequestDelete={(modelId) => setDeleteConfirmModelId(modelId)}
         onCancelDelete={() => setDeleteConfirmModelId(null)}
         onDelete={deleteModel}
@@ -506,12 +584,15 @@ interface EngineGroupProps {
   group: AnalysisGroup;
   models: SpeechAnalysisModelDescriptor[];
   selectedModelId: string;
+  showIntro?: boolean;
   busyModelId: string | null;
   activeDownloads: Set<string>;
+  cancellingDownloads: Set<string>;
   downloadProgress: Record<string, SpeechAnalysisDownloadProgress>;
   deleteConfirmModelId: string | null;
   onSelect: (group: AnalysisGroup, modelId: string) => void;
   onDownload: (model: SpeechAnalysisModelDescriptor) => void;
+  onCancelDownload: (model: SpeechAnalysisModelDescriptor) => void;
   onRequestDelete: (modelId: string) => void;
   onCancelDelete: () => void;
   onDelete: (model: SpeechAnalysisModelDescriptor) => void;
@@ -523,35 +604,48 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
   group,
   models,
   selectedModelId,
+  showIntro = true,
   busyModelId,
   activeDownloads,
+  cancellingDownloads,
   downloadProgress,
   deleteConfirmModelId,
   onSelect,
   onDownload,
+  onCancelDownload,
   onRequestDelete,
   onCancelDelete,
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const orderedModels = useMemo(() => {
+    const activeIndex = models.findIndex((model) => model.id === selectedModelId);
+    if (activeIndex <= 0) return models;
+    const next = [...models];
+    const [activeModel] = next.splice(activeIndex, 1);
+    return [activeModel, ...next];
+  }, [models, selectedModelId]);
 
   return (
     <section className="space-y-3">
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          {title}
-        </h3>
-        <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-          {description}
-        </p>
-      </div>
+      {showIntro ? (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {title}
+          </h3>
+          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            {description}
+          </p>
+        </div>
+      ) : null}
 
-      {models.length > 0 ? (
+      {orderedModels.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-2">
-          {models.map((model) => {
+          {orderedModels.map((model) => {
             const selected = model.id === selectedModelId;
             const isBusy = busyModelId === model.id;
             const isDownloading = activeDownloads.has(model.id);
+            const isCancelling = cancellingDownloads.has(model.id);
             const deleteConfirmOpen = deleteConfirmModelId === model.id;
             const progress = downloadProgress[model.id];
             const progressPct =
@@ -735,32 +829,64 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
             };
 
             const footerExtra = isDownloading ? (
-              <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-                <div className="mb-2 flex flex-col gap-0.5 text-xs font-medium">
-                  <span className="text-[var(--text)]">
-                    {progressPct !== null
-                      ? t("modelHub.analysis.downloadProgress.percent", {
-                          defaultValue: "Downloading {{percent}}%",
-                          percent: progressPct,
-                        })
-                      : t("modelHub.analysis.downloadProgress.preparing", {
-                          defaultValue: "Preparing download...",
-                        })}
-                  </span>
-                  {progress?.file ? (
-                    <span className="block truncate font-normal text-[var(--muted)]">
-                      {progress.file.includes("/")
-                        ? progress.file.slice(
-                            progress.file.lastIndexOf("/") + 1,
-                          )
-                        : progress.file}
+              <div
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 text-xs font-medium">
+                    <span className="text-[var(--text)]">
+                      {isCancelling
+                        ? t("modelHub.analysis.downloadProgress.cancelling", {
+                            defaultValue: "Cancelling download...",
+                          })
+                        : progressPct !== null
+                          ? t("modelHub.analysis.downloadProgress.percent", {
+                              defaultValue: "Downloading {{percent}}%",
+                              percent: progressPct,
+                            })
+                          : t("modelHub.analysis.downloadProgress.preparing", {
+                              defaultValue: "Preparing download...",
+                            })}
                     </span>
-                  ) : null}
-                  {progress?.error ? (
-                    <span className="font-normal text-[var(--danger)]">
-                      {progress.error}
-                    </span>
-                  ) : null}
+                    {progress?.file ? (
+                      <span className="block truncate font-normal text-[var(--muted)]">
+                        {progress.file.includes("/")
+                          ? progress.file.slice(
+                              progress.file.lastIndexOf("/") + 1,
+                            )
+                          : progress.file}
+                      </span>
+                    ) : null}
+                    {progress?.error ? (
+                      <span className="block font-normal text-[var(--danger)]">
+                        {progress.error}
+                      </span>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={isCancelling}
+                    onClick={() => onCancelDownload(model)}
+                    aria-label={t("modelHub.analysis.actions.cancelDownload", {
+                      defaultValue: "Cancel {{modelName}} download",
+                      modelName: model.label,
+                    })}
+                    title={t("modelHub.analysis.actions.cancelDownload", {
+                      defaultValue: "Cancel {{modelName}} download",
+                      modelName: model.label,
+                    })}
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    {t("common.cancel", { defaultValue: "Cancel" })}
+                  </Button>
                 </div>
                 <div
                   className="h-2 w-full overflow-hidden rounded-full bg-[var(--input)]"

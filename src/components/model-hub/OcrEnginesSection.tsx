@@ -4,7 +4,6 @@ import type { TFunction } from "i18next";
 import {
   AlertTriangle,
   Check,
-  ChevronDown,
   Download,
   FolderOpen,
   Globe,
@@ -12,6 +11,7 @@ import {
   Loader2,
   Monitor,
   ScanSearch,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -31,7 +31,10 @@ import { Button } from "@/components/ui/Button";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
-import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
+import {
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
 
 type OcrProviderFilterValue = "all" | "system" | "neural" | "tesseract";
 
@@ -348,6 +351,21 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       },
     ];
   }, [hubFilterLabels, t]);
+  const selectedProviderLabel = useMemo(() => {
+    const idle = hubFilterLabels
+      ? t("modelHub.ocr.filters.providerIdle", { defaultValue: "Provider" })
+      : t("modelHub.ocr.filters.allProviders", {
+          defaultValue: "All providers",
+        });
+    if (providerFilter === "all") {
+      return idle;
+    }
+    return (
+      providerSelectOptions.find((option) => option.value === providerFilter)
+        ?.label ?? idle
+    );
+  }, [hubFilterLabels, providerFilter, providerSelectOptions, t]);
+  const hasActiveProviderFilter = providerFilter !== "all";
 
   const showSystemCard = useMemo(() => {
     if (providerFilter === "neural" || providerFilter === "tesseract")
@@ -413,24 +431,41 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
   const providerLanguageFilters = hubFilterLabels ? (
     <div className="flex items-center gap-2">
-      <div className="relative inline-flex w-36">
+      <div className="relative inline-flex h-10 w-10 shrink-0">
         <select
           value={providerFilter}
           onChange={(event) =>
             setProviderFilter(event.target.value as OcrProviderFilterValue)
           }
-          className="min-h-9 w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] py-1.5 pe-9 ps-3 text-xs font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+          className={`h-full w-full appearance-none rounded-full border px-0 py-1.5 text-xs font-semibold text-transparent shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+            hasActiveProviderFilter
+              ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+              : "border-[var(--border)] bg-[var(--card)]"
+          }`}
           aria-label={t("modelHub.ocr.filters.providerAria", {
             defaultValue: "Filter OCR engines by provider",
           })}
+          title={`Provider: ${selectedProviderLabel}`}
         >
           {providerSelectOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option
+              key={opt.value}
+              value={opt.value}
+              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
+            >
               {opt.label}
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          {providerFilter === "all" ? (
+            <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
+          ) : providerFilter === "neural" ? (
+            <ScanSearch className="h-4 w-4 text-[var(--text)]" />
+          ) : (
+            <ProviderIcon providerId={providerFilter} size="sm" />
+          )}
+        </div>
       </div>
     </div>
   ) : null;

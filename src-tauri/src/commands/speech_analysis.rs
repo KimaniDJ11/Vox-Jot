@@ -46,6 +46,15 @@ pub async fn download_speech_analysis_model(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn cancel_speech_analysis_download(
+    app: AppHandle,
+    model_id: String,
+) -> Result<(), String> {
+    speech_analysis::cancel_download(&app, model_id).await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn delete_speech_analysis_model(
     app: AppHandle,
     model_id: String,

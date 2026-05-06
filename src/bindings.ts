@@ -1497,6 +1497,14 @@ async downloadSpeechAnalysisModel(modelId: string) : Promise<Result<SpeechAnalys
     else return { status: "error", error: e  as any };
 }
 },
+async cancelSpeechAnalysisDownload(modelId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_speech_analysis_download", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async deleteSpeechAnalysisModel(modelId: string) : Promise<Result<SpeechAnalysisModelDescriptor, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_speech_analysis_model", { modelId }) };

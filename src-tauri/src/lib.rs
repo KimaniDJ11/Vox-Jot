@@ -809,6 +809,7 @@ pub fn run(cli_args: CliArgs) {
         commands::speech_analysis::get_speech_analysis_selection,
         commands::speech_analysis::set_speech_analysis_selection,
         commands::speech_analysis::download_speech_analysis_model,
+        commands::speech_analysis::cancel_speech_analysis_download,
         commands::speech_analysis::delete_speech_analysis_model,
         commands::speech_analysis::get_active_speech_analysis_downloads,
         commands::speech_analysis::get_hugging_face_token_status,

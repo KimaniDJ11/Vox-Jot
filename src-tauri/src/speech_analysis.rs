@@ -6,9 +6,13 @@ use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
@@ -22,6 +26,10 @@ pub const PYANNOTE_COMMUNITY_DIARIZATION_ID: &str = "pyannote-community-1";
 pub const POLYVOICE_DIARIZATION_ID: &str = "onnx-polyvoice-diarization";
 
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static DOWNLOAD_CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+const DOWNLOAD_CANCELLED_MESSAGE: &str = "Download cancelled.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -504,6 +512,24 @@ fn staging_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
         .join(format!("{model_id}.partial")))
 }
 
+async fn cleanup_staging_dir(app: &AppHandle, model_id: &str) -> Result<(), String> {
+    let staging = staging_dir(app, model_id)?;
+    if staging.exists() {
+        tokio_fs::remove_dir_all(&staging)
+            .await
+            .map_err(|err| format!("Failed to remove partial download: {err}"))?;
+    }
+    Ok(())
+}
+
+fn ensure_download_not_cancelled(cancel_flag: &Arc<AtomicBool>) -> Result<(), String> {
+    if cancel_flag.load(Ordering::Relaxed) {
+        Err(DOWNLOAD_CANCELLED_MESSAGE.to_string())
+    } else {
+        Ok(())
+    }
+}
+
 fn bundled_polyvoice_dir() -> Option<PathBuf> {
     let candidate = std::env::current_dir()
         .ok()?
@@ -794,6 +820,7 @@ async fn head_size(client: &reqwest::Client, url: &str) -> Option<u64> {
 async fn download_one_file(
     app: &AppHandle,
     client: &reqwest::Client,
+    cancel_flag: &Arc<AtomicBool>,
     model_id: &str,
     repo_id: &str,
     rel_path: &str,
@@ -803,6 +830,8 @@ async fn download_one_file(
     total_bytes: u64,
     cumulative_bytes: &mut u64,
 ) -> Result<(), String> {
+    ensure_download_not_cancelled(cancel_flag)?;
+
     let url = format!(
         "https://huggingface.co/{repo_id}/resolve/main/{}",
         encode_hf_path(rel_path)
@@ -824,6 +853,7 @@ async fn download_one_file(
             response.status()
         ));
     }
+    ensure_download_not_cancelled(cancel_flag)?;
 
     let mut file = tokio_fs::File::create(target)
         .await
@@ -833,7 +863,9 @@ async fn download_one_file(
     let mut last_emit = Instant::now();
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
+        ensure_download_not_cancelled(cancel_flag)?;
         let chunk = chunk.map_err(|err| format!("Stream failed for {rel_path}: {err}"))?;
+        ensure_download_not_cancelled(cancel_flag)?;
         *cumulative_bytes += chunk.len() as u64;
         file.write_all(&chunk)
             .await
@@ -883,11 +915,22 @@ pub async fn download_model(
             return Err(format!("{} is already downloading.", model.label));
         }
     }
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    DOWNLOAD_CANCEL_FLAGS
+        .lock()
+        .await
+        .insert(model_id.clone(), Arc::clone(&cancel_flag));
 
-    let result = download_model_inner(app, &model, &repo_id).await;
+    let result = download_model_inner(app, &model, &repo_id, &cancel_flag).await;
     ACTIVE_DOWNLOADS.lock().await.remove(&model_id);
+    DOWNLOAD_CANCEL_FLAGS.lock().await.remove(&model_id);
     if let Err(err) = &result {
-        emit_download_progress(app, &model_id, "failed", 0, 0, None, None, None, Some(err));
+        let _ = cleanup_staging_dir(app, &model_id).await;
+        if err == DOWNLOAD_CANCELLED_MESSAGE {
+            emit_download_progress(app, &model_id, "cancelled", 0, 0, None, None, None, None);
+        } else {
+            emit_download_progress(app, &model_id, "failed", 0, 0, None, None, None, Some(err));
+        }
     }
     result
 }
@@ -896,6 +939,7 @@ async fn download_model_inner(
     app: &AppHandle,
     model: &SpeechAnalysisModelDescriptor,
     repo_id: &str,
+    cancel_flag: &Arc<AtomicBool>,
 ) -> Result<SpeechAnalysisModelDescriptor, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(1800))
@@ -904,9 +948,11 @@ async fn download_model_inner(
 
     emit_download_progress(app, &model.id, "preparing", 0, 0, None, None, None, None);
     let files = fetch_hf_repo_files(&client, repo_id, model.gated).await?;
+    ensure_download_not_cancelled(cancel_flag)?;
     let file_count = files.len();
     let mut total_bytes = 0u64;
     for file in &files {
+        ensure_download_not_cancelled(cancel_flag)?;
         let url = format!(
             "https://huggingface.co/{repo_id}/resolve/main/{}",
             encode_hf_path(file)
@@ -928,6 +974,7 @@ async fn download_model_inner(
     );
 
     let staging = staging_dir(app, &model.id)?;
+    ensure_download_not_cancelled(cancel_flag)?;
     if staging.exists() {
         tokio_fs::remove_dir_all(&staging)
             .await
@@ -939,9 +986,11 @@ async fn download_model_inner(
 
     let mut cumulative = 0u64;
     for (idx, rel) in files.iter().enumerate() {
+        ensure_download_not_cancelled(cancel_flag)?;
         download_one_file(
             app,
             &client,
+            cancel_flag,
             &model.id,
             repo_id,
             rel,
@@ -965,6 +1014,7 @@ async fn download_model_inner(
         );
     }
 
+    ensure_download_not_cancelled(cancel_flag)?;
     let final_dir = install_dir(app, &model.id)?;
     if final_dir.exists() {
         tokio_fs::remove_dir_all(&final_dir)
@@ -1043,6 +1093,22 @@ pub fn delete_model(
     }
 
     Ok(descriptor_with_install_state(app, model))
+}
+
+pub async fn cancel_download(app: &AppHandle, model_id: String) -> Result<(), String> {
+    let model = model_by_id(&model_id)
+        .ok_or_else(|| format!("Unknown speech analysis model '{}'.", model_id))?;
+
+    let flag = DOWNLOAD_CANCEL_FLAGS.lock().await.get(&model_id).cloned();
+    let Some(flag) = flag else {
+        cleanup_staging_dir(app, &model_id).await?;
+        return Err(format!("{} is not currently downloading.", model.label));
+    };
+
+    flag.store(true, Ordering::Relaxed);
+    let _ = cleanup_staging_dir(app, &model_id).await;
+    emit_download_progress(app, &model_id, "cancelling", 0, 0, None, None, None, None);
+    Ok(())
 }
 
 pub async fn active_downloads() -> Vec<String> {

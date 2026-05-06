@@ -42,6 +42,9 @@ const ModelHubSection: React.FC = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ModelHubTabId>(readInitialTab);
   const [query, setQuery] = useState("");
+  const [analysisTabLabelOverride, setAnalysisTabLabelOverride] = useState<
+    string | null
+  >(null);
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
 
   useEffect(() => {
@@ -54,6 +57,12 @@ const ModelHubSection: React.FC = () => {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "analysis") {
+      setAnalysisTabLabelOverride(null);
+    }
+  }, [activeTab]);
 
   const searchPlaceholder = t("modelHub.search.globalPlaceholder", {
     defaultValue: "Search models by name, language, or provider…",
@@ -88,7 +97,10 @@ const ModelHubSection: React.FC = () => {
         : null}
 
       <div className="flex min-h-0 flex-col">
-        <div className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0">
+        <div
+          data-model-hub-sticky-header=""
+          className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"
+        >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <LayoutGroup id="model-hub-tabs">
@@ -129,7 +141,13 @@ const ModelHubSection: React.FC = () => {
                           />
                         )}
                         <span className="relative z-10">
-                          {t(tab.labelKey, { defaultValue: tab.defaultLabel })}
+                          {tab.id === "analysis" &&
+                          isActive &&
+                          analysisTabLabelOverride
+                            ? analysisTabLabelOverride
+                            : t(tab.labelKey, {
+                                defaultValue: tab.defaultLabel,
+                              })}
                         </span>
                       </motion.button>
                     );
@@ -158,7 +176,10 @@ const ModelHubSection: React.FC = () => {
           </div>
 
           <div className={activeTab === "analysis" ? "block" : "hidden"}>
-            <SpeechAnalysisEnginesSection hubSearchQuery={query} />
+            <SpeechAnalysisEnginesSection
+              hubSearchQuery={query}
+              onHeaderTitleChange={setAnalysisTabLabelOverride}
+            />
           </div>
 
           <div className={activeTab === "llm" ? "block" : "hidden"}>

@@ -68,6 +68,16 @@ def engine_for_model(model_id: str) -> EngineSpec | None:
     return None
 
 
+def engine_for_request(provider_id: str | None = None, model_id: str | None = None) -> EngineSpec | None:
+    if model_id:
+        spec = engine_for_model(model_id)
+        if spec is not None:
+            return spec
+    if provider_id:
+        return engine_for_provider(provider_id)
+    return None
+
+
 def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
     if not profile_id or not config.profiles_dir:
         return None, None
@@ -174,7 +184,10 @@ def resolve_target(request_body: SpeechRequest) -> tuple[EngineSpec, Path, Runti
     selection = load_selection(selection_file)
     spec = None
     if request_body.extra_controls and request_body.extra_controls.get("provider_id"):
-        spec = engine_for_provider(str(request_body.extra_controls["provider_id"]))
+        spec = engine_for_request(
+            str(request_body.extra_controls.get("provider_id") or ""),
+            str(request_body.extra_controls.get("model_id") or ""),
+        )
     if spec is None and request_body.model:
         spec = engine_for_model(request_body.model)
     if spec is None and selection.model_id:
@@ -209,9 +222,7 @@ async def listen_voices(
     provider_id: str = Query(...),
     model_id: str | None = Query(default=None),
 ) -> JSONResponse:
-    spec = engine_for_provider(provider_id)
-    if spec is None and model_id:
-        spec = engine_for_model(model_id)
+    spec = engine_for_request(provider_id, model_id)
     if spec is None:
         raise HTTPException(status_code=400, detail="Unknown provider or model.")
 
@@ -229,11 +240,7 @@ async def listen_voices(
 
 @app.post("/listen/prepare")
 async def listen_prepare(body: PrepareRequest) -> JSONResponse:
-    spec = None
-    if body.provider_id:
-        spec = engine_for_provider(body.provider_id)
-    if spec is None and body.model_id:
-        spec = engine_for_model(body.model_id)
+    spec = engine_for_request(body.provider_id, body.model_id)
     if spec is None:
         raise HTTPException(status_code=400, detail="Unknown provider or model.")
     model_dir = discover_model(spec)
@@ -263,7 +270,7 @@ async def listen_selection(body: SelectionRequest) -> JSONResponse:
     )
     save_selection(selection_file, selection)
 
-    spec = engine_for_provider(selection.provider_id or "") or engine_for_model(selection.model_id or "")
+    spec = engine_for_request(selection.provider_id, selection.model_id)
     model_dir = discover_model(spec) if spec else None
     if spec and model_dir:
         asyncio.create_task(asyncio.to_thread(host.warm_model, spec, model_dir))

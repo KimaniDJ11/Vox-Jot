@@ -98,6 +98,25 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
 
         self.assertEqual(worker._chatterbox_checkpoint_root(), base)
 
+    def test_chatterbox_base_prefers_base_when_combined_pack_contains_turbo(self):
+        worker = self.make_worker("chatterbox", "chatterbox")
+        base = worker.model_dir / "checkpoints" / "base"
+        turbo = worker.model_dir / "checkpoints" / "turbo"
+        base.mkdir(parents=True, exist_ok=True)
+        turbo.mkdir(parents=True, exist_ok=True)
+        (base / "t3_cfg.safetensors").write_text("", encoding="utf-8")
+        (turbo / "t3_turbo_v1.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), base)
+
+    def test_chatterbox_multilingual_accepts_official_hf_snapshot_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox-multilingual")
+        (worker.model_dir / "t3_mtl23ls_v2.safetensors").write_text("", encoding="utf-8")
+        (worker.model_dir / "grapheme_mtl_merged_expanded_v1.json").write_text("{}", encoding="utf-8")
+        (worker.model_dir / "t3_cfg.safetensors").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_checkpoint_root(), worker.model_dir)
+
     def test_chatterbox_turbo_installs_package_from_base_source(self):
         temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-runtime-install-"))
         config = RuntimeConfig(
@@ -159,6 +178,55 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
                 "repetition_penalty": 1.6,
                 "top_p": 0.85,
                 "top_k": 250,
+            },
+        )
+        self.assertTrue(output.exists())
+
+    def test_chatterbox_multilingual_synthesis_passes_language_and_verified_controls(self):
+        worker = self.make_worker("chatterbox", "chatterbox-multilingual")
+
+        class DummyEngine:
+            sr = 24000
+
+            def __init__(self):
+                self.kwargs = None
+
+            def generate(self, text, **kwargs):
+                self.kwargs = kwargs
+                return [0.0, 0.0, 0.0]
+
+        engine = DummyEngine()
+        worker.engine = engine
+        output = worker.model_dir / "out.wav"
+
+        worker._synthesize_chatterbox(
+            {
+                "text": "bonjour",
+                "locale": "fr-FR",
+                "reference_audio_path": "/tmp/reference.wav",
+                "controls": {
+                    "cfg_weight": 0.4,
+                    "temperature": 0.7,
+                    "repetition_penalty": 2.0,
+                    "top_p": 1.0,
+                    "min_p": 0.05,
+                    "exaggeration": 0.6,
+                },
+            },
+            output,
+        )
+
+        self.assertEqual(
+            engine.kwargs,
+            {
+                "language_id": "fr",
+                "audio_prompt_path": "/tmp/reference.wav",
+                "cfg_weight": 0.4,
+                "temperature": 0.7,
+                "repetition_penalty": 2.0,
+                "min_p": 0.05,
+                "top_p": 1.0,
+                "exaggeration": 0.6,
             },
         )
         self.assertTrue(output.exists())

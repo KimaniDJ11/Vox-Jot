@@ -135,7 +135,11 @@ class EngineWorker:
 
         if self.provider_id == "chatterbox":
             checkpoints = self._chatterbox_checkpoint_root()
-            if self.model_id == "chatterbox-turbo" or self._is_chatterbox_turbo_root(checkpoints):
+            if self.model_id == "chatterbox-multilingual":
+                from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+
+                self.engine = ChatterboxMultilingualTTS.from_local(checkpoints, self.device)
+            elif self.model_id == "chatterbox-turbo" or self._is_chatterbox_turbo_root(checkpoints):
                 from chatterbox.tts_turbo import ChatterboxTurboTTS
 
                 self.engine = ChatterboxTurboTTS.from_local(checkpoints, self.device)
@@ -269,18 +273,45 @@ class EngineWorker:
             or (candidate / "t3_cfg.yaml").exists()
         )
 
+    def _is_chatterbox_multilingual_root(self, candidate: Path) -> bool:
+        return (candidate / "t3_mtl23ls_v2.safetensors").exists() and (
+            candidate / "grapheme_mtl_merged_expanded_v1.json"
+        ).exists()
+
     def _chatterbox_checkpoint_root(self) -> Path:
         candidates = (
             self.model_dir / "checkpoints" / "turbo",
             self.model_dir / "checkpoints" / "base",
+            self.model_dir / "checkpoints" / "multilingual",
             self.model_dir / "chatterbox-turbo",
+            self.model_dir / "chatterbox-multilingual",
             self.model_dir / "chatterbox",
             self.model_dir,
         )
         for candidate in candidates:
+            if self.model_id == "chatterbox-multilingual":
+                if self._is_chatterbox_multilingual_root(candidate):
+                    return candidate
+                continue
+            if self.model_id == "chatterbox-turbo":
+                if self._is_chatterbox_turbo_root(candidate):
+                    return candidate
+                continue
+            if self.model_id == "chatterbox":
+                if self._is_chatterbox_base_root(candidate):
+                    return candidate
+                continue
             if self._is_chatterbox_turbo_root(candidate) or self._is_chatterbox_base_root(candidate):
                 return candidate
         raise RuntimeError("Chatterbox checkpoints are missing.")
+
+    def _chatterbox_language_id(self, locale: str | None) -> str:
+        language = (locale or "en").strip().lower().replace("_", "-")
+        if not language:
+            return "en"
+        if language in ("zh-cn", "zh-hans", "zh-hant", "zh-tw", "zh-hk"):
+            return "zh"
+        return language.split("-")[0]
 
     def _synthesize_kokoro(self, payload: dict[str, Any], output_path: Path) -> None:
         import numpy as np
@@ -303,7 +334,21 @@ class EngineWorker:
 
         controls = payload.get("controls", {})
         audio_prompt = payload.get("reference_audio_path")
-        if self.model_id == "chatterbox-turbo":
+        if self.model_id == "chatterbox-multilingual":
+            wav = self.engine.generate(
+                payload["text"],
+                language_id=self._chatterbox_language_id(payload.get("locale")),
+                audio_prompt_path=audio_prompt,
+                cfg_weight=float(controls.get("cfg_weight", 0.5)),
+                temperature=float(controls.get("temperature", 0.8)),
+                repetition_penalty=float(controls.get("repetition_penalty", 2.0)),
+                min_p=float(controls.get("min_p", 0.05)),
+                top_p=float(controls.get("top_p", 1.0)),
+                exaggeration=float(
+                    controls.get("exaggeration", controls.get("expressiveness", 0.5))
+                ),
+            )
+        elif self.model_id == "chatterbox-turbo":
             wav = self.engine.generate(
                 payload["text"],
                 audio_prompt_path=audio_prompt,

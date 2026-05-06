@@ -56,6 +56,22 @@ class RuntimeControlsTest(unittest.TestCase):
             {"randomness", "repetition_penalty", "top_p", "top_k"},
         )
 
+    def test_chatterbox_multilingual_is_cataloged_with_verified_controls(self):
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "chatterbox-multilingual")
+
+        self.assertEqual(spec.provider_id, "chatterbox")
+        self.assertEqual(spec.license_label, "MIT")
+        self.assertTrue(spec.supports_voice_cloning)
+        self.assertFalse(spec.supports_inline_tags)
+        self.assertIn("chatterbox-multilingual/chatterbox", spec.model_dirs)
+        self.assertIn("fr", spec.supported_languages)
+        self.assertIn("zh", spec.supported_languages)
+        control_ids = {control["id"] for control in spec.style_controls}
+        self.assertEqual(
+            control_ids,
+            {"guidance", "randomness", "exaggeration", "repetition_penalty", "top_p", "min_p"},
+        )
+
     def test_unsupported_fields_are_ignored_for_openvoice(self):
         mapped = map_controls_for_engine(
             "openvoice",
@@ -90,6 +106,30 @@ class RuntimeControlsTest(unittest.TestCase):
                 "repetition_penalty": 1.6,
                 "top_p": 0.85,
                 "top_k": 250,
+            },
+        )
+
+    def test_chatterbox_multilingual_mapping_uses_verified_defaults(self):
+        mapped = map_controls_for_engine(
+            "chatterbox",
+            {
+                "randomness": 0.8,
+                "guidance": 0.4,
+                "exaggeration": 0.6,
+                "min_p": 0.04,
+            },
+            "chatterbox-multilingual",
+        )
+
+        self.assertEqual(
+            mapped,
+            {
+                "cfg_weight": 0.4,
+                "temperature": 0.8,
+                "repetition_penalty": 2.0,
+                "top_p": 1.0,
+                "min_p": 0.04,
+                "exaggeration": 0.6,
             },
         )
 

@@ -471,8 +471,7 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         provider_id: TTS_PROVIDER_CHATTERBOX_ID,
         model_id: "chatterbox-turbo",
         label: "Chatterbox Turbo",
-        description:
-            "Lower-latency Chatterbox voice cloning with native paralinguistic tags.",
+        description: "Lower-latency Chatterbox voice cloning with native paralinguistic tags.",
         archive_name: "tts-chatterbox-turbo.tar.gz",
         install_subdir: "chatterbox-turbo",
         source_repo_dir: Some("chatterbox-turbo"),
@@ -484,6 +483,26 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         supports_instruction_prompt: false,
         supports_inline_tags: true,
         hf_repo_id: Some("ResembleAI/chatterbox-turbo"),
+    },
+    ManagedRuntimeModelDefinition {
+        provider_id: TTS_PROVIDER_CHATTERBOX_ID,
+        model_id: "chatterbox-multilingual",
+        label: "Chatterbox Multilingual",
+        description: "Zero-shot multilingual Chatterbox TTS with 23 language tags.",
+        archive_name: "tts-chatterbox-multilingual.tar.gz",
+        install_subdir: "chatterbox-multilingual",
+        source_repo_dir: Some("chatterbox"),
+        engine_family: "chatterbox",
+        license_label: Some("MIT"),
+        locale: Some("mul"),
+        supported_languages: &[
+            "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it", "ja", "ko",
+            "ms", "nl", "no", "pl", "pt", "ru", "sv", "sw", "tr", "zh",
+        ],
+        supports_voice_cloning: true,
+        supports_instruction_prompt: false,
+        supports_inline_tags: false,
+        hf_repo_id: Some("ResembleAI/chatterbox"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_KOKORO_ID,
@@ -7294,6 +7313,23 @@ mod tests {
         assert_eq!(turbo.license_label, Some("MIT"));
         assert!(turbo.supports_voice_cloning);
         assert!(turbo.supports_inline_tags);
+    }
+
+    #[test]
+    fn managed_catalog_includes_chatterbox_multilingual() {
+        let multilingual = MANAGED_RUNTIME_MODEL_DEFINITIONS
+            .iter()
+            .find(|definition| definition.model_id == "chatterbox-multilingual")
+            .expect("Chatterbox Multilingual should stay in the managed TTS catalog");
+
+        assert_eq!(multilingual.provider_id, TTS_PROVIDER_CHATTERBOX_ID);
+        assert_eq!(multilingual.hf_repo_id, Some("ResembleAI/chatterbox"));
+        assert_eq!(multilingual.license_label, Some("MIT"));
+        assert_eq!(multilingual.locale, Some("mul"));
+        assert!(multilingual.supported_languages.contains(&"fr"));
+        assert!(multilingual.supported_languages.contains(&"zh"));
+        assert!(multilingual.supports_voice_cloning);
+        assert!(!multilingual.supports_inline_tags);
     }
 
     #[test]

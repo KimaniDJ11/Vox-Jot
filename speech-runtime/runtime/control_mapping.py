@@ -74,9 +74,16 @@ def map_controls_for_engine(
     if provider_id == "chatterbox" and model_id != "chatterbox-turbo":
         mapped["cfg_weight"] = float(controls.get("guidance", 0.5))
         mapped["temperature"] = max(0.1, randomness)
-        mapped["repetition_penalty"] = float(controls.get("repetition_penalty", 1.2))
+        mapped["repetition_penalty"] = float(
+            controls.get(
+                "repetition_penalty",
+                2.0 if model_id == "chatterbox-multilingual" else 1.2,
+            )
+        )
         mapped["top_p"] = (
-            float(controls["top_p"]) if controls.get("top_p") is not None else 0.95
+            float(controls["top_p"])
+            if controls.get("top_p") is not None
+            else (1.0 if model_id == "chatterbox-multilingual" else 0.95)
         )
         if controls.get("min_p") is not None:
             mapped["min_p"] = float(controls["min_p"])

@@ -201,6 +201,7 @@ const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   openvoice: "~1.6 GB",
   chatterbox: "~3.0 GB",
   "chatterbox-turbo": "~4.1 GB",
+  "chatterbox-multilingual": "~6.5 GB",
   "kokoro-82m-v1.0": "~350 MB",
   "kokoro-82m": "~350 MB",
   "xtts-v2": "~1.9 GB",
@@ -1449,6 +1450,35 @@ function fallbackTuningControlsForModel(
         1,
         1000,
       ),
+    ];
+  }
+
+  if (modelId.includes("chatterbox-multilingual")) {
+    return [
+      sliderTuningControl(
+        "guidance",
+        "guidance",
+        "Guidance",
+        "Controls how strongly Chatterbox follows its conditioning signal.",
+        0,
+        1,
+        0.05,
+        0.5,
+      ),
+      randomnessTuningControl(0.8),
+      sliderTuningControl(
+        "exaggeration",
+        "style",
+        "Exaggeration",
+        "Pushes Chatterbox toward a more pronounced style.",
+        0.25,
+        2,
+        0.05,
+        0.5,
+      ),
+      repetitionTuningControl(2),
+      topPTuningControl(1),
+      minPTuningControl(0.05),
     ];
   }
 

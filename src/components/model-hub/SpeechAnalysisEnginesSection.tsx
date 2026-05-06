@@ -76,6 +76,17 @@ const readinessLabel = (model: SpeechAnalysisModelDescriptor): string =>
 const sourceKindLabel = (model: SpeechAnalysisModelDescriptor): string =>
   model.source_kind.replace(/_/g, " ");
 
+const providerIconId = (model: SpeechAnalysisModelDescriptor): string => {
+  if (model.provider.trim().toLowerCase() === "vox jot") {
+    return "vox_jot";
+  }
+
+  return resolveModelProviderId(
+    `${model.provider} ${model.label} ${model.repo_id ?? ""}`,
+    model.source_kind === "hugging_face" ? "huggingface" : "generic",
+  );
+};
+
 const modelMatchesQuery = (
   model: SpeechAnalysisModelDescriptor,
   query: string,
@@ -833,12 +844,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
               <HubModelCard
                 key={`${group}-${model.id}`}
                 title={model.label}
-                providerId={resolveModelProviderId(
-                  `${model.provider} ${model.label} ${model.repo_id ?? ""}`,
-                  model.source_kind === "hugging_face"
-                    ? "huggingface"
-                    : "generic",
-                )}
+                providerId={providerIconId(model)}
                 subline={model.provider}
                 headerBadges={headerBadges}
                 description={model.description}

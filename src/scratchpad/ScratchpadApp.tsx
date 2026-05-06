@@ -27,6 +27,7 @@ import {
   interactiveFocusRingClass,
   titleBarOverlayButtonFocusClass,
 } from "@/lib/interactiveFocus";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { formatTime } from "@/utils/dateFormat";
 import { useNotesStore } from "./notesStore";
 
@@ -361,6 +362,21 @@ const ScratchpadApp: React.FC = () => {
   };
 
   const handleDeleteNote = async (id: number) => {
+    const note = notes.find((candidate) => candidate.id === id);
+    const noteTitle =
+      note?.title.trim() ||
+      t("jotPad.untitledNote", { defaultValue: "Untitled note" });
+    if (
+      !confirmDestructiveAction(
+        t("jotPad.deleteConfirm", {
+          noteTitle,
+          defaultValue: 'Delete note "{{noteTitle}}"?',
+        }),
+      )
+    ) {
+      return;
+    }
+
     await deleteNote(id);
   };
 

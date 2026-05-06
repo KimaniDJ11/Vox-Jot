@@ -571,6 +571,31 @@ function HuggingFaceMark({ size }: { size: number; color: string }) {
   );
 }
 
+function VoxJotMark({ size, color }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3.5c-2.1 0-3.8 1.7-3.8 3.8v4.1c0 2.1 1.7 3.8 3.8 3.8s3.8-1.7 3.8-3.8V7.3c0-2.1-1.7-3.8-3.8-3.8Z"
+        fill={color}
+      />
+      <path
+        d="M5.7 10.8c0 3.5 2.8 6.3 6.3 6.3s6.3-2.8 6.3-6.3M12 17.1v3.4M8.8 20.5h6.4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M10.7 7.3h2.6M10.7 10.3h2.6"
+        stroke="var(--panel-bg)"
+        strokeWidth={1.4}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // ---------- Brand Configurations ----------
 
 type MarkComponent = (props: {
@@ -586,6 +611,12 @@ interface BrandConfig {
 }
 
 const BRANDS: Record<string, BrandConfig> = {
+  vox_jot: {
+    bg: "var(--accent)",
+    fg: "var(--inverse-text)",
+    letter: "VJ",
+    mark: VoxJotMark,
+  },
   openai: { bg: "#000000", fg: "#FFFFFF", letter: "O", mark: OpenAIMark },
   nvidia: { bg: "#76B900", fg: "#FFFFFF", letter: "N", mark: NvidiaMark },
   apple: { bg: "#F5F5F7", fg: "#111827", letter: "", mark: AppleMark },
@@ -697,6 +728,8 @@ const BRANDS: Record<string, BrandConfig> = {
 
 const PROVIDER_BRAND: Record<string, string> = {
   // STT providers
+  vox_jot: "vox_jot",
+  current_dictation: "vox_jot",
   stt_whisper: "openai",
   stt_parakeet: "nvidia",
   stt_moonshine: "useful_sensors",
@@ -835,6 +868,8 @@ interface FamilyRule {
 
 // Order matters: more specific keywords should win over broader ones.
 const FAMILY_RULES: FamilyRule[] = [
+  { keyword: "vox jot", providerId: "vox_jot" },
+  { keyword: "current dictation", providerId: "vox_jot" },
   { keyword: "apple intelligence", providerId: "apple" },
   { keyword: "apple speech", providerId: "apple" },
   { keyword: "distil-whisper", providerId: "huggingface" },
@@ -957,6 +992,8 @@ export function resolveModelProviderId(
 }
 
 const PROVIDER_DISPLAY_NAME: Record<string, string> = {
+  vox_jot: "Vox Jot",
+  current_dictation: "Vox Jot",
   stt_whisper: "OpenAI Whisper",
   stt_parakeet: "NVIDIA Parakeet",
   stt_moonshine: "Useful Sensors Moonshine",

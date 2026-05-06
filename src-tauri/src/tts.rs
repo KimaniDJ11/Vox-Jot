@@ -496,8 +496,8 @@ const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = &[
         license_label: Some("MIT"),
         locale: Some("mul"),
         supported_languages: &[
-            "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it", "ja", "ko",
-            "ms", "nl", "no", "pl", "pt", "ru", "sv", "sw", "tr", "zh",
+            "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi", "it", "ja", "ko", "ms",
+            "nl", "no", "pl", "pt", "ru", "sv", "sw", "tr", "zh",
         ],
         supports_voice_cloning: true,
         supports_instruction_prompt: false,

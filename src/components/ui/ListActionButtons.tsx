@@ -1,6 +1,7 @@
 import React from "react";
 import { Download, Plus, Trash2, Upload } from "lucide-react";
 import { Button } from "./Button";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 
 export interface ListActionLabels {
   add?: string;
@@ -78,7 +79,11 @@ export const ListActionButtons: React.FC<ListActionButtonsProps> = ({
         type="button"
         size="icon-sm"
         variant="danger-ghost"
-        onClick={onClear}
+        onClick={() => {
+          if (confirmDestructiveAction(labels.clearAll)) {
+            onClear();
+          }
+        }}
         disabled={bulkDisabled}
         title={labels.clearAll}
         aria-label={labels.clearAll}

@@ -41,6 +41,15 @@ describe("resolveModelProviderId", () => {
     );
   });
 
+  it("resolves the built-in Vox Jot dictation engine to the app mark", () => {
+    expect(
+      resolveModelProviderId(
+        "Vox Jot Current Dictation Engine",
+        "generic",
+      ),
+    ).toBe("vox_jot");
+  });
+
   it("covers every built-in model family with a company/provider icon id", () => {
     const cases: Array<{
       title: string;
@@ -97,6 +106,11 @@ describe("resolveModelProviderId", () => {
         title: "Apple Speech",
         runtimeProviderId: "stt_apple_speech",
         expected: "apple",
+      },
+      {
+        title: "Current Dictation Engine Vox Jot",
+        runtimeProviderId: "generic",
+        expected: "vox_jot",
       },
 
       // TTS
@@ -306,6 +320,7 @@ describe("resolveModelProviderId", () => {
   it("renders requested model families as marks instead of fallback letters", () => {
     const providerIds = [
       "apple",
+      "vox_jot",
       "stt_apple_speech",
       "stt_moonshine",
       "stt_sensevoice",

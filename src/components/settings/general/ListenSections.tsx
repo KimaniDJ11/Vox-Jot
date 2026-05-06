@@ -4833,6 +4833,21 @@ const VoiceCloningSection: React.FC<{
                         variant="ghost"
                         size="sm"
                         onClick={async () => {
+                          if (
+                            !confirmDestructiveAction(
+                              t(
+                                "listen.voiceCloning.clearCollectedDataConfirm",
+                                {
+                                  profileLabel: selectedProfile.label,
+                                  defaultValue:
+                                    'Clear collected training data for "{{profileLabel}}"?',
+                                },
+                              ),
+                            )
+                          ) {
+                            return;
+                          }
+
                           await clearProfileCollectedData(selectedProfile.id);
                           await speech.refreshProfiles();
                         }}

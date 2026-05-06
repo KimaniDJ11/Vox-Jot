@@ -227,7 +227,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       : 0;
 
   const hasAudio = duration > 0;
-  const isReady = !!loadedSrc || !!initialSrc;
+  const isReady = Boolean(loadedSrc) || Boolean(initialSrc);
   const tileLabel = isLoading ? "Loading audio" : isPlaying ? "Pause" : "Play";
   const controlIcon = isLoading ? (
     <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

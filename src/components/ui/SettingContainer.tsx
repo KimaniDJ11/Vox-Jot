@@ -126,18 +126,11 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
     />
   );
 
-  const titleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] truncate ${
-    disabled ? "opacity-50" : ""
-  }`;
-  const descriptionClass = `text-[12px] leading-5 text-[var(--muted)] line-clamp-2 ${
-    disabled ? "opacity-50" : ""
-  }`;
-  const stackedTitleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] ${
-    disabled ? "opacity-50" : ""
-  }`;
-  const stackedDescriptionClass = `text-[12px] leading-5 text-[var(--muted)] ${
-    disabled ? "opacity-50" : ""
-  }`;
+  const disabledClass = disabled ? "opacity-50" : "";
+  const titleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] truncate ${disabledClass}`;
+  const descriptionClass = `text-[12px] leading-5 text-[var(--muted)] line-clamp-2 ${disabledClass}`;
+  const stackedTitleClass = `text-[14px] font-medium leading-5 tracking-[-0.005em] ${disabledClass}`;
+  const stackedDescriptionClass = `text-[12px] leading-5 text-[var(--muted)] ${disabledClass}`;
 
   if (layout === "stacked" || layout === "compact") {
     const stackedPadding = grouped ? "px-4 py-3" : "px-4 py-3.5";

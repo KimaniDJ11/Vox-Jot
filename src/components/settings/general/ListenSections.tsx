@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   ChevronDown,
@@ -991,8 +992,19 @@ function useListenSpeechState() {
         return;
       }
 
-      await deleteTtsVoicePreset(presetId);
-      await refreshAll();
+      try {
+        await deleteTtsVoicePreset(presetId);
+        await refreshAll();
+      } catch (error) {
+        console.error("Failed to delete voice preset:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("listen.myVoices.deletePresetFailed", {
+                defaultValue: "Could not delete voice.",
+              }),
+        );
+      }
     },
     [presets, refreshAll, t],
   );
@@ -3808,13 +3820,26 @@ const SpeechPackManagerCard: React.FC<{
                       }
 
                       speech.setBusyPackId(pack.id);
-                      const result = await commands.removeTtsPack(pack.id);
-                      if (result.status !== "ok") {
-                        speech.setStatusMessage(result.error);
-                      } else {
-                        await speech.refreshAll();
+                      try {
+                        const result = await commands.removeTtsPack(pack.id);
+                        if (result.status !== "ok") {
+                          speech.setStatusMessage(result.error);
+                          toast.error(result.error);
+                        } else {
+                          await speech.refreshAll();
+                        }
+                      } catch (error) {
+                        console.error("Failed to remove speech pack:", error);
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : t("listen.packManager.removeFailed", {
+                                defaultValue: "Could not remove speech pack.",
+                              }),
+                        );
+                      } finally {
+                        speech.setBusyPackId(null);
                       }
-                      speech.setBusyPackId(null);
                     }}
                   >
                     {t("listen.packManager.remove")}
@@ -4775,6 +4800,19 @@ const VoiceCloningSection: React.FC<{
                           try {
                             await deleteTtsVoiceProfile(selectedProfile.id);
                             await speech.refreshProfiles();
+                          } catch (error) {
+                            console.error(
+                              "Failed to delete voice profile:",
+                              error,
+                            );
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : t("listen.voiceCloning.deleteProfileFailed", {
+                                    defaultValue:
+                                      "Could not delete voice profile.",
+                                  }),
+                            );
                           } finally {
                             speech.setBusyProfileAction(null);
                           }
@@ -4889,8 +4927,26 @@ const VoiceCloningSection: React.FC<{
                             return;
                           }
 
-                          await clearProfileCollectedData(selectedProfile.id);
-                          await speech.refreshProfiles();
+                          try {
+                            await clearProfileCollectedData(selectedProfile.id);
+                            await speech.refreshProfiles();
+                          } catch (error) {
+                            console.error(
+                              "Failed to clear collected data:",
+                              error,
+                            );
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : t(
+                                    "listen.voiceCloning.clearCollectedDataFailed",
+                                    {
+                                      defaultValue:
+                                        "Could not clear collected data.",
+                                    },
+                                  ),
+                            );
+                          }
                         }}
                         disabled={!speech.ttsEnabled}
                         className="text-red-500 hover:text-red-600"

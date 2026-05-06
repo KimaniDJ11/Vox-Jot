@@ -48,18 +48,18 @@ export interface CommandMenuProps {
   onJumpToSection?: (id: string) => void;
 }
 
-const THEMES: { id: string; label: string }[] = [
-  { id: "system", label: "System" },
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "graphite", label: "Graphite" },
-  { id: "slate", label: "Slate" },
-  { id: "sepia", label: "Sepia" },
-  { id: "ocean", label: "Ocean" },
-  { id: "rose", label: "Rose" },
-  { id: "forest", label: "Forest" },
-  { id: "solarized", label: "Solarized" },
-];
+const THEME_IDS = [
+  "system",
+  "light",
+  "dark",
+  "graphite",
+  "slate",
+  "sepia",
+  "ocean",
+  "rose",
+  "forest",
+  "solarized",
+] as const;
 
 export const CommandMenu: React.FC<CommandMenuProps> = ({
   open,
@@ -90,67 +90,80 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
     [onClose],
   );
 
+  const groups = useMemo(
+    () => ({
+      navigate: t("commandMenu.groups.navigate"),
+      actions: t("commandMenu.groups.actions"),
+      open: t("commandMenu.groups.open"),
+      theme: t("commandMenu.groups.theme"),
+      jumpTo: t("commandMenu.groups.jumpTo"),
+    }),
+    [t],
+  );
+
   const actions: CommandAction[] = useMemo(() => {
     const base: CommandAction[] = [
       {
         id: "nav.dictate",
-        title: "Start dictation",
-        subtitle: "Open the Dictate workspace",
+        title: t("commandMenu.actions.startDictation"),
+        subtitle: t("commandMenu.actions.startDictationSubtitle"),
         icon: Compass,
-        group: "Navigate",
+        group: groups.navigate,
         keywords: ["dictation", "record"],
         onRun: () => onNavigate("dictate"),
       },
       {
         id: "nav.refine",
-        title: "Go to Refine",
+        title: t("commandMenu.actions.goToRefine"),
         icon: Compass,
-        group: "Navigate",
+        group: groups.navigate,
         keywords: ["post-process", "edit"],
         onRun: () => onNavigate("refine"),
       },
       {
         id: "nav.listen",
-        title: "Go to Listen",
+        title: t("commandMenu.actions.goToListen"),
         icon: Compass,
-        group: "Navigate",
+        group: groups.navigate,
         keywords: ["tts", "voice"],
         onRun: () => onNavigate("listen"),
       },
       {
         id: "nav.settings",
-        title: "Open Settings",
+        title: t("commandMenu.actions.openSettings"),
         icon: Compass,
-        group: "Navigate",
+        group: groups.navigate,
         keywords: ["preferences", "config"],
         shortcut: ["⌘", ","],
         onRun: () => onNavigate("settings"),
       },
       {
         id: "jot.toggle",
-        title: "Open Jot Pad",
+        title: t("commandMenu.actions.openJotPad"),
         icon: StickyNote,
-        group: "Actions",
+        group: groups.actions,
         keywords: ["scratchpad", "note", "pad"],
         onRun: () => void commands.toggleScratchpad(),
       },
       {
         id: "post-process.toggle",
         title: postProcessEnabled
-          ? "Disable post-process"
-          : "Enable post-process",
-        subtitle: postProcessEnabled ? "AI cleanup is on" : "AI cleanup is off",
+          ? t("commandMenu.actions.disablePostProcess")
+          : t("commandMenu.actions.enablePostProcess"),
+        subtitle: postProcessEnabled
+          ? t("commandMenu.actions.postProcessOn")
+          : t("commandMenu.actions.postProcessOff"),
         icon: Sparkles,
-        group: "Actions",
+        group: groups.actions,
         keywords: ["ai", "cleanup", "rewrite"],
         onRun: () => onTogglePostProcess(),
       },
       {
         id: "history.open-last",
-        title: "Open last transcription",
-        subtitle: "Jump to recent history",
+        title: t("commandMenu.actions.openLastTranscription"),
+        subtitle: t("commandMenu.actions.openLastTranscriptionSubtitle"),
         icon: History,
-        group: "Actions",
+        group: groups.actions,
         keywords: ["recent", "latest", "history"],
         onRun: () => {
           onNavigate("dictate");
@@ -159,10 +172,10 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
       },
       {
         id: "history.copy-last",
-        title: "Copy last transcription",
-        subtitle: "Copy the most recent transcript",
+        title: t("commandMenu.actions.copyLastTranscription"),
+        subtitle: t("commandMenu.actions.copyLastTranscriptionSubtitle"),
         icon: Copy,
-        group: "Actions",
+        group: groups.actions,
         keywords: ["clipboard", "recent", "latest"],
         onRun: async () => {
           const result = await commands.getLatestHistoryEntry();
@@ -181,61 +194,63 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
       },
       {
         id: "action.cancel",
-        title: "Cancel Current Operation",
+        title: t("commandMenu.actions.cancelOperation"),
         icon: XCircle,
-        group: "Actions",
+        group: groups.actions,
         keywords: ["stop", "abort", "esc"],
         onRun: () => void commands.cancelOperation(),
       },
       {
         id: "open.recordings",
-        title: "Open Recordings Folder",
+        title: t("commandMenu.actions.openRecordings"),
         icon: FolderOpen,
-        group: "Open",
+        group: groups.open,
         onRun: () => void commands.openRecordingsFolder(),
       },
       {
         id: "open.logs",
-        title: "Open Logs Folder",
+        title: t("commandMenu.actions.openLogs"),
         icon: FileText,
-        group: "Open",
+        group: groups.open,
         onRun: () => void commands.openLogDir(),
       },
       {
         id: "open.appdata",
-        title: "Open App Data Folder",
+        title: t("commandMenu.actions.openAppData"),
         icon: Database,
-        group: "Open",
+        group: groups.open,
         onRun: () => void commands.openAppDataDir(),
       },
     ];
 
-    THEMES.forEach((th) => {
+    THEME_IDS.forEach((id) => {
       const Icon =
-        th.id === "light"
+        id === "light"
           ? Sun
-          : th.id === "system"
+          : id === "system"
             ? Laptop
-            : th.id === "dark" || th.id === "slate" || th.id === "graphite"
+            : id === "dark" || id === "slate" || id === "graphite"
               ? Moon
               : Palette;
       base.push({
-        id: `theme.${th.id}`,
-        title: `Switch theme → ${th.label}`,
+        id: `theme.${id}`,
+        title: t("commandMenu.actions.switchTheme", {
+          name: t(`commandMenu.themes.${id}`),
+        }),
         icon: Icon,
-        group: "Theme",
+        group: groups.theme,
         keywords: ["appearance", "color"],
-        onRun: () => onSelectTheme(th.id),
+        onRun: () => onSelectTheme(id),
       });
     });
 
     sectionJumps.forEach((s) => {
       base.push({
         id: `jump.${s.view}.${s.id}`,
-        title: `Jump to ${s.label}`,
+        title: t("commandMenu.actions.jumpTo", { label: s.label }),
         subtitle: s.view,
         icon: ArrowRight,
-        group: "Jump to",
+        group: groups.jumpTo,
         onRun: () => onJumpToSection?.(s.id),
       });
     });
@@ -243,10 +258,10 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
     base.push(
       {
         id: "jump.refine.write-profiles",
-        title: "Apply write profile → Write Profiles",
-        subtitle: "Jump to write profiles",
+        title: t("commandMenu.actions.applyWriteProfile"),
+        subtitle: t("commandMenu.actions.applyWriteProfileSubtitle"),
         icon: ArrowRight,
-        group: "Jump to",
+        group: groups.jumpTo,
         onRun: () => {
           onNavigate("refine");
           onJumpToSection?.("write-profiles");
@@ -254,10 +269,10 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
       },
       {
         id: "jump.refine.phrase-keys",
-        title: "Insert phrase key → Phrase Keys",
-        subtitle: "Jump to phrase key settings",
+        title: t("commandMenu.actions.insertPhraseKey"),
+        subtitle: t("commandMenu.actions.insertPhraseKeySubtitle"),
         icon: ArrowRight,
-        group: "Jump to",
+        group: groups.jumpTo,
         onRun: () => {
           onNavigate("refine");
           onJumpToSection?.("phrase-keys");
@@ -267,12 +282,14 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
 
     return base;
   }, [
+    groups,
     onJumpToSection,
     onNavigate,
     onSelectTheme,
     onTogglePostProcess,
     postProcessEnabled,
     sectionJumps,
+    t,
   ]);
 
   const grouped = useMemo(() => {
@@ -349,13 +366,11 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
                   placeholder={t("commandMenu.searchPlaceholder")}
                   className="h-12 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
                 />
-                {/* eslint-disable-next-line i18next/no-literal-string */}
-                <Kbd>esc</Kbd>
+                <Kbd>{t("commandMenu.esc")}</Kbd>
               </div>
               <Command.List className="max-h-[420px] overflow-y-auto px-1 py-2">
                 <Command.Empty className="px-4 py-6 text-center text-[13px] text-[var(--muted)]">
-                  {/* eslint-disable-next-line i18next/no-literal-string */}
-                  <>No results.</>
+                  {t("commandMenu.noResults")}
                 </Command.Empty>
                 {grouped.map(([group, items]) => (
                   <Command.Group

@@ -87,7 +87,7 @@ import {
 import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
 import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings";
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
-import { SnippetsEnabledToggle } from "@/components/settings/SnippetsEnabledToggle";
+import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
 import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
 import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
 import {
@@ -99,58 +99,6 @@ import { subtleCardClassName } from "@/components/ui/subtleCard";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
 
 export { subtleCardClassName };
-const jotPadEmptyTitle = "Start your first note";
-const jotPadEmptyDescription =
-  "Dictate or type into the Jot Pad to keep thoughts handy.";
-const createNoteLabel = "Create note";
-const saveLabel = "Save";
-const useDefaultsLabel = "Use Defaults";
-const appleIntelligenceModelNotice =
-  "Apple Intelligence does not need a separate model override here.";
-const saveModelLabel = "Save Model";
-const localPrivacyModeNotice =
-  "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.";
-const debugRevealNotice =
-  "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.";
-const routeDebuggerEmptyInput = "Enter some text to inspect.";
-const routeDebuggerFailed = "Analysis failed.";
-const analyzeRouteLabel = "Analyze Route";
-const analyzingRouteLabel = "Analyzing...";
-const aboutSummaryPrimary =
-  "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.";
-const aboutSummarySecondary =
-  "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.";
-const recentHistoryDescription =
-  "Review transcripts, playback recordings, and reuse or save past dictations.";
-const jotPadDescription =
-  "Capture quick notes in the floating pad and reopen them when you need to keep working.";
-const translationDescription =
-  "Set the target language and choose how translated dictation should be processed.";
-const myVoicesDescription =
-  "Manage saved voice profiles and choose which one Vox Jot uses for spoken output.";
-const voiceCloningDescription =
-  "Create clone profiles from reference audio, then turn them into saved Listen voices.";
-const studioDescription =
-  "Assign saved voices to characters, edit a script, and render story audio.";
-const generatedAudioDescription =
-  "Replay, reveal, copy, star, or remove audio rendered from Studio.";
-const smartCorrectionsDemoTitle = "Smart corrections demo";
-const smartCorrectionsDemoDescription =
-  "Shows how learned fixes become visible without relying on color alone.";
-const rawLabel = "Raw";
-const fixedLabel = "Fixed";
-const correctionDemoPrefix = "I am going";
-const correctionDemoWrongWord = "two";
-const correctionDemoFixedWord = "to";
-const correctionDemoSuffix = "the store";
-const processingRoutePreviewTitle = "Processing route preview";
-const processingRoutePreviewDescription =
-  "Dictation starts on-device; optional cleanup follows the selected refine provider.";
-const recordingRetentionPreviewTitle = "Recording retention";
-const day1Label = "Day 1";
-const day7Label = "Day 7";
-const day30Label = "Day 30";
-const routeMonitorLabel = "Route monitor";
 
 const SectionIntro: React.FC<{
   title: string;
@@ -186,54 +134,58 @@ const MiniStatusPill: React.FC<{
   );
 };
 
-const CorrectionsDemoCard: React.FC = () => (
-  <div className={subtleCardClassName}>
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-sm font-semibold text-[var(--text)]">
-          {smartCorrectionsDemoTitle}
-        </p>
-        <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-          {smartCorrectionsDemoDescription}
-        </p>
+const CorrectionsDemoCard: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className={subtleCardClassName}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {t("appSections.corrections.demoTitle")}
+          </p>
+          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            {t("appSections.corrections.demoDescription")}
+          </p>
+        </div>
+        <MiniStatusPill
+          icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
+          label={t("appSections.corrections.appliedPill")}
+          tone="success"
+        />
       </div>
-      <MiniStatusPill
-        icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
-        label="Correction applied"
-        tone="success"
-      />
+      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+            {t("appSections.corrections.rawLabel")}
+          </p>
+          <p className="mt-2 text-sm text-[var(--text)]">
+            {t("appSections.corrections.demoPrefix")}{" "}
+            <span className="underline decoration-[var(--warning)] decoration-2">
+              {t("appSections.corrections.demoWrongWord")}
+            </span>{" "}
+            {t("appSections.corrections.demoSuffix")}
+          </p>
+        </div>
+        <ArrowRight className="hidden h-4 w-4 text-[var(--muted)] md:block" />
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+            {t("appSections.corrections.fixedLabel")}
+          </p>
+          <p className="mt-2 text-sm text-[var(--text)]">
+            {t("appSections.corrections.demoPrefix")}{" "}
+            <span className="rounded bg-[var(--accent-gold-soft)] px-1 font-bold underline decoration-[var(--accent-gold)] decoration-2">
+              {t("appSections.corrections.demoFixedWord")}
+            </span>{" "}
+            {t("appSections.corrections.demoSuffix")}
+          </p>
+        </div>
+      </div>
     </div>
-    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
-          {rawLabel}
-        </p>
-        <p className="mt-2 text-sm text-[var(--text)]">
-          {correctionDemoPrefix}{" "}
-          <span className="underline decoration-[var(--warning)] decoration-2">
-            {correctionDemoWrongWord}
-          </span>{" "}
-          {correctionDemoSuffix}
-        </p>
-      </div>
-      <ArrowRight className="hidden h-4 w-4 text-[var(--muted)] md:block" />
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
-          {fixedLabel}
-        </p>
-        <p className="mt-2 text-sm text-[var(--text)]">
-          {correctionDemoPrefix}{" "}
-          <span className="rounded bg-[var(--accent-gold-soft)] px-1 font-bold underline decoration-[var(--accent-gold)] decoration-2">
-            {correctionDemoFixedWord}
-          </span>{" "}
-          {correctionDemoSuffix}
-        </p>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const AIProcessingRoutePreview: React.FC = () => {
+  const { t } = useTranslation();
   const { getSetting } = useSettings();
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
   const providers = getSetting("post_process_providers") ?? [];
@@ -254,10 +206,10 @@ const AIProcessingRoutePreview: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--text)]">
-            {processingRoutePreviewTitle}
+            {t("appSections.routePreview.title")}
           </p>
           <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-            {processingRoutePreviewDescription}
+            {t("appSections.routePreview.description")}
           </p>
         </div>
         <MiniStatusPill
@@ -268,7 +220,11 @@ const AIProcessingRoutePreview: React.FC = () => {
               <Wifi className="h-3.5 w-3.5" aria-hidden />
             )
           }
-          label={localProvider ? "Local route" : "Cloud route"}
+          label={
+            localProvider
+              ? t("appSections.routePreview.localRoute")
+              : t("appSections.routePreview.cloudRoute")
+          }
           tone={localProvider ? "success" : "info"}
         />
       </div>
@@ -276,16 +232,16 @@ const AIProcessingRoutePreview: React.FC = () => {
         <RouteCard
           selected={localProvider}
           icon={<Cpu className="h-5 w-5" aria-hidden />}
-          title="Local AI"
-          detail="Mic -> device model -> paste"
-          badge="Offline capable"
+          title={t("appSections.routePreview.localAi")}
+          detail={t("appSections.routePreview.localDetail")}
+          badge={t("appSections.routePreview.offlineCapable")}
         />
         <RouteCard
           selected={!localProvider}
           icon={<Cloud className="h-5 w-5" aria-hidden />}
-          title="Cloud AI"
-          detail="Mic -> network -> provider"
-          badge="Uses internet"
+          title={t("appSections.routePreview.cloudAi")}
+          detail={t("appSections.routePreview.cloudDetail")}
+          badge={t("appSections.routePreview.usesInternet")}
         />
       </div>
     </div>
@@ -321,14 +277,15 @@ const RouteCard: React.FC<{
 );
 
 const RetentionTimelinePreview: React.FC = () => {
+  const { t } = useTranslation();
   const { getSetting } = useSettings();
   const retention = getSetting("recording_retention_period") ?? "never";
   const labels: Record<string, string> = {
-    never: "Keep until removed",
-    preserve_limit: "Keep saved history limit",
-    days3: "Delete after 3 days",
-    weeks2: "Delete after 2 weeks",
-    months3: "Delete after 3 months",
+    never: t("appSections.retention.never"),
+    preserve_limit: t("appSections.retention.preserveLimit"),
+    days3: t("appSections.retention.days3"),
+    weeks2: t("appSections.retention.weeks2"),
+    months3: t("appSections.retention.months3"),
   };
 
   return (
@@ -336,7 +293,7 @@ const RetentionTimelinePreview: React.FC = () => {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-[var(--text)]">
-            {recordingRetentionPreviewTitle}
+            {t("appSections.retention.title")}
           </p>
           <MiniStatusPill
             icon={<Trash2 className="h-3.5 w-3.5" aria-hidden />}
@@ -345,15 +302,15 @@ const RetentionTimelinePreview: React.FC = () => {
           />
         </div>
         <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2 text-xs font-semibold text-[var(--text)]">
-          <span>{day1Label}</span>
+          <span>{t("appSections.retention.day1")}</span>
           <span className="h-px bg-[var(--border)]" aria-hidden />
-          <span>{day7Label}</span>
+          <span>{t("appSections.retention.day7")}</span>
           <span className="h-px bg-[var(--border)]" aria-hidden />
-          <span>{day30Label}</span>
+          <span>{t("appSections.retention.day30")}</span>
           <span className="h-px bg-[var(--border)]" aria-hidden />
           <Trash2
             className="h-4 w-4 text-[var(--warning)]"
-            aria-label="Auto-delete"
+            aria-label={t("appSections.retention.autoDelete")}
           />
         </div>
       </div>
@@ -385,11 +342,12 @@ export const DictateModelsSection: React.FC<{
 };
 
 export const DictateHistorySection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <SectionIntro
-        title="Recent History"
-        description={recentHistoryDescription}
+        title={t("appSections.sections.recentHistoryTitle")}
+        description={t("appSections.sections.recentHistoryDescription")}
       >
         <HistorySettings />
       </SectionIntro>
@@ -406,9 +364,13 @@ export const FileTranscriptionSection: React.FC = () => {
 };
 
 export const RefineTranslationSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Translation" description={translationDescription}>
+      <SettingsGroup
+        title={t("appSections.sections.translationTitle")}
+        description={t("appSections.sections.translationDescription")}
+      >
         <TranslationSettingsCard />
       </SettingsGroup>
     </div>
@@ -477,10 +439,11 @@ export const CorrectionsSettingsSection: React.FC = () => {
 export const LearnedCorrectionsSection: React.FC<{
   titleActionTargetId?: string;
 }> = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <CorrectionDictionaryView
-        sectionTitle="Dictionary"
+        sectionTitle={t("appSections.sections.dictionaryTitle")}
         showHeaderTitle={false}
       />
     </div>
@@ -488,9 +451,13 @@ export const LearnedCorrectionsSection: React.FC<{
 };
 
 export const ListenMyVoicesSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SectionIntro title="My Voices" description={myVoicesDescription}>
+      <SectionIntro
+        title={t("appSections.sections.myVoicesTitle")}
+        description={t("appSections.sections.myVoicesDescription")}
+      >
         <MyVoicesPanel showGroupTitle={false} />
       </SectionIntro>
     </div>
@@ -519,9 +486,13 @@ export const ListenCreateVoicesSection: React.FC = () => {
 };
 
 export const ListenVoiceCloningSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SectionIntro title="Voice Cloning" description={voiceCloningDescription}>
+      <SectionIntro
+        title={t("appSections.sections.voiceCloningTitle")}
+        description={t("appSections.sections.voiceCloningDescription")}
+      >
         <VoiceCloningPanel showGroupTitle={false} />
       </SectionIntro>
     </div>
@@ -532,13 +503,14 @@ const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
   note,
   onOpen,
 }) => {
+  const { t } = useTranslation();
   const title =
     note.title.trim() ||
     note.content.trim().split("\n")[0].slice(0, 60) ||
-    "Untitled";
+    t("appSections.common.untitled");
   const preview = note.content.trim()
     ? note.content.trim().split("\n").slice(0, 2).join(" ").slice(0, 100)
-    : "Empty note";
+    : t("appSections.common.emptyNote");
   const date = new Date(note.updated_at * 1000);
   const formattedDate = date.toLocaleDateString(undefined, {
     month: "short",
@@ -631,22 +603,20 @@ export const JotPadSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <SectionIntro title="Jot Pad" description={jotPadDescription}>
+      <SectionIntro
+        title={t("appSections.sections.jotPadTitle")}
+        description={t("appSections.sections.jotPadDescription")}
+      >
         {isLoading ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
-            Loading notes...
+            {t("appSections.common.loadingNotes")}
           </div>
         ) : notes.length === 0 ? (
           <EmptyState
             icon={<NotebookPen className="h-5 w-5" aria-hidden />}
-            title={t("jotPad.empty", { defaultValue: jotPadEmptyTitle })}
-            description={t("jotPad.emptyDescription", {
-              defaultValue: jotPadEmptyDescription,
-            })}
-            example={t("jotPad.emptyExample", {
-              defaultValue:
-                "For example, dictate meeting notes here, then refine them into a clean summary.",
-            })}
+            title={t("appSections.jotPad.empty")}
+            description={t("appSections.jotPad.emptyDescription")}
+            example={t("appSections.jotPad.emptyExample")}
             action={
               <Button
                 size="sm"
@@ -654,7 +624,7 @@ export const JotPadSection: React.FC = () => {
                 onClick={() => void createNote()}
               >
                 <Plus className="mr-1 h-4 w-4" />
-                {t("jotPad.createFirst", { defaultValue: createNoteLabel })}
+                {t("appSections.common.createNote")}
               </Button>
             }
           />
@@ -675,13 +645,14 @@ export const JotPadSection: React.FC = () => {
 };
 
 export const GeneralAppSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Dictation">
+      <SettingsGroup title={t("appSections.groups.dictation")}>
         <LanguageSelector descriptionMode="inline" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title="App">
+      <SettingsGroup title={t("appSections.groups.app")}>
         <ThemeSelector descriptionMode="tooltip" grouped={true} />
         <AppFontScale />
         <StartHidden descriptionMode="tooltip" grouped={true} />
@@ -695,13 +666,13 @@ export const GeneralAppSettingsSection: React.FC = () => {
 
       <SpeechPackManagerSection />
 
-      <SettingsGroup title="Write Profiles">
+      <SettingsGroup title={t("appSections.groups.writeProfiles")}>
         <WriteProfilesCompactCard />
       </SettingsGroup>
 
-      <SettingsGroup title="Feature Toggles">
+      <SettingsGroup title={t("appSections.groups.featureToggles")}>
         <SpeechOutputToggle descriptionMode="tooltip" grouped={true} />
-        <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
+        <PhraseKeysEnabledToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
       <AutoReadbackPanel />
@@ -710,9 +681,10 @@ export const GeneralAppSettingsSection: React.FC = () => {
 };
 
 export const ShortcutsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Dictation Shortcuts">
+      <SettingsGroup title={t("appSections.groups.dictationShortcuts")}>
         <ShortcutInput shortcutId="transcribe" grouped={true} />
         <ShortcutInput
           shortcutId="transcribe_with_post_process"
@@ -723,7 +695,7 @@ export const ShortcutsSettingsSection: React.FC = () => {
         <ShortcutInput shortcutId="cancel" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title="Text Action Shortcuts">
+      <SettingsGroup title={t("appSections.groups.textActionShortcuts")}>
         <ShortcutInput shortcutId="rewrite_selection" grouped={true} />
         <ShortcutInput shortcutId="translate_selection" grouped={true} />
         <ShortcutInput shortcutId="speak_selection" grouped={true} />
@@ -758,8 +730,8 @@ const CustomFillerWordsSetting: React.FC = () => {
 
   return (
     <SettingContainer
-      title="Custom Filler Words"
-      description="Add one filler word per line to override the default speech cleanup list. Leave this blank to use Vox Jot's defaults."
+      title={t("appSections.fillerWords.title")}
+      description={t("appSections.fillerWords.description")}
       descriptionMode="tooltip"
       layout="stacked"
       grouped={true}
@@ -777,7 +749,7 @@ const CustomFillerWordsSetting: React.FC = () => {
             onClick={() => void saveDraft()}
             disabled={isUpdating("custom_filler_words")}
           >
-            {saveLabel}
+            {t("appSections.common.save")}
           </Button>
           <Button
             size="sm"
@@ -785,7 +757,7 @@ const CustomFillerWordsSetting: React.FC = () => {
             onClick={() => void updateSetting("custom_filler_words", null)}
             disabled={isUpdating("custom_filler_words")}
           >
-            {useDefaultsLabel}
+            {t("appSections.common.useDefaults")}
           </Button>
         </div>
       </div>
@@ -794,6 +766,7 @@ const CustomFillerWordsSetting: React.FC = () => {
 };
 
 export const RecordingDevicesSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   const { updateSetting } = useSettings();
   const {
     audio_feedback: audioFeedbackEnabled,
@@ -817,12 +790,12 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
         <VolumeSlider disabled={!audioFeedbackEnabled} />
         <ShowOverlay descriptionMode="inline" grouped={true} />
         <SoundPicker
-          label="Sound Theme"
-          description="Choose the start and stop cue sounds Vox Jot plays around recording."
+          label={t("appSections.soundPicker.label")}
+          description={t("appSections.soundPicker.description")}
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Speech Output Device">
+      <SettingsGroup title={t("appSections.groups.speechOutputDevice")}>
         <OutputDeviceSelector
           descriptionMode="tooltip"
           grouped={true}
@@ -835,8 +808,8 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
             min={0}
             max={1}
             step={0.05}
-            label="Speech Volume"
-            description="Global playback volume for spoken output on the selected output device."
+            label={t("appSections.speechVolume.label")}
+            description={t("appSections.speechVolume.description")}
             descriptionMode="tooltip"
             grouped={true}
             formatValue={(value) => `${Math.round(value * 100)}%`}
@@ -845,7 +818,7 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="Speech Cleanup">
+      <SettingsGroup title={t("appSections.groups.speechCleanup")}>
         <AudioEnhancement descriptionMode="tooltip" grouped={true} />
         <CustomFillerWordsSetting />
       </SettingsGroup>
@@ -911,10 +884,12 @@ const TranslationProviderSettingsCard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Translation Provider Overrides">
+      <SettingsGroup
+        title={t("appSections.groups.translationProviderOverrides")}
+      >
         <SettingContainer
-          title="Translation Provider"
-          description="Choose which provider handles translation when Vox Jot uses AI-assisted translation routes."
+          title={t("appSections.translationProvider.title")}
+          description={t("appSections.translationProvider.description")}
           descriptionMode="tooltip"
           grouped={true}
         >
@@ -930,8 +905,8 @@ const TranslationProviderSettingsCard: React.FC = () => {
         </SettingContainer>
 
         <SettingContainer
-          title="Translation Model"
-          description="Pick a provider-specific translation model. This uses the same provider catalog as cleanup and rewrite setup."
+          title={t("appSections.translationProvider.modelTitle")}
+          description={t("appSections.translationProvider.modelDescription")}
           descriptionMode="tooltip"
           grouped={true}
           layout="stacked"
@@ -939,7 +914,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
         >
           {providerId === "apple_intelligence" ? (
             <p className="text-sm text-[var(--muted)]">
-              {appleIntelligenceModelNotice}
+              {t("appSections.translationProvider.appleNotice")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -965,7 +940,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
                   className="flex-1 min-h-[44px]"
                 />
                 <Button size="sm" onClick={() => void saveModel()}>
-                  {saveModelLabel}
+                  {t("appSections.common.saveModel")}
                 </Button>
               </div>
             </div>
@@ -977,8 +952,10 @@ const TranslationProviderSettingsCard: React.FC = () => {
           onChange={(enabled) =>
             void updateSetting("translation_translate_snippets", enabled)
           }
-          label="Translate Phrase Keys"
-          description="Apply translation rules to phrase-key expansions when they are inserted into translated output."
+          label={t("appSections.translationProvider.translatePhraseKeysLabel")}
+          description={t(
+            "appSections.translationProvider.translatePhraseKeysDescription",
+          )}
           descriptionMode="tooltip"
           grouped={true}
         />
@@ -1012,6 +989,7 @@ export const AISetupSettingsSection: React.FC = () => {
 };
 
 export const PrivacyStorageSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
   const debugMode = getSetting("debug_mode") ?? false;
@@ -1025,8 +1003,8 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
             void updateSetting("local_privacy_mode", enabled)
           }
           isUpdating={isUpdating("local_privacy_mode")}
-          label="Local Privacy Mode"
-          description="Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available."
+          label={t("appSections.privacy.localPrivacyModeLabel")}
+          description={t("appSections.privacy.localPrivacyModeDescription")}
           descriptionMode="inline"
           grouped={true}
         />
@@ -1041,19 +1019,22 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       {localPrivacyMode && (
-        <Alert variant="info">{localPrivacyModeNotice}</Alert>
+        <Alert variant="info">
+          {t("appSections.privacy.localPrivacyNotice")}
+        </Alert>
       )}
     </div>
   );
 };
 
 export const DiagnosticsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
   const { getSetting } = useSettings();
   const debugMode = getSetting("debug_mode") ?? false;
 
   return (
     <div className="space-y-6">
-      <SettingsGroup title="Labs">
+      <SettingsGroup title={t("appSections.groups.labs")}>
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
         {debugMode ? (
           <KeyboardImplementationSelector
@@ -1063,7 +1044,7 @@ export const DiagnosticsSettingsSection: React.FC = () => {
         ) : null}
       </SettingsGroup>
 
-      <SettingsGroup title="Local API">
+      <SettingsGroup title={t("appSections.groups.localApi")}>
         <LocalApiToggle grouped={true} />
       </SettingsGroup>
 
@@ -1076,7 +1057,9 @@ export const DiagnosticsSettingsSection: React.FC = () => {
           <DebugDiagnosticsPanel />
         </>
       ) : (
-        <Alert variant="info">{debugRevealNotice}</Alert>
+        <Alert variant="info">
+          {t("appSections.diagnostics.debugRevealNotice")}
+        </Alert>
       )}
     </div>
   );
@@ -1087,14 +1070,11 @@ const DebugDiagnosticsPanel: React.FC = () => {
   const [routeInput, setRouteInput] = useState("");
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [routeResult, setRouteResult] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [routeResult, setRouteResult] = useState<unknown>(null);
 
   const analyzeRoute = async () => {
     if (!routeInput.trim()) {
-      setRouteError(routeDebuggerEmptyInput);
+      setRouteError(t("appSections.routeMonitor.errorEmpty"));
       setRouteResult(null);
       return;
     }
@@ -1105,13 +1085,15 @@ const DebugDiagnosticsPanel: React.FC = () => {
     try {
       const result = await commands.debugAnalyzePostProcessRoute(routeInput);
       if (result.status === "ok") {
-        setRouteResult(result.data as unknown as Record<string, unknown>);
+        setRouteResult(result.data);
       } else {
         setRouteError(result.error);
       }
     } catch (error) {
       setRouteError(
-        error instanceof Error ? error.message : routeDebuggerFailed,
+        error instanceof Error
+          ? error.message
+          : t("appSections.routeMonitor.errorAnalysisFailed"),
       );
     } finally {
       setRouteLoading(false);
@@ -1119,13 +1101,13 @@ const DebugDiagnosticsPanel: React.FC = () => {
   };
 
   return (
-    <SettingsGroup title="Route Debugger">
+    <SettingsGroup title={t("appSections.routeMonitor.groupTitle")}>
       <div className="space-y-3 px-5 py-4">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
           <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
               <Cpu className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-              {routeMonitorLabel}
+              {t("appSections.routeMonitor.label")}
             </div>
             <MiniStatusPill
               icon={
@@ -1138,7 +1120,11 @@ const DebugDiagnosticsPanel: React.FC = () => {
                 )
               }
               label={
-                routeError ? "Error" : routeResult ? "Analyzed" : "Waiting"
+                routeError
+                  ? t("appSections.routeMonitor.error")
+                  : routeResult
+                    ? t("appSections.routeMonitor.analyzed")
+                    : t("appSections.routeMonitor.waiting")
               }
               tone={
                 routeError ? "warning" : routeResult ? "success" : "default"
@@ -1149,16 +1135,16 @@ const DebugDiagnosticsPanel: React.FC = () => {
             <p>
               <span className="text-[var(--muted)]">&gt;</span>{" "}
               {routeInput.trim()
-                ? "Input staged for route analysis"
-                : "Waiting for dictation input..."}
+                ? t("appSections.routeMonitor.inputStaged")
+                : t("appSections.routeMonitor.waitingForInput")}
             </p>
             <p>
               <span className="text-[var(--muted)]">&gt;</span>{" "}
               {routeLoading
-                ? "Analyzing route..."
+                ? t("appSections.routeMonitor.analyzing")
                 : routeResult
-                  ? "Route analysis complete"
-                  : "Analyze Route ready"}
+                  ? t("appSections.routeMonitor.complete")
+                  : t("appSections.routeMonitor.ready")}
             </p>
           </div>
         </div>
@@ -1170,11 +1156,13 @@ const DebugDiagnosticsPanel: React.FC = () => {
         />
         <div className="flex gap-2">
           <Button onClick={() => void analyzeRoute()} disabled={routeLoading}>
-            {routeLoading ? analyzingRouteLabel : analyzeRouteLabel}
+            {routeLoading
+              ? t("appSections.common.analyzing")
+              : t("appSections.common.analyzeRoute")}
           </Button>
         </div>
         {routeError && <Alert variant="error">{routeError}</Alert>}
-        {routeResult && (
+        {routeResult != null && (
           <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-xs text-[var(--text)]">
             {JSON.stringify(routeResult, null, 2)}
           </pre>
@@ -1185,13 +1173,14 @@ const DebugDiagnosticsPanel: React.FC = () => {
 };
 
 export const AboutSection: React.FC = () => {
+  const { t } = useTranslation();
   const [version, setVersion] = useState("...");
 
   useEffect(() => {
     getVersion()
       .then((value) => setVersion(value))
-      .catch(() => setVersion("unknown"));
-  }, []);
+      .catch(() => setVersion(t("appSections.about.versionUnknown")));
+  }, [t]);
 
   return (
     <div className="space-y-6">
@@ -1202,16 +1191,18 @@ export const AboutSection: React.FC = () => {
           </div>
         </div>
         <VoxJotTextLogo className="mx-auto mt-4 h-10 w-auto max-w-[220px]" />
-        <p className="mt-1 font-mono text-sm text-[var(--muted)]">{`Version ${version}`}</p>
+        <p className="mt-1 font-mono text-sm text-[var(--muted)]">
+          {t("appSections.about.version", { version })}
+        </p>
         <div className="mt-5 flex justify-center">
           <UpdateChecker />
         </div>
       </div>
 
-      <SettingsGroup title="Acknowledgments">
+      <SettingsGroup title={t("appSections.groups.acknowledgments")}>
         <div className="space-y-3 px-5 py-4 text-sm leading-6 text-[var(--muted)]">
-          <p>{aboutSummaryPrimary}</p>
-          <p>{aboutSummarySecondary}</p>
+          <p>{t("appSections.about.summaryPrimary")}</p>
+          <p>{t("appSections.about.summarySecondary")}</p>
         </div>
       </SettingsGroup>
     </div>
@@ -1219,9 +1210,13 @@ export const AboutSection: React.FC = () => {
 };
 
 export const StoryStudioAppSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
-      <SectionIntro title="Studio" description={studioDescription}>
+      <SectionIntro
+        title={t("appSections.sections.studioTitle")}
+        description={t("appSections.sections.studioDescription")}
+      >
         <div className="-mx-6 md:-mx-8">
           <StoryStudioSection />
         </div>
@@ -1231,11 +1226,12 @@ export const StoryStudioAppSection: React.FC = () => {
 };
 
 export const StoryAudioHistoryAppSection: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <SectionIntro
-        title="Generated Audio"
-        description={generatedAudioDescription}
+        title={t("appSections.sections.generatedAudioTitle")}
+        description={t("appSections.sections.generatedAudioDescription")}
       >
         <StoryAudioHistorySection />
       </SectionIntro>

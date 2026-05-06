@@ -43,10 +43,7 @@ describe("resolveModelProviderId", () => {
 
   it("resolves the built-in Vox Jot dictation engine to the app mark", () => {
     expect(
-      resolveModelProviderId(
-        "Vox Jot Current Dictation Engine",
-        "generic",
-      ),
+      resolveModelProviderId("Vox Jot Current Dictation Engine", "generic"),
     ).toBe("vox_jot");
   });
 

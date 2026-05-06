@@ -619,7 +619,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
 }) => {
   const { t } = useTranslation();
   const orderedModels = useMemo(() => {
-    const activeIndex = models.findIndex((model) => model.id === selectedModelId);
+    const activeIndex = models.findIndex(
+      (model) => model.id === selectedModelId,
+    );
     if (activeIndex <= 0) return models;
     const next = [...models];
     const [activeModel] = next.splice(activeIndex, 1);
@@ -881,7 +883,10 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                     })}
                   >
                     {isCancelling ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      <Loader2
+                        className="h-3.5 w-3.5 animate-spin"
+                        aria-hidden
+                      />
                     ) : (
                       <X className="h-3.5 w-3.5" aria-hidden />
                     )}

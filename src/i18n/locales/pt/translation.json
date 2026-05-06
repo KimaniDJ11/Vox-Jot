@@ -956,7 +956,10 @@
           "placeholder": "Search corrections",
           "ariaLabel": "Search learned corrections",
           "clear": "Clear search",
-          "empty": "No corrections match your search for '{{query}}'."
+          "empty": "No corrections match your search for '{{query}}'.",
+          "dictionaryPlaceholder": "Search dictionary",
+          "dictionaryAriaLabel": "Search dictionary",
+          "dictionaryEmpty": "No dictionary entries match your search for '{{query}}'."
         },
         "columns": {
           "original": "Original",
@@ -1171,7 +1174,8 @@
     "noOptionsFound": "Nenhuma opção encontrada",
     "active": "Active",
     "downloaded": "Downloaded",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "done": "Done"
   },
   "accessibility": {
     "permissionsRequired": "Permissões de Acessibilidade Necessárias",
@@ -1324,7 +1328,18 @@
   },
   "listen": {
     "tuning": {
-      "styleInstructions": "Style Instructions"
+      "styleInstructions": "Style Instructions",
+      "appliedTo": "Tuning applies to {{model}}",
+      "resetAll": "Reset all",
+      "resetAllHint": "Reset every parameter to its default value",
+      "noExtraControls": "No verified generation controls are available for this model in Vox Jot yet.",
+      "groups": {
+        "delivery": "Delivery",
+        "style": "Style",
+        "sampler": "Sampler",
+        "guidance": "Guidance",
+        "advanced": "Advanced"
+      }
     },
     "myVoices": {
       "active": "Active",
@@ -1558,7 +1573,54 @@
     }
   },
   "commandMenu": {
-    "searchPlaceholder": "Type a command or search..."
+    "searchPlaceholder": "Type a command or search...",
+    "esc": "esc",
+    "noResults": "No results.",
+    "groups": {
+      "navigate": "Navigate",
+      "actions": "Actions",
+      "open": "Open",
+      "theme": "Theme",
+      "jumpTo": "Jump to"
+    },
+    "actions": {
+      "startDictation": "Start dictation",
+      "startDictationSubtitle": "Open the Dictate workspace",
+      "goToRefine": "Go to Refine",
+      "goToListen": "Go to Listen",
+      "openSettings": "Open Settings",
+      "openJotPad": "Open Jot Pad",
+      "disablePostProcess": "Disable post-process",
+      "enablePostProcess": "Enable post-process",
+      "postProcessOn": "AI cleanup is on",
+      "postProcessOff": "AI cleanup is off",
+      "openLastTranscription": "Open last transcription",
+      "openLastTranscriptionSubtitle": "Jump to recent history",
+      "copyLastTranscription": "Copy last transcription",
+      "copyLastTranscriptionSubtitle": "Copy the most recent transcript",
+      "cancelOperation": "Cancel current operation",
+      "openRecordings": "Open recordings folder",
+      "openLogs": "Open logs folder",
+      "openAppData": "Open app data folder",
+      "switchTheme": "Switch theme → {{name}}",
+      "applyWriteProfile": "Apply write profile → Write profiles",
+      "applyWriteProfileSubtitle": "Jump to write profiles",
+      "insertPhraseKey": "Insert phrase key → Phrase keys",
+      "insertPhraseKeySubtitle": "Jump to phrase key settings",
+      "jumpTo": "Jump to {{label}}"
+    },
+    "themes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark",
+      "graphite": "Graphite",
+      "slate": "Slate",
+      "sepia": "Sepia",
+      "ocean": "Ocean",
+      "rose": "Rose",
+      "forest": "Forest",
+      "solarized": "Solarized"
+    }
   },
   "storyStudio": {
     "cast": {
@@ -1566,6 +1628,139 @@
     },
     "script": {
       "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
+    }
+  },
+  "appSections": {
+    "common": {
+      "save": "Save",
+      "useDefaults": "Use defaults",
+      "saveModel": "Save model",
+      "analyzeRoute": "Analyze route",
+      "analyzing": "Analyzing...",
+      "createNote": "Create note",
+      "loadingNotes": "Loading notes...",
+      "untitled": "Untitled",
+      "emptyNote": "Empty note"
+    },
+    "corrections": {
+      "demoTitle": "Smart corrections demo",
+      "demoDescription": "Shows how learned fixes become visible without relying on color alone.",
+      "appliedPill": "Correction applied",
+      "rawLabel": "Raw",
+      "fixedLabel": "Fixed",
+      "demoPrefix": "I am going",
+      "demoWrongWord": "two",
+      "demoFixedWord": "to",
+      "demoSuffix": "the store"
+    },
+    "routePreview": {
+      "title": "Processing route preview",
+      "description": "Dictation starts on-device; optional cleanup follows the selected refine provider.",
+      "localRoute": "Local route",
+      "cloudRoute": "Cloud route",
+      "localAi": "Local AI",
+      "cloudAi": "Cloud AI",
+      "localDetail": "Mic → device model → paste",
+      "cloudDetail": "Mic → network → provider",
+      "offlineCapable": "Offline capable",
+      "usesInternet": "Uses internet"
+    },
+    "retention": {
+      "title": "Recording retention",
+      "day1": "Day 1",
+      "day7": "Day 7",
+      "day30": "Day 30",
+      "autoDelete": "Auto-delete",
+      "never": "Keep until removed",
+      "preserveLimit": "Keep saved history limit",
+      "days3": "Delete after 3 days",
+      "weeks2": "Delete after 2 weeks",
+      "months3": "Delete after 3 months"
+    },
+    "routeMonitor": {
+      "label": "Route monitor",
+      "error": "Error",
+      "analyzed": "Analyzed",
+      "waiting": "Waiting",
+      "inputStaged": "Input staged for route analysis",
+      "waitingForInput": "Waiting for dictation input...",
+      "analyzing": "Analyzing route...",
+      "complete": "Route analysis complete",
+      "ready": "Analyze route ready",
+      "errorEmpty": "Enter some text to inspect.",
+      "errorAnalysisFailed": "Analysis failed.",
+      "groupTitle": "Route debugger"
+    },
+    "sections": {
+      "recentHistoryTitle": "Recent history",
+      "recentHistoryDescription": "Review transcripts, playback recordings, and reuse or save past dictations.",
+      "translationTitle": "Translation",
+      "translationDescription": "Set the target language and choose how translated dictation should be processed.",
+      "myVoicesTitle": "My voices",
+      "myVoicesDescription": "Manage saved voice profiles and choose which one Vox Jot uses for spoken output.",
+      "voiceCloningTitle": "Voice cloning",
+      "voiceCloningDescription": "Create clone profiles from reference audio, then turn them into saved Listen voices.",
+      "jotPadTitle": "Jot Pad",
+      "jotPadDescription": "Capture quick notes in the floating pad and reopen them when you need to keep working.",
+      "studioTitle": "Studio",
+      "studioDescription": "Assign saved voices to characters, edit a script, and render story audio.",
+      "generatedAudioTitle": "Generated audio",
+      "generatedAudioDescription": "Replay, reveal, copy, star, or remove audio rendered from Studio.",
+      "dictionaryTitle": "Dictionary"
+    },
+    "groups": {
+      "dictation": "Dictation",
+      "app": "App",
+      "writeProfiles": "Write profiles",
+      "featureToggles": "Feature toggles",
+      "dictationShortcuts": "Dictation shortcuts",
+      "textActionShortcuts": "Text action shortcuts",
+      "speechOutputDevice": "Speech output device",
+      "speechCleanup": "Speech cleanup",
+      "translationProviderOverrides": "Translation provider overrides",
+      "labs": "Labs",
+      "localApi": "Local API",
+      "acknowledgments": "Acknowledgments"
+    },
+    "soundPicker": {
+      "label": "Sound theme",
+      "description": "Choose the start and stop cue sounds Vox Jot plays around recording."
+    },
+    "speechVolume": {
+      "label": "Speech volume",
+      "description": "Global playback volume for spoken output on the selected output device."
+    },
+    "fillerWords": {
+      "title": "Custom filler words",
+      "description": "Add one filler word per line to override the default speech cleanup list. Leave this blank to use Vox Jot's defaults."
+    },
+    "translationProvider": {
+      "title": "Translation provider",
+      "description": "Choose which provider handles translation when Vox Jot uses AI-assisted translation routes.",
+      "modelTitle": "Translation model",
+      "modelDescription": "Pick a provider-specific translation model. This uses the same provider catalog as cleanup and rewrite setup.",
+      "appleNotice": "Apple Intelligence does not need a separate model override here.",
+      "translatePhraseKeysLabel": "Translate phrase keys",
+      "translatePhraseKeysDescription": "Apply translation rules to phrase-key expansions when they are inserted into translated output."
+    },
+    "privacy": {
+      "localPrivacyModeLabel": "Local privacy mode",
+      "localPrivacyModeDescription": "Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available.",
+      "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers."
+    },
+    "diagnostics": {
+      "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them."
+    },
+    "about": {
+      "version": "Version {{version}}",
+      "versionUnknown": "unknown",
+      "summaryPrimary": "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.",
+      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow."
+    },
+    "jotPad": {
+      "empty": "Start your first note",
+      "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
+      "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
     }
   }
 }

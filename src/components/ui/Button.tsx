@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 
 import {
   interactiveFocusRingClass,
@@ -7,7 +7,7 @@ import {
 } from "@/lib/interactiveFocus";
 import { press } from "@/motion/springs";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<"button"> {
   variant?:
     | "primary"
     | "primary-soft"
@@ -66,7 +66,7 @@ export const Button: React.FC<ButtonProps> = ({
     <motion.button
       whileTap={props.disabled ? undefined : { scale: 0.97 }}
       transition={press}
-      {...(props as any)}
+      {...props}
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {children}

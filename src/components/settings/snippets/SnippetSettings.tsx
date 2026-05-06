@@ -27,7 +27,7 @@ import { SettingsGroup } from "../../ui/SettingsGroup";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { subtleCardClassName } from "../../ui/subtleCard";
 import { useSettings } from "../../../hooks/useSettings";
-import { SnippetsEnabledToggle } from "../SnippetsEnabledToggle";
+import { PhraseKeysEnabledToggle } from "../PhraseKeysEnabledToggle";
 import { pickJsonFileText } from "@/lib/fileIo";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
@@ -672,7 +672,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
       {addDialog}
       {showEnabledToggle && (
         <SettingsGroup title={t("settings.snippets.toggle.title")}>
-          <SnippetsEnabledToggle descriptionMode="tooltip" grouped={true} />
+          <PhraseKeysEnabledToggle descriptionMode="tooltip" grouped={true} />
         </SettingsGroup>
       )}
 

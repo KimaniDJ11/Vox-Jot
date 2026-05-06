@@ -447,8 +447,9 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       return idle;
     }
     return (
-      refineProviderOptions.find((provider) => provider.value === providerFilter)
-        ?.label ?? idle
+      refineProviderOptions.find(
+        (provider) => provider.value === providerFilter,
+      )?.label ?? idle
     );
   }, [hubFilterLabels, providerFilter, refineProviderOptions]);
   const hasActiveProviderFilter = providerFilter !== "all";

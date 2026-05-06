@@ -1,12 +1,12 @@
 import React from "react";
 import { BooleanSetting } from "../ui/BooleanSetting";
 
-interface SnippetsEnabledToggleProps {
+interface PhraseKeysEnabledToggleProps {
   descriptionMode?: "inline" | "tooltip";
   grouped?: boolean;
 }
 
-export const SnippetsEnabledToggle: React.FC<SnippetsEnabledToggleProps> = (
+export const PhraseKeysEnabledToggle: React.FC<PhraseKeysEnabledToggleProps> = (
   props,
 ) => (
   <BooleanSetting

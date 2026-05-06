@@ -234,6 +234,7 @@ export const WriteRulesSettings: React.FC = () => {
               rule={editingRule}
               tones={tones}
               prompts={prompts}
+              models={models}
               onSave={(rule) => void saveRule(rule)}
               onCancel={closeProfileWindow}
               saveError={saveError}

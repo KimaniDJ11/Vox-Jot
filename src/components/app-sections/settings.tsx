@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { listen } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   CheckCircle2,
@@ -9,106 +8,76 @@ import {
   Cpu,
   Info,
   Mic,
-  NotebookPen,
-  Pin,
-  Plus,
   Shield,
   Trash2,
   Wifi,
   XCircle,
 } from "lucide-react";
 
-import { commands, type Note } from "@/bindings";
+import { commands } from "@/bindings";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
+import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Alert } from "@/components/ui/Alert";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Dropdown,
   SettingContainer,
-  Slider,
   SettingsGroup,
+  Slider,
   Textarea,
   ToggleSwitch,
 } from "@/components/ui";
-import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
-import { ClamshellMicrophoneSelector } from "@/components/settings/ClamshellMicrophoneSelector";
-import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
 import { AlwaysOnMicrophone } from "@/components/settings/AlwaysOnMicrophone";
-import { PushToTalk } from "@/components/settings/PushToTalk";
+import { AppendTrailingSpace } from "@/components/settings/AppendTrailingSpace";
+import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
+import { AppFontScale } from "@/components/settings/AppFontScale";
+import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
+import { AudioDucking } from "@/components/settings/AudioDucking";
 import { AudioEnhancement } from "@/components/settings/AudioEnhancement";
 import { AudioFeedback } from "@/components/settings/AudioFeedback";
-import { VolumeSlider } from "@/components/settings/VolumeSlider";
-import { ShowOverlay } from "@/components/settings/ShowOverlay";
-import { ShortcutInput } from "@/components/settings/ShortcutInput";
-import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
-import { ModelUnloadTimeoutSetting } from "@/components/settings/ModelUnloadTimeout";
-import { StartHidden } from "@/components/settings/StartHidden";
-import { AutostartToggle } from "@/components/settings/AutostartToggle";
-import { ShowTrayIcon } from "@/components/settings/ShowTrayIcon";
-import { PasteMethodSetting } from "@/components/settings/PasteMethod";
-import { TypingToolSetting } from "@/components/settings/TypingTool";
-import { ClipboardHandlingSetting } from "@/components/settings/ClipboardHandling";
 import { AutoSubmit } from "@/components/settings/AutoSubmit";
-import { AppendTrailingSpace } from "@/components/settings/AppendTrailingSpace";
-import { HistoryLimit } from "@/components/settings/HistoryLimit";
-import { RecordingRetentionPeriodSelector } from "@/components/settings/RecordingRetentionPeriod";
-import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
-import { AppLanguageSelector } from "@/components/settings/AppLanguageSelector";
-import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
-import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
-import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
-import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
-import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
-import { LogDirectory } from "@/components/settings/debug/LogDirectory";
-import { PasteDelay } from "@/components/settings/debug/PasteDelay";
-import { WordCorrectionThreshold } from "@/components/settings/debug/WordCorrectionThreshold";
-import { SoundPicker } from "@/components/settings/SoundPicker";
-import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
-import { AudioDucking } from "@/components/settings/AudioDucking";
-import { AppDataDirectory } from "@/components/settings/AppDataDirectory";
-import { LanguageSelector } from "@/components/settings/LanguageSelector";
-import { ThemeSelector } from "@/components/settings/ThemeSelector";
-import { AppFontScale } from "@/components/settings/AppFontScale";
-import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
-import { HistorySettings } from "@/components/settings/history/HistorySettings";
-import { WriteRulesSettings } from "@/components/settings/write-rules/WriteRulesSettings";
+import { AutostartToggle } from "@/components/settings/AutostartToggle";
+import { ClamshellMicrophoneSelector } from "@/components/settings/ClamshellMicrophoneSelector";
+import { ClipboardHandlingSetting } from "@/components/settings/ClipboardHandling";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
-import { CorrectionDictionaryView } from "@/components/settings/corrections/CorrectionDictionaryView";
-import { FileTranscriptionPanel } from "@/components/dictate/FileTranscriptionPanel";
+import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
+import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
+import { HistoryLimit } from "@/components/settings/HistoryLimit";
+import { LanguageSelector } from "@/components/settings/LanguageSelector";
+import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
+import { LogDirectory } from "@/components/settings/debug/LogDirectory";
+import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
+import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
+import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
+import { ModelUnloadTimeoutSetting } from "@/components/settings/ModelUnloadTimeout";
+import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
+import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
+import { PasteDelay } from "@/components/settings/debug/PasteDelay";
+import { PasteMethodSetting } from "@/components/settings/PasteMethod";
+import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
+import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
+import { PushToTalk } from "@/components/settings/PushToTalk";
+import { RecordingRetentionPeriodSelector } from "@/components/settings/RecordingRetentionPeriod";
+import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings";
+import { ShortcutInput } from "@/components/settings/ShortcutInput";
+import { ShowOverlay } from "@/components/settings/ShowOverlay";
+import { ShowTrayIcon } from "@/components/settings/ShowTrayIcon";
+import { SoundPicker } from "@/components/settings/SoundPicker";
+import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
+import { StartHidden } from "@/components/settings/StartHidden";
+import { ThemeSelector } from "@/components/settings/ThemeSelector";
+import { TypingToolSetting } from "@/components/settings/TypingTool";
+import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
+import { VolumeSlider } from "@/components/settings/VolumeSlider";
+import { WordCorrectionThreshold } from "@/components/settings/debug/WordCorrectionThreshold";
+import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
 import {
   AutoReadbackSection as AutoReadbackPanel,
-  CreateVoicesSection as CreateVoicesPanel,
-  MyVoicesSection as MyVoicesPanel,
   SpeechPackManagerSection,
-  ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
-import { TranslationSettingsCard } from "@/components/settings/general/TranslationSettingsCard";
-import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings";
-import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
-import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
-import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
-import { SpeechOutputToggle } from "@/components/settings/SpeechOutputToggle";
-import {
-  StoryAudioHistorySection,
-  StoryStudioSection,
-} from "@/components/story-studio";
 import UpdateChecker from "@/components/update-checker";
-import { subtleCardClassName } from "@/components/ui/subtleCard";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
-
-export { subtleCardClassName };
-
-const SectionIntro: React.FC<{
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}> = ({ title, description, children }) => (
-  <SettingsGroup noCard title={title} description={description}>
-    {children}
-  </SettingsGroup>
-);
+import { subtleCardClassName } from "@/components/app-sections/shared";
 
 const MiniStatusPill: React.FC<{
   icon: React.ReactNode;
@@ -184,6 +153,34 @@ const CorrectionsDemoCard: React.FC = () => {
   );
 };
 
+const RouteCard: React.FC<{
+  selected: boolean;
+  icon: React.ReactNode;
+  title: string;
+  detail: string;
+  badge: string;
+}> = ({ selected, icon, title, detail, badge }) => (
+  <div
+    className={`rounded-xl border p-4 ${
+      selected
+        ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+        : "border-[var(--border)] bg-[var(--panel-bg)]"
+    }`}
+  >
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-[var(--text)]">
+        <span className="text-[var(--accent)]">{icon}</span>
+        <span className="text-sm font-semibold">{title}</span>
+      </div>
+      {selected ? (
+        <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
+      ) : null}
+    </div>
+    <p className="mt-3 text-xs font-medium text-[var(--text)]">{detail}</p>
+    <p className="mt-1 text-xs text-[var(--muted)]">{badge}</p>
+  </div>
+);
+
 const AIProcessingRoutePreview: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
@@ -248,34 +245,6 @@ const AIProcessingRoutePreview: React.FC = () => {
   );
 };
 
-const RouteCard: React.FC<{
-  selected: boolean;
-  icon: React.ReactNode;
-  title: string;
-  detail: string;
-  badge: string;
-}> = ({ selected, icon, title, detail, badge }) => (
-  <div
-    className={`rounded-lg border p-3 ${
-      selected
-        ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-        : "border-[var(--border)] bg-[var(--panel-bg)]"
-    }`}
-  >
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-[var(--text)]">
-        <span className="text-[var(--accent)]">{icon}</span>
-        <span className="text-sm font-semibold">{title}</span>
-      </div>
-      {selected ? (
-        <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-      ) : null}
-    </div>
-    <p className="mt-3 text-xs font-medium text-[var(--text)]">{detail}</p>
-    <p className="mt-1 text-xs text-[var(--muted)]">{badge}</p>
-  </div>
-);
-
 const RetentionTimelinePreview: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
@@ -284,8 +253,11 @@ const RetentionTimelinePreview: React.FC = () => {
     never: t("appSections.retention.never"),
     preserve_limit: t("appSections.retention.preserveLimit"),
     days3: t("appSections.retention.days3"),
+    days_3: t("appSections.retention.days3"),
     weeks2: t("appSections.retention.weeks2"),
+    weeks_2: t("appSections.retention.weeks2"),
     months3: t("appSections.retention.months3"),
+    months_3: t("appSections.retention.months3"),
   };
 
   return (
@@ -314,332 +286,6 @@ const RetentionTimelinePreview: React.FC = () => {
           />
         </div>
       </div>
-    </div>
-  );
-};
-
-export const DictateModelsSection: React.FC<{
-  titleActionTargetId?: string;
-  showActiveModelBanner?: boolean;
-  hubSearchQuery?: string;
-  hubFilterLabels?: boolean;
-}> = ({
-  titleActionTargetId,
-  showActiveModelBanner = true,
-  hubSearchQuery,
-  hubFilterLabels,
-}) => {
-  return (
-    <div className="space-y-6">
-      <ModelsSettings
-        titleActionTargetId={titleActionTargetId}
-        showActiveModelBanner={showActiveModelBanner}
-        hubSearchQuery={hubSearchQuery}
-        hubFilterLabels={hubFilterLabels}
-      />
-    </div>
-  );
-};
-
-export const DictateHistorySection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SectionIntro
-        title={t("appSections.sections.recentHistoryTitle")}
-        description={t("appSections.sections.recentHistoryDescription")}
-      >
-        <HistorySettings />
-      </SectionIntro>
-    </div>
-  );
-};
-
-export const FileTranscriptionSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <FileTranscriptionPanel />
-    </div>
-  );
-};
-
-export const RefineTranslationSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SettingsGroup
-        title={t("appSections.sections.translationTitle")}
-        description={t("appSections.sections.translationDescription")}
-      >
-        <TranslationSettingsCard />
-      </SettingsGroup>
-    </div>
-  );
-};
-
-export const RefinePhraseKeysSection: React.FC = () => {
-  return <SnippetSettings showEnabledToggle={false} />;
-};
-
-export const RefineProfilesSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <WriteRulesSettings />
-    </div>
-  );
-};
-
-export const RefineModelsSection: React.FC<{
-  titleActionTargetId?: string;
-  hubSearchQuery?: string;
-  onHubSearchQueryChange?: (value: string) => void;
-  hubFilterLabels?: boolean;
-}> = ({
-  titleActionTargetId,
-  hubSearchQuery,
-  onHubSearchQueryChange,
-  hubFilterLabels,
-}) => {
-  return (
-    <div className="space-y-6">
-      <RefineModelsSettings
-        titleActionTargetId={titleActionTargetId}
-        hubSearchQuery={hubSearchQuery}
-        onHubSearchQueryChange={onHubSearchQueryChange}
-        hubFilterLabels={hubFilterLabels}
-      />
-    </div>
-  );
-};
-
-export const CorrectionsSection: React.FC = () => {
-  return <LearnedCorrectionsSection />;
-};
-
-/** Full dictionary & correction controls (info, toggles, boosts). Shown in Settings. */
-export const CorrectionsSettingsSection: React.FC = () => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-base font-semibold text-[var(--text)]">
-          {t("settings.corrections.title")}
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          {t("settings.corrections.description")}
-        </p>
-      </div>
-      <CorrectionsDemoCard />
-      <CorrectionSettings />
-    </div>
-  );
-};
-
-export const LearnedCorrectionsSection: React.FC<{
-  titleActionTargetId?: string;
-}> = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <CorrectionDictionaryView
-        sectionTitle={t("appSections.sections.dictionaryTitle")}
-        showHeaderTitle={false}
-      />
-    </div>
-  );
-};
-
-export const ListenMyVoicesSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SectionIntro
-        title={t("appSections.sections.myVoicesTitle")}
-        description={t("appSections.sections.myVoicesDescription")}
-      >
-        <MyVoicesPanel showGroupTitle={false} />
-      </SectionIntro>
-    </div>
-  );
-};
-
-export const ListenCreateVoicesSection: React.FC = () => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="space-y-6">
-      <SettingsGroup
-        noCard
-        title={t("listen.createVoices.title", {
-          defaultValue: "Create Voices",
-        })}
-        description={t("listen.createVoices.description", {
-          defaultValue:
-            "Preview models, tune delivery, and save a new voice profile without changing the active voice.",
-        })}
-      >
-        <CreateVoicesPanel showGroupTitle={false} />
-      </SettingsGroup>
-    </div>
-  );
-};
-
-export const ListenVoiceCloningSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SectionIntro
-        title={t("appSections.sections.voiceCloningTitle")}
-        description={t("appSections.sections.voiceCloningDescription")}
-      >
-        <VoiceCloningPanel showGroupTitle={false} />
-      </SectionIntro>
-    </div>
-  );
-};
-
-const NoteRow: React.FC<{ note: Note; onOpen: () => void }> = ({
-  note,
-  onOpen,
-}) => {
-  const { t } = useTranslation();
-  const title =
-    note.title.trim() ||
-    note.content.trim().split("\n")[0].slice(0, 60) ||
-    t("appSections.common.untitled");
-  const preview = note.content.trim()
-    ? note.content.trim().split("\n").slice(0, 2).join(" ").slice(0, 100)
-    : t("appSections.common.emptyNote");
-  const date = new Date(note.updated_at * 1000);
-  const formattedDate = date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)]"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-[var(--text)]">
-            {title}
-          </span>
-          {note.is_pinned && (
-            <Pin className="h-3 w-3 shrink-0 rotate-45 text-[var(--accent)]" />
-          )}
-        </div>
-        <p className="mt-0.5 truncate text-xs font-normal leading-snug text-[var(--text)]">
-          {preview}
-        </p>
-      </div>
-      <span className="shrink-0 text-xs text-[var(--muted)]">
-        {formattedDate}
-      </span>
-    </button>
-  );
-};
-
-export const JotPadSection: React.FC = () => {
-  const { t } = useTranslation();
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadNotes = useCallback(() => {
-    commands
-      .getNotes()
-      .then((result) => {
-        if (result.status === "ok") {
-          setNotes(result.data);
-        }
-      })
-      .catch(() => {
-        setNotes([]);
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
-
-  useEffect(() => {
-    const unlisten = listen("notes-updated", () => {
-      loadNotes();
-    });
-
-    return () => {
-      unlisten.then((cleanup) => cleanup());
-    };
-  }, [loadNotes]);
-
-  const openNoteInJotPad = useCallback(async (noteId?: number) => {
-    if (noteId !== undefined) {
-      await commands.showScratchpadForNote(noteId);
-      return;
-    }
-
-    await commands.showScratchpad();
-  }, []);
-
-  const createNote = useCallback(async () => {
-    const result = await commands.createNote("", "");
-    if (result.status === "ok") {
-      loadNotes();
-      void openNoteInJotPad(result.data.id);
-    }
-  }, [loadNotes, openNoteInJotPad]);
-
-  // Sort: pinned first, then by updated_at desc
-  const sortedNotes = useMemo(() => {
-    return [...notes].sort((a, b) => {
-      if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-      return b.updated_at - a.updated_at;
-    });
-  }, [notes]);
-
-  return (
-    <div className="space-y-4">
-      <SectionIntro
-        title={t("appSections.sections.jotPadTitle")}
-        description={t("appSections.sections.jotPadDescription")}
-      >
-        {isLoading ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-8 text-center text-sm text-[var(--muted)] shadow-[var(--shadow-sm)]">
-            {t("appSections.common.loadingNotes")}
-          </div>
-        ) : notes.length === 0 ? (
-          <EmptyState
-            icon={<NotebookPen className="h-5 w-5" aria-hidden />}
-            title={t("appSections.jotPad.empty")}
-            description={t("appSections.jotPad.emptyDescription")}
-            example={t("appSections.jotPad.emptyExample")}
-            action={
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => void createNote()}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                {t("appSections.common.createNote")}
-              </Button>
-            }
-          />
-        ) : (
-          <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-sm)]">
-            {sortedNotes.map((note) => (
-              <NoteRow
-                key={note.id}
-                note={note}
-                onOpen={() => void openNoteInJotPad(note.id)}
-              />
-            ))}
-          </div>
-        )}
-      </SectionIntro>
     </div>
   );
 };
@@ -846,6 +492,24 @@ export const OutputPasteSettingsSection: React.FC = () => {
   );
 };
 
+export const CorrectionsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-6">
+      <div className={subtleCardClassName}>
+        <p className="text-base font-semibold text-[var(--text)]">
+          {t("settings.corrections.title")}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          {t("settings.corrections.description")}
+        </p>
+      </div>
+      <CorrectionsDemoCard />
+      <CorrectionSettings />
+    </div>
+  );
+};
+
 const TranslationProviderSettingsCard: React.FC = () => {
   const { t } = useTranslation();
   const {
@@ -937,7 +601,7 @@ const TranslationProviderSettingsCard: React.FC = () => {
                   value={modelDraft}
                   onChange={(event) => setModelDraft(event.target.value)}
                   placeholder={t("settings.translation.customModelPlaceholder")}
-                  className="flex-1 min-h-[44px]"
+                  className="min-h-[44px] flex-1"
                 />
                 <Button size="sm" onClick={() => void saveModel()}>
                   {t("appSections.common.saveModel")}
@@ -976,17 +640,15 @@ const FileTranscriptionHint: React.FC = () => {
   );
 };
 
-export const AISetupSettingsSection: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <AIProcessingRoutePreview />
-      <RefineModelsSettings />
-      <PostProcessingSettings omitLocalPrivacy />
-      <TranslationProviderSettingsCard />
-      <FileTranscriptionHint />
-    </div>
-  );
-};
+export const AISetupSettingsSection: React.FC = () => (
+  <div className="space-y-6">
+    <AIProcessingRoutePreview />
+    <RefineModelsSettings />
+    <PostProcessingSettings omitLocalPrivacy />
+    <TranslationProviderSettingsCard />
+    <FileTranscriptionHint />
+  </div>
+);
 
 export const PrivacyStorageSettingsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -1205,36 +867,6 @@ export const AboutSection: React.FC = () => {
           <p>{t("appSections.about.summarySecondary")}</p>
         </div>
       </SettingsGroup>
-    </div>
-  );
-};
-
-export const StoryStudioAppSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-4">
-      <SectionIntro
-        title={t("appSections.sections.studioTitle")}
-        description={t("appSections.sections.studioDescription")}
-      >
-        <div className="-mx-6 md:-mx-8">
-          <StoryStudioSection />
-        </div>
-      </SectionIntro>
-    </div>
-  );
-};
-
-export const StoryAudioHistoryAppSection: React.FC = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-6">
-      <SectionIntro
-        title={t("appSections.sections.generatedAudioTitle")}
-        description={t("appSections.sections.generatedAudioDescription")}
-      >
-        <StoryAudioHistorySection />
-      </SectionIntro>
     </div>
   );
 };

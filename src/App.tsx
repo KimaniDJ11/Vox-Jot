@@ -1,9 +1,11 @@
 import React, {
+  lazy,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  Suspense,
 } from "react";
 import { toast, Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -63,29 +65,7 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
-import {
-  AboutSection,
-  AISetupSettingsSection,
-  CorrectionsSection,
-  CorrectionsSettingsSection,
-  DictateHistorySection,
-  FileTranscriptionSection,
-  DiagnosticsSettingsSection,
-  GeneralAppSettingsSection,
-  JotPadSection,
-  ListenCreateVoicesSection,
-  ListenMyVoicesSection,
-  ListenVoiceCloningSection,
-  OutputPasteSettingsSection,
-  PrivacyStorageSettingsSection,
-  RefineProfilesSection,
-  RecordingDevicesSettingsSection,
-  RefinePhraseKeysSection,
-  RefineTranslationSection,
-  ShortcutsSettingsSection,
-  StoryAudioHistoryAppSection,
-  StoryStudioAppSection,
-} from "@/components/AppSections";
+import { SectionLoading } from "@/components/app-sections/shared";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
 
 type OnboardingStep = "onboarding" | "done";
@@ -133,6 +113,112 @@ type ViewSection = SidebarItem & {
   title: string;
   content: React.ReactNode;
 };
+
+const DictateHistorySection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.DictateHistorySection,
+  })),
+);
+const CorrectionsSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.CorrectionsSection,
+  })),
+);
+const JotPadSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.JotPadSection,
+  })),
+);
+const FileTranscriptionSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.FileTranscriptionSection,
+  })),
+);
+const RefineProfilesSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefineProfilesSection,
+  })),
+);
+const RefinePhraseKeysSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefinePhraseKeysSection,
+  })),
+);
+const RefineTranslationSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefineTranslationSection,
+  })),
+);
+const ListenCreateVoicesSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.ListenCreateVoicesSection,
+  })),
+);
+const ListenMyVoicesSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.ListenMyVoicesSection,
+  })),
+);
+const ListenVoiceCloningSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.ListenVoiceCloningSection,
+  })),
+);
+const StoryStudioAppSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.StoryStudioAppSection,
+  })),
+);
+const StoryAudioHistoryAppSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.StoryAudioHistoryAppSection,
+  })),
+);
+const GeneralAppSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.GeneralAppSettingsSection,
+  })),
+);
+const ShortcutsSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.ShortcutsSettingsSection,
+  })),
+);
+const RecordingDevicesSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.RecordingDevicesSettingsSection,
+  })),
+);
+const OutputPasteSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.OutputPasteSettingsSection,
+  })),
+);
+const CorrectionsSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.CorrectionsSettingsSection,
+  })),
+);
+const AISetupSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.AISetupSettingsSection,
+  })),
+);
+const PrivacyStorageSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.PrivacyStorageSettingsSection,
+  })),
+);
+const DiagnosticsSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.DiagnosticsSettingsSection,
+  })),
+);
+const AboutSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.AboutSection,
+  })),
+);
 
 const SIDEBAR_COLLAPSED_KEY = "vox-jot-sidebar-collapsed";
 
@@ -1058,7 +1144,9 @@ function App() {
                   id={activeSection.id}
                   title={activeSection.title}
                 />
-                {activeSection.content}
+                <Suspense fallback={<SectionLoading />}>
+                  {activeSection.content}
+                </Suspense>
               </section>
             )}
           </div>

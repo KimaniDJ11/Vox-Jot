@@ -4,10 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
 import { LayoutGroup, motion } from "framer-motion";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
-import {
-  DictateModelsSection,
-  RefineModelsSection,
-} from "@/components/AppSections";
+import { DictateModelsSection } from "@/components/app-sections/dictate";
+import { RefineModelsSection } from "@/components/app-sections/refine";
 import { EngineLibrarySection } from "@/components/settings/general/ListenSections";
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";

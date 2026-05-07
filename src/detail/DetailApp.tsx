@@ -1,22 +1,57 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
 import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
-import {
-  DictateHistorySection,
-  DictateModelsSection,
-  FileTranscriptionSection,
-  JotPadSection,
-  LearnedCorrectionsSection,
-  RefineModelsSection,
-  RefinePhraseKeysSection,
-  RefineProfilesSection,
-} from "@/components/AppSections";
+import { SectionLoading } from "@/components/app-sections/shared";
 import ModelHubSection from "@/components/model-hub/ModelHubSection";
 
+const DictateHistorySection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.DictateHistorySection,
+  })),
+);
+const RefinePhraseKeysSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefinePhraseKeysSection,
+  })),
+);
+const RefineProfilesSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefineProfilesSection,
+  })),
+);
+const DictateModelsSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.DictateModelsSection,
+  })),
+);
+const RefineModelsSection = lazy(() =>
+  import("@/components/app-sections/refine").then((module) => ({
+    default: module.RefineModelsSection,
+  })),
+);
+const LearnedCorrectionsSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.LearnedCorrectionsSection,
+  })),
+);
+const JotPadSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.JotPadSection,
+  })),
+);
+const FileTranscriptionSection = lazy(() =>
+  import("@/components/app-sections/dictate").then((module) => ({
+    default: module.FileTranscriptionSection,
+  })),
+);
+
 /** Map of section IDs to their title + component. */
-const SECTION_MAP: Record<string, { title: string; component: React.FC }> = {
+const SECTION_MAP: Record<
+  string,
+  { title: string; component: React.ComponentType }
+> = {
   history: {
     title: "History",
     component: DictateHistorySection,
@@ -174,7 +209,9 @@ const DetailApp: React.FC = () => {
 
       {/* Scrollable content */}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6">
-        <SectionComponent />
+        <Suspense fallback={<SectionLoading />}>
+          <SectionComponent />
+        </Suspense>
       </div>
     </div>
   );

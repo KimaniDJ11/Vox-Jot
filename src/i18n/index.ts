@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { locale } from "@tauri-apps/plugin-os";
 import { LANGUAGE_METADATA } from "./languages";
+import enTranslation from "./locales/en/translation.json";
 import { commands } from "@/bindings";
 import {
   getLanguageDirection,
@@ -9,29 +10,16 @@ import {
   updateDocumentLanguage,
 } from "@/lib/utils/rtl";
 
-// Auto-discover translation files using Vite's glob import
-const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
+const localeModules = import.meta.glob<{ default: Record<string, unknown> }>([
   "./locales/*/translation.json",
-  { eager: true },
-);
+  "!./locales/en/translation.json",
+]);
 
-// Build resources from discovered locale files
-const resources: Record<string, { translation: Record<string, unknown> }> = {};
-for (const [path, module] of Object.entries(localeModules)) {
-  const langCode = path.match(/\.\/locales\/(.+)\/translation\.json/)?.[1];
-  if (langCode) {
-    resources[langCode] = { translation: module.default };
-  }
-}
-
-// Build supported languages list from discovered locales + metadata
-export const SUPPORTED_LANGUAGES = Object.keys(resources)
+// Build supported languages list from metadata. Translation JSON is loaded on
+// demand so all locales do not inflate the first app bundle.
+export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_METADATA)
   .map((code) => {
     const meta = LANGUAGE_METADATA[code];
-    if (!meta) {
-      console.warn(`Missing metadata for locale "${code}" in languages.ts`);
-      return { code, name: code, nativeName: code, priority: undefined };
-    }
     return {
       code,
       name: meta.name,
@@ -50,6 +38,23 @@ export const SUPPORTED_LANGUAGES = Object.keys(resources)
   });
 
 export type SupportedLanguageCode = string;
+
+export const ensureLanguageResource = async (
+  langCode: SupportedLanguageCode,
+) => {
+  if (i18n.hasResourceBundle(langCode, "translation")) {
+    return;
+  }
+
+  const loader = localeModules[`./locales/${langCode}/translation.json`];
+  if (!loader) {
+    console.warn(`Missing translation JSON for locale "${langCode}"`);
+    return;
+  }
+
+  const module = await loader();
+  i18n.addResourceBundle(langCode, "translation", module.default, true, true);
+};
 
 // Check if a language code is supported
 const getSupportedLanguage = (
@@ -74,7 +79,9 @@ const getSupportedLanguage = (
 // Initialize i18n with English as default
 // Language will be synced from settings after init
 i18n.use(initReactI18next).init({
-  resources,
+  resources: {
+    en: { translation: enTranslation },
+  },
   lng: "en",
   fallbackLng: "en",
   interpolation: {
@@ -92,6 +99,7 @@ export const syncLanguageFromSettings = async () => {
     if (result.status === "ok" && result.data.app_language) {
       const supported = getSupportedLanguage(result.data.app_language);
       if (supported && supported !== i18n.language) {
+        await ensureLanguageResource(supported);
         await i18n.changeLanguage(supported);
       }
     } else {
@@ -99,6 +107,7 @@ export const syncLanguageFromSettings = async () => {
       const systemLocale = await locale();
       const supported = getSupportedLanguage(systemLocale);
       if (supported && supported !== i18n.language) {
+        await ensureLanguageResource(supported);
         await i18n.changeLanguage(supported);
       }
     }

@@ -36,6 +36,7 @@
     "eval:speaker-isolation": ".venv/bin/python scripts/run-speaker-isolation-eval.py",
     "eval:file-asr": "bun scripts/run-file-asr-model-eval.ts",
     "eval:tts": ".venv/bin/python scripts/run-tts-model-eval.py",
+    "eval:tts:voice-clone": ".venv/bin/python scripts/run-tts-model-eval.py --suite voice_clone",
     "eval:spelling": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json --exact-match",
     "eval:spelling:dry": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json --dry-run",
     "eval:spelling:models": "bun scripts/run-spelling-model-eval.ts",

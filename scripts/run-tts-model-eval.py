@@ -41,6 +41,8 @@ MANAGED_RUNTIME = PROJECT_ROOT / "speech-runtime"
 MANAGED_WORKER = MANAGED_RUNTIME / "runtime/engine_worker.py"
 LEGACY_QWEN_RUNTIME = APP_SUPPORT / "tts-runtime/qwen3-macos-aarch64/qwen3-tts-macos-aarch64"
 DEFAULT_ASR_JUDGE_MODEL = APP_SUPPORT / "models/speech-analysis/whisper-diarization"
+DEFAULT_CLONE_REFERENCE_AUDIO = PROJECT_ROOT / "src-tauri/resources/python/mlx_csm_default_prompt.wav"
+DEFAULT_CLONE_REFERENCE_TEXT = PROJECT_ROOT / "src-tauri/resources/python/mlx_csm_default_prompt.txt"
 
 BaselineCases = dict[tuple[str, str], dict[str, Any]]
 
@@ -59,6 +61,26 @@ STYLE_RUBRIC = {
             "naturalness",
             "intelligibility",
             "listening_fatigue",
+            "overall_preference",
+        ],
+    },
+}
+
+VOICE_CLONE_RUBRIC = {
+    "automatic_proxy": {
+        "speaker_similarity": "Deterministic acoustic fingerprint similarity between the reference clip and generated WAV.",
+        "intelligibility": "ASR round-trip WER against the source text.",
+        "audio_health": "Generated WAV duration, RMS, silence, and clipping checks.",
+        "latency": "Real-time factor; lower is better.",
+    },
+    "listener_preference": {
+        "status": "manual_ratings_not_collected",
+        "scale": "1-5 per dimension, blind to model id when collected.",
+        "dimensions": [
+            "speaker_match",
+            "naturalness",
+            "intelligibility",
+            "reference_artifacts",
             "overall_preference",
         ],
     },
@@ -219,6 +241,63 @@ STYLE_CASES = [
 ]
 
 
+VOICE_CLONE_CASES = [
+    {
+        "id": "clone_casual_reply",
+        "label": "Cloned Casual Reply",
+        "text": "Yeah, I can take a look after lunch and send you the cleaned up notes.",
+        "locale": "en-US",
+        "clone_reference_audio": str(DEFAULT_CLONE_REFERENCE_AUDIO),
+        "clone_reference_text": DEFAULT_CLONE_REFERENCE_TEXT.read_text(encoding="utf-8").strip()
+        if DEFAULT_CLONE_REFERENCE_TEXT.exists()
+        else "",
+        "controls": {"temperature": 0.65, "repetition_penalty": 1.2, "tau": 0.35},
+    },
+    {
+        "id": "clone_meeting_room",
+        "label": "Cloned Meeting Room Summary",
+        "text": (
+            "For the meeting recap, highlight the decision, the owner, the due date, "
+            "and the one risk that still needs review before Friday."
+        ),
+        "locale": "en-US",
+        "clone_reference_audio": str(DEFAULT_CLONE_REFERENCE_AUDIO),
+        "clone_reference_text": DEFAULT_CLONE_REFERENCE_TEXT.read_text(encoding="utf-8").strip()
+        if DEFAULT_CLONE_REFERENCE_TEXT.exists()
+        else "",
+        "controls": {"temperature": 0.62, "repetition_penalty": 1.35, "tau": 0.35},
+    },
+    {
+        "id": "clone_code_review",
+        "label": "Cloned Code Review Dictation",
+        "text": (
+            "In the pull request, check the debounce timer, the async error path, "
+            "and the API key redaction before approving the build."
+        ),
+        "locale": "en-US",
+        "clone_reference_audio": str(DEFAULT_CLONE_REFERENCE_AUDIO),
+        "clone_reference_text": DEFAULT_CLONE_REFERENCE_TEXT.read_text(encoding="utf-8").strip()
+        if DEFAULT_CLONE_REFERENCE_TEXT.exists()
+        else "",
+        "controls": {"temperature": 0.6, "repetition_penalty": 1.45, "tau": 0.35},
+    },
+    {
+        "id": "clone_noisy_realworld",
+        "label": "Cloned Noisy Real-World Text",
+        "text": (
+            "Sorry, quick correction. The call moved to three twenty five, "
+            "and the room changed from Studio B to the north conference room."
+        ),
+        "locale": "en-US",
+        "clone_reference_audio": str(DEFAULT_CLONE_REFERENCE_AUDIO),
+        "clone_reference_text": DEFAULT_CLONE_REFERENCE_TEXT.read_text(encoding="utf-8").strip()
+        if DEFAULT_CLONE_REFERENCE_TEXT.exists()
+        else "",
+        "controls": {"temperature": 0.65, "repetition_penalty": 1.3, "tau": 0.4},
+    },
+]
+
+
 @dataclass(frozen=True)
 class ModelSpec:
     id: str
@@ -230,11 +309,12 @@ class ModelSpec:
     voice: str | None = None
     unavailable_reason: str | None = None
     supports_instruction_prompt: bool = False
+    supports_voice_cloning: bool = False
     notes: str = ""
 
 
 MODELS: tuple[ModelSpec, ...] = (
-    ModelSpec("openvoice", "OpenVoice", "managed", "openvoice", ("OpenVoice", "openvoice"), voice="default"),
+    ModelSpec("openvoice", "OpenVoice", "managed", "openvoice", ("OpenVoice", "openvoice"), voice="default", supports_voice_cloning=True),
     ModelSpec("chatterbox", "Chatterbox", "managed", "chatterbox", ("chatterbox", "Chatterbox"), hf_repo="ResembleAI/chatterbox"),
     ModelSpec(
         "chatterbox-turbo",
@@ -243,6 +323,7 @@ MODELS: tuple[ModelSpec, ...] = (
         "chatterbox",
         ("chatterbox-turbo/chatterbox-turbo", "chatterbox-turbo", "Chatterbox-Turbo"),
         hf_repo="ResembleAI/chatterbox-turbo",
+        supports_voice_cloning=True,
     ),
     ModelSpec(
         "chatterbox-multilingual",
@@ -251,35 +332,36 @@ MODELS: tuple[ModelSpec, ...] = (
         "chatterbox",
         ("chatterbox-multilingual/chatterbox", "chatterbox-multilingual", "chatterbox", "Chatterbox"),
         hf_repo="ResembleAI/chatterbox",
+        supports_voice_cloning=True,
     ),
     ModelSpec("kokoro-82m-v1.0", "Kokoro 82M", "managed", "kokoro", ("Kokoro", "kokoro"), voice="af_heart"),
-    ModelSpec("xtts-v2", "XTTS v2", "managed", "xtts", ("Coqui/XTTS", "coqui-tts", "XTTS"), hf_repo="coqui/XTTS-v2"),
+    ModelSpec("xtts-v2", "XTTS v2", "managed", "xtts", ("Coqui/XTTS", "coqui-tts", "XTTS"), hf_repo="coqui/XTTS-v2", supports_voice_cloning=True),
     ModelSpec("tts-sherpa-en-us-lessac-medium", "Sherpa Lessac Medium", "sherpa", "sherpa", ("tts-sherpa-en-us-lessac-medium",)),
     ModelSpec("tts-sherpa-zh-cn-melo", "Sherpa Melo Chinese/English", "sherpa", "sherpa", ("tts-sherpa-zh-cn-melo",)),
-    ModelSpec("qwen3-0.6b-base", "Qwen3 Native 0.6B Base", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-base", "qwen3-0.6b-base"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-Base"),
+    ModelSpec("qwen3-0.6b-base", "Qwen3 Native 0.6B Base", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-base", "qwen3-0.6b-base"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-Base", supports_voice_cloning=True),
     ModelSpec("qwen3-0.6b-customvoice", "Qwen3 Native 0.6B CustomVoice", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-customvoice", "qwen3-0.6b-customvoice"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"),
     ModelSpec("qwen3-1.7b-customvoice", "Qwen3 Native 1.7B CustomVoice", "qwen3", "qwen3_native", ("qwen3/qwen3-1.7b-customvoice", "qwen3-1.7b-customvoice"), hf_repo="Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"),
     ModelSpec("lfm2-5-audio-1-5b-q4-0", "LFM2.5 Audio 1.5B GGUF Q4_0", "lfm_gguf", "lfm_audio_gguf", ("lfm-audio-gguf",)),
     ModelSpec("vibevoice-realtime-0-5b", "VibeVoice Realtime 0.5B", "vibevoice", "vibevoice", ("vibevoice",)),
     ModelSpec("kokoro-82m", "MLX Kokoro 82M", "mlx", "mlx_kokoro", ("MLX/Kokoro-82M-bf16", "MLX/mlx-community/Kokoro-82M-bf16", "Kokoro-82M-bf16"), "mlx-community/Kokoro-82M-bf16"),
     ModelSpec("chatterbox-mlx", "MLX Chatterbox", "mlx", "mlx_chatterbox", ("MLX/Chatterbox-fp16", "MLX/mlx-community/chatterbox-fp16", "Chatterbox-fp16"), "mlx-community/chatterbox-fp16"),
-    ModelSpec("qwen3-tts-0.6b", "MLX Qwen3 TTS 0.6B", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-0.6B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", supports_instruction_prompt=True),
-    ModelSpec("qwen3-tts-0.6b-4bit", "MLX Qwen3 TTS 0.6B 4-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-Base-4bit", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit", supports_instruction_prompt=True),
-    ModelSpec("qwen3-tts-1.7b", "MLX Qwen3 TTS 1.7B VoiceDesign", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-1.7B-VoiceDesign-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16", supports_instruction_prompt=True),
-    ModelSpec("qwen3-tts-1.7b-base", "MLX Qwen3 TTS 1.7B Base", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16", supports_instruction_prompt=True),
+    ModelSpec("qwen3-tts-0.6b", "MLX Qwen3 TTS 0.6B", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-0.6B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("qwen3-tts-0.6b-4bit", "MLX Qwen3 TTS 0.6B 4-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-Base-4bit", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("qwen3-tts-1.7b", "MLX Qwen3 TTS 1.7B VoiceDesign", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-1.7B-VoiceDesign-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("qwen3-tts-1.7b-base", "MLX Qwen3 TTS 1.7B Base", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("dia-1.6b", "MLX Dia 1.6B", "mlx", "mlx_dia", ("MLX/Dia-1.6B-fp16", "MLX/mlx-community/Dia-1.6B-fp16"), "mlx-community/Dia-1.6B-fp16"),
-    ModelSpec("csm-1b", "MLX CSM 1B", "mlx", "mlx_csm", ("MLX/CSM-1B", "MLX/mlx-community/csm-1b"), "mlx-community/csm-1b"),
+    ModelSpec("csm-1b", "MLX CSM 1B", "mlx", "mlx_csm", ("MLX/CSM-1B", "MLX/mlx-community/csm-1b"), "mlx-community/csm-1b", supports_voice_cloning=True),
     ModelSpec("spark-tts-0.5b", "MLX Spark TTS 0.5B", "mlx", "mlx_spark", ("MLX/Spark-TTS-0.5B-bf16", "MLX/mlx-community/Spark-TTS-0.5B-bf16"), "mlx-community/Spark-TTS-0.5B-bf16"),
     ModelSpec("outetts-0.6b", "MLX OuteTTS 0.6B", "mlx", "mlx_oute", ("MLX/OuteTTS-1.0-0.6B-fp16", "MLX/mlx-community/OuteTTS-1.0-0.6B-fp16"), "mlx-community/OuteTTS-1.0-0.6B-fp16", unavailable_reason="Disabled in app catalog: current mlx-audio runtime does not generate usable audio for this checkpoint."),
-    ModelSpec("ming-omni-0.5b", "MLX Ming-omni TTS 0.5B", "mlx", "mlx_ming", ("MLX/Ming-omni-tts-0.5B-4bit", "MLX/mlx-community/Ming-omni-tts-0.5B-4bit"), "mlx-community/Ming-omni-tts-0.5B-4bit", supports_instruction_prompt=True),
+    ModelSpec("ming-omni-0.5b", "MLX Ming-omni TTS 0.5B", "mlx", "mlx_ming", ("MLX/Ming-omni-tts-0.5B-4bit", "MLX/mlx-community/Ming-omni-tts-0.5B-4bit"), "mlx-community/Ming-omni-tts-0.5B-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("kugel-audio-7b", "MLX KugelAudio 7B", "mlx", "mlx_kugel", ("MLX/kugelaudio-0-open", "MLX/mlx-community/kugelaudio-0-open"), "kugelaudio/kugelaudio-0-open"),
     ModelSpec("bark-small", "MLX Bark Small", "mlx", "mlx_bark", ("MLX/bark-small", "MLX/mlx-community/bark-small", "MLX/mlx_bark"), "mlx-community/bark-small"),
-    ModelSpec("fish-audio-s2-pro", "MLX Fish Audio S2 Pro", "mlx", "mlx_fish", ("MLX/fish-audio-s2-pro-bf16", "MLX/mlx-community/fish-audio-s2-pro-bf16"), "mlx-community/fish-audio-s2-pro-bf16"),
+    ModelSpec("fish-audio-s2-pro", "MLX Fish Audio S2 Pro", "mlx", "mlx_fish", ("MLX/fish-audio-s2-pro-bf16", "MLX/mlx-community/fish-audio-s2-pro-bf16"), "mlx-community/fish-audio-s2-pro-bf16", supports_voice_cloning=True),
     ModelSpec("lfm2-5-audio-1-5b", "MLX LFM2.5 Audio 1.5B", "mlx", "mlx_lfm", ("MLX/LFM2.5-Audio-1.5B-bf16", "MLX/mlx-community/LFM2.5-Audio-1.5B-bf16"), "mlx-community/LFM2.5-Audio-1.5B-bf16", supports_instruction_prompt=True),
-    ModelSpec("pocket-tts", "MLX Pocket TTS", "mlx", "mlx_pocket", ("MLX/pocket-tts", "MLX/mlx-community/pocket-tts"), "mlx-community/pocket-tts"),
-    ModelSpec("voxcpm2-4bit", "MLX VoxCPM2 4-bit", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-4bit", "MLX/mlx-community/VoxCPM2-4bit"), "mlx-community/VoxCPM2-4bit", supports_instruction_prompt=True),
-    ModelSpec("pocket-tts-4bit", "MLX Pocket TTS 4-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-4bit", "MLX/mlx-community/pocket-tts-4bit"), "mlx-community/pocket-tts-4bit"),
-    ModelSpec("pocket-tts-8bit", "MLX Pocket TTS 8-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-8bit", "MLX/mlx-community/pocket-tts-8bit"), "mlx-community/pocket-tts-8bit"),
+    ModelSpec("pocket-tts", "MLX Pocket TTS", "mlx", "mlx_pocket", ("MLX/pocket-tts", "MLX/mlx-community/pocket-tts"), "mlx-community/pocket-tts", supports_voice_cloning=True),
+    ModelSpec("voxcpm2-4bit", "MLX VoxCPM2 4-bit", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-4bit", "MLX/mlx-community/VoxCPM2-4bit"), "mlx-community/VoxCPM2-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("pocket-tts-4bit", "MLX Pocket TTS 4-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-4bit", "MLX/mlx-community/pocket-tts-4bit"), "mlx-community/pocket-tts-4bit", supports_voice_cloning=True),
+    ModelSpec("pocket-tts-8bit", "MLX Pocket TTS 8-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-8bit", "MLX/mlx-community/pocket-tts-8bit"), "mlx-community/pocket-tts-8bit", supports_voice_cloning=True),
     ModelSpec("voxtral-tts-4b", "MLX Voxtral TTS 4B", "mlx", "mlx_voxtral", ("MLX/Voxtral-TTS-4B-MLX-6bit", "MLX/Voxtral-4B-TTS-2603-mlx-bf16", "Voxtral-TTS-4B-MLX-6bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16"),
 )
 
@@ -288,9 +370,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--suite",
-        choices=("hard", "style"),
+        choices=("hard", "style", "voice_clone"),
         default="hard",
-        help="Run the baseline hard TTS benchmark or the style/emotion benchmark",
+        help="Run the baseline hard TTS benchmark, style/emotion benchmark, or voice-clone benchmark",
     )
     parser.add_argument("--models", default="", help="Comma-separated model ids to run")
     parser.add_argument("--case-limit", type=int, default=0, help="Limit cases per model; 0 runs all")
@@ -313,9 +395,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def selected_models(raw: str, include_disabled: bool) -> list[ModelSpec]:
+def selected_models(raw: str, include_disabled: bool, suite: str = "hard") -> list[ModelSpec]:
     requested = {item.strip() for item in raw.split(",") if item.strip()}
     models = [model for model in MODELS if not model.unavailable_reason or include_disabled]
+    if suite == "voice_clone":
+        models = [model for model in models if model.supports_voice_cloning]
     if requested:
         models = [model for model in models if model.id in requested]
     return models
@@ -540,6 +624,12 @@ def synthesize_managed(model: ModelSpec, model_root: Path, case: dict[str, Any],
             "controls": case.get("controls", {}),
             "normalized_controls": {},
         }
+        reference_audio = case.get("clone_reference_audio")
+        if reference_audio:
+            payload["reference_audio_path"] = reference_audio
+        reference_text = case.get("clone_reference_text")
+        if reference_text:
+            payload["reference_text"] = reference_text
         write_json_line(proc, {"action": "synthesize", "payload": payload})
         response = read_json_line(proc, timeout)
         elapsed = time.perf_counter() - started
@@ -571,13 +661,30 @@ def synthesize_mlx(model: ModelSpec, model_root: Path, case: dict[str, Any], out
         "--speed",
         "1",
         "--temperature",
-        "0.7",
+        str(case.get("controls", {}).get("temperature", 0.7)),
         "--repetition-penalty",
-        "1.1",
+        str(case.get("controls", {}).get("repetition_penalty", 1.1)),
     ]
+    controls = case.get("controls", {})
+    if "top_p" in controls:
+        command.extend(["--top-p", str(controls["top_p"])])
+    if "top_k" in controls:
+        command.extend(["--top-k", str(int(controls["top_k"]))])
+    if "min_p" in controls:
+        command.extend(["--min-p", str(controls["min_p"])])
+    if "cfg_weight" in controls:
+        command.extend(["--cfg-weight", str(controls["cfg_weight"])])
+    if "exaggeration" in controls:
+        command.extend(["--exaggeration", str(controls["exaggeration"])])
+    reference_audio = case.get("clone_reference_audio")
     instruction_prompt = case.get("instruction_prompt") if model.supports_instruction_prompt else None
-    if model.supports_instruction_prompt:
+    if model.supports_instruction_prompt and (instruction_prompt or not reference_audio):
         command.extend(["--instruct", instruction_prompt or "A clear natural voice with neutral pacing for practical app readback."])
+    if reference_audio:
+        command.extend(["--ref-audio", str(reference_audio)])
+        reference_text = case.get("clone_reference_text")
+        if reference_text:
+            command.extend(["--ref-text", str(reference_text)])
     code, stdout, stderr, elapsed = run_command(command, timeout, env={**os.environ, "PYTHONUNBUFFERED": "1"})
     if code != 0:
         return None, (stderr.strip() or stdout.strip() or f"exit code {code}")[-1200:], elapsed
@@ -638,17 +745,34 @@ def resolve_sherpa_runtime_root() -> Path | None:
 
 def synthesize_qwen(model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     runtime_root = resolve_qwen_runtime_root() or LEGACY_QWEN_RUNTIME
-    binary = runtime_root / "tts"
+    reference_audio = case.get("clone_reference_audio")
+    binary = runtime_root / "voice_clone" if reference_audio else runtime_root / "tts"
     if not binary.exists():
-        return None, "Qwen3 native runtime binary is missing", 0.0
+        return None, "Qwen3 native voice-clone runtime binary is missing" if reference_audio else "Qwen3 native runtime binary is missing", 0.0
     temp_dir = output_path.parent / f"qwen-{output_path.stem}"
     temp_dir.mkdir(parents=True, exist_ok=True)
+    command = [str(binary), str(model_root)]
+    if reference_audio:
+        command.extend(
+            [
+                str(reference_audio),
+                case["text"],
+                locale_to_lang(case["locale"]),
+            ]
+        )
+        reference_text = case.get("clone_reference_text")
+        if reference_text:
+            command.append(str(reference_text))
+    else:
+        command.append(case["text"])
     code, stdout, stderr, elapsed = run_command(
-        [str(binary), str(model_root), case["text"]],
+        command,
         timeout,
         cwd=temp_dir,
     )
-    produced = temp_dir / "output.wav"
+    produced = temp_dir / ("output_voice_clone.wav" if reference_audio else "output.wav")
+    if not produced.exists() and reference_audio:
+        produced = temp_dir / "output.wav"
     if code != 0:
         return None, stderr.strip() or stdout.strip() or f"exit code {code}", elapsed
     if not produced.exists():
@@ -808,6 +932,118 @@ def analyze_pcm_wav(path: Path) -> dict[str, Any]:
         "silence_ratio": round(silence, 4),
         "clipped_ratio": round(clipped, 6),
         "bytes": path.stat().st_size,
+    }
+
+
+def read_pcm16_mono(path: Path) -> tuple[list[float], int]:
+    with wave.open(str(path), "rb") as wav:
+        channels = wav.getnchannels()
+        sample_width = wav.getsampwidth()
+        sample_rate = wav.getframerate()
+        frames = wav.getnframes()
+        raw = wav.readframes(frames)
+    if sample_width != 2:
+        raise ValueError(f"unsupported sample width {sample_width}")
+    import array
+
+    samples = array.array("h")
+    samples.frombytes(raw)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    if channels > 1:
+        mono = []
+        for index in range(0, len(samples), channels):
+            mono.append(sum(samples[index : index + channels]) / channels / 32768.0)
+        return mono, sample_rate
+    return [sample / 32768.0 for sample in samples], sample_rate
+
+
+def acoustic_fingerprint(path: Path) -> dict[str, Any]:
+    samples, sample_rate = read_pcm16_mono(path)
+    if not samples:
+        return {"error": "empty audio"}
+    frame_size = max(256, int(sample_rate * 0.04))
+    hop = frame_size
+    frames = [samples[index : index + frame_size] for index in range(0, len(samples) - frame_size + 1, hop)]
+    if not frames:
+        frames = [samples]
+    rms_values = []
+    zcr_values = []
+    for frame in frames:
+        if not frame:
+            continue
+        rms_values.append(math.sqrt(sum(value * value for value in frame) / len(frame)))
+        crossings = sum(
+            1
+            for left, right in zip(frame, frame[1:])
+            if (left < 0 <= right) or (right < 0 <= left)
+        )
+        zcr_values.append(crossings / max(1, len(frame) - 1))
+    abs_values = [abs(value) for value in samples]
+    duration = len(samples) / sample_rate if sample_rate else 0
+    mean_abs = sum(abs_values) / len(abs_values)
+    rms = math.sqrt(sum(value * value for value in samples) / len(samples))
+    silence_ratio = sum(1 for value in abs_values if value < 0.005) / len(abs_values)
+    peak = max(abs_values)
+    mean_zcr = sum(zcr_values) / len(zcr_values) if zcr_values else 0.0
+    energy_variance = (
+        sum((value - (sum(rms_values) / len(rms_values))) ** 2 for value in rms_values)
+        / len(rms_values)
+        if rms_values
+        else 0.0
+    )
+    return {
+        "duration_s": round(duration, 3),
+        "rms": round(rms, 5),
+        "mean_abs": round(mean_abs, 5),
+        "peak": round(peak, 5),
+        "silence_ratio": round(silence_ratio, 4),
+        "zero_crossing_rate": round(mean_zcr, 5),
+        "energy_variance": round(energy_variance, 7),
+    }
+
+
+def similarity_from_features(reference: dict[str, Any], candidate: dict[str, Any]) -> float:
+    if reference.get("error") or candidate.get("error"):
+        return 0.0
+    feature_bounds = {
+        "rms": 0.08,
+        "mean_abs": 0.05,
+        "peak": 0.4,
+        "silence_ratio": 0.55,
+        "zero_crossing_rate": 0.16,
+        "energy_variance": 0.004,
+    }
+    weighted_scores = []
+    for key, bound in feature_bounds.items():
+        left = float(reference.get(key, 0.0) or 0.0)
+        right = float(candidate.get(key, 0.0) or 0.0)
+        weighted_scores.append(max(0.0, 1.0 - abs(left - right) / bound))
+    return round(sum(weighted_scores) / len(weighted_scores), 4)
+
+
+def evaluate_clone_similarity(case: dict[str, Any], output_path: Path) -> dict[str, Any] | None:
+    raw_reference = case.get("clone_reference_audio")
+    if not raw_reference:
+        return None
+    reference_path = Path(str(raw_reference))
+    if not reference_path.is_absolute():
+        reference_path = PROJECT_ROOT / reference_path
+    if not reference_path.exists():
+        return {"error": f"reference audio not found: {reference_path}"}
+    try:
+        reference = acoustic_fingerprint(reference_path)
+        candidate = acoustic_fingerprint(output_path)
+    except Exception as exc:
+        return {"error": str(exc)}
+    return {
+        "score": similarity_from_features(reference, candidate),
+        "method": "acoustic_fingerprint_proxy_v1",
+        "reference_audio": str(reference_path.relative_to(PROJECT_ROOT))
+        if reference_path.is_relative_to(PROJECT_ROOT)
+        else str(reference_path),
+        "reference_features": reference,
+        "candidate_features": candidate,
     }
 
 
@@ -1033,6 +1269,22 @@ def summarize_style_alignment(cases: list[dict[str, Any]]) -> dict[str, Any] | N
     }
 
 
+def summarize_clone_similarity(cases: list[dict[str, Any]]) -> dict[str, Any] | None:
+    values = [
+        case["clone_similarity"]["score"]
+        for case in cases
+        if isinstance(case.get("clone_similarity"), dict)
+        and isinstance(case["clone_similarity"].get("score"), (int, float))
+    ]
+    if not values:
+        return None
+    return {
+        "average_proxy": round(sum(values) / len(values), 4),
+        "case_count": len(values),
+        "method": "acoustic_fingerprint_proxy_v1",
+    }
+
+
 def style_capability(model: ModelSpec) -> str:
     if model.supports_instruction_prompt:
         return "instruction_prompt"
@@ -1049,7 +1301,22 @@ def style_capability_weight(capability: str) -> float:
     return 0.75
 
 
-def score_cases(cases: list[dict[str, Any]], suite: str = "hard", capability: str = "text_only") -> float | None:
+def clone_capability_weight(model: ModelSpec) -> float:
+    if not model.supports_voice_cloning:
+        return 0.0
+    if model.provider in {"openvoice", "xtts", "chatterbox", "qwen3_native"}:
+        return 1.0
+    if model.family == "mlx":
+        return 0.95
+    return 0.9
+
+
+def score_cases(
+    cases: list[dict[str, Any]],
+    suite: str = "hard",
+    capability: str = "text_only",
+    clone_weight: float = 1.0,
+) -> float | None:
     tested = [case for case in cases if case["status"] == "tested"]
     if not tested:
         return None
@@ -1076,6 +1343,22 @@ def score_cases(cases: list[dict[str, Any]], suite: str = "hard", capability: st
         style_component *= style_capability_weight(capability)
         score = 100.0 * (
             0.30 * style_component
+            + 0.25 * asr_component
+            + 0.20 * audio_component
+            + 0.15 * success
+            + 0.10 * latency_component
+        )
+    elif suite == "voice_clone":
+        clone_values = [
+            case["clone_similarity"]["score"]
+            for case in tested
+            if isinstance(case.get("clone_similarity"), dict)
+            and isinstance(case["clone_similarity"].get("score"), (int, float))
+        ]
+        clone_component = sum(clone_values) / len(clone_values) if clone_values else 0.0
+        clone_component *= clone_weight
+        score = 100.0 * (
+            0.30 * clone_component
             + 0.25 * asr_component
             + 0.20 * audio_component
             + 0.15 * success
@@ -1179,6 +1462,7 @@ def run_model(
             baseline_case.get("real_time_factor") if reuse_audio and baseline_case else round(elapsed / duration, 3) if duration else None
         )
         style_alignment = evaluate_style_alignment(case, metrics) if suite == "style" else None
+        clone_similarity = evaluate_clone_similarity(case, final_path) if suite == "voice_clone" else None
         asr_roundtrip = None
         if asr_judge is not None:
             try:
@@ -1199,14 +1483,22 @@ def run_model(
                 "real_time_factor": real_time_factor,
                 "audio": metrics,
                 "style_alignment": style_alignment,
+                "clone_similarity": clone_similarity,
                 "target_style": case.get("target_style"),
                 "instruction_prompt": case.get("instruction_prompt"),
+                "clone_reference_audio": case.get("clone_reference_audio"),
                 "asr_roundtrip": asr_roundtrip,
                 "output_path": str(final_path.relative_to(PROJECT_ROOT)),
             }
         )
     capability = style_capability(model)
-    score = score_cases(case_results, suite=suite, capability=capability)
+    clone_weight = clone_capability_weight(model)
+    score = score_cases(
+        case_results,
+        suite=suite,
+        capability=capability,
+        clone_weight=clone_weight,
+    )
     status = "tested" if any(case["status"] == "tested" for case in case_results) else "failed"
     return {
         "model_id": model.id,
@@ -1218,7 +1510,9 @@ def run_model(
         "model_root": str(model_root),
         "style_capability": capability,
         "style_capability_weight": style_capability_weight(capability),
+        "clone_capability_weight": clone_weight,
         "style_alignment": summarize_style_alignment(case_results),
+        "clone_similarity": summarize_clone_similarity(case_results),
         "asr_roundtrip": summarize_asr_roundtrip(case_results),
         "cases": case_results,
     }
@@ -1287,6 +1581,14 @@ def suite_defaults(suite: str) -> tuple[list[dict[str, Any]], Path, str, str, st
             "tts_style_emotion_preference_proxy",
             "30% style proxy, 25% ASR round-trip WER, 20% audio health, 15% synthesis success, 10% real-time factor.",
         )
+    if suite == "voice_clone":
+        return (
+            VOICE_CLONE_CASES,
+            PROJECT_ROOT / "output/tts-voice-clone-eval",
+            "tts-voice-clone-eval-summary.json",
+            "tts_voice_clone_real_world_hard",
+            "30% speaker similarity proxy, 25% ASR round-trip WER, 20% audio health, 15% synthesis success, 10% real-time factor.",
+        )
     return (
         CASES,
         PROJECT_ROOT / "output/tts-model-eval",
@@ -1335,16 +1637,56 @@ def write_listener_rating_template(output_dir: Path, results: list[dict[str, Any
                 )
 
 
+def write_voice_clone_rating_template(output_dir: Path, results: list[dict[str, Any]]) -> None:
+    template_path = output_dir / "listener-rating-template.csv"
+    with template_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "model_id",
+                "case_id",
+                "reference_audio_path",
+                "audio_path",
+                "speaker_match_1_to_5",
+                "naturalness_1_to_5",
+                "intelligibility_1_to_5",
+                "reference_artifacts_1_to_5",
+                "overall_preference_1_to_5",
+                "listener_notes",
+            ],
+        )
+        writer.writeheader()
+        for result in results:
+            for case in result.get("cases", []):
+                if case.get("status") != "tested":
+                    continue
+                writer.writerow(
+                    {
+                        "model_id": result.get("model_id"),
+                        "case_id": case.get("case_id"),
+                        "reference_audio_path": case.get("clone_reference_audio"),
+                        "audio_path": case.get("output_path"),
+                        "speaker_match_1_to_5": "",
+                        "naturalness_1_to_5": "",
+                        "intelligibility_1_to_5": "",
+                        "reference_artifacts_1_to_5": "",
+                        "overall_preference_1_to_5": "",
+                        "listener_notes": "",
+                    }
+                )
+
+
 def print_inventory(models: list[ModelSpec]) -> None:
     for model in models:
         root = resolve_model_root(model)
         status = "disabled" if model.unavailable_reason else ("installed" if root else "missing")
-        print(f"{model.id:32} {status:10} {model.family:10} {root or ''}")
+        clone = "clone" if model.supports_voice_cloning else ""
+        print(f"{model.id:32} {status:10} {model.family:10} {clone:6} {root or ''}")
 
 
 def main() -> int:
     args = parse_args()
-    models = selected_models(args.models, args.include_disabled)
+    models = selected_models(args.models, args.include_disabled, args.suite)
     if args.list:
         print_inventory(models)
         return 0
@@ -1397,10 +1739,13 @@ def main() -> int:
                 "metric": "WER against normalized source prompt",
             },
             "style_rubric": STYLE_RUBRIC if args.suite == "style" else None,
+            "voice_clone_rubric": VOICE_CLONE_RUBRIC if args.suite == "voice_clone" else None,
             "score_formula": score_formula,
             "notes": (
                 "Generated audio is stored under output/tts-style-eval/audio. Scoring combines a heuristic style-alignment proxy, ASR round-trip WER, audio health, success, and real-time factor. Human listener preference ratings are not collected by this automatic runner."
                 if args.suite == "style"
+                else "Generated audio is stored under output/tts-voice-clone-eval/audio. Scoring combines a deterministic speaker-similarity proxy against the reference clip, ASR round-trip WER, audio health, success, and real-time factor. Human clone preference ratings are scaffolded but not collected by this automatic runner."
+                if args.suite == "voice_clone"
                 else "Generated audio is stored under output/tts-model-eval/audio. Scoring combines synthesis success, ASR round-trip WER, real-time factor, and WAV health checks. Reused-audio runs preserve prior synthesis latency when a baseline summary exists."
             ),
         },
@@ -1409,6 +1754,8 @@ def main() -> int:
     (output_dir / summary_name).write_text(json.dumps(summary, indent=2) + "\n")
     if args.suite == "style":
         write_listener_rating_template(output_dir, results)
+    if args.suite == "voice_clone":
+        write_voice_clone_rating_template(output_dir, results)
     print(f"Wrote {output_dir / summary_name}")
     return 0
 

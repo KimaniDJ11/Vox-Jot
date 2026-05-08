@@ -26,6 +26,10 @@ import {
   TTS_STYLE_EVALUATION_RESULTS,
   TTS_STYLE_EVALUATION_RUN,
 } from "@/lib/ttsStyleEvaluationResults";
+import {
+  TTS_VOICE_CLONE_EVALUATION_RESULTS,
+  TTS_VOICE_CLONE_EVALUATION_RUN,
+} from "@/lib/ttsVoiceCloneEvaluationResults";
 import { SuiteLeaderboard } from "@/components/app-sections/testing/SuiteLeaderboard";
 import {
   buildFileAsrRow,
@@ -33,6 +37,7 @@ import {
   buildSpeakerIsolationRow,
   buildSttRow,
   buildTtsStyleRow,
+  buildTtsVoiceCloneRow,
   buildTtsRow,
   orderByRank,
 } from "@/components/app-sections/testing/suiteAdapters";
@@ -43,6 +48,7 @@ type TestingTabId =
   | "speaker-isolation"
   | "tts"
   | "tts-style"
+  | "tts-voice-clone"
   | "llm"
   | "stt";
 
@@ -70,6 +76,11 @@ const TABS: Array<{
     id: "tts-style",
     labelKey: "testing.tabs.ttsStyle",
     defaultLabel: "TTS Style",
+  },
+  {
+    id: "tts-voice-clone",
+    labelKey: "testing.tabs.ttsVoiceClone",
+    defaultLabel: "Voice Cloning",
   },
   {
     id: "llm",
@@ -106,6 +117,7 @@ export const ModelTestingSection: React.FC = () => {
   const stt = splitRanked(STT_EVALUATION_RESULTS);
   const tts = splitRanked(TTS_EVALUATION_RESULTS);
   const ttsStyle = splitRanked(TTS_STYLE_EVALUATION_RESULTS);
+  const ttsVoiceClone = splitRanked(TTS_VOICE_CLONE_EVALUATION_RESULTS);
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -214,6 +226,16 @@ export const ModelTestingSection: React.FC = () => {
             ranked={ttsStyle.ranked}
             unranked={ttsStyle.unranked}
             renderRow={buildTtsStyleRow}
+            t={t}
+          />
+        ) : null}
+
+        {activeTab === "tts-voice-clone" ? (
+          <SuiteLeaderboard
+            run={TTS_VOICE_CLONE_EVALUATION_RUN}
+            ranked={ttsVoiceClone.ranked}
+            unranked={ttsVoiceClone.unranked}
+            renderRow={buildTtsVoiceCloneRow}
             t={t}
           />
         ) : null}

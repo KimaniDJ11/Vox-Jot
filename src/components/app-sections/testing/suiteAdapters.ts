@@ -24,6 +24,10 @@ import type {
   TtsStyleEvaluationResult,
   TtsStyleEvaluationStatus,
 } from "@/lib/ttsStyleEvaluationResults";
+import type {
+  TtsVoiceCloneEvaluationResult,
+  TtsVoiceCloneEvaluationStatus,
+} from "@/lib/ttsVoiceCloneEvaluationResults";
 import type { LeaderboardRowProps } from "@/components/app-sections/testing/LeaderboardRow";
 
 type EvaluationStatus =
@@ -32,7 +36,8 @@ type EvaluationStatus =
   | SttEvaluationStatus
   | SpeakerIsolationEvaluationStatus
   | TtsEvaluationStatus
-  | TtsStyleEvaluationStatus;
+  | TtsStyleEvaluationStatus
+  | TtsVoiceCloneEvaluationStatus;
 
 export function orderByRank<T extends { rank?: number; label: string }>(
   results: T[],
@@ -402,6 +407,55 @@ export function buildTtsStyleRow(
           } · ${t("testing.metrics.rtf", { defaultValue: "RTF" })}: ${formatNumber(
             result.realTimeFactorP50,
           )} · ${t("testing.metrics.listenerPreference", {
+            defaultValue: "Listener preference",
+          })}: ${formatPercent(result.listenerPreference)}`
+        : undefined,
+  };
+}
+
+export function buildTtsVoiceCloneRow(
+  result: TtsVoiceCloneEvaluationResult,
+  t: TFunction,
+): LeaderboardRowProps {
+  return {
+    rank: result.rank,
+    label: result.label,
+    status: result.status,
+    statusLabel: statusLabel(result.status, t),
+    notes: result.notes,
+    metrics:
+      result.status === "tested"
+        ? [
+            {
+              label: t("testing.metrics.score", { defaultValue: "Score" }),
+              value:
+                result.score !== undefined ? result.score.toFixed(1) : "n/a",
+            },
+            {
+              label: t("testing.metrics.clone", { defaultValue: "Clone" }),
+              value: formatPercent(result.cloneSimilarity),
+            },
+            {
+              label: t("testing.metrics.asrWer", { defaultValue: "ASR WER" }),
+              value: formatPercent(result.asrAverageWer),
+            },
+            {
+              label: t("testing.metrics.p50", { defaultValue: "p50" }),
+              value: formatMs(result.latencyP50Ms),
+            },
+            {
+              label: t("testing.metrics.rtf", { defaultValue: "RTF" }),
+              value: formatNumber(result.realTimeFactorP50),
+            },
+          ]
+        : [],
+    footer:
+      result.status === "tested"
+        ? `${t("testing.metrics.pass", { defaultValue: "Pass" })}: ${
+            result.passedCases !== undefined && result.sampleCount !== undefined
+              ? `${result.passedCases}/${result.sampleCount}`
+              : "n/a"
+          } · ${t("testing.metrics.listenerPreference", {
             defaultValue: "Listener preference",
           })}: ${formatPercent(result.listenerPreference)}`
         : undefined,

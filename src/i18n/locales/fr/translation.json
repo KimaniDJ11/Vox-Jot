@@ -1762,5 +1762,33 @@
       "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
       "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
     }
+  },
+  "testing": {
+    "tabs": {
+      "fileAsr": "File ASR",
+      "llm": "LLM",
+      "stt": "Live STT"
+    },
+    "notRanked": {
+      "title": "Not yet ranked",
+      "description": "Models awaiting benchmark, blocked, or pending download."
+    },
+    "empty": {
+      "title": "No ranked results",
+      "description": "Run the benchmark to populate this leaderboard."
+    },
+    "metrics": {
+      "device": "Device",
+      "promptProfile": "Profile"
+    },
+    "categories": {
+      "strongest": "Strongest",
+      "weakest": "Weakest"
+    },
+    "counts": {
+      "tested": "{{count}} tested",
+      "pending": "{{count}} pending",
+      "blocked": "{{count}} blocked"
+    }
   }
 }

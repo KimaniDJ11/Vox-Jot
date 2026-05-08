@@ -10,6 +10,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
+  Activity,
   AlertTriangle,
   Brain,
   Check,
@@ -17,6 +18,7 @@ import {
   Cloud,
   Cpu,
   Download,
+  Gauge,
   Globe,
   HardDrive,
   Loader2,
@@ -41,6 +43,12 @@ import HubModelCard, {
 } from "@/components/model-hub/HubModelCard";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import { LANGUAGES } from "@/lib/constants/languages";
+import {
+  getLlmEvaluationResult,
+  LLM_EVALUATION_RESULTS,
+  LLM_EVALUATION_RUN,
+  type LlmEvaluationResult,
+} from "@/lib/llmEvaluationResults";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -196,6 +204,7 @@ type RefineModelsSettingsProps = {
   onHubSearchQueryChange?: (value: string) => void;
   /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
   hubFilterLabels?: boolean;
+  showEvaluationPanel?: boolean;
 };
 
 const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
@@ -203,6 +212,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   hubSearchQuery,
   onHubSearchQueryChange,
   hubFilterLabels = false,
+  showEvaluationPanel = true,
 }) => {
   const { t } = useTranslation();
   const { refreshSettings } = useSettings();
@@ -531,6 +541,35 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       catalog?.providers.find((provider) => provider.id === "ollama") ?? null,
     [catalog?.providers],
   );
+  const evaluatedModels = useMemo(
+    () =>
+      filteredModels
+        .map((model) => ({
+          model,
+          result: getLlmEvaluationResult(model.runtime_model_id),
+        }))
+        .filter(
+          (
+            entry,
+          ): entry is {
+            model: RefineModelDescriptor;
+            result: LlmEvaluationResult;
+          } => entry.result !== undefined,
+        )
+        .sort(
+          (a, b) =>
+            (a.result.rank ?? Number.MAX_SAFE_INTEGER) -
+            (b.result.rank ?? Number.MAX_SAFE_INTEGER),
+        ),
+    [filteredModels],
+  );
+  const activeEvaluation = useMemo(() => {
+    for (const model of activeModels) {
+      const result = getLlmEvaluationResult(model.runtime_model_id);
+      if (result) return { model, result };
+    }
+    return null;
+  }, [activeModels]);
 
   const ensureOllamaReady = async (): Promise<void> => {
     if (ollamaProvider?.installed === false) {
@@ -700,9 +739,14 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     if (model.downloadable) {
       let label: string;
       if (isBusy && progress?.stage === "downloading") {
-        label = t("settings.refineModels.actions.downloading", {
-          percent: Math.round(progress.percentage ?? 0),
-        });
+        label =
+          (progress.total ?? 0) > 0
+            ? t("settings.refineModels.actions.downloading", {
+                percent: Math.round(progress.percentage ?? 0),
+              })
+            : t("settings.refineModels.actions.downloadingUnknown", {
+                defaultValue: "Downloading...",
+              });
       } else if (isBusy && progress?.stage === "importing") {
         label = t("settings.refineModels.actions.importing");
       } else if (needsOllamaInstall) {
@@ -823,6 +867,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const buildCapabilityChips = (
     model: RefineModelDescriptor,
   ): CompactBadgeItem[] => {
+    const evaluation = getLlmEvaluationResult(model.runtime_model_id);
     const haystack =
       `${model.title} ${model.id} ${model.runtime_model_id} ${model.source_repo_id ?? ""}`.toLowerCase();
     const parameterMatch = haystack.match(/(\d+(?:\.\d+)?)\s*([bm])\b/);
@@ -907,6 +952,17 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             }),
           }
         : null,
+      showEvaluationPanel && evaluation?.status === "tested"
+        ? {
+            id: "capability-evaluation",
+            label: evaluation.rank
+              ? `Bench #${evaluation.rank}`
+              : formatPercent(evaluation.passRate),
+            variant: "secondary" as const,
+            icon: <Gauge className="h-3 w-3" />,
+            detail: `${evaluation.passed ?? 0}/${evaluation.totalCases ?? 0} sanity cases passed; p50 ${formatLatency(evaluation.latencyP50Ms)}.`,
+          }
+        : null,
     ].filter(Boolean) as CompactBadgeItem[];
   };
 
@@ -917,22 +973,33 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     if (!progress) return null;
 
     if (progress.stage === "downloading") {
+      const downloaded = progress.downloaded ?? 0;
+      const total = progress.total ?? 0;
+      const hasKnownTotal = total > 0;
+      const percentage = Math.max(
+        0,
+        Math.min(100, Math.round(progress.percentage ?? 0)),
+      );
+
       return (
         <div>
           <div className="flex items-center gap-2">
             <progress
-              value={progress.percentage ?? 0}
+              {...(hasKnownTotal ? { value: percentage } : {})}
               max={100}
               className="h-1.5 flex-1 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-mid-gray/20 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-logo-primary"
             />
             <span className="min-w-fit text-xs tabular-nums text-[var(--muted)]">
-              {Math.round(progress.percentage ?? 0)}%
+              {hasKnownTotal
+                ? `${percentage}%`
+                : t("settings.refineModels.actions.downloadingUnknown", {
+                    defaultValue: "Downloading...",
+                  })}
             </span>
           </div>
           <p className="mt-1 text-xs tabular-nums text-[var(--muted)]">
-            {formatBytes(progress.downloaded ?? 0)}
-            {(progress.total ?? 0) > 0 &&
-              ` / ${formatBytes(progress.total ?? 0)}`}
+            {formatBytes(downloaded)}
+            {hasKnownTotal && ` / ${formatBytes(total)}`}
             {(speedMapRef.current[model.runtime_model_id]?.speed ?? 0) > 0 &&
               ` \u2022 ${speedMapRef.current[model.runtime_model_id].speed.toFixed(1)} MB/s`}
           </p>
@@ -1216,209 +1283,430 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     </div>
   );
 
+  const benchmarkPanel = showEvaluationPanel ? (
+    <aside className="min-w-0 lg:sticky lg:top-[5.75rem] lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+      <div className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+              {t("settings.refineModels.evaluation.label", {
+                defaultValue: "LLM test results",
+              })}
+            </p>
+            <h2 className="mt-1 text-base font-semibold leading-tight text-[var(--text)]">
+              {t("settings.refineModels.evaluation.title", {
+                defaultValue: "Real-world post-process benchmark",
+              })}
+            </h2>
+          </div>
+          <Activity className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <MetricTile
+            label="Tested"
+            value={`${LLM_EVALUATION_RESULTS.filter((r) => r.status === "tested").length}`}
+          />
+          <MetricTile
+            label="Best pass"
+            value={formatPercent(
+              LLM_EVALUATION_RESULTS.filter(
+                (r) => r.status === "tested" && r.passRate !== undefined,
+              ).sort((a, b) => (b.passRate ?? 0) - (a.passRate ?? 0))[0]
+                ?.passRate,
+            )}
+          />
+        </div>
+
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+          <p className="text-xs font-semibold text-[var(--text)]">
+            {LLM_EVALUATION_RUN.suite}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            {LLM_EVALUATION_RUN.corpus}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            {t("settings.refineModels.evaluation.timeout", {
+              defaultValue: "10s timeout per case; full reports in {{path}}.",
+              path: LLM_EVALUATION_RUN.reportPath,
+            })}
+          </p>
+        </div>
+
+        {activeEvaluation ? (
+          <LlmEvaluationResultBlock
+            title="Active model"
+            modelName={activeEvaluation.model.title}
+            result={activeEvaluation.result}
+          />
+        ) : null}
+
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+            {t("settings.refineModels.evaluation.ranking", {
+              defaultValue: "Ranking",
+            })}
+          </p>
+          {evaluatedModels.length > 0 ? (
+            evaluatedModels
+              .slice(0, 8)
+              .map(({ model, result }) => (
+                <LlmEvaluationResultBlock
+                  key={`${model.runtime_provider_id}::${model.runtime_model_id}`}
+                  modelName={model.title}
+                  result={result}
+                  compact
+                />
+              ))
+          ) : (
+            <p className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3 text-sm text-[var(--muted)]">
+              {t("settings.refineModels.evaluation.empty", {
+                defaultValue:
+                  "Results appear here after a local LLM benchmark covers matching models.",
+              })}
+            </p>
+          )}
+        </div>
+      </div>
+    </aside>
+  ) : null;
+
   return (
-    <div className="space-y-6">
-      {portalTarget ? createPortal(filterAction, portalTarget) : null}
+    <div
+      className={
+        showEvaluationPanel
+          ? "grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]"
+          : "w-full"
+      }
+    >
+      <div className="min-w-0 space-y-6">
+        {portalTarget ? createPortal(filterAction, portalTarget) : null}
 
-      <SettingsGroup noCard>
-        <div className="space-y-5">
-          {!useHubSearch ? (
-            <div className="grid gap-3 md:grid-cols-3">
-              {(catalog?.providers ?? []).map((provider) => (
-                <div
-                  key={provider.id}
-                  className={`rounded-2xl border px-4 py-4 ${
-                    provider.available
-                      ? "border-[var(--success)]/25 bg-[var(--success-soft)]/40"
-                      : "border-[var(--border)] bg-[var(--panel-bg)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <ProviderIcon providerId={provider.id} size="sm" />
-                      <p className="truncate text-sm font-semibold text-[var(--text)]">
-                        {provider.label}
-                      </p>
+        <SettingsGroup noCard>
+          <div className="space-y-5">
+            {!useHubSearch ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                {(catalog?.providers ?? []).map((provider) => (
+                  <div
+                    key={provider.id}
+                    className={`rounded-2xl border px-4 py-4 ${
+                      provider.available
+                        ? "border-[var(--success)]/25 bg-[var(--success-soft)]/40"
+                        : "border-[var(--border)] bg-[var(--panel-bg)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ProviderIcon providerId={provider.id} size="sm" />
+                        <p className="truncate text-sm font-semibold text-[var(--text)]">
+                          {provider.label}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={provider.available ? "success" : "secondary"}
+                      >
+                        {provider.available
+                          ? t("settings.refineModels.badges.ready")
+                          : t("settings.refineModels.badges.needsSetup")}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={provider.available ? "success" : "secondary"}
-                    >
-                      {provider.available
-                        ? t("settings.refineModels.badges.ready")
-                        : t("settings.refineModels.badges.needsSetup")}
-                    </Badge>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      {provider.detail}
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {provider.detail}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
+                ))}
+              </div>
+            ) : null}
 
-          {!useHubSearch ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-                  <Search className="h-4 w-4" />
+            {!useHubSearch ? (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--text)]">
+                      {t("settings.refineModels.search.title")}
+                    </p>
+                    <p className="text-xs leading-5 text-[var(--muted)]">
+                      {t("settings.refineModels.search.description")}
+                    </p>
+                  </div>
+                </div>
+                <Input
+                  className="mt-3 w-full"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("settings.refineModels.search.placeholder")}
+                />
+              </div>
+            ) : null}
+
+            {error ? (
+              <div className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
+                {error}
+              </div>
+            ) : null}
+
+            {!portalTarget ? (
+              <div className="flex justify-end">{filterAction}</div>
+            ) : null}
+
+            {isLoading ? (
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-8 text-sm text-[var(--muted)]">
+                {t("settings.refineModels.loading")}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {renderSection(
+                  t("settings.refineModels.sections.readyNow"),
+                  t("settings.refineModels.sections.readyNowDescription"),
+                  [...activeModels, ...readyModels],
+                  t("settings.refineModels.sections.readyNowEmpty"),
+                  t("settings.refineModels.sections.readyNowEmptyDescription"),
+                  true,
+                )}
+
+                {renderSection(
+                  t("settings.refineModels.sections.availableToAdd"),
+                  "",
+                  downloadableModels,
+                  t("settings.refineModels.sections.availableToAddEmpty"),
+                  t(
+                    "settings.refineModels.sections.availableToAddEmptyDescription",
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </SettingsGroup>
+
+        {!useHubSearch ? (
+          <SettingsGroup
+            title={t("settings.refineModels.customImport.title")}
+            description={t("settings.refineModels.customImport.description")}
+          >
+            <div className="space-y-4 px-5 py-5">
+              <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4">
+                <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                  <Sparkles className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[var(--text)]">
-                    {t("settings.refineModels.search.title")}
+                    {t("settings.refineModels.customImport.importDescription")}
                   </p>
-                  <p className="text-xs leading-5 text-[var(--muted)]">
-                    {t("settings.refineModels.search.description")}
+                  <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                    {t("settings.refineModels.customImport.importHint")}
                   </p>
                 </div>
               </div>
-              <Input
-                className="mt-3 w-full"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("settings.refineModels.search.placeholder")}
-              />
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {t("settings.refineModels.customImport.repoLabel")}
+                  </label>
+                  <Input
+                    value={customRepoId}
+                    onChange={(event) => {
+                      const nextRepo = event.target.value;
+                      setCustomRepoId(nextRepo);
+                      if (!customModelId.trim()) {
+                        setCustomModelId(defaultModelIdFromRepo(nextRepo));
+                      }
+                    }}
+                    placeholder={t(
+                      "settings.refineModels.customImport.repoPlaceholder",
+                    )}
+                    disabled={customBusy}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {t("settings.refineModels.customImport.modelNameLabel")}
+                  </label>
+                  <Input
+                    value={customModelId}
+                    onChange={(event) => setCustomModelId(event.target.value)}
+                    placeholder={t(
+                      "settings.refineModels.customImport.modelNamePlaceholder",
+                    )}
+                    disabled={customBusy}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {t("settings.refineModels.customImport.fileLabel")}
+                  </label>
+                  <Input
+                    value={customFileName}
+                    onChange={(event) => setCustomFileName(event.target.value)}
+                    placeholder={t(
+                      "settings.refineModels.customImport.filePlaceholder",
+                    )}
+                    disabled={customBusy}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <Cpu className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text)]">
+                      {t("settings.refineModels.customImport.runtimeTarget")}
+                    </p>
+                    <p className="text-sm leading-6 text-[var(--muted)]">
+                      {t(
+                        "settings.refineModels.customImport.runtimeDescription",
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => void handleCustomImport()}
+                  disabled={customBusy}
+                >
+                  <Download className="mr-1 h-3.5 w-3.5" />
+                  {customBusy
+                    ? t("settings.refineModels.customImport.importingCustom")
+                    : t("settings.refineModels.customImport.importAndUse")}
+                </Button>
+              </div>
             </div>
-          ) : null}
+          </SettingsGroup>
+        ) : null}
+      </div>
+      {benchmarkPanel}
+    </div>
+  );
+};
 
-          {error ? (
-            <div className="rounded-2xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger)]">
-              {error}
-            </div>
-          ) : null}
+const MetricTile: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
+  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+      {label}
+    </p>
+    <p className="mt-1 text-sm font-semibold text-[var(--text)]">{value}</p>
+  </div>
+);
 
-          {!portalTarget ? (
-            <div className="flex justify-end">{filterAction}</div>
-          ) : null}
+const LlmEvaluationResultBlock: React.FC<{
+  modelName: string;
+  result: LlmEvaluationResult;
+  title?: string;
+  compact?: boolean;
+}> = ({ modelName, result, title, compact = false }) => {
+  const { t } = useTranslation();
+  const statusLabel =
+    result.status === "tested"
+      ? result.rank
+        ? `#${result.rank}`
+        : "Tested"
+      : "Pending";
 
-          {isLoading ? (
-            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-5 py-8 text-sm text-[var(--muted)]">
-              {t("settings.refineModels.loading")}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {renderSection(
-                t("settings.refineModels.sections.readyNow"),
-                t("settings.refineModels.sections.readyNowDescription"),
-                [...activeModels, ...readyModels],
-                t("settings.refineModels.sections.readyNowEmpty"),
-                t("settings.refineModels.sections.readyNowEmptyDescription"),
-                true,
-              )}
-
-              {renderSection(
-                t("settings.refineModels.sections.availableToAdd"),
-                "",
-                downloadableModels,
-                t("settings.refineModels.sections.availableToAddEmpty"),
-                t(
-                  "settings.refineModels.sections.availableToAddEmptyDescription",
-                ),
-              )}
-            </div>
-          )}
-        </div>
-      </SettingsGroup>
-
-      {!useHubSearch ? (
-        <SettingsGroup
-          title={t("settings.refineModels.customImport.title")}
-          description={t("settings.refineModels.customImport.description")}
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3">
+      {title ? (
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+          {title}
+        </p>
+      ) : null}
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-sm font-semibold text-[var(--text)]">
+          {modelName}
+        </p>
+        <Badge
+          variant="secondary"
+          className="shrink-0 border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-xs font-semibold"
         >
-          <div className="space-y-4 px-5 py-5">
-            <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-4">
-              <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--text)]">
-                  {t("settings.refineModels.customImport.importDescription")}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                  {t("settings.refineModels.customImport.importHint")}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {t("settings.refineModels.customImport.repoLabel")}
-                </label>
-                <Input
-                  value={customRepoId}
-                  onChange={(event) => {
-                    const nextRepo = event.target.value;
-                    setCustomRepoId(nextRepo);
-                    if (!customModelId.trim()) {
-                      setCustomModelId(defaultModelIdFromRepo(nextRepo));
-                    }
-                  }}
-                  placeholder={t(
-                    "settings.refineModels.customImport.repoPlaceholder",
-                  )}
-                  disabled={customBusy}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {t("settings.refineModels.customImport.modelNameLabel")}
-                </label>
-                <Input
-                  value={customModelId}
-                  onChange={(event) => setCustomModelId(event.target.value)}
-                  placeholder={t(
-                    "settings.refineModels.customImport.modelNamePlaceholder",
-                  )}
-                  disabled={customBusy}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {t("settings.refineModels.customImport.fileLabel")}
-                </label>
-                <Input
-                  value={customFileName}
-                  onChange={(event) => setCustomFileName(event.target.value)}
-                  placeholder={t(
-                    "settings.refineModels.customImport.filePlaceholder",
-                  )}
-                  disabled={customBusy}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-                  <Cpu className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--text)]">
-                    {t("settings.refineModels.customImport.runtimeTarget")}
-                  </p>
-                  <p className="text-sm leading-6 text-[var(--muted)]">
-                    {t("settings.refineModels.customImport.runtimeDescription")}
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => void handleCustomImport()}
-                disabled={customBusy}
-              >
-                <Download className="mr-1 h-3.5 w-3.5" />
-                {customBusy
-                  ? t("settings.refineModels.customImport.importingCustom")
-                  : t("settings.refineModels.customImport.importAndUse")}
-              </Button>
-            </div>
-          </div>
-        </SettingsGroup>
+          {statusLabel}
+        </Badge>
+      </div>
+      {result.status === "tested" ? (
+        <div
+          className={`mt-2 grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-3"}`}
+        >
+          <MiniMetric
+            icon={<Gauge className="h-3.5 w-3.5" />}
+            label="Pass"
+            value={`${result.passed ?? 0}/${result.totalCases ?? 0}`}
+          />
+          <MiniMetric
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Sim"
+            value={formatPercent(result.averageSimilarity)}
+          />
+          {!compact ? (
+            <MiniMetric
+              label="p50"
+              value={formatLatency(result.latencyP50Ms)}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      {!compact && result.notes ? (
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {result.notes}
+        </p>
+      ) : null}
+      {!compact && result.promptProfile ? (
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {t("settings.refineModels.evaluation.promptProfile", {
+            defaultValue: "Prompt profile: {{profile}}.",
+            profile: result.promptProfile,
+          })}
+        </p>
+      ) : null}
+      {!compact && result.errors ? (
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {t("settings.refineModels.evaluation.errors", {
+            count: result.errors,
+            defaultValue:
+              result.errors === 1
+                ? "{{count}} timeout or API error."
+                : "{{count}} timeout or API errors.",
+          })}
+        </p>
       ) : null}
     </div>
   );
 };
+
+const MiniMetric: React.FC<{
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}> = ({ label, value, icon }) => (
+  <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5">
+    <div className="flex min-w-0 items-center gap-1 text-[var(--muted)]">
+      {icon}
+      <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]">
+        {label}
+      </span>
+    </div>
+    <p className="mt-0.5 truncate text-xs font-semibold text-[var(--text)]">
+      {value}
+    </p>
+  </div>
+);
+
+function formatPercent(value?: number): string {
+  if (value === undefined) return "n/a";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatLatency(value?: number): string {
+  if (value === undefined) return "n/a";
+  return `${value} ms`;
+}
 
 export default RefineModelsSettings;

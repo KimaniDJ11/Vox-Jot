@@ -643,7 +643,7 @@ const FileTranscriptionHint: React.FC = () => {
 export const AISetupSettingsSection: React.FC = () => (
   <div className="space-y-6">
     <AIProcessingRoutePreview />
-    <RefineModelsSettings />
+    <RefineModelsSettings showEvaluationPanel={false} />
     <PostProcessingSettings omitLocalPrivacy />
     <TranslationProviderSettingsCard />
     <FileTranscriptionHint />

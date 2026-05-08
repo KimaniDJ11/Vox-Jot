@@ -17,11 +17,13 @@ export const DictateModelsSection: React.FC<{
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
   hubFilterLabels?: boolean;
+  showEvaluationPanel?: boolean;
 }> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery,
   hubFilterLabels,
+  showEvaluationPanel,
 }) => (
   <div className="space-y-6">
     <ModelsSettings
@@ -29,6 +31,7 @@ export const DictateModelsSection: React.FC<{
       showActiveModelBanner={showActiveModelBanner}
       hubSearchQuery={hubSearchQuery}
       hubFilterLabels={hubFilterLabels}
+      showEvaluationPanel={showEvaluationPanel}
     />
   </div>
 );

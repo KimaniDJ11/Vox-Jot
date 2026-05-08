@@ -204,6 +204,11 @@ const AISetupSettingsSection = lazy(() =>
     default: module.AISetupSettingsSection,
   })),
 );
+const ModelTestingSection = lazy(() =>
+  import("@/components/app-sections/testing").then((module) => ({
+    default: module.ModelTestingSection,
+  })),
+);
 const PrivacyStorageSettingsSection = lazy(() =>
   import("@/components/app-sections/settings").then((module) => ({
     default: module.PrivacyStorageSettingsSection,
@@ -545,6 +550,13 @@ function App() {
           icon: Cpu,
           title: "Models & AI",
           content: <AISetupSettingsSection />,
+        },
+        {
+          id: "model-testing",
+          label: "Testing",
+          icon: FlaskConical,
+          title: "Testing",
+          content: <ModelTestingSection />,
         },
         {
           id: "screen-context",

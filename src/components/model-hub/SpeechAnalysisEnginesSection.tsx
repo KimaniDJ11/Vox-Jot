@@ -650,8 +650,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
             const isCancelling = cancellingDownloads.has(model.id);
             const deleteConfirmOpen = deleteConfirmModelId === model.id;
             const progress = downloadProgress[model.id];
+            const hasKnownTotal = Boolean(progress && progress.total_bytes > 0);
             const progressPct =
-              progress && progress.total_bytes > 0
+              progress && hasKnownTotal
                 ? Math.min(
                     100,
                     Math.round(
@@ -763,7 +764,6 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
               model.license_label,
               model.repo_id,
             ].filter(Boolean) as string[];
-
             let trailing: HubTrailing = null;
             const actionDisabled = Boolean(busyModelId) || isDownloading;
             trailing = {
@@ -848,9 +848,19 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                               defaultValue: "Downloading {{percent}}%",
                               percent: progressPct,
                             })
-                          : t("modelHub.analysis.downloadProgress.preparing", {
-                              defaultValue: "Preparing download...",
-                            })}
+                          : progress?.phase === "downloading"
+                            ? t(
+                                "modelHub.analysis.downloadProgress.downloading",
+                                {
+                                  defaultValue: "Downloading...",
+                                },
+                              )
+                            : t(
+                                "modelHub.analysis.downloadProgress.preparing",
+                                {
+                                  defaultValue: "Preparing download...",
+                                },
+                              )}
                     </span>
                     {progress?.file ? (
                       <span className="block truncate font-normal text-[var(--muted)]">
@@ -898,7 +908,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                   role="progressbar"
                   aria-valuemax={100}
                   aria-valuemin={0}
-                  aria-valuenow={progressPct ?? 0}
+                  aria-valuenow={hasKnownTotal ? (progressPct ?? 0) : undefined}
                 >
                   <div
                     className="h-2 rounded-full bg-[var(--accent)] transition-[width] duration-200"

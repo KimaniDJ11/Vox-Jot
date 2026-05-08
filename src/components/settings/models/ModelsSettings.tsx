@@ -7,7 +7,13 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Globe, SlidersHorizontal } from "lucide-react";
+import {
+  Activity,
+  ChevronDown,
+  Gauge,
+  Globe,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { ModelCardStatus } from "@/components/onboarding";
 import { ModelCard } from "@/components/onboarding";
 import { useModelStore } from "@/stores/modelStore";
@@ -24,6 +30,12 @@ import {
 } from "@/components/ui/ProviderIcon";
 import Badge from "@/components/ui/Badge";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
+import {
+  getSttEvaluationResult,
+  STT_EVALUATION_RESULTS,
+  STT_EVALUATION_RUN,
+  type SttEvaluationResult,
+} from "@/lib/sttEvaluationResults";
 
 // check if model supports a language based on its supported_languages list
 const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
@@ -38,6 +50,8 @@ interface ModelsSettingsProps {
   hubSearchQuery?: string;
   /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
   hubFilterLabels?: boolean;
+  /** When true, shows the STT benchmark split panel beside the model list. */
+  showEvaluationPanel?: boolean;
 }
 
 export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
@@ -45,6 +59,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   showActiveModelBanner = true,
   hubSearchQuery = "",
   hubFilterLabels = false,
+  showEvaluationPanel = false,
 }) => {
   const { t } = useTranslation();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
@@ -294,6 +309,29 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
         )
       : null;
 
+  const evaluatedModels = useMemo(
+    () =>
+      models
+        .map((model) => ({
+          model,
+          result: getSttEvaluationResult(model.id),
+        }))
+        .filter(
+          (entry): entry is { model: ModelInfo; result: SttEvaluationResult } =>
+            Boolean(entry.result),
+        )
+        .sort((a, b) => {
+          const ar = a.result.rank ?? Number.MAX_SAFE_INTEGER;
+          const br = b.result.rank ?? Number.MAX_SAFE_INTEGER;
+          if (ar !== br) return ar - br;
+          return a.model.name.localeCompare(b.model.name);
+        }),
+    [models],
+  );
+
+  const activeEvaluation =
+    currentModelInfo && getSttEvaluationResult(currentModelInfo.id);
+
   const filterAction = (
     <div className="flex items-center gap-2">
       <div
@@ -441,8 +479,92 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     );
   }
 
-  return (
-    <div className="w-full space-y-6">
+  const evaluationPanel = showEvaluationPanel ? (
+    <aside className="min-w-0 lg:sticky lg:top-[5.75rem] lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+      <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+              {t("settings.models.evaluation.title", {
+                defaultValue: "STT test results",
+              })}
+            </p>
+            <h2 className="mt-1 text-base font-semibold leading-tight text-[var(--text)]">
+              {t("settings.models.evaluation.heading", {
+                defaultValue: "Real-world benchmark",
+              })}
+            </h2>
+          </div>
+          <Activity className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <MetricTile
+            label={t("settings.models.evaluation.tested", {
+              defaultValue: "Tested",
+            })}
+            value={`${STT_EVALUATION_RESULTS.filter((r) => r.status === "tested").length}`}
+          />
+          <MetricTile
+            label={t("settings.models.evaluation.bestWer", {
+              defaultValue: "Best WER",
+            })}
+            value={formatWer(
+              STT_EVALUATION_RESULTS.filter(
+                (r) => r.status === "tested" && r.averageWer !== undefined,
+              ).sort((a, b) => (a.averageWer ?? 1) - (b.averageWer ?? 1))[0]
+                ?.averageWer,
+            )}
+          />
+        </div>
+
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+          <p className="text-xs font-semibold text-[var(--text)]">
+            {STT_EVALUATION_RUN.suite}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            {STT_EVALUATION_RUN.corpus}
+          </p>
+        </div>
+
+        {activeEvaluation ? (
+          <EvaluationResultBlock
+            title="Active model"
+            modelName={currentModelInfo?.name ?? activeEvaluation.label}
+            result={activeEvaluation}
+          />
+        ) : null}
+
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+            {t("settings.models.evaluation.ranking", {
+              defaultValue: "Ranking",
+            })}
+          </p>
+          {evaluatedModels.length > 0 ? (
+            evaluatedModels.slice(0, 8).map(({ model, result }) => (
+              <EvaluationResultBlock
+                key={model.id}
+                modelName={model.name}
+                result={result}
+                compact
+              />
+            ))
+          ) : (
+            <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3 text-sm text-[var(--muted)]">
+              {t("settings.models.evaluation.empty", {
+                defaultValue:
+                  "Results will appear after the local benchmark finishes.",
+              })}
+            </p>
+          )}
+        </div>
+      </div>
+    </aside>
+  ) : null;
+
+  const modelList = (
+    <div className="min-w-0 space-y-6">
       {portalTarget ? createPortal(filterAction, portalTarget) : null}
 
       {showActiveModelBanner && currentModelInfo ? (
@@ -638,4 +760,122 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
       )}
     </div>
   );
+
+  if (showEvaluationPanel) {
+    return (
+      <div className="grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {modelList}
+        {evaluationPanel}
+      </div>
+    );
+  }
+
+  return <div className="w-full">{modelList}</div>;
 };
+
+const MetricTile: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
+  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+      {label}
+    </p>
+    <p className="mt-1 text-sm font-semibold text-[var(--text)]">{value}</p>
+  </div>
+);
+
+const EvaluationResultBlock: React.FC<{
+  modelName: string;
+  result: SttEvaluationResult;
+  title?: string;
+  compact?: boolean;
+}> = ({ modelName, result, title, compact = false }) => {
+  const statusLabel =
+    result.status === "tested"
+      ? result.rank
+        ? `#${result.rank}`
+        : "Tested"
+      : result.status === "blocked"
+        ? "Blocked"
+        : "Pending";
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3">
+      {title ? (
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+          {title}
+        </p>
+      ) : null}
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-sm font-semibold text-[var(--text)]">
+          {modelName}
+        </p>
+        <Badge
+          variant="secondary"
+          className="shrink-0 border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-xs font-semibold"
+        >
+          {statusLabel}
+        </Badge>
+      </div>
+      {result.status === "tested" ? (
+        <div
+          className={`mt-2 grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-3"}`}
+        >
+          <MiniMetric
+            icon={<Gauge className="h-3.5 w-3.5" />}
+            label="WER"
+            value={formatWer(result.averageWer)}
+          />
+          <MiniMetric
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Match"
+            value={`${result.normalizedMatches ?? 0}/${result.totalCases ?? 0}`}
+          />
+          {!compact ? (
+            <MiniMetric
+              label="p50"
+              value={
+                result.latencyP50Ms !== undefined
+                  ? `${result.latencyP50Ms} ms`
+                  : "n/a"
+              }
+            />
+          ) : null}
+        </div>
+      ) : result.notes ? (
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {result.notes}
+        </p>
+      ) : null}
+      {!compact && result.notes && result.status === "tested" ? (
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {result.notes}
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
+const MiniMetric: React.FC<{
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}> = ({ label, value, icon }) => (
+  <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5">
+    <div className="flex min-w-0 items-center gap-1 text-[var(--muted)]">
+      {icon}
+      <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]">
+        {label}
+      </span>
+    </div>
+    <p className="mt-0.5 truncate text-xs font-semibold text-[var(--text)]">
+      {value}
+    </p>
+  </div>
+);
+
+function formatWer(value?: number): string {
+  if (value === undefined) return "n/a";
+  return `${(value * 100).toFixed(1)}%`;
+}

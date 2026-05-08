@@ -188,6 +188,7 @@ const ModelHubSection: React.FC = () => {
               hubSearchQuery={query}
               onHubSearchQueryChange={setQuery}
               hubFilterLabels
+              showEvaluationPanel={false}
             />
           </div>
 

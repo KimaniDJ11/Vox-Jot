@@ -36,11 +36,13 @@ export const RefineModelsSection: React.FC<{
   hubSearchQuery?: string;
   onHubSearchQueryChange?: (value: string) => void;
   hubFilterLabels?: boolean;
+  showEvaluationPanel?: boolean;
 }> = ({
   titleActionTargetId,
   hubSearchQuery,
   onHubSearchQueryChange,
   hubFilterLabels,
+  showEvaluationPanel,
 }) => (
   <div className="space-y-6">
     <RefineModelsSettings
@@ -48,6 +50,7 @@ export const RefineModelsSection: React.FC<{
       hubSearchQuery={hubSearchQuery}
       onHubSearchQueryChange={onHubSearchQueryChange}
       hubFilterLabels={hubFilterLabels}
+      showEvaluationPanel={showEvaluationPanel}
     />
   </div>
 );

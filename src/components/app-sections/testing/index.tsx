@@ -19,6 +19,10 @@ import {
   SPEAKER_ISOLATION_EVALUATION_RUN,
 } from "@/lib/speakerIsolationEvaluationResults";
 import {
+  SCREEN_OCR_EVALUATION_RESULTS,
+  SCREEN_OCR_EVALUATION_RUN,
+} from "@/lib/screenOcrEvaluationResults";
+import {
   TTS_EVALUATION_RESULTS,
   TTS_EVALUATION_RUN,
 } from "@/lib/ttsEvaluationResults";
@@ -34,6 +38,7 @@ import { SuiteLeaderboard } from "@/components/app-sections/testing/SuiteLeaderb
 import {
   buildFileAsrRow,
   buildLlmRow,
+  buildScreenOcrRow,
   buildSpeakerIsolationRow,
   buildSttRow,
   buildTtsStyleRow,
@@ -50,7 +55,8 @@ type TestingTabId =
   | "tts-style"
   | "tts-voice-clone"
   | "llm"
-  | "stt";
+  | "stt"
+  | "screen-ocr";
 
 const TABS: Array<{
   id: TestingTabId;
@@ -92,6 +98,11 @@ const TABS: Array<{
     labelKey: "testing.tabs.stt",
     defaultLabel: "Live STT",
   },
+  {
+    id: "screen-ocr",
+    labelKey: "testing.tabs.screenOcr",
+    defaultLabel: "Screen OCR",
+  },
 ];
 
 function splitRanked<
@@ -118,6 +129,7 @@ export const ModelTestingSection: React.FC = () => {
   const tts = splitRanked(TTS_EVALUATION_RESULTS);
   const ttsStyle = splitRanked(TTS_STYLE_EVALUATION_RESULTS);
   const ttsVoiceClone = splitRanked(TTS_VOICE_CLONE_EVALUATION_RESULTS);
+  const screenOcr = splitRanked(SCREEN_OCR_EVALUATION_RESULTS);
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -246,6 +258,16 @@ export const ModelTestingSection: React.FC = () => {
             ranked={stt.ranked}
             unranked={stt.unranked}
             renderRow={buildSttRow}
+            t={t}
+          />
+        ) : null}
+
+        {activeTab === "screen-ocr" ? (
+          <SuiteLeaderboard
+            run={SCREEN_OCR_EVALUATION_RUN}
+            ranked={screenOcr.ranked}
+            unranked={screenOcr.unranked}
+            renderRow={buildScreenOcrRow}
             t={t}
           />
         ) : null}

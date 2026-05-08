@@ -152,6 +152,7 @@ pub(super) fn looks_like_structured_blob(text: &str) -> bool {
         || trimmed.starts_with("<analysis")
         || trimmed.starts_with("---")
         || trimmed.contains("\n---")
+        || trimmed.contains("-->")
 }
 
 pub(super) fn looks_like_prompt_artifact(text: &str) -> bool {
@@ -177,6 +178,10 @@ pub(super) fn looks_like_prompt_artifact(text: &str) -> bool {
         "active mode:",
         "rewrite strength:",
         "additional custom instructions:",
+        "assistant:",
+        "user query:",
+        "system:",
+        "suggested rewrite:",
     ];
 
     if direct_markers.iter().any(|marker| lower.contains(marker)) {

@@ -155,9 +155,17 @@ Rules:\n\
 - Fix capitalization, punctuation, spacing, paragraph breaks, and obvious list structure only when the intent is clear.\n\
 - Remove fillers or false starts only when meaning stays identical.\n\
 - If the utterance looks cut off or ambiguous, stay close to the transcript.\n\
-- Use bullets or numbering only when the transcript clearly dictates a list or ordered steps.\n\
+- Do not force bullets, numbering, or heavy formatting unless structure is clearly implied.\n\
+- If the transcript contains an introductory sentence that implies a list followed by short parallel items, keep the intro sentence and use `* ` bullets.\n\
+- Treat groceries, packing items, tasks, ingredients, verification requests, feature lists, names, and short noun phrases as list candidates when grouped together.\n\
+- Treat joiners such as \"and\", \"also\", and \"plus\" as list separators only when the content is clearly list-like.\n\
+- Use numbering only for clear sequence words or ordered cues such as \"one\", \"two\", \"three\", \"first\", \"second\", \"next\", or \"finally\".\n\
+- If punctuation words are spoken explicitly, such as \"period\", \"comma\", \"question mark\", \"exclamation point\", or \"colon\", respect them when they appear intentional.\n\
+- If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.\n\
 - In literal mode, stay very close to the original wording.\n\
 - In intent mode, lightly clean for readability without summarizing or formalizing.\n\
+- When a correction cue appears inside a list or sequence of short items, replace only the corrected item and keep the surrounding items.\n\
+- If a correction is unclear, preserve the original wording instead of guessing.\n\
 - Return only the final processed text with no commentary.\n\
 {screen_context_rule}\
 \n\
@@ -165,7 +173,8 @@ Active app guidance:\n\
 - {tone_rule}\n\
 \n\
 - Output:\n\
-- Return only the final processed text.",
+- Return only the final processed text.\n\
+- Never ask for more context, apologize, or explain what you are doing.",
         rewrite_strength,
     )
 }
@@ -303,8 +312,10 @@ Rewrite strength: {}\n\
 \n\
 Special handling:\n\
 - Keep only the corrected wording after clear restarts like \"no\", \"sorry\", or \"actually\".\n\
-- Preserve short lists when the transcript clearly sounds list-like.\n\
+- If the transcript has an intro sentence followed by short list items, keep the intro sentence and format the items as `* ` bullets.\n\
+- If a correction happens inside a list of short items, replace only the corrected item and keep the items after it.\n\
 - Convert intentional spoken punctuation and separators such as \"slash\", \"dot\", \"underscore\", \"dash\", \"colon\", \"at\", \"period\", \"comma\", \"question mark\", and \"exclamation point\" when the transcript is clearly a URL, email, file path, command, variable, or dictated punctuation.\n\
+- You may infer list boundaries from repeated short phrases even when commas are missing, especially for request, checklist, or verification-style content.\n\
 - Stay conservative when structure is uncertain.\n\
 \n\
 {dictionary_section}\n\

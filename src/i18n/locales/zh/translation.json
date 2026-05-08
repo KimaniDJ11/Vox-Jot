@@ -1858,7 +1858,8 @@
     "tabs": {
       "fileAsr": "File ASR",
       "llm": "LLM",
-      "stt": "Live STT"
+      "stt": "Live STT",
+      "screenOcr": "Screen OCR"
     },
     "notRanked": {
       "title": "Not yet ranked",
@@ -1870,7 +1871,12 @@
     },
     "metrics": {
       "device": "Device",
-      "promptProfile": "Profile"
+      "promptProfile": "Profile",
+      "score": "Score",
+      "pass": "Pass",
+      "phrases": "Phrases",
+      "latency": "Latency",
+      "confidence": "Confidence"
     },
     "categories": {
       "strongest": "Strongest",

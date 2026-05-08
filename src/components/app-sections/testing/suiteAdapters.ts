@@ -17,6 +17,10 @@ import type {
   SpeakerIsolationEvaluationStatus,
 } from "@/lib/speakerIsolationEvaluationResults";
 import type {
+  ScreenOcrEvaluationResult,
+  ScreenOcrEvaluationStatus,
+} from "@/lib/screenOcrEvaluationResults";
+import type {
   TtsEvaluationResult,
   TtsEvaluationStatus,
 } from "@/lib/ttsEvaluationResults";
@@ -35,6 +39,7 @@ type EvaluationStatus =
   | LlmEvaluationStatus
   | SttEvaluationStatus
   | SpeakerIsolationEvaluationStatus
+  | ScreenOcrEvaluationStatus
   | TtsEvaluationStatus
   | TtsStyleEvaluationStatus
   | TtsVoiceCloneEvaluationStatus;
@@ -292,6 +297,60 @@ export function buildSpeakerIsolationRow(
             { defaultValue: "Device" },
           )}: ${result.device ?? "n/a"}`
         : undefined,
+  };
+}
+
+export function buildScreenOcrRow(
+  result: ScreenOcrEvaluationResult,
+  t: TFunction,
+): LeaderboardRowProps {
+  return {
+    rank: result.rank,
+    label: result.label,
+    status: result.status,
+    statusLabel: statusLabel(result.status, t),
+    notes: result.notes,
+    metrics:
+      result.status === "tested"
+        ? [
+            {
+              label: t("testing.metrics.score", { defaultValue: "Score" }),
+              value:
+                result.score !== undefined ? result.score.toFixed(1) : "n/a",
+            },
+            {
+              label: t("testing.metrics.pass", { defaultValue: "Pass" }),
+              value:
+                result.passedCases !== undefined &&
+                result.totalCases !== undefined
+                  ? `${result.passedCases}/${result.totalCases}`
+                  : "n/a",
+            },
+            {
+              label: t("testing.metrics.phrases", {
+                defaultValue: "Phrases",
+              }),
+              value:
+                result.matchedPhrases !== undefined &&
+                result.totalPhrases !== undefined
+                  ? `${result.matchedPhrases}/${result.totalPhrases}`
+                  : "n/a",
+            },
+            {
+              label: t("testing.metrics.latency", {
+                defaultValue: "Latency",
+              }),
+              value: formatMs(result.averageLatencyMs),
+            },
+            {
+              label: t("testing.metrics.confidence", {
+                defaultValue: "Confidence",
+              }),
+              value: formatPercent(result.averageConfidence),
+            },
+          ]
+        : [],
+    footer: categoryFooter(result.strongestCategory, result.weakestCategory, t),
   };
 }
 

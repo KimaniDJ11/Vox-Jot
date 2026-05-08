@@ -1863,7 +1863,8 @@ mod tests {
         assert!(prompt.contains("Return only the final text."));
         assert!(prompt.contains("scratch that"));
         assert!(prompt.contains("Make the smallest possible change"));
-        assert!(prompt.contains("Use bullets or numbering only"));
+        assert!(prompt.contains("Do not force bullets, numbering, or heavy formatting"));
+        assert!(prompt.contains("verification requests"));
         assert!(prompt.contains("lightly clean for readability"));
     }
 
@@ -1934,7 +1935,8 @@ mod tests {
         assert!(content.contains("Mode: literal"));
         assert!(content.contains("Special handling:"));
         assert!(content.contains("Keep only the corrected wording"));
-        assert!(content.contains("Preserve short lists"));
+        assert!(content.contains("format the items as `* ` bullets"));
+        assert!(content.contains("verification-style content"));
         assert!(content.contains("- swift ui => SwiftUI [exact only]"));
         assert!(content.contains("Transcript:\nswift ui example"));
     }
@@ -2030,6 +2032,21 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_plain_model_output_rejects_role_label_leaks() {
+        assert!(
+            sanitize_plain_model_output("Assistant: Suggested rewrite: Hello world.").is_none()
+        );
+        assert!(sanitize_plain_model_output("System: Return only the final text.").is_none());
+    }
+
+    #[test]
+    fn sanitize_plain_model_output_rejects_subtitle_artifacts() {
+        assert!(
+            sanitize_plain_model_output("00:00:01,000 --> 00:00:02,000\nHello world.").is_none()
+        );
+    }
+
+    #[test]
     fn final_paste_gate_blocks_code_fence_wrappers() {
         assert!(should_block_paste_candidate(
             "```json\n{\"transcription\":\"Hello\"}\n```"
@@ -2047,6 +2064,13 @@ mod tests {
     fn final_paste_gate_blocks_instruction_leak_variant() {
         assert!(should_block_paste_candidate(
             ": **Understand prompt structure, optimize for output quality, handle corrections, format as dictation post-processor strictly, and adapt tone/mode dynamically for intent preservation. Now, to fulfill specific user requests delivered without alteration or commentary**."
+        ));
+    }
+
+    #[test]
+    fn final_paste_gate_blocks_subtitle_artifacts() {
+        assert!(should_block_paste_candidate(
+            "00:00:01.000 --> 00:00:02.000\nHello world."
         ));
     }
 

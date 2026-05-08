@@ -268,6 +268,20 @@ fn speech_analysis_sidecar_path() -> PathBuf {
         .join("speech_analysis_sidecar.py")
 }
 
+fn parse_speech_analysis_sidecar_output(
+    stdout: &[u8],
+) -> Result<SpeechAnalysisSidecarOutput, String> {
+    serde_json::from_slice::<SpeechAnalysisSidecarOutput>(stdout).or_else(|exact_err| {
+        let text = String::from_utf8_lossy(stdout);
+        text.lines()
+            .rev()
+            .map(str::trim)
+            .filter(|line| line.starts_with('{'))
+            .find_map(|line| serde_json::from_str::<SpeechAnalysisSidecarOutput>(line).ok())
+            .ok_or_else(|| format!("Invalid speech-analysis sidecar JSON: {exact_err}"))
+    })
+}
+
 fn run_speech_analysis_sidecar(
     app: &AppHandle,
     audio_16k: &[f32],
@@ -325,8 +339,7 @@ fn run_speech_analysis_sidecar(
         ));
     }
 
-    let payload: SpeechAnalysisSidecarOutput = serde_json::from_slice(&output.stdout)
-        .map_err(|e| format!("Invalid speech-analysis sidecar JSON: {}", e))?;
+    let payload = parse_speech_analysis_sidecar_output(&output.stdout)?;
     if !payload.ok {
         return Err(payload
             .error
@@ -655,6 +668,41 @@ mod tests {
         let audio = vec![0.0_f32; 16_000];
         assert!(whole_file_segment(&audio, "   \n\t  ").is_empty());
         assert!(whole_file_segment(&audio, "").is_empty());
+    }
+
+    #[test]
+    fn speech_analysis_sidecar_output_accepts_clean_json() {
+        let payload = parse_speech_analysis_sidecar_output(
+            br#"{"ok":true,"text":"hello","segments":[{"start_ms":0,"end_ms":1000,"text":"hello"}]}"#,
+        )
+        .expect("clean JSON should parse");
+
+        assert!(payload.ok);
+        assert_eq!(payload.text.as_deref(), Some("hello"));
+        assert_eq!(payload.segments.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn speech_analysis_sidecar_output_uses_last_json_line_after_stdout_noise() {
+        let payload = parse_speech_analysis_sidecar_output(
+            br#"native library banner
+download progress: 100%
+{"ok":true,"text":"final transcript","segments":[],"speaker_turns":[]}
+"#,
+        )
+        .expect("last JSON line should parse");
+
+        assert!(payload.ok);
+        assert_eq!(payload.text.as_deref(), Some("final transcript"));
+        assert!(payload.speaker_turns.unwrap().is_empty());
+    }
+
+    #[test]
+    fn speech_analysis_sidecar_output_rejects_noise_without_json() {
+        let error = parse_speech_analysis_sidecar_output(b"native library banner only")
+            .expect_err("stdout without JSON should fail");
+
+        assert!(error.contains("Invalid speech-analysis sidecar JSON"));
     }
 
     #[test]

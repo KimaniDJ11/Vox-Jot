@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -60,13 +60,24 @@ async function downloadArchive(archivePath: string) {
   }
 
   console.log(`Downloading ${DATASET.label} from ${DATASET.url}`);
-  const response = await fetch(DATASET.url);
-  if (!response.ok) {
-    throw new Error(`Download failed with status ${response.status}`);
+  const partialPath = `${archivePath}.partial`;
+  const result = Bun.spawnSync(
+    [
+      "curl",
+      "-L",
+      "--fail",
+      "--continue-at",
+      "-",
+      "--output",
+      partialPath,
+      DATASET.url,
+    ],
+    { stdout: "inherit", stderr: "inherit" },
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(`curl download failed with exit code ${result.exitCode}`);
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  await Bun.write(archivePath, new Uint8Array(arrayBuffer));
+  await rename(partialPath, archivePath);
 }
 
 async function verifyArchiveMd5(archivePath: string) {

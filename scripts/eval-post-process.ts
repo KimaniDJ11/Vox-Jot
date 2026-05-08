@@ -3,13 +3,16 @@
  * Post-processing evaluation script for Vox Jot dictation corpus.
  *
  * This script evaluates the LLM post-processing pipeline by sending raw STT
- * text through an OpenAI-compatible API and comparing the output against
- * expected results.
+ * text through the same provider shape the app uses and comparing the final
+ * paste candidate against expected results.
  *
  * Usage:
  *   bun run scripts/eval-post-process.ts
  *   bun run scripts/eval-post-process.ts --provider openai --model gpt-4o-mini
  *   bun run scripts/eval-post-process.ts --provider ollama --base-url http://localhost:11434/v1
+ *   bun run scripts/eval-post-process.ts --force-llm-on-skip  # Model capability mode
+ *   bun run scripts/eval-post-process.ts --exact-match         # Strict spelling/eval gates
+ *   bun run scripts/eval-post-process.ts --prompt-profile auto # Model-specific prompt profile
  *   bun run scripts/eval-post-process.ts --dry-run          # Route analysis only, no LLM calls
  *   bun run scripts/eval-post-process.ts --cases test-data/dictation-corpus/cases.json
  *
@@ -55,6 +58,7 @@ interface RouteFeatures {
 }
 
 type PostProcessPass = "skip" | "pass1" | "pass2" | "command";
+type PromptProfile = "auto" | "standard" | "compact_final_text" | "strict_literal";
 
 interface RouteAnalysis {
   route: PostProcessPass;
@@ -71,7 +75,13 @@ interface EvalResult {
   actual_output: string | null;
   route: RouteAnalysis;
   match: boolean;
+  exact_match: boolean;
   similarity: number;
+  duration_ms?: number;
+  skipped_llm: boolean;
+  blocked_candidate?: boolean;
+  drift_fallback?: boolean;
+  raw_model_output?: string;
   notes?: string;
   error?: string;
 }
@@ -80,14 +90,21 @@ interface EvalSummary {
   provider: string;
   model: string;
   mode: string;
+  force_llm_on_skip: boolean;
+  prompt_profile: PromptProfile;
   timestamp: string;
   total: number;
   passed: number;
   failed: number;
   errors: number;
   skipped: number;
+  blocked_candidates: number;
+  drift_fallbacks: number;
+  exact_matches: number;
   pass_rate: number;
   avg_similarity: number;
+  latency_p50_ms?: number;
+  latency_p95_ms?: number;
   by_category: Record<
     string,
     { total: number; passed: number; avg_similarity: number }
@@ -110,6 +127,11 @@ function parseArgs(): {
   dryRun: boolean;
   outputDir: string;
   concurrency: number;
+  forceLlmOnSkip: boolean;
+  exactMatch: boolean;
+  matchThreshold: number;
+  timeoutMs: number;
+  promptProfile: PromptProfile;
 } {
   const args = process.argv.slice(2);
   const get = (flag: string, fallback: string): string => {
@@ -150,6 +172,11 @@ function parseArgs(): {
     dryRun: has("--dry-run"),
     outputDir: get("--output-dir", resolve(__dirname, "../output/eval")),
     concurrency: parseInt(get("--concurrency", "4"), 10),
+    forceLlmOnSkip: has("--force-llm-on-skip"),
+    exactMatch: has("--exact-match"),
+    matchThreshold: parseFloat(get("--match-threshold", "0.85")),
+    timeoutMs: parseInt(get("--timeout-ms", "0"), 10),
+    promptProfile: get("--prompt-profile", "auto") as PromptProfile,
   };
 }
 
@@ -271,21 +298,15 @@ function looksIncomplete(text: string): boolean {
   if (!trimmed) return false;
   const last = trimmed[trimmed.length - 1];
   if ([".", "!", "?"].includes(last)) return false;
+  if (last === ",") return true;
   const lower = trimmed.toLowerCase();
   const cues = [" and", " or", " to", " for", " with", " because", " but"];
   return cues.some((cue) => lower.endsWith(cue));
 }
 
-function extractRouteFeatures(text: string): RouteFeatures {
-  const trimmed = text.trim();
-  const listCues = [
-    "grocery list",
-    "shopping list",
-    "packing list",
-    "required verification",
-    "required verifications",
-    "verification request",
-    "verification requests",
+function hasOrdinalListCues(text: string): boolean {
+  const lower = text.toLowerCase();
+  const ordinalWords = [
     "first",
     "second",
     "third",
@@ -294,6 +315,56 @@ function extractRouteFeatures(text: string): RouteFeatures {
     "one",
     "two",
     "three",
+  ];
+  const words = lower.split(/[^a-z0-9]+/).filter(Boolean);
+  const hitCount = ordinalWords.filter((cue) => words.includes(cue)).length;
+  return hitCount >= 2 && lower.split(/\s+/).filter(Boolean).length >= 8;
+}
+
+function fillerDensity(text: string): number {
+  const words = text
+    .split(/\s+/)
+    .map((word) => word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "").toLowerCase())
+    .filter(Boolean);
+  if (words.length === 0) return 0;
+
+  const singleWordFillers = new Set(["um", "uh", "erm", "hmm", "like"]);
+  let fillerHits = words.filter((word) => singleWordFillers.has(word)).length;
+  const normalized = normalizeMatchText(text);
+  for (const phrase of ["you know", "i mean", "kind of", "sort of"]) {
+    if (normalized.includes(phrase)) {
+      fillerHits += phrase.split(/\s+/).length;
+    }
+  }
+
+  return fillerHits / words.length;
+}
+
+function shouldInvokeLlmPostProcess(
+  features: RouteFeatures,
+  transcription: string,
+): boolean {
+  return (
+    features.has_transform_cue ||
+    features.has_correction_cue ||
+    features.has_list_cue ||
+    features.has_paragraph_cue ||
+    features.word_count > 15 ||
+    fillerDensity(transcription) >= 0.12
+  );
+}
+
+function extractRouteFeatures(text: string): RouteFeatures {
+  const trimmed = text.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const listCues = [
+    "grocery list",
+    "shopping list",
+    "packing list",
+    "required verification",
+    "required verifications",
+    "verification request",
+    "verification requests",
   ];
   const paragraphCues = ["new line", "new paragraph", "skip a line"];
   const transformCues = [
@@ -305,10 +376,12 @@ function extractRouteFeatures(text: string): RouteFeatures {
   ];
 
   return {
-    word_count: trimmed.split(/\s+/).length,
+    word_count: words.length,
     has_correction_cue: hasSpokeNCorrectionRestart(trimmed),
     has_list_cue:
-      containsAnyCi(trimmed, listCues) || hasIntroShortItems(trimmed),
+      containsAnyCi(trimmed, listCues) ||
+      hasOrdinalListCues(trimmed) ||
+      hasIntroShortItems(trimmed),
     has_paragraph_cue: containsAnyCi(trimmed, paragraphCues),
     has_transform_cue: containsAnyCi(trimmed, transformCues),
     has_technical_tokens: hasTechnicalTokens(trimmed),
@@ -328,19 +401,14 @@ function routeScore(f: RouteFeatures): number {
 
 function choosePass(text: string): PostProcessPass {
   const trimmed = text.trim();
-  if (!trimmed) return "pass1";
+  if (!trimmed) return "skip";
   const features = extractRouteFeatures(trimmed);
   if (features.has_transform_cue) return "command";
+  if (features.word_count <= 3) return "skip";
   if (features.looks_incomplete) return "pass1";
-
-  // Skip LLM entirely for short, clean utterances with no processing cues.
-  // Mirrors Rust choose_post_process_pass() threshold.
-  const hasAnyCue =
-    features.has_correction_cue ||
-    features.has_list_cue ||
-    features.has_paragraph_cue;
-  if (features.word_count <= 10 && !hasAnyCue && !features.has_technical_tokens)
+  if (!shouldInvokeLlmPostProcess(features, trimmed)) {
     return "skip";
+  }
 
   return routeScore(features) >= 3 ? "pass2" : "pass1";
 }
@@ -384,10 +452,33 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
     "Prefer lowercase and avoid unnecessary punctuation.",
 };
 
+function promptProfileForModel(modelId: string): Exclude<PromptProfile, "auto"> {
+  const normalized = modelId.trim().toLowerCase().replace(/:latest$/, "");
+  if (
+    normalized.includes("phi4-mini") ||
+    normalized.includes("phi-4-mini") ||
+    normalized.includes("microsoft_phi-4-mini") ||
+    normalized.includes("nemotron")
+  ) {
+    return "strict_literal";
+  }
+  return "standard";
+}
+
+function resolvePromptProfile(
+  requestedProfile: PromptProfile,
+  modelId: string,
+): Exclude<PromptProfile, "auto"> {
+  return requestedProfile === "auto"
+    ? promptProfileForModel(modelId)
+    : requestedProfile;
+}
+
 function buildSystemPrompt(
   mode: "literal" | "intent",
   rewriteStrength: number,
   tone: string = "neutral",
+  profile: Exclude<PromptProfile, "auto"> = "standard",
 ): string {
   const toneInstruction = TONE_INSTRUCTIONS[tone] || TONE_INSTRUCTIONS.neutral;
   const toneAppName =
@@ -400,7 +491,17 @@ function buildSystemPrompt(
           : "Notes";
   const toneRule = `- ${toneAppName} (tone: ${tone}): ${toneInstruction}`;
 
-  return `You are a local dictation post-processor.
+  if (profile === "compact_final_text") {
+    return `You clean dictation text.
+Return only the final cleaned transcript text.
+Never output labels, explanations, apologies, markdown fences, rule text, or delimiters.
+Mode: ${mode}. Rewrite strength: ${rewriteStrength}.
+Rules: preserve meaning exactly; make the smallest safe change; remove obvious fillers and false starts; keep only corrected wording after clear restarts; fix obvious capitalization and punctuation; preserve names, URLs, emails, file paths, code terms, numbers, and symbols; convert spoken punctuation like slash, dot, colon, at, dash, period, comma, question mark, and exclamation point only when clearly intentional.
+If unsure, copy the transcript exactly.
+Tone: ${toneAppName} tone: ${toneInstruction}.`;
+  }
+
+  let prompt = `You are a local dictation post-processor.
 
 Task:
 Clean speech-to-text output while preserving the speaker's meaning exactly.
@@ -416,6 +517,7 @@ Rules:
 - Apply personal dictionary spellings exactly when they appear in the transcript.
 - Preserve names, acronyms, URLs, emails, filenames, code terms, variable names, product names, unusual proper nouns, and technical jargon unless the speaker clearly corrected them.
 - Preserve technical punctuation and symbols when they are likely intentional, including slashes, backslashes, underscores, hyphens, periods, colons, parentheses, brackets, quotes, @ symbols, plus signs, minus signs, and file extensions.
+- Do not wrap URLs, file paths, code terms, or corrected punctuation in quotes or backticks unless the transcript explicitly includes them.
 - Fix capitalization, punctuation, spacing, paragraph breaks, and formatting only when the intended structure is reasonably clear.
 - Interpret spoken correction cues such as "scratch that", "actually", "I mean", "correction", "wait no", "no wait", "rather", "no sorry", and natural restarts, and keep only the corrected intent.
 - Remove filler words, false starts, and repeated fragments only when doing so does not change meaning.
@@ -430,12 +532,11 @@ Rules:
 - You may infer list item boundaries from repeated short noun phrases even when the transcript has little or no punctuation.
 - Treat joiners such as "and", "also", and "plus" as list separators when the content is clearly list-like.
 - When you turn an intro sentence plus short items into an unordered list, keep the intro sentence and use \`* \` bullets for each item.
-- Example: "I want to pick up a few things from the store. Bread, potato chips, ice cream." -> "I want to pick up a few things from the store:\\n* Bread\\n* Potato chips\\n* Ice cream"
-- Example: "Required verifications Request Government Issue ID conduct in person meeting employment verification income documentation personal reference previous reference I meant previous landlord reference and credit check also social security verification" -> "Required Verification Request:\\n* Government-issued ID\\n* Conduct in-person meeting\\n* Employment verification\\n* Income documentation\\n* Personal references\\n* Previous landlord reference\\n* Credit check\\n* Social security verification"
 - If sequence words or ordered cues appear, such as "one", "two", "three", "first", "second", "next", or "finally", prefer a numbered list when the content is clearly step-like or ordered.
 - If the user clearly dictated separate thoughts, insert paragraph breaks.
 - If the user says "new line", "new paragraph", "skip a line", or equivalent phrasing, reflect that structure in the final text when it fits naturally.
 - If punctuation words are spoken explicitly, such as "period", "comma", "question mark", "exclamation point", or "colon", respect them when they appear intentional.
+- Convert intentional spoken punctuation and separators such as "slash", "dot", "underscore", "dash", "colon", "at", "period", "comma", "question mark", and "exclamation point" when the transcript is clearly a URL, email, file path, command, variable, or dictated punctuation.
 - If the content is ordinary prose, keep it as ordinary prose rather than converting it into a list.
 - Mode behavior:
 - In literal mode, preserve wording as much as possible.
@@ -446,7 +547,6 @@ Rules:
 - When the speaker revises a phrase mid-sentence, keep the final intended wording and remove the abandoned wording.
 - When the speaker restates something more clearly, prefer the later phrasing if it is obviously a replacement rather than an addition.
 - Treat a later contradiction or restart as a replacement when the intent is clear, including patterns like "...? No, ..." and "..., no, ...".
-- Example: "Hi Greg, let's connect soon. Are you available Friday at three o'clock? No, I'm at four o'clock." -> "Hi Greg, let's connect soon. Are you available Friday at four o'clock?"
 - When a correction cue appears inside a list or sequence of short items, replace only the item being corrected and keep the surrounding items.
 - If a correction is unclear, preserve the original wording instead of guessing.
 - Safety behavior:
@@ -469,14 +569,35 @@ CRITICAL OUTPUT CONSTRAINT:
 - Never apologize.
 - Never explain what you are doing.
 - If the transcript is a single word or fragment, return just that word or fragment.`;
+
+  if (profile === "strict_literal") {
+    prompt += `
+
+Model-specific guardrail:
+- This model tends to paraphrase. Prefer copying the transcript with only obvious fixes.
+- Do not shorten, summarize, formalize, infer missing intent, or replace words with synonyms.
+- Preserve question/request shape, times, places, names, and abbreviations exactly unless clearly corrected.
+- If the safest cleaned text is the original transcript, return the original transcript.`;
+  }
+
+  return prompt;
 }
 
 function buildUserContent(
   mode: "literal" | "intent",
   text: string,
   rewriteStrength: number,
+  profile: Exclude<PromptProfile, "auto"> = "standard",
 ): string {
-  return `Mode: ${mode}
+  if (profile === "compact_final_text") {
+    return `Dictionary: none
+Boundary: normal.
+Transcript start
+${text}
+Transcript end`;
+  }
+
+  let content = `Mode: ${mode}
 Rewrite strength: ${rewriteStrength}
 Utterance boundary confidence: sufficient for normal formatting rules.
 
@@ -484,6 +605,7 @@ Special handling:
 - If the transcript corrects itself with a later "no", "sorry", "actually", or similar restart, keep only the corrected wording.
 - If the transcript has an intro sentence followed by short list items, keep the intro sentence and format the items as \`* \` bullets.
 - If a correction happens inside a list of short items, replace only the corrected item and keep the items after it.
+- Convert intentional spoken punctuation and separators such as "slash", "dot", "underscore", "dash", "colon", "at", "period", "comma", "question mark", and "exclamation point" when the transcript is clearly a URL, email, file path, command, variable, or dictated punctuation.
 - You may infer list boundaries from repeated short phrases even when commas are missing, especially for request, checklist, or verification-style content.
 
 Personal dictionary:
@@ -491,6 +613,13 @@ Personal dictionary:
 
 Transcript:
 ${text}`;
+
+  if (profile === "strict_literal") {
+    content +=
+      "\n\nModel-specific reminder:\nReturn the final transcript only. Preserve original wording unless a correction or formatting fix is obvious.";
+  }
+
+  return content;
 }
 
 // ---------------------------------------------------------------------------
@@ -498,9 +627,29 @@ ${text}`;
 // ---------------------------------------------------------------------------
 
 interface LLMConfig {
+  provider: string;
   baseUrl: string;
   apiKey: string;
   model: string;
+  timeoutMs: number;
+}
+
+function timeoutSignal(timeoutMs: number): AbortSignal | undefined {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
+  return AbortSignal.timeout(timeoutMs);
+}
+
+function estimateTextTokens(text: string): number {
+  return Math.ceil([...text].length / 4);
+}
+
+function estimateMaxOutputTokens(
+  userContent: string,
+  systemPrompt: string,
+): number {
+  const estimatedInputTokens =
+    estimateTextTokens(userContent) + estimateTextTokens(systemPrompt);
+  return Math.min(Math.max(Math.ceil(estimatedInputTokens * 1.3), 64), 256);
 }
 
 async function callLLM(
@@ -508,6 +657,10 @@ async function callLLM(
   systemPrompt: string,
   userContent: string,
 ): Promise<string> {
+  if (config.provider === "ollama") {
+    return callOllama(config, systemPrompt, userContent);
+  }
+
   const url = `${config.baseUrl}/chat/completions`;
 
   const headers: Record<string, string> = {
@@ -523,12 +676,15 @@ async function callLLM(
       { role: "system", content: systemPrompt },
       { role: "user", content: userContent },
     ],
+    temperature: 0,
+    max_tokens: estimateMaxOutputTokens(userContent, systemPrompt),
   };
 
   const response = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    signal: timeoutSignal(config.timeoutMs),
   });
 
   if (!response.ok) {
@@ -542,8 +698,294 @@ async function callLLM(
     choices: Array<{ message: { content?: string } }>;
   };
   const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("LLM returned empty content");
-  return content.trim();
+  return content?.trim() ?? "";
+}
+
+async function callOllama(
+  config: LLMConfig,
+  systemPrompt: string,
+  userContent: string,
+): Promise<string> {
+  const rootUrl = config.baseUrl.replace(/\/$/, "").replace(/\/v1$/, "");
+  const url = `${rootUrl}/api/chat`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: timeoutSignal(config.timeoutMs),
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      stream: false,
+      keep_alive: "30m",
+      options: {
+        num_predict: estimateMaxOutputTokens(userContent, systemPrompt),
+        temperature: 0,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Ollama API error ${response.status}: ${errorText.slice(0, 200)}`,
+    );
+  }
+
+  const data = (await response.json()) as {
+    message?: { content?: string };
+    error?: string;
+  };
+  if (data.error) throw new Error(`Ollama returned an error: ${data.error}`);
+  const content = data.message?.content;
+  return content?.trim() ?? "";
+}
+
+// ---------------------------------------------------------------------------
+// Production-style output guards (mirrors src-tauri/src/actions/sanitize.rs)
+// ---------------------------------------------------------------------------
+
+function stripInvisibleChars(text: string): string {
+  return text.replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
+}
+
+function stripCommonOutputLabel(text: string): string | null {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return null;
+  const first = lines[0].trim().toLowerCase();
+  const labeledPrefixes = [
+    "here is the cleaned transcript",
+    "here's the cleaned transcript",
+    "cleaned transcript",
+    "corrected transcript",
+    "final transcript",
+    "final text",
+    "rewritten text",
+    "transcription",
+    "output",
+  ];
+  if (
+    labeledPrefixes.some((prefix) => first === prefix || first === `${prefix}:`)
+  ) {
+    const rest = lines.slice(1).join("\n").trim();
+    return rest || null;
+  }
+  return null;
+}
+
+function stripWrappingQuotes(text: string): string {
+  const trimmed = text.trim();
+  const pairs: Array<[string, string]> = [
+    ['"', '"'],
+    ["'", "'"],
+    ["“", "”"],
+  ];
+  for (const [left, right] of pairs) {
+    if (
+      trimmed.startsWith(left) &&
+      trimmed.endsWith(right) &&
+      trimmed.length >= left.length + right.length
+    ) {
+      const inner = trimmed
+        .slice(left.length, trimmed.length - right.length)
+        .trim();
+      if (inner && !inner.includes("\n")) return inner;
+    }
+  }
+  return trimmed;
+}
+
+function stripSimpleMarkdownWrappers(text: string): string {
+  const trimmed = text.trim();
+  for (const marker of ["**", "__", "*", "_"]) {
+    if (
+      trimmed.startsWith(marker) &&
+      trimmed.endsWith(marker) &&
+      trimmed.length > marker.length * 2
+    ) {
+      const inner = trimmed
+        .slice(marker.length, trimmed.length - marker.length)
+        .trim();
+      if (inner && !inner.includes("\n")) return inner;
+    }
+  }
+  return trimmed;
+}
+
+function looksLikeStructuredBlob(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[") ||
+    trimmed.startsWith("```") ||
+    trimmed.includes("```") ||
+    trimmed.startsWith("<think") ||
+    trimmed.startsWith("<analysis") ||
+    trimmed.startsWith("---") ||
+    trimmed.includes("\n---") ||
+    /^\d\d:\d\d:\d\d[,.]\d{3}\s*-->/.test(trimmed) ||
+    trimmed.includes("-->")
+  );
+}
+
+function looksLikePromptArtifact(text: string): boolean {
+  const lower = text.trim().toLowerCase();
+  const directMarkers = [
+    "additional system instruction",
+    "strict output now applied",
+    "transcript output",
+    "no input processed for output",
+    "dictate or append exact content",
+    "as spoken, no changes",
+    "no punctuation added",
+    "understand prompt structure",
+    "optimize for output quality",
+    "format as dictation post-processor",
+    "dictation post-processor strictly",
+    "adapt tone/mode dynamically",
+    "fulfill specific user requests",
+    "without alteration or commentary",
+    "return only the final text",
+    "do not explain changes",
+    "do not mention rules",
+    "active mode:",
+    "rewrite strength:",
+    "additional custom instructions:",
+    "assistant:",
+    "user query:",
+    "system:",
+    "suggested rewrite:",
+  ];
+  if (directMarkers.some((marker) => lower.includes(marker))) return true;
+
+  const suspiciousInstructionMarkers = [
+    "preserve meaning",
+    "handle corrections",
+    "prompt structure",
+    "output quality",
+    "tone/mode",
+    "personal dictionary",
+    "local dictation post-processor",
+  ];
+  const hits = suspiciousInstructionMarkers.filter((marker) =>
+    lower.includes(marker),
+  ).length;
+
+  return (
+    hits >= 2 ||
+    (lower.includes("no changes") && text.includes("(")) ||
+    (text.split(/\r?\n/).length > 5 &&
+      (text.includes("**") || text.includes("---") || text.includes("```")))
+  );
+}
+
+function looksLikeMetaRefusal(text: string): boolean {
+  const lower = text.trimStart().toLowerCase();
+  return [
+    "i'm unable to",
+    "i am unable to",
+    "i cannot complete",
+    "i can't complete",
+    "please provide",
+    "i need more context",
+    "i don't have enough",
+    "i do not have enough",
+    "i'm sorry, but",
+    "i am sorry, but",
+  ].some((pattern) => lower.startsWith(pattern));
+}
+
+function sanitizePlainModelOutput(content: string): string | null {
+  const cleaned = stripInvisibleChars(content).trim();
+  if (!cleaned) return null;
+  const candidate = stripSimpleMarkdownWrappers(
+    stripWrappingQuotes(stripCommonOutputLabel(cleaned) ?? cleaned),
+  ).trim();
+  if (!candidate) return null;
+  if (
+    looksLikeMetaRefusal(candidate) ||
+    looksLikeStructuredBlob(candidate) ||
+    looksLikePromptArtifact(candidate)
+  ) {
+    return null;
+  }
+  return candidate;
+}
+
+function wordOverlapRatio(a: string, b: string): number {
+  const wordsA = a
+    .split(/\s+/)
+    .map((word) => word.toLowerCase())
+    .filter(Boolean);
+  if (wordsA.length === 0) return 0;
+  const wordsB = new Set(
+    b
+      .split(/\s+/)
+      .map((word) => word.toLowerCase())
+      .filter(Boolean),
+  );
+  return wordsA.filter((word) => wordsB.has(word)).length / wordsA.length;
+}
+
+function countWordSubstitutions(a: string, b: string): number {
+  const normalize = (text: string) =>
+    text
+      .split(/\s+/)
+      .map((word) => word.replace(/^[\p{P}]+|[\p{P}]+$/gu, "").toLowerCase())
+      .filter(Boolean);
+  const wa = normalize(a);
+  const wb = normalize(b);
+  if (wa.length !== wb.length) return Number.MAX_SAFE_INTEGER;
+  return wa.filter((word, index) => word !== wb[index]).length;
+}
+
+function shouldFallbackToPlainTextDrift(
+  rawText: string,
+  candidate: string,
+  normalizedText: string,
+): boolean {
+  const rawWords = rawText.split(/\s+/).filter(Boolean).length;
+  const candidateWords = candidate.split(/\s+/).filter(Boolean).length;
+  if (rawWords === 0) return false;
+
+  if (rawWords <= 12 && wordOverlapRatio(rawText, candidate) < 0.5) {
+    return true;
+  }
+
+  if (candidateWords > rawWords * 2 && candidateWords >= rawWords + 10) {
+    if (wordOverlapRatio(rawText, candidate) < 0.6) return true;
+  }
+
+  if (rawWords > 4 && wordOverlapRatio(rawText, candidate) < 0.35) {
+    return true;
+  }
+
+  const hasMarkdownFormatting =
+    candidate.includes("**") ||
+    candidate.includes("##") ||
+    candidate.includes("* **") ||
+    candidate.includes("- **");
+  const rawHadMarkdown = rawText.includes("**") || rawText.includes("##");
+  if (hasMarkdownFormatting && !rawHadMarkdown) return true;
+
+  const rawTrimmed = rawText.trim();
+  const hasTerminal = /[.!?]$/.test(rawTrimmed);
+  if (hasTerminal && rawWords <= 12) {
+    const normWords = normalizedText.split(/\s+/).filter(Boolean).length;
+    const subs = countWordSubstitutions(normalizedText, candidate);
+    if (subs >= 1 && subs <= 2 && candidateWords === normWords) return true;
+    if (
+      candidateWords !== normWords &&
+      !hasSpokeNCorrectionRestart(rawText) &&
+      wordOverlapRatio(rawText, candidate) >= 0.5
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -613,6 +1055,10 @@ async function mapWithConcurrency<T, R>(
 
 async function main() {
   const config = parseArgs();
+  const resolvedPromptProfile = resolvePromptProfile(
+    config.promptProfile,
+    config.model,
+  );
 
   // Load test cases
   const casesRaw = readFileSync(config.casesPath, "utf-8");
@@ -626,13 +1072,21 @@ async function main() {
   console.log(`Model:    ${config.model}`);
   console.log(`Base URL: ${config.baseUrl}`);
   console.log(`Mode:     ${config.mode}`);
+  console.log(`Prompt:   ${resolvedPromptProfile}`);
   console.log(`Dry run:  ${config.dryRun}`);
+  console.log(`Force LLM on skip: ${config.forceLlmOnSkip}`);
+  console.log(`Timeout:  ${config.timeoutMs > 0 ? `${config.timeoutMs} ms` : "none"}`);
+  console.log(
+    `Match:    ${config.exactMatch ? "exact" : `similarity >= ${config.matchThreshold}`}`,
+  );
   console.log();
 
   const llmConfig: LLMConfig = {
+    provider: config.provider,
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
     model: config.model,
+    timeoutMs: config.timeoutMs,
   };
 
   const results: EvalResult[] = [];
@@ -650,7 +1104,9 @@ async function main() {
         actual_output: null,
         route,
         match: false,
+        exact_match: false,
         similarity: 0,
+        skipped_llm: route.route === "skip",
         notes: tc.notes,
       };
       results.push(result);
@@ -674,34 +1130,79 @@ async function main() {
       config.concurrency,
       async (tc, _idx) => {
         const route = analyzeRoute(tc.raw_stt, config.maxRewriteStrength);
-        const systemPrompt = buildSystemPrompt(
-          config.mode,
-          route.rewrite_strength,
-          tc.tone || "neutral",
-        );
-        const userContent = buildUserContent(
-          config.mode,
-          tc.raw_stt,
-          route.rewrite_strength,
-        );
-
-        let actual: string | null = null;
+        const skippedLlm = route.route === "skip" && !config.forceLlmOnSkip;
+        let actual: string | null = skippedLlm ? tc.raw_stt.trim() : null;
+        let rawModelOutput: string | undefined;
+        let blockedCandidate = false;
+        let driftFallback = false;
         let error: string | undefined;
+        let durationMs: number | undefined;
 
-        try {
-          actual = await callLLM(llmConfig, systemPrompt, userContent);
-        } catch (e) {
-          error = e instanceof Error ? e.message : String(e);
+        if (!skippedLlm) {
+          const systemPrompt = buildSystemPrompt(
+            config.mode,
+            route.rewrite_strength,
+            tc.tone || "neutral",
+            resolvedPromptProfile,
+          );
+          const userContent = buildUserContent(
+            config.mode,
+            tc.raw_stt,
+            route.rewrite_strength,
+            resolvedPromptProfile,
+          );
+
+          try {
+            const startedAt = performance.now();
+            rawModelOutput = await callLLM(
+              llmConfig,
+              systemPrompt,
+              userContent,
+            );
+            durationMs = Math.round(performance.now() - startedAt);
+            const sanitized = sanitizePlainModelOutput(rawModelOutput);
+            if (sanitized === null) {
+              blockedCandidate = true;
+              actual = tc.raw_stt.trim();
+            } else if (
+              shouldFallbackToPlainTextDrift(
+                tc.raw_stt,
+                sanitized,
+                tc.raw_stt.trim(),
+              )
+            ) {
+              driftFallback = true;
+              actual = tc.raw_stt.trim();
+            } else {
+              actual = sanitized;
+            }
+          } catch (e) {
+            error = e instanceof Error ? e.message : String(e);
+          }
         }
 
         const sim =
           actual !== null ? similarity(actual, tc.expected_output) : 0;
-        const isMatch = sim >= 0.85;
+        const exactMatch =
+          actual !== null && actual.trim() === tc.expected_output.trim();
+        const isMatch = config.exactMatch
+          ? exactMatch
+          : sim >= config.matchThreshold;
 
         completed++;
-        const statusIcon = error ? "ERR" : isMatch ? "OK " : "LOW";
+        const statusIcon = error
+          ? "ERR"
+          : isMatch
+            ? "OK "
+            : skippedLlm
+              ? "SKP"
+              : blockedCandidate
+                ? "BLK"
+                : driftFallback
+                  ? "DRF"
+                  : "LOW";
         console.log(
-          `[${completed}/${cases.length}] ${statusIcon} ${tc.id} (${tc.category}) sim=${sim.toFixed(2)} route=${route.route}`,
+          `[${completed}/${cases.length}] ${statusIcon} ${tc.id} (${tc.category}) sim=${sim.toFixed(2)} route=${route.route}${durationMs !== undefined ? ` ${durationMs}ms` : ""}`,
         );
         if (actual !== null && !isMatch && !error) {
           console.log(`  expected: ${tc.expected_output.slice(0, 80)}`);
@@ -709,6 +1210,9 @@ async function main() {
         }
         if (error) {
           console.log(`  error: ${error.slice(0, 120)}`);
+        }
+        if ((blockedCandidate || driftFallback) && rawModelOutput) {
+          console.log(`  model:   ${rawModelOutput.slice(0, 80)}`);
         }
 
         return {
@@ -719,7 +1223,13 @@ async function main() {
           actual_output: actual,
           route,
           match: isMatch,
+          exact_match: exactMatch,
           similarity: sim,
+          duration_ms: durationMs,
+          skipped_llm: skippedLlm,
+          blocked_candidate: blockedCandidate || undefined,
+          drift_fallback: driftFallback || undefined,
+          raw_model_output: rawModelOutput,
           notes: tc.notes,
           error,
         } satisfies EvalResult;
@@ -731,13 +1241,30 @@ async function main() {
 
   // Build summary
   const passed = results.filter((r) => r.match).length;
+  const exactMatches = results.filter((r) => r.exact_match).length;
   const errors = results.filter((r) => r.error).length;
-  const skipped = config.dryRun ? results.length : 0;
+  const skipped = config.dryRun
+    ? results.length
+    : results.filter((r) => r.skipped_llm).length;
+  const blockedCandidates = results.filter((r) => r.blocked_candidate).length;
+  const driftFallbacks = results.filter((r) => r.drift_fallback).length;
   const evaluated = results.filter((r) => !r.error && r.actual_output !== null);
   const avgSim =
     evaluated.length > 0
       ? evaluated.reduce((sum, r) => sum + r.similarity, 0) / evaluated.length
       : 0;
+  const durations = results
+    .map((r) => r.duration_ms)
+    .filter((value): value is number => value !== undefined)
+    .sort((a, b) => a - b);
+  const percentile = (values: number[], p: number): number | undefined => {
+    if (values.length === 0) return undefined;
+    const index = Math.min(
+      values.length - 1,
+      Math.max(0, Math.ceil((p / 100) * values.length) - 1),
+    );
+    return values[index];
+  };
 
   const byCategory: Record<
     string,
@@ -764,14 +1291,21 @@ async function main() {
     provider: config.provider,
     model: config.model,
     mode: config.mode,
+    force_llm_on_skip: config.forceLlmOnSkip,
+    prompt_profile: resolvedPromptProfile,
     timestamp: new Date().toISOString(),
     total: results.length,
     passed,
-    failed: results.length - passed - errors - skipped,
+    failed: config.dryRun ? 0 : results.length - passed - errors,
     errors,
     skipped,
+    blocked_candidates: blockedCandidates,
+    drift_fallbacks: driftFallbacks,
+    exact_matches: exactMatches,
     pass_rate: results.length > 0 ? passed / results.length : 0,
     avg_similarity: avgSim,
+    latency_p50_ms: percentile(durations, 50),
+    latency_p95_ms: percentile(durations, 95),
     by_category: byCategory,
     results,
   };
@@ -788,8 +1322,20 @@ async function main() {
   console.log(`\n${"=".repeat(50)}`);
   if (!config.dryRun) {
     console.log(`Pass rate: ${(summary.pass_rate * 100).toFixed(1)}%`);
+    console.log(`Exact matches: ${exactMatches} / ${evaluated.length}`);
     console.log(`Avg similarity: ${(avgSim * 100).toFixed(1)}%`);
-    console.log(`Passed: ${passed} / ${results.length - errors}`);
+    if (summary.latency_p50_ms !== undefined) {
+      console.log(`Latency p50: ${summary.latency_p50_ms} ms`);
+    }
+    if (summary.latency_p95_ms !== undefined) {
+      console.log(`Latency p95: ${summary.latency_p95_ms} ms`);
+    }
+    console.log(`Passed: ${passed} / ${evaluated.length}`);
+    if (skipped > 0) console.log(`Skipped LLM: ${skipped}`);
+    if (blockedCandidates > 0) {
+      console.log(`Blocked candidates: ${blockedCandidates}`);
+    }
+    if (driftFallbacks > 0) console.log(`Drift fallbacks: ${driftFallbacks}`);
     if (errors > 0) console.log(`Errors: ${errors}`);
   } else {
     console.log(`Dry run complete. Route analysis only.`);
@@ -812,6 +1358,8 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
   lines.push(`| Provider | ${summary.provider} |`);
   lines.push(`| Model | ${summary.model} |`);
   lines.push(`| Mode | ${summary.mode} |`);
+  lines.push(`| Force LLM on skip | ${summary.force_llm_on_skip} |`);
+  lines.push(`| Prompt profile | ${summary.prompt_profile} |`);
   lines.push(`| Timestamp | ${summary.timestamp} |`);
   lines.push(`| Total cases | ${summary.total} |`);
 
@@ -819,10 +1367,20 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     lines.push(`| Passed | ${summary.passed} |`);
     lines.push(`| Failed | ${summary.failed} |`);
     lines.push(`| Errors | ${summary.errors} |`);
+    lines.push(`| Skipped LLM | ${summary.skipped} |`);
+    lines.push(`| Blocked candidates | ${summary.blocked_candidates} |`);
+    lines.push(`| Drift fallbacks | ${summary.drift_fallbacks} |`);
+    lines.push(`| Exact matches | ${summary.exact_matches} |`);
     lines.push(`| Pass rate | ${(summary.pass_rate * 100).toFixed(1)}% |`);
     lines.push(
       `| Avg similarity | ${(summary.avg_similarity * 100).toFixed(1)}% |`,
     );
+    if (summary.latency_p50_ms !== undefined) {
+      lines.push(`| Latency p50 | ${summary.latency_p50_ms} ms |`);
+    }
+    if (summary.latency_p95_ms !== undefined) {
+      lines.push(`| Latency p95 | ${summary.latency_p95_ms} ms |`);
+    }
   }
 
   lines.push(``);
@@ -847,6 +1405,15 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
     lines.push(
       `**Route:** ${r.route.route} | **Score:** ${r.route.score} | **Strength:** ${r.route.rewrite_strength}`,
     );
+    const guards = [
+      r.skipped_llm ? "skipped LLM" : null,
+      r.blocked_candidate ? "blocked candidate" : null,
+      r.drift_fallback ? "drift fallback" : null,
+    ].filter(Boolean);
+    if (guards.length > 0) {
+      lines.push(``);
+      lines.push(`**Guards:** ${guards.join(", ")}`);
+    }
     lines.push(``);
     lines.push(`**Raw STT:**`);
     lines.push(`> ${r.raw_stt}`);
@@ -858,11 +1425,19 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
 
     if (r.actual_output !== null) {
       lines.push(``);
-      lines.push(
-        `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%):`,
-      );
+    lines.push(
+      `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%, exact: ${r.exact_match}${r.duration_ms !== undefined ? `, latency: ${r.duration_ms} ms` : ""}):`,
+    );
       lines.push("```");
       lines.push(r.actual_output);
+      lines.push("```");
+    }
+
+    if (r.raw_model_output && r.raw_model_output !== r.actual_output) {
+      lines.push(``);
+      lines.push(`**Raw model output:**`);
+      lines.push("```");
+      lines.push(r.raw_model_output);
       lines.push("```");
     }
 

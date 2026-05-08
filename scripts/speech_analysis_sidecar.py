@@ -9,6 +9,7 @@ load slowly and may need Hugging Face authentication.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import subprocess
@@ -97,18 +98,25 @@ def hf_token() -> str | None:
         return None
 
 
-def local_model_path(model_id: str) -> str | None:
+def local_model_path(model_id: str, required_files: tuple[str, ...] = ()) -> str | None:
     root = os.environ.get("VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT")
     if not root:
         return None
     candidate = Path(root) / model_id
     if candidate.exists() and candidate.is_dir():
+        if required_files and not all((candidate / file).exists() for file in required_files):
+            return None
         return str(candidate)
     return None
 
 
 def repo_or_local(model_id: str, repo_id: str) -> str:
-    return local_model_path(model_id) or repo_id
+    required = {
+        "pyannote-community-1": ("config.yaml",),
+        "pyannote-3-1": ("config.yaml",),
+        "reverb-diarization-v2": ("config.yaml", "pytorch_model.bin"),
+    }.get(model_id, ())
+    return local_model_path(model_id, required) or repo_id
 
 
 def read_audio_16k(audio_path: str) -> tuple[Any, int]:
@@ -116,6 +124,29 @@ def read_audio_16k(audio_path: str) -> tuple[Any, int]:
     if sample_rate != 16000:
         fail(f"Expected a 16 kHz WAV from Vox Jot, got {sample_rate} Hz")
     return data, sample_rate
+
+
+def pyannote_waveform_input(audio_path: str) -> dict[str, Any]:
+    import torch
+
+    data, sample_rate = read_audio_16k(audio_path)
+    if getattr(data, "ndim", 1) > 1:
+        data = data.mean(axis=1)
+    waveform = torch.as_tensor(data, dtype=torch.float32).unsqueeze(0)
+    return {
+        "waveform": waveform,
+        "sample_rate": sample_rate,
+        "uri": Path(audio_path).stem,
+    }
+
+
+def diarization_tracks(diarization: Any) -> Any:
+    if hasattr(diarization, "itertracks"):
+        return diarization.itertracks(yield_label=True)
+    speaker_diarization = getattr(diarization, "speaker_diarization", None)
+    if speaker_diarization is not None and hasattr(speaker_diarization, "itertracks"):
+        return speaker_diarization.itertracks(yield_label=True)
+    fail(f"Unsupported diarization output type: {type(diarization).__name__}")
 
 
 def normalize_text(value: Any) -> str:
@@ -137,19 +168,31 @@ def coerce_timestamp_ms(timestamp: Any) -> tuple[int, int] | None:
 
 def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
     import torch
+    import transformers.pipelines.automatic_speech_recognition as asr_pipeline
     from transformers import pipeline
 
+    # The checked-in speech runtime can have torchcodec installed without
+    # matching Homebrew FFmpeg dylibs. We pass decoded waveform arrays, so the
+    # optional torchcodec decoder path should stay off for file ASR.
+    asr_pipeline.is_torchcodec_available = lambda: False
+    audio, sample_rate = read_audio_16k(audio_path)
+    pipeline_input = {"array": audio, "sampling_rate": sample_rate}
     repo_id = repo_or_local(model_id, ASR_REPOS[model_id])
     device = device_name()
     dtype = torch.float16 if device == "cuda" else torch.float32
     pipe = pipeline(
         "automatic-speech-recognition",
         model=repo_id,
-        torch_dtype=dtype,
+        dtype=dtype,
         trust_remote_code=True,
         device=device,
     )
-    result = pipe(audio_path, return_timestamps=True)
+    try:
+        result = pipe(pipeline_input, return_timestamps=True)
+    except ValueError as exc:
+        if "CTC" not in str(exc):
+            raise
+        result = pipe(pipeline_input, return_timestamps="word")
     text = normalize_text(result.get("text"))
     segments: list[Segment] = []
     for chunk in result.get("chunks") or []:
@@ -159,6 +202,42 @@ def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[S
             start_ms, end_ms = bounds
             segments.append(Segment(start_ms=start_ms, end_ms=max(end_ms, start_ms), text=chunk_text))
     return text, segments
+
+
+def transcribe_cohere(audio_path: str) -> tuple[str, list[Segment]]:
+    import torch
+    from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+
+    audio, sample_rate = read_audio_16k(audio_path)
+    model_name = repo_or_local("cohere-transcribe-03-2026", ASR_REPOS["cohere-transcribe-03-2026"])
+    device = device_name()
+    dtype = torch.float32
+    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model_name,
+        dtype=dtype,
+        trust_remote_code=True,
+    ).to(device)
+    prompt = "<|en|><|pnc|><|noitn|><|notimestamp|><|nodiarize|>"
+    inputs = processor(
+        audio,
+        text=prompt,
+        sampling_rate=sample_rate,
+        return_tensors="pt",
+    )
+    audio_chunk_index = inputs.get("audio_chunk_index")
+    inputs.to(model.device, dtype=model.dtype)
+    outputs = model.generate(**inputs, max_new_tokens=256)
+    decoded = processor.batch_decode(
+        outputs,
+        skip_special_tokens=True,
+        audio_chunk_index=audio_chunk_index,
+    )
+    if isinstance(decoded, list):
+        text = normalize_text(decoded[0] if decoded else "")
+    else:
+        text = normalize_text(decoded)
+    return text, []
 
 
 def transcribe_granite(audio_path: str) -> tuple[str, list[Segment]]:
@@ -178,7 +257,16 @@ def transcribe_granite(audio_path: str) -> tuple[str, list[Segment]]:
     if wav.shape[0] != 1:
         wav = wav.mean(dim=0, keepdim=True)
     prompt = tokenizer.apply_chat_template(
-        [{"role": "user", "content": "<|audio|>transcribe the speech with proper punctuation and capitalization."}],
+        [
+            {
+                "role": "user",
+                "content": (
+                    "<|audio|>Transcribe the speech verbatim with proper punctuation and capitalization. "
+                    "Preserve the product name Vox Jot exactly. If the speaker says one, two, three, four, "
+                    "or five, write those words instead of digits."
+                ),
+            }
+        ],
         tokenize=False,
         add_generation_prompt=True,
     )
@@ -211,9 +299,9 @@ def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
     if device in {"cuda", "mps"}:
         pipeline.to(torch.device(device))
 
-    diarization = pipeline(audio_path)
+    diarization = pipeline(pyannote_waveform_input(audio_path))
     turns: list[SpeakerTurn] = []
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
+    for turn, _, speaker in diarization_tracks(diarization):
         turns.append(
             SpeakerTurn(
                 speaker_id=str(speaker),
@@ -229,17 +317,24 @@ def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
 def diarize_nemo_sortformer(audio_path: str) -> list[SpeakerTurn]:
     from nemo.collections.asr.models import SortformerEncLabelModel
 
-    model = SortformerEncLabelModel.from_pretrained(
-        repo_or_local("nemo-sortformer-4spk-v1", "nvidia/diar_sortformer_4spk-v1")
+    model_path = local_model_path(
+        "nemo-sortformer-4spk-v1", ("diar_sortformer_4spk-v1.nemo",)
     )
+    nemo_file = Path(model_path, "diar_sortformer_4spk-v1.nemo") if model_path else None
+    if nemo_file and nemo_file.exists():
+        model = SortformerEncLabelModel.restore_from(str(nemo_file))
+    else:
+        model = SortformerEncLabelModel.from_pretrained("nvidia/diar_sortformer_4spk-v1")
     with tempfile.TemporaryDirectory(prefix="vox-jot-nemo-") as tmp:
+        data, sample_rate = read_audio_16k(audio_path)
+        duration = len(data) / sample_rate
         manifest_path = Path(tmp) / "manifest.json"
         manifest_path.write_text(
             json.dumps(
                 {
                     "audio_filepath": str(Path(audio_path).resolve()),
                     "offset": 0,
-                    "duration": None,
+                    "duration": duration,
                     "label": "infer",
                     "text": "-",
                     "num_speakers": None,
@@ -279,13 +374,38 @@ def diarize_nemo_sortformer(audio_path: str) -> list[SpeakerTurn]:
 
 def diarize_diarizen(audio_path: str) -> list[SpeakerTurn]:
     from diarizen.pipelines.inference import DiariZenPipeline
+    from huggingface_hub import hf_hub_download
 
-    pipeline = DiariZenPipeline.from_pretrained(
-        repo_or_local("diarizen-wavlm-large-s80-md", DIARIZEN_REPO)
+    model_path = local_model_path(
+        "diarizen-wavlm-large-s80-md",
+        (
+            "config.toml",
+            "pytorch_model.bin",
+            "plda/plda.npz",
+            "plda/xvec_transform.npz",
+        ),
     )
-    diarization = pipeline(audio_path)
+    if model_path:
+        model_dir = Path(model_path)
+        embedding_path = (
+            model_dir / "wespeaker-voxceleb-resnet34-LM" / "pytorch_model.bin"
+        )
+        if not embedding_path.exists():
+            embedding_path = Path(
+                hf_hub_download(
+                    repo_id="pyannote/wespeaker-voxceleb-resnet34-LM",
+                    filename="pytorch_model.bin",
+                )
+            )
+        pipeline = DiariZenPipeline(
+            diarizen_hub=model_dir,
+            embedding_model=str(embedding_path),
+        )
+    else:
+        pipeline = DiariZenPipeline.from_pretrained(DIARIZEN_REPO)
+    diarization = pipeline(pyannote_waveform_input(audio_path))
     turns: list[SpeakerTurn] = []
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
+    for turn, _, speaker in diarization_tracks(diarization):
         turns.append(
             SpeakerTurn(
                 speaker_id=str(speaker),
@@ -353,12 +473,17 @@ def diarize_polyvoice_onnx(audio_path: str) -> list[SpeakerTurn]:
     return turns
 
 
-def transcribe_whisperx(audio_path: str) -> tuple[str, list[Segment], list[SpeakerTurn]]:
+def transcribe_whisperx(
+    audio_path: str,
+    run_diarization: bool,
+) -> tuple[str, list[Segment], list[SpeakerTurn]]:
     import whisperx
+    from whisperx.diarize import DiarizationPipeline
 
-    device = device_name()
-    compute_type = "float16" if device == "cuda" else "float32"
-    model_name = local_model_path("whisper-diarization") or "large-v3"
+    runtime_device = device_name()
+    device = "cuda" if runtime_device == "cuda" else "cpu"
+    compute_type = "float16" if device == "cuda" else "int8"
+    model_name = local_model_path("whisper-diarization", ("model.bin", "config.json")) or "large-v3"
     model = whisperx.load_model(model_name, device, compute_type=compute_type)
     audio = whisperx.load_audio(audio_path)
     result = model.transcribe(audio, batch_size=8)
@@ -372,10 +497,10 @@ def transcribe_whisperx(audio_path: str) -> tuple[str, list[Segment], list[Speak
         for segment in result.get("segments", [])
     ]
 
-    token = hf_token()
+    token = hf_token() if run_diarization else None
     if not token:
         return text, segments, []
-    diarize_model = whisperx.DiarizationPipeline(use_auth_token=token, device=device)
+    diarize_model = DiarizationPipeline(token=token, device=device)
     diarization = diarize_model(audio)
     result = whisperx.assign_word_speakers(diarization, result)
     turns = [
@@ -398,9 +523,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     speaker_turns: list[SpeakerTurn] = []
 
     if args.asr_model == "whisper-diarization":
-        text, segments, speaker_turns = transcribe_whisperx(args.audio)
+        text, segments, speaker_turns = transcribe_whisperx(
+            args.audio,
+            args.diarization_model != "no_speaker_labels",
+        )
     elif args.asr_model == "granite-speech-4-1-2b":
         text, segments = transcribe_granite(args.audio)
+    elif args.asr_model == "cohere-transcribe-03-2026":
+        text, segments = transcribe_cohere(args.audio)
     elif args.asr_model in ASR_REPOS:
         text, segments = transcribe_transformers(args.audio, args.asr_model)
 
@@ -413,12 +543,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     elif args.diarization_model == "onnx-polyvoice-diarization":
         speaker_turns = diarize_polyvoice_onnx(args.audio)
 
+    reported_device = (
+        "cpu"
+        if args.asr_model == "whisper-diarization" and device_name() != "cuda"
+        else device_name()
+    )
     return {
         "ok": True,
         "text": text,
         "segments": [segment.__dict__ for segment in segments],
         "speaker_turns": [turn.__dict__ for turn in speaker_turns],
-        "device": device_name(),
+        "device": reported_device,
     }
 
 
@@ -432,7 +567,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    payload = run(args)
+    with contextlib.redirect_stdout(sys.stderr):
+        payload = run(args)
     print(json.dumps(payload, ensure_ascii=False))
     return 0
 

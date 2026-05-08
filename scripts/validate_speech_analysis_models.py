@@ -130,8 +130,38 @@ def speech_analysis_model_root() -> Path:
 
 def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
     model_dir = speech_analysis_model_root() / model_id
-    if model_dir.exists() and any(model_dir.iterdir()):
+    required_files = {
+        "granite-speech-4-1-2b": ("config.json", "model.safetensors.index.json"),
+        "cohere-transcribe-03-2026": ("config.json", "model.safetensors"),
+        "pyannote-community-1": (
+            "config.yaml",
+            "segmentation/pytorch_model.bin",
+            "embedding/pytorch_model.bin",
+            "plda/plda.npz",
+            "plda/xvec_transform.npz",
+        ),
+        "pyannote-3-1": ("config.yaml", "segmentation/pytorch_model.bin"),
+        "diarizen-wavlm-large-s80-md": (
+            "config.toml",
+            "pytorch_model.bin",
+            "plda/plda.npz",
+            "plda/xvec_transform.npz",
+        ),
+        "nemo-sortformer-4spk-v1": ("diar_sortformer_4spk-v1.nemo",),
+        "reverb-diarization-v2": ("config.yaml", "pytorch_model.bin"),
+        "whisper-diarization": ("model.bin", "config.json"),
+    }
+    required = required_files.get(model_id)
+    if required and all((model_dir / file_name).exists() for file_name in required):
         return True, f"model weights downloaded at {model_dir}"
+    if model_dir.exists() and any(model_dir.iterdir()):
+        missing = [
+            file_name
+            for file_name in required or ()
+            if not (model_dir / file_name).exists()
+        ]
+        detail = f"; missing required files: {', '.join(missing)}" if missing else ""
+        return False, f"download_required: incomplete model directory at {model_dir}{detail}"
     return False, f"download_required: runtime ready, but model weights are not downloaded at {model_dir}"
 
 

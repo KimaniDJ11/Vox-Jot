@@ -407,6 +407,8 @@ stage_gigaam() {
     download_file "$(hf_resolve_url "$repo" "v3_e2e_ctc.int8.onnx")" \
       "$root_dir/v3_e2e_ctc.int8.onnx"
   fi
+  download_file "$(hf_resolve_url "$repo" "v3_e2e_ctc_vocab.txt")" \
+    "$root_dir/vocab.txt"
 
   create_tarball "$root_dir" "$OUTDIR/giga-am-v3.tar.gz"
 }

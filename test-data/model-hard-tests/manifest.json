@@ -1,0 +1,216 @@
+{
+  "metadata": {
+    "name": "Vox Jot hard model evaluation plan",
+    "version": 1,
+    "updated_at": "2026-05-07",
+    "purpose": "Research-backed hard gates for STT, LLM post-processing, file ASR, voice cloning/TTS, and speaker isolation models."
+  },
+  "suites": [
+    {
+      "id": "stt-live-hard",
+      "domain": "stt",
+      "objective": "Validate live dictation accuracy, latency, and hallucination resistance.",
+      "local_commands": [
+        "bun run regression:download",
+        "bun run regression:run -- --limit 25 --skip-post-process",
+        "bun run eval:test-bank:sanity"
+      ],
+      "datasets": [
+        {
+          "id": "mini-librispeech",
+          "status": "wired",
+          "local_path": "test-data/audio-regression/manifest.json",
+          "source": "https://www.openslr.org/31/",
+          "metrics": ["wer", "exact_match", "rtf", "stt_latency_ms"]
+        },
+        {
+          "id": "librispeech-test-other",
+          "status": "recommended",
+          "source": "https://www.openslr.org/12",
+          "metrics": ["wer", "rtf"]
+        },
+        {
+          "id": "common-voice",
+          "status": "recommended",
+          "source": "https://www.mozillafoundation.org/en/common-voice/platform-and-dataset/",
+          "metrics": ["wer_by_language", "wer_by_accent", "failure_bucket"]
+        },
+        {
+          "id": "chime-6",
+          "status": "recommended",
+          "source": "https://chimechallenge.github.io/chime6/overview.html",
+          "metrics": ["wer", "vad_miss", "vad_false_alarm", "rtf"]
+        },
+        {
+          "id": "primock57",
+          "status": "recommended",
+          "source": "https://aclanthology.org/2022.acl-short.65/",
+          "metrics": ["wer", "medical_term_wer", "hallucination_rate"]
+        }
+      ],
+      "promotion_gate": [
+        "No catastrophic hallucinations on local hard cases.",
+        "p95 stop-to-transcript latency must not regress by more than 10%.",
+        "Default live dictation models should stay below 1.0 RTF."
+      ]
+    },
+    {
+      "id": "llm-post-process-hard",
+      "domain": "llm",
+      "objective": "Validate post-processing instruction following and paste safety.",
+      "local_commands": [
+        "bun run eval:test-bank:sanity",
+        "bun run eval:spelling:dry"
+      ],
+      "datasets": [
+        {
+          "id": "vox-jot-test-bank",
+          "status": "wired",
+          "local_path": "test-data/audio-test-bank/post-process-cases.json",
+          "metrics": ["exact_match", "similarity", "route"]
+        },
+        {
+          "id": "spelling-corpus",
+          "status": "wired",
+          "local_path": "test-data/spelling-corpus/cases.json",
+          "metrics": ["exact_match", "substitution_count"]
+        },
+        {
+          "id": "ifeval-inspired",
+          "status": "recommended",
+          "source": "https://arxiv.org/abs/2311.07911",
+          "metrics": ["verifiable_instruction_pass_rate"]
+        },
+        {
+          "id": "longbench-style-context",
+          "status": "recommended",
+          "source": "https://arxiv.org/abs/2308.14508",
+          "metrics": ["faithfulness", "latency_ms"]
+        }
+      ],
+      "promotion_gate": [
+        "100% pass on destructive-safety cases.",
+        "No prompt leaks, unrelated answers, JSON wrappers, or markdown fences unless requested.",
+        "95% or better pass rate on the sanity bank before recommending a local model."
+      ]
+    },
+    {
+      "id": "file-asr-hard",
+      "domain": "file_asr",
+      "objective": "Validate decode formats, long-form chunking, cancellation, timestamps, and subtitles.",
+      "local_commands": ["ls test-data/file-transcription-samples"],
+      "datasets": [
+        {
+          "id": "file-transcription-samples",
+          "status": "wired",
+          "local_path": "test-data/file-transcription-samples",
+          "metrics": ["decode_success", "text_similarity"]
+        },
+        {
+          "id": "earnings-22",
+          "status": "recommended",
+          "source": "https://arxiv.org/abs/2203.15591",
+          "metrics": ["wer", "rtf", "peak_memory_mb"]
+        },
+        {
+          "id": "ted-lium-3",
+          "status": "recommended",
+          "source": "https://arxiv.org/abs/1805.04699",
+          "metrics": ["wer", "timestamp_drift_ms"]
+        },
+        {
+          "id": "primock57",
+          "status": "recommended",
+          "source": "https://aclanthology.org/2022.acl-short.65/",
+          "metrics": ["wer", "speaker_role_preservation"]
+        }
+      ],
+      "promotion_gate": [
+        "All committed sample formats decode and finish.",
+        "Long-form runs must report RTF, peak memory, and cancellation response time.",
+        "Subtitle segments must be monotonic and non-overlapping."
+      ]
+    },
+    {
+      "id": "voice-cloning-tts-hard",
+      "domain": "tts",
+      "objective": "Validate voice clone identity, intelligibility, naturalness, style controls, and latency.",
+      "local_commands": [
+        "PYTHONPATH=speech-runtime python3 -m unittest discover -s speech-runtime/tests"
+      ],
+      "datasets": [
+        {
+          "id": "vctk",
+          "status": "recommended",
+          "source": "https://tensorflow.google.cn/datasets/catalog/vctk",
+          "metrics": ["speaker_similarity", "asr_wer", "mos_proxy"]
+        },
+        {
+          "id": "libritts",
+          "status": "recommended",
+          "source": "https://www.openslr.org/60/",
+          "metrics": ["asr_wer", "naturalness_proxy"]
+        },
+        {
+          "id": "short-reference-clone",
+          "status": "needs_local_assets",
+          "metrics": [
+            "similarity_delta",
+            "failure_rate",
+            "time_to_first_audio_ms"
+          ]
+        }
+      ],
+      "promotion_gate": [
+        "Generated speech must be intelligible under ASR WER checks.",
+        "Report cold start, time-to-first-audio, RTF, peak memory, and duration drift.",
+        "Use only consented reference voices in product tests."
+      ]
+    },
+    {
+      "id": "speaker-isolation-hard",
+      "domain": "speaker_isolation",
+      "objective": "Validate diarization, speaker count, overlap handling, and speaker-attributed ASR.",
+      "local_commands": [
+        ".venv/bin/python scripts/validate_speech_analysis_models.py --output output/speech-analysis-validation.json"
+      ],
+      "datasets": [
+        {
+          "id": "speech-analysis-readiness",
+          "status": "wired",
+          "local_path": "scripts/validate_speech_analysis_models.py",
+          "metrics": ["ready", "download_required", "blocked"]
+        },
+        {
+          "id": "ami",
+          "status": "recommended",
+          "source": "https://groups.inf.ed.ac.uk/ami/corpus/",
+          "metrics": ["der", "jer", "speaker_count_error"]
+        },
+        {
+          "id": "voxconverse",
+          "status": "recommended",
+          "source": "https://mmai.io/datasets/voxconverse/",
+          "metrics": ["der", "jer"]
+        },
+        {
+          "id": "chime-6",
+          "status": "recommended",
+          "source": "https://chimechallenge.github.io/chime6/overview.html",
+          "metrics": ["der", "wer", "cpwer"]
+        },
+        {
+          "id": "dihard-style",
+          "status": "recommended",
+          "source": "https://dihardchallenge.github.io/dihard3/",
+          "metrics": ["der_no_collar_overlap_included"]
+        }
+      ],
+      "promotion_gate": [
+        "Report DER and JER with scoring setup stated.",
+        "Run strict mode with no forgiveness collar and overlapped speech included.",
+        "Speaker-attributed transcripts must report word-level speaker confusion or cpWER."
+      ]
+    }
+  ]
+}

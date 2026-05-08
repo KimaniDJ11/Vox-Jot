@@ -9,6 +9,7 @@ grades the output with deterministic audio-health and latency metrics.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 import os
@@ -42,6 +43,26 @@ LEGACY_QWEN_RUNTIME = APP_SUPPORT / "tts-runtime/qwen3-macos-aarch64/qwen3-tts-m
 DEFAULT_ASR_JUDGE_MODEL = APP_SUPPORT / "models/speech-analysis/whisper-diarization"
 
 BaselineCases = dict[tuple[str, str], dict[str, Any]]
+
+STYLE_RUBRIC = {
+    "automatic_proxy": {
+        "style_alignment": "Heuristic prosody fit to the requested style using speech rate, RMS energy, and pause/silence ratio.",
+        "intelligibility": "ASR round-trip WER against the source text.",
+        "audio_health": "Generated WAV duration, RMS, silence, and clipping checks.",
+        "latency": "Real-time factor; lower is better.",
+    },
+    "listener_preference": {
+        "status": "manual_ratings_not_collected",
+        "scale": "1-5 per dimension, blind to model id when collected.",
+        "dimensions": [
+            "style_match",
+            "naturalness",
+            "intelligibility",
+            "listening_fatigue",
+            "overall_preference",
+        ],
+    },
+}
 
 SHERPA_PACKS: dict[str, dict[str, Any]] = {
     "tts-sherpa-en-us-lessac-medium": {
@@ -111,6 +132,93 @@ CASES = [
 ]
 
 
+STYLE_CASES = [
+    {
+        "id": "neutral_status",
+        "label": "Neutral Status",
+        "text": "The deployment finished at four fifteen PM. Two follow-up items remain open.",
+        "locale": "en-US",
+        "target_style": "neutral",
+        "instruction_prompt": "Read in a neutral, clear product status voice. Keep pacing steady and avoid extra emotion.",
+        "style_targets": {
+            "words_per_second": [2.0, 3.3],
+            "rms": [0.018, 0.12],
+            "silence_ratio": [0.08, 0.55],
+        },
+    },
+    {
+        "id": "warm_welcome",
+        "label": "Warm Helpful",
+        "text": "Welcome back. I saved your notes, and everything is ready when you are.",
+        "locale": "en-US",
+        "target_style": "warm",
+        "instruction_prompt": "Read warmly and helpfully, like a calm assistant welcoming someone back.",
+        "style_targets": {
+            "words_per_second": [1.7, 2.9],
+            "rms": [0.016, 0.11],
+            "silence_ratio": [0.12, 0.62],
+        },
+        "controls": {"exaggeration": 0.6, "temperature": 0.75},
+    },
+    {
+        "id": "excited_launch",
+        "label": "Excited Launch",
+        "text": "Great news, the prototype passed the final test and the team can start the launch review.",
+        "locale": "en-US",
+        "target_style": "excited",
+        "instruction_prompt": "Read with upbeat excitement and positive energy, while staying intelligible.",
+        "style_targets": {
+            "words_per_second": [2.6, 4.2],
+            "rms": [0.025, 0.18],
+            "silence_ratio": [0.03, 0.42],
+        },
+        "controls": {"exaggeration": 0.75, "temperature": 0.85},
+    },
+    {
+        "id": "calm_guidance",
+        "label": "Calm Guidance",
+        "text": "Take a breath. We can go one step at a time and review the details together.",
+        "locale": "en-US",
+        "target_style": "calm",
+        "instruction_prompt": "Read slowly and calmly with reassuring pauses. Keep the delivery grounded.",
+        "style_targets": {
+            "words_per_second": [1.35, 2.45],
+            "rms": [0.012, 0.09],
+            "silence_ratio": [0.16, 0.72],
+        },
+        "controls": {"exaggeration": 0.35, "temperature": 0.6},
+    },
+    {
+        "id": "urgent_alert",
+        "label": "Urgent Alert",
+        "text": "Please stop the upload now and confirm the backup completed before continuing.",
+        "locale": "en-US",
+        "target_style": "urgent",
+        "instruction_prompt": "Read urgently and clearly, like a time-sensitive operational alert. Do not sound panicked.",
+        "style_targets": {
+            "words_per_second": [2.9, 4.7],
+            "rms": [0.026, 0.2],
+            "silence_ratio": [0.02, 0.35],
+        },
+        "controls": {"exaggeration": 0.7, "temperature": 0.75},
+    },
+    {
+        "id": "empathetic_support",
+        "label": "Empathetic Support",
+        "text": "I am sorry that was frustrating. I will slow down and help you sort it out.",
+        "locale": "en-US",
+        "target_style": "empathetic",
+        "instruction_prompt": "Read with gentle empathy and patience. Keep the tone supportive, not dramatic.",
+        "style_targets": {
+            "words_per_second": [1.45, 2.65],
+            "rms": [0.012, 0.095],
+            "silence_ratio": [0.14, 0.68],
+        },
+        "controls": {"exaggeration": 0.45, "temperature": 0.65},
+    },
+]
+
+
 @dataclass(frozen=True)
 class ModelSpec:
     id: str
@@ -155,19 +263,19 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("vibevoice-realtime-0-5b", "VibeVoice Realtime 0.5B", "vibevoice", "vibevoice", ("vibevoice",)),
     ModelSpec("kokoro-82m", "MLX Kokoro 82M", "mlx", "mlx_kokoro", ("MLX/Kokoro-82M-bf16", "MLX/mlx-community/Kokoro-82M-bf16", "Kokoro-82M-bf16"), "mlx-community/Kokoro-82M-bf16"),
     ModelSpec("chatterbox-mlx", "MLX Chatterbox", "mlx", "mlx_chatterbox", ("MLX/Chatterbox-fp16", "MLX/mlx-community/chatterbox-fp16", "Chatterbox-fp16"), "mlx-community/chatterbox-fp16"),
-    ModelSpec("qwen3-tts-0.6b", "MLX Qwen3 TTS 0.6B", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-0.6B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"),
-    ModelSpec("qwen3-tts-0.6b-4bit", "MLX Qwen3 TTS 0.6B 4-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-Base-4bit", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"),
+    ModelSpec("qwen3-tts-0.6b", "MLX Qwen3 TTS 0.6B", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-0.6B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", supports_instruction_prompt=True),
+    ModelSpec("qwen3-tts-0.6b-4bit", "MLX Qwen3 TTS 0.6B 4-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-Base-4bit", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit", supports_instruction_prompt=True),
     ModelSpec("qwen3-tts-1.7b", "MLX Qwen3 TTS 1.7B VoiceDesign", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-1.7B-VoiceDesign-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16", supports_instruction_prompt=True),
-    ModelSpec("qwen3-tts-1.7b-base", "MLX Qwen3 TTS 1.7B Base", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"),
+    ModelSpec("qwen3-tts-1.7b-base", "MLX Qwen3 TTS 1.7B Base", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16", supports_instruction_prompt=True),
     ModelSpec("dia-1.6b", "MLX Dia 1.6B", "mlx", "mlx_dia", ("MLX/Dia-1.6B-fp16", "MLX/mlx-community/Dia-1.6B-fp16"), "mlx-community/Dia-1.6B-fp16"),
     ModelSpec("csm-1b", "MLX CSM 1B", "mlx", "mlx_csm", ("MLX/CSM-1B", "MLX/mlx-community/csm-1b"), "mlx-community/csm-1b"),
     ModelSpec("spark-tts-0.5b", "MLX Spark TTS 0.5B", "mlx", "mlx_spark", ("MLX/Spark-TTS-0.5B-bf16", "MLX/mlx-community/Spark-TTS-0.5B-bf16"), "mlx-community/Spark-TTS-0.5B-bf16"),
     ModelSpec("outetts-0.6b", "MLX OuteTTS 0.6B", "mlx", "mlx_oute", ("MLX/OuteTTS-1.0-0.6B-fp16", "MLX/mlx-community/OuteTTS-1.0-0.6B-fp16"), "mlx-community/OuteTTS-1.0-0.6B-fp16", unavailable_reason="Disabled in app catalog: current mlx-audio runtime does not generate usable audio for this checkpoint."),
-    ModelSpec("ming-omni-0.5b", "MLX Ming-omni TTS 0.5B", "mlx", "mlx_ming", ("MLX/Ming-omni-tts-0.5B-4bit", "MLX/mlx-community/Ming-omni-tts-0.5B-4bit"), "mlx-community/Ming-omni-tts-0.5B-4bit"),
+    ModelSpec("ming-omni-0.5b", "MLX Ming-omni TTS 0.5B", "mlx", "mlx_ming", ("MLX/Ming-omni-tts-0.5B-4bit", "MLX/mlx-community/Ming-omni-tts-0.5B-4bit"), "mlx-community/Ming-omni-tts-0.5B-4bit", supports_instruction_prompt=True),
     ModelSpec("kugel-audio-7b", "MLX KugelAudio 7B", "mlx", "mlx_kugel", ("MLX/kugelaudio-0-open", "MLX/mlx-community/kugelaudio-0-open"), "kugelaudio/kugelaudio-0-open"),
     ModelSpec("bark-small", "MLX Bark Small", "mlx", "mlx_bark", ("MLX/bark-small", "MLX/mlx-community/bark-small", "MLX/mlx_bark"), "mlx-community/bark-small"),
     ModelSpec("fish-audio-s2-pro", "MLX Fish Audio S2 Pro", "mlx", "mlx_fish", ("MLX/fish-audio-s2-pro-bf16", "MLX/mlx-community/fish-audio-s2-pro-bf16"), "mlx-community/fish-audio-s2-pro-bf16"),
-    ModelSpec("lfm2-5-audio-1-5b", "MLX LFM2.5 Audio 1.5B", "mlx", "mlx_lfm", ("MLX/LFM2.5-Audio-1.5B-bf16", "MLX/mlx-community/LFM2.5-Audio-1.5B-bf16"), "mlx-community/LFM2.5-Audio-1.5B-bf16"),
+    ModelSpec("lfm2-5-audio-1-5b", "MLX LFM2.5 Audio 1.5B", "mlx", "mlx_lfm", ("MLX/LFM2.5-Audio-1.5B-bf16", "MLX/mlx-community/LFM2.5-Audio-1.5B-bf16"), "mlx-community/LFM2.5-Audio-1.5B-bf16", supports_instruction_prompt=True),
     ModelSpec("pocket-tts", "MLX Pocket TTS", "mlx", "mlx_pocket", ("MLX/pocket-tts", "MLX/mlx-community/pocket-tts"), "mlx-community/pocket-tts"),
     ModelSpec("voxcpm2-4bit", "MLX VoxCPM2 4-bit", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-4bit", "MLX/mlx-community/VoxCPM2-4bit"), "mlx-community/VoxCPM2-4bit", supports_instruction_prompt=True),
     ModelSpec("pocket-tts-4bit", "MLX Pocket TTS 4-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-4bit", "MLX/mlx-community/pocket-tts-4bit"), "mlx-community/pocket-tts-4bit"),
@@ -178,10 +286,16 @@ MODELS: tuple[ModelSpec, ...] = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--suite",
+        choices=("hard", "style"),
+        default="hard",
+        help="Run the baseline hard TTS benchmark or the style/emotion benchmark",
+    )
     parser.add_argument("--models", default="", help="Comma-separated model ids to run")
     parser.add_argument("--case-limit", type=int, default=0, help="Limit cases per model; 0 runs all")
     parser.add_argument("--timeout", type=int, default=240, help="Per-case synthesis timeout in seconds")
-    parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "output/tts-model-eval"))
+    parser.add_argument("--output-dir", default="", help="Defaults to output/tts-model-eval or output/tts-style-eval by suite")
     parser.add_argument("--download-missing", action="store_true", help="Download missing Hugging Face snapshots where known")
     parser.add_argument("--include-disabled", action="store_true", help="Attempt catalog-disabled models")
     parser.add_argument("--no-asr-roundtrip", action="store_true", help="Skip ASR round-trip WER scoring")
@@ -388,7 +502,7 @@ def run_command(command: list[str], timeout: int, env: dict[str, str] | None = N
         return 124, exc.stdout or "", exc.stderr or f"timed out after {timeout}s", elapsed
 
 
-def synthesize_managed(model: ModelSpec, model_root: Path, case: dict[str, str], timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_managed(model: ModelSpec, model_root: Path, case: dict[str, Any], timeout: int) -> tuple[Path | None, str | None, float]:
     python = SPEECH_RUNTIME_STATE / f"envs/{model.provider}/bin/python"
     if not python.exists():
         python = MANAGED_RUNTIME / ".venv/bin/python"
@@ -423,7 +537,7 @@ def synthesize_managed(model: ModelSpec, model_root: Path, case: dict[str, str],
             "voice": model.voice,
             "locale": case["locale"],
             "speed": 1.0,
-            "controls": {},
+            "controls": case.get("controls", {}),
             "normalized_controls": {},
         }
         write_json_line(proc, {"action": "synthesize", "payload": payload})
@@ -438,7 +552,7 @@ def synthesize_managed(model: ModelSpec, model_root: Path, case: dict[str, str],
         proc.kill()
 
 
-def synthesize_mlx(model: ModelSpec, model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_mlx(model: ModelSpec, model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     if not MLX_AUDIO_PYTHON.exists() or not MLX_AUDIO_BRIDGE.exists():
         return None, "MLX audio Python environment or bridge script is missing", 0.0
     command = [
@@ -461,15 +575,16 @@ def synthesize_mlx(model: ModelSpec, model_root: Path, case: dict[str, str], out
         "--repetition-penalty",
         "1.1",
     ]
+    instruction_prompt = case.get("instruction_prompt") if model.supports_instruction_prompt else None
     if model.supports_instruction_prompt:
-        command.extend(["--instruct", "A clear natural voice with neutral pacing for practical app readback."])
+        command.extend(["--instruct", instruction_prompt or "A clear natural voice with neutral pacing for practical app readback."])
     code, stdout, stderr, elapsed = run_command(command, timeout, env={**os.environ, "PYTHONUNBUFFERED": "1"})
     if code != 0:
         return None, (stderr.strip() or stdout.strip() or f"exit code {code}")[-1200:], elapsed
     return output_path, None, elapsed
 
 
-def synthesize_sherpa(model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_sherpa(model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     runtime_root = resolve_sherpa_runtime_root()
     if not runtime_root:
         return None, "Sherpa runtime is missing", 0.0
@@ -521,7 +636,7 @@ def resolve_sherpa_runtime_root() -> Path | None:
     return None
 
 
-def synthesize_qwen(model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_qwen(model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     runtime_root = resolve_qwen_runtime_root() or LEGACY_QWEN_RUNTIME
     binary = runtime_root / "tts"
     if not binary.exists():
@@ -555,7 +670,7 @@ def resolve_qwen_runtime_root() -> Path | None:
     return None
 
 
-def synthesize_lfm(model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_lfm(model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     binary = model_root / "runner/llama-liquid-audio-cli"
     if not binary.exists():
         return None, "LFM Audio GGUF runner binary is missing", 0.0
@@ -570,7 +685,7 @@ def synthesize_lfm(model_root: Path, case: dict[str, str], output_path: Path, ti
         "--tts-speaker-file",
         str(model_root / "tokenizer-LFM2.5-Audio-1.5B-Q4_0.gguf"),
         "-sys",
-        "Perform TTS. Use the US female voice.",
+        case.get("instruction_prompt") or "Perform TTS. Use the US female voice.",
         "-p",
         case["text"],
         "-o",
@@ -582,7 +697,7 @@ def synthesize_lfm(model_root: Path, case: dict[str, str], output_path: Path, ti
     return output_path, None, elapsed
 
 
-def synthesize_vibevoice(model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize_vibevoice(model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     runtime_root = PROJECT_ROOT / "speech-runtime"
     python = runtime_root / ".venv/bin/python"
     bridge = runtime_root / "vibevoice_bridge.py"
@@ -610,7 +725,7 @@ def synthesize_vibevoice(model_root: Path, case: dict[str, str], output_path: Pa
     return output_path, None, elapsed
 
 
-def synthesize(model: ModelSpec, model_root: Path, case: dict[str, str], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
+def synthesize(model: ModelSpec, model_root: Path, case: dict[str, Any], output_path: Path, timeout: int) -> tuple[Path | None, str | None, float]:
     if model.family == "managed":
         return synthesize_managed(model, model_root, case, timeout)
     if model.family == "mlx":
@@ -844,7 +959,97 @@ class AsrRoundTripJudge:
         }
 
 
-def score_cases(cases: list[dict[str, Any]]) -> float | None:
+def audio_health_component(cases: list[dict[str, Any]]) -> float:
+    if not cases:
+        return 0.0
+    audio_penalty = 0.0
+    for case in cases:
+        metrics = case["audio"]
+        if metrics.get("duration_s", 0) < 0.4:
+            audio_penalty += 0.25
+        if metrics.get("rms", 0) < 0.003:
+            audio_penalty += 0.25
+        if metrics.get("silence_ratio", 1) > 0.85:
+            audio_penalty += 0.15
+        if metrics.get("clipped_ratio", 0) > 0.01:
+            audio_penalty += 0.15
+    return max(0.0, 1.0 - (audio_penalty / len(cases)))
+
+
+def range_fit(value: float | None, low: float, high: float) -> float:
+    if value is None:
+        return 0.0
+    if low <= value <= high:
+        return 1.0
+    width = max(high - low, 0.001)
+    distance = low - value if value < low else value - high
+    return max(0.0, 1.0 - distance / width)
+
+
+def evaluate_style_alignment(case: dict[str, Any], metrics: dict[str, Any]) -> dict[str, Any] | None:
+    targets = case.get("style_targets")
+    if not isinstance(targets, dict):
+        return None
+    duration = metrics.get("duration_s") or 0
+    word_count = len(normalize_for_wer(case["text"]))
+    words_per_second = word_count / duration if duration else None
+    features = {
+        "words_per_second": round(words_per_second, 3) if words_per_second is not None else None,
+        "rms": metrics.get("rms"),
+        "silence_ratio": metrics.get("silence_ratio"),
+    }
+    component_scores = []
+    for key, weight in (("words_per_second", 0.45), ("rms", 0.3), ("silence_ratio", 0.25)):
+        bounds = targets.get(key)
+        if not isinstance(bounds, list) or len(bounds) != 2:
+            continue
+        component_scores.append(
+            range_fit(features.get(key), float(bounds[0]), float(bounds[1])) * weight
+        )
+    weight_sum = 1.0 if component_scores else 0.0
+    score = sum(component_scores) / weight_sum if weight_sum else 0.0
+    return {
+        "target_style": case.get("target_style"),
+        "score": round(max(0.0, min(1.0, score)), 4),
+        "features": features,
+        "targets": targets,
+        "method": "prosody_proxy_v1",
+    }
+
+
+def summarize_style_alignment(cases: list[dict[str, Any]]) -> dict[str, Any] | None:
+    values = [
+        case["style_alignment"]["score"]
+        for case in cases
+        if isinstance(case.get("style_alignment"), dict)
+        and isinstance(case["style_alignment"].get("score"), (int, float))
+    ]
+    if not values:
+        return None
+    return {
+        "average_proxy": round(sum(values) / len(values), 4),
+        "case_count": len(values),
+        "method": "prosody_proxy_v1",
+    }
+
+
+def style_capability(model: ModelSpec) -> str:
+    if model.supports_instruction_prompt:
+        return "instruction_prompt"
+    if model.provider == "chatterbox":
+        return "expressiveness_controls"
+    return "text_only"
+
+
+def style_capability_weight(capability: str) -> float:
+    if capability == "instruction_prompt":
+        return 1.0
+    if capability == "expressiveness_controls":
+        return 0.9
+    return 0.75
+
+
+def score_cases(cases: list[dict[str, Any]], suite: str = "hard", capability: str = "text_only") -> float | None:
     tested = [case for case in cases if case["status"] == "tested"]
     if not tested:
         return None
@@ -858,25 +1063,31 @@ def score_cases(cases: list[dict[str, Any]]) -> float | None:
         and isinstance(case["asr_roundtrip"].get("wer"), (int, float))
     ]
     asr_component = 1.0 - min(sum(wer_values) / len(wer_values), 1.0) if wer_values else 0.0
-    audio_penalty = 0.0
-    for case in tested:
-        metrics = case["audio"]
-        if metrics.get("duration_s", 0) < 0.4:
-            audio_penalty += 0.25
-        if metrics.get("rms", 0) < 0.003:
-            audio_penalty += 0.25
-        if metrics.get("silence_ratio", 1) > 0.85:
-            audio_penalty += 0.15
-        if metrics.get("clipped_ratio", 0) > 0.01:
-            audio_penalty += 0.15
     latency_component = max(0.0, 1.0 - min(avg_rtf, 8.0) / 8.0)
-    audio_component = max(0.0, 1.0 - (audio_penalty / max(len(cases), 1)))
-    score = 100.0 * (
-        0.40 * success
-        + 0.30 * asr_component
-        + 0.20 * latency_component
-        + 0.10 * audio_component
-    )
+    audio_component = audio_health_component(tested)
+    if suite == "style":
+        style_values = [
+            case["style_alignment"]["score"]
+            for case in tested
+            if isinstance(case.get("style_alignment"), dict)
+            and isinstance(case["style_alignment"].get("score"), (int, float))
+        ]
+        style_component = sum(style_values) / len(style_values) if style_values else 0.0
+        style_component *= style_capability_weight(capability)
+        score = 100.0 * (
+            0.30 * style_component
+            + 0.25 * asr_component
+            + 0.20 * audio_component
+            + 0.15 * success
+            + 0.10 * latency_component
+        )
+    else:
+        score = 100.0 * (
+            0.40 * success
+            + 0.30 * asr_component
+            + 0.20 * latency_component
+            + 0.10 * audio_component
+        )
     return round(max(0.0, min(100.0, score)), 1)
 
 
@@ -892,13 +1103,14 @@ def find_first(root: Path, name: str) -> Path | None:
 
 def run_model(
     model: ModelSpec,
-    cases: list[dict[str, str]],
+    cases: list[dict[str, Any]],
     output_dir: Path,
     timeout: int,
     download_missing: bool,
     asr_judge: AsrRoundTripJudge | None,
     reuse_audio: bool,
     baseline_cases: BaselineCases,
+    suite: str,
 ) -> dict[str, Any]:
     if model.unavailable_reason:
         return {
@@ -966,6 +1178,7 @@ def run_model(
         real_time_factor = (
             baseline_case.get("real_time_factor") if reuse_audio and baseline_case else round(elapsed / duration, 3) if duration else None
         )
+        style_alignment = evaluate_style_alignment(case, metrics) if suite == "style" else None
         asr_roundtrip = None
         if asr_judge is not None:
             try:
@@ -985,11 +1198,15 @@ def run_model(
                 "latency_ms": latency_ms,
                 "real_time_factor": real_time_factor,
                 "audio": metrics,
+                "style_alignment": style_alignment,
+                "target_style": case.get("target_style"),
+                "instruction_prompt": case.get("instruction_prompt"),
                 "asr_roundtrip": asr_roundtrip,
                 "output_path": str(final_path.relative_to(PROJECT_ROOT)),
             }
         )
-    score = score_cases(case_results)
+    capability = style_capability(model)
+    score = score_cases(case_results, suite=suite, capability=capability)
     status = "tested" if any(case["status"] == "tested" for case in case_results) else "failed"
     return {
         "model_id": model.id,
@@ -999,6 +1216,9 @@ def run_model(
         "status": status,
         "score": score,
         "model_root": str(model_root),
+        "style_capability": capability,
+        "style_capability_weight": style_capability_weight(capability),
+        "style_alignment": summarize_style_alignment(case_results),
         "asr_roundtrip": summarize_asr_roundtrip(case_results),
         "cases": case_results,
     }
@@ -1026,8 +1246,8 @@ def summarize_asr_roundtrip(cases: list[dict[str, Any]]) -> dict[str, Any] | Non
     }
 
 
-def load_baseline_cases(output_dir: Path) -> BaselineCases:
-    summary_path = output_dir / "tts-eval-summary.json"
+def load_baseline_cases(output_dir: Path, summary_name: str) -> BaselineCases:
+    summary_path = output_dir / summary_name
     if not summary_path.exists():
         return {}
     try:
@@ -1058,6 +1278,63 @@ def resolve_baseline_output_path(case: dict[str, Any] | None) -> Path | None:
     return path if path.exists() else None
 
 
+def suite_defaults(suite: str) -> tuple[list[dict[str, Any]], Path, str, str, str]:
+    if suite == "style":
+        return (
+            STYLE_CASES,
+            PROJECT_ROOT / "output/tts-style-eval",
+            "tts-style-eval-summary.json",
+            "tts_style_emotion_preference_proxy",
+            "30% style proxy, 25% ASR round-trip WER, 20% audio health, 15% synthesis success, 10% real-time factor.",
+        )
+    return (
+        CASES,
+        PROJECT_ROOT / "output/tts-model-eval",
+        "tts-eval-summary.json",
+        "tts_real_world_hard",
+        "40% synthesis success, 30% ASR round-trip WER, 20% real-time factor, 10% audio health.",
+    )
+
+
+def write_listener_rating_template(output_dir: Path, results: list[dict[str, Any]]) -> None:
+    template_path = output_dir / "listener-rating-template.csv"
+    with template_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "model_id",
+                "case_id",
+                "target_style",
+                "audio_path",
+                "style_match_1_to_5",
+                "naturalness_1_to_5",
+                "intelligibility_1_to_5",
+                "listening_fatigue_1_to_5",
+                "overall_preference_1_to_5",
+                "listener_notes",
+            ],
+        )
+        writer.writeheader()
+        for result in results:
+            for case in result.get("cases", []):
+                if case.get("status") != "tested":
+                    continue
+                writer.writerow(
+                    {
+                        "model_id": result.get("model_id"),
+                        "case_id": case.get("case_id"),
+                        "target_style": case.get("target_style"),
+                        "audio_path": case.get("output_path"),
+                        "style_match_1_to_5": "",
+                        "naturalness_1_to_5": "",
+                        "intelligibility_1_to_5": "",
+                        "listening_fatigue_1_to_5": "",
+                        "overall_preference_1_to_5": "",
+                        "listener_notes": "",
+                    }
+                )
+
+
 def print_inventory(models: list[ModelSpec]) -> None:
     for model in models:
         root = resolve_model_root(model)
@@ -1072,10 +1349,11 @@ def main() -> int:
         print_inventory(models)
         return 0
 
-    output_dir = Path(args.output_dir).resolve()
+    default_cases, default_output_dir, summary_name, suite_name, score_formula = suite_defaults(args.suite)
+    output_dir = Path(args.output_dir).resolve() if args.output_dir else default_output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    baseline_cases = load_baseline_cases(output_dir) if args.reuse_audio else {}
-    cases = CASES[: args.case_limit] if args.case_limit > 0 else CASES
+    baseline_cases = load_baseline_cases(output_dir, summary_name) if args.reuse_audio else {}
+    cases = default_cases[: args.case_limit] if args.case_limit > 0 else default_cases
     asr_judge = None
     if not args.no_asr_roundtrip:
         print(f"Loading ASR round-trip judge: {args.asr_model}", flush=True)
@@ -1094,6 +1372,7 @@ def main() -> int:
                 asr_judge,
                 args.reuse_audio,
                 baseline_cases,
+                args.suite,
             )
         )
 
@@ -1107,7 +1386,7 @@ def main() -> int:
 
     summary = {
         "run": {
-            "suite": "tts_real_world_hard",
+            "suite": suite_name,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "host": platform.platform(),
             "cases": [case["id"] for case in cases],
@@ -1117,13 +1396,20 @@ def main() -> int:
                 "judge": args.asr_model,
                 "metric": "WER against normalized source prompt",
             },
-            "score_formula": "40% synthesis success, 30% ASR round-trip WER, 20% real-time factor, 10% audio health.",
-            "notes": "Generated audio is stored under output/tts-model-eval/audio. Scoring combines synthesis success, ASR round-trip WER, real-time factor, and WAV health checks. Reused-audio runs preserve prior synthesis latency when a baseline summary exists.",
+            "style_rubric": STYLE_RUBRIC if args.suite == "style" else None,
+            "score_formula": score_formula,
+            "notes": (
+                "Generated audio is stored under output/tts-style-eval/audio. Scoring combines a heuristic style-alignment proxy, ASR round-trip WER, audio health, success, and real-time factor. Human listener preference ratings are not collected by this automatic runner."
+                if args.suite == "style"
+                else "Generated audio is stored under output/tts-model-eval/audio. Scoring combines synthesis success, ASR round-trip WER, real-time factor, and WAV health checks. Reused-audio runs preserve prior synthesis latency when a baseline summary exists."
+            ),
         },
         "results": results,
     }
-    (output_dir / "tts-eval-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-    print(f"Wrote {output_dir / 'tts-eval-summary.json'}")
+    (output_dir / summary_name).write_text(json.dumps(summary, indent=2) + "\n")
+    if args.suite == "style":
+        write_listener_rating_template(output_dir, results)
+    print(f"Wrote {output_dir / summary_name}")
     return 0
 
 

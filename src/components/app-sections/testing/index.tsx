@@ -22,18 +22,29 @@ import {
   TTS_EVALUATION_RESULTS,
   TTS_EVALUATION_RUN,
 } from "@/lib/ttsEvaluationResults";
+import {
+  TTS_STYLE_EVALUATION_RESULTS,
+  TTS_STYLE_EVALUATION_RUN,
+} from "@/lib/ttsStyleEvaluationResults";
 import { SuiteLeaderboard } from "@/components/app-sections/testing/SuiteLeaderboard";
 import {
   buildFileAsrRow,
   buildLlmRow,
   buildSpeakerIsolationRow,
   buildSttRow,
+  buildTtsStyleRow,
   buildTtsRow,
   orderByRank,
 } from "@/components/app-sections/testing/suiteAdapters";
 import { press } from "@/motion/springs";
 
-type TestingTabId = "file-asr" | "speaker-isolation" | "tts" | "llm" | "stt";
+type TestingTabId =
+  | "file-asr"
+  | "speaker-isolation"
+  | "tts"
+  | "tts-style"
+  | "llm"
+  | "stt";
 
 const TABS: Array<{
   id: TestingTabId;
@@ -54,6 +65,11 @@ const TABS: Array<{
     id: "tts",
     labelKey: "testing.tabs.tts",
     defaultLabel: "TTS",
+  },
+  {
+    id: "tts-style",
+    labelKey: "testing.tabs.ttsStyle",
+    defaultLabel: "TTS Style",
   },
   {
     id: "llm",
@@ -89,6 +105,7 @@ export const ModelTestingSection: React.FC = () => {
   const llm = splitRanked(LLM_EVALUATION_RESULTS);
   const stt = splitRanked(STT_EVALUATION_RESULTS);
   const tts = splitRanked(TTS_EVALUATION_RESULTS);
+  const ttsStyle = splitRanked(TTS_STYLE_EVALUATION_RESULTS);
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -187,6 +204,16 @@ export const ModelTestingSection: React.FC = () => {
             ranked={tts.ranked}
             unranked={tts.unranked}
             renderRow={buildTtsRow}
+            t={t}
+          />
+        ) : null}
+
+        {activeTab === "tts-style" ? (
+          <SuiteLeaderboard
+            run={TTS_STYLE_EVALUATION_RUN}
+            ranked={ttsStyle.ranked}
+            unranked={ttsStyle.unranked}
+            renderRow={buildTtsStyleRow}
             t={t}
           />
         ) : null}

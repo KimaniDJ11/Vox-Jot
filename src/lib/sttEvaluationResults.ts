@@ -24,6 +24,13 @@ export const STT_EVALUATION_RUN = {
     "35 OpenSLR Mini LibriSpeech dev-clean-2 WAV clips with post-processing disabled",
   limitations:
     "Clean read-speech coverage only. It does not yet cover casual dictation, meeting-room audio, code dictation, accents, noise, or long-form chunking.",
+  metricGuide: [
+    "Rank: #1 is best for this suite.",
+    "WER: lower is better.",
+    "Match: higher is better.",
+    "p50 latency: lower is faster.",
+    "RTF: lower is faster; below 1.00 is faster than real time.",
+  ],
   reportPath:
     "output/stt-realworld-model-eval/2026-05-07T13-41-05/stt-realworld-summary.md",
 };
@@ -71,8 +78,7 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     latencyP50Ms: 229,
     latencyP95Ms: 256,
     realTimeFactorP50: 0.094523326,
-    notes:
-      "Tied Parakeet V3 MLX on WER, but with higher latency.",
+    notes: "Tied Parakeet V3 MLX on WER, but with higher latency.",
   },
   {
     modelId: "mlx-qwen3-asr",
@@ -421,7 +427,8 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     latencyP50Ms: 74,
     latencyP95Ms: 91,
     realTimeFactorP50: 0.03159923,
-    notes: "Very fast and stable, but much weaker than larger Moonshine models.",
+    notes:
+      "Very fast and stable, but much weaker than larger Moonshine models.",
   },
   {
     modelId: "gigaam-v3-e2e-ctc",

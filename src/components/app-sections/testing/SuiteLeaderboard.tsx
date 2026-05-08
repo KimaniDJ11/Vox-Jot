@@ -11,6 +11,7 @@ interface EvaluationRun {
   corpus: string;
   reportPath: string;
   limitations?: string;
+  metricGuide?: string[];
 }
 
 interface EvaluationResult {
@@ -65,6 +66,18 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
             <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--muted)]">
               {run.limitations}
             </p>
+          ) : null}
+          {run.metricGuide && run.metricGuide.length > 0 ? (
+            <div className="mt-3 flex max-w-3xl flex-wrap gap-2">
+              {run.metricGuide.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[11px] font-medium leading-5 text-[var(--text)]"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
             <span>

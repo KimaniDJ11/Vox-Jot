@@ -26,7 +26,15 @@ export const FILE_ASR_EVALUATION_RUN = {
     "Repository file-transcription sample: macOS-say spoken WAV phrase from test-data/file-transcription-samples.",
   limitations:
     "One-sample smoke coverage only. Use this for adapter/decode sanity, not for long-form meetings, lectures, accents, subtitle timing, cancellation, or memory pressure decisions.",
-  reportPath: "output/file-asr-model-eval/2026-05-07T13-50-06/file-asr-summary.md",
+  metricGuide: [
+    "Rank: #1 is best for this suite.",
+    "WER: lower is better.",
+    "Latency: lower is faster.",
+    "RTF: lower is faster; below 1.00 is faster than real time.",
+    "Device is informational.",
+  ],
+  reportPath:
+    "output/file-asr-model-eval/2026-05-07T13-50-06/file-asr-summary.md",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [

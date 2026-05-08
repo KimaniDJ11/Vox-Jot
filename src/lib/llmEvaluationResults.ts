@@ -27,8 +27,14 @@ export const LLM_EVALUATION_RUN = {
     "46 real-world dictation cleanup cases from the Vox Jot audio test bank",
   limitations:
     "Pass counts include production safety fallbacks. The fallback metric shows how often output was blocked or reverted for drift, which is separate from direct model quality.",
-  reportPath:
-    "output/llm-model-eval-rerun-2026-05-07",
+  metricGuide: [
+    "Rank: #1 is best for this suite.",
+    "Pass and similarity: higher is better.",
+    "p50 latency: lower is faster.",
+    "Fallback: lower is better.",
+    "Profile is informational.",
+  ],
+  reportPath: "output/llm-model-eval-rerun-2026-05-07",
   timeoutMs: 10000,
 };
 

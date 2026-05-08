@@ -29,6 +29,13 @@ export const SPEAKER_ISOLATION_EVALUATION_RUN = {
     "Eight Mini LibriSpeech real human speech clips from four speakers, spliced into alternating turns with 300 ms pauses.",
   limitations:
     "Single synthetic turn fixture only. It does not yet cover real meetings, overlapping speech, far-field microphones, similar voices, JER, or speaker-attributed WER.",
+  metricGuide: [
+    "Rank: #1 is best for this suite.",
+    "DER: lower is better.",
+    "Speakers and turns: closer to expected is better.",
+    "Coverage: higher is better.",
+    "Confusion and latency: lower is better.",
+  ],
   reportPath: "output/speaker-isolation-eval/results-latest.json",
 };
 

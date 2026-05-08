@@ -108,7 +108,7 @@ impl ModelManager {
 
     fn whisper_models_base_url() -> String {
         std::env::var("VOX_JOT_WHISPER_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main".to_string()
         })
     }
 
@@ -160,6 +160,32 @@ impl ModelManager {
     fn is_tar_gz_url(url: &str) -> bool {
         let path = url.split('?').next().unwrap_or(url);
         path.ends_with(".tar.gz")
+    }
+
+    fn catalog_progress_total_bytes(model_info: &ModelInfo) -> u64 {
+        model_info.size_mb.saturating_mul(1024 * 1024)
+    }
+
+    fn download_progress_percentage(
+        downloaded: u64,
+        total: u64,
+        has_exact_total: bool,
+        complete: bool,
+    ) -> f64 {
+        if complete {
+            return 100.0;
+        }
+
+        if total == 0 {
+            return 0.0;
+        }
+
+        let percentage = (downloaded as f64 / total as f64) * 100.0;
+        if has_exact_total {
+            percentage.clamp(0.0, 100.0)
+        } else {
+            percentage.clamp(0.0, 99.0)
+        }
     }
 
     fn hf_snapshot_file_is_needed(name: &str) -> bool {
@@ -1198,6 +1224,10 @@ impl ModelManager {
     }
 
     pub fn get_available_models(&self) -> Vec<ModelInfo> {
+        if let Err(err) = self.update_download_status() {
+            warn!("Failed to refresh model download status: {}", err);
+        }
+
         let models = self
             .available_models
             .lock()
@@ -1241,6 +1271,16 @@ impl ModelManager {
     }
 
     fn update_download_status(&self) -> Result<()> {
+        let active_downloads: HashSet<String> = {
+            let flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
+            flags
+                .iter()
+                .filter_map(|(model_id, flag)| {
+                    (!flag.load(Ordering::Relaxed)).then(|| model_id.clone())
+                })
+                .collect()
+        };
+
         let mut models = self
             .available_models
             .lock()
@@ -1258,7 +1298,7 @@ impl ModelManager {
                         model_path.is_file()
                     }
                 };
-                model.is_downloading = false;
+                model.is_downloading = active_downloads.contains(&model.id);
                 model.partial_size = 0;
                 continue;
             }
@@ -1286,7 +1326,7 @@ impl ModelManager {
                 }
 
                 model.is_downloaded = model_path.exists() && model_path.is_dir();
-                model.is_downloading = false;
+                model.is_downloading = active_downloads.contains(&model.id);
 
                 // Get partial file size if it exists (for the .tar.gz being downloaded)
                 if partial_path.exists() {
@@ -1300,7 +1340,7 @@ impl ModelManager {
                 let partial_path = self.models_dir.join(format!("{}.partial", &model.filename));
 
                 model.is_downloaded = model_path.exists();
-                model.is_downloading = false;
+                model.is_downloading = active_downloads.contains(&model.id);
 
                 // Get partial file size if it exists
                 if partial_path.exists() {
@@ -1809,11 +1849,17 @@ impl ModelManager {
             ));
         }
 
-        let total_size = if resume_from > 0 {
+        let response_total_size = if resume_from > 0 {
             // For resumed downloads, add the resume point to content length
             resume_from + response.content_length().unwrap_or(0)
         } else {
             response.content_length().unwrap_or(0)
+        };
+        let has_exact_total_size = response_total_size > 0;
+        let progress_total_size = if has_exact_total_size {
+            response_total_size
+        } else {
+            Self::catalog_progress_total_bytes(&model_info)
         };
 
         let mut downloaded = resume_from;
@@ -1833,12 +1879,13 @@ impl ModelManager {
         let initial_progress = DownloadProgress {
             model_id: model_id.to_string(),
             downloaded,
-            total: total_size,
-            percentage: if total_size > 0 {
-                (downloaded as f64 / total_size as f64) * 100.0
-            } else {
-                0.0
-            },
+            total: progress_total_size,
+            percentage: Self::download_progress_percentage(
+                downloaded,
+                progress_total_size,
+                has_exact_total_size,
+                false,
+            ),
         };
         let _ = self
             .app_handle
@@ -1893,18 +1940,19 @@ impl ModelManager {
             file.write_all(&chunk)?;
             downloaded += chunk.len() as u64;
 
-            let percentage = if total_size > 0 {
-                (downloaded as f64 / total_size as f64) * 100.0
-            } else {
-                0.0
-            };
+            let percentage = Self::download_progress_percentage(
+                downloaded,
+                progress_total_size,
+                has_exact_total_size,
+                false,
+            );
 
             // Emit progress event (throttled to avoid UI freeze)
             if last_emit.elapsed() >= throttle_duration {
                 let progress = DownloadProgress {
                     model_id: model_id.to_string(),
                     downloaded,
-                    total: total_size,
+                    total: progress_total_size,
                     percentage,
                 };
                 let _ = self.app_handle.emit("model-download-progress", &progress);
@@ -1916,12 +1964,13 @@ impl ModelManager {
         let final_progress = DownloadProgress {
             model_id: model_id.to_string(),
             downloaded,
-            total: total_size,
-            percentage: if total_size > 0 {
-                (downloaded as f64 / total_size as f64) * 100.0
-            } else {
-                100.0
-            },
+            total: progress_total_size,
+            percentage: Self::download_progress_percentage(
+                downloaded,
+                progress_total_size,
+                has_exact_total_size,
+                true,
+            ),
         };
         let _ = self
             .app_handle
@@ -1931,9 +1980,9 @@ impl ModelManager {
         drop(file); // Ensure file is closed before moving
 
         // Verify downloaded file size matches expected size
-        if total_size > 0 {
+        if response_total_size > 0 {
             let actual_size = partial_path.metadata()?.len();
-            if actual_size != total_size {
+            if actual_size != response_total_size {
                 // Download is incomplete/corrupted - delete partial and return error
                 let _ = fs::remove_file(&partial_path);
                 {
@@ -1947,7 +1996,7 @@ impl ModelManager {
                 }
                 return Err(anyhow::anyhow!(
                     "Download incomplete: expected {} bytes, got {} bytes",
-                    total_size,
+                    response_total_size,
                     actual_size
                 ));
             }
@@ -2336,6 +2385,63 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::TempDir;
+
+    fn test_model_info(size_mb: u64) -> ModelInfo {
+        ModelInfo {
+            id: "test-model".to_string(),
+            name: "Test Model".to_string(),
+            description: "Test".to_string(),
+            filename: "test-model.bin".to_string(),
+            url: Some("https://example.com/test-model.bin".to_string()),
+            sha256: None,
+            size_mb,
+            is_downloaded: false,
+            is_downloading: false,
+            partial_size: 0,
+            is_directory: false,
+            engine_type: EngineType::Whisper,
+            accuracy_score: 0.5,
+            speed_score: 0.5,
+            supports_translation: true,
+            is_recommended: false,
+            supported_languages: vec!["en".to_string()],
+            is_custom: false,
+        }
+    }
+
+    #[test]
+    fn uses_catalog_size_for_progress_when_http_total_is_missing() {
+        let model = test_model_info(225);
+
+        assert_eq!(
+            ModelManager::catalog_progress_total_bytes(&model),
+            225 * 1024 * 1024
+        );
+
+        let percentage = ModelManager::download_progress_percentage(
+            112 * 1024 * 1024,
+            225 * 1024 * 1024,
+            false,
+            false,
+        );
+
+        assert!(percentage > 49.0);
+        assert!(percentage < 50.0);
+    }
+
+    #[test]
+    fn approximate_progress_is_capped_until_completion() {
+        let total = 225 * 1024 * 1024;
+
+        assert_eq!(
+            ModelManager::download_progress_percentage(total + 1, total, false, false),
+            99.0
+        );
+        assert_eq!(
+            ModelManager::download_progress_percentage(total + 1, total, false, true),
+            100.0
+        );
+    }
 
     #[test]
     fn test_discover_custom_whisper_models() {

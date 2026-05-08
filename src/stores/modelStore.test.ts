@@ -94,4 +94,75 @@ describe("model store", () => {
     expect(useModelStore.getState().initializePromise).toBeNull();
     expect(useModelStore.getState().isFirstRun).toBe(true);
   });
+
+  it("keeps a model marked as downloading when progress events arrive", async () => {
+    const listeners: Record<string, (event: { payload: unknown }) => void> = {};
+    listenMock.mockImplementation(
+      async (
+        eventName: string,
+        callback: (event: { payload: unknown }) => void,
+      ) => {
+        listeners[eventName] = callback;
+        return () => {};
+      },
+    );
+    commandMocks.getAvailableModels.mockResolvedValue({
+      status: "ok",
+      data: [],
+    });
+    commandMocks.getCurrentModel.mockResolvedValue({ status: "ok", data: "" });
+    commandMocks.hasAnyModelsAvailable.mockResolvedValue({
+      status: "ok",
+      data: false,
+    });
+
+    await useModelStore.getState().initialize();
+
+    listeners["model-download-progress"]?.({
+      payload: {
+        model_id: "large",
+        downloaded: 512,
+        total: 1024,
+        percentage: 50,
+      },
+    });
+
+    expect(useModelStore.getState().downloadingModels.large).toBe(true);
+    expect(useModelStore.getState().downloadProgress.large?.percentage).toBe(
+      50,
+    );
+  });
+
+  it("recovers download progress from backend partial-file metadata", async () => {
+    useModelStore.setState({
+      downloadingModels: { medium: true },
+      downloadProgress: {
+        medium: {
+          model_id: "medium",
+          downloaded: 0,
+          total: 0,
+          percentage: 0,
+        },
+      },
+    });
+    commandMocks.getAvailableModels.mockResolvedValue({
+      status: "ok",
+      data: [
+        {
+          id: "medium",
+          partial_size: 50 * 1024 * 1024,
+          size_mb: 100,
+          is_downloading: true,
+          is_downloaded: false,
+        },
+      ],
+    });
+
+    await useModelStore.getState().loadModels();
+
+    expect(useModelStore.getState().downloadingModels.medium).toBe(true);
+    expect(useModelStore.getState().downloadProgress.medium?.percentage).toBe(
+      50,
+    );
+  });
 });

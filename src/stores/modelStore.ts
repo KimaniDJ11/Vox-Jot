@@ -18,6 +18,37 @@ interface DownloadStats {
   speed: number; // MB/s
 }
 
+const BYTES_PER_MIB = 1024 * 1024;
+
+function progressFromModelPartial(
+  model: ModelInfo,
+  current?: DownloadProgress,
+): DownloadProgress | null {
+  const downloaded = Number(model.partial_size) || 0;
+  if (downloaded <= 0) {
+    return null;
+  }
+
+  const total =
+    current && current.total > 0
+      ? current.total
+      : Number(model.size_mb) > 0
+        ? Number(model.size_mb) * BYTES_PER_MIB
+        : 0;
+
+  const percentage =
+    total > 0
+      ? Math.min(99, (downloaded / total) * 100)
+      : (current?.percentage ?? 0);
+
+  return {
+    model_id: model.id,
+    downloaded: Math.max(downloaded, current?.downloaded ?? 0),
+    total,
+    percentage: Math.max(percentage, current?.percentage ?? 0),
+  };
+}
+
 // Using Record instead of Set/Map for Immer compatibility
 interface ModelsStore {
   models: ModelInfo[];
@@ -92,17 +123,40 @@ export const useModelStore = create<ModelsStore>()(
                 .forEach((m) => {
                   backendDownloading[m.id] = true;
                 });
+              const backendModels: Record<string, ModelInfo> =
+                Object.fromEntries(
+                  result.data.map((model) => [model.id, model]),
+                );
 
-              // Merge: keep frontend state if downloading, add backend state
-              Object.keys(backendDownloading).forEach((id) => {
-                state.downloadingModels[id] = true;
-              });
+              // Merge: keep frontend state if downloading, add backend state.
+              // Also recover progress from the partial file size in case a
+              // Tauri progress event is missed by the current window.
+              for (const model of result.data) {
+                if (!backendDownloading[model.id]) continue;
+                state.downloadingModels[model.id] = true;
+
+                const polledProgress = progressFromModelPartial(
+                  model,
+                  state.downloadProgress[model.id],
+                );
+                if (polledProgress) {
+                  state.downloadProgress[model.id] = polledProgress;
+                }
+              }
 
               // Remove models that backend says are NOT downloading AND
-              // frontend doesn't have progress for (completed/cancelled)
+              // frontend doesn't have progress for (completed/cancelled).
+              // If the model is already installed, clear stale optimistic
+              // progress even if the completion event was missed.
               Object.keys(state.downloadingModels).forEach((id) => {
-                if (!backendDownloading[id] && !state.downloadProgress[id]) {
+                if (
+                  !backendDownloading[id] &&
+                  (backendModels[id]?.is_downloaded ||
+                    !state.downloadProgress[id])
+                ) {
                   delete state.downloadingModels[id];
+                  delete state.downloadProgress[id];
+                  delete state.downloadStats[id];
                 }
               });
             }),
@@ -178,14 +232,39 @@ export const useModelStore = create<ModelsStore>()(
             };
           }),
         );
-        const result = await commands.downloadModel(modelId);
+
+        let pollId: number | null =
+          typeof window === "undefined"
+            ? null
+            : window.setInterval(() => {
+                if (modelId in get().downloadingModels) {
+                  void get().loadModels();
+                }
+              }, 1000);
+
+        const result = await commands.downloadModel(modelId).finally(() => {
+          if (pollId !== null) {
+            window.clearInterval(pollId);
+            pollId = null;
+          }
+        });
         if (result.status === "ok") {
+          set(
+            produce((state) => {
+              delete state.downloadingModels[modelId];
+              delete state.downloadProgress[modelId];
+              delete state.downloadStats[modelId];
+            }),
+          );
+          await get().loadModels();
           return true;
         } else {
           set({ error: `Failed to download model: ${result.error}` });
           set(
             produce((state) => {
               delete state.downloadingModels[modelId];
+              delete state.downloadProgress[modelId];
+              delete state.downloadStats[modelId];
             }),
           );
           return false;
@@ -195,6 +274,8 @@ export const useModelStore = create<ModelsStore>()(
         set(
           produce((state) => {
             delete state.downloadingModels[modelId];
+            delete state.downloadProgress[modelId];
+            delete state.downloadStats[modelId];
           }),
         );
         return false;
@@ -282,6 +363,7 @@ export const useModelStore = create<ModelsStore>()(
             const progress = event.payload;
             set(
               produce((state) => {
+                state.downloadingModels[progress.model_id] = true;
                 state.downloadProgress[progress.model_id] = progress;
               }),
             );

@@ -103,13 +103,33 @@
         "title": "Mikrofonzugriff",
         "description": "Erforderlich, um Ihre Stimme für die Transkription zu hören.",
         "cardTitle": "Allow Vox Jot to use your microphone",
-        "cardDescription": "Vox Jot only needs the microphone while you are dictating."
+        "cardDescription": "Vox Jot only needs the microphone while you are dictating.",
+        "eyebrow": "Voice capture",
+        "storyTitle": "Microphone Access",
+        "storyDescription": "Powers local dictation so Vox Jot can hear you only when you choose to record.",
+        "bullets": [
+          "Capture your voice for speech-to-text.",
+          "Run transcription locally on your Mac.",
+          "Use your selected microphone during dictation."
+        ],
+        "privacy": "Only listens while you are actively dictating.",
+        "cta": "Enable Microphone"
       },
       "accessibility": {
         "title": "Bedienungshilfen-Zugriff",
         "description": "Erforderlich, um transkribierten Text in Ihre Anwendungen einzugeben.",
         "cardTitle": "Allow Vox Jot to insert spoken words",
-        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using."
+        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using.",
+        "eyebrow": "Text output",
+        "storyTitle": "Accessibility",
+        "storyDescription": "Lets Vox Jot paste or type your transcript into the app and field you are already using.",
+        "bullets": [
+          "Place transcribed text where your cursor is focused.",
+          "Trigger dictation from anywhere with the global shortcut.",
+          "Keep the normal paste flow fast after transcription."
+        ],
+        "privacy": "Only controls text insertion for Vox Jot actions; it does not read document contents.",
+        "cta": "Enable Accessibility"
       },
       "grant": "Berechtigung erteilen",
       "granted": "Erteilt",
@@ -129,15 +149,42 @@
         "description": "Required so Vox Jot can better tell the difference between sending a message and manually clearing text.",
         "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
         "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
-        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app."
+        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app.",
+        "eyebrow": "Keyboard state",
+        "storyTitle": "Input Monitoring",
+        "storyDescription": "Helps Vox Jot understand shortcut and key state locally so dictation behaves correctly across apps.",
+        "bullets": [
+          "Detect start and stop shortcut state reliably.",
+          "Understand quick send-versus-delete changes.",
+          "Keep correction tracking local to this device."
+        ],
+        "privacy": "Does not log what you type or store your keystrokes.",
+        "cta": "Enable Input Monitoring"
       },
       "screenRecording": {
         "title": "Screen Recording",
         "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
         "cardTitle": "Allow Vox Jot to read active-screen context locally",
-        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating."
+        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating.",
+        "eyebrow": "Visual context",
+        "storyTitle": "Screen Recording",
+        "storyDescription": "Optionally powers local OCR context so Vox Jot can better handle names, jargon, and phrase keys.",
+        "bullets": [
+          "Read active-screen context for better dictation accuracy.",
+          "Recognize visible terms without cloud processing.",
+          "Improve phrase keys and app-aware writing."
+        ],
+        "privacy": "Only used for local context features; you can skip this and enable it later.",
+        "cta": "Enable Screen Recording"
       },
-      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context."
+      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context.",
+      "checking": "Checking permissions...",
+      "required": "Required",
+      "optional": "Optional",
+      "skip": "Skip",
+      "stepProgress": "{{current}} of {{total}}",
+      "completeTitle": "Permissions are ready",
+      "completeDescription": "Vox Jot has the access it needs for the first dictation flow."
     },
     "steps": {
       "welcome": "Overview",
@@ -1408,6 +1455,50 @@
       "voiceProfileName": "New voice profile name",
       "voiceProfileNote": "Optional note about this speaker",
       "voiceProfileTranscript": "Use the exact words spoken when you have them."
+    },
+    "voices": {
+      "viewAriaLabel": "Voices view",
+      "profiles": "Profiles"
+    },
+    "voiceChanger": {
+      "title": "Voice Changer",
+      "downloadingOpenVoice": "Preparing OpenVoice for offline voice changing.",
+      "preparing": "Preparing offline voice changer.",
+      "converting": "Converting voice.",
+      "convertedWith": "Converted with {{profileLabel}}.",
+      "failed": "Voice conversion failed.",
+      "source": "Source",
+      "noAudioSelected": "No audio selected",
+      "noReadyProfiles": "No ready profiles",
+      "toneBlend": "Tone blend",
+      "convert": "Convert",
+      "output": "Output",
+      "chooseWav": "Choose WAV",
+      "targetProfile": "Target profile",
+      "noConvertedAudio": "No converted audio yet",
+      "outputTitle": "Voice Changer output",
+      "outputPlaceholder": "Converted audio appears here.",
+      "panelAriaLabel": "Voice Changer controls",
+      "listening": "Listening. Tap stop when you are done speaking.",
+      "recordingFailed": "Could not start microphone recording.",
+      "finalizingRecording": "Finalizing microphone recording.",
+      "noMicAudio": "No microphone audio was captured.",
+      "stopAndConvert": "Stop & Convert",
+      "recordMic": "Record Mic",
+      "recordShortcutHint": "Focus this panel and press R to start or stop mic capture.",
+      "loadingOutput": "Loading converted audio.",
+      "wait": {
+        "downloadStarting": "Checking the local speech pack and installing any missing runtime pieces.",
+        "downloadStillWorking": "Still preparing OpenVoice. First setup can take a while.",
+        "prepare": "Starting the offline speech runtime and checking the selected target voice.",
+        "finalize": "Saving your microphone take as a clean WAV source.",
+        "loadOutput": "Reading the converted WAV and preparing playback.",
+        "convertWarmup": "Loading OpenVoice and warming up the converter.",
+        "convertExtracting": "Extracting tone color from your source and target profile.",
+        "convertMapping": "Mapping your delivery into the selected voice.",
+        "convertStillWorking": "Still working. Longer clips and first runs can take extra time.",
+        "elapsed": "{{seconds}}s"
+      }
     }
   },
   "refine": {

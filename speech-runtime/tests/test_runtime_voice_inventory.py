@@ -66,6 +66,75 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(by_id["es"]["locale"], "es")
         self.assertEqual(by_id["zh"]["locale"], "zh")
 
+    def test_openvoice_voice_conversion_uses_source_and_target_embeddings(self):
+        worker = self.make_worker("openvoice", "openvoice")
+        worker._ensure_engine = lambda: None
+        source = worker.model_dir / "source.wav"
+        target = worker.model_dir / "target.wav"
+        source.write_bytes(b"source")
+        target.write_bytes(b"target")
+
+        class DummyConverter:
+            def __init__(self):
+                self.extracted = []
+                self.convert_kwargs = None
+
+            def extract_se(self, audio_path, se_save_path):
+                self.extracted.append((audio_path, se_save_path))
+                return f"se:{Path(audio_path).stem}"
+
+            def convert(self, **kwargs):
+                self.convert_kwargs = kwargs
+                Path(kwargs["output_path"]).write_bytes(b"converted")
+
+        converter = DummyConverter()
+        worker.engine = {"converter": converter}
+
+        output = worker.convert_voice(
+            {
+                "source_audio_path": str(source),
+                "target_audio_path": str(target),
+                "controls": {"tau": 0.45},
+            }
+        )
+
+        self.assertEqual(output.read_bytes(), b"converted")
+        self.assertEqual(
+            [Path(audio_path).name for audio_path, _ in converter.extracted],
+            ["source.wav", "target.wav"],
+        )
+        self.assertEqual(converter.convert_kwargs["audio_src_path"], str(source))
+        self.assertEqual(converter.convert_kwargs["src_se"], "se:source")
+        self.assertEqual(converter.convert_kwargs["tgt_se"], "se:target")
+        self.assertEqual(converter.convert_kwargs["tau"], 0.45)
+
+    def test_openvoice_accepts_nested_download_layout(self):
+        worker = self.make_worker("openvoice", "openvoice")
+        nested = worker.model_dir / "OpenVoice"
+        checkpoints = nested / "checkpoints_v2"
+        (checkpoints / "base_speakers" / "ses").mkdir(parents=True)
+        (checkpoints / "converter").mkdir(parents=True)
+
+        self.assertEqual(worker._openvoice_checkpoint_root(), checkpoints)
+
+    def test_openvoice_package_source_accepts_nested_download_layout(self):
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-runtime-openvoice-"))
+        config = RuntimeConfig(
+            listen_host="127.0.0.1",
+            listen_port=0,
+            model_store=temp_root / "store",
+            state_dir=temp_root / "state",
+            profiles_dir=None,
+        )
+        outer = config.model_store / "OpenVoice"
+        nested = outer / "OpenVoice"
+        nested.mkdir(parents=True)
+        (nested / "setup.py").write_text("from setuptools import setup\nsetup(name='openvoice')\n", encoding="utf-8")
+
+        host = WorkerHost(config)
+
+        self.assertEqual(host._openvoice_package_source(outer), nested)
+
     def test_xtts_voice_inventory_uses_sample_pseudo_voices(self):
         worker = self.make_worker("xtts", "xtts-v2")
         checkpoints = worker.model_dir / "xtts-v2"

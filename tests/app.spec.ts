@@ -8,11 +8,13 @@ type Scenario = {
     accessibility: boolean;
     inputMonitoring: boolean;
     microphone: boolean;
+    screenRecording: boolean;
   };
   postOnboardingPermissions?: {
     accessibility?: boolean;
     inputMonitoring?: boolean;
     microphone?: boolean;
+    screenRecording?: boolean;
   };
   platform: "macos" | "windows" | "linux";
   settings: Record<string, unknown>;
@@ -197,6 +199,7 @@ const baseScenario: Scenario = {
     accessibility: true,
     inputMonitoring: true,
     microphone: true,
+    screenRecording: true,
   },
   platform: "macos",
   settings: baseSettings,
@@ -244,6 +247,7 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
     let accessibilityChecks = 0;
     let inputMonitoringChecks = 0;
     let microphoneChecks = 0;
+    let screenRecordingChecks = 0;
 
     const state = {
       models: activeScenario.models,
@@ -316,9 +320,18 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
               ? activeScenario.postOnboardingPermissions.microphone
               : activeScenario.permissions.microphone;
           }
+          case "plugin:macos-permissions|check_screen_recording_permission": {
+            screenRecordingChecks += 1;
+            return screenRecordingChecks > 2 &&
+              activeScenario.postOnboardingPermissions?.screenRecording !==
+                undefined
+              ? activeScenario.postOnboardingPermissions.screenRecording
+              : activeScenario.permissions.screenRecording;
+          }
           case "plugin:macos-permissions|request_accessibility_permission":
           case "plugin:macos-permissions|request_input_monitoring_permission":
           case "plugin:macos-permissions|request_microphone_permission":
+          case "plugin:macos-permissions|request_screen_recording_permission":
           case "show_main_window_command":
           case "initialize_enigo":
           case "initialize_shortcuts":
@@ -538,7 +551,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: /Enable your dictation toolkit/i,
+        name: /Microphone Access/i,
       }),
     ).toBeVisible();
     await expect(
@@ -560,7 +573,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: /Enable your dictation toolkit/i,
+        name: /Microphone Access/i,
       }),
     ).toBeVisible();
 

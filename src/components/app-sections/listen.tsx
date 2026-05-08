@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   CreateVoicesSection as CreateVoicesPanel,
-  MyVoicesSection as MyVoicesPanel,
+  VoicesSection as VoicesPanel,
   ListenVoiceCloningSection as VoiceCloningPanel,
 } from "@/components/settings/general/ListenSections";
 import {
@@ -21,7 +21,7 @@ export const ListenMyVoicesSection: React.FC = () => {
         title={t("appSections.sections.myVoicesTitle")}
         description={t("appSections.sections.myVoicesDescription")}
       >
-        <MyVoicesPanel showGroupTitle={false} />
+        <VoicesPanel showGroupTitle={false} />
       </SectionIntro>
     </div>
   );

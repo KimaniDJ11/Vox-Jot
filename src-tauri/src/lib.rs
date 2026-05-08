@@ -760,6 +760,8 @@ pub fn run(cli_args: CliArgs) {
         commands::tts::set_active_improvement_profile,
         commands::tts::clear_profile_collected_data,
         commands::tts::get_voice_profile_progress,
+        commands::tts::convert_voice_sample,
+        commands::tts::convert_voice_recording,
         commands::initialize_enigo,
         commands::initialize_shortcuts,
         commands::models::get_available_models,

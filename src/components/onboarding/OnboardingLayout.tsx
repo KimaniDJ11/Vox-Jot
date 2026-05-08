@@ -7,16 +7,20 @@ export type OnboardingStepName = "welcome" | "permissions" | "setup" | "learn";
 
 interface OnboardingLayoutProps {
   currentStep: OnboardingStepName;
-  leftContent: React.ReactNode;
+  leftContent?: React.ReactNode;
   rightContent?: React.ReactNode;
+  children?: React.ReactNode;
   onBack?: () => void;
+  chromeVariant?: "split" | "story";
 }
 
 const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   currentStep,
   leftContent,
   rightContent,
+  children,
   onBack,
+  chromeVariant = "split",
 }) => {
   const { t } = useTranslation();
   const steps: { key: OnboardingStepName; label: string }[] = [
@@ -28,7 +32,7 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   const currentIndex = steps.findIndex((s) => s.key === currentStep);
 
   return (
-    <div className="ob-root">
+    <div className={`ob-root ob-root-${chromeVariant}`}>
       {/* Progress bar */}
       <nav className="ob-progress-bar">
         {steps.map((step, i) => (
@@ -58,23 +62,31 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         </div>
       </nav>
 
-      {/* Split pane */}
-      <div className="ob-split">
-        {/* Left - interactive */}
-        <div className="ob-left">
+      {chromeVariant === "story" ? (
+        <div className="ob-story-shell">
           {onBack && (
-            <button onClick={onBack} className="ob-back-btn">
+            <button onClick={onBack} className="ob-back-btn ob-story-back-btn">
               {t("onboarding.common.back")}
             </button>
           )}
-          <div className="ob-left-content">{leftContent}</div>
+          {children}
         </div>
+      ) : (
+        <div className="ob-split">
+          <div className="ob-left">
+            {onBack && (
+              <button onClick={onBack} className="ob-back-btn">
+                {t("onboarding.common.back")}
+              </button>
+            )}
+            <div className="ob-left-content">{leftContent}</div>
+          </div>
 
-        {/* Right - visual */}
-        <div className="ob-right">
-          {rightContent ?? <div className="ob-right-placeholder" />}
+          <div className="ob-right">
+            {rightContent ?? <div className="ob-right-placeholder" />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

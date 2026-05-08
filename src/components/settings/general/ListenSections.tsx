@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { useListenSpeechState } from "./listen/useListenSpeechState";
 import { SavedVoiceProfilesSection } from "./listen/sections/SavedVoiceProfilesSection";
@@ -7,6 +8,8 @@ import { EngineLibraryPanel } from "./listen/sections/EngineLibraryPanel";
 import { SpeechPackManagerCard } from "./listen/sections/SpeechPackManagerCard";
 import { VoiceCloningSection } from "./listen/sections/VoiceCloningSection";
 import { AutoReadbackPanel } from "./listen/sections/AutoReadbackPanel";
+import { VoiceChangerSection } from "./listen/sections/VoiceChangerSection";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export const MyVoicesSection: React.FC<{
   showGroupTitle?: boolean;
@@ -14,6 +17,62 @@ export const MyVoicesSection: React.FC<{
   const speech = useListenSpeechState();
   return (
     <SavedVoiceProfilesSection speech={speech} showTitle={showGroupTitle} />
+  );
+};
+
+export const VoicesSection: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
+  const { t } = useTranslation();
+  const [view, setView] = React.useState<"profiles" | "voice-changer">(
+    "profiles",
+  );
+  const speech = useListenSpeechState();
+  const content = (
+    <div className="space-y-4">
+      <SegmentedControl<"profiles" | "voice-changer">
+        value={view}
+        onChange={setView}
+        layoutId="listen-voices-tool-toggle"
+        ariaLabel={t("listen.voices.viewAriaLabel", {
+          defaultValue: "Voices view",
+        })}
+        items={[
+          {
+            value: "profiles",
+            label: t("listen.voices.profiles", { defaultValue: "Profiles" }),
+          },
+          {
+            value: "voice-changer",
+            label: t("listen.voiceChanger.title", {
+              defaultValue: "Voice Changer",
+            }),
+          },
+        ]}
+      />
+
+      {view === "profiles" ? (
+        <div className="space-y-4">
+          <SavedVoiceProfilesSection speech={speech} showTitle={false} />
+        </div>
+      ) : (
+        <VoiceChangerSection speech={speech} showTitle={false} />
+      )}
+    </div>
+  );
+
+  if (!showGroupTitle) {
+    return content;
+  }
+
+  return (
+    <SettingsGroup
+      title={t("appSections.sections.myVoicesTitle", {
+        defaultValue: "Voices",
+      })}
+    >
+      {content}
+    </SettingsGroup>
   );
 };
 

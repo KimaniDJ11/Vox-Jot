@@ -85,3 +85,5 @@ tmp/
 
 # Onboarding screenshots (reference only, not in repo)
 onboarding/
+!src/assets/onboarding/
+!src/assets/onboarding/*.webp

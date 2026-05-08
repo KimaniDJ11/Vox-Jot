@@ -481,9 +481,9 @@ function App() {
         },
         {
           id: "my-voices",
-          label: "My Voices",
+          label: "Voices",
           icon: Volume2,
-          title: "My Voices",
+          title: "Voices",
           content: <ListenMyVoicesSection />,
         },
         {

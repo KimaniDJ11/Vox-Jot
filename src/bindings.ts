@@ -1111,6 +1111,22 @@ async getVoiceProfileProgress(profileId: string) : Promise<Result<TtsVoiceProfil
     else return { status: "error", error: e  as any };
 }
 },
+async convertVoiceSample(sourcePath: string, profileId: string, tau: number | null) : Promise<Result<VoiceChangerResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convert_voice_sample", { sourcePath, profileId, tau }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async convertVoiceRecording(wavBytes: number[], profileId: string, tau: number | null) : Promise<Result<VoiceChangerResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convert_voice_recording", { wavBytes, profileId, tau }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Try to initialize Enigo (keyboard/mouse simulation).
  * On macOS, this will return an error if accessibility permissions are not granted.
@@ -2686,6 +2702,7 @@ export type TtsVoicePresetInput = { label?: string | null; provider_id: string; 
 export type TtsVoiceProfileDescriptor = { id: string; label: string; description: string | null; transcript: string | null; compatible_provider_ids: string[]; compatible_model_ids: string[]; has_reference_audio: boolean; reference_audio_path: string | null; sample_rate_hz: number | null; ready: boolean; continuous_improvement_enabled: boolean; collected_audio_duration_secs: number; satisfactory_threshold_secs: number; fully_optimized: boolean }
 export type TtsVoiceTuningSettings = { tempo_rate?: number; expressiveness?: number; exaggeration?: number; randomness?: number; guidance?: number; stability?: number; repetition_penalty?: number; style_instructions?: string | null; advanced_overrides?: Partial<{ [key in string]: TtsStyleControlValue }> }
 export type TypingTool = "auto" | "wtype" | "kwtype" | "dotool" | "ydotool" | "xdotool"
+export type VoiceChangerResult = { source_path: string; output_path: string; target_profile_label: string; provider_id: string; model_id: string }
 export type VoiceInfo = { id: string; label: string; locale: string | null; engine: TtsEngineKind; installed: boolean; available: boolean }
 /**
  * One watched folder entry. The `id` is generated client-side (uuid)

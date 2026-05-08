@@ -125,6 +125,15 @@ class EngineWorker:
             raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
         return output_path
 
+    def convert_voice(self, payload: dict[str, Any]) -> Path:
+        self._ensure_engine()
+        output_path = Path(tempfile.gettempdir()) / f"vox-jot-voice-converter-{self.provider_id}-{os.getpid()}-{next(tempfile._get_candidate_names())}.wav"
+        if self.provider_id == "openvoice":
+            self._convert_openvoice(payload, output_path)
+        else:
+            raise RuntimeError(f"Voice changing is not supported by provider '{self.provider_id}'.")
+        return output_path
+
     def list_voices(self) -> list[dict[str, Any]]:
         if self.provider_id == "kokoro":
             return self._list_kokoro_voices()
@@ -469,9 +478,14 @@ class EngineWorker:
         self.engine.save_wav(wav, str(output_path))
 
     def _openvoice_checkpoint_root(self) -> Path:
-        for candidate in (self.model_dir / "checkpoints_v2", self.model_dir / "checkpoints"):
-            if (candidate / "base_speakers" / "ses").exists() and (candidate / "converter").exists():
-                return candidate
+        for root in (
+            self.model_dir,
+            self.model_dir / "OpenVoice",
+            self.model_dir / "openvoice",
+        ):
+            for candidate in (root / "checkpoints_v2", root / "checkpoints"):
+                if (candidate / "base_speakers" / "ses").exists() and (candidate / "converter").exists():
+                    return candidate
         raise RuntimeError("OpenVoice checkpoints are missing.")
 
     def _openvoice_language(self, locale: str | None) -> str:
@@ -618,6 +632,57 @@ class EngineWorker:
             else:
                 output_path.write_bytes(raw_path.read_bytes())
 
+    def _convert_openvoice(self, payload: dict[str, Any], output_path: Path) -> None:
+        import inspect
+
+        source_audio = payload.get("source_audio_path")
+        target_audio = payload.get("target_audio_path")
+        if not source_audio:
+            raise RuntimeError("Voice changer source audio is missing.")
+        if not target_audio:
+            raise RuntimeError("Voice changer target profile audio is missing.")
+        if not Path(source_audio).exists():
+            raise RuntimeError(f"Voice changer source audio was not found: {source_audio}")
+        if not Path(target_audio).exists():
+            raise RuntimeError(f"Voice changer target audio was not found: {target_audio}")
+
+        controls = payload.get("controls", {})
+        converter = self.engine["converter"]
+
+        with tempfile.TemporaryDirectory(prefix="vox-jot-openvoice-convert-") as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            source_se = converter.extract_se(
+                source_audio,
+                se_save_path=str(temp_dir_path / "source_se.pth"),
+            )
+            target_se = converter.extract_se(
+                target_audio,
+                se_save_path=str(temp_dir_path / "target_se.pth"),
+            )
+            convert_kwargs = {
+                "audio_src_path": str(source_audio),
+                "src_se": source_se,
+                "tgt_se": target_se,
+                "output_path": str(output_path),
+                "tau": float(controls.get("tau", 0.3)),
+                "message": "@VoxJot",
+            }
+            convert_signature = inspect.signature(converter.convert)
+            accepts_kwargs = any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in convert_signature.parameters.values()
+            )
+            if accepts_kwargs:
+                converter.convert(**convert_kwargs)
+            else:
+                converter.convert(
+                    **{
+                        key: value
+                        for key, value in convert_kwargs.items()
+                        if key in convert_signature.parameters
+                    }
+                )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -655,6 +720,10 @@ def main() -> None:
                 continue
             if action == "synthesize":
                 output_path = worker.synthesize(request_payload["payload"])
+                write_response(True, output_path=str(output_path))
+                continue
+            if action == "convert_voice":
+                output_path = worker.convert_voice(request_payload["payload"])
                 write_response(True, output_path=str(output_path))
                 continue
             write_response(False, error=f"Unknown action '{action}'.")

@@ -362,6 +362,14 @@ impl SidecarManager {
         self.ensure_legacy_runtime_running()
     }
 
+    pub fn restart_speech_runtime(&self) -> Result<(), String> {
+        if self.is_running() {
+            self.reclaim_sidecar_port()?;
+        }
+
+        self.ensure_legacy_runtime_running()
+    }
+
     pub fn ensure_running(&self) -> Result<(), String> {
         let already_running = match self.backend {
             SidecarBackend::LegacyPythonRuntime => self.probe_health(false) == HEALTH_LEGACY,

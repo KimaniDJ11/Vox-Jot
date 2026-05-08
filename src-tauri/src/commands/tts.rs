@@ -7,9 +7,13 @@ use crate::tts::{default_preview_request, SpeakRequest, TtsManager, TtsPackInfo,
 use crate::tts_profiles::{
     clear_collected_data, create_voice_profile, delete_voice_profile, get_profile_progress,
     import_profile_reference_audio, list_voice_profiles, maybe_backfill_profile_transcript,
-    read_wav_as_mono_16k, set_continuous_improvement, TtsVoiceProfileDescriptor,
+    read_wav_as_mono_16k, resolve_voice_profile, set_continuous_improvement,
+    TtsVoiceProfileDescriptor,
 };
 use log::warn;
+use serde::{Deserialize, Serialize};
+use specta::Type;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
@@ -34,6 +38,15 @@ fn sanitize_tuning(tuning: &mut TtsVoiceTuningSettings, provider_id: &str, model
     tuning.stability = tuning.stability.clamp(0.0, 1.0);
     let _ = sanitize_tts_voice_tuning_for_target(tuning, provider_id, model_id);
     tuning.style_instructions = normalize_optional_string(tuning.style_instructions.clone());
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct VoiceChangerResult {
+    pub source_path: String,
+    pub output_path: String,
+    pub target_profile_label: String,
+    pub provider_id: String,
+    pub model_id: String,
 }
 
 fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
@@ -405,4 +418,143 @@ pub fn get_voice_profile_progress(
     profile_id: String,
 ) -> Result<TtsVoiceProfileDescriptor, String> {
     get_profile_progress(&app, &profile_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn convert_voice_sample(
+    app: AppHandle,
+    source_path: String,
+    profile_id: String,
+    tau: Option<f32>,
+) -> Result<VoiceChangerResult, String> {
+    let source = PathBuf::from(source_path.trim());
+    convert_voice_source(app, source, profile_id, tau).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn convert_voice_recording(
+    app: AppHandle,
+    wav_bytes: Vec<u8>,
+    profile_id: String,
+    tau: Option<f32>,
+) -> Result<VoiceChangerResult, String> {
+    if wav_bytes.is_empty() {
+        return Err("No microphone audio was captured.".to_string());
+    }
+
+    let app_data_dir = crate::portable::app_data_dir(&app)
+        .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
+    let source_dir = app_data_dir.join("voice-changer").join("sources");
+    std::fs::create_dir_all(&source_dir)
+        .map_err(|err| format!("Failed to create Voice Changer source directory: {err}"))?;
+    let source = source_dir.join(format!(
+        "voice-changer-source-{}-{}.wav",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S"),
+        Uuid::new_v4()
+    ));
+    std::fs::write(&source, wav_bytes)
+        .map_err(|err| format!("Failed to save microphone recording: {err}"))?;
+
+    convert_voice_source(app, source, profile_id, tau).await
+}
+
+async fn convert_voice_source(
+    app: AppHandle,
+    source: PathBuf,
+    profile_id: String,
+    tau: Option<f32>,
+) -> Result<VoiceChangerResult, String> {
+    if !source.exists() {
+        return Err(format!("Source audio file not found: {}", source.display()));
+    }
+
+    if source
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.eq_ignore_ascii_case("wav"))
+        != Some(true)
+    {
+        return Err("Voice Changer currently accepts WAV source audio.".to_string());
+    }
+
+    let profile = resolve_voice_profile(&app, &profile_id)?;
+    let sidecar = app
+        .try_state::<Arc<crate::sidecar::SidecarManager>>()
+        .ok_or_else(|| "Speech runtime manager is not available.".to_string())?;
+    let sidecar = Arc::clone(&*sidecar);
+    let sidecar_for_start = Arc::clone(&sidecar);
+    tokio::task::spawn_blocking(move || sidecar_for_start.ensure_speech_runtime())
+        .await
+        .map_err(|err| format!("Failed to start Speech runtime: {err}"))??;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|err| format!("Failed to create voice changer client: {err}"))?;
+    let request_payload = serde_json::json!({
+        "source_audio_path": source.to_string_lossy(),
+        "provider_id": "openvoice",
+        "model": "openvoice",
+        "profile_id": profile_id,
+        "tau": tau.unwrap_or(0.3).clamp(0.0, 1.0),
+    });
+    let mut response = client
+        .post("http://127.0.0.1:8008/v1/audio/voice-conversion")
+        .json(&request_payload)
+        .send()
+        .await
+        .map_err(|err| format!("Voice Changer request failed: {err}"))?;
+
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        let sidecar_for_restart = Arc::clone(&sidecar);
+        tokio::task::spawn_blocking(move || sidecar_for_restart.restart_speech_runtime())
+            .await
+            .map_err(|err| format!("Failed to restart Speech runtime: {err}"))??;
+        response = client
+            .post("http://127.0.0.1:8008/v1/audio/voice-conversion")
+            .json(&request_payload)
+            .send()
+            .await
+            .map_err(|err| format!("Voice Changer request failed after runtime restart: {err}"))?;
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let detail = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "No error detail returned.".to_string());
+        return Err(format!("Voice Changer failed ({status}): {detail}"));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|err| format!("Failed to read converted voice audio: {err}"))?;
+    if bytes.is_empty() {
+        return Err("Voice Changer returned empty audio.".to_string());
+    }
+
+    let app_data_dir = crate::portable::app_data_dir(&app)
+        .map_err(|err| format!("Failed to resolve app data directory: {err}"))?;
+    let output_dir = app_data_dir.join("voice-changer");
+    std::fs::create_dir_all(&output_dir)
+        .map_err(|err| format!("Failed to create Voice Changer output directory: {err}"))?;
+    let output_path = output_dir.join(format!(
+        "voice-changer-{}-{}.wav",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S"),
+        Uuid::new_v4()
+    ));
+    std::fs::write(&output_path, bytes)
+        .map_err(|err| format!("Failed to save converted voice audio: {err}"))?;
+
+    Ok(VoiceChangerResult {
+        source_path: source.to_string_lossy().to_string(),
+        output_path: output_path.to_string_lossy().to_string(),
+        target_profile_label: profile.label,
+        provider_id: "openvoice".to_string(),
+        model_id: "openvoice".to_string(),
+    })
 }

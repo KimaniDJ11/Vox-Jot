@@ -163,7 +163,7 @@ except Exception:
     ) -> None:
         if spec.provider_id == "openvoice":
             self._pip_install(env_python, *OPENVOICE_RUNTIME_DEPENDENCIES)
-            self._pip_install(env_python, "--no-deps", "-e", str(model_dir))
+            self._pip_install(env_python, "--no-deps", "-e", str(self._openvoice_package_source(model_dir)))
             self._pip_install(env_python, MELOTTS_GIT_URL)
             self._bootstrap_unidic(env_python)
             return
@@ -187,6 +187,19 @@ except Exception:
                 "--no-deps",
                 KOKORO_SPACY_MODEL_URL,
             )
+
+    def _openvoice_package_source(self, model_dir: Path) -> Path:
+        candidates = (
+            model_dir,
+            model_dir / "OpenVoice",
+            model_dir / "openvoice",
+            self.config.model_store / "OpenVoice" / "OpenVoice",
+            self.config.model_store / "openvoice" / "openvoice",
+        )
+        for candidate in candidates:
+            if (candidate / "pyproject.toml").exists() or (candidate / "setup.py").exists():
+                return candidate
+        return model_dir
 
     def _chatterbox_package_source(self, model_dir: Path) -> Path:
         candidates = (
@@ -300,6 +313,25 @@ except Exception:
             response = self._send(
                 worker,
                 {"action": "synthesize", "payload": payload},
+                response_timeout_secs=WORKER_RESPONSE_TIMEOUT_SECS,
+            )
+        output_path = Path(response["output_path"])
+        try:
+            return output_path.read_bytes()
+        finally:
+            output_path.unlink(missing_ok=True)
+
+    def convert_voice(
+        self,
+        spec: EngineSpec,
+        model_dir: Path,
+        payload: dict[str, Any],
+    ) -> bytes:
+        worker = self.ensure_worker(spec, model_dir)
+        with worker.lock:
+            response = self._send(
+                worker,
+                {"action": "convert_voice", "payload": payload},
                 response_timeout_secs=WORKER_RESPONSE_TIMEOUT_SECS,
             )
         output_path = Path(response["output_path"])

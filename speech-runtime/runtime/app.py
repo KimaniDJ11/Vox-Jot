@@ -38,6 +38,14 @@ class SpeechRequest(BaseModel):
     extra_controls: dict[str, Any] | None = None
 
 
+class VoiceConversionRequest(BaseModel):
+    source_audio_path: str
+    model: str | None = "openvoice"
+    provider_id: str | None = "openvoice"
+    profile_id: str
+    tau: float = 0.3
+
+
 config = load_runtime_config()
 config.state_dir.mkdir(parents=True, exist_ok=True)
 host = WorkerHost(config)
@@ -313,6 +321,48 @@ async def audio_speech(body: SpeechRequest) -> Response:
         raise HTTPException(
             status_code=500,
             detail=f"Synthesis failed for {spec.provider_id}/{spec.model_id}: {exc}",
+        ) from exc
+
+    return Response(content=audio, media_type="audio/wav")
+
+
+@app.post("/v1/audio/voice-conversion")
+async def audio_voice_conversion(body: VoiceConversionRequest) -> Response:
+    source_audio_path = Path(body.source_audio_path).expanduser()
+    if not source_audio_path.exists():
+        raise HTTPException(status_code=404, detail="Source audio file was not found.")
+
+    spec = engine_for_request(body.provider_id, body.model)
+    if spec is None:
+        raise HTTPException(status_code=400, detail="No voice changer model is selected.")
+    if spec.provider_id != "openvoice":
+        raise HTTPException(status_code=400, detail=f"{spec.label} does not support voice changing.")
+
+    model_dir = discover_model(spec)
+    if model_dir is None:
+        raise HTTPException(status_code=404, detail=f"{spec.label} is not installed in the model store.")
+
+    target_audio_path, _target_transcript = load_profile(body.profile_id)
+    if not target_audio_path:
+        raise HTTPException(status_code=400, detail="Target voice profile needs reference audio first.")
+
+    try:
+        audio = await asyncio.to_thread(
+            host.convert_voice,
+            spec,
+            model_dir,
+            {
+                "source_audio_path": str(source_audio_path),
+                "target_audio_path": target_audio_path,
+                "controls": {
+                    "tau": max(0.0, min(1.0, float(body.tau))),
+                },
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Voice conversion failed for {spec.provider_id}/{spec.model_id}: {exc}",
         ) from exc
 
     return Response(content=audio, media_type="audio/wav")

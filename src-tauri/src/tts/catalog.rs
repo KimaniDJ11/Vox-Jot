@@ -173,13 +173,13 @@ pub const QWEN3_PACK_DEFINITIONS: &[Qwen3PackDefinition] = &[
         id: "qwen3-0.6b-base",
         label: "Qwen3 0.6B Base",
         locale: "mul",
-        hf_repo_id: None,
+        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-0.6B-Base"),
     },
     Qwen3PackDefinition {
         id: "qwen3-0.6b-customvoice",
         label: "Qwen3 0.6B CustomVoice",
         locale: "mul",
-        hf_repo_id: None,
+        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"),
     },
     Qwen3PackDefinition {
         id: "qwen3-1.7b-customvoice",

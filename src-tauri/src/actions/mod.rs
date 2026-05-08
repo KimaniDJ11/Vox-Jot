@@ -1827,13 +1827,15 @@ impl ShortcutAction for TestAction {
 mod tests {
     use super::{
         analyze_post_process_route, apple_fallback_result, build_apple_system_prompt,
-        build_apple_user_content, build_non_apple_tone_instruction, build_post_process_result,
-        build_system_prompt, choose_post_process_pass, extract_spoken_submit_command,
-        has_ordinal_list_cues, live_partial_config_for_model, looks_incomplete_utterance,
+        build_apple_user_content, build_model_system_prompt, build_model_user_content,
+        build_non_apple_tone_instruction, build_post_process_result, build_system_prompt,
+        choose_post_process_pass, extract_spoken_submit_command, has_ordinal_list_cues,
+        live_partial_config_for_model, looks_incomplete_utterance,
         maybe_apply_verification_request_fallback, parse_transcription_field_from_json,
-        preview_app_context_from_override, resolve_tone_context, sanitize_plain_model_output,
-        should_block_paste_candidate, should_fallback_to_plain_text_candidate,
-        should_fallback_to_plain_text_drift, should_force_conservative_rewrite, PostProcessPass,
+        preview_app_context_from_override, prompt_profile_for_model, resolve_tone_context,
+        sanitize_plain_model_output, should_block_paste_candidate,
+        should_fallback_to_plain_text_candidate, should_fallback_to_plain_text_drift,
+        should_force_conservative_rewrite, ModelPromptProfile, PostProcessPass,
     };
     use crate::post_processing::{
         ActiveAppContext, DictionaryEntry, PostProcessMode, WriteRule, WriteRuleMatchers,
@@ -1863,6 +1865,50 @@ mod tests {
         assert!(prompt.contains("Make the smallest possible change"));
         assert!(prompt.contains("Use bullets or numbering only"));
         assert!(prompt.contains("lightly clean for readability"));
+    }
+
+    #[test]
+    fn model_prompt_profiles_select_strict_literal_when_benchmark_supported_it() {
+        assert_eq!(
+            prompt_profile_for_model("tinyllama:1.1b"),
+            ModelPromptProfile::Standard
+        );
+        assert_eq!(
+            prompt_profile_for_model("phi4-mini:latest"),
+            ModelPromptProfile::StrictLiteral
+        );
+        assert_eq!(
+            prompt_profile_for_model("qwen2.5:1.5b"),
+            ModelPromptProfile::Standard
+        );
+    }
+
+    #[test]
+    fn strict_literal_model_prompt_adds_preservation_guardrail() {
+        let settings = get_default_settings();
+        let system_prompt = build_model_system_prompt(
+            &settings,
+            None,
+            false,
+            PostProcessPass::Pass1,
+            1,
+            false,
+            "phi4-mini:latest",
+        );
+        let user_content = build_model_user_content(
+            &settings,
+            "check the file at src slash components slash settings dot tsx",
+            1,
+            false,
+            None,
+            false,
+            "phi4-mini:latest",
+        );
+
+        assert!(system_prompt.contains("This model tends to paraphrase"));
+        assert!(system_prompt.contains("Do not shorten, summarize, formalize"));
+        assert!(user_content.contains("Model-specific reminder"));
+        assert!(user_content.contains("Preserve original wording"));
     }
 
     #[test]

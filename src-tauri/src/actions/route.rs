@@ -304,7 +304,7 @@ pub(super) fn route_score(features: &RouteFeatures) -> i32 {
 pub(super) fn choose_post_process_pass(transcription: &str) -> PostProcessPass {
     let trimmed = transcription.trim();
     if trimmed.is_empty() {
-        return PostProcessPass::Pass1;
+        return PostProcessPass::Skip;
     }
 
     let features = extract_route_features(trimmed);

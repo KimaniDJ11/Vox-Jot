@@ -48,6 +48,8 @@ struct ChatCompletionRequest {
     response_format: Option<ResponseFormat>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,6 +80,8 @@ struct OllamaChatRequest {
 struct OllamaChatOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     num_predict: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,7 +108,7 @@ fn estimate_text_tokens(text: &str) -> usize {
 fn estimate_max_output_tokens(user_content: &str, system_prompt: Option<&str>) -> u32 {
     let estimated_input_tokens =
         estimate_text_tokens(user_content) + system_prompt.map(estimate_text_tokens).unwrap_or(0);
-    ((estimated_input_tokens as f32 * 1.3).ceil() as usize).max(64) as u32
+    ((estimated_input_tokens as f32 * 1.3).ceil() as usize).clamp(64, 256) as u32
 }
 
 /// Build headers for API requests based on provider type
@@ -264,6 +268,7 @@ pub async fn send_chat_completion_with_schema_streaming(
         messages,
         response_format,
         max_tokens: Some(max_output_tokens),
+        temperature: Some(0.0),
     };
 
     let response = client
@@ -408,6 +413,7 @@ async fn send_ollama_chat_completion(
         keep_alive: "30m".to_string(),
         options: OllamaChatOptions {
             num_predict: Some(max_output_tokens),
+            temperature: Some(0.0),
         },
     };
 

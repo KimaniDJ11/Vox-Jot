@@ -5,6 +5,7 @@ use crate::actions::{
 };
 use crate::audio_toolkit::{apply_custom_words, filter_transcription_output};
 use crate::cli::CliArgs;
+use crate::managers::apple_speech::{AppleSpeechEngine, AppleSpeechMode};
 use crate::managers::model::EngineType;
 use crate::post_processing::{apply_personal_dictionary, PostProcessResult};
 use crate::settings::{get_default_settings, AppSettings};
@@ -12,7 +13,9 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use transcribe_rs::{
     onnx::{
         gigaam::GigaAMModel,
@@ -124,6 +127,101 @@ struct ModelRuntime {
     model_path: PathBuf,
 }
 
+struct MlxAudioRegressionEngine {
+    base_url: String,
+    model_source: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MlxAudioTranscriptionResponse {
+    text: String,
+}
+
+enum RegressionEngine {
+    Whisper(WhisperEngine),
+    Parakeet(ParakeetModel),
+    Moonshine(MoonshineModel),
+    MoonshineStreaming(StreamingModel),
+    SenseVoice(SenseVoiceModel),
+    GigaAM(GigaAMModel),
+    MlxAudioStt(MlxAudioRegressionEngine),
+    AppleSpeech(AppleSpeechEngine),
+    AppleSpeechStreaming(AppleSpeechEngine),
+}
+
+impl MlxAudioRegressionEngine {
+    fn new(model_source: String) -> Result<Self> {
+        let engine = Self {
+            base_url: std::env::var("VOX_JOT_MLX_AUDIO_BASE_URL")
+                .ok()
+                .map(|value| value.trim().trim_end_matches('/').to_string())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "http://127.0.0.1:8008".to_string()),
+            model_source,
+        };
+        engine.ensure_running()?;
+        Ok(engine)
+    }
+
+    fn ensure_running(&self) -> Result<()> {
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_millis(750))
+            .timeout(Duration::from_millis(750))
+            .build()
+            .context("Failed to create mlx-audio health client")?;
+        let response = client
+            .get(format!("{}/v1/models", self.base_url.trim_end_matches('/')))
+            .send()
+            .map_err(|err| {
+                anyhow!(
+                    "mlx-audio sidecar is not running at {}: {}. Start Vox Jot with the MLX speech backend, or run the benchmark script so it can start the managed sidecar.",
+                    self.base_url,
+                    err
+                )
+            })?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "mlx-audio sidecar health check failed with HTTP {}",
+                response.status()
+            ))
+        }
+    }
+
+    fn transcribe(&self, audio: Vec<f32>, sample_rate: u32) -> Result<String> {
+        let wav_bytes = encode_wav(audio, sample_rate)?;
+        let file_part = reqwest::blocking::multipart::Part::bytes(wav_bytes)
+            .file_name("vox-jot-regression.wav")
+            .mime_str("audio/wav")
+            .context("Failed to prepare mlx-audio WAV upload")?;
+        let form = reqwest::blocking::multipart::Form::new()
+            .part("file", file_part)
+            .text("model", self.model_source.clone());
+
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(300))
+            .build()
+            .context("Failed to create mlx-audio regression client")?;
+        let response = client
+            .post(format!(
+                "{}/v1/audio/transcriptions",
+                self.base_url.trim_end_matches('/')
+            ))
+            .multipart(form)
+            .send()
+            .map_err(|err| anyhow!("mlx-audio transcription request failed: {}", err))?
+            .error_for_status()
+            .map_err(|err| anyhow!("mlx-audio transcription failed: {}", err))?;
+        let payload = response
+            .json::<MlxAudioTranscriptionResponse>()
+            .context("Failed to decode mlx-audio transcription response")?;
+
+        Ok(payload.text)
+    }
+}
+
 pub(crate) fn run_cli(cli_args: &CliArgs) -> Result<()> {
     let manifest_path = PathBuf::from(
         cli_args
@@ -171,12 +269,13 @@ pub(crate) fn run_cli(cli_args: &CliArgs) -> Result<()> {
         }
     );
 
+    let mut engine = load_regression_engine(&model_runtime)?;
     let mut reports = Vec::with_capacity(manifest.entries.len());
     for (index, entry) in manifest.entries.iter().enumerate() {
         eprintln!("[{}/{}] {}", index + 1, manifest.entries.len(), entry.id);
         reports.push(run_entry(
             &settings,
-            &model_runtime,
+            &mut engine,
             entry,
             cli_args.regression_skip_post_process,
         ));
@@ -326,6 +425,16 @@ fn resolve_model_runtime(models_dir: &Path, model_id: &str) -> Result<ModelRunti
         )
     })?;
 
+    if matches!(
+        engine_type,
+        EngineType::AppleSpeech | EngineType::AppleSpeechStreaming
+    ) {
+        return Ok(ModelRuntime {
+            engine_type,
+            model_path: PathBuf::from(format!("app-runtime://{model_id}")),
+        });
+    }
+
     let candidate = models_dir.join(filename);
     if candidate.exists() {
         return Ok(ModelRuntime {
@@ -344,16 +453,6 @@ fn resolve_model_runtime(models_dir: &Path, model_id: &str) -> Result<ModelRunti
         }
     }
 
-    if model_id == "gigaam-v3-e2e-ctc" {
-        let fallback = models_dir.join("giga-am-v3.int8.onnx");
-        if fallback.exists() {
-            return Ok(ModelRuntime {
-                engine_type,
-                model_path: fallback,
-            });
-        }
-    }
-
     let kind = if is_directory { "directory" } else { "file" };
     Err(anyhow!(
         "Model '{}' is selected but the expected {} '{}' does not exist",
@@ -365,11 +464,17 @@ fn resolve_model_runtime(models_dir: &Path, model_id: &str) -> Result<ModelRunti
 
 fn known_model_runtime(model_id: &str) -> Option<(EngineType, &'static str, bool)> {
     match model_id {
+        "tiny" => Some((EngineType::Whisper, "ggml-tiny.bin", false)),
+        "tiny.en" => Some((EngineType::Whisper, "ggml-tiny.en.bin", false)),
+        "base" => Some((EngineType::Whisper, "ggml-base.bin", false)),
+        "base.en" => Some((EngineType::Whisper, "ggml-base.en.bin", false)),
         "small" => Some((EngineType::Whisper, "ggml-small.bin", false)),
+        "small.en" => Some((EngineType::Whisper, "ggml-small.en.bin", false)),
         "medium" => Some((EngineType::Whisper, "ggml-medium.bin", false)),
+        "medium.en" => Some((EngineType::Whisper, "ggml-medium.en.bin", false)),
         "turbo" => Some((EngineType::Whisper, "ggml-large-v3-turbo.bin", false)),
-        "large-v3-q5" => Some((EngineType::Whisper, "ggml-large-v3-q5_0.bin", false)),
-        "breeze-asr-q5" => Some((EngineType::Whisper, "breeze-asr-q5_k.bin", false)),
+        "large" | "large-v3-q5" => Some((EngineType::Whisper, "ggml-large-v3-q5_0.bin", false)),
+        "breeze-asr" | "breeze-asr-q5" => Some((EngineType::Whisper, "breeze-asr-q5_k.bin", false)),
         "whisper-medium-q4_1" => Some((EngineType::Whisper, "whisper-medium-q4_1.bin", false)),
         "parakeet-tdt-0.6b-v2" => Some((EngineType::Parakeet, "parakeet-tdt-0.6b-v2-int8", true)),
         "parakeet-tdt-0.6b-v3" => Some((EngineType::Parakeet, "parakeet-tdt-0.6b-v3-int8", true)),
@@ -390,18 +495,58 @@ fn known_model_runtime(model_id: &str) -> Option<(EngineType, &'static str, bool
             true,
         )),
         "sense-voice-int8" => Some((EngineType::SenseVoice, "sense-voice-int8", true)),
-        "gigaam-v3-e2e-ctc" => Some((EngineType::GigaAM, "v3_e2e_ctc.int8.onnx", false)),
+        "gigaam-v3-e2e-ctc" => Some((EngineType::GigaAM, "gigaam-v3-e2e-ctc", true)),
+        "mlx-whisper-large-v3-turbo" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/whisper-large-v3-turbo-asr-fp16",
+            true,
+        )),
+        "mlx-distil-whisper-large-v3" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/distil-whisper/distil-large-v3",
+            true,
+        )),
+        "mlx-qwen3-asr" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/Qwen3-ASR-1.7B-8bit",
+            true,
+        )),
+        "mlx-parakeet-v3" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/parakeet-tdt-0.6b-v3",
+            true,
+        )),
+        "mlx-voxtral-mini-3b" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/Voxtral-Mini-3B-2507-bf16",
+            true,
+        )),
+        "mlx-voxtral-mini-4b-realtime" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+            true,
+        )),
+        "apple-speech-analyzer" => Some((
+            EngineType::AppleSpeech,
+            "app-runtime://apple-speech-analyzer",
+            false,
+        )),
+        "apple-speech-progressive" => Some((
+            EngineType::AppleSpeechStreaming,
+            "app-runtime://apple-speech-progressive",
+            false,
+        )),
         _ => None,
     }
 }
 
 fn run_entry(
     settings: &AppSettings,
-    model_runtime: &ModelRuntime,
+    engine: &mut RegressionEngine,
     entry: &RegressionEntry,
     skip_post_process: bool,
 ) -> RegressionEntryReport {
-    match run_entry_inner(settings, model_runtime, entry, skip_post_process) {
+    match run_entry_inner(settings, engine, entry, skip_post_process) {
         Ok(report) => report,
         Err(err) => RegressionEntryReport {
             id: entry.id.clone(),
@@ -430,14 +575,14 @@ fn run_entry(
 
 fn run_entry_inner(
     settings: &AppSettings,
-    model_runtime: &ModelRuntime,
+    engine: &mut RegressionEngine,
     entry: &RegressionEntry,
     skip_post_process: bool,
 ) -> Result<RegressionEntryReport> {
     let (mono, sample_rate) = read_wav_as_mono_f32(Path::new(&entry.audio_path))?;
     let audio_16k = resample_linear(&mono, sample_rate, 16_000);
     let stt_start = std::time::Instant::now();
-    let raw_transcription = transcribe_audio(settings, model_runtime, audio_16k)?;
+    let raw_transcription = transcribe_audio(settings, engine, audio_16k)?;
     let stt_latency_ms = stt_start.elapsed().as_millis() as u64;
     let stt_real_time_factor = if entry.duration_secs > 0.0 {
         Some((stt_latency_ms as f32 / 1000.0) / entry.duration_secs)
@@ -539,15 +684,85 @@ fn collect_dictionary_hits(
     ordered
 }
 
+fn load_regression_engine(model_runtime: &ModelRuntime) -> Result<RegressionEngine> {
+    match model_runtime.engine_type {
+        EngineType::Whisper => Ok(RegressionEngine::Whisper(
+            WhisperEngine::load(&model_runtime.model_path)
+                .map_err(|err| anyhow!("Failed to load Whisper model: {}", err))?,
+        )),
+        EngineType::Parakeet => Ok(RegressionEngine::Parakeet(
+            ParakeetModel::load(&model_runtime.model_path, &Quantization::Int8)
+                .map_err(|err| anyhow!("Failed to load Parakeet model: {}", err))?,
+        )),
+        EngineType::Moonshine => Ok(RegressionEngine::Moonshine(
+            MoonshineModel::load(
+                &model_runtime.model_path,
+                MoonshineVariant::Base,
+                &Quantization::FP32,
+            )
+            .map_err(|err| anyhow!("Failed to load Moonshine model: {}", err))?,
+        )),
+        EngineType::MoonshineStreaming => Ok(RegressionEngine::MoonshineStreaming(
+            StreamingModel::load(&model_runtime.model_path, 1, &Quantization::FP32)
+                .map_err(|err| anyhow!("Failed to load Moonshine streaming model: {}", err))?,
+        )),
+        EngineType::SenseVoice => Ok(RegressionEngine::SenseVoice(
+            SenseVoiceModel::load(&model_runtime.model_path, &Quantization::Int8)
+                .map_err(|err| anyhow!("Failed to load SenseVoice model: {}", err))?,
+        )),
+        EngineType::GigaAM => {
+            normalize_gigaam_layout(&model_runtime.model_path)?;
+            Ok(RegressionEngine::GigaAM(
+                GigaAMModel::load(&model_runtime.model_path, &Quantization::Int8)
+                    .map_err(|err| anyhow!("Failed to load GigaAM model: {}", err))?,
+            ))
+        }
+        EngineType::MlxAudioStt => Ok(RegressionEngine::MlxAudioStt(
+            MlxAudioRegressionEngine::new(model_runtime.model_path.display().to_string())?,
+        )),
+        EngineType::AppleSpeech => Ok(RegressionEngine::AppleSpeech(AppleSpeechEngine::new(
+            AppleSpeechMode::Offline,
+        )?)),
+        EngineType::AppleSpeechStreaming => Ok(RegressionEngine::AppleSpeechStreaming(
+            AppleSpeechEngine::new(AppleSpeechMode::Progressive)?,
+        )),
+    }
+}
+
+fn normalize_gigaam_layout(model_path: &Path) -> Result<()> {
+    let expected = model_path.join("model.onnx");
+    let mirrored = model_path.join("v3_e2e_ctc.int8.onnx");
+    if !expected.exists() && mirrored.exists() {
+        fs::hard_link(&mirrored, &expected)
+            .or_else(|_| fs::copy(&mirrored, &expected).map(|_| ()))
+            .with_context(|| {
+                format!(
+                    "Failed to create GigaAM model alias '{}'",
+                    expected.display()
+                )
+            })?;
+    }
+
+    let vocab = model_path.join("vocab.txt");
+    if !vocab.exists() {
+        let mirrored_vocab = model_path.join("v3_e2e_ctc_vocab.txt");
+        if mirrored_vocab.exists() {
+            fs::copy(&mirrored_vocab, &vocab).with_context(|| {
+                format!("Failed to create GigaAM vocab alias '{}'", vocab.display())
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
 fn transcribe_audio(
     settings: &AppSettings,
-    model_runtime: &ModelRuntime,
+    engine: &mut RegressionEngine,
     audio: Vec<f32>,
 ) -> Result<String> {
-    let mut result_text = match model_runtime.engine_type {
-        EngineType::Whisper => {
-            let mut engine = WhisperEngine::load(&model_runtime.model_path)
-                .map_err(|err| anyhow!("Failed to load Whisper model: {}", err))?;
+    let mut result_text = match engine {
+        RegressionEngine::Whisper(engine) => {
             let result = engine
                 .transcribe_with(
                     &audio,
@@ -561,9 +776,7 @@ fn transcribe_audio(
                 .map_err(|err| anyhow!("Whisper transcription failed: {}", err))?;
             result.text
         }
-        EngineType::Parakeet => {
-            let mut engine = ParakeetModel::load(&model_runtime.model_path, &Quantization::Int8)
-                .map_err(|err| anyhow!("Failed to load Parakeet model: {}", err))?;
+        RegressionEngine::Parakeet(engine) => {
             let result = engine
                 .transcribe_with(
                     &audio,
@@ -575,30 +788,19 @@ fn transcribe_audio(
                 .map_err(|err| anyhow!("Parakeet transcription failed: {}", err))?;
             result.text
         }
-        EngineType::Moonshine => {
-            let mut engine = MoonshineModel::load(
-                &model_runtime.model_path,
-                MoonshineVariant::Base,
-                &Quantization::FP32,
-            )
-            .map_err(|err| anyhow!("Failed to load Moonshine model: {}", err))?;
+        RegressionEngine::Moonshine(engine) => {
             let result = engine
                 .transcribe(&audio, &TranscribeOptions::default())
                 .map_err(|err| anyhow!("Moonshine transcription failed: {}", err))?;
             result.text
         }
-        EngineType::MoonshineStreaming => {
-            let mut engine =
-                StreamingModel::load(&model_runtime.model_path, 1, &Quantization::FP32)
-                    .map_err(|err| anyhow!("Failed to load Moonshine streaming model: {}", err))?;
+        RegressionEngine::MoonshineStreaming(engine) => {
             let result = engine
                 .transcribe_with(&audio, &MoonshineStreamingParams::default())
                 .map_err(|err| anyhow!("Moonshine streaming transcription failed: {}", err))?;
             result.text
         }
-        EngineType::SenseVoice => {
-            let mut engine = SenseVoiceModel::load(&model_runtime.model_path, &Quantization::Int8)
-                .map_err(|err| anyhow!("Failed to load SenseVoice model: {}", err))?;
+        RegressionEngine::SenseVoice(engine) => {
             let language = match settings.selected_language.as_str() {
                 "zh" | "zh-Hans" | "zh-Hant" => Some("zh".to_string()),
                 "en" | "ja" | "ko" | "yue" => Some(settings.selected_language.clone()),
@@ -615,23 +817,23 @@ fn transcribe_audio(
                 .map_err(|err| anyhow!("SenseVoice transcription failed: {}", err))?;
             result.text
         }
-        EngineType::GigaAM => {
-            let mut engine = GigaAMModel::load(&model_runtime.model_path, &Quantization::Int8)
-                .map_err(|err| anyhow!("Failed to load GigaAM model: {}", err))?;
+        RegressionEngine::GigaAM(engine) => {
             let result = engine
                 .transcribe(&audio, &TranscribeOptions::default())
                 .map_err(|err| anyhow!("GigaAM transcription failed: {}", err))?;
             result.text
         }
-        EngineType::MlxAudioStt => {
-            return Err(anyhow!(
-                "mlx-audio regression runs are not implemented for the CLI path yet."
-            ));
-        }
-        EngineType::AppleSpeech | EngineType::AppleSpeechStreaming => {
-            return Err(anyhow!(
-                "Apple SpeechAnalyzer regression runs are not implemented for the CLI path yet."
-            ));
+        RegressionEngine::MlxAudioStt(engine) => engine.transcribe(audio, 16_000)?,
+        RegressionEngine::AppleSpeech(engine) | RegressionEngine::AppleSpeechStreaming(engine) => {
+            let language = if settings.selected_language == "auto" {
+                None
+            } else {
+                Some(settings.selected_language.as_str())
+            };
+            let (text, _) = engine
+                .transcribe(&audio, 16_000, language)
+                .map_err(|err| anyhow!("Apple Speech transcription failed: {}", err))?;
+            text
         }
     };
 
@@ -693,6 +895,30 @@ fn read_wav_as_mono_f32(path: &Path) -> Result<(Vec<f32>, u32)> {
     }
 
     Ok((mono, spec.sample_rate))
+}
+
+fn encode_wav(audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut cursor = Cursor::new(Vec::new());
+    {
+        let mut writer = hound::WavWriter::new(&mut cursor, spec)
+            .map_err(|err| anyhow!("Failed to create regression WAV encoder: {}", err))?;
+        for sample in audio {
+            let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+            writer
+                .write_sample(value)
+                .map_err(|err| anyhow!("Failed to encode regression WAV sample: {}", err))?;
+        }
+        writer
+            .finalize()
+            .map_err(|err| anyhow!("Failed to finalize regression WAV output: {}", err))?;
+    }
+    Ok(cursor.into_inner())
 }
 
 fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {

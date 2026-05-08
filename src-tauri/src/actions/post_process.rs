@@ -20,8 +20,9 @@ use tauri::AppHandle;
 
 use super::active_app::preview_app_context_from_override;
 use super::prompt::{
-    build_apple_system_prompt, build_apple_user_content, build_system_prompt,
-    looks_like_builtin_post_process_prompt, resolve_tone_context,
+    build_apple_system_prompt, build_apple_user_content, build_model_system_prompt,
+    build_model_user_content, build_system_prompt, looks_like_builtin_post_process_prompt,
+    resolve_tone_context,
 };
 use super::route::{
     choose_post_process_pass, extract_route_features, should_force_conservative_rewrite,
@@ -412,13 +413,14 @@ pub(crate) async fn post_process_transcription(
     let tone_app_context = tone_context
         .as_ref()
         .map(|tc| tc.active_app_context.clone());
-    let mut base_system_prompt = build_apple_system_prompt(
+    let mut base_system_prompt = build_model_system_prompt(
         settings,
         tone_context.as_ref(),
         screen_context.is_some(),
         selected_pass,
         effective_rewrite_strength,
         force_conservative_rewrite,
+        &model,
     );
     let custom_prompt = build_system_prompt(&prompt);
     if !custom_prompt.is_empty() && !looks_like_builtin_post_process_prompt(&custom_prompt) {
@@ -432,13 +434,14 @@ pub(crate) async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = base_system_prompt.clone();
-        let user_content = build_apple_user_content(
+        let user_content = build_model_user_content(
             settings,
             dict_text,
             effective_rewrite_strength,
             force_conservative_rewrite,
             screen_context.as_ref(),
             !post_process_provider_is_local(&provider),
+            &model,
         );
 
         // Define JSON schema for transcription output
@@ -554,13 +557,14 @@ pub(crate) async fn post_process_transcription(
 
     // Legacy mode: send system/user split so tiny models respect instructions
     let system_prompt = base_system_prompt.clone();
-    let user_content = build_apple_user_content(
+    let user_content = build_model_user_content(
         settings,
         dict_text,
         effective_rewrite_strength,
         force_conservative_rewrite,
         screen_context.as_ref(),
         !post_process_provider_is_local(&provider),
+        &model,
     );
     let estimated_prompt_tokens =
         estimate_text_tokens(&system_prompt) + estimate_text_tokens(&user_content);

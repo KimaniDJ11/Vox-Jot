@@ -79,6 +79,24 @@ def write_wav(path: Path, samples, sample_rate: int) -> None:
         wav_file.writeframes(pcm.tobytes())
 
 
+def bundled_reference_audio() -> str | None:
+    candidates: list[Path] = []
+    env_path = os.environ.get("VOX_JOT_TTS_FALLBACK_PROMPT")
+    if env_path:
+        candidates.append(Path(env_path))
+
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidates.append(parent / "mlx_csm_default_prompt.wav")
+        candidates.append(parent / "resources" / "python" / "mlx_csm_default_prompt.wav")
+        candidates.append(parent / "src-tauri" / "resources" / "python" / "mlx_csm_default_prompt.wav")
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
 class EngineWorker:
     def __init__(self, provider_id: str, model_id: str, model_dir: Path, state_dir: Path, profiles_dir: Path | None):
         self.provider_id = provider_id
@@ -334,6 +352,8 @@ class EngineWorker:
 
         controls = payload.get("controls", {})
         audio_prompt = payload.get("reference_audio_path")
+        if not audio_prompt and self.model_id in ("chatterbox", "chatterbox-multilingual"):
+            audio_prompt = bundled_reference_audio()
         if self.model_id == "chatterbox-multilingual":
             wav = self.engine.generate(
                 payload["text"],

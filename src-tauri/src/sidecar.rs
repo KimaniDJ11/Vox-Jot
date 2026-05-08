@@ -416,14 +416,26 @@ impl SidecarManager {
             .map_err(|err| format!("Failed to resolve app data dir for Speech runtime: {err}"))?;
         let runtime_state_dir = app_data_dir.join("speech-runtime");
         let voice_profiles_dir = app_data_dir.join("tts").join("profiles");
+        let fallback_tts_prompt = crate::portable::resolve_resource(
+            &self.app_handle,
+            "resources/python/mlx_csm_default_prompt.wav",
+        )
+        .ok()
+        .filter(|path| path.exists());
 
-        let child = Command::new(&venv_python)
+        let mut command = Command::new(&venv_python);
+        command
             .args(["-m", "runtime.app"])
             .current_dir(&runtime_path)
             .env("SPEECH_RUNTIME_PORT", SIDECAR_PORT.to_string())
             .env("SPEECH_MODEL_STORE", model_store_path)
             .env("SPEECH_RUNTIME_STATE_DIR", runtime_state_dir)
-            .env("SPEECH_VOICE_PROFILES_DIR", voice_profiles_dir)
+            .env("SPEECH_VOICE_PROFILES_DIR", voice_profiles_dir);
+        if let Some(prompt_path) = fallback_tts_prompt {
+            command.env("VOX_JOT_TTS_FALLBACK_PROMPT", prompt_path);
+        }
+
+        let child = command
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())
             .spawn()

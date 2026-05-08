@@ -296,6 +296,34 @@ impl ModelManager {
         Ok(())
     }
 
+    fn normalize_extracted_model_layout(model_id: &str, final_model_path: &Path) -> Result<()> {
+        if model_id != "gigaam-v3-e2e-ctc" {
+            return Ok(());
+        }
+
+        let expected = final_model_path.join("model.onnx");
+        let mirrored = final_model_path.join("v3_e2e_ctc.int8.onnx");
+        if !expected.exists() && mirrored.exists() {
+            if let Err(err) = fs::hard_link(&mirrored, &expected) {
+                warn!(
+                    "Failed to hard-link GigaAM model alias, copying instead: {}",
+                    err
+                );
+                fs::copy(&mirrored, &expected)?;
+            }
+        }
+
+        let vocab = final_model_path.join("vocab.txt");
+        if !vocab.exists() {
+            let mirrored_vocab = final_model_path.join("v3_e2e_ctc_vocab.txt");
+            if mirrored_vocab.exists() {
+                fs::copy(&mirrored_vocab, &vocab)?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn new(app_handle: &AppHandle) -> Result<Self> {
         // Create models directory in app data
         let models_dir = crate::storage_paths::stt_models_dir(app_handle)
@@ -904,7 +932,7 @@ impl ModelManager {
                 id: "gigaam-v3-e2e-ctc".to_string(),
                 name: "GigaAM v3".to_string(),
                 description: "Russian speech recognition. Fast and accurate.".to_string(),
-                filename: "v3_e2e_ctc.int8.onnx".to_string(),
+                filename: "gigaam-v3-e2e-ctc".to_string(),
                 url: Some(Self::model_url_for(
                     "gigaam-v3-e2e-ctc",
                     "giga-am-v3.tar.gz",
@@ -915,7 +943,7 @@ impl ModelManager {
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,
-                is_directory: false,
+                is_directory: true,
                 engine_type: EngineType::GigaAM,
                 accuracy_score: 0.85,
                 speed_score: 0.75,
@@ -2073,6 +2101,18 @@ impl ModelManager {
                         .unwrap_or_else(|e| e.into_inner());
                     extracting.remove(model_id);
                 }
+                let _ = self.app_handle.emit(
+                    "model-extraction-failed",
+                    &serde_json::json!({
+                        "model_id": model_id,
+                        "error": error_msg
+                    }),
+                );
+                return Err(e);
+            }
+
+            if let Err(e) = Self::normalize_extracted_model_layout(model_id, &final_model_path) {
+                let error_msg = format!("Failed to normalize extracted model layout: {}", e);
                 let _ = self.app_handle.emit(
                     "model-extraction-failed",
                     &serde_json::json!({

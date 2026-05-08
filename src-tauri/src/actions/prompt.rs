@@ -12,6 +12,12 @@ use crate::settings::AppSettings;
 use super::route::PostProcessPass;
 use super::sanitize::normalize_match_text;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ModelPromptProfile {
+    Standard,
+    StrictLiteral,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct ResolvedToneContext {
     pub(super) active_app_context: ActiveAppContext,
@@ -51,6 +57,20 @@ pub(super) fn app_display_name(context: &ActiveAppContext) -> &str {
     } else {
         &context.localized_name
     }
+}
+
+pub(super) fn prompt_profile_for_model(model_id: &str) -> ModelPromptProfile {
+    let normalized = model_id.trim().to_lowercase().replace(":latest", "");
+
+    if normalized.contains("phi4-mini")
+        || normalized.contains("phi-4-mini")
+        || normalized.contains("microsoft_phi-4-mini")
+        || normalized.contains("nemotron")
+    {
+        return ModelPromptProfile::StrictLiteral;
+    }
+
+    ModelPromptProfile::Standard
 }
 
 pub(super) fn resolve_tone_context(
@@ -129,6 +149,7 @@ Rules:\n\
 - Preserve meaning and explicit self-corrections.\n\
 - Make the smallest possible change when the transcript is already clear.\n\
 - Preserve names, jargon, code terms, URLs, emails, filenames, acronyms, and intentional symbols.\n\
+- Do not wrap URLs, file paths, code terms, or corrected punctuation in quotes or backticks unless the transcript explicitly includes them.\n\
 - Apply relevant personal dictionary spellings when they appear.\n\
 - Respect spoken correction cues such as \"scratch that\", \"actually\", \"I mean\", \"wait no\", and \"no sorry\".\n\
 - Fix capitalization, punctuation, spacing, paragraph breaks, and obvious list structure only when the intent is clear.\n\
@@ -147,6 +168,46 @@ Active app guidance:\n\
 - Return only the final processed text.",
         rewrite_strength,
     )
+}
+
+pub(super) fn build_model_system_prompt(
+    settings: &AppSettings,
+    tone_context: Option<&ResolvedToneContext>,
+    screen_context_present: bool,
+    route: PostProcessPass,
+    rewrite_strength: u8,
+    conservative_gate_active: bool,
+    model_id: &str,
+) -> String {
+    let profile = prompt_profile_for_model(model_id);
+    match profile {
+        ModelPromptProfile::Standard => build_apple_system_prompt(
+            settings,
+            tone_context,
+            screen_context_present,
+            route,
+            rewrite_strength,
+            conservative_gate_active,
+        ),
+        ModelPromptProfile::StrictLiteral => {
+            let mut prompt = build_apple_system_prompt(
+                settings,
+                tone_context,
+                screen_context_present,
+                route,
+                rewrite_strength,
+                conservative_gate_active,
+            );
+            prompt.push_str(
+                "\n\nModel-specific guardrail:\n\
+- This model tends to paraphrase. Prefer copying the transcript with only obvious fixes.\n\
+- Do not shorten, summarize, formalize, infer missing intent, or replace words with synonyms.\n\
+- Preserve question/request shape, times, places, names, and abbreviations exactly unless clearly corrected.\n\
+- If the safest cleaned text is the original transcript, return the original transcript.",
+            );
+            prompt
+        }
+    }
 }
 
 pub(super) fn normalized_contains_phrase(haystack: &str, needle: &str) -> bool {
@@ -243,6 +304,7 @@ Rewrite strength: {}\n\
 Special handling:\n\
 - Keep only the corrected wording after clear restarts like \"no\", \"sorry\", or \"actually\".\n\
 - Preserve short lists when the transcript clearly sounds list-like.\n\
+- Convert intentional spoken punctuation and separators such as \"slash\", \"dot\", \"underscore\", \"dash\", \"colon\", \"at\", \"period\", \"comma\", \"question mark\", and \"exclamation point\" when the transcript is clearly a URL, email, file path, command, variable, or dictated punctuation.\n\
 - Stay conservative when structure is uncertain.\n\
 \n\
 {dictionary_section}\n\
@@ -250,6 +312,35 @@ Special handling:\n\
 Transcript:\n{normalized_text}{screen_context_section}",
         rewrite_strength
     )
+}
+
+pub(super) fn build_model_user_content(
+    settings: &AppSettings,
+    normalized_text: &str,
+    rewrite_strength: u8,
+    conservative_gate_active: bool,
+    screen_context: Option<&DictationContextPacket>,
+    redact_for_external: bool,
+    model_id: &str,
+) -> String {
+    match prompt_profile_for_model(model_id) {
+        ModelPromptProfile::Standard | ModelPromptProfile::StrictLiteral => {
+            let mut content = build_apple_user_content(
+                settings,
+                normalized_text,
+                rewrite_strength,
+                conservative_gate_active,
+                screen_context,
+                redact_for_external,
+            );
+            if prompt_profile_for_model(model_id) == ModelPromptProfile::StrictLiteral {
+                content.push_str(
+                    "\n\nModel-specific reminder:\nReturn the final transcript only. Preserve original wording unless a correction or formatting fix is obvious.",
+                );
+            }
+            content
+        }
+    }
 }
 
 pub(super) fn compact_match_text(text: &str) -> String {

@@ -1097,7 +1097,10 @@ async fn ensure_hf_gguf_downloaded(
         ));
     }
 
-    let expected_size = response.content_length().unwrap_or(0);
+    let expected_size = match response.content_length() {
+        Some(size) => size,
+        None => resolve_remote_file_size(&client, &url).await.unwrap_or(0),
+    };
 
     let _ = app.emit(
         "refine-download-progress",

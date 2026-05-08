@@ -320,13 +320,18 @@ private func transcribeAppleSpeechAsync(
 
     final class Collector: @unchecked Sendable {
         var fragments: [String] = []
+        var latestProgressiveText = ""
     }
     let collector = Collector()
     let resultTask = Task {
         for try await result in transcriber.results {
             let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
             if !text.isEmpty {
-                collector.fragments.append(text)
+                if progressive {
+                    collector.latestProgressiveText = text
+                } else {
+                    collector.fragments.append(text)
+                }
             }
         }
     }
@@ -360,7 +365,9 @@ private func transcribeAppleSpeechAsync(
     }
     try await resultTask.value
 
-    let text = collector.fragments.joined(separator: " ")
+    let text = progressive
+        ? collector.latestProgressiveText
+        : collector.fragments.joined(separator: " ")
     let durationMs = UInt64((Double(sampleCount) / Double(sampleRate)) * 1000.0)
     let segments = text.isEmpty
         ? []

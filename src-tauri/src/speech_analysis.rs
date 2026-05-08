@@ -575,13 +575,40 @@ fn descriptor_with_install_state(
         SpeechAnalysisSourceKind::LocalOnnxBundle => {
             local_path.as_ref().is_some_and(|p| p.exists())
         }
-        SpeechAnalysisSourceKind::HuggingFace => local_path.as_ref().is_some_and(|p| p.exists()),
+        SpeechAnalysisSourceKind::HuggingFace => local_path
+            .as_ref()
+            .is_some_and(|p| hugging_face_model_has_required_files(&model.id, p)),
     };
 
     model.installed = installed;
     model.local_path = local_path.map(|p| p.to_string_lossy().to_string());
     model.readiness = readiness_for(&model, installed);
     model
+}
+
+fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
+    let required_files: &[&str] = match model_id {
+        "granite-speech-4-1-2b" => &["config.json", "model.safetensors.index.json"],
+        "cohere-transcribe-03-2026" => &["config.json", "model.safetensors"],
+        "pyannote-community-1" => &["config.yaml"],
+        "pyannote-3-1" => &["config.yaml"],
+        "diarizen-wavlm-large-s80-md" => &[
+            "config.toml",
+            "pytorch_model.bin",
+            "plda/plda.npz",
+            "plda/xvec_transform.npz",
+        ],
+        "nemo-sortformer-4spk-v1" => &["diar_sortformer_4spk-v1.nemo"],
+        "reverb-diarization-v2" => &["config.yaml", "pytorch_model.bin"],
+        "whisper-diarization" => &["model.bin", "config.json"],
+        _ => &[],
+    };
+
+    if required_files.is_empty() {
+        return path.exists();
+    }
+
+    required_files.iter().all(|file| path.join(file).exists())
 }
 
 fn hf_env_token() -> Option<String> {
@@ -803,6 +830,22 @@ fn encode_hf_path(rel_path: &str) -> String {
 }
 
 async fn head_size(client: &reqwest::Client, url: &str) -> Option<u64> {
+    if let Ok(no_redir) = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+    {
+        if let Ok(resp) = no_redir.head(url).send().await {
+            if let Some(linked) = resp
+                .headers()
+                .get("x-linked-size")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u64>().ok())
+            {
+                return Some(linked);
+            }
+        }
+    }
+
     hf_head_request(client, url)
         .send()
         .await

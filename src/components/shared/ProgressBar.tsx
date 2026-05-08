@@ -45,8 +45,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   if (progress.length === 1) {
     const item = progress[0];
     const percentage = Math.max(0, Math.min(100, item.percentage));
-    const indeterminate =
-      showSpeed && (item.speed === undefined || item.speed <= 0);
+    const indeterminate = percentage <= 0;
 
     return (
       <div className={`flex items-center gap-3 ${className}`}>

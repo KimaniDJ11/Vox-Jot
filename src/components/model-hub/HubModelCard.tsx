@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -45,6 +45,12 @@ export interface HubModelCardProps {
 
   /** Trailing footer slot: acquire/remove icons or progress indicator. */
   trailing?: HubTrailing;
+
+  /**
+   * Unified download/progress treatment for the footer row. Replaces footer
+   * metadata + trailing action without changing the card's outer dimensions.
+   */
+  downloadState?: HubDownloadState;
 
   /** Optional block below the core (progress bar, delete confirmation). */
   footerExtra?: React.ReactNode;
@@ -95,6 +101,18 @@ export type HubTrailing =
   | null
   | undefined;
 
+export interface HubDownloadState {
+  label: string;
+  detail?: string | null;
+  error?: string | null;
+  /** 0-100. Omit for indeterminate/preparing/importing stages. */
+  progress?: number | null;
+  indeterminate?: boolean;
+  cancelling?: boolean;
+  onCancel?: () => void;
+  cancelLabel?: string;
+}
+
 const baseClasses =
   "flex h-full min-h-[176px] min-w-0 flex-col gap-3 rounded-xl px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 motion-reduce:transition-none";
 
@@ -113,6 +131,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   footerMetaMaxVisible = 3,
   footerOverflowLabel,
   trailing,
+  downloadState,
   footerExtra,
   onClick,
   onKeyDown,
@@ -229,27 +248,139 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {/* Divider */}
       <div className="border-t border-mid-gray/20" />
 
-      {/* FOOTER — meta + trailing action. */}
-      <div className="flex min-w-0 items-center gap-2">
-        {footerMetaItems && footerMetaItems.length > 0 ? (
-          <CompactMetaRow
-            items={footerMetaItems}
-            maxVisible={footerMetaMaxVisible}
-            icon={footerMetaIcon}
-            overflowLabel={footerOverflowLabel ?? `${title} details`}
-            className="flex-1"
-          />
-        ) : (
-          <span className="flex-1" />
-        )}
-        {trailingNode}
-      </div>
+      {/* FOOTER — meta + trailing action, or unified download state. */}
+      {downloadState ? (
+        renderDownloadState(downloadState)
+      ) : (
+        <div className="flex min-w-0 items-center gap-2">
+          {footerMetaItems && footerMetaItems.length > 0 ? (
+            <CompactMetaRow
+              items={footerMetaItems}
+              maxVisible={footerMetaMaxVisible}
+              icon={footerMetaIcon}
+              overflowLabel={footerOverflowLabel ?? `${title} details`}
+              className="flex-1"
+            />
+          ) : (
+            <span className="flex-1" />
+          )}
+          {trailingNode}
+        </div>
+      )}
 
       {/* Optional block below the core (progress, confirmation). */}
       {footerExtra ? <div className="mt-1 w-full">{footerExtra}</div> : null}
     </div>
   );
 };
+
+function renderDownloadState(state: HubDownloadState): React.ReactNode {
+  const hasKnownProgress =
+    typeof state.progress === "number" && Number.isFinite(state.progress);
+  const progress = hasKnownProgress
+    ? Math.max(0, Math.min(100, state.progress ?? 0))
+    : null;
+  const indeterminate = state.indeterminate || progress === null;
+  const label = state.error ?? state.label;
+  const cancelLabel = state.cancelLabel ?? "Cancel download";
+
+  return (
+    <div
+      className={[
+        "relative flex min-h-11 min-w-0 items-center gap-2 overflow-hidden rounded-lg border px-2.5 pb-2.5 pt-1.5",
+        state.error
+          ? "border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)]"
+          : "border-[var(--border)] bg-[var(--panel-bg)]",
+      ].join(" ")}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      role="group"
+      aria-label={label}
+    >
+      <div
+        className={[
+          "pointer-events-none absolute inset-y-0 left-0 opacity-55",
+          state.error
+            ? "bg-[color-mix(in_srgb,var(--danger),transparent_80%)]"
+            : "bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent),transparent_82%),color-mix(in_srgb,var(--accent),transparent_68%))]",
+          indeterminate
+            ? "w-1/2 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
+            : "transition-[width] duration-300",
+        ].join(" ")}
+        style={indeterminate ? undefined : { width: `${progress}%` }}
+        aria-hidden
+      />
+      <div
+        className="absolute inset-x-2.5 bottom-1 h-1 overflow-hidden rounded-full bg-[var(--input)]"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress ?? undefined}
+        aria-label={label}
+      >
+        <div
+          className={[
+            "h-full rounded-full bg-[var(--accent)]",
+            indeterminate
+              ? "w-1/3 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
+              : "transition-[width] duration-300",
+          ].join(" ")}
+          style={indeterminate ? undefined : { width: `${progress}%` }}
+        />
+      </div>
+      <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--accent)] shadow-[inset_0_0_0_1px_var(--border)]">
+        {state.cancelling ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : (
+          <Download className="h-3.5 w-3.5" aria-hidden />
+        )}
+      </div>
+      <div className="relative z-10 min-w-0 flex-1">
+        <p
+          className={`truncate text-xs font-semibold ${state.error ? "text-[var(--danger)]" : "text-[var(--text)]"}`}
+          title={label}
+        >
+          {label}
+        </p>
+        {state.detail ? (
+          <p
+            className="truncate text-[11px] leading-4 text-[var(--muted)]"
+            title={state.detail}
+          >
+            {state.detail}
+          </p>
+        ) : null}
+      </div>
+      {progress !== null && !state.error ? (
+        <span className="relative z-10 shrink-0 text-xs font-semibold tabular-nums text-[var(--muted)]">
+          {Math.round(progress)}%
+        </span>
+      ) : null}
+      {state.onCancel ? (
+        <Button
+          type="button"
+          variant="danger-ghost"
+          size="icon-sm"
+          title={cancelLabel}
+          aria-label={cancelLabel}
+          disabled={state.cancelling}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.onCancel?.();
+          }}
+          className="relative z-10"
+        >
+          {state.cancelling ? (
+            <Loader2 className="animate-spin" aria-hidden />
+          ) : (
+            <X aria-hidden />
+          )}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
 function renderTrailing(trailing: HubTrailing): React.ReactNode {
   if (!trailing) return null;

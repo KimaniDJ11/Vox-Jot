@@ -39,6 +39,7 @@ import {
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
 import HubModelCard, {
+  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
@@ -187,7 +188,7 @@ type RefineDownloadProgress = {
   downloaded?: number;
   total?: number;
   percentage?: number;
-  stage: "downloading" | "importing" | "complete" | "failed";
+  stage: "preparing" | "downloading" | "importing" | "complete" | "failed";
 };
 
 const formatBytes = (bytes: number): string => {
@@ -637,6 +638,16 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
   const handleInstall = async (model: RefineModelDescriptor) => {
     setBusyModelIds((prev) => new Set(prev).add(model.runtime_model_id));
+    setProgressMap((prev) => ({
+      ...prev,
+      [model.runtime_model_id]: {
+        model_id: model.runtime_model_id,
+        stage: "preparing",
+        downloaded: 0,
+        total: 0,
+        percentage: 0,
+      },
+    }));
     try {
       if (model.runtime_provider_id === "ollama") {
         await ensureOllamaReady();
@@ -649,6 +660,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       });
       await refreshSettings();
       await loadCatalog({ silent: true });
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        delete next[model.runtime_model_id];
+        return next;
+      });
       toast.success(
         t("settings.refineModels.toast.installed", { title: model.title }),
       );
@@ -658,6 +674,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
           ? err.message
           : t("settings.refineModels.toast.installError");
       toast.error(message);
+      setProgressMap((prev) => {
+        const next = { ...prev };
+        delete next[model.runtime_model_id];
+        return next;
+      });
     } finally {
       setBusyModelIds((prev) => {
         const next = new Set(prev);
@@ -966,11 +987,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     ].filter(Boolean) as CompactBadgeItem[];
   };
 
-  const renderProgressExtra = (
+  const buildDownloadState = (
     model: RefineModelDescriptor,
-  ): React.ReactNode => {
+  ): HubDownloadState | undefined => {
     const progress = progressMap[model.runtime_model_id];
-    if (!progress) return null;
+    if (!progress) return undefined;
 
     if (progress.stage === "downloading") {
       const downloaded = progress.downloaded ?? 0;
@@ -980,42 +1001,47 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         0,
         Math.min(100, Math.round(progress.percentage ?? 0)),
       );
+      const speed = speedMapRef.current[model.runtime_model_id]?.speed ?? 0;
+      const detail = [
+        `${formatBytes(downloaded)}${hasKnownTotal ? ` / ${formatBytes(total)}` : ""}`,
+        speed > 0 ? `${speed.toFixed(1)} MB/s` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
 
-      return (
-        <div>
-          <div className="flex items-center gap-2">
-            <progress
-              {...(hasKnownTotal ? { value: percentage } : {})}
-              max={100}
-              className="h-1.5 flex-1 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-mid-gray/20 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-logo-primary"
-            />
-            <span className="min-w-fit text-xs tabular-nums text-[var(--muted)]">
-              {hasKnownTotal
-                ? `${percentage}%`
-                : t("settings.refineModels.actions.downloadingUnknown", {
-                    defaultValue: "Downloading...",
-                  })}
-            </span>
-          </div>
-          <p className="mt-1 text-xs tabular-nums text-[var(--muted)]">
-            {formatBytes(downloaded)}
-            {hasKnownTotal && ` / ${formatBytes(total)}`}
-            {(speedMapRef.current[model.runtime_model_id]?.speed ?? 0) > 0 &&
-              ` \u2022 ${speedMapRef.current[model.runtime_model_id].speed.toFixed(1)} MB/s`}
-          </p>
-        </div>
-      );
+      return {
+        label: hasKnownTotal
+          ? t("settings.refineModels.actions.downloading", {
+              percent: percentage,
+            })
+          : t("settings.refineModels.actions.downloadingUnknown", {
+              defaultValue: "Downloading...",
+            }),
+        detail,
+        progress: hasKnownTotal ? percentage : null,
+        indeterminate: !hasKnownTotal,
+      };
+    }
+
+    if (progress.stage === "preparing") {
+      return {
+        label: t("modelHub.analysis.downloadProgress.preparing", {
+          defaultValue: "Preparing download...",
+        }),
+        detail: model.runtime_label,
+        indeterminate: true,
+      };
     }
 
     if (progress.stage === "importing") {
-      return (
-        <p className="text-xs font-medium text-[var(--accent)]">
-          {t("settings.refineModels.actions.installingIntoOllama")}
-        </p>
-      );
+      return {
+        label: t("settings.refineModels.actions.installingIntoOllama"),
+        detail: model.runtime_label,
+        indeterminate: true,
+      };
     }
 
-    return null;
+    return undefined;
   };
 
   const renderRefineDeleteConfirm = (
@@ -1244,6 +1270,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 ? `${model.description} — ${model.note}`
                 : model.description;
             const isBusy = busyModelIds.has(model.runtime_model_id);
+            const downloadState = buildDownloadState(model);
             return (
               <HubModelCard
                 key={`${model.runtime_provider_id}::${model.runtime_model_id}`}
@@ -1261,10 +1288,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 footerMetaMaxVisible={3}
                 footerOverflowLabel={`${model.title} runtime details`}
                 trailing={getTrailing(model)}
+                downloadState={downloadState}
                 footerExtra={
                   confirmingDeleteRuntimeId === model.runtime_model_id
                     ? renderRefineDeleteConfirm(model)
-                    : renderProgressExtra(model)
+                    : null
                 }
                 onClick={
                   model.active ||

@@ -25,6 +25,7 @@ import {
   type ScreenContextOcrEngine,
 } from "@/bindings";
 import HubModelCard, {
+  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import { Button } from "@/components/ui/Button";
@@ -261,21 +262,39 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
   const onDownloadNeuralHf = async (model: OcrModelDescriptor) => {
     setBusyId(model.id);
+    setCatalogError(null);
+    setDownloadProgress((prev) => ({
+      ...prev,
+      [model.id]: {
+        stage: "preparing",
+        percentage: 0,
+        file: model.hf_repo_id,
+      },
+    }));
     try {
       const res = await commands.downloadOcrModel(model.id);
       if (res.status === "error") {
         setCatalogError(res.error);
+        setDownloadProgress((prev) => ({
+          ...prev,
+          [model.id]: {
+            stage: "failed",
+            percentage: 0,
+            file: model.hf_repo_id,
+            error: res.error,
+          },
+        }));
         return;
       }
       setCatalogError(null);
       await refreshCatalog();
-    } finally {
-      setBusyId(null);
       setDownloadProgress((prev) => {
         const next = { ...prev };
         delete next[model.id];
         return next;
       });
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -655,7 +674,9 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     const footerMetaItems = [backendLabel];
 
     let trailing: HubTrailing = null;
-    if (!model.installed) {
+    const dl = downloadProgress[model.id];
+
+    if (!model.installed && !dl) {
       trailing = {
         kind: "custom",
         node: (
@@ -726,55 +747,36 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       };
     }
 
-    const dl = downloadProgress[model.id];
-
-    const downloadProgressFooter =
-      dl && !isConfirmingDelete ? (
-        <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-          <div className="mb-2 flex flex-col gap-0.5 text-xs font-medium">
-            <span className="text-[var(--text)]">
-              {dl.stage === "preparing"
+    const dlFileName = dl?.file
+      ? dl.file.includes("/")
+        ? dl.file.slice(dl.file.lastIndexOf("/") + 1)
+        : dl.file
+      : null;
+    const dlPercentage =
+      dl && Number.isFinite(dl.percentage)
+        ? Math.min(100, Math.round(dl.percentage))
+        : null;
+    const downloadState: HubDownloadState | undefined =
+      dl && !isConfirmingDelete
+        ? {
+            label:
+              dl.stage === "preparing"
                 ? t("modelHub.ocr.download.preparing", {
-                    defaultValue: "Preparing download…",
+                    defaultValue: "Preparing download...",
                   })
                 : t("modelHub.ocr.download.percent", {
-                    value: Math.min(100, Math.round(dl.percentage)),
-                    defaultValue: "{{value}}%",
-                  })}
-            </span>
-            {dl.stage === "downloading" && dl.file?.length ? (
-              <span className="block truncate font-normal text-[var(--muted)]">
-                {dl.file.includes("/")
-                  ? dl.file.slice(dl.file.lastIndexOf("/") + 1)
-                  : dl.file}
-              </span>
-            ) : null}
-            {dl.error ? (
-              <span className="font-normal text-[var(--danger)]">
-                {dl.error}
-              </span>
-            ) : null}
-          </div>
-          <div
-            className="h-2 w-full overflow-hidden rounded-full bg-[var(--input)]"
-            role="progressbar"
-            aria-valuemax={100}
-            aria-valuemin={0}
-            aria-valuenow={Math.min(100, Math.round(dl.percentage))}
-          >
-            <div
-              className="h-2 rounded-full bg-[var(--accent)] transition-[width] duration-200"
-              style={{
-                width: `${Math.min(100, dl.percentage)}%`,
-              }}
-            />
-          </div>
-        </div>
-      ) : null;
+                    value: dlPercentage ?? 0,
+                    defaultValue: "Downloading {{value}}%",
+                  }),
+            detail: dlFileName ?? model.hf_repo_id ?? backendLabel,
+            error: dl.error ?? null,
+            progress: dlPercentage,
+            indeterminate: dlPercentage === null || dl.stage === "preparing",
+          }
+        : undefined;
 
     const footerExtra =
-      downloadProgressFooter ??
-      (isConfirmingDelete ? (
+      isConfirmingDelete ? (
         <div
           className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
           onClick={(event) => event.stopPropagation()}
@@ -824,10 +826,11 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             </Button>
           </div>
         </div>
-      ) : null);
+      ) : null;
 
     const handleClick = () => {
       if (isConfirmingDelete) return;
+      if (isBusy || dl) return;
       if (!model.installed) {
         void onDownloadNeuralHf(model);
         return;
@@ -854,6 +857,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         footerOverflowLabel={`${model.title} details`}
         active={isActive}
         trailing={trailing}
+        downloadState={downloadState}
         footerExtra={footerExtra}
         onClick={handleClick}
       />

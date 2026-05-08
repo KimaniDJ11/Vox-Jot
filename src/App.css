@@ -898,6 +898,17 @@ input[type="range"]::-moz-range-thumb:active {
     transform: translateY(0);
   }
 }
+@keyframes hub-progress-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(210%);
+  }
+}
 
 /* ── Utilities ──────────────────────────────────────────────── */
 @layer utilities {

@@ -9,7 +9,6 @@ import {
   Languages,
   Loader2,
   Monitor,
-  X,
 } from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { formatModelSize } from "../../lib/utils/format";
@@ -20,6 +19,7 @@ import {
 import { Button } from "../ui/Button";
 import { type CompactBadgeItem } from "../ui/CompactOverflow";
 import HubModelCard, {
+  type HubDownloadState,
   type HubTrailing,
 } from "../model-hub/HubModelCard";
 import {
@@ -261,29 +261,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
       }),
     };
   } else if (
-    status === "downloading" &&
-    onCancel
-  ) {
-    trailing = {
-      kind: "custom",
-      node: (
-        <Button
-          variant="danger-ghost"
-          size="icon"
-          title={t("modelSelector.cancelDownload")}
-          aria-label={t("modelSelector.cancelDownload")}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onCancel(model.id);
-          }}
-          className="shrink-0"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      ),
-    };
-  } else if (
     onDelete &&
     !confirmingDelete &&
     (status === "available" || status === "active")
@@ -363,56 +340,36 @@ const ModelCard: React.FC<ModelCardProps> = ({
       </div>
     ) : null;
 
-  const progressNode =
-    status === "downloading" && downloadProgress !== undefined ? (
-      <div className="w-full">
-        <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-logo-primary rounded-full transition-all duration-300"
-            style={{ width: `${downloadProgress}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between text-xs mt-1">
-          <span className="text-[var(--muted)]">
-            {t("modelSelector.downloading", {
-              percentage: Math.round(downloadProgress),
-            })}
-          </span>
-          <div className="flex items-center gap-2">
-            {downloadSpeed !== undefined && downloadSpeed > 0 && (
-              <span className="tabular-nums text-[var(--muted)]">
-                {t("modelSelector.downloadSpeed", {
+  const downloadState: HubDownloadState | undefined =
+    status === "downloading"
+      ? {
+          label:
+            downloadProgress !== undefined
+              ? t("modelSelector.downloading", {
+                  percentage: Math.round(downloadProgress),
+                })
+              : t("modelSelector.downloading", {
+                  percentage: 0,
+                  defaultValue: "Downloading...",
+                }),
+          detail:
+            downloadSpeed !== undefined && downloadSpeed > 0
+              ? t("modelSelector.downloadSpeed", {
                   speed: downloadSpeed.toFixed(1),
-                })}
-              </span>
-            )}
-            {onCancel && (
-              <Button
-                variant="danger-ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onCancel(model.id);
-                }}
-                aria-label={t("modelSelector.cancelDownload")}
-              >
-                {t("modelSelector.cancel")}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    ) : status === "extracting" ? (
-      <div className="w-full">
-        <div className="w-full h-1.5 bg-mid-gray/20 rounded-full overflow-hidden">
-          <div className="h-full bg-logo-primary rounded-full animate-pulse w-full" />
-        </div>
-        <p className="text-xs text-[var(--muted)] mt-1">
-          {t("modelSelector.extractingGeneric")}
-        </p>
-      </div>
-    ) : null;
+                })
+              : metadataItems.join(" · "),
+          progress: downloadProgress,
+          indeterminate: downloadProgress === undefined,
+          onCancel: onCancel ? () => onCancel(model.id) : undefined,
+          cancelLabel: t("modelSelector.cancelDownload"),
+        }
+      : status === "extracting"
+        ? {
+            label: t("modelSelector.extractingGeneric"),
+            detail: metadataItems.join(" · "),
+            indeterminate: true,
+          }
+        : undefined;
 
   return (
     <HubModelCard
@@ -425,7 +382,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
       footerMetaItems={metadataItems}
       footerOverflowLabel={`${displayName} model details`}
       trailing={trailing}
-      footerExtra={confirmDeleteNode ?? progressNode}
+      downloadState={downloadState}
+      footerExtra={confirmDeleteNode}
       onClick={isClickable ? handleCardClick : undefined}
       disabled={disabled}
       variant={variant}

@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import HubModelCard, {
+  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import {
@@ -262,6 +263,15 @@ const SpeechAnalysisEnginesSection: React.FC<
       setBusyModelId(modelId);
       setError(null);
       setActiveDownloads((current) => new Set(current).add(modelId));
+      setDownloadProgress((current) => ({
+        ...current,
+        [modelId]: {
+          model_id: modelId,
+          phase: "preparing",
+          downloaded_bytes: 0,
+          total_bytes: 0,
+        },
+      }));
       const result = await commands.downloadSpeechAnalysisModel(modelId);
       if (result.status === "ok") {
         await loadCatalog();
@@ -270,6 +280,22 @@ const SpeechAnalysisEnginesSection: React.FC<
       } else {
         if (result.error !== "Download cancelled.") {
           setError(result.error);
+          setDownloadProgress((current) => ({
+            ...current,
+            [modelId]: {
+              model_id: modelId,
+              phase: "failed",
+              downloaded_bytes: 0,
+              total_bytes: 0,
+              error: result.error,
+            },
+          }));
+        } else {
+          setDownloadProgress((current) => {
+            const next = { ...current };
+            delete next[modelId];
+            return next;
+          });
         }
         setActiveDownloads((current) => {
           const next = new Set(current);
@@ -355,13 +381,13 @@ const SpeechAnalysisEnginesSection: React.FC<
       }
     }
 
-    const downloaded = await startDownload(gatedDownloadModel.id);
+    const modelId = gatedDownloadModel.id;
     setSavingHfToken(false);
-    if (downloaded) {
-      closeGatedDownload();
-    }
+    setGatedDownloadModel(null);
+    setHfTokenDraft("");
+    setHfTokenError(null);
+    void startDownload(modelId);
   }, [
-    closeGatedDownload,
     gatedDownloadModel,
     hfTokenDraft,
     hfTokenStatus?.configured,
@@ -650,6 +676,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
             const isCancelling = cancellingDownloads.has(model.id);
             const deleteConfirmOpen = deleteConfirmModelId === model.id;
             const progress = downloadProgress[model.id];
+            const isFailed = progress?.phase === "failed";
             const hasKnownTotal = Boolean(progress && progress.total_bytes > 0);
             const progressPct =
               progress && hasKnownTotal
@@ -660,6 +687,46 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                     ),
                   )
                 : null;
+            const progressFileName = progress?.file
+              ? progress.file.includes("/")
+                ? progress.file.slice(progress.file.lastIndexOf("/") + 1)
+                : progress.file
+              : null;
+            const downloadState: HubDownloadState | undefined =
+              isDownloading || isFailed
+              ? {
+                  label: isFailed
+                    ? t("modelHub.analysis.downloadProgress.failed", {
+                        defaultValue: "Download failed",
+                      })
+                    : isCancelling
+                      ? t("modelHub.analysis.downloadProgress.cancelling", {
+                          defaultValue: "Cancelling download...",
+                        })
+                      : progressPct !== null
+                        ? t("modelHub.analysis.downloadProgress.percent", {
+                            defaultValue: "Downloading {{percent}}%",
+                            percent: progressPct,
+                          })
+                        : progress?.phase === "downloading"
+                          ? t("modelHub.analysis.downloadProgress.downloading", {
+                              defaultValue: "Downloading...",
+                            })
+                          : t("modelHub.analysis.downloadProgress.preparing", {
+                              defaultValue: "Preparing download...",
+                            }),
+                  detail: progressFileName ?? model.repo_id ?? null,
+                  error: progress?.error ?? null,
+                  progress: progressPct,
+                  indeterminate: progressPct === null,
+                  cancelling: isCancelling,
+                  onCancel: isFailed ? undefined : () => onCancelDownload(model),
+                  cancelLabel: t("modelHub.analysis.actions.cancelDownload", {
+                    defaultValue: "Cancel {{modelName}} download",
+                    modelName: model.label,
+                  }),
+                }
+              : undefined;
 
             const headerBadges: CompactBadgeItem[] = [
               selected
@@ -774,7 +841,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                   onClick={(event) => event.stopPropagation()}
                   onKeyDown={(event) => event.stopPropagation()}
                 >
-                  {model.downloadable && !model.installed ? (
+                  {model.downloadable && !model.installed && !isDownloading ? (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -830,93 +897,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
               ),
             };
 
-            const footerExtra = isDownloading ? (
-              <div
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 text-xs font-medium">
-                    <span className="text-[var(--text)]">
-                      {isCancelling
-                        ? t("modelHub.analysis.downloadProgress.cancelling", {
-                            defaultValue: "Cancelling download...",
-                          })
-                        : progressPct !== null
-                          ? t("modelHub.analysis.downloadProgress.percent", {
-                              defaultValue: "Downloading {{percent}}%",
-                              percent: progressPct,
-                            })
-                          : progress?.phase === "downloading"
-                            ? t(
-                                "modelHub.analysis.downloadProgress.downloading",
-                                {
-                                  defaultValue: "Downloading...",
-                                },
-                              )
-                            : t(
-                                "modelHub.analysis.downloadProgress.preparing",
-                                {
-                                  defaultValue: "Preparing download...",
-                                },
-                              )}
-                    </span>
-                    {progress?.file ? (
-                      <span className="block truncate font-normal text-[var(--muted)]">
-                        {progress.file.includes("/")
-                          ? progress.file.slice(
-                              progress.file.lastIndexOf("/") + 1,
-                            )
-                          : progress.file}
-                      </span>
-                    ) : null}
-                    {progress?.error ? (
-                      <span className="block font-normal text-[var(--danger)]">
-                        {progress.error}
-                      </span>
-                    ) : null}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={isCancelling}
-                    onClick={() => onCancelDownload(model)}
-                    aria-label={t("modelHub.analysis.actions.cancelDownload", {
-                      defaultValue: "Cancel {{modelName}} download",
-                      modelName: model.label,
-                    })}
-                    title={t("modelHub.analysis.actions.cancelDownload", {
-                      defaultValue: "Cancel {{modelName}} download",
-                      modelName: model.label,
-                    })}
-                  >
-                    {isCancelling ? (
-                      <Loader2
-                        className="h-3.5 w-3.5 animate-spin"
-                        aria-hidden
-                      />
-                    ) : (
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    )}
-                    {t("common.cancel", { defaultValue: "Cancel" })}
-                  </Button>
-                </div>
-                <div
-                  className="h-2 w-full overflow-hidden rounded-full bg-[var(--input)]"
-                  role="progressbar"
-                  aria-valuemax={100}
-                  aria-valuemin={0}
-                  aria-valuenow={hasKnownTotal ? (progressPct ?? 0) : undefined}
-                >
-                  <div
-                    className="h-2 rounded-full bg-[var(--accent)] transition-[width] duration-200"
-                    style={{ width: `${progressPct ?? 8}%` }}
-                  />
-                </div>
-              </div>
-            ) : deleteConfirmOpen ? (
+            const footerExtra = deleteConfirmOpen ? (
               <div
                 className="w-full rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] p-3"
                 onClick={(event) => event.stopPropagation()}
@@ -996,6 +977,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                 footerOverflowLabel={`${model.label} details`}
                 active={selected}
                 trailing={trailing}
+                downloadState={downloadState}
                 footerExtra={footerExtra}
                 onClick={handleClick}
               />

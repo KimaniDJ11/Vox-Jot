@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import {
   AlertTriangle,
   ChevronDown,
@@ -21,6 +22,7 @@ import Badge from "@/components/ui/Badge";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { type CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import HubModelCard, {
+  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import {
@@ -45,16 +47,27 @@ import {
 } from "../utils";
 import { modelHasTuningControls } from "../tuningControls";
 
+interface TtsHfDownloadProgress {
+  repo_id: string;
+  stage: string;
+  file?: string | null;
+  file_index?: number | null;
+  file_count?: number | null;
+  error?: string | null;
+}
+
 const SpeechModelLibraryCard: React.FC<{
   model: CatalogModelDescriptor;
   provider: ProviderDescriptor | null;
   active: boolean;
   selected: boolean;
   speech: ListenSpeechState;
-}> = ({ model, provider, active, selected, speech }) => {
+  downloadProgress?: TtsHfDownloadProgress;
+}> = ({ model, provider, active, selected, speech, downloadProgress }) => {
   const { t } = useTranslation();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [locallyDownloading, setLocallyDownloading] = useState(false);
   const headerBadges: CompactBadgeItem[] = [
     active
       ? {
@@ -187,13 +200,39 @@ const SpeechModelLibraryCard: React.FC<{
     !active &&
     speech.ttsEnabled &&
     !speech.loadingPlatform &&
-    !confirmingRemove;
+    !confirmingRemove &&
+    !locallyDownloading &&
+    !downloadProgress;
+
+  const downloadOrActivate = useCallback(async () => {
+    if (locallyDownloading || downloadProgress) return;
+    setLocallyDownloading(model.downloadable && !model.installed);
+    try {
+      await speech.activateModel(model.provider_id, model.id);
+    } finally {
+      setLocallyDownloading(false);
+    }
+  }, [
+    downloadProgress,
+    locallyDownloading,
+    model.downloadable,
+    model.id,
+    model.installed,
+    model.provider_id,
+    speech,
+  ]);
 
   let trailing: HubTrailing = null;
-  if (!active && model.downloadable && !model.installed) {
+  if (
+    !active &&
+    model.downloadable &&
+    !model.installed &&
+    !locallyDownloading &&
+    !downloadProgress
+  ) {
     trailing = {
       kind: "acquire",
-      onClick: () => void speech.activateModel(model.provider_id, model.id),
+      onClick: () => void downloadOrActivate(),
       disabled: !speech.ttsEnabled || speech.loadingPlatform,
       label: `Download ${model.label}`,
     };
@@ -209,6 +248,47 @@ const SpeechModelLibraryCard: React.FC<{
       }),
     };
   }
+
+  const progressFileName = downloadProgress?.file
+    ? downloadProgress.file.includes("/")
+      ? downloadProgress.file.slice(downloadProgress.file.lastIndexOf("/") + 1)
+      : downloadProgress.file
+    : null;
+  const fileProgress =
+    downloadProgress?.file_count && downloadProgress.file_count > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((downloadProgress.file_index ?? 0) /
+              downloadProgress.file_count) *
+              100,
+          ),
+        )
+      : null;
+  const downloadState: HubDownloadState | undefined =
+    downloadProgress || locallyDownloading
+      ? {
+          label: downloadProgress?.error
+            ? t("listen.engineLibrary.downloadFailed", {
+                defaultValue: "Download failed",
+              })
+            : downloadProgress?.stage === "preparing"
+              ? t("modelHub.ocr.download.preparing", {
+                  defaultValue: "Preparing download...",
+                })
+              : t("settings.refineModels.actions.downloadingUnknown", {
+                  defaultValue: "Downloading...",
+                }),
+          detail:
+            progressFileName ??
+            provider?.runtime.label ??
+            model.runtime.label ??
+            model.id,
+          error: downloadProgress?.error ?? null,
+          progress: fileProgress,
+          indeterminate: fileProgress === null,
+        }
+      : undefined;
 
   const footerExtra =
     confirmingRemove && ttsHubModelCanRemove(model) ? (
@@ -288,12 +368,9 @@ const SpeechModelLibraryCard: React.FC<{
       footerMetaIcon={<Globe className="h-3.5 w-3.5" />}
       footerOverflowLabel={`${model.label} details`}
       trailing={trailing}
+      downloadState={downloadState}
       footerExtra={footerExtra}
-      onClick={
-        clickable
-          ? () => void speech.activateModel(model.provider_id, model.id)
-          : undefined
-      }
+      onClick={clickable ? () => void downloadOrActivate() : undefined}
       disabled={!speech.ttsEnabled || speech.loadingPlatform}
       active={active}
     />
@@ -307,7 +384,16 @@ const SpeechModelList: React.FC<{
   speech: ListenSpeechState;
   emptyMessage: string;
   showHeader?: boolean;
-}> = ({ title, count, models, speech, emptyMessage, showHeader = true }) => (
+  ttsDownloadProgress: Record<string, TtsHfDownloadProgress>;
+}> = ({
+  title,
+  count,
+  models,
+  speech,
+  emptyMessage,
+  showHeader = true,
+  ttsDownloadProgress,
+}) => (
   <div className="space-y-3">
     {showHeader ? (
       <div className="flex items-center gap-2">
@@ -339,6 +425,7 @@ const SpeechModelList: React.FC<{
             }
             selected={model.selected}
             speech={speech}
+            downloadProgress={ttsDownloadProgress[model.id]}
           />
         ))}
       </div>
@@ -370,6 +457,9 @@ export const EngineLibraryPanel: React.FC<{
   const [languageFilter, setLanguageFilter] = useState("all");
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [languageSearch, setLanguageSearch] = useState("");
+  const [ttsDownloadProgress, setTtsDownloadProgress] = useState<
+    Record<string, TtsHfDownloadProgress>
+  >({});
   const portalTarget = usePortalTarget(titleActionTargetId);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const languageSearchInputRef = useRef<HTMLInputElement>(null);
@@ -492,6 +582,29 @@ export const EngineLibraryPanel: React.FC<{
       languageSearchInputRef.current.focus();
     }
   }, [languageDropdownOpen]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      unlisten = await listen<TtsHfDownloadProgress>(
+        "tts-hf-download-progress",
+        (event) => {
+          const progress = event.payload;
+          if (!progress.repo_id) return;
+          setTtsDownloadProgress((current) => {
+            const next = { ...current };
+            if (progress.stage === "complete") {
+              delete next[progress.repo_id];
+            } else {
+              next[progress.repo_id] = progress;
+            }
+            return next;
+          });
+        },
+      );
+    })();
+    return () => unlisten?.();
+  }, []);
 
   if (!speech.settings) return null;
 
@@ -679,6 +792,7 @@ export const EngineLibraryPanel: React.FC<{
           count={downloadedModels.length}
           models={downloadedModels}
           speech={speech}
+          ttsDownloadProgress={ttsDownloadProgress}
           showHeader={false}
           emptyMessage={
             providerFilter !== "all" || languageFilter !== "all"
@@ -693,6 +807,7 @@ export const EngineLibraryPanel: React.FC<{
             count={availableModels.length}
             models={availableModels}
             speech={speech}
+            ttsDownloadProgress={ttsDownloadProgress}
             emptyMessage={
               providerFilter !== "all" || languageFilter !== "all"
                 ? "No available speech models match the current filters."

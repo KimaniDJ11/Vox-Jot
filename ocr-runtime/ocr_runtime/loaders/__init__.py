@@ -19,8 +19,14 @@ def resolve(model_root: Path, backend: str, catalog_id: str) -> Optional[OcrLoad
             catalog_id=catalog_id,
             backend=backend,
         )
-    if backend in {"paddle_det_rec", "paddle_vl"}:
+    if backend == "paddle_det_rec":
         return PaddleOcrLoader(
+            model_root=model_root,
+            catalog_id=catalog_id,
+            backend=backend,
+        )
+    if backend == "paddle_vl":
+        return TransformersVlLoader(
             model_root=model_root,
             catalog_id=catalog_id,
             backend=backend,

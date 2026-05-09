@@ -13,9 +13,15 @@ dependencies = []
 [project.optional-dependencies]
 dots-ocr = [
     "torch>=2.4",
+    "torchvision>=0.19",
     "transformers>=4.45",
     "pillow>=10.4",
     "accelerate>=0.34",
+    "qwen-vl-utils>=0.0.14",
+    "einops>=0.8",
+    "addict>=2.4",
+    "easydict>=1.13",
+    "matplotlib>=3.10",
 ]
 paddle = ["paddleocr>=2.8", "paddlepaddle>=2.6"]
 

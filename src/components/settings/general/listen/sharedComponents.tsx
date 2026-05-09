@@ -545,7 +545,7 @@ export const VoiceTuningCard: React.FC<{
             onChange={(event) =>
               onUpdatePreset({
                 tuning: {
-                  style_instructions: event.target.value.trim() || null,
+                  style_instructions: event.target.value || null,
                 },
               })
             }

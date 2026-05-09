@@ -109,6 +109,21 @@ class TransformersVlLoader(OcrLoader):
                 pass
 
             root = str(self._model_root)
+            if self.catalog_id == "lighton-ocr-2-1b":
+                from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
+
+                self._processor = LightOnOcrProcessor.from_pretrained(root)
+                dtype = torch.float32 if self._device == "mps" else torch.float32
+                self._model = LightOnOcrForConditionalGeneration.from_pretrained(
+                    root,
+                    torch_dtype=dtype,
+                )
+                self._model.eval()
+                if self._device != "cpu":
+                    self._model.to(self._device)
+                self._torch = torch
+                return True
+
             self._processor = AutoProcessor.from_pretrained(root, trust_remote_code=True)
             try:
                 self._tokenizer = AutoTokenizer.from_pretrained(root, trust_remote_code=True)
@@ -175,7 +190,21 @@ class TransformersVlLoader(OcrLoader):
         processor = self._processor
         assert processor is not None
         try:
-            if hasattr(processor, "apply_chat_template"):
+            if self.catalog_id == "lighton-ocr-2-1b":
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [{"type": "image", "image": image}],
+                    }
+                ]
+                inputs = processor.apply_chat_template(
+                    messages,
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_dict=True,
+                    return_tensors="pt",
+                )
+            elif hasattr(processor, "apply_chat_template"):
                 messages = [
                     {
                         "role": "user",
@@ -195,9 +224,19 @@ class TransformersVlLoader(OcrLoader):
                 inputs = processor(images=image, text=OCR_PROMPT, return_tensors="pt")
 
             inputs = {
-                key: value.to(self._device) if hasattr(value, "to") else value
+                key: (
+                    value.to(device=self._device, dtype=self._torch.float32)
+                    if self.catalog_id == "lighton-ocr-2-1b"
+                    and hasattr(value, "is_floating_point")
+                    and value.is_floating_point()
+                    else value.to(self._device)
+                    if hasattr(value, "to")
+                    else value
+                )
                 for key, value in inputs.items()
             }
+            if self.catalog_id == "dots-ocr":
+                inputs.pop("mm_token_type_ids", None)
             with self._torch.inference_mode():
                 output_ids = self._model.generate(**inputs, max_new_tokens=768)
 
@@ -208,7 +247,10 @@ class TransformersVlLoader(OcrLoader):
             decoder = processor
             if not hasattr(decoder, "batch_decode") and self._tokenizer is not None:
                 decoder = self._tokenizer
-            text = decoder.batch_decode(output_ids, skip_special_tokens=True)[0]
+            if self.catalog_id == "lighton-ocr-2-1b" and hasattr(processor, "decode"):
+                text = processor.decode(output_ids[0], skip_special_tokens=True)
+            else:
+                text = decoder.batch_decode(output_ids, skip_special_tokens=True)[0]
             text = _word_clip(text.replace(OCR_PROMPT, "").strip(), max_words)
             if not text:
                 return ()
@@ -255,14 +297,27 @@ class PaddleOcrLoader(OcrLoader):
         try:
             from paddleocr import PaddleOCR
 
-            kwargs = {"use_angle_cls": True, "lang": "en", "show_log": False}
+            kwargs = {
+                "lang": "en",
+                "use_doc_orientation_classify": False,
+                "use_doc_unwarping": False,
+                "use_textline_orientation": False,
+            }
             if self._backend == "paddle_det_rec":
                 det_dir = _first_dir(self._model_root, ("mobile_det", "server_det", "det"))
                 rec_dir = _first_dir(self._model_root, ("mobile_rec", "server_rec", "rec"))
                 if det_dir is not None:
-                    kwargs["det_model_dir"] = str(det_dir)
+                    kwargs["text_detection_model_dir"] = str(det_dir)
+                    if det_dir.name == "mobile_det":
+                        kwargs["text_detection_model_name"] = "PP-OCRv5_mobile_det"
+                    elif det_dir.name == "server_det":
+                        kwargs["text_detection_model_name"] = "PP-OCRv5_server_det"
                 if rec_dir is not None:
-                    kwargs["rec_model_dir"] = str(rec_dir)
+                    kwargs["text_recognition_model_dir"] = str(rec_dir)
+                    if rec_dir.name == "mobile_rec":
+                        kwargs["text_recognition_model_name"] = "PP-OCRv5_mobile_rec"
+                    elif rec_dir.name == "server_rec":
+                        kwargs["text_recognition_model_name"] = "PP-OCRv5_server_rec"
             self._ocr = PaddleOCR(**kwargs)
             return True
         except Exception as exc:  # noqa: BLE001
@@ -291,7 +346,7 @@ class PaddleOcrLoader(OcrLoader):
         try:
             with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
                 image.save(tmp.name)
-                result = self._ocr.ocr(tmp.name, cls=True)
+                result = self._ocr.ocr(tmp.name)
             snippets = _snippets_from_paddle_result(result, width, height)
             if max_words > 0:
                 clipped = []
@@ -342,6 +397,43 @@ def _snippets_from_paddle_result(result, image_width: int, image_height: int) ->
     snippets: list[Snippet] = []
     pages = result or []
     for page in pages:
+        if isinstance(page, dict):
+            texts = page.get("rec_texts") or []
+            scores = page.get("rec_scores") or []
+            boxes = page.get("rec_boxes")
+            if boxes is None:
+                boxes = page.get("rec_polys")
+            if boxes is None:
+                boxes = []
+            for idx, text in enumerate(texts):
+                text = str(text).strip()
+                if not text:
+                    continue
+                confidence = float(scores[idx]) if idx < len(scores) else 0.0
+                try:
+                    box = boxes[idx]
+                    if hasattr(box, "tolist"):
+                        box = box.tolist()
+                    if len(box) == 4 and all(not isinstance(v, (list, tuple)) for v in box):
+                        left, top, right, bottom = [float(v) for v in box]
+                    else:
+                        xs = [float(p[0]) for p in box]
+                        ys = [float(p[1]) for p in box]
+                        left, right = max(0.0, min(xs)), min(float(image_width), max(xs))
+                        top, bottom = max(0.0, min(ys)), min(float(image_height), max(ys))
+                except Exception:
+                    left, top, right, bottom = 0.0, 0.0, float(image_width), float(image_height)
+                snippets.append(
+                    Snippet(
+                        text=text,
+                        confidence=confidence,
+                        x=max(0.0, min(1.0, left / image_width)),
+                        y=max(0.0, min(1.0, (image_height - bottom) / image_height)),
+                        width=max(0.0, min(1.0, (right - left) / image_width)),
+                        height=max(0.0, min(1.0, (bottom - top) / image_height)),
+                    )
+                )
+            continue
         for item in page or []:
             try:
                 box, payload = item

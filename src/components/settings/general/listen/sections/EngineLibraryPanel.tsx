@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
@@ -259,8 +265,7 @@ const SpeechModelLibraryCard: React.FC<{
       ? Math.min(
           100,
           Math.round(
-            ((downloadProgress.file_index ?? 0) /
-              downloadProgress.file_count) *
+            ((downloadProgress.file_index ?? 0) / downloadProgress.file_count) *
               100,
           ),
         )

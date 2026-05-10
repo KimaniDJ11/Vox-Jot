@@ -6,12 +6,7 @@
  */
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -393,7 +388,7 @@ function discoverUnsupportedModels(config: Config): UnsupportedModel[] {
       path: legacyGigaFile,
       reason:
         "Only a legacy ONNX file is present. GigaAM needs a directory package with model.int8.onnx and vocab.txt.",
-      });
+    });
   }
 
   if (config.models.length === 0) return unsupported;
@@ -427,14 +422,18 @@ function repairLocalAudioManifest(config: Config) {
 
   let parsed: AudioManifest;
   try {
-    parsed = JSON.parse(readFileSync(config.manifestPath, "utf-8")) as AudioManifest;
+    parsed = JSON.parse(
+      readFileSync(config.manifestPath, "utf-8"),
+    ) as AudioManifest;
   } catch {
     return;
   }
 
   if (!Array.isArray(parsed.entries) || parsed.entries.length === 0) return;
 
-  const missing = parsed.entries.filter((entry) => !existsSync(entry.audio_path));
+  const missing = parsed.entries.filter(
+    (entry) => !existsSync(entry.audio_path),
+  );
   if (missing.length === 0) return;
 
   const clipDir = resolve(PROJECT_ROOT, "test-data/audio-regression/clips");
@@ -506,7 +505,10 @@ async function mlxAudioHealthy(baseUrl: string): Promise<boolean> {
   }
 }
 
-async function waitForMlxAudio(baseUrl: string, attempts: number): Promise<boolean> {
+async function waitForMlxAudio(
+  baseUrl: string,
+  attempts: number,
+): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (await mlxAudioHealthy(baseUrl)) return true;
     await new Promise((resolveSleep) => setTimeout(resolveSleep, 500));
@@ -537,7 +539,9 @@ async function ensureMlxAudioSidecar(
     : MLX_AUDIO_DEFAULT_PORT;
   const baseUrl = mlxAudioBaseUrl(port);
 
-  console.log(`Starting mlx-audio sidecar for STT benchmark coverage on ${baseUrl}...`);
+  console.log(
+    `Starting mlx-audio sidecar for STT benchmark coverage on ${baseUrl}...`,
+  );
   const child: ChildProcess = spawn(
     MLX_AUDIO_PYTHON,
     ["-m", "mlx_audio.server", "--port", String(port)],
@@ -550,7 +554,9 @@ async function ensureMlxAudioSidecar(
 
   if (!(await waitForMlxAudio(baseUrl, 60))) {
     child.kill();
-    throw new Error("Timed out waiting for mlx-audio sidecar to become healthy.");
+    throw new Error(
+      "Timed out waiting for mlx-audio sidecar to become healthy.",
+    );
   }
 
   return {
@@ -612,7 +618,9 @@ function runModel(
     };
   }
 
-  const report = JSON.parse(readFileSync(reportPath, "utf-8")) as RegressionReport;
+  const report = JSON.parse(
+    readFileSync(reportPath, "utf-8"),
+  ) as RegressionReport;
   return {
     id: model.id,
     label: model.label,
@@ -655,9 +663,12 @@ function buildCategoryReport(
     >();
     for (const entry of report.entries) {
       const category = caseCategories.get(entry.id) ?? "unknown";
-      const bucket =
-        categories.get(category) ??
-        { total: 0, normalized: 0, werTotal: 0, werCount: 0 };
+      const bucket = categories.get(category) ?? {
+        total: 0,
+        normalized: 0,
+        werTotal: 0,
+        werCount: 0,
+      };
       bucket.total += 1;
       if (entry.raw_normalized_match) bucket.normalized += 1;
       if (entry.raw_wer !== null) {
@@ -706,10 +717,17 @@ function buildMarkdown(
         summary.total ? `${summary.normalized}/${summary.total}` : "n/a",
         summary.total ? `${summary.exact}/${summary.total}` : "n/a",
         summary.average_raw_wer?.toFixed(3) ?? "n/a",
-        summary.latency_p50_ms !== undefined ? `${summary.latency_p50_ms} ms` : "n/a",
-        summary.latency_p95_ms !== undefined ? `${summary.latency_p95_ms} ms` : "n/a",
+        summary.latency_p50_ms !== undefined
+          ? `${summary.latency_p50_ms} ms`
+          : "n/a",
+        summary.latency_p95_ms !== undefined
+          ? `${summary.latency_p95_ms} ms`
+          : "n/a",
         summary.rtf_p50?.toFixed(2) ?? "n/a",
-      ].join(" | ").replace(/^/, "| ").replace(/$/, " |"),
+      ]
+        .join(" | ")
+        .replace(/^/, "| ")
+        .replace(/$/, " |"),
     );
   }
   lines.push("");
@@ -762,7 +780,12 @@ async function main() {
     }));
     const allSummaries = [...summaries, ...skippedSummaries];
     const caseCategories = loadCaseCategories(config.casesPath);
-    const markdown = buildMarkdown(config, allSummaries, unsupported, caseCategories);
+    const markdown = buildMarkdown(
+      config,
+      allSummaries,
+      unsupported,
+      caseCategories,
+    );
 
     writeFileSync(resolve(outputRoot, `${config.summaryName}.md`), markdown);
     writeFileSync(

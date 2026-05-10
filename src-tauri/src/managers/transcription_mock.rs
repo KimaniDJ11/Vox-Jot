@@ -119,4 +119,6 @@ impl TranscriptionManager {
     pub fn warm_selected_model(&self) -> Result<()> {
         Ok(())
     }
+
+    pub fn shutdown(&self) {}
 }

@@ -542,14 +542,16 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
             })}
           </p>
           {evaluatedModels.length > 0 ? (
-            evaluatedModels.slice(0, 8).map(({ model, result }) => (
-              <EvaluationResultBlock
-                key={model.id}
-                modelName={model.name}
-                result={result}
-                compact
-              />
-            ))
+            evaluatedModels
+              .slice(0, 8)
+              .map(({ model, result }) => (
+                <EvaluationResultBlock
+                  key={model.id}
+                  modelName={model.name}
+                  result={result}
+                  compact
+                />
+              ))
           ) : (
             <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3 text-sm text-[var(--muted)]">
               {t("settings.models.evaluation.empty", {

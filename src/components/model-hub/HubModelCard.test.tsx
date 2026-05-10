@@ -6,6 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 import HubModelCard from "./HubModelCard";
 
 describe("HubModelCard", () => {
+  const deleteTitle = "Delete downloaded weights?";
+  const deleteDetail = "You can download this model again later.";
+  const cancelLabel = "Cancel";
+  const deleteLabel = "Delete";
+  const routingControlsLabel = "Routing controls stay expanded.";
+
   const render = async (node: React.ReactNode) => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -81,6 +87,69 @@ describe("HubModelCard", () => {
     const progress = view.container.querySelector('[role="progressbar"]');
     expect(progress).not.toBeNull();
     expect(progress?.hasAttribute("aria-valuenow")).toBe(false);
+
+    await view.cleanup();
+  });
+
+  it("renders interactive footerExtra in the fixed footer row", async () => {
+    const view = await render(
+      <HubModelCard
+        title="Installed model"
+        footerMetaItems={["Local"]}
+        footerExtra={
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <div>
+              <div>
+                <p>{deleteTitle}</p>
+                <p>{deleteDetail}</p>
+              </div>
+              <div>
+                <button type="button">{cancelLabel}</button>
+                <button type="button">{deleteLabel}</button>
+              </div>
+            </div>
+          </div>
+        }
+      />,
+    );
+
+    const inlineConfirmation = view.container.querySelector(
+      '[aria-label="Model action confirmation"]',
+    );
+    expect(inlineConfirmation).not.toBeNull();
+    expect(inlineConfirmation?.textContent).toContain(deleteTitle);
+    expect(inlineConfirmation?.textContent).toContain(deleteDetail);
+    expect(inlineConfirmation?.textContent).toContain(cancelLabel);
+    expect(inlineConfirmation?.textContent).toContain(deleteLabel);
+    expect(view.container.textContent).not.toContain("Local");
+
+    await view.cleanup();
+  });
+
+  it("keeps non-interactive footerExtra below the core card", async () => {
+    const view = await render(
+      <HubModelCard
+        title="Routed model"
+        footerMetaItems={["Runtime"]}
+        footerExtra={
+          <div data-testid="routing-controls">
+            <p>{routingControlsLabel}</p>
+          </div>
+        }
+      />,
+    );
+
+    expect(
+      view.container.querySelector('[aria-label="Model action confirmation"]'),
+    ).toBeNull();
+    expect(view.container.textContent).toContain("Runtime");
+    expect(view.container.textContent).toContain(routingControlsLabel);
+    expect(
+      view.container.querySelector('[data-testid="routing-controls"]'),
+    ).not.toBeNull();
 
     await view.cleanup();
   });

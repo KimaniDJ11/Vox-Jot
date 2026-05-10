@@ -61,8 +61,8 @@ export const VoiceChangerSection: React.FC<{
   );
   const openVoiceInstalled = Boolean(
     openVoicePack?.installed ||
-      openVoiceModel?.installed ||
-      openVoiceModel?.runnable,
+    openVoiceModel?.installed ||
+    openVoiceModel?.runnable,
   );
   const [sourcePath, setSourcePath] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
@@ -94,7 +94,9 @@ export const VoiceChangerSection: React.FC<{
   useEffect(() => {
     if (!waitPhase || waitStartedAt === null) return;
     const updateElapsed = () => {
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - waitStartedAt) / 1000)));
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - waitStartedAt) / 1000)),
+      );
     };
     updateElapsed();
     const interval = window.setInterval(updateElapsed, 1000);
@@ -187,7 +189,8 @@ export const VoiceChangerSection: React.FC<{
   }, [beginWait, openVoiceInstalled, speech, t]);
 
   const runConversion = useCallback(async () => {
-    if (!sourcePath || !selectedProfileId || isConverting || isRecording) return;
+    if (!sourcePath || !selectedProfileId || isConverting || isRecording)
+      return;
     setIsConverting(true);
     beginWait(
       "prepare",
@@ -203,7 +206,11 @@ export const VoiceChangerSection: React.FC<{
           defaultValue: "Converting voice.",
         }),
       );
-      const result = await convertVoiceSample(sourcePath, selectedProfileId, tau);
+      const result = await convertVoiceSample(
+        sourcePath,
+        selectedProfileId,
+        tau,
+      );
       beginWait(
         "loadOutput",
         t("listen.voiceChanger.loadingOutput", {
@@ -372,15 +379,18 @@ export const VoiceChangerSection: React.FC<{
     if (waitPhase === "download") {
       return elapsedSeconds < 8
         ? t("listen.voiceChanger.wait.downloadStarting", {
-            defaultValue: "Checking the local speech pack and installing any missing runtime pieces.",
+            defaultValue:
+              "Checking the local speech pack and installing any missing runtime pieces.",
           })
         : t("listen.voiceChanger.wait.downloadStillWorking", {
-            defaultValue: "Still preparing OpenVoice. First setup can take a while.",
+            defaultValue:
+              "Still preparing OpenVoice. First setup can take a while.",
           });
     }
     if (waitPhase === "prepare") {
       return t("listen.voiceChanger.wait.prepare", {
-        defaultValue: "Starting the offline speech runtime and checking the selected target voice.",
+        defaultValue:
+          "Starting the offline speech runtime and checking the selected target voice.",
       });
     }
     if (waitPhase === "finalize") {
@@ -400,7 +410,8 @@ export const VoiceChangerSection: React.FC<{
     }
     if (elapsedSeconds < 10) {
       return t("listen.voiceChanger.wait.convertExtracting", {
-        defaultValue: "Extracting tone color from your source and target profile.",
+        defaultValue:
+          "Extracting tone color from your source and target profile.",
       });
     }
     if (elapsedSeconds < 20) {
@@ -409,7 +420,8 @@ export const VoiceChangerSection: React.FC<{
       });
     }
     return t("listen.voiceChanger.wait.convertStillWorking", {
-      defaultValue: "Still working. Longer clips and first runs can take extra time.",
+      defaultValue:
+        "Still working. Longer clips and first runs can take extra time.",
     });
   }, [elapsedSeconds, t, waitPhase]);
 
@@ -427,7 +439,9 @@ export const VoiceChangerSection: React.FC<{
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2 font-medium text-[var(--text)]">
-                {waitPhase ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {waitPhase ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
                 <span>{status}</span>
               </div>
               {waitDetail ? <p>{waitDetail}</p> : null}
@@ -456,7 +470,7 @@ export const VoiceChangerSection: React.FC<{
                   ? basename(sourcePath)
                   : t("listen.voiceChanger.noAudioSelected", {
                       defaultValue: "No audio selected",
-                })}
+                    })}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -501,7 +515,8 @@ export const VoiceChangerSection: React.FC<{
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
             <span>
               {t("listen.voiceChanger.recordShortcutHint", {
-                defaultValue: "Focus this panel and press R to start or stop mic capture.",
+                defaultValue:
+                  "Focus this panel and press R to start or stop mic capture.",
               })}
             </span>
           </div>
@@ -516,7 +531,9 @@ export const VoiceChangerSection: React.FC<{
               value={selectedProfileId}
               onChange={(event) => setSelectedProfileId(event.target.value)}
               className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              disabled={readyProfiles.length === 0 || isConverting || isRecording}
+              disabled={
+                readyProfiles.length === 0 || isConverting || isRecording
+              }
             >
               {readyProfiles.length > 0 ? (
                 readyProfiles.map((profile) => (

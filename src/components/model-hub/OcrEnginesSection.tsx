@@ -775,58 +775,57 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           }
         : undefined;
 
-    const footerExtra =
-      isConfirmingDelete ? (
-        <div
-          className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-start gap-2 text-sm text-[var(--text)]">
-            <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
-              aria-hidden
-            />
-            <p className="min-w-0 flex-1 leading-snug">
-              {t("modelHub.ocr.confirmRemove", {
-                modelName: model.title,
-                defaultValue:
-                  "Remove {{modelName}}? Files will be deleted from the app's OCR cache.",
-              })}
-            </p>
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isBusy}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setConfirmingDeleteId(null);
-              }}
-            >
-              {t("common.cancel", { defaultValue: "Cancel" })}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={isBusy}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void onDeleteNeural(model);
-              }}
-            >
-              {isBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                t("modelSelector.confirmDelete", { defaultValue: "Delete" })
-              )}
-            </Button>
-          </div>
+    const footerExtra = isConfirmingDelete ? (
+      <div
+        className="flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-2 text-sm text-[var(--text)]">
+          <AlertTriangle
+            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+            aria-hidden
+          />
+          <p className="min-w-0 flex-1 leading-snug">
+            {t("modelHub.ocr.confirmRemove", {
+              modelName: model.title,
+              defaultValue:
+                "Remove {{modelName}}? Files will be deleted from the app's OCR cache.",
+            })}
+          </p>
         </div>
-      ) : null;
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isBusy}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setConfirmingDeleteId(null);
+            }}
+          >
+            {t("common.cancel", { defaultValue: "Cancel" })}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={isBusy}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void onDeleteNeural(model);
+            }}
+          >
+            {isBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              t("modelSelector.confirmDelete", { defaultValue: "Delete" })
+            )}
+          </Button>
+        </div>
+      </div>
+    ) : null;
 
     const handleClick = () => {
       if (isConfirmingDelete) return;

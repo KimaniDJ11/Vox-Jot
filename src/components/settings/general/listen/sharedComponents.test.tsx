@@ -50,10 +50,7 @@ const buildPreset = (
   tuning,
 });
 
-const setTextareaValue = (
-  textarea: HTMLTextAreaElement,
-  value: string,
-) => {
+const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
   const setter = Object.getOwnPropertyDescriptor(
     HTMLTextAreaElement.prototype,
     "value",

@@ -58,7 +58,11 @@ interface RouteFeatures {
 }
 
 type PostProcessPass = "skip" | "pass1" | "pass2" | "command";
-type PromptProfile = "auto" | "standard" | "compact_final_text" | "strict_literal";
+type PromptProfile =
+  | "auto"
+  | "standard"
+  | "compact_final_text"
+  | "strict_literal";
 
 interface RouteAnalysis {
   route: PostProcessPass;
@@ -452,8 +456,13 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
     "Prefer lowercase and avoid unnecessary punctuation.",
 };
 
-function promptProfileForModel(modelId: string): Exclude<PromptProfile, "auto"> {
-  const normalized = modelId.trim().toLowerCase().replace(/:latest$/, "");
+function promptProfileForModel(
+  modelId: string,
+): Exclude<PromptProfile, "auto"> {
+  const normalized = modelId
+    .trim()
+    .toLowerCase()
+    .replace(/:latest$/, "");
   if (
     normalized.includes("phi4-mini") ||
     normalized.includes("phi-4-mini") ||
@@ -1075,7 +1084,9 @@ async function main() {
   console.log(`Prompt:   ${resolvedPromptProfile}`);
   console.log(`Dry run:  ${config.dryRun}`);
   console.log(`Force LLM on skip: ${config.forceLlmOnSkip}`);
-  console.log(`Timeout:  ${config.timeoutMs > 0 ? `${config.timeoutMs} ms` : "none"}`);
+  console.log(
+    `Timeout:  ${config.timeoutMs > 0 ? `${config.timeoutMs} ms` : "none"}`,
+  );
   console.log(
     `Match:    ${config.exactMatch ? "exact" : `similarity >= ${config.matchThreshold}`}`,
   );
@@ -1425,9 +1436,9 @@ function buildMarkdownReport(summary: EvalSummary, dryRun: boolean): string {
 
     if (r.actual_output !== null) {
       lines.push(``);
-    lines.push(
-      `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%, exact: ${r.exact_match}${r.duration_ms !== undefined ? `, latency: ${r.duration_ms} ms` : ""}):`,
-    );
+      lines.push(
+        `**Actual** (similarity: ${(r.similarity * 100).toFixed(1)}%, exact: ${r.exact_match}${r.duration_ms !== undefined ? `, latency: ${r.duration_ms} ms` : ""}):`,
+      );
       lines.push("```");
       lines.push(r.actual_output);
       lines.push("```");

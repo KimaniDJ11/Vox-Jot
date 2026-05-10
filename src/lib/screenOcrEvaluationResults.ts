@@ -50,8 +50,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     averageConfidence: 1,
     strongestCategory: "settings, code, tables, prompt-looking documents",
     weakestCategory: "not yet tested on live multilingual or rotated text",
-    notes:
-      "Native macOS Vision OCR in accurate mode with language correction.",
+    notes: "Native macOS Vision OCR in accurate mode with language correction.",
   },
   {
     engineId: "tessdata-best",
@@ -80,7 +79,8 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalPhrases: 29,
     averageLatencyMs: 1537,
     averageConfidence: 0.9848472038904825,
-    notes: "PaddleOCR detector/recognizer route using the installed PP-OCRv5 pack.",
+    notes:
+      "PaddleOCR detector/recognizer route using the installed PP-OCRv5 pack.",
   },
   {
     engineId: "paddleocr-vl-1.5",

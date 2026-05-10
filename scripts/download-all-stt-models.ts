@@ -59,8 +59,16 @@ const modelSpecs: ModelSpec[] = [
   whisper("turbo", "ggml-large-v3-turbo.bin"),
   whisper("large", "ggml-large-v3-q5_0.bin"),
   releaseFile("breeze-asr", "breeze-asr-q5_k.bin"),
-  releaseArchive("parakeet-tdt-0.6b-v2", "parakeet-tdt-0.6b-v2-int8", "parakeet-v2-int8.tar.gz"),
-  releaseArchive("parakeet-tdt-0.6b-v3", "parakeet-tdt-0.6b-v3-int8", "parakeet-v3-int8.tar.gz"),
+  releaseArchive(
+    "parakeet-tdt-0.6b-v2",
+    "parakeet-tdt-0.6b-v2-int8",
+    "parakeet-v2-int8.tar.gz",
+  ),
+  releaseArchive(
+    "parakeet-tdt-0.6b-v3",
+    "parakeet-tdt-0.6b-v3-int8",
+    "parakeet-v3-int8.tar.gz",
+  ),
   releaseArchive("moonshine-base", "moonshine-base", "moonshine-base.tar.gz"),
   releaseArchive(
     "moonshine-tiny-streaming-en",
@@ -77,7 +85,11 @@ const modelSpecs: ModelSpec[] = [
     "moonshine-medium-streaming-en",
     "moonshine-medium-streaming-en.tar.gz",
   ),
-  releaseArchive("sense-voice-int8", "sense-voice-int8", "sense-voice-int8.tar.gz"),
+  releaseArchive(
+    "sense-voice-int8",
+    "sense-voice-int8",
+    "sense-voice-int8.tar.gz",
+  ),
   releaseArchive("gigaam-v3-e2e-ctc", "gigaam-v3-e2e-ctc", "giga-am-v3.tar.gz"),
   hfSnapshot(
     "mlx-whisper-large-v3-turbo",
@@ -128,7 +140,11 @@ function releaseFile(id: string, filename: string): ModelSpec {
   return { id, filename, kind: "file", url: `${RELEASE_BASE}/${filename}` };
 }
 
-function releaseArchive(id: string, filename: string, asset: string): ModelSpec {
+function releaseArchive(
+  id: string,
+  filename: string,
+  asset: string,
+): ModelSpec {
   return { id, filename, kind: "archive", url: `${RELEASE_BASE}/${asset}` };
 }
 
@@ -141,7 +157,12 @@ function parseArgs() {
   const onlyIdx = args.indexOf("--models");
   const only =
     onlyIdx >= 0 && args[onlyIdx + 1]
-      ? new Set(args[onlyIdx + 1].split(",").map((id) => id.trim()).filter(Boolean))
+      ? new Set(
+          args[onlyIdx + 1]
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean),
+        )
       : null;
   return {
     only,
@@ -195,8 +216,8 @@ function downloadReleaseAsset(asset: string, outputPath: string) {
 }
 
 function finalizeExtract(stagingDir: string, finalPath: string) {
-  const dirs = readdirSync(stagingDir, { withFileTypes: true }).filter((entry) =>
-    entry.isDirectory(),
+  const dirs = readdirSync(stagingDir, { withFileTypes: true }).filter(
+    (entry) => entry.isDirectory(),
   );
   rmSync(finalPath, { recursive: true, force: true });
   if (dirs.length === 1) {
@@ -207,7 +228,9 @@ function finalizeExtract(stagingDir: string, finalPath: string) {
   }
 }
 
-function normalizeExtractedLayout(spec: Extract<ModelSpec, { kind: "archive" }>) {
+function normalizeExtractedLayout(
+  spec: Extract<ModelSpec, { kind: "archive" }>,
+) {
   if (spec.id !== "gigaam-v3-e2e-ctc") return;
 
   const finalPath = resolve(STT_MODELS_DIR, spec.filename);
@@ -238,7 +261,10 @@ function normalizeExtractedLayout(spec: Extract<ModelSpec, { kind: "archive" }>)
   }
 }
 
-function downloadFile(spec: Extract<ModelSpec, { kind: "file" }>, force: boolean) {
+function downloadFile(
+  spec: Extract<ModelSpec, { kind: "file" }>,
+  force: boolean,
+) {
   const target = resolve(STT_MODELS_DIR, spec.filename);
   if (existsSync(target) && !force) {
     console.log(`Already installed: ${spec.id}`);
@@ -277,7 +303,10 @@ function downloadArchive(
     return;
   }
   mkdirSync(dirname(finalPath), { recursive: true });
-  const archivePath = resolve(STT_MODELS_DIR, `${basename(spec.filename)}.tar.gz.partial`);
+  const archivePath = resolve(
+    STT_MODELS_DIR,
+    `${basename(spec.filename)}.tar.gz.partial`,
+  );
   const stagingDir = resolve(STT_MODELS_DIR, `${spec.filename}.extracting`);
   rmSync(stagingDir, { recursive: true, force: true });
   console.log(`Downloading ${spec.id}`);
@@ -316,7 +345,14 @@ function downloadSnapshot(
   }
   mkdirSync(dirname(finalPath), { recursive: true });
   console.log(`Downloading ${spec.id}`);
-  const args = ["download", spec.repo, "--local-dir", finalPath, "--max-workers", "4"];
+  const args = [
+    "download",
+    spec.repo,
+    "--local-dir",
+    finalPath,
+    "--max-workers",
+    "4",
+  ];
   if (force) args.push("--force-download");
   run("hf", args);
 }

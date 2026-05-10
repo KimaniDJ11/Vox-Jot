@@ -694,39 +694,47 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
               : null;
             const downloadState: HubDownloadState | undefined =
               isDownloading || isFailed
-              ? {
-                  label: isFailed
-                    ? t("modelHub.analysis.downloadProgress.failed", {
-                        defaultValue: "Download failed",
-                      })
-                    : isCancelling
-                      ? t("modelHub.analysis.downloadProgress.cancelling", {
-                          defaultValue: "Cancelling download...",
+                ? {
+                    label: isFailed
+                      ? t("modelHub.analysis.downloadProgress.failed", {
+                          defaultValue: "Download failed",
                         })
-                      : progressPct !== null
-                        ? t("modelHub.analysis.downloadProgress.percent", {
-                            defaultValue: "Downloading {{percent}}%",
-                            percent: progressPct,
+                      : isCancelling
+                        ? t("modelHub.analysis.downloadProgress.cancelling", {
+                            defaultValue: "Cancelling download...",
                           })
-                        : progress?.phase === "downloading"
-                          ? t("modelHub.analysis.downloadProgress.downloading", {
-                              defaultValue: "Downloading...",
+                        : progressPct !== null
+                          ? t("modelHub.analysis.downloadProgress.percent", {
+                              defaultValue: "Downloading {{percent}}%",
+                              percent: progressPct,
                             })
-                          : t("modelHub.analysis.downloadProgress.preparing", {
-                              defaultValue: "Preparing download...",
-                            }),
-                  detail: progressFileName ?? model.repo_id ?? null,
-                  error: progress?.error ?? null,
-                  progress: progressPct,
-                  indeterminate: progressPct === null,
-                  cancelling: isCancelling,
-                  onCancel: isFailed ? undefined : () => onCancelDownload(model),
-                  cancelLabel: t("modelHub.analysis.actions.cancelDownload", {
-                    defaultValue: "Cancel {{modelName}} download",
-                    modelName: model.label,
-                  }),
-                }
-              : undefined;
+                          : progress?.phase === "downloading"
+                            ? t(
+                                "modelHub.analysis.downloadProgress.downloading",
+                                {
+                                  defaultValue: "Downloading...",
+                                },
+                              )
+                            : t(
+                                "modelHub.analysis.downloadProgress.preparing",
+                                {
+                                  defaultValue: "Preparing download...",
+                                },
+                              ),
+                    detail: progressFileName ?? model.repo_id ?? null,
+                    error: progress?.error ?? null,
+                    progress: progressPct,
+                    indeterminate: progressPct === null,
+                    cancelling: isCancelling,
+                    onCancel: isFailed
+                      ? undefined
+                      : () => onCancelDownload(model),
+                    cancelLabel: t("modelHub.analysis.actions.cancelDownload", {
+                      defaultValue: "Cancel {{modelName}} download",
+                      modelName: model.label,
+                    }),
+                  }
+                : undefined;
 
             const headerBadges: CompactBadgeItem[] = [
               selected

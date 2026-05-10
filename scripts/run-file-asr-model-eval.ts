@@ -7,12 +7,7 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -210,7 +205,11 @@ function modelDownloaded(modelId: string): boolean {
   return existsSync(path);
 }
 
-function runSidecar(model: ModelSpec, sample16k: string, durationMs: number): ModelResult {
+function runSidecar(
+  model: ModelSpec,
+  sample16k: string,
+  durationMs: number,
+): ModelResult {
   const python = resolve(PROJECT_ROOT, ".venv/bin/python");
   const sidecar = resolve(PROJECT_ROOT, "scripts/speech_analysis_sidecar.py");
   const started = performance.now();
@@ -318,13 +317,15 @@ function evaluateModel(
     last.attempts = attempt;
     if (last.status === "tested") return last;
   }
-  return last ?? {
-    model_id: model.id,
-    label: model.label,
-    status: "failed",
-    attempts,
-    reason: "no attempt ran",
-  };
+  return (
+    last ?? {
+      model_id: model.id,
+      label: model.label,
+      status: "failed",
+      attempts,
+      reason: "no attempt ran",
+    }
+  );
 }
 
 function buildMarkdown(results: ModelResult[]): string {
@@ -341,7 +342,11 @@ function buildMarkdown(results: ModelResult[]): string {
       [
         result.label,
         result.status,
-        result.exact_match === undefined ? "n/a" : result.exact_match ? "yes" : "no",
+        result.exact_match === undefined
+          ? "n/a"
+          : result.exact_match
+            ? "yes"
+            : "no",
         result.wer === undefined ? "n/a" : result.wer.toFixed(3),
         result.latency_ms === undefined ? "n/a" : `${result.latency_ms} ms`,
         result.real_time_factor === undefined

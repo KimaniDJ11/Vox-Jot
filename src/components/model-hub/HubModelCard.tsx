@@ -318,16 +318,17 @@ function renderInlineFooterExtra(parts: React.ReactNode[]): React.ReactNode {
 
   return (
     <div
-      className="flex min-h-11 min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] px-2.5 py-1.5"
+      className="flex min-h-11 min-w-0 flex-wrap items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] px-2.5 py-1.5 sm:flex-nowrap"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
+      aria-label="Model action confirmation"
       role="group"
     >
-      <div className="min-w-0 flex-1 [&_p]:!truncate [&_p]:!text-xs [&_p]:!leading-4 [&_p+p]:!hidden [&_svg]:shrink-0">
+      <div className="min-w-[12rem] flex-1 overflow-hidden [&_p]:!truncate [&_p]:!text-xs [&_p]:!leading-4 [&_p+p]:!mt-0.5 [&_p+p]:!line-clamp-1 [&_p+p]:!text-[11px] [&_p+p]:!text-[var(--muted)] [&_svg]:shrink-0">
         {message}
       </div>
       {actions ? (
-        <div className="flex shrink-0 items-center gap-1.5 [&_button]:!shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 sm:flex-none [&_button]:!shrink-0">
           {actions}
         </div>
       ) : null}

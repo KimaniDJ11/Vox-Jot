@@ -52,7 +52,10 @@ export interface HubModelCardProps {
    */
   downloadState?: HubDownloadState;
 
-  /** Optional block below the core (progress bar, delete confirmation). */
+  /**
+   * Optional block below the core. Interactive footer extras such as delete
+   * confirmations are normalized into the footer row so cards do not grow.
+   */
   footerExtra?: React.ReactNode;
 
   // Interaction
@@ -172,6 +175,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   const trailingNode = renderTrailing(trailing);
   const hasCapabilityRow =
     (capabilityChips && capabilityChips.length > 0) || Boolean(secondary);
+  const inlineFooterExtraParts = getInlineFooterExtraParts(footerExtra);
 
   return (
     <div
@@ -251,6 +255,8 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {/* FOOTER — meta + trailing action, or unified download state. */}
       {downloadState ? (
         renderDownloadState(downloadState)
+      ) : inlineFooterExtraParts ? (
+        renderInlineFooterExtra(inlineFooterExtraParts)
       ) : (
         <div className="flex min-w-0 items-center gap-2">
           {footerMetaItems && footerMetaItems.length > 0 ? (
@@ -269,10 +275,65 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       )}
 
       {/* Optional block below the core (progress, confirmation). */}
-      {footerExtra ? <div className="mt-1 w-full">{footerExtra}</div> : null}
+      {footerExtra && !inlineFooterExtraParts ? (
+        <div className="mt-1 w-full">{footerExtra}</div>
+      ) : null}
     </div>
   );
 };
+
+type FooterExtraElementProps = {
+  children?: React.ReactNode;
+  onClick?: unknown;
+  onKeyDown?: unknown;
+};
+
+function getInlineFooterExtraParts(
+  footerExtra: React.ReactNode,
+): React.ReactNode[] | null {
+  if (!React.isValidElement(footerExtra)) return null;
+
+  const props = footerExtra.props as FooterExtraElementProps;
+  if (!props.onClick && !props.onKeyDown) return null;
+
+  const children = React.Children.toArray(props.children);
+
+  // Delete confirmations in model cards generally render as:
+  // root -> [message, actions] or root -> wrapper -> [message, actions].
+  // Pull those two pieces into the fixed footer slot instead of rendering the
+  // whole block below the card, which changes the card height.
+  if (children.length === 1 && React.isValidElement(children[0])) {
+    const nestedProps = children[0].props as FooterExtraElementProps;
+    const nestedChildren = React.Children.toArray(nestedProps.children);
+    if (nestedChildren.length >= 2) {
+      return nestedChildren;
+    }
+  }
+
+  return children.length >= 2 ? children : null;
+}
+
+function renderInlineFooterExtra(parts: React.ReactNode[]): React.ReactNode {
+  const [message, actions] = parts;
+
+  return (
+    <div
+      className="flex min-h-11 min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] px-2.5 py-1.5"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      role="group"
+    >
+      <div className="min-w-0 flex-1 [&_p]:!truncate [&_p]:!text-xs [&_p]:!leading-4 [&_p+p]:!hidden [&_svg]:shrink-0">
+        {message}
+      </div>
+      {actions ? (
+        <div className="flex shrink-0 items-center gap-1.5 [&_button]:!shrink-0">
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function renderDownloadState(state: HubDownloadState): React.ReactNode {
   const hasKnownProgress =

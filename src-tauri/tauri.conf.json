@@ -36,6 +36,7 @@
       "files": {},
       "hardenedRuntime": true,
       "minimumSystemVersion": "10.15",
+      "signingIdentity": "Developer ID Application: Kimani James (NS5M2UJLKP)",
       "entitlements": "Entitlements.plist"
     },
     "linux": {

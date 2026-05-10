@@ -28,6 +28,7 @@ dist-ssr
 ~$*
 
 /target/
+.local-targets/
 recording_*
 .crush/
 

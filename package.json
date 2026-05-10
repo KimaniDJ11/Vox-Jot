@@ -10,6 +10,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "tauri": "node scripts/tauri-wrapper.mjs",
+    "mac:release": "bash scripts/build-notarized-macos-release.sh",
     "mac:update-installed-app": "bash scripts/build-and-install-macos-app.sh",
     "mac:build-install": "bash scripts/build-and-install-macos-app.sh",
     "speech:build-runtime": "bash scripts/build-speech-runtime.sh",

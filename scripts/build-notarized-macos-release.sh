@@ -8,7 +8,14 @@ TARGET_ROOT="${CARGO_TARGET_DIR:-${REPO_ROOT}/.local-targets/vox-jot}"
 BUILD_PROFILE="release"
 BUNDLE_ROOT="${TARGET_ROOT}/${BUILD_PROFILE}/bundle"
 APP_PATH="${BUNDLE_ROOT}/macos/${APP_NAME}.app"
-DMG_GLOB="${BUNDLE_ROOT}/dmg/${APP_NAME}"_*".dmg"
+DMG_DIR="${BUNDLE_ROOT}/dmg"
+APP_VERSION="$(/usr/bin/awk -F\" '/"version"/ { print $4; exit }' "${REPO_ROOT}/src-tauri/tauri.conf.json")"
+TARGET_ARCH="$(/usr/bin/arch)"
+if [[ "${TARGET_ARCH}" == "arm64" ]]; then
+  TARGET_ARCH="aarch64"
+fi
+DMG_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}.dmg"
+DMG_STAGE_DIR="${DMG_DIR}/${APP_NAME}-dmg-stage"
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-voxjot-notary}"
 KEYCHAIN_PASSWORD="${KEYCHAIN_PASSWORD:-$(/usr/bin/openssl rand -hex 24)}"
 KEYCHAIN_NAME="vox-jot-build.keychain-db"
@@ -185,6 +192,53 @@ submit_for_notarization() {
   exit 1
 }
 
+sign_nested_macho_files() {
+  local signed_count=0
+  local resource_root="${APP_PATH}/Contents/Resources"
+
+  if [[ ! -d "${resource_root}" ]]; then
+    return
+  fi
+
+  echo "Signing nested Mach-O files..."
+  while IFS= read -r -d '' file_path; do
+    if /usr/bin/file "${file_path}" | /usr/bin/grep -q "Mach-O"; then
+      /usr/bin/codesign \
+        --force \
+        --options runtime \
+        --timestamp \
+        --sign "${APPLE_SIGNING_IDENTITY}" \
+        "${file_path}"
+      signed_count=$((signed_count + 1))
+    fi
+  done < <(/usr/bin/find "${resource_root}" -type f -print0)
+
+  echo "Signed nested Mach-O files: ${signed_count}"
+}
+
+create_signed_dmg() {
+  /bin/rm -rf "${DMG_STAGE_DIR}" "${DMG_PATH}"
+  /bin/mkdir -p "${DMG_STAGE_DIR}" "${DMG_DIR}"
+  /usr/bin/ditto "${APP_PATH}" "${DMG_STAGE_DIR}/${APP_NAME}.app"
+  /bin/ln -s /Applications "${DMG_STAGE_DIR}/Applications"
+
+  /usr/bin/hdiutil create \
+    -volname "${APP_NAME}" \
+    -srcfolder "${DMG_STAGE_DIR}" \
+    -ov \
+    -format UDZO \
+    "${DMG_PATH}"
+
+  /bin/rm -rf "${DMG_STAGE_DIR}"
+
+  /usr/bin/codesign \
+    --force \
+    --timestamp \
+    --sign "${APPLE_SIGNING_IDENTITY}" \
+    "${DMG_PATH}"
+  /usr/bin/codesign --verify --deep --strict --verbose=2 "${DMG_PATH}"
+}
+
 ensure_notary_credentials
 resolve_signing_identity
 
@@ -194,20 +248,24 @@ echo "Building notarized macOS release for ${APP_NAME}..."
 echo "Using cargo target dir: ${CARGO_TARGET_DIR}"
 
 cd "${REPO_ROOT}"
-bun run tauri build
+bun run tauri build --bundles app
 
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "Expected app bundle not found at ${APP_PATH}" >&2
   exit 1
 fi
 
+sign_nested_macho_files
+/usr/bin/codesign \
+  --force \
+  --deep \
+  --options runtime \
+  --timestamp \
+  --sign "${APPLE_SIGNING_IDENTITY}" \
+  --entitlements "${REPO_ROOT}/src-tauri/Entitlements.plist" \
+  "${APP_PATH}"
 /usr/bin/codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
-
-DMG_PATH="$(/bin/ls -1 ${DMG_GLOB} 2>/dev/null | /usr/bin/head -n 1 || true)"
-if [[ -z "${DMG_PATH}" ]]; then
-  echo "Expected DMG artifact not found under ${BUNDLE_ROOT}/dmg" >&2
-  exit 1
-fi
+create_signed_dmg
 
 echo "Submitting DMG for notarization: ${DMG_PATH}"
 submit_for_notarization "${DMG_PATH}"
@@ -215,6 +273,7 @@ submit_for_notarization "${DMG_PATH}"
 echo "Stapling notarization ticket..."
 /usr/bin/xcrun stapler staple "${DMG_PATH}"
 /usr/bin/xcrun stapler validate "${DMG_PATH}"
+/usr/bin/codesign --verify --deep --strict --verbose=2 "${DMG_PATH}"
 /usr/sbin/spctl -a -t open --context context:primary-signature -v "${DMG_PATH}"
 
 echo

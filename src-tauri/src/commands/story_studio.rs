@@ -1164,7 +1164,7 @@ fn format_story_playback_rate(value: f32) -> String {
 }
 
 fn format_story_sample_rate(sample_rate_hz: u32) -> String {
-    if sample_rate_hz % 1000 == 0 {
+    if sample_rate_hz.is_multiple_of(1000) {
         format!("{} kHz", sample_rate_hz / 1000)
     } else {
         format!("{:.1} kHz", sample_rate_hz as f32 / 1000.0)

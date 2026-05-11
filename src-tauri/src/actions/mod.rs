@@ -561,7 +561,10 @@ fn spawn_history_save(
         let duration_ms = if request.audio_samples.is_empty() {
             None
         } else {
-            Some((request.audio_samples.len() as i64 * 1000) / crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE as i64)
+            Some(
+                (request.audio_samples.len() as i64 * 1000)
+                    / crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE as i64,
+            )
         };
 
         match history_manager

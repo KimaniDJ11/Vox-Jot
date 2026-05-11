@@ -1,3 +1,5 @@
+#![allow(clippy::unused_unit)]
+
 use log::{debug, error};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};

@@ -1275,9 +1275,8 @@ impl ModelManager {
             let flags = self.cancel_flags.lock().unwrap_or_else(|e| e.into_inner());
             flags
                 .iter()
-                .filter_map(|(model_id, flag)| {
-                    (!flag.load(Ordering::Relaxed)).then(|| model_id.clone())
-                })
+                .filter(|(_, flag)| !flag.load(Ordering::Relaxed))
+                .map(|(model_id, _)| model_id.clone())
                 .collect()
         };
 

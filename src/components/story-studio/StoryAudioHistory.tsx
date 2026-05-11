@@ -763,9 +763,7 @@ const StoryAudioPlayerView: React.FC<{
 
   useEffect(() => {
     setCurrentTime(0);
-    setDuration(
-      item && item.duration_ms > 0 ? item.duration_ms / 1000 : 0,
-    );
+    setDuration(item && item.duration_ms > 0 ? item.duration_ms / 1000 : 0);
     setIsPlaying(false);
     setPlaybackRate(1);
     setSampleRateHz(item?.sample_rate_hz || 24_000);

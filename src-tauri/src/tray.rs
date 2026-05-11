@@ -300,6 +300,7 @@ mod tests {
             tts_trigger: None,
             tts_status: None,
             screen_context_metadata: None,
+            duration_ms: None,
         }
     }
 

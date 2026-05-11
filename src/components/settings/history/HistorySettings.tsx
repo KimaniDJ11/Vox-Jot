@@ -874,7 +874,9 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         <AudioPlayer
           onLoadRequest={handleLoadAudio}
           className="min-w-0"
-          initialDuration={entry.duration_ms ? entry.duration_ms / 1000 : undefined}
+          initialDuration={
+            entry.duration_ms ? entry.duration_ms / 1000 : undefined
+          }
           title={
             <span
               className="block min-w-0 truncate select-text"

@@ -986,6 +986,28 @@ pub fn change_recording_overlay_style_setting(app: AppHandle, style: String) -> 
 pub fn change_debug_mode_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.debug_mode = enabled;
+
+    // When enabling debug mode, ensure file logging is at least as verbose as
+    // Debug so the diagnostics panel + log folder contain useful detail.
+    // Don't demote when disabling — the user may have intentionally chosen
+    // Trace and we shouldn't silently throw their preference away.
+    let mut log_level_changed = false;
+    if enabled
+        && matches!(
+            settings.log_level,
+            settings::LogLevel::Info | settings::LogLevel::Warn | settings::LogLevel::Error
+        )
+    {
+        settings.log_level = settings::LogLevel::Debug;
+        let tauri_log_level: tauri_plugin_log::LogLevel = settings.log_level.into();
+        let log_level: log::Level = tauri_log_level.into();
+        crate::FILE_LOG_LEVEL.store(
+            log_level.to_level_filter() as u8,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        log_level_changed = true;
+    }
+
     settings::write_settings(&app, settings);
 
     // Emit event to notify frontend of debug mode change
@@ -996,6 +1018,16 @@ pub fn change_debug_mode_setting(app: AppHandle, enabled: bool) -> Result<(), St
             "value": enabled
         }),
     );
+
+    if log_level_changed {
+        let _ = app.emit(
+            "settings-changed",
+            serde_json::json!({
+                "setting": "log_level",
+                "value": "debug"
+            }),
+        );
+    }
 
     Ok(())
 }

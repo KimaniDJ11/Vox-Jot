@@ -10,16 +10,34 @@ import { EngineLibrarySection } from "@/components/settings/general/ListenSectio
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";
 import { press } from "@/motion/springs";
-import { MODEL_HUB_TAB_STORAGE_KEY } from "@/components/sidebar/SidebarModelLaunchers";
 import {
   MODEL_HUB_TAB_DEFS,
+  MODEL_HUB_SCOPE_STORAGE_KEY,
+  MODEL_HUB_TAB_STORAGE_KEY,
+  type ModelHubScope,
   type ModelHubTabId,
 } from "@/components/model-hub/modelHubTabs";
 
-const TABS = MODEL_HUB_TAB_DEFS;
+const ALL_TABS = MODEL_HUB_TAB_DEFS;
 
 function isModelHubTabId(value: string | null): value is ModelHubTabId {
-  return TABS.some((tab) => tab.id === value);
+  return ALL_TABS.some((tab) => tab.id === value);
+}
+
+function isModelHubScope(value: string | null): value is ModelHubScope {
+  return value === "all" || value === "analysis";
+}
+
+function readInitialScope(): ModelHubScope {
+  try {
+    const stored = localStorage.getItem(MODEL_HUB_SCOPE_STORAGE_KEY);
+    if (isModelHubScope(stored)) {
+      return stored;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "all";
 }
 
 function readInitialTab(): ModelHubTabId {
@@ -38,17 +56,24 @@ const MODEL_HUB_SEARCH_SLOT_ID = "model-hub-search-slot";
 
 const ModelHubSection: React.FC = () => {
   const { t } = useTranslation();
+  const [scope, setScope] = useState<ModelHubScope>(readInitialScope);
   const [activeTab, setActiveTab] = useState<ModelHubTabId>(readInitialTab);
   const [query, setQuery] = useState("");
   const [analysisTabLabelOverride, setAnalysisTabLabelOverride] = useState<
     string | null
   >(null);
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
+  const visibleTab = scope === "analysis" ? "analysis" : activeTab;
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== MODEL_HUB_TAB_STORAGE_KEY || !event.newValue) return;
-      if (isModelHubTabId(event.newValue)) {
+      if (event.key === MODEL_HUB_SCOPE_STORAGE_KEY) {
+        setScope(isModelHubScope(event.newValue) ? event.newValue : "all");
+        return;
+      }
+
+      if (event.key === MODEL_HUB_TAB_STORAGE_KEY && event.newValue) {
+        if (!isModelHubTabId(event.newValue)) return;
         setActiveTab(event.newValue);
       }
     };
@@ -56,11 +81,22 @@ const ModelHubSection: React.FC = () => {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  const tabs =
+    scope === "analysis"
+      ? ALL_TABS.filter((tab) => tab.id === "analysis")
+      : ALL_TABS;
+
   useEffect(() => {
-    if (activeTab !== "analysis") {
+    if (scope === "analysis" && activeTab !== "analysis") {
+      setActiveTab("analysis");
+    }
+  }, [activeTab, scope]);
+
+  useEffect(() => {
+    if (visibleTab !== "analysis") {
       setAnalysisTabLabelOverride(null);
     }
-  }, [activeTab]);
+  }, [visibleTab]);
 
   const searchPlaceholder = t("modelHub.search.globalPlaceholder", {
     defaultValue: "Search models by name, language, or provider…",
@@ -101,57 +137,66 @@ const ModelHubSection: React.FC = () => {
         >
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              <LayoutGroup id="model-hub-tabs">
-                <div
-                  role="tablist"
-                  className="relative inline-flex items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
-                >
-                  {TABS.map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <motion.button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        whileTap={{ scale: 0.97 }}
-                        transition={press}
-                        onClick={() => setActiveTab(tab.id)}
-                        className="relative whitespace-nowrap px-3 py-1.5 text-xs font-semibold outline-none focus-visible:z-10"
-                        style={{
-                          color: isActive
-                            ? "var(--inverse-text)"
-                            : "var(--muted)",
-                          transition: "color 160ms var(--spring-crisp)",
-                        }}
-                      >
-                        {isActive && (
-                          <motion.span
-                            layoutId="model-hub-tab-indicator"
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 32,
-                              mass: 0.9,
-                            }}
-                            className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
-                            aria-hidden
-                          />
-                        )}
-                        <span className="relative z-10">
-                          {tab.id === "analysis" &&
-                          isActive &&
-                          analysisTabLabelOverride
-                            ? analysisTabLabelOverride
-                            : t(tab.labelKey, {
-                                defaultValue: tab.defaultLabel,
-                              })}
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </LayoutGroup>
+              {scope === "analysis" ? (
+                <h2 className="text-sm font-semibold text-[var(--text)]">
+                  {analysisTabLabelOverride ??
+                    t("modelHub.tabs.analysis", {
+                      defaultValue: "Speech Analysis",
+                    })}
+                </h2>
+              ) : (
+                <LayoutGroup id="model-hub-tabs">
+                  <div
+                    role="tablist"
+                    className="relative inline-flex items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
+                  >
+                    {tabs.map((tab) => {
+                      const isActive = visibleTab === tab.id;
+                      return (
+                        <motion.button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          whileTap={{ scale: 0.97 }}
+                          transition={press}
+                          onClick={() => setActiveTab(tab.id)}
+                          className="relative whitespace-nowrap px-3 py-1.5 text-xs font-semibold outline-none focus-visible:z-10"
+                          style={{
+                            color: isActive
+                              ? "var(--inverse-text)"
+                              : "var(--muted)",
+                            transition: "color 160ms var(--spring-crisp)",
+                          }}
+                        >
+                          {isActive && (
+                            <motion.span
+                              layoutId="model-hub-tab-indicator"
+                              transition={{
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 32,
+                                mass: 0.9,
+                              }}
+                              className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
+                              aria-hidden
+                            />
+                          )}
+                          <span className="relative z-10">
+                            {tab.id === "analysis" &&
+                            isActive &&
+                            analysisTabLabelOverride
+                              ? analysisTabLabelOverride
+                              : t(tab.labelKey, {
+                                  defaultValue: tab.defaultLabel,
+                                })}
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </LayoutGroup>
+              )}
             </div>
             {/* STT/TTS: Provider + Language filters (inline with tabs); LLM: empty */}
             <div
@@ -162,57 +207,74 @@ const ModelHubSection: React.FC = () => {
         </div>
 
         <div className="min-w-0 flex-1 pt-3">
-          <div className={activeTab === "stt" ? "block" : "hidden"}>
-            <DictateModelsSection
-              titleActionTargetId={
-                activeTab === "stt" ? "model-hub-section-actions" : undefined
-              }
-              showActiveModelBanner={false}
-              hubSearchQuery={query}
-              hubFilterLabels
-            />
-          </div>
-
-          <div className={activeTab === "analysis" ? "block" : "hidden"}>
+          {scope === "analysis" ? (
             <SpeechAnalysisEnginesSection
               hubSearchQuery={query}
               onHeaderTitleChange={setAnalysisTabLabelOverride}
             />
-          </div>
+          ) : (
+            <>
+              <div className={visibleTab === "stt" ? "block" : "hidden"}>
+                <DictateModelsSection
+                  titleActionTargetId={
+                    visibleTab === "stt"
+                      ? "model-hub-section-actions"
+                      : undefined
+                  }
+                  showActiveModelBanner={false}
+                  hubSearchQuery={query}
+                  hubFilterLabels
+                />
+              </div>
 
-          <div className={activeTab === "llm" ? "block" : "hidden"}>
-            <RefineModelsSection
-              titleActionTargetId={
-                activeTab === "llm" ? "model-hub-section-actions" : undefined
-              }
-              hubSearchQuery={query}
-              onHubSearchQueryChange={setQuery}
-              hubFilterLabels
-              showEvaluationPanel={false}
-            />
-          </div>
+              <div className={visibleTab === "analysis" ? "block" : "hidden"}>
+                <SpeechAnalysisEnginesSection
+                  hubSearchQuery={query}
+                  onHeaderTitleChange={setAnalysisTabLabelOverride}
+                />
+              </div>
 
-          <div className={activeTab === "tts" ? "block" : "hidden"}>
-            <EngineLibrarySection
-              showGroupTitle={false}
-              titleActionTargetId={
-                activeTab === "tts" ? "model-hub-section-actions" : undefined
-              }
-              showActiveModelBanner={false}
-              hubSearchQuery={query}
-              hubFilterLabels
-            />
-          </div>
+              <div className={visibleTab === "llm" ? "block" : "hidden"}>
+                <RefineModelsSection
+                  titleActionTargetId={
+                    visibleTab === "llm"
+                      ? "model-hub-section-actions"
+                      : undefined
+                  }
+                  hubSearchQuery={query}
+                  onHubSearchQueryChange={setQuery}
+                  hubFilterLabels
+                  showEvaluationPanel={false}
+                />
+              </div>
 
-          <div className={activeTab === "ocr" ? "block" : "hidden"}>
-            <OcrEnginesSection
-              titleActionTargetId={
-                activeTab === "ocr" ? "model-hub-section-actions" : undefined
-              }
-              hubSearchQuery={query}
-              hubFilterLabels
-            />
-          </div>
+              <div className={visibleTab === "tts" ? "block" : "hidden"}>
+                <EngineLibrarySection
+                  showGroupTitle={false}
+                  titleActionTargetId={
+                    visibleTab === "tts"
+                      ? "model-hub-section-actions"
+                      : undefined
+                  }
+                  showActiveModelBanner={false}
+                  hubSearchQuery={query}
+                  hubFilterLabels
+                />
+              </div>
+
+              <div className={visibleTab === "ocr" ? "block" : "hidden"}>
+                <OcrEnginesSection
+                  titleActionTargetId={
+                    visibleTab === "ocr"
+                      ? "model-hub-section-actions"
+                      : undefined
+                  }
+                  hubSearchQuery={query}
+                  hubFilterLabels
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

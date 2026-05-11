@@ -8,13 +8,12 @@ import {
   FileAudio,
   Folder,
   FolderPlus,
+  Layers,
   Plus,
   Trash2,
   Upload,
 } from "lucide-react";
 import type {
-  SpeechAnalysisCatalog,
-  SpeechAnalysisModelDescriptor,
   TimedSegment,
   WatchFolderConfig,
   WatchFolderOutputFormat,
@@ -26,6 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import { openModelHub } from "@/components/model-hub/modelHubTabs";
 
 type FileTranscriptionView = "file" | "folders";
 
@@ -58,30 +58,6 @@ function stripExtension(p: string): string {
   return dot > 0 ? base.slice(0, dot) : base;
 }
 
-const readinessLabel = (
-  model: SpeechAnalysisModelDescriptor | undefined,
-): string => {
-  switch (model?.readiness) {
-    case "built_in":
-      return "Built in";
-    case "requires_hf_token":
-      return "HF token";
-    case "requires_model_download":
-      return "Download";
-    case "requires_runtime_install":
-      return "Runtime";
-    case "ready":
-      return "Ready";
-    default:
-      return "Unknown";
-  }
-};
-
-const modelOptionLabel = (model: SpeechAnalysisModelDescriptor): string => {
-  const parts = [model.label, model.provider, readinessLabel(model)];
-  return parts.filter(Boolean).join(" · ");
-};
-
 export const FileTranscriptionPanel: React.FC = () => {
   const { t } = useTranslation();
   const [selectedPath, setSelectedPath] = useState<string>("");
@@ -91,9 +67,6 @@ export const FileTranscriptionPanel: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [view, setView] = useState<FileTranscriptionView>("file");
-  const [analysisCatalog, setAnalysisCatalog] =
-    useState<SpeechAnalysisCatalog | null>(null);
-  const [analysisBusy, setAnalysisBusy] = useState(false);
   const isRunningRef = useRef(false);
 
   const runTranscription = useCallback(
@@ -131,63 +104,6 @@ export const FileTranscriptionPanel: React.FC = () => {
       }
     },
     [t],
-  );
-
-  const loadAnalysisCatalog = useCallback(async () => {
-    const result = await commands.getSpeechAnalysisCatalog();
-    if (result.status === "ok") {
-      setAnalysisCatalog(result.data);
-    } else {
-      setError(result.error);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadAnalysisCatalog();
-  }, [loadAnalysisCatalog]);
-
-  const updateAnalysisSelection = useCallback(
-    async (next: { asr?: string; diarization?: string }) => {
-      if (!analysisCatalog || analysisBusy) return;
-      const asrModelId = next.asr ?? analysisCatalog.selection.asr_model_id;
-      const diarizationModelId =
-        next.diarization ?? analysisCatalog.selection.diarization_model_id;
-      setAnalysisBusy(true);
-      setError("");
-      try {
-        const result = await commands.setSpeechAnalysisSelection(
-          asrModelId,
-          diarizationModelId,
-        );
-        if (result.status === "ok") {
-          setAnalysisCatalog({
-            ...analysisCatalog,
-            selection: result.data,
-          });
-        } else {
-          setError(result.error);
-        }
-      } finally {
-        setAnalysisBusy(false);
-      }
-    },
-    [analysisBusy, analysisCatalog],
-  );
-
-  const asrModels =
-    analysisCatalog?.models.filter(
-      (model) => model.task === "asr" || model.task === "asr_diarization",
-    ) ?? [];
-  const diarizationModels =
-    analysisCatalog?.models.filter(
-      (model) =>
-        model.task === "diarization" || model.task === "asr_diarization",
-    ) ?? [];
-  const selectedAsr = analysisCatalog?.models.find(
-    (model) => model.id === analysisCatalog.selection.asr_model_id,
-  );
-  const selectedDiarization = analysisCatalog?.models.find(
-    (model) => model.id === analysisCatalog.selection.diarization_model_id,
   );
 
   const exportSubtitles = useCallback(
@@ -304,79 +220,6 @@ export const FileTranscriptionPanel: React.FC = () => {
 
       {view === "file" ? (
         <>
-          {analysisCatalog ? (
-            <div className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3 sm:grid-cols-2">
-              <label className="space-y-1.5 text-xs font-semibold text-[var(--muted)]">
-                <span>
-                  {t("dictate.fileTranscription.analysis.asrEngine", {
-                    defaultValue: "ASR engine",
-                  })}
-                </span>
-                <select
-                  value={analysisCatalog.selection.asr_model_id}
-                  disabled={analysisBusy || isRunning}
-                  onChange={(event) =>
-                    void updateAnalysisSelection({ asr: event.target.value })
-                  }
-                  className="min-h-10 w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-medium text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
-                >
-                  {asrModels.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {modelOptionLabel(model)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1.5 text-xs font-semibold text-[var(--muted)]">
-                <span>
-                  {t("dictate.fileTranscription.analysis.speakerEngine", {
-                    defaultValue: "Speaker engine",
-                  })}
-                </span>
-                <select
-                  value={analysisCatalog.selection.diarization_model_id}
-                  disabled={analysisBusy || isRunning}
-                  onChange={(event) =>
-                    void updateAnalysisSelection({
-                      diarization: event.target.value,
-                    })
-                  }
-                  className="min-h-10 w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-medium text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
-                >
-                  {diarizationModels.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {modelOptionLabel(model)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)] sm:col-span-2">
-                <span>
-                  {t("dictate.fileTranscription.analysis.asrStatus", {
-                    defaultValue: "ASR:",
-                  })}{" "}
-                  <span className="font-semibold text-[var(--text)]">
-                    {selectedAsr?.label ??
-                      t("dictate.fileTranscription.analysis.unknown", {
-                        defaultValue: "Unknown",
-                      })}
-                  </span>
-                </span>
-                <span>
-                  {t("dictate.fileTranscription.analysis.speakerStatus", {
-                    defaultValue: "Speaker:",
-                  })}{" "}
-                  <span className="font-semibold text-[var(--text)]">
-                    {selectedDiarization?.label ??
-                      t("dictate.fileTranscription.analysis.unknown", {
-                        defaultValue: "Unknown",
-                      })}
-                  </span>
-                </span>
-              </div>
-            </div>
-          ) : null}
-
           <div
             className={[
               subtleCardClassName,
@@ -694,6 +537,17 @@ const WatchedFoldersToolbar: React.FC<{
           },
         ]}
       />
+      <div className="ml-auto">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => void openModelHub("analysis", { scope: "analysis" })}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          {t("listen.createVoices.models", { defaultValue: "Models" })}
+        </Button>
+      </div>
     </div>
   );
 };

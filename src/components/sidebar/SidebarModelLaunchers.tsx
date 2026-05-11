@@ -17,6 +17,7 @@ import {
 } from "@/lib/interactiveFocus";
 import {
   MODEL_HUB_TAB_DEFS,
+  openModelHub,
   type ModelHubTabId,
 } from "@/components/model-hub/modelHubTabs";
 import {
@@ -24,22 +25,6 @@ import {
   engineTypeToProviderId,
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
-
-export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
-const MODEL_HUB_SECTION_ID = "model-hub";
-
-async function openModelHub(tab: ModelHubTabId) {
-  try {
-    localStorage.setItem(MODEL_HUB_TAB_STORAGE_KEY, tab);
-  } catch {
-    /* ignore */
-  }
-  try {
-    await commands.showDetailView(MODEL_HUB_SECTION_ID);
-  } catch (error) {
-    console.warn("Failed to open model hub:", error);
-  }
-}
 
 interface LauncherRowProps {
   icon: React.ReactNode;

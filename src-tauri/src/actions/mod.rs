@@ -307,6 +307,7 @@ async fn run_translate_selection(app: AppHandle) {
                 },
                 tts_history_context_from_plan(&auto_speak_plan),
                 None,
+                None,
             )
             .await
         {
@@ -557,6 +558,12 @@ fn spawn_history_save(
         let pasted_text = request.pasted_text.clone();
         let field_snapshot_app_id = request.field_snapshot_app_id.clone();
 
+        let duration_ms = if request.audio_samples.is_empty() {
+            None
+        } else {
+            Some((request.audio_samples.len() as i64 * 1000) / crate::audio_toolkit::constants::WHISPER_SAMPLE_RATE as i64)
+        };
+
         match history_manager
             .save_transcription(
                 request.audio_samples,
@@ -568,6 +575,7 @@ fn spawn_history_save(
                 request.translation_context,
                 request.tts_context,
                 request.screen_context_metadata,
+                duration_ms,
             )
             .await
         {

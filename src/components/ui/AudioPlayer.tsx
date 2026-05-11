@@ -28,6 +28,8 @@ interface AudioPlayerProps {
   selected?: boolean;
   /** Optional artwork shown in the play tile, with controls revealed above it. */
   artwork?: React.ReactNode;
+  /** Optional initial duration to show before the audio is loaded */
+  initialDuration?: number;
 }
 
 const STARRED_GLYPH = "★";
@@ -58,9 +60,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   starred = false,
   selected = false,
   artwork,
+  initialDuration,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(initialDuration || 0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(initialSrc ?? null);

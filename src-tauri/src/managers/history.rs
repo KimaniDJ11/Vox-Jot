@@ -58,6 +58,7 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN tts_trigger TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN tts_status TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN screen_context_metadata TEXT;"),
+    M::up("ALTER TABLE transcription_history ADD COLUMN duration_ms INTEGER;"),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
@@ -102,6 +103,7 @@ pub struct HistoryEntry {
     pub tts_trigger: Option<String>,
     pub tts_status: Option<String>,
     pub screen_context_metadata: Option<ScreenContextHistoryMetadata>,
+    pub duration_ms: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -200,6 +202,7 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
         tts_trigger: row.get("tts_trigger").unwrap_or(None),
         tts_status: row.get("tts_status").unwrap_or(None),
         screen_context_metadata,
+        duration_ms: row.get("duration_ms").unwrap_or(None),
     }
 }
 
@@ -311,6 +314,7 @@ impl HistoryManager {
             ("tts_locale", "ALTER TABLE transcription_history ADD COLUMN tts_locale TEXT"),
             ("tts_trigger", "ALTER TABLE transcription_history ADD COLUMN tts_trigger TEXT"),
             ("tts_status", "ALTER TABLE transcription_history ADD COLUMN tts_status TEXT"),
+            ("duration_ms", "ALTER TABLE transcription_history ADD COLUMN duration_ms INTEGER"),
         ];
 
         for (column_name, sql) in required_columns {
@@ -402,6 +406,7 @@ impl HistoryManager {
         translation_context: TranslationHistoryContext,
         tts_context: TtsHistoryContext,
         screen_context_metadata: Option<ScreenContextHistoryMetadata>,
+        duration_ms: Option<i64>,
     ) -> Result<i64> {
         let timestamp = Utc::now().timestamp();
         let file_name = format!("vox-jot-{}.wav", timestamp);
@@ -424,6 +429,7 @@ impl HistoryManager {
             translation_context,
             tts_context,
             screen_context_metadata,
+            duration_ms,
         )?;
 
         // Clean up old entries
@@ -450,6 +456,7 @@ impl HistoryManager {
         translation_context: TranslationHistoryContext,
         tts_context: TtsHistoryContext,
         screen_context_metadata: Option<ScreenContextHistoryMetadata>,
+        duration_ms: Option<i64>,
     ) -> Result<i64> {
         let conn = self.get_connection()?;
         let dictionary_hits_json = if dictionary_hits.is_empty() {
@@ -485,8 +492,9 @@ impl HistoryManager {
                 tts_locale,
                 tts_trigger,
                 tts_status,
-                screen_context_metadata
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
+                screen_context_metadata,
+                duration_ms
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)",
             params![
                 file_name,
                 timestamp,
@@ -511,7 +519,8 @@ impl HistoryManager {
                 tts_context.tts_locale,
                 tts_context.tts_trigger,
                 tts_context.tts_status,
-                screen_context_metadata_json
+                screen_context_metadata_json,
+                duration_ms
             ],
         )?;
 

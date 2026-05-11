@@ -635,6 +635,9 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
         <AudioPlayer
           onLoadRequest={handleLoadAudio}
           className="min-w-0"
+          initialDuration={
+            item.duration_ms > 0 ? item.duration_ms / 1000 : undefined
+          }
           title={item.title || "Untitled Story"}
           meta={meta}
           actions={actions}
@@ -760,7 +763,9 @@ const StoryAudioPlayerView: React.FC<{
 
   useEffect(() => {
     setCurrentTime(0);
-    setDuration(0);
+    setDuration(
+      item && item.duration_ms > 0 ? item.duration_ms / 1000 : 0,
+    );
     setIsPlaying(false);
     setPlaybackRate(1);
     setSampleRateHz(item?.sample_rate_hz || 24_000);
@@ -770,7 +775,7 @@ const StoryAudioPlayerView: React.FC<{
       }
       return null;
     });
-  }, [item?.id, item?.sample_rate_hz]);
+  }, [item?.id, item?.sample_rate_hz, item?.duration_ms]);
 
   useEffect(() => {
     const audio = audioRef.current;

@@ -52,9 +52,14 @@ On macOS, the standard way to validate a solid app change is to update the insta
 
 ```bash
 bun run mac:update-installed-app
+# Same notarized installed-app workflow, named for dev-app testing
+bun run mac:dev-installed-app
+
+# Open the already-installed, permission-preserving dev app
+bun run mac:open-installed-app
 ```
 
-This rebuilds and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. `bun run tauri dev` is still available for quick iteration, but it is not the default path for solid macOS testing.
+This rebuilds, Developer ID signs, notarizes, staples, Gatekeeper-validates, and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. `bun run tauri dev` is still available for quick iteration, but it is not notarized and is not the default path for solid macOS testing.
 
 ## Architecture
 

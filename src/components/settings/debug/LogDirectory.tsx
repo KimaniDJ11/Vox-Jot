@@ -31,7 +31,9 @@ export const LogDirectory: React.FC<LogDirectoryProps> = ({
         const errorMessage =
           err && typeof err === "object" && "message" in err
             ? String(err.message)
-            : "Failed to load log directory";
+            : t("settings.debug.logDirectory.loadError", {
+                defaultValue: "Failed to load log directory",
+              });
         setError(errorMessage);
       } finally {
         setLoading(false);
@@ -39,7 +41,7 @@ export const LogDirectory: React.FC<LogDirectoryProps> = ({
     };
 
     loadLogDirectory();
-  }, []);
+  }, [t]);
 
   const handleOpen = async () => {
     if (!logDir) return;

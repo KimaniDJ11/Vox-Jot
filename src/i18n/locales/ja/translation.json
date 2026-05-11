@@ -879,11 +879,19 @@
       "title": "デバッグ",
       "logDirectory": {
         "title": "ログディレクトリ",
-        "description": "ログファイルの保存場所"
+        "description": "ログファイルの保存場所",
+        "loadError": "Failed to load log directory"
       },
       "logLevel": {
         "title": "ログレベル",
-        "description": "ログの詳細度を設定"
+        "description": "ログの詳細度を設定",
+        "options": {
+          "error": "Error",
+          "warn": "Warn",
+          "info": "Info",
+          "debug": "Debug",
+          "trace": "Trace"
+        }
       },
       "updateChecks": {
         "label": "アップデートを確認",
@@ -935,7 +943,12 @@
       "keyboardImplementation": {
         "title": "キーボード実装",
         "description": "キーボードショートカットのバックエンドを選択してください。",
-        "bindingsReset": "キーボードショートカットに互換性がなかったため、デフォルトにリセットされました"
+        "bindingsReset": "キーボードショートカットに互換性がなかったため、デフォルトにリセットされました",
+        "options": {
+          "tauri": "Tauri Global Shortcut",
+          "handy_keys": "Handy Keys"
+        },
+        "changeConfirm": "Change keyboard backend? Shortcuts that are incompatible with the new backend may be reset to defaults."
       },
       "paths": {
         "appData": "アプリデータ:",
@@ -1168,7 +1181,9 @@
         "port": "Port",
         "portHint": "Restart applies on blur.",
         "errorPrefix": "API error:",
-        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt"
+        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt",
+        "portRangeError": "Port must be between 1024 and 65535.",
+        "enableConfirm": "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private."
       }
     },
     "speechCleanup": {
@@ -1757,7 +1772,14 @@
       "demoPrefix": "I am going",
       "demoWrongWord": "two",
       "demoFixedWord": "to",
-      "demoSuffix": "the store"
+      "demoSuffix": "the store",
+      "summaryTitle": "How Vox Jot learns",
+      "summaryDescription": "Save corrections once and they automatically apply to future dictations. Use the dictionary view to inspect or remove entries.",
+      "openDictionary": "Open dictionary",
+      "automaticTitle": "Automatic learning",
+      "automaticDetail": "Edits you make near new text become candidate rules.",
+      "manualTitle": "Manual entries",
+      "manualDetail": "Add names, acronyms, or brand spellings directly."
     },
     "routePreview": {
       "title": "Processing route preview",
@@ -1826,7 +1848,30 @@
       "translationProviderOverrides": "Translation provider overrides",
       "labs": "Labs",
       "localApi": "Local API",
-      "acknowledgments": "Acknowledgments"
+      "acknowledgments": "Acknowledgments",
+      "dictationLanguage": "Dictation language",
+      "appearance": "Appearance",
+      "appBehavior": "App behavior",
+      "manageFromViewsTitle": "Manage from these views",
+      "manageFromViewsDescription": "Each main view has full controls — Settings only carries the global on/off toggles.",
+      "microphoneInput": "Microphone input",
+      "cueSoundsOverlay": "Cue sounds & overlay",
+      "insertionBehavior": "Insertion behavior",
+      "textShaping": "Text shaping",
+      "translationProviderOverride": "Translation provider override",
+      "privacyControls": "Privacy",
+      "captureMode": "Capture mode",
+      "captureModeDescription": "Choose how often Vox Jot updates screen text while the app is open.",
+      "textRecognitionQuality": "Text recognition quality",
+      "textRecognitionQualityDescription": "Choose faster capture or more accurate text recognition.",
+      "recognitionEngine": "Recognition engine",
+      "recognitionTimeout": "Recognition timeout",
+      "recognitionTimeoutDescription": "How long Vox Jot waits when reading text from one screen capture.",
+      "recencyWindow": "Recency window",
+      "recencyWindowDescription": "How recent captured screen text must be before Vox Jot refreshes it.",
+      "contextAmount": "Context amount",
+      "contextAmountDescription": "How much recent screen text Vox Jot can use during dictation cleanup.",
+      "activeLabel": "Active"
     },
     "soundPicker": {
       "label": "Sound theme",
@@ -1852,21 +1897,272 @@
     "privacy": {
       "localPrivacyModeLabel": "Local privacy mode",
       "localPrivacyModeDescription": "Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available.",
-      "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers."
+      "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.",
+      "heroOnTitle": "Local privacy on",
+      "heroOnDetail": "Cleanup and translation prefer on-device providers. Cloud routes are skipped when a local route exists.",
+      "heroOffTitle": "Cloud routes allowed",
+      "heroOffDetail": "Faster cleanup using configured cloud providers. Switch on local privacy to keep everything offline.",
+      "storageGroupTitle": "Storage",
+      "historyGroupTitle": "History",
+      "filesGroupTitle": "Files",
+      "previewLocalFirst": "Local-first",
+      "previewEnforced": "Enforced",
+      "previewAllowed": "Allowed",
+      "previewAudioCapture": "Audio capture",
+      "previewCleanup": "Cleanup",
+      "previewProvider": "Provider"
     },
     "diagnostics": {
-      "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them."
+      "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.",
+      "labsTitle": "Experimental Labs",
+      "labsDescription": "Try in-progress features. They may change or disappear between updates.",
+      "localApiTitle": "Local API",
+      "localApiDescription": "Expose Vox Jot to local scripts and shortcuts on this machine.",
+      "developerTitle": "Developer tools",
+      "developerDescription": "Inspect log files, route analysis, and lower-level debugging when debug mode is on.",
+      "terminalCommand": "vox-jot --diagnostics",
+      "terminalServicesOnline": "services online",
+      "terminalInputReady": "input ready",
+      "terminalDebugEnabled": "debug ENABLED",
+      "terminalDebugOff": "debug off",
+      "statOn": "On",
+      "statOff": "Off",
+      "statLabs": "Labs",
+      "statDebug": "Debug",
+      "debugToggleLabel": "Debug mode",
+      "debugToggleDescription": "Reveals developer tools, the route debugger, and log level controls. Also bumps file logs to Debug verbosity. Shortcut: ⌘/Ctrl + Shift + D."
     },
     "about": {
       "version": "Version {{version}}",
       "versionUnknown": "unknown",
       "summaryPrimary": "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.",
-      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow."
+      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.",
+      "highlightsTitle": "What's inside",
+      "highlightLocalTitle": "Local speech",
+      "highlightLocalDetail": "Whisper / Parakeet inference with optional Silero VAD.",
+      "highlightRefineTitle": "Refine providers",
+      "highlightRefineDetail": "Plug in OpenAI, Anthropic, Ollama, Apple Intelligence, and more.",
+      "highlightListenTitle": "Listen voices",
+      "highlightListenDetail": "Custom TTS packs, voice cloning, and Story Studio.",
+      "stackTitle": "Built with",
+      "stackTauri": "Tauri 2.x",
+      "stackReact": "React + TypeScript",
+      "stackRust": "Rust audio pipeline"
     },
     "jotPad": {
       "empty": "Start your first note",
       "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
       "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
+    },
+    "hero": {
+      "general": {
+        "eyebrow": "Settings",
+        "title": "App & Dictation",
+        "description": "Choose how Vox Jot looks, which language it listens for, and how the app behaves on this Mac.",
+        "themeStat": "Theme",
+        "fontStat": "Text size",
+        "languageStat": "Listening",
+        "previewLabel": "App preview",
+        "autoLabel": "Auto"
+      },
+      "shortcuts": {
+        "eyebrow": "Keyboard",
+        "title": "Shortcuts",
+        "description": "Trigger dictation, refine selected text, and play back speech without leaving your keyboard.",
+        "primary": "Primary",
+        "textActions": "Text actions"
+      },
+      "recording": {
+        "eyebrow": "Audio",
+        "title": "Recording & Devices",
+        "description": "Pick the microphone Vox Jot listens to, tune feedback cues, and shape how your speech is cleaned up.",
+        "input": "Input",
+        "output": "Output",
+        "monitoring": "Monitoring"
+      },
+      "outputPaste": {
+        "eyebrow": "Delivery",
+        "title": "Output & Paste",
+        "description": "Control how transcribed text lands in the focused app — instant paste, simulated typing, or clipboard.",
+        "previewSource": "Spoken",
+        "previewTarget": "Pasted into focused app"
+      },
+      "corrections": {
+        "eyebrow": "Learning",
+        "title": "Corrections",
+        "description": "Teach Vox Jot how to spell names, brands, and recurring phrases so dictation looks right the first time."
+      },
+      "models": {
+        "eyebrow": "Intelligence",
+        "title": "Models & AI",
+        "description": "Choose providers, route requests, and decide what runs on this device versus in the cloud."
+      },
+      "screenContext": {
+        "eyebrow": "Context",
+        "title": "Screen Context",
+        "description": "Let Vox Jot glance at visible text near the focused app so cleanup and rewrites stay on topic."
+      },
+      "privacy": {
+        "eyebrow": "Your data",
+        "title": "Privacy & Storage",
+        "description": "Decide what stays on-device, how long recordings linger, and where files live on disk."
+      },
+      "diagnostics": {
+        "eyebrow": "Advanced",
+        "title": "Labs & Diagnostics",
+        "description": "Try experimental features, expose the local API, and inspect what Vox Jot is doing under the hood."
+      },
+      "about": {
+        "eyebrow": "About",
+        "title": "Vox Jot",
+        "description": "Local-first dictation, refine, and listen — built around Whisper-family models, custom TTS engines, and system-level typing integrations."
+      }
+    },
+    "cross": {
+      "writeProfiles": {
+        "title": "Manage write profiles",
+        "description": "App-aware tone, rewrites, and Phrase Keys",
+        "destination": "Refine"
+      },
+      "speechModels": {
+        "title": "Browse speech models",
+        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "destination": "Dictate"
+      },
+      "refineModels": {
+        "title": "Browse refine models",
+        "description": "Cleanup, translate, and rewrite providers",
+        "destination": "Refine"
+      },
+      "voices": {
+        "title": "Manage voices",
+        "description": "Voice packs, cloning, and playback",
+        "destination": "Listen"
+      },
+      "translation": {
+        "title": "Translation",
+        "description": "Set target language and rules",
+        "destination": "Refine"
+      },
+      "dictionary": {
+        "title": "Open dictionary",
+        "description": "Review every correction Vox Jot has learned",
+        "destination": "Dictate"
+      }
+    },
+    "shortcuts": {
+      "groups": {
+        "dictate": {
+          "title": "Dictate",
+          "description": "Start or stop dictation, cancel, and open the command menu."
+        },
+        "refine": {
+          "title": "Refine selected text",
+          "description": "Rewrite or translate whatever is currently selected."
+        },
+        "listen": {
+          "title": "Listen",
+          "description": "Speak selected text aloud and control playback."
+        }
+      },
+      "preview": {
+        "title": "Quick keys",
+        "subtitle": "Tap a chord to record dictation, refine, or listen.",
+        "hold": "Hold to record"
+      }
+    },
+    "device": {
+      "input": "Microphone",
+      "output": "Speaker",
+      "feedback": "Audio feedback",
+      "previewTitle": "Audio pipeline preview",
+      "previewDescription": "Vox Jot listens, optionally enhances voice, and plays cues during the dictation loop.",
+      "stepMic": "Mic input",
+      "stepEnhance": "Voice clarity",
+      "stepFeedback": "Cue sounds",
+      "stepOutput": "TTS playback",
+      "noDevice": "No device selected"
+    },
+    "output": {
+      "previewTitle": "Output preview",
+      "previewDescription": "See how Vox Jot delivers transcribed text into the focused app.",
+      "sourceLabel": "Spoken",
+      "targetLabel": "Inserted",
+      "sampleSource": "Send that report when you get a minute",
+      "sampleTarget": "Send that report when you get a minute.",
+      "methodTitle": "Insertion methods",
+      "methodPaste": "Clipboard paste",
+      "methodPasteDetail": "Fastest. Replaces your clipboard temporarily.",
+      "methodType": "Simulated typing",
+      "methodTypeDetail": "Works in apps that block paste — slower but reliable.",
+      "methodNone": "Copy only",
+      "methodNoneDetail": "Just puts the text on your clipboard."
+    },
+    "models": {
+      "routeTitle": "Provider routing",
+      "routeDescription": "Vox Jot picks a route per request. Local stays offline; cloud uses your selected providers.",
+      "localRouteHeading": "Local-first",
+      "cloudRouteHeading": "Cloud assist",
+      "advancedEvaluationTitle": "Refine model evaluation (advanced)",
+      "fileTranscriptionTitle": "File transcription",
+      "fileTranscriptionDetail": "Drop in audio or video to transcribe",
+      "managementTitle": "Manage models from these views",
+      "managementSubtitle": "Settings only carries provider routing. Browse, download, and swap individual models in the dedicated catalogs.",
+      "cleanupLabel": "Cleanup",
+      "routeLabel": "Route",
+      "routeLocal": "Local",
+      "routeCloud": "Cloud"
+    },
+    "screenContext": {
+      "previewBadgeOn": "Capture enabled",
+      "previewBadgeOff": "Capture paused",
+      "permissionTitle": "Screen Recording permission",
+      "permissionDetail": "Required so Vox Jot can read the visible text near the active app.",
+      "permissionGranted": "Granted",
+      "permissionMissing": "Action required",
+      "advancedToggle": "Advanced capture tuning",
+      "previewLabel": "Visible text → context window",
+      "previewLive": "Live",
+      "previewPaused": "Paused",
+      "previewActiveApp": "Active app",
+      "previewContextText": "Context text",
+      "captureStatusLabel": "Capture status",
+      "permissionStatLabel": "Screen permission",
+      "cacheStatLabel": "Cache size",
+      "debugPreviewHeader": "Debug preview"
+    },
+    "nav": {
+      "dictate": {
+        "history": "Recent History",
+        "corrections": "Dictionary",
+        "jotPad": "Jot Pad",
+        "fileTranscription": "File Transcription"
+      },
+      "refine": {
+        "writeProfiles": "Write Profiles",
+        "phraseKeys": "Phrase Keys",
+        "translation": "Translation"
+      },
+      "listen": {
+        "createVoices": "Create Voices",
+        "myVoices": "Voices",
+        "voiceCloning": "Voice Cloning",
+        "studio": "Studio",
+        "generatedAudio": "Generated Audio"
+      },
+      "settings": {
+        "general": "App & Dictation",
+        "shortcuts": "Shortcuts",
+        "recordingDevices": "Recording & Devices",
+        "outputPaste": "Output & Paste",
+        "correctionsSettings": "Corrections",
+        "aiSetup": "Models & AI",
+        "modelTesting": "Testing",
+        "screenContext": "Screen Context",
+        "privacy": "Privacy & Storage",
+        "diagnostics": "Diagnostics",
+        "about": "About Vox Jot"
+      }
     }
   },
   "testing": {
@@ -1901,6 +2197,14 @@
       "tested": "{{count}} tested",
       "pending": "{{count}} pending",
       "blocked": "{{count}} blocked"
+    }
+  },
+  "ui": {
+    "dropdown": {
+      "placeholder": "Select an option..."
+    },
+    "pathDisplay": {
+      "pathLabel": "Filesystem path"
     }
   }
 }

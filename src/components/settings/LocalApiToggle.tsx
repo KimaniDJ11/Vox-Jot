@@ -21,6 +21,9 @@ import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+
+const LOCAL_API_SECURITY_ACK_KEY = "vox-jot:local-api-security-acknowledged";
 
 type StatusEvent = {
   running: boolean;
@@ -64,29 +67,62 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
     };
   }, []);
 
-  const onToggle = useCallback(async (next: boolean) => {
-    setBusy(true);
-    setError(null);
-    setEnabled(next);
-    try {
-      const r = await commands.setHttpApiEnabled(next);
-      if (r.status === "error") {
-        setError(r.error);
-        setEnabled(!next);
+  const onToggle = useCallback(
+    async (next: boolean) => {
+      if (next) {
+        let acknowledged = false;
+        try {
+          acknowledged =
+            window.localStorage.getItem(LOCAL_API_SECURITY_ACK_KEY) === "1";
+        } catch {
+          acknowledged = false;
+        }
+
+        if (!acknowledged) {
+          const confirmed = confirmDestructiveAction(
+            t("settings.diagnostics.localApi.enableConfirm", {
+              defaultValue:
+                "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private.",
+            }),
+          );
+          if (!confirmed) return;
+
+          try {
+            window.localStorage.setItem(LOCAL_API_SECURITY_ACK_KEY, "1");
+          } catch {
+            /* localStorage may be unavailable; the confirm still protected this enable. */
+          }
+        }
       }
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+
+      setBusy(true);
+      setError(null);
+      setEnabled(next);
+      try {
+        const r = await commands.setHttpApiEnabled(next);
+        if (r.status === "error") {
+          setError(r.error);
+          setEnabled(!next);
+        }
+      } finally {
+        setBusy(false);
+      }
+    },
+    [t],
+  );
 
   const onPortBlur = useCallback(async () => {
     if (port < 1024 || port > 65535) {
-      setError("Port must be between 1024 and 65535.");
+      setError(
+        t("settings.diagnostics.localApi.portRangeError", {
+          defaultValue: "Port must be between 1024 and 65535.",
+        }),
+      );
       return;
     }
     const r = await commands.setHttpApiPort(port);
     if (r.status === "error") setError(r.error);
-  }, [port]);
+  }, [port, t]);
 
   const url = `http://127.0.0.1:${port}`;
   const authHeader = `X-Vox-Jot-Api-Token: ${token}`;

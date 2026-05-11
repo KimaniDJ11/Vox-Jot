@@ -1,21 +1,44 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { useTranslation } from "react-i18next";
 import {
+  AppWindow,
   ArrowRight,
+  Bot,
+  BookOpen,
+  Bug,
   CheckCircle2,
   Cloud,
+  Clipboard,
   Cpu,
+  FileAudio,
+  FlaskConical,
+  HardDrive,
+  Headphones,
   Info,
+  Keyboard,
+  Languages,
+  Layers,
   Mic,
+  Palette,
+  Settings as SettingsIcon,
   Shield,
-  Trash2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  SpellCheck,
+  Terminal,
+  Type,
+  Volume2,
+  WandSparkles,
+  Waves,
   Wifi,
   XCircle,
 } from "lucide-react";
 
 import { commands } from "@/bindings";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
+import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -70,14 +93,20 @@ import { TypingToolSetting } from "@/components/settings/TypingTool";
 import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
 import { VolumeSlider } from "@/components/settings/VolumeSlider";
 import { WordCorrectionThreshold } from "@/components/settings/debug/WordCorrectionThreshold";
-import { WriteProfilesCompactCard } from "@/components/settings/WriteProfilesCompactCard";
-import {
-  AutoReadbackSection as AutoReadbackPanel,
-  SpeechPackManagerSection,
-} from "@/components/settings/general/ListenSections";
 import UpdateChecker from "@/components/update-checker";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
 import { subtleCardClassName } from "@/components/app-sections/shared";
+import {
+  BoardList,
+  CrossLinkCard,
+  MetricTile,
+  PreviewSlate,
+  SectionHero,
+} from "@/components/app-sections/settings-shared";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Shared atoms
+ * ─────────────────────────────────────────────────────────────────────────── */
 
 const MiniStatusPill: React.FC<{
   icon: React.ReactNode;
@@ -103,190 +132,97 @@ const MiniStatusPill: React.FC<{
   );
 };
 
-const CorrectionsDemoCard: React.FC = () => {
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: App & Dictation
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const themeLabel = (theme: string) => {
+  switch (theme) {
+    case "light":
+      return "Light";
+    case "dark":
+      return "Dark";
+    case "sepia":
+      return "Sepia";
+    case "ocean":
+      return "Ocean";
+    case "forest":
+      return "Forest";
+    case "rose":
+      return "Rose";
+    case "slate":
+      return "Slate";
+    case "solarized":
+      return "Solarized";
+    case "graphite":
+      return "Graphite";
+    case "system":
+      return "System";
+    default:
+      return theme;
+  }
+};
+
+const GeneralHero: React.FC = () => {
   const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const theme = (getSetting("app_theme") ?? "system") as string;
+  const fontScale = (getSetting("app_font_scale") ?? 1) as number;
+  const selectedLanguage = (getSetting("selected_language") ??
+    "auto") as string;
+
   return (
-    <div className={subtleCardClassName}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--text)]">
-            {t("appSections.corrections.demoTitle")}
-          </p>
-          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-            {t("appSections.corrections.demoDescription")}
-          </p>
-        </div>
-        <MiniStatusPill
-          icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
-          label={t("appSections.corrections.appliedPill")}
-          tone="success"
-        />
-      </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
-            {t("appSections.corrections.rawLabel")}
-          </p>
-          <p className="mt-2 text-sm text-[var(--text)]">
-            {t("appSections.corrections.demoPrefix")}{" "}
-            <span className="underline decoration-[var(--warning)] decoration-2">
-              {t("appSections.corrections.demoWrongWord")}
-            </span>{" "}
-            {t("appSections.corrections.demoSuffix")}
-          </p>
-        </div>
-        <ArrowRight className="hidden h-4 w-4 text-[var(--muted)] md:block" />
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
-            {t("appSections.corrections.fixedLabel")}
-          </p>
-          <p className="mt-2 text-sm text-[var(--text)]">
-            {t("appSections.corrections.demoPrefix")}{" "}
-            <span className="rounded bg-[var(--accent-gold-soft)] px-1 font-bold underline decoration-[var(--accent-gold)] decoration-2">
-              {t("appSections.corrections.demoFixedWord")}
-            </span>{" "}
-            {t("appSections.corrections.demoSuffix")}
-          </p>
-        </div>
-      </div>
-    </div>
+    <SectionHero
+      icon={<AppWindow className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.general.eyebrow")}
+      title={t("appSections.hero.general.title")}
+      description={t("appSections.hero.general.description")}
+      tone="accent"
+      stats={[
+        {
+          label: t("appSections.hero.general.themeStat"),
+          value: themeLabel(theme),
+        },
+        {
+          label: t("appSections.hero.general.fontStat"),
+          value: `${Math.round(fontScale * 100)}%`,
+        },
+        {
+          label: t("appSections.hero.general.languageStat"),
+          value:
+            selectedLanguage === "auto" || !selectedLanguage
+              ? t("appSections.hero.general.autoLabel")
+              : selectedLanguage.toUpperCase(),
+        },
+      ]}
+      visual={<GeneralHeroVisual />}
+    />
   );
 };
 
-const RouteCard: React.FC<{
-  selected: boolean;
-  icon: React.ReactNode;
-  title: string;
-  detail: string;
-  badge: string;
-}> = ({ selected, icon, title, detail, badge }) => (
-  <div
-    className={`rounded-xl border p-4 ${
-      selected
-        ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-        : "border-[var(--border)] bg-[var(--panel-bg)]"
-    }`}
-  >
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-[var(--text)]">
-        <span className="text-[var(--accent)]">{icon}</span>
-        <span className="text-sm font-semibold">{title}</span>
-      </div>
-      {selected ? (
-        <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-      ) : null}
-    </div>
-    <p className="mt-3 text-xs font-medium text-[var(--text)]">{detail}</p>
-    <p className="mt-1 text-xs text-[var(--muted)]">{badge}</p>
-  </div>
-);
-
-const AIProcessingRoutePreview: React.FC = () => {
+const GeneralHeroVisual: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting } = useSettings();
-  const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
-  const providers = getSetting("post_process_providers") ?? [];
-  const providerId = getSetting("post_process_provider_id") ?? "";
-  const selectedProvider = providers.find(
-    (provider) => provider.id === providerId,
-  );
-  const baseUrl = selectedProvider?.base_url?.toLowerCase() ?? "";
-  const localProvider =
-    localPrivacyMode ||
-    providerId === "apple_intelligence" ||
-    providerId === "ollama" ||
-    baseUrl.includes("localhost") ||
-    baseUrl.includes("127.0.0.1");
-
   return (
-    <div className={subtleCardClassName}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--text)]">
-            {t("appSections.routePreview.title")}
-          </p>
-          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-            {t("appSections.routePreview.description")}
-          </p>
+    <PreviewSlate className="w-full">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+          <Palette className="h-3.5 w-3.5" aria-hidden />
+          {t("appSections.hero.general.previewLabel")}
         </div>
-        <MiniStatusPill
-          icon={
-            localProvider ? (
-              <Shield className="h-3.5 w-3.5" aria-hidden />
-            ) : (
-              <Wifi className="h-3.5 w-3.5" aria-hidden />
-            )
-          }
-          label={
-            localProvider
-              ? t("appSections.routePreview.localRoute")
-              : t("appSections.routePreview.cloudRoute")
-          }
-          tone={localProvider ? "success" : "info"}
-        />
-      </div>
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        <RouteCard
-          selected={localProvider}
-          icon={<Cpu className="h-5 w-5" aria-hidden />}
-          title={t("appSections.routePreview.localAi")}
-          detail={t("appSections.routePreview.localDetail")}
-          badge={t("appSections.routePreview.offlineCapable")}
-        />
-        <RouteCard
-          selected={!localProvider}
-          icon={<Cloud className="h-5 w-5" aria-hidden />}
-          title={t("appSections.routePreview.cloudAi")}
-          detail={t("appSections.routePreview.cloudDetail")}
-          badge={t("appSections.routePreview.usesInternet")}
-        />
-      </div>
-    </div>
-  );
-};
-
-const RetentionTimelinePreview: React.FC = () => {
-  const { t } = useTranslation();
-  const { getSetting } = useSettings();
-  const retention = getSetting("recording_retention_period") ?? "never";
-  const labels: Record<string, string> = {
-    never: t("appSections.retention.never"),
-    preserve_limit: t("appSections.retention.preserveLimit"),
-    days3: t("appSections.retention.days3"),
-    days_3: t("appSections.retention.days3"),
-    weeks2: t("appSections.retention.weeks2"),
-    weeks_2: t("appSections.retention.weeks2"),
-    months3: t("appSections.retention.months3"),
-    months_3: t("appSections.retention.months3"),
-  };
-
-  return (
-    <div className="px-4 py-3">
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[var(--text)]">
-            {t("appSections.retention.title")}
-          </p>
-          <MiniStatusPill
-            icon={<Trash2 className="h-3.5 w-3.5" aria-hidden />}
-            label={labels[retention] ?? labels.never}
-            tone={retention === "never" ? "success" : "warning"}
-          />
-        </div>
-        <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2 text-xs font-semibold text-[var(--text)]">
-          <span>{t("appSections.retention.day1")}</span>
-          <span className="h-px bg-[var(--border)]" aria-hidden />
-          <span>{t("appSections.retention.day7")}</span>
-          <span className="h-px bg-[var(--border)]" aria-hidden />
-          <span>{t("appSections.retention.day30")}</span>
-          <span className="h-px bg-[var(--border)]" aria-hidden />
-          <Trash2
-            className="h-4 w-4 text-[var(--warning)]"
-            aria-label={t("appSections.retention.autoDelete")}
-          />
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-[inset_0_1px_0_var(--edge-highlight)]">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+            <span className="h-1.5 flex-1 rounded-full bg-[color-mix(in_srgb,var(--text)_22%,transparent)]" />
+            <span className="h-3 w-3 rounded-full bg-[var(--accent-gold)]" />
+          </div>
+          <div className="mt-2 space-y-1.5">
+            <span className="block h-1.5 w-5/6 rounded-full bg-[color-mix(in_srgb,var(--text)_55%,transparent)]" />
+            <span className="block h-1.5 w-3/4 rounded-full bg-[color-mix(in_srgb,var(--text)_30%,transparent)]" />
+            <span className="block h-1.5 w-2/3 rounded-full bg-[color-mix(in_srgb,var(--text)_20%,transparent)]" />
+          </div>
         </div>
       </div>
-    </div>
+    </PreviewSlate>
   );
 };
 
@@ -294,26 +230,25 @@ export const GeneralAppSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SettingsGroup title={t("appSections.groups.dictation")}>
+      <GeneralHero />
+
+      <SettingsGroup title={t("appSections.groups.dictationLanguage")}>
         <LanguageSelector descriptionMode="inline" grouped={true} />
+        <GlobalLanguageSync descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title={t("appSections.groups.app")}>
+      <SettingsGroup title={t("appSections.groups.appearance")}>
         <ThemeSelector descriptionMode="tooltip" grouped={true} />
         <AppFontScale />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.groups.appBehavior")}>
         <StartHidden descriptionMode="tooltip" grouped={true} />
         <AutostartToggle descriptionMode="tooltip" grouped={true} />
         <ShowTrayIcon descriptionMode="tooltip" grouped={true} />
         <AppLanguageSelector descriptionMode="tooltip" grouped={true} />
-        <GlobalLanguageSync descriptionMode="tooltip" grouped={true} />
         <UpdateChecksToggle descriptionMode="tooltip" grouped={true} />
         <ModelUnloadTimeoutSetting descriptionMode="inline" grouped={true} />
-      </SettingsGroup>
-
-      <SpeechPackManagerSection />
-
-      <SettingsGroup title={t("appSections.groups.writeProfiles")}>
-        <WriteProfilesCompactCard />
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.groups.featureToggles")}>
@@ -321,8 +256,103 @@ export const GeneralAppSettingsSection: React.FC = () => {
         <PhraseKeysEnabledToggle descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
-      <AutoReadbackPanel />
+      <BoardList
+        title={t("appSections.groups.manageFromViewsTitle")}
+        description={t("appSections.groups.manageFromViewsDescription")}
+        columns={2}
+      >
+        <CrossLinkCard
+          icon={<WandSparkles className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.writeProfiles.title")}
+          description={t("appSections.cross.writeProfiles.description")}
+          destination={t("appSections.cross.writeProfiles.destination")}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent("vox-jot:navigate", {
+                detail: { view: "refine", section: "write-profiles" },
+              }),
+            );
+          }}
+        />
+        <CrossLinkCard
+          icon={<Volume2 className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.voices.title")}
+          description={t("appSections.cross.voices.description")}
+          destination={t("appSections.cross.voices.destination")}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent("vox-jot:navigate", {
+                detail: { view: "listen", section: "my-voices" },
+              }),
+            );
+          }}
+        />
+        <CrossLinkCard
+          icon={<Volume2 className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.ttsModels.title", {
+            defaultValue: "Browse voice models",
+          })}
+          description={t("appSections.cross.ttsModels.description", {
+            defaultValue: "TTS engines, voice packs, and clones",
+          })}
+          destination={t("appSections.cross.voices.destination")}
+          onClick={() => {
+            void openModelHub("tts");
+          }}
+        />
+      </BoardList>
     </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Shortcuts
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const KeyboardGlyph: React.FC<{
+  tone?: "accent" | "neutral";
+  label: string;
+}> = ({ tone = "neutral", label }) => (
+  <span
+    className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-md border px-1.5 font-mono text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_-1px_0_var(--edge-shadow)] ${
+      tone === "accent"
+        ? "border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-soft)] text-[var(--accent)]"
+        : "border-[var(--border)] bg-[var(--card)] text-[var(--text)]"
+    }`}
+  >
+    {label}
+  </span>
+);
+
+const ShortcutsHero: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <SectionHero
+      icon={<Keyboard className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.shortcuts.eyebrow")}
+      title={t("appSections.hero.shortcuts.title")}
+      description={t("appSections.hero.shortcuts.description")}
+      tone="info"
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              {t("appSections.shortcuts.preview.title")}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <KeyboardGlyph tone="accent" label="⌃" />
+              <span className="text-[var(--muted)]">+</span>
+              <KeyboardGlyph tone="accent" label="⇧" />
+              <span className="text-[var(--muted)]">+</span>
+              <KeyboardGlyph tone="accent" label="D" />
+            </div>
+            <p className="text-[11px] leading-5 text-[var(--muted)]">
+              {t("appSections.shortcuts.preview.subtitle")}
+            </p>
+          </div>
+        </PreviewSlate>
+      }
+    />
   );
 };
 
@@ -330,25 +360,93 @@ export const ShortcutsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <SettingsGroup title={t("appSections.groups.dictationShortcuts")}>
+      <ShortcutsHero />
+
+      <SettingsGroup
+        title={t("appSections.shortcuts.groups.dictate.title")}
+        description={t("appSections.shortcuts.groups.dictate.description")}
+      >
         <ShortcutInput shortcutId="transcribe" grouped={true} />
         <ShortcutInput
           shortcutId="transcribe_with_post_process"
           grouped={true}
         />
+        <ShortcutInput shortcutId="cancel" grouped={true} />
         <ShortcutInput shortcutId="toggle_command_menu" grouped={true} />
         <PushToTalk descriptionMode="tooltip" grouped={true} />
-        <ShortcutInput shortcutId="cancel" grouped={true} />
       </SettingsGroup>
 
-      <SettingsGroup title={t("appSections.groups.textActionShortcuts")}>
+      <SettingsGroup
+        title={t("appSections.shortcuts.groups.refine.title")}
+        description={t("appSections.shortcuts.groups.refine.description")}
+      >
         <ShortcutInput shortcutId="rewrite_selection" grouped={true} />
         <ShortcutInput shortcutId="translate_selection" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("appSections.shortcuts.groups.listen.title")}
+        description={t("appSections.shortcuts.groups.listen.description")}
+      >
         <ShortcutInput shortcutId="speak_selection" grouped={true} />
         <ShortcutInput shortcutId="speak_last_output" grouped={true} />
         <ShortcutInput shortcutId="stop_speaking" grouped={true} />
       </SettingsGroup>
     </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Recording & Devices
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const RecordingHero: React.FC = () => {
+  const { t } = useTranslation();
+  const { audio_feedback: feedbackOn, tts_enabled: ttsEnabled } =
+    useSettingsSlice(["audio_feedback", "tts_enabled"] as const);
+
+  return (
+    <SectionHero
+      icon={<Mic className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.recording.eyebrow")}
+      title={t("appSections.hero.recording.title")}
+      description={t("appSections.hero.recording.description")}
+      tone="accent"
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              {t("appSections.device.previewTitle")}
+            </p>
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text)]">
+              <span className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1">
+                <Mic className="h-3 w-3 text-[var(--accent)]" />
+                {t("appSections.device.stepMic")}
+              </span>
+              <ArrowRight className="h-3 w-3 text-[var(--muted)]" />
+              <span className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1">
+                <Waves className="h-3 w-3 text-[var(--accent)]" />
+                {t("appSections.device.stepEnhance")}
+              </span>
+              <ArrowRight className="h-3 w-3 text-[var(--muted)]" />
+              <span
+                className={`flex items-center gap-1 rounded-md border px-2 py-1 ${
+                  feedbackOn
+                    ? "border-[color-mix(in_srgb,var(--success)_45%,var(--border))] bg-[var(--success-soft)] text-[var(--success)]"
+                    : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+                }`}
+              >
+                <Headphones className="h-3 w-3" />
+                {t("appSections.device.stepFeedback")}
+              </span>
+            </div>
+            <p className="text-[11px] leading-5 text-[var(--muted)]">
+              {ttsEnabled ? "Speech output enabled" : "Speech output muted"}
+            </p>
+          </div>
+        </PreviewSlate>
+      }
+    />
   );
 };
 
@@ -387,6 +485,7 @@ const CustomFillerWordsSetting: React.FC = () => {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={t("settings.speechCleanup.fillerWordsPlaceholder")}
+          aria-label={t("appSections.fillerWords.title")}
           className="min-h-[120px]"
         />
         <div className="flex gap-2">
@@ -426,12 +525,17 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup>
+      <RecordingHero />
+
+      <SettingsGroup title={t("appSections.groups.microphoneInput")}>
         <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <ClamshellMicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="inline" grouped={true} />
         <MuteWhileRecording descriptionMode="inline" grouped={true} />
         <AudioDucking descriptionMode="inline" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.groups.cueSoundsOverlay")}>
         <AudioFeedback descriptionMode="tooltip" grouped={true} />
         <VolumeSlider disabled={!audioFeedbackEnabled} />
         <ShowOverlay descriptionMode="inline" grouped={true} />
@@ -447,21 +551,19 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
           grouped={true}
           disabled={!((audioFeedbackEnabled ?? false) || (ttsEnabled ?? false))}
         />
-        <div className="border-t border-[var(--border)]">
-          <Slider
-            value={ttsVolume ?? 1}
-            onChange={(value) => void updateSetting("tts_volume", value)}
-            min={0}
-            max={1}
-            step={0.05}
-            label={t("appSections.speechVolume.label")}
-            description={t("appSections.speechVolume.description")}
-            descriptionMode="tooltip"
-            grouped={true}
-            formatValue={(value) => `${Math.round(value * 100)}%`}
-            disabled={!ttsEnabled}
-          />
-        </div>
+        <Slider
+          value={ttsVolume ?? 1}
+          onChange={(value) => void updateSetting("tts_volume", value)}
+          min={0}
+          max={1}
+          step={0.05}
+          label={t("appSections.speechVolume.label")}
+          description={t("appSections.speechVolume.description")}
+          descriptionMode="tooltip"
+          grouped={true}
+          formatValue={(value) => `${Math.round(value * 100)}%`}
+          disabled={!ttsEnabled}
+        />
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.groups.speechCleanup")}>
@@ -472,16 +574,129 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
   );
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Output & Paste
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const OutputPasteHero: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const pasteMethod = (getSetting("paste_method") ?? "paste") as string;
+
+  const methodLabel =
+    pasteMethod === "paste"
+      ? t("appSections.output.methodPaste")
+      : pasteMethod === "type"
+        ? t("appSections.output.methodType")
+        : t("appSections.output.methodNone");
+
+  return (
+    <SectionHero
+      icon={<Clipboard className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.outputPaste.eyebrow")}
+      title={t("appSections.hero.outputPaste.title")}
+      description={t("appSections.hero.outputPaste.description")}
+      tone="info"
+      stats={[
+        { label: t("appSections.groups.activeLabel"), value: methodLabel },
+      ]}
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
+                <Mic className="h-3 w-3" />
+              </span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                {t("appSections.output.sourceLabel")}
+              </span>
+            </div>
+            <p className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[11px] italic text-[var(--text)]">
+              "{t("appSections.output.sampleSource")}"
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--success-soft)] text-[var(--success)]">
+                <Type className="h-3 w-3" />
+              </span>
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                {t("appSections.output.targetLabel")}
+              </span>
+            </div>
+            <p className="rounded-md border border-[color-mix(in_srgb,var(--success)_30%,var(--border))] bg-[color-mix(in_srgb,var(--success)_5%,var(--card))] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text)]">
+              {t("appSections.output.sampleTarget")}
+            </p>
+          </div>
+        </PreviewSlate>
+      }
+    />
+  );
+};
+
+const MethodLegend: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {[
+        {
+          icon: <Clipboard className="h-3.5 w-3.5" aria-hidden />,
+          title: t("appSections.output.methodPaste"),
+          detail: t("appSections.output.methodPasteDetail"),
+        },
+        {
+          icon: <Type className="h-3.5 w-3.5" aria-hidden />,
+          title: t("appSections.output.methodType"),
+          detail: t("appSections.output.methodTypeDetail"),
+        },
+        {
+          icon: <Layers className="h-3.5 w-3.5" aria-hidden />,
+          title: t("appSections.output.methodNone"),
+          detail: t("appSections.output.methodNoneDetail"),
+        },
+      ].map((item) => (
+        <div
+          key={item.title}
+          className="rounded-xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-3 py-3"
+        >
+          <div className="flex items-center gap-2 text-[12.5px] font-semibold text-[var(--text)]">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
+              {item.icon}
+            </span>
+            {item.title}
+          </div>
+          <p className="mt-1.5 text-[11.5px] leading-5 text-[var(--muted)]">
+            {item.detail}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const OutputPasteSettingsSection: React.FC = () => {
   const { getSetting } = useSettings();
   const debugMode = getSetting("debug_mode") ?? false;
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-6">
-      <SettingsGroup>
+      <OutputPasteHero />
+
+      <section className="space-y-3">
+        <header className="px-1">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
+            {t("appSections.output.methodTitle")}
+          </h3>
+        </header>
+        <MethodLegend />
+      </section>
+
+      <SettingsGroup title={t("appSections.groups.insertionBehavior")}>
         <PasteMethodSetting descriptionMode="inline" grouped={true} />
         <TypingToolSetting descriptionMode="inline" grouped={true} />
         <ClipboardHandlingSetting descriptionMode="inline" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.groups.textShaping")}>
         <AutoSubmit descriptionMode="inline" grouped={true} />
         <AppendTrailingSpace descriptionMode="inline" grouped={true} />
         {debugMode ? (
@@ -492,21 +707,212 @@ export const OutputPasteSettingsSection: React.FC = () => {
   );
 };
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Corrections
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const CorrectionsHero: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <SectionHero
+      icon={<SpellCheck className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.corrections.eyebrow")}
+      title={t("appSections.hero.corrections.title")}
+      description={t("appSections.hero.corrections.description")}
+      tone="success"
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                {t("appSections.corrections.rawLabel")}
+              </span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" />
+            </div>
+            <p className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[11.5px] text-[var(--text)]">
+              {t("appSections.corrections.demoPrefix")}{" "}
+              <span className="underline decoration-[var(--warning)] decoration-2 underline-offset-2">
+                {t("appSections.corrections.demoWrongWord")}
+              </span>{" "}
+              {t("appSections.corrections.demoSuffix")}
+            </p>
+            <div className="flex items-center gap-2">
+              <ArrowRight className="h-3 w-3 text-[var(--muted)]" />
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--success)]">
+                {t("appSections.corrections.fixedLabel")}
+              </span>
+            </div>
+            <p className="rounded-md border border-[color-mix(in_srgb,var(--success)_30%,var(--border))] bg-[color-mix(in_srgb,var(--success)_5%,var(--card))] px-2.5 py-1.5 text-[11.5px] text-[var(--text)]">
+              {t("appSections.corrections.demoPrefix")}{" "}
+              <span className="rounded bg-[var(--accent-gold-soft)] px-1 font-bold underline decoration-[var(--accent-gold)] decoration-2 underline-offset-2">
+                {t("appSections.corrections.demoFixedWord")}
+              </span>{" "}
+              {t("appSections.corrections.demoSuffix")}
+            </p>
+          </div>
+        </PreviewSlate>
+      }
+    />
+  );
+};
+
+const CorrectionsExplainer: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <BoardList columns={2}>
+      <div className={subtleCardClassName}>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--success-soft)] text-[var(--success)]">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <p className="text-[13px] font-semibold text-[var(--text)]">
+            {t("appSections.corrections.automaticTitle")}
+          </p>
+        </div>
+        <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
+          {t("appSections.corrections.automaticDetail")}
+        </p>
+      </div>
+      <div className={subtleCardClassName}>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <p className="text-[13px] font-semibold text-[var(--text)]">
+            {t("appSections.corrections.manualTitle")}
+          </p>
+        </div>
+        <p className="mt-2 text-[12px] leading-5 text-[var(--muted)]">
+          {t("appSections.corrections.manualDetail")}
+        </p>
+      </div>
+    </BoardList>
+  );
+};
+
 export const CorrectionsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <div className={subtleCardClassName}>
-        <p className="text-base font-semibold text-[var(--text)]">
-          {t("settings.corrections.title")}
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          {t("settings.corrections.description")}
-        </p>
-      </div>
-      <CorrectionsDemoCard />
+      <CorrectionsHero />
+      <CorrectionsExplainer />
       <CorrectionSettings />
+
+      <CrossLinkCard
+        icon={<BookOpen className="h-4 w-4" aria-hidden />}
+        title={t("appSections.cross.dictionary.title")}
+        description={t("appSections.cross.dictionary.description")}
+        destination={t("appSections.cross.dictionary.destination")}
+        onClick={() => {
+          window.dispatchEvent(
+            new CustomEvent("vox-jot:navigate", {
+              detail: { view: "dictate", section: "corrections" },
+            }),
+          );
+        }}
+      />
     </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Models & AI
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const ModelsHero: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
+  const providers = getSetting("post_process_providers") ?? [];
+  const providerId = getSetting("post_process_provider_id") ?? "";
+  const selectedProvider = providers.find(
+    (provider) => provider.id === providerId,
+  );
+  const baseUrl = selectedProvider?.base_url?.toLowerCase() ?? "";
+  const localProvider =
+    localPrivacyMode ||
+    providerId === "apple_intelligence" ||
+    providerId === "ollama" ||
+    baseUrl.includes("localhost") ||
+    baseUrl.includes("127.0.0.1");
+
+  return (
+    <SectionHero
+      icon={<Bot className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.models.eyebrow")}
+      title={t("appSections.hero.models.title")}
+      description={t("appSections.hero.models.description")}
+      tone="accent"
+      stats={[
+        {
+          label: t("appSections.models.cleanupLabel"),
+          value: selectedProvider?.label ?? "—",
+        },
+        {
+          label: t("appSections.models.routeLabel"),
+          value: localProvider
+            ? t("appSections.models.routeLocal")
+            : t("appSections.models.routeCloud"),
+        },
+      ]}
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="space-y-2">
+            <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              {t("appSections.models.routeTitle")}
+            </p>
+            <div className="grid gap-2">
+              <div
+                className={`rounded-md border px-2.5 py-2 ${
+                  localProvider
+                    ? "border-[color-mix(in_srgb,var(--success)_45%,var(--border))] bg-[var(--success-soft)]"
+                    : "border-[var(--border)] bg-[var(--card)]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Cpu
+                    className={`h-3.5 w-3.5 ${
+                      localProvider
+                        ? "text-[var(--success)]"
+                        : "text-[var(--muted)]"
+                    }`}
+                  />
+                  <span className="text-[11px] font-semibold text-[var(--text)]">
+                    {t("appSections.models.localRouteHeading")}
+                  </span>
+                  {localProvider ? (
+                    <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-[var(--success)]" />
+                  ) : null}
+                </div>
+              </div>
+              <div
+                className={`rounded-md border px-2.5 py-2 ${
+                  !localProvider
+                    ? "border-[color-mix(in_srgb,var(--info)_45%,var(--border))] bg-[var(--info-soft)]"
+                    : "border-[var(--border)] bg-[var(--card)]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Cloud
+                    className={`h-3.5 w-3.5 ${
+                      !localProvider
+                        ? "text-[var(--info)]"
+                        : "text-[var(--muted)]"
+                    }`}
+                  />
+                  <span className="text-[11px] font-semibold text-[var(--text)]">
+                    {t("appSections.models.cloudRouteHeading")}
+                  </span>
+                  {!localProvider ? (
+                    <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-[var(--info)]" />
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </PreviewSlate>
+      }
+    />
   );
 };
 
@@ -547,108 +953,294 @@ const TranslationProviderSettingsCard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <SettingsGroup
-        title={t("appSections.groups.translationProviderOverrides")}
+    <SettingsGroup title={t("appSections.groups.translationProviderOverride")}>
+      <SettingContainer
+        title={t("appSections.translationProvider.title")}
+        description={t("appSections.translationProvider.description")}
+        descriptionMode="tooltip"
+        grouped={true}
       >
-        <SettingContainer
-          title={t("appSections.translationProvider.title")}
-          description={t("appSections.translationProvider.description")}
-          descriptionMode="tooltip"
-          grouped={true}
-        >
-          <Dropdown
-            selectedValue={providerId}
-            onSelect={(value) => {
-              void updateSetting("translation_provider_id", value);
-              void fetchPostProcessModels(value);
-            }}
-            options={providerOptions}
-            placeholder={t("settings.translation.providerPlaceholder")}
-          />
-        </SettingContainer>
-
-        <SettingContainer
-          title={t("appSections.translationProvider.modelTitle")}
-          description={t("appSections.translationProvider.modelDescription")}
-          descriptionMode="tooltip"
-          grouped={true}
-          layout="stacked"
-          disabled={!providerId || providerId === "apple_intelligence"}
-        >
-          {providerId === "apple_intelligence" ? (
-            <p className="text-sm text-[var(--muted)]">
-              {t("appSections.translationProvider.appleNotice")}
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {modelOptions.length > 0 && (
-                <Dropdown
-                  selectedValue={modelDraft || null}
-                  onSelect={setModelDraft}
-                  options={modelOptions.map((option) => ({
-                    value: option,
-                    label: option,
-                  }))}
-                  onRefresh={() => {
-                    void fetchPostProcessModels(providerId);
-                  }}
-                  placeholder={t("settings.translation.modelPlaceholder")}
-                />
-              )}
-              <div className="flex flex-col gap-3 md:flex-row">
-                <Input
-                  value={modelDraft}
-                  onChange={(event) => setModelDraft(event.target.value)}
-                  placeholder={t("settings.translation.customModelPlaceholder")}
-                  className="min-h-[44px] flex-1"
-                />
-                <Button size="sm" onClick={() => void saveModel()}>
-                  {t("appSections.common.saveModel")}
-                </Button>
-              </div>
-            </div>
-          )}
-        </SettingContainer>
-
-        <ToggleSwitch
-          checked={getSetting("translation_translate_snippets") ?? false}
-          onChange={(enabled) =>
-            void updateSetting("translation_translate_snippets", enabled)
-          }
-          label={t("appSections.translationProvider.translatePhraseKeysLabel")}
-          description={t(
-            "appSections.translationProvider.translatePhraseKeysDescription",
-          )}
-          descriptionMode="tooltip"
-          grouped={true}
+        <Dropdown
+          selectedValue={providerId}
+          onSelect={(value) => {
+            void updateSetting("translation_provider_id", value);
+            void fetchPostProcessModels(value);
+          }}
+          options={providerOptions}
+          placeholder={t("settings.translation.providerPlaceholder")}
         />
-      </SettingsGroup>
-    </div>
+      </SettingContainer>
+
+      <SettingContainer
+        title={t("appSections.translationProvider.modelTitle")}
+        description={t("appSections.translationProvider.modelDescription")}
+        descriptionMode="tooltip"
+        grouped={true}
+        layout="stacked"
+        disabled={!providerId || providerId === "apple_intelligence"}
+      >
+        {providerId === "apple_intelligence" ? (
+          <p className="text-sm text-[var(--muted)]">
+            {t("appSections.translationProvider.appleNotice")}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {modelOptions.length > 0 && (
+              <Dropdown
+                selectedValue={modelDraft || null}
+                onSelect={setModelDraft}
+                options={modelOptions.map((option) => ({
+                  value: option,
+                  label: option,
+                }))}
+                onRefresh={() => {
+                  void fetchPostProcessModels(providerId);
+                }}
+                placeholder={t("settings.translation.modelPlaceholder")}
+              />
+            )}
+            <div className="flex flex-col gap-3 md:flex-row">
+              <Input
+                value={modelDraft}
+                onChange={(event) => setModelDraft(event.target.value)}
+                placeholder={t("settings.translation.customModelPlaceholder")}
+                className="min-h-[44px] flex-1"
+              />
+              <Button size="sm" onClick={() => void saveModel()}>
+                {t("appSections.common.saveModel")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </SettingContainer>
+
+      <ToggleSwitch
+        checked={getSetting("translation_translate_snippets") ?? false}
+        onChange={(enabled) =>
+          void updateSetting("translation_translate_snippets", enabled)
+        }
+        label={t("appSections.translationProvider.translatePhraseKeysLabel")}
+        description={t(
+          "appSections.translationProvider.translatePhraseKeysDescription",
+        )}
+        descriptionMode="tooltip"
+        grouped={true}
+      />
+    </SettingsGroup>
   );
 };
 
-const FileTranscriptionHint: React.FC = () => {
+export const AISetupSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className={`${subtleCardClassName} text-sm text-[var(--muted)]`}>
-      {t("settings.general.fileTranscription.movedHint", {
-        defaultValue:
-          "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it.",
-      })}
+    <div className="space-y-6">
+      <ModelsHero />
+
+      <PostProcessingSettings omitLocalPrivacy />
+
+      <TranslationProviderSettingsCard />
+
+      <BoardList
+        title={t("appSections.models.managementTitle")}
+        description={t("appSections.models.managementSubtitle")}
+        columns={2}
+      >
+        <CrossLinkCard
+          icon={<Mic className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.speechModels.title")}
+          description={t("appSections.cross.speechModels.description")}
+          destination={t("appSections.cross.speechModels.destination")}
+          onClick={() => {
+            void openModelHub("stt");
+          }}
+        />
+        <CrossLinkCard
+          icon={<WandSparkles className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.refineModels.title")}
+          description={t("appSections.cross.refineModels.description")}
+          destination={t("appSections.cross.refineModels.destination")}
+          onClick={() => {
+            void openModelHub("llm");
+          }}
+        />
+        <CrossLinkCard
+          icon={<Languages className="h-4 w-4" aria-hidden />}
+          title={t("appSections.cross.translation.title")}
+          description={t("appSections.cross.translation.description")}
+          destination={t("appSections.cross.translation.destination")}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent("vox-jot:navigate", {
+                detail: { view: "refine", section: "translation" },
+              }),
+            );
+          }}
+        />
+        <CrossLinkCard
+          icon={<FileAudio className="h-4 w-4" aria-hidden />}
+          title={t("appSections.models.fileTranscriptionTitle")}
+          description={t("appSections.models.fileTranscriptionDetail")}
+          destination={t("appSections.cross.speechModels.destination")}
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent("vox-jot:navigate", {
+                detail: { view: "dictate", section: "file-transcription" },
+              }),
+            );
+          }}
+        />
+      </BoardList>
+
+      <details className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]">
+        <summary className="cursor-pointer list-none px-5 py-4 text-[13px] font-semibold text-[var(--text)]">
+          <span className="inline-flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-[var(--muted)]" />
+            {t("appSections.models.advancedEvaluationTitle")}
+          </span>
+        </summary>
+        <div className="border-t border-[var(--border)] p-5">
+          <RefineModelsSettings
+            showEvaluationPanel={false}
+            hubFilterLabels={false}
+          />
+        </div>
+      </details>
     </div>
   );
 };
 
-export const AISetupSettingsSection: React.FC = () => (
-  <div className="space-y-6">
-    <AIProcessingRoutePreview />
-    <RefineModelsSettings showEvaluationPanel={false} />
-    <PostProcessingSettings omitLocalPrivacy />
-    <TranslationProviderSettingsCard />
-    <FileTranscriptionHint />
-  </div>
-);
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Privacy & Storage
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const PrivacyHero: React.FC<{ localPrivacyMode: boolean }> = ({
+  localPrivacyMode,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <SectionHero
+      icon={
+        localPrivacyMode ? (
+          <ShieldCheck className="h-5 w-5" aria-hidden />
+        ) : (
+          <Shield className="h-5 w-5" aria-hidden />
+        )
+      }
+      eyebrow={t("appSections.hero.privacy.eyebrow")}
+      title={
+        localPrivacyMode
+          ? t("appSections.privacy.heroOnTitle")
+          : t("appSections.privacy.heroOffTitle")
+      }
+      description={
+        localPrivacyMode
+          ? t("appSections.privacy.heroOnDetail")
+          : t("appSections.privacy.heroOffDetail")
+      }
+      tone={localPrivacyMode ? "success" : "info"}
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <ShieldCheck className="h-3 w-3" />
+                {t("appSections.privacy.previewLocalFirst")}
+              </span>
+              <MiniStatusPill
+                icon={
+                  localPrivacyMode ? (
+                    <CheckCircle2 className="h-3 w-3" aria-hidden />
+                  ) : (
+                    <Wifi className="h-3 w-3" aria-hidden />
+                  )
+                }
+                label={
+                  localPrivacyMode
+                    ? t("appSections.privacy.previewEnforced")
+                    : t("appSections.privacy.previewAllowed")
+                }
+                tone={localPrivacyMode ? "success" : "info"}
+              />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
+                <Mic className="h-3 w-3 text-[var(--accent)]" />
+                <span className="text-[11px] font-medium text-[var(--text)]">
+                  {t("appSections.privacy.previewAudioCapture")}
+                </span>
+                <span className="ms-auto text-[10px] text-[var(--success)]">
+                  {t("appSections.models.routeLocal")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
+                <SpellCheck className="h-3 w-3 text-[var(--accent)]" />
+                <span className="text-[11px] font-medium text-[var(--text)]">
+                  {t("appSections.privacy.previewCleanup")}
+                </span>
+                <span
+                  className={`ms-auto text-[10px] ${
+                    localPrivacyMode
+                      ? "text-[var(--success)]"
+                      : "text-[var(--info)]"
+                  }`}
+                >
+                  {localPrivacyMode
+                    ? t("appSections.models.routeLocal")
+                    : t("appSections.privacy.previewProvider")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </PreviewSlate>
+      }
+    />
+  );
+};
+
+const RetentionTimelinePreview: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const retention = getSetting("recording_retention_period") ?? "never";
+  const labels: Record<string, string> = {
+    never: t("appSections.retention.never"),
+    preserve_limit: t("appSections.retention.preserveLimit"),
+    days3: t("appSections.retention.days3"),
+    days_3: t("appSections.retention.days3"),
+    weeks2: t("appSections.retention.weeks2"),
+    weeks_2: t("appSections.retention.weeks2"),
+    months3: t("appSections.retention.months3"),
+    months_3: t("appSections.retention.months3"),
+  };
+
+  return (
+    <div className="px-4 py-3">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {t("appSections.retention.title")}
+          </p>
+          <MiniStatusPill
+            icon={<HardDrive className="h-3.5 w-3.5" aria-hidden />}
+            label={labels[retention] ?? labels.never}
+            tone={retention === "never" ? "success" : "warning"}
+          />
+        </div>
+        <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_1fr_auto] items-center gap-2 text-xs font-semibold text-[var(--text)]">
+          <span>{t("appSections.retention.day1")}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <span>{t("appSections.retention.day7")}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <span>{t("appSections.retention.day30")}</span>
+          <span className="h-px bg-[var(--border)]" aria-hidden />
+          <HardDrive
+            className="h-4 w-4 text-[var(--warning)]"
+            aria-label={t("appSections.retention.autoDelete")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const PrivacyStorageSettingsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -658,7 +1250,9 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsGroup>
+      <PrivacyHero localPrivacyMode={localPrivacyMode} />
+
+      <SettingsGroup title={t("appSections.groups.privacyControls")}>
         <ToggleSwitch
           checked={localPrivacyMode}
           onChange={(enabled) =>
@@ -670,12 +1264,18 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           descriptionMode="inline"
           grouped={true}
         />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.privacy.historyGroupTitle")}>
         <HistoryLimit descriptionMode="inline" grouped={true} />
         <RetentionTimelinePreview />
         <RecordingRetentionPeriodSelector
           descriptionMode="inline"
           grouped={true}
         />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("appSections.privacy.filesGroupTitle")}>
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />
         {debugMode ? <LogDirectory grouped={true} /> : null}
       </SettingsGroup>
@@ -689,41 +1289,66 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
   );
 };
 
-export const DiagnosticsSettingsSection: React.FC = () => {
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Diagnostics
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const DiagnosticsHero: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
   const debugMode = getSetting("debug_mode") ?? false;
+  const experimental = getSetting("experimental_enabled") ?? false;
 
   return (
-    <div className="space-y-6">
-      <SettingsGroup title={t("appSections.groups.labs")}>
-        <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
-        {debugMode ? (
-          <KeyboardImplementationSelector
-            descriptionMode="tooltip"
-            grouped={true}
-          />
-        ) : null}
-      </SettingsGroup>
-
-      <SettingsGroup title={t("appSections.groups.localApi")}>
-        <LocalApiToggle grouped={true} />
-      </SettingsGroup>
-
-      {debugMode ? (
-        <>
-          <SettingsGroup>
-            <LogLevelSelector grouped={true} />
-            <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
-          </SettingsGroup>
-          <DebugDiagnosticsPanel />
-        </>
-      ) : (
-        <Alert variant="info">
-          {t("appSections.diagnostics.debugRevealNotice")}
-        </Alert>
-      )}
-    </div>
+    <SectionHero
+      icon={<FlaskConical className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.diagnostics.eyebrow")}
+      title={t("appSections.hero.diagnostics.title")}
+      description={t("appSections.hero.diagnostics.description")}
+      tone="warning"
+      stats={[
+        {
+          label: t("appSections.diagnostics.statLabs"),
+          value: experimental
+            ? t("appSections.diagnostics.statOn")
+            : t("appSections.diagnostics.statOff"),
+        },
+        {
+          label: t("appSections.diagnostics.statDebug"),
+          value: debugMode
+            ? t("appSections.diagnostics.statOn")
+            : t("appSections.diagnostics.statOff"),
+        },
+      ]}
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="space-y-2 font-mono text-[10.5px] leading-5 text-[var(--muted)]">
+            <p>
+              <span className="text-[var(--accent)]">{"$ "}</span>
+              {t("appSections.diagnostics.terminalCommand")}
+            </p>
+            <p>
+              <span className="text-[var(--success)]">{"✓ "}</span>
+              {t("appSections.diagnostics.terminalServicesOnline")}
+            </p>
+            <p>
+              <span className="text-[var(--success)]">{"✓ "}</span>
+              {t("appSections.diagnostics.terminalInputReady")}
+            </p>
+            <p
+              className={
+                debugMode ? "text-[var(--warning)]" : "text-[var(--muted)]"
+              }
+            >
+              <Bug className="inline h-3 w-3" aria-hidden />{" "}
+              {debugMode
+                ? t("appSections.diagnostics.terminalDebugEnabled")
+                : t("appSections.diagnostics.terminalDebugOff")}
+            </p>
+          </div>
+        </PreviewSlate>
+      }
+    />
   );
 };
 
@@ -768,7 +1393,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
           <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
-              <Cpu className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+              <Terminal className="h-4 w-4 text-[var(--accent)]" aria-hidden />
               {t("appSections.routeMonitor.label")}
             </div>
             <MiniStatusPill
@@ -814,6 +1439,7 @@ const DebugDiagnosticsPanel: React.FC = () => {
           value={routeInput}
           onChange={(event) => setRouteInput(event.target.value)}
           placeholder={t("settings.debug.routeInputPlaceholder")}
+          aria-label={t("appSections.routeMonitor.label")}
           className="min-h-[120px]"
         />
         <div className="flex gap-2">
@@ -834,6 +1460,78 @@ const DebugDiagnosticsPanel: React.FC = () => {
   );
 };
 
+const DebugModeToggle: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+  const debugMode = getSetting("debug_mode") ?? false;
+
+  return (
+    <ToggleSwitch
+      checked={debugMode}
+      onChange={(enabled) => void updateSetting("debug_mode", enabled)}
+      isUpdating={isUpdating("debug_mode")}
+      label={t("appSections.diagnostics.debugToggleLabel")}
+      description={t("appSections.diagnostics.debugToggleDescription")}
+      descriptionMode="inline"
+      grouped={true}
+    />
+  );
+};
+
+export const DiagnosticsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const debugMode = getSetting("debug_mode") ?? false;
+
+  return (
+    <div className="space-y-6">
+      <DiagnosticsHero />
+
+      <SettingsGroup
+        title={t("appSections.diagnostics.labsTitle")}
+        description={t("appSections.diagnostics.labsDescription")}
+      >
+        <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
+        <DebugModeToggle />
+        {debugMode ? (
+          <KeyboardImplementationSelector
+            descriptionMode="tooltip"
+            grouped={true}
+          />
+        ) : null}
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("appSections.diagnostics.localApiTitle")}
+        description={t("appSections.diagnostics.localApiDescription")}
+      >
+        <LocalApiToggle grouped={true} />
+      </SettingsGroup>
+
+      {debugMode ? (
+        <>
+          <SettingsGroup
+            title={t("appSections.diagnostics.developerTitle")}
+            description={t("appSections.diagnostics.developerDescription")}
+          >
+            <LogLevelSelector grouped={true} />
+            <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
+          </SettingsGroup>
+          <DebugDiagnosticsPanel />
+        </>
+      ) : (
+        <Alert variant="info">
+          {t("appSections.diagnostics.debugRevealNotice")}
+        </Alert>
+      )}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: About
+ * ─────────────────────────────────────────────────────────────────────────── */
+
 export const AboutSection: React.FC = () => {
   const { t } = useTranslation();
   const [version, setVersion] = useState("...");
@@ -844,22 +1542,94 @@ export const AboutSection: React.FC = () => {
       .catch(() => setVersion(t("appSections.about.versionUnknown")));
   }, [t]);
 
+  const highlights = useMemo(
+    () => [
+      {
+        icon: <Mic className="h-4 w-4" aria-hidden />,
+        title: t("appSections.about.highlightLocalTitle"),
+        detail: t("appSections.about.highlightLocalDetail"),
+        tone: "accent" as const,
+      },
+      {
+        icon: <WandSparkles className="h-4 w-4" aria-hidden />,
+        title: t("appSections.about.highlightRefineTitle"),
+        detail: t("appSections.about.highlightRefineDetail"),
+        tone: "info" as const,
+      },
+      {
+        icon: <Volume2 className="h-4 w-4" aria-hidden />,
+        title: t("appSections.about.highlightListenTitle"),
+        detail: t("appSections.about.highlightListenDetail"),
+        tone: "success" as const,
+      },
+    ],
+    [t],
+  );
+
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-6 text-center shadow-[var(--shadow-sm)]">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-md)]">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[var(--accent)] text-[var(--accent)]">
-            <Mic className="h-6 w-6" aria-hidden />
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent)_18%,var(--card))_0%,color-mix(in_srgb,var(--accent-gold)_8%,var(--card))_55%,var(--panel-bg)_100%)] px-6 py-8 text-center shadow-[inset_0_1px_0_var(--edge-highlight),0_4px_18px_rgba(0,0,0,0.16)]">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
+            backgroundSize: "16px 16px",
+            color: "var(--text)",
+          }}
+          aria-hidden
+        />
+        <div className="relative">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-md)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[var(--accent)] text-[var(--accent)]">
+              <Mic className="h-6 w-6" aria-hidden />
+            </div>
+          </div>
+          <VoxJotTextLogo className="mx-auto mt-4 h-10 w-auto max-w-[220px]" />
+          <p className="mt-1 font-mono text-sm text-[var(--muted)]">
+            {t("appSections.about.version", { version })}
+          </p>
+          <p className="mx-auto mt-4 max-w-prose text-[13px] leading-6 text-[var(--muted)]">
+            {t("appSections.hero.about.description")}
+          </p>
+          <div className="mt-5 flex justify-center">
+            <UpdateChecker />
           </div>
         </div>
-        <VoxJotTextLogo className="mx-auto mt-4 h-10 w-auto max-w-[220px]" />
-        <p className="mt-1 font-mono text-sm text-[var(--muted)]">
-          {t("appSections.about.version", { version })}
-        </p>
-        <div className="mt-5 flex justify-center">
-          <UpdateChecker />
-        </div>
       </div>
+
+      <BoardList title={t("appSections.about.highlightsTitle")} columns={1}>
+        <div className="grid gap-3 md:grid-cols-3">
+          {highlights.map((highlight) => (
+            <MetricTile
+              key={highlight.title}
+              icon={highlight.icon}
+              tone={highlight.tone}
+              label={highlight.title}
+              value=""
+              hint={highlight.detail}
+            />
+          ))}
+        </div>
+      </BoardList>
+
+      <BoardList title={t("appSections.about.stackTitle")}>
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            t("appSections.about.stackTauri"),
+            t("appSections.about.stackReact"),
+            t("appSections.about.stackRust"),
+          ].map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-1 text-[11.5px] font-semibold text-[var(--text)]"
+            >
+              <SettingsIcon className="h-3 w-3 text-[var(--accent)]" />
+              {label}
+            </span>
+          ))}
+        </div>
+      </BoardList>
 
       <SettingsGroup title={t("appSections.groups.acknowledgments")}>
         <div className="space-y-3 px-5 py-4 text-sm leading-6 text-[var(--muted)]">

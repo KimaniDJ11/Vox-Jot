@@ -1,7 +1,18 @@
 import { listen } from "@tauri-apps/api/event";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppWindow, FileText, ScanSearch, Trash2 } from "lucide-react";
+import {
+  AppWindow,
+  CheckCircle2,
+  FileText,
+  Monitor,
+  Plus,
+  ScanSearch,
+  Shield,
+  Sparkles,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 
 import {
   commands,
@@ -24,15 +35,89 @@ import {
 } from "@/hooks/useSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import {
+  MetricTile,
+  PreviewSlate,
+  SectionHero,
+} from "@/components/app-sections/settings-shared";
 
 const REFRESH_INTERVAL_MS = 5000;
-const screenContextPreviewTitle = "Context capture preview";
-const screenContextPreviewDescription =
-  "Vox Jot reads visible text near the active app to improve cleanup and writing style.";
-const activeAppLabel = "Active app";
-const contextTextLabel = "Context text";
-const contextPreviewExplanation =
-  "The highlighted region becomes short-lived context for dictation cleanup.";
+
+const ScreenContextHero: React.FC<{
+  enabled: boolean;
+  permissionGranted: boolean;
+}> = ({ enabled, permissionGranted }) => {
+  const { t } = useTranslation();
+  return (
+    <SectionHero
+      icon={<ScanSearch className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.screenContext.eyebrow")}
+      title={t("appSections.hero.screenContext.title")}
+      description={t("appSections.hero.screenContext.description")}
+      tone={enabled ? "accent" : "neutral"}
+      stats={[
+        {
+          label: t("appSections.screenContext.captureStatusLabel"),
+          value: enabled
+            ? t("appSections.screenContext.previewBadgeOn")
+            : t("appSections.screenContext.previewBadgeOff"),
+        },
+        {
+          label: t("appSections.screenContext.permissionStatLabel"),
+          value: permissionGranted
+            ? t("appSections.screenContext.permissionGranted")
+            : t("appSections.screenContext.permissionMissing"),
+        },
+      ]}
+      visual={<HeroPreview enabled={enabled} />}
+    />
+  );
+};
+
+const HeroPreview: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+  const { t } = useTranslation();
+  return (
+    <PreviewSlate className="w-full">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+            {t("appSections.screenContext.previewLabel")}
+          </p>
+          <span
+            className={`inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[10px] font-semibold ${
+              enabled
+                ? "border-[color-mix(in_srgb,var(--success)_30%,var(--border))] bg-[var(--success-soft)] text-[var(--success)]"
+                : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+            }`}
+          >
+            {enabled
+              ? t("appSections.screenContext.previewLive")
+              : t("appSections.screenContext.previewPaused")}
+          </span>
+        </div>
+        <div className="rounded-md border border-[var(--border)] bg-[var(--card)] p-2.5">
+          <div className="mb-2 flex items-center gap-1.5">
+            <AppWindow className="h-3 w-3 text-[var(--accent)]" />
+            <span className="text-[10.5px] font-semibold text-[var(--text)]">
+              {t("appSections.screenContext.previewActiveApp")}
+            </span>
+          </div>
+          <div className="rounded-md border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] p-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--text)]">
+              <FileText className="h-2.5 w-2.5 text-[var(--accent)]" />
+              {t("appSections.screenContext.previewContextText")}
+            </div>
+            <div className="mt-1.5 space-y-1" aria-hidden>
+              <span className="block h-1 w-5/6 rounded-full bg-[var(--accent)] opacity-90" />
+              <span className="block h-1 w-2/3 rounded-full bg-[var(--accent)] opacity-60" />
+              <span className="block h-1 w-3/4 rounded-full bg-[var(--accent)] opacity-40" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </PreviewSlate>
+  );
+};
 
 const ScreenContextSettingsSection: React.FC = () => {
   const { t } = useTranslation();
@@ -149,6 +234,7 @@ const ScreenContextSettingsSection: React.FC = () => {
   }, [refreshDiagnostics]);
 
   const controlsDisabled = !enabled;
+  const permissionGranted = !!diagnostics?.has_screen_permission;
 
   const statusLabel = useMemo(() => {
     if (!diagnostics) {
@@ -253,8 +339,35 @@ const ScreenContextSettingsSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Alert variant="info">{t("settings.screenContext.intro")}</Alert>
-      <ScreenContextPreview enabled={enabled as boolean} />
+      <ScreenContextHero
+        enabled={enabled as boolean}
+        permissionGranted={permissionGranted}
+      />
+
+      {diagnostics && !diagnostics.has_screen_permission && enabled ? (
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--warning)_45%,var(--border))] bg-[var(--warning-soft)] px-5 py-4 shadow-[var(--shadow-sm)]">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--warning-soft)] text-[var(--warning)]">
+              <Shield className="h-4 w-4" />
+            </span>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-[var(--text)]">
+                {t("appSections.screenContext.permissionTitle")}
+              </p>
+              <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                {t("appSections.screenContext.permissionDetail")}
+              </p>
+              <Button
+                onClick={() => void openPermissionSettings()}
+                size="sm"
+                className="mt-3"
+              >
+                {t("settings.screenContext.permissionCtaButton")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <SettingsGroup title={t("settings.screenContext.title")}>
         <SettingContainer
@@ -269,25 +382,15 @@ const ScreenContextSettingsSection: React.FC = () => {
               void updateSetting("screen_context_enabled", value as never)
             }
             disabled={isUpdating("screen_context_enabled")}
+            ariaLabel={t("settings.screenContext.enableLabel")}
           />
         </SettingContainer>
       </SettingsGroup>
 
-      {diagnostics && !diagnostics.has_screen_permission && enabled ? (
-        <SettingsGroup title={t("settings.screenContext.permissionCtaLabel")}>
-          <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
-            <p>{t("settings.screenContext.permissionCtaDescription")}</p>
-            <Button onClick={() => void openPermissionSettings()} size="sm">
-              {t("settings.screenContext.permissionCtaButton")}
-            </Button>
-          </div>
-        </SettingsGroup>
-      ) : null}
-
       <SettingsGroup title={t("settings.screenContext.captureCadenceTitle")}>
         <SettingContainer
-          title="Capture Mode"
-          description="Choose how often Vox Jot updates screen text while the app is open."
+          title={t("appSections.groups.captureMode")}
+          description={t("appSections.groups.captureModeDescription")}
           descriptionMode="inline"
           grouped={true}
         >
@@ -305,8 +408,10 @@ const ScreenContextSettingsSection: React.FC = () => {
           />
         </SettingContainer>
         <SettingContainer
-          title="Text Recognition Quality"
-          description="Choose faster capture or more accurate text recognition."
+          title={t("appSections.groups.textRecognitionQuality")}
+          description={t(
+            "appSections.groups.textRecognitionQualityDescription",
+          )}
           descriptionMode="inline"
           grouped={true}
         >
@@ -325,136 +430,160 @@ const ScreenContextSettingsSection: React.FC = () => {
             }
           />
         </SettingContainer>
-        <SettingContainer
-          title={t("settings.screenContext.ocrEngineLabel")}
-          description={t("settings.screenContext.ocrEngineDescription")}
-          descriptionMode="inline"
-          grouped={true}
-        >
-          <Dropdown
-            selectedValue={ocrEngine as string}
-            onSelect={(value) =>
-              void updateSetting("screen_context_ocr_engine", value as never)
-            }
-            options={[
-              {
-                value: "native_then_backup",
-                label: t("settings.screenContext.ocrEngineNativeThenBackup"),
-              },
-              {
-                value: "auto",
-                label: t("settings.screenContext.ocrEngineAuto"),
-              },
-              {
-                value: "native_only",
-                label: t("settings.screenContext.ocrEngineNativeOnly"),
-              },
-              {
-                value: "backup_only",
-                label: t("settings.screenContext.ocrEngineBackupOnly"),
-              },
-            ]}
-            disabled={
-              controlsDisabled || isUpdating("screen_context_ocr_engine")
-            }
-          />
-        </SettingContainer>
-        <Slider
-          value={ocrTimeout as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_ocr_timeout_ms",
-              Math.round(value) as never,
-            )
-          }
-          min={200}
-          max={2000}
-          step={50}
-          label="Recognition Timeout"
-          description="How long Vox Jot waits when reading text from one screen capture."
-          descriptionMode="inline"
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} ms`}
-          disabled={controlsDisabled}
-        />
-        <Slider
-          value={staleThreshold as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_stale_threshold_ms",
-              Math.round(value) as never,
-            )
-          }
-          min={500}
-          max={5000}
-          step={100}
-          label="Recency Window"
-          description="How recent captured screen text must be before Vox Jot refreshes it."
-          descriptionMode="inline"
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} ms`}
-          disabled={controlsDisabled}
-        />
       </SettingsGroup>
 
-      <SettingsGroup title={t("settings.screenContext.contextBudgetTitle")}>
-        <Slider
-          value={tokenBudget as number}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_token_budget",
-              Math.round(value) as never,
-            )
-          }
-          min={100}
-          max={1200}
-          step={25}
-          label="Context Amount"
-          description="How much recent screen text Vox Jot can use during dictation cleanup."
-          descriptionMode="inline"
-          grouped={true}
-          formatValue={(value) => `${Math.round(value)} units`}
-          disabled={controlsDisabled}
-        />
-        <SettingContainer
-          title={t("settings.screenContext.pauseOnIdleLabel")}
-          description={t("settings.screenContext.pauseOnIdleDescription")}
-          descriptionMode="inline"
-          grouped={true}
-        >
-          <SwitchControl
-            checked={pauseOnIdle as boolean}
-            onChange={(value) =>
-              void updateSetting("screen_context_pause_on_idle", value as never)
-            }
-            disabled={
-              controlsDisabled || isUpdating("screen_context_pause_on_idle")
-            }
-          />
-        </SettingContainer>
-        <Slider
-          value={idleThresholdSeconds}
-          onChange={(value) =>
-            void updateSetting(
-              "screen_context_idle_threshold_ms",
-              (Math.round(value) * 1000) as never,
-            )
-          }
-          min={10}
-          max={600}
-          step={5}
-          label={t("settings.screenContext.idleThresholdLabel")}
-          description={t("settings.screenContext.idleThresholdDescription")}
-          descriptionMode="inline"
-          grouped={true}
-          formatValue={(value) =>
-            t("settings.screenContext.idleThresholdValue", {
-              seconds: Math.round(value),
-            })
-          }
-          disabled={controlsDisabled || !pauseOnIdle}
-        />
-      </SettingsGroup>
+      <details className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow-sm)]">
+        <summary className="cursor-pointer list-none px-5 py-4 text-[13px] font-semibold text-[var(--text)]">
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-[var(--muted)]" />
+            {t("appSections.screenContext.advancedToggle")}
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-[var(--border)] p-4">
+          <SettingsGroup title={t("appSections.groups.recognitionEngine")}>
+            <SettingContainer
+              title={t("settings.screenContext.ocrEngineLabel")}
+              description={t("settings.screenContext.ocrEngineDescription")}
+              descriptionMode="inline"
+              grouped={true}
+            >
+              <Dropdown
+                selectedValue={ocrEngine as string}
+                onSelect={(value) =>
+                  void updateSetting(
+                    "screen_context_ocr_engine",
+                    value as never,
+                  )
+                }
+                options={[
+                  {
+                    value: "native_then_backup",
+                    label: t(
+                      "settings.screenContext.ocrEngineNativeThenBackup",
+                    ),
+                  },
+                  {
+                    value: "auto",
+                    label: t("settings.screenContext.ocrEngineAuto"),
+                  },
+                  {
+                    value: "native_only",
+                    label: t("settings.screenContext.ocrEngineNativeOnly"),
+                  },
+                  {
+                    value: "backup_only",
+                    label: t("settings.screenContext.ocrEngineBackupOnly"),
+                  },
+                ]}
+                disabled={
+                  controlsDisabled || isUpdating("screen_context_ocr_engine")
+                }
+              />
+            </SettingContainer>
+            <Slider
+              value={ocrTimeout as number}
+              onChange={(value) =>
+                void updateSetting(
+                  "screen_context_ocr_timeout_ms",
+                  Math.round(value) as never,
+                )
+              }
+              min={200}
+              max={2000}
+              step={50}
+              label={t("appSections.groups.recognitionTimeout")}
+              description={t(
+                "appSections.groups.recognitionTimeoutDescription",
+              )}
+              descriptionMode="inline"
+              grouped={true}
+              formatValue={(value) => `${Math.round(value)} ms`}
+              disabled={controlsDisabled}
+            />
+            <Slider
+              value={staleThreshold as number}
+              onChange={(value) =>
+                void updateSetting(
+                  "screen_context_stale_threshold_ms",
+                  Math.round(value) as never,
+                )
+              }
+              min={500}
+              max={5000}
+              step={100}
+              label={t("appSections.groups.recencyWindow")}
+              description={t("appSections.groups.recencyWindowDescription")}
+              descriptionMode="inline"
+              grouped={true}
+              formatValue={(value) => `${Math.round(value)} ms`}
+              disabled={controlsDisabled}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title={t("settings.screenContext.contextBudgetTitle")}>
+            <Slider
+              value={tokenBudget as number}
+              onChange={(value) =>
+                void updateSetting(
+                  "screen_context_token_budget",
+                  Math.round(value) as never,
+                )
+              }
+              min={100}
+              max={1200}
+              step={25}
+              label={t("appSections.groups.contextAmount")}
+              description={t("appSections.groups.contextAmountDescription")}
+              descriptionMode="inline"
+              grouped={true}
+              formatValue={(value) => `${Math.round(value)} units`}
+              disabled={controlsDisabled}
+            />
+            <SettingContainer
+              title={t("settings.screenContext.pauseOnIdleLabel")}
+              description={t("settings.screenContext.pauseOnIdleDescription")}
+              descriptionMode="inline"
+              grouped={true}
+            >
+              <SwitchControl
+                checked={pauseOnIdle as boolean}
+                onChange={(value) =>
+                  void updateSetting(
+                    "screen_context_pause_on_idle",
+                    value as never,
+                  )
+                }
+                disabled={
+                  controlsDisabled || isUpdating("screen_context_pause_on_idle")
+                }
+                ariaLabel={t("settings.screenContext.pauseOnIdleLabel")}
+              />
+            </SettingContainer>
+            <Slider
+              value={idleThresholdSeconds}
+              onChange={(value) =>
+                void updateSetting(
+                  "screen_context_idle_threshold_ms",
+                  (Math.round(value) * 1000) as never,
+                )
+              }
+              min={10}
+              max={600}
+              step={5}
+              label={t("settings.screenContext.idleThresholdLabel")}
+              description={t("settings.screenContext.idleThresholdDescription")}
+              descriptionMode="inline"
+              grouped={true}
+              formatValue={(value) =>
+                t("settings.screenContext.idleThresholdValue", {
+                  seconds: Math.round(value),
+                })
+              }
+              disabled={controlsDisabled || !pauseOnIdle}
+            />
+          </SettingsGroup>
+        </div>
+      </details>
 
       <SettingsGroup
         title={t("settings.screenContext.exclusionsTitle")}
@@ -468,6 +597,7 @@ const ScreenContextSettingsSection: React.FC = () => {
               isUpdating("screen_context_excluded_bundle_ids")
             }
           >
+            <Plus className="mr-1 h-3.5 w-3.5" />
             {addingApp
               ? t("settings.screenContext.addCurrentAppResolving")
               : t("settings.screenContext.addCurrentAppLabel")}
@@ -478,25 +608,30 @@ const ScreenContextSettingsSection: React.FC = () => {
           <p>{t("settings.screenContext.exclusionsDescription")}</p>
           {addAppError ? <Alert variant="info">{addAppError}</Alert> : null}
           {excludedEntries.length === 0 ? (
-            <p className="italic">
+            <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-6 text-center text-[12.5px] italic text-[var(--muted)]">
               {t("settings.screenContext.exclusionsEmpty")}
-            </p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {excludedEntries.map((entry) => (
                 <li
                   key={entry.bundle_id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2"
+                  className="group flex items-center justify-between gap-3 rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-2.5"
                 >
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-[var(--text)]">
-                      {entry.name || entry.bundle_id}
-                    </div>
-                    {debugMode ? (
-                      <div className="truncate text-xs text-[var(--muted)]">
-                        {entry.bundle_id}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
+                      <AppWindow className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-medium text-[var(--text)]">
+                        {entry.name || entry.bundle_id}
                       </div>
-                    ) : null}
+                      {debugMode ? (
+                        <div className="truncate text-[10.5px] text-[var(--muted)]">
+                          {entry.bundle_id}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <Button
                     onClick={() => void removeExcludedApp(entry.bundle_id)}
@@ -516,56 +651,65 @@ const ScreenContextSettingsSection: React.FC = () => {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup
-        title="Screen Context Status"
-        titleAction={
-          debugMode ? (
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <MetricTile
+          label={t("appSections.screenContext.captureStatusLabel")}
+          tone={
+            diagnostics?.status === "ready"
+              ? "success"
+              : diagnostics?.status === "disabled"
+                ? "neutral"
+                : "warning"
+          }
+          icon={
+            diagnostics?.status === "ready" ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <XCircle className="h-3 w-3" />
+            )
+          }
+          value={statusLabel}
+        />
+        <MetricTile
+          label={t("appSections.screenContext.permissionStatLabel")}
+          tone={permissionGranted ? "success" : "warning"}
+          icon={<Monitor className="h-3 w-3" />}
+          value={
+            permissionGranted
+              ? t("settings.screenContext.screenRecordingGranted")
+              : t("settings.screenContext.screenRecordingMissing")
+          }
+        />
+        {debugMode ? (
+          <MetricTile
+            label={t("appSections.screenContext.cacheStatLabel")}
+            icon={<ScanSearch className="h-3 w-3" />}
+            value={`${diagnostics?.cache_size ?? 0}`}
+            hint={
+              diagnostics?.latest_context_age_ms != null
+                ? t("settings.screenContext.latestContextAgeValue", {
+                    ms: diagnostics.latest_context_age_ms,
+                  })
+                : t("settings.screenContext.latestContextAgeUnavailable")
+            }
+          />
+        ) : null}
+      </section>
+
+      {debugMode ? (
+        <SettingsGroup
+          title={t("appSections.screenContext.debugPreviewHeader")}
+          titleAction={
             <Button onClick={() => void refreshDiagnostics()} size="sm">
               {t("settings.refineModels.refresh")}
             </Button>
-          ) : undefined
-        }
-      >
-        <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
-          <p>
-            {t("settings.screenContext.statusLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {statusLabel}
-            </span>
-          </p>
-          <p>
-            {t("settings.screenContext.screenRecordingLabel")}{" "}
-            <span className="font-semibold text-[var(--text)]">
-              {diagnostics?.has_screen_permission
-                ? t("settings.screenContext.screenRecordingGranted")
-                : t("settings.screenContext.screenRecordingMissing")}
-            </span>
-          </p>
-          {debugMode ? (
-            <>
-              <p>
-                {t("settings.screenContext.cacheSizeLabel")}{" "}
-                <span className="font-semibold text-[var(--text)]">
-                  {diagnostics?.cache_size ?? 0}
-                </span>
-              </p>
-              <p>
-                {t("settings.screenContext.latestContextAgeLabel")}{" "}
-                <span className="font-semibold text-[var(--text)]">
-                  {diagnostics?.latest_context_age_ms != null
-                    ? t("settings.screenContext.latestContextAgeValue", {
-                        ms: diagnostics.latest_context_age_ms,
-                      })
-                    : t("settings.screenContext.latestContextAgeUnavailable")}
-                </span>
-              </p>
-              {diagnostics?.last_error ? (
-                <Alert variant="info">{diagnostics.last_error}</Alert>
-              ) : null}
-            </>
-          ) : null}
-          {debugMode ? (
-            <details className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-2">
+          }
+        >
+          <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
+            {diagnostics?.last_error ? (
+              <Alert variant="info">{diagnostics.last_error}</Alert>
+            ) : null}
+            <details className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
               <summary className="cursor-pointer text-sm font-medium text-[var(--text)]">
                 {t("settings.screenContext.debugPreviewTitle")}
               </summary>
@@ -575,60 +719,11 @@ const ScreenContextSettingsSection: React.FC = () => {
                   : t("settings.screenContext.debugPreviewEmpty")}
               </div>
             </details>
-          ) : null}
-        </div>
-      </SettingsGroup>
+          </div>
+        </SettingsGroup>
+      ) : null}
     </div>
   );
 };
 
 export default ScreenContextSettingsSection;
-
-const ScreenContextPreview: React.FC<{ enabled: boolean }> = ({ enabled }) => (
-  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] px-5 py-4 shadow-[var(--shadow-sm)]">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-sm font-semibold text-[var(--text)]">
-          {screenContextPreviewTitle}
-        </p>
-        <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-          {screenContextPreviewDescription}
-        </p>
-      </div>
-      <span
-        className={`inline-flex min-h-[28px] items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${
-          enabled
-            ? "border-[color-mix(in_srgb,var(--success),transparent_72%)] bg-[var(--success-soft)] text-[var(--success)]"
-            : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
-        }`}
-      >
-        <ScanSearch className="h-3.5 w-3.5" aria-hidden />
-        {enabled ? "Capture enabled" : "Capture paused"}
-      </span>
-    </div>
-    <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px] md:items-center">
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-        <div className="mb-3 flex items-center gap-2 border-b border-[var(--border)] pb-2 text-sm font-semibold text-[var(--text)]">
-          <AppWindow className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-          {activeAppLabel}
-        </div>
-        <div className="rounded-md border-2 border-[var(--accent)] bg-[var(--accent-soft)] p-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text)]">
-            <FileText
-              className="h-3.5 w-3.5 text-[var(--accent)]"
-              aria-hidden
-            />
-            {contextTextLabel}
-          </div>
-          <div className="mt-2 space-y-1.5" aria-hidden>
-            <span className="block h-1.5 w-5/6 rounded-full bg-[var(--accent)]" />
-            <span className="block h-1.5 w-2/3 rounded-full bg-[var(--accent)] opacity-70" />
-          </div>
-        </div>
-      </div>
-      <p className="text-sm leading-6 text-[var(--muted)]">
-        {contextPreviewExplanation}
-      </p>
-    </div>
-  </div>
-);

@@ -84,6 +84,14 @@ const titlebarNoDragSelector = [
   "[contenteditable='true']",
 ].join(",");
 
+const editableShortcutTargetSelector = [
+  "input",
+  "select",
+  "textarea",
+  "[contenteditable='true']",
+  "[role='textbox']",
+].join(",");
+
 const shouldStartWindowDrag = (
   event: React.MouseEvent<HTMLElement>,
 ): boolean => {
@@ -98,6 +106,14 @@ const shouldStartWindowDrag = (
 
   return !target.closest(titlebarNoDragSelector);
 };
+
+const isEditableShortcutTarget = (target: EventTarget | null): boolean => {
+  return (
+    target instanceof Element &&
+    target.closest(editableShortcutTargetSelector) !== null
+  );
+};
+
 type PrimaryMode = "dictate" | "refine" | "listen";
 type RootView = PrimaryMode | "settings";
 
@@ -417,180 +433,166 @@ function App() {
     lastSectionByView.current[activeRootViewRef.current] = sectionId;
   }, []);
 
-  const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(
-    () => ({
+  const sectionsByView = useMemo<Record<RootView, ViewSection[]>>(() => {
+    const makeSection = (
+      id: string,
+      i18nKey: string,
+      icon: SidebarItem["icon"],
+      content: React.ReactNode,
+    ): ViewSection => {
+      const label = t(i18nKey);
+      return { id, label, icon, title: label, content };
+    };
+
+    return {
       dictate: [
-        {
-          id: "history",
-          label: "Recent History",
-          icon: History,
-          title: "Recent History",
-          content: <DictateHistorySection />,
-        },
-        {
-          id: "corrections",
-          label: "Dictionary",
-          icon: SpellCheck,
-          title: "Dictionary",
-          content: <CorrectionsSection />,
-        },
-        {
-          id: "jot-pad",
-          label: "Jot Pad",
-          icon: NotebookPen,
-          title: "Jot Pad",
-          content: <JotPadSection />,
-        },
-        {
-          id: "file-transcription",
-          label: "File Transcription",
-          icon: FileAudio,
-          title: "File Transcription",
-          content: <FileTranscriptionSection />,
-        },
+        makeSection(
+          "history",
+          "appSections.nav.dictate.history",
+          History,
+          <DictateHistorySection />,
+        ),
+        makeSection(
+          "corrections",
+          "appSections.nav.dictate.corrections",
+          SpellCheck,
+          <CorrectionsSection />,
+        ),
+        makeSection(
+          "jot-pad",
+          "appSections.nav.dictate.jotPad",
+          NotebookPen,
+          <JotPadSection />,
+        ),
+        makeSection(
+          "file-transcription",
+          "appSections.nav.dictate.fileTranscription",
+          FileAudio,
+          <FileTranscriptionSection />,
+        ),
       ],
       refine: [
-        {
-          id: "write-profiles",
-          label: "Write Profiles",
-          icon: WandSparkles,
-          title: "Write Profiles",
-          content: <RefineProfilesSection />,
-        },
-        {
-          id: "phrase-keys",
-          label: "Phrase Keys",
-          icon: WholeWord,
-          title: "Phrase Keys",
-          content: <RefinePhraseKeysSection />,
-        },
-        {
-          id: "translation",
-          label: "Translation",
-          icon: Languages,
-          title: "Translation",
-          content: <RefineTranslationSection />,
-        },
+        makeSection(
+          "write-profiles",
+          "appSections.nav.refine.writeProfiles",
+          WandSparkles,
+          <RefineProfilesSection />,
+        ),
+        makeSection(
+          "phrase-keys",
+          "appSections.nav.refine.phraseKeys",
+          WholeWord,
+          <RefinePhraseKeysSection />,
+        ),
+        makeSection(
+          "translation",
+          "appSections.nav.refine.translation",
+          Languages,
+          <RefineTranslationSection />,
+        ),
       ],
       listen: [
-        {
-          id: "create-voices",
-          label: "Create Voices",
-          icon: WandSparkles,
-          title: "Create Voices",
-          content: <ListenCreateVoicesSection />,
-        },
-        {
-          id: "my-voices",
-          label: "Voices",
-          icon: Volume2,
-          title: "Voices",
-          content: <ListenMyVoicesSection />,
-        },
-        {
-          id: "voice-cloning",
-          label: "Voice Cloning",
-          icon: Dna,
-          title: "Voice Cloning",
-          content: <ListenVoiceCloningSection />,
-        },
-        {
-          id: "story-studio",
-          label: "Studio",
-          icon: BookOpen,
-          title: "Studio",
-          content: <StoryStudioAppSection />,
-        },
-        {
-          id: "story-audio-history",
-          label: "Generated Audio",
-          icon: FileAudio,
-          title: "Generated Audio",
-          content: <StoryAudioHistoryAppSection />,
-        },
+        makeSection(
+          "create-voices",
+          "appSections.nav.listen.createVoices",
+          WandSparkles,
+          <ListenCreateVoicesSection />,
+        ),
+        makeSection(
+          "my-voices",
+          "appSections.nav.listen.myVoices",
+          Volume2,
+          <ListenMyVoicesSection />,
+        ),
+        makeSection(
+          "voice-cloning",
+          "appSections.nav.listen.voiceCloning",
+          Dna,
+          <ListenVoiceCloningSection />,
+        ),
+        makeSection(
+          "story-studio",
+          "appSections.nav.listen.studio",
+          BookOpen,
+          <StoryStudioAppSection />,
+        ),
+        makeSection(
+          "story-audio-history",
+          "appSections.nav.listen.generatedAudio",
+          FileAudio,
+          <StoryAudioHistoryAppSection />,
+        ),
       ],
       settings: [
-        {
-          id: "general",
-          label: "App & Dictation",
-          icon: AppWindow,
-          title: "App & Dictation",
-          content: <GeneralAppSettingsSection />,
-        },
-        {
-          id: "shortcuts",
-          label: "Shortcuts",
-          icon: Keyboard,
-          title: "Shortcuts",
-          content: <ShortcutsSettingsSection />,
-        },
-        {
-          id: "recording-devices",
-          label: "Recording & Devices",
-          icon: Volume2,
-          title: "Recording & Devices",
-          content: <RecordingDevicesSettingsSection />,
-        },
-        {
-          id: "output-paste",
-          label: "Output & Paste",
-          icon: SlidersHorizontal,
-          title: "Output & Paste",
-          content: <OutputPasteSettingsSection />,
-        },
-        {
-          id: "corrections-settings",
-          label: "Corrections",
-          icon: SpellCheck,
-          title: "Corrections",
-          content: <CorrectionsSettingsSection />,
-        },
-        {
-          id: "ai-setup",
-          label: "Models & AI",
-          icon: Cpu,
-          title: "Models & AI",
-          content: <AISetupSettingsSection />,
-        },
-        {
-          id: "model-testing",
-          label: "Testing",
-          icon: FlaskConical,
-          title: "Testing",
-          content: <ModelTestingSection />,
-        },
-        {
-          id: "screen-context",
-          label: "Screen Context",
-          icon: Monitor,
-          title: "Screen Context",
-          content: <ScreenContextSettingsSection />,
-        },
-        {
-          id: "privacy",
-          label: "Privacy & Storage",
-          icon: Shield,
-          title: "Privacy & Storage",
-          content: <PrivacyStorageSettingsSection />,
-        },
-        {
-          id: "diagnostics",
-          label: "Diagnostics",
-          icon: FlaskConical,
-          title: "Diagnostics",
-          content: <DiagnosticsSettingsSection />,
-        },
-        {
-          id: "about",
-          label: "About Vox Jot",
-          icon: Info,
-          title: "About Vox Jot",
-          content: <AboutSection />,
-        },
+        makeSection(
+          "general",
+          "appSections.nav.settings.general",
+          AppWindow,
+          <GeneralAppSettingsSection />,
+        ),
+        makeSection(
+          "shortcuts",
+          "appSections.nav.settings.shortcuts",
+          Keyboard,
+          <ShortcutsSettingsSection />,
+        ),
+        makeSection(
+          "recording-devices",
+          "appSections.nav.settings.recordingDevices",
+          Volume2,
+          <RecordingDevicesSettingsSection />,
+        ),
+        makeSection(
+          "output-paste",
+          "appSections.nav.settings.outputPaste",
+          SlidersHorizontal,
+          <OutputPasteSettingsSection />,
+        ),
+        makeSection(
+          "corrections-settings",
+          "appSections.nav.settings.correctionsSettings",
+          SpellCheck,
+          <CorrectionsSettingsSection />,
+        ),
+        makeSection(
+          "ai-setup",
+          "appSections.nav.settings.aiSetup",
+          Cpu,
+          <AISetupSettingsSection />,
+        ),
+        makeSection(
+          "model-testing",
+          "appSections.nav.settings.modelTesting",
+          FlaskConical,
+          <ModelTestingSection />,
+        ),
+        makeSection(
+          "screen-context",
+          "appSections.nav.settings.screenContext",
+          Monitor,
+          <ScreenContextSettingsSection />,
+        ),
+        makeSection(
+          "privacy",
+          "appSections.nav.settings.privacy",
+          Shield,
+          <PrivacyStorageSettingsSection />,
+        ),
+        makeSection(
+          "diagnostics",
+          "appSections.nav.settings.diagnostics",
+          FlaskConical,
+          <DiagnosticsSettingsSection />,
+        ),
+        makeSection(
+          "about",
+          "appSections.nav.settings.about",
+          Info,
+          <AboutSection />,
+        ),
       ],
-    }),
-    [],
-  );
+    };
+  }, [t]);
 
   const activeSections = sectionsByView[activeRootView];
 
@@ -707,6 +709,7 @@ function App() {
         (event.ctrlKey || event.metaKey);
 
       if (isDebugShortcut) {
+        if (isEditableShortcutTarget(event.target)) return;
         event.preventDefault();
         void updateSetting("debug_mode", !debugModeRef.current);
       }
@@ -1011,6 +1014,34 @@ function App() {
     return () => {
       unlisten.then((fn) => fn());
     };
+  }, [handleModeSelect, handleSettingsOpen]);
+
+  useEffect(() => {
+    const onSettingsNavigate = (event: Event) => {
+      const detail = (event as CustomEvent<{ view: RootView; section: string }>)
+        .detail;
+      if (!detail) return;
+      const { view, section } = detail;
+      if (view === "settings") {
+        handleSettingsOpen();
+        if (section) {
+          setActiveSectionId(section);
+          lastSectionByView.current.settings = section;
+        }
+        return;
+      }
+      if (view === "dictate" || view === "refine" || view === "listen") {
+        handleModeSelect(view);
+        if (section) {
+          setActiveSectionId(section);
+          lastSectionByView.current[view] = section;
+        }
+      }
+    };
+
+    window.addEventListener("vox-jot:navigate", onSettingsNavigate);
+    return () =>
+      window.removeEventListener("vox-jot:navigate", onSettingsNavigate);
   }, [handleModeSelect, handleSettingsOpen]);
 
   // Resolve the currently active section to render

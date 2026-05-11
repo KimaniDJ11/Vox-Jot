@@ -169,7 +169,7 @@ export const WriteRuleEditor: React.FC<WriteRuleEditorProps> = ({
           ) : null}
         </div>
         {!isNew ? (
-          <div className="inline-flex min-h-10 items-center gap-2.5 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
+          <div className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--input)] px-3 py-0">
             <SwitchControl
               checked={draft.enabled}
               onChange={(enabled) => setDraft({ ...draft, enabled })}

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   interactiveFocusRingClass,
@@ -16,19 +17,24 @@ interface ResetButtonProps {
 }
 
 export const ResetButton: React.FC<ResetButtonProps> = React.memo(
-  ({ onClick, disabled = false, className = "", ariaLabel, children }) => (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      className={`rounded-full border border-[var(--border)] p-1 transition-all duration-150 ${interactiveFocusRingClass} ${minTapTargetSquareClass} ${
-        disabled
-          ? "cursor-not-allowed opacity-50 text-[var(--muted)]"
-          : "cursor-pointer text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] active:translate-y-px active:bg-[color-mix(in_srgb,var(--accent),transparent_78%)]"
-      } ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children ?? <ResetIcon />}
-    </button>
-  ),
+  ({ onClick, disabled = false, className = "", ariaLabel, children }) => {
+    const { t } = useTranslation();
+    return (
+      <button
+        type="button"
+        aria-label={
+          ariaLabel ?? t("ui.resetButton.label", { defaultValue: "Reset" })
+        }
+        className={`inline-flex items-center justify-center rounded-full border border-[var(--border)] p-0 transition-all duration-150 ${interactiveFocusRingClass} ${minTapTargetSquareClass} ${
+          disabled
+            ? "cursor-not-allowed opacity-50 text-[var(--muted)]"
+            : "cursor-pointer text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] active:translate-y-px active:bg-[color-mix(in_srgb,var(--accent),transparent_78%)]"
+        } ${className}`}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {children ?? <ResetIcon />}
+      </button>
+    );
+  },
 );

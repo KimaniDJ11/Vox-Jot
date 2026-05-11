@@ -2205,6 +2205,9 @@
     },
     "pathDisplay": {
       "pathLabel": "Filesystem path"
+    },
+    "resetButton": {
+      "label": "Reset"
     }
   }
 }

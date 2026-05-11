@@ -41,6 +41,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         checked={checked}
         onChange={onChange}
         disabled={disabled || isUpdating}
+        ariaLabel={label}
       />
       {isUpdating && (
         <div className="absolute inset-0 flex items-center justify-center">

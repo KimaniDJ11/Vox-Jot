@@ -21,25 +21,27 @@ export const WriteProfilesCompactCard: React.FC = () => {
         {t("settings.styles.description")}
       </p>
       <div className="flex flex-wrap items-center gap-5">
-        <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
+        <div className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)]">
           <SwitchControl
             checked={appAwareToneEnabled}
             onChange={(v) => void updateSetting("app_aware_tone_enabled", v)}
+            ariaLabel={t("settings.styles.toggle.label")}
           />
           {t("settings.styles.toggle.label")}
-        </label>
+        </div>
 
         <span className="h-3.5 w-px bg-[var(--border)]" aria-hidden />
 
-        <label className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)] cursor-pointer">
+        <div className="flex items-center gap-2 text-[13px] font-medium leading-tight text-[var(--text)]">
           <SwitchControl
             checked={urlCaptureEnabled}
             onChange={(v) =>
               void updateSetting("write_rules_url_capture_enabled", v)
             }
+            ariaLabel={t("refine.writeRules.urlCaptureLabel")}
           />
           {t("refine.writeRules.urlCaptureLabel")}
-        </label>
+        </div>
 
         <div className="ml-auto">
           <TestRuleButton />

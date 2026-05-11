@@ -26,6 +26,7 @@ export const PasteDelay: React.FC<PasteDelayProps> = ({
       min={10}
       max={200}
       step={10}
+      defaultValue={60}
       label={t("settings.debug.pasteDelay.title")}
       description={t("settings.debug.pasteDelay.description")}
       descriptionMode={descriptionMode}

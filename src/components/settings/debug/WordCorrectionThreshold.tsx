@@ -24,6 +24,7 @@ export const WordCorrectionThreshold: React.FC<
       onChange={handleThresholdChange}
       min={0.0}
       max={1.0}
+      defaultValue={0.18}
       label={t("settings.debug.wordCorrectionThreshold.title")}
       description={t("settings.debug.wordCorrectionThreshold.description")}
       descriptionMode={descriptionMode}

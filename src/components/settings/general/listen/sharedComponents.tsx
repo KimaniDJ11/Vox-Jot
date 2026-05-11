@@ -287,7 +287,7 @@ const TuningGroup: React.FC<{
     <div className="flex items-center gap-2">
       <p className={workflowFieldLabelClassName}>{label}</p>
       {typeof count === "number" ? (
-        <span className="text-[10px] font-semibold tabular-nums text-[color-mix(in_srgb,var(--muted),transparent_25%)]">
+        <span className="text-[10px] font-semibold tabular-nums text-[var(--text-subtle,var(--muted))]">
           {count}
         </span>
       ) : null}

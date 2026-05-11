@@ -97,6 +97,9 @@ export const Slider: React.FC<SliderProps> = ({
     if (defaultValue === undefined || disabled) return;
     if (defaultValue !== value) onChange(defaultValue);
   };
+  const canReset = defaultValue !== undefined && !disabled;
+  const isAtDefault = defaultValue !== undefined && localValue === defaultValue;
+  const valueResetTitle = canReset ? "Click to reset to default" : undefined;
 
   if (layout === "compact") {
     return (
@@ -132,7 +135,7 @@ export const Slider: React.FC<SliderProps> = ({
       disabled={disabled}
     >
       <div className="w-full">
-        <div className="flex items-center gap-2 h-6">
+        <div className="flex min-h-11 items-center gap-3">
           <input
             type="range"
             min={min}
@@ -144,13 +147,31 @@ export const Slider: React.FC<SliderProps> = ({
             onKeyUp={commit}
             onBlur={commit}
             disabled={disabled}
-            className="h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             style={trackStyle}
           />
           {showValue && (
-            <span className="text-sm font-semibold text-[var(--text)] min-w-10 text-end tabular-nums">
-              {formatValue(localValue)}
-            </span>
+            <>
+              {canReset ? (
+                <button
+                  type="button"
+                  onClick={handleResetToDefault}
+                  title={valueResetTitle}
+                  aria-label={`${label} ${formatValue(localValue)} - click to reset`}
+                  className={`min-w-10 rounded-md px-1.5 py-0.5 text-end text-sm font-semibold tabular-nums transition-colors ${interactiveFocusRingClass} ${
+                    isAtDefault
+                      ? "text-[var(--muted)]"
+                      : "text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  }`}
+                >
+                  {formatValue(localValue)}
+                </button>
+              ) : (
+                <span className="min-w-10 text-end text-sm font-semibold tabular-nums text-[var(--text)]">
+                  {formatValue(localValue)}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -270,7 +291,7 @@ const CompactSlider: React.FC<{
         {defaultPercent !== null ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 z-10 h-3 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--text),transparent_55%)]"
+            className="pointer-events-none absolute top-1/2 z-10 h-5 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--text),transparent_55%)]"
             style={{ left: `${defaultPercent}%` }}
           />
         ) : null}
@@ -286,12 +307,12 @@ const CompactSlider: React.FC<{
           onBlur={commit}
           onDoubleClick={canReset ? onResetToDefault : undefined}
           disabled={disabled}
-          className="relative z-0 h-2 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative z-0 h-9 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           style={trackStyle}
         />
       </div>
       {rangeHint ? (
-        <div className="mt-1 flex justify-between text-[10px] uppercase tracking-[0.06em] text-[color-mix(in_srgb,var(--muted),transparent_25%)]">
+        <div className="mt-1 flex justify-between text-[10px] uppercase tracking-[0.06em] text-[var(--text-subtle,var(--muted))]">
           <span>{rangeHint.left}</span>
           <span>{rangeHint.right}</span>
         </div>

@@ -547,7 +547,7 @@
   --border-strong: #526a88;
   --text: #eff5ff;
   --muted: #afbdd3;
-  --text-subtle: #afbdd3;
+  --text-subtle: #92a4be;
   --inverse-text: #ffffff;
 
   --accent: #a9c4f3;
@@ -792,19 +792,26 @@ select option:checked {
   font-weight: 600;
 }
 
-/* ── Range Input (Slider) Track ────────────────────────────── */
+/* ── Range Input (Slider) Track ──────────────────────────────
+ * Slim 8px track + 18px thumb. The thumb sits centered on the track
+ * (margin-top = -(thumb - track) / 2). Solid white thumb with a 1px
+ * hairline border + subtle drop shadow — matches SwitchControl so all
+ * pill-shaped controls feel like one family.
+ */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 9999px;
   background: var(--slider-bg, rgba(128, 128, 128, 0.35));
-  border: 1px solid color-mix(in srgb, var(--text), transparent 86%);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 84%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
 }
 
 input[type="range"]::-moz-range-track {
   height: 8px;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--text), transparent 84%);
-  border: 1px solid color-mix(in srgb, var(--text), transparent 86%);
+  background: color-mix(in srgb, var(--text), transparent 86%);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 84%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
 }
 
 input[type="range"]::-moz-range-progress {
@@ -821,42 +828,67 @@ input[type="range"]::-webkit-slider-thumb {
   height: 18px;
   margin-top: -5px;
   border-radius: 50%;
-  background: var(--card);
-  border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background: #ffffff;
+  border: none;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: scale(1.06);
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 0 0 4px color-mix(in srgb, var(--accent), transparent 84%);
 }
 input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(1.05);
-  background: var(--accent);
+  transform: scale(0.96);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 0 0 3px color-mix(in srgb, var(--accent), transparent 78%);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--card);
-  border: 2px solid var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background: #ffffff;
+  border: none;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: scale(1.06);
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 0 0 4px color-mix(in srgb, var(--accent), transparent 84%);
 }
 input[type="range"]::-moz-range-thumb:active {
-  transform: scale(1.05);
-  background: var(--accent);
+  transform: scale(0.96);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 0 0 3px color-mix(in srgb, var(--accent), transparent 78%);
+}
+
+input[type="range"]:disabled::-webkit-slider-thumb,
+input[type="range"]:disabled::-moz-range-thumb {
+  background: color-mix(in srgb, #ffffff, var(--text) 18%);
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.2),
+    0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  cursor: not-allowed;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */

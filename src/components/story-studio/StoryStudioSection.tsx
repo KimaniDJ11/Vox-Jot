@@ -356,8 +356,8 @@ export const StoryStudioSection: React.FC = () => {
 
   return (
     <div className="px-6 pb-5">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex w-full flex-col gap-4 pb-4">
+        <div className="story-studio-toolbar flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -387,7 +387,7 @@ export const StoryStudioSection: React.FC = () => {
           </div>
 
           {activeTool === "script" ? (
-            <div className="ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
+            <div className="story-studio-toolbar__trailing ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
               <div className="relative">
                 <label
                   className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
@@ -483,79 +483,84 @@ export const StoryStudioSection: React.FC = () => {
           )}
         </div>
 
-        {validation.errors.length > 0 ? (
-          <div
-            className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
-            role="alert"
-          >
-            <div className="mb-1 flex items-center gap-2 font-semibold">
-              <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
-              {fixBeforeRenderingLabel}
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+          {validation.errors.length > 0 ? (
+            <div
+              className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
+              role="alert"
+            >
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
+                {fixBeforeRenderingLabel}
+              </div>
+              <ul className="space-y-1 pl-6">
+                {visibleValidationErrors.map((error) => (
+                  <li key={error} className="list-disc">
+                    {error}
+                  </li>
+                ))}
+                {hiddenValidationErrorCount > 0 ? (
+                  <li className="list-disc">
+                    {formatHiddenIssueCount(hiddenValidationErrorCount)}
+                  </li>
+                ) : null}
+              </ul>
             </div>
-            <ul className="space-y-1 pl-6">
-              {visibleValidationErrors.map((error) => (
-                <li key={error} className="list-disc">
-                  {error}
-                </li>
-              ))}
-              {hiddenValidationErrorCount > 0 ? (
-                <li className="list-disc">
-                  {formatHiddenIssueCount(hiddenValidationErrorCount)}
-                </li>
-              ) : null}
-            </ul>
-          </div>
-        ) : null}
+          ) : null}
 
-        {activeTool === "script" ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-            <label className="mb-4 block text-sm font-medium text-[var(--text)]">
-              {storyTitleLabel}
-              <Input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
+          {activeTool === "script" ? (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+              <label className="mb-4 block text-sm font-medium text-[var(--text)]">
+                {storyTitleLabel}
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
+                />
+              </label>
+              <ScriptEditor
+                ref={scriptEditorRef}
+                value={scriptText}
+                onChange={setScriptText}
+                onCursorChange={setScriptSelection}
               />
-            </label>
-            <ScriptEditor
-              ref={scriptEditorRef}
-              value={scriptText}
-              onChange={setScriptText}
-              onCursorChange={setScriptSelection}
-            />
-          </div>
-        ) : (
-          <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-            <CastBuilder
-              cast={cast}
-              presets={presets}
-              disabled={isLoadingPresets}
-              onAdd={addCharacter}
-              onRemove={removeCharacter}
-              onUpdate={updateCharacter}
-            />
+            </div>
+          ) : (
+            <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
+              <CastBuilder
+                cast={cast}
+                presets={presets}
+                disabled={isLoadingPresets}
+                onAdd={addCharacter}
+                onRemove={removeCharacter}
+                onUpdate={updateCharacter}
+              />
 
-            <label className="block text-sm font-medium text-[var(--text)]">
-              {pauseBetweenLinesLabel}
-              <input
-                type="number"
-                min={0}
-                max={10000}
-                step={100}
-                value={pauseMs}
-                onChange={(event) =>
-                  setPauseMs(
-                    Math.min(
-                      Math.max(Number.parseInt(event.target.value, 10) || 0, 0),
-                      10000,
-                    ),
-                  )
-                }
-                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
-              />
-            </label>
-          </div>
-        )}
+              <label className="block text-sm font-medium text-[var(--text)]">
+                {pauseBetweenLinesLabel}
+                <input
+                  type="number"
+                  min={0}
+                  max={10000}
+                  step={100}
+                  value={pauseMs}
+                  onChange={(event) =>
+                    setPauseMs(
+                      Math.min(
+                        Math.max(
+                          Number.parseInt(event.target.value, 10) || 0,
+                          0,
+                        ),
+                        10000,
+                      ),
+                    )
+                  }
+                  className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                />
+              </label>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1495,6 +1495,21 @@ input[type="range"]::-moz-range-thumb:active {
     opacity: 0;
   }
 
+  .story-studio-toolbar,
+  .correction-dictionary-actions {
+    width: 100%;
+  }
+
+  .story-studio-toolbar__trailing,
+  .correction-dictionary-actions__trailing {
+    transform: translateX(max(0px, calc((100vw - 240px - 64rem - 3.5rem) / 2)));
+  }
+
+  .shell.shell--sidebar-collapsed .story-studio-toolbar__trailing,
+  .shell.shell--sidebar-collapsed .correction-dictionary-actions__trailing {
+    transform: translateX(max(0px, calc((100vw - 64rem - 3.5rem) / 2)));
+  }
+
   .shell.shell--macos-titlebar-overlay .sidebar {
     margin-top: 0;
     padding-top: 0.35rem;
@@ -1546,6 +1561,13 @@ input[type="range"]::-moz-range-thumb:active {
     .shell.shell--sidebar-collapsed .story-audio-docked-player {
       left: 0.75rem;
       right: 0.75rem;
+    }
+
+    .story-studio-toolbar__trailing,
+    .correction-dictionary-actions__trailing,
+    .shell.shell--sidebar-collapsed .story-studio-toolbar__trailing,
+    .shell.shell--sidebar-collapsed .correction-dictionary-actions__trailing {
+      transform: none;
     }
   }
 

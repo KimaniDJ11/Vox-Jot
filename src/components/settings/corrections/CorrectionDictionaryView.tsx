@@ -651,29 +651,33 @@ export const CorrectionDictionaryView: React.FC<
   );
 
   const actionButtons = (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant="primary-soft"
-        onClick={openManualEditor}
-        aria-haspopup="dialog"
-      >
-        <Plus className="h-3.5 w-3.5" aria-hidden />
-        {t("settings.postProcessing.dictionary.add", {
-          defaultValue: "Add entry",
-        })}
-      </Button>
-      <SegmentedControl<CorrectionViewMode>
-        value={viewMode}
-        onChange={setViewMode}
-        layoutId="corrections-view-toggle"
-        ariaLabel={t("settings.corrections.dictionary.views.ariaLabel", {
-          defaultValue: "Dictionary view",
-        })}
-        items={viewItems}
-      />
-      {searchField}
+    <div className="correction-dictionary-actions flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="primary-soft"
+          onClick={openManualEditor}
+          aria-haspopup="dialog"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          {t("settings.postProcessing.dictionary.add", {
+            defaultValue: "Add entry",
+          })}
+        </Button>
+        <SegmentedControl<CorrectionViewMode>
+          value={viewMode}
+          onChange={setViewMode}
+          layoutId="corrections-view-toggle"
+          ariaLabel={t("settings.corrections.dictionary.views.ariaLabel", {
+            defaultValue: "Dictionary view",
+          })}
+          items={viewItems}
+        />
+      </div>
+      <div className="correction-dictionary-actions__trailing ms-auto flex min-w-[min(100%,20rem)] justify-end">
+        {searchField}
+      </div>
     </div>
   );
 

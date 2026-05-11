@@ -18,7 +18,6 @@ import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
   Check,
-  ChevronRight,
   Eye,
   Keyboard,
   type LucideIcon,
@@ -171,26 +170,11 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       .every((id) => permissions[id] === "granted");
   }, [permissionOrder, permissions]);
 
-  const currentPermissionId = useMemo<PermissionId | null>(() => {
-    return (
-      permissionOrder.find((id) => {
-        if (permissions[id] === "granted") return false;
-        if (!permissionStories[id].required && skippedOptional[id]) return false;
-        return true;
-      }) ?? null
-    );
+  const optionalPermissionsDone = useMemo(() => {
+    return permissionOrder
+      .filter((id) => !permissionStories[id].required)
+      .every((id) => permissions[id] === "granted" || skippedOptional[id]);
   }, [permissionOrder, permissions, skippedOptional]);
-
-  const currentPermission = currentPermissionId
-    ? permissionStories[currentPermissionId]
-    : null;
-  const currentStatus = currentPermissionId
-    ? permissions[currentPermissionId]
-    : "granted";
-  const currentIndex = currentPermissionId
-    ? permissionOrder.indexOf(currentPermissionId)
-    : permissionOrder.length;
-  const totalPermissions = permissionOrder.length;
 
   const completeOnboarding = useCallback(async () => {
     await Promise.all([refreshAudioDevices(), refreshOutputDevices()]);
@@ -422,7 +406,12 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   const handleGrantScreenRecording = async () => {
     try {
       await requestScreenRecordingPermission();
+      const result = await commands.changeScreenContextEnabledSetting(true);
+      if (result.status !== "ok") {
+        toast.error(result.error);
+      }
       setPermissions((prev) => ({ ...prev, screenRecording: "waiting" }));
+      setSkippedOptional((prev) => ({ ...prev, screenRecording: false }));
       startPolling();
     } catch (error) {
       console.error("Failed to request screen recording permission:", error);
@@ -441,41 +430,37 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     permissionPlatform === null ||
     permissionOrder.some((id) => permissions[id] === "checking");
 
-  useEffect(() => {
-    if (
-      !isChecking &&
-      permissionPlatform !== null &&
-      permissionOrder.length > 0 &&
-      !currentPermissionId
-    ) {
-      void completeOnboarding();
+  const handleSkipOptional = async (id: PermissionId) => {
+    if (permissionStories[id].required) return;
+    if (id === "screenRecording") {
+      const result = await commands.changeScreenContextEnabledSetting(false);
+      if (result.status !== "ok") {
+        toast.error(result.error);
+        return;
+      }
     }
-  }, [
-    completeOnboarding,
-    currentPermissionId,
-    isChecking,
-    permissionOrder.length,
-    permissionPlatform,
-  ]);
-
-  const handleSkipOptional = () => {
-    if (!currentPermissionId || currentPermission?.required) return;
-    setSkippedOptional((prev) => ({ ...prev, [currentPermissionId]: true }));
+    setSkippedOptional((prev) => ({ ...prev, [id]: true }));
   };
 
-  const handlePrimaryAction = async () => {
-    if (!currentPermissionId) {
-      await completeOnboarding();
-      return;
-    }
-
-    if (currentStatus === "granted") return;
-    await grantHandlers[currentPermissionId]();
+  const handlePrimaryAction = async (id: PermissionId) => {
+    if (permissions[id] === "granted") return;
+    await grantHandlers[id]();
   };
 
-  const statusLabel = currentPermission?.required
-    ? t("onboarding.permissions.required", { defaultValue: "Required" })
-    : t("onboarding.permissions.optional", { defaultValue: "Optional" });
+  const handleContinue = async () => {
+    if (!requiredPermissionsGranted) return;
+
+    if (isMacOS && permissions.screenRecording !== "granted") {
+      const result = await commands.changeScreenContextEnabledSetting(false);
+      if (result.status !== "ok") {
+        toast.error(result.error);
+        return;
+      }
+      setSkippedOptional((prev) => ({ ...prev, screenRecording: true }));
+    }
+
+    await completeOnboarding();
+  };
 
   if (isChecking) {
     return (
@@ -496,125 +481,132 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
     );
   }
 
-  if (!currentPermission) {
-    return (
-      <OnboardingLayout
-        currentStep="permissions"
-        onBack={onBack}
-        chromeVariant="story"
-      >
-        <div className="ob-story-loading">
-          <Check size={32} color="var(--success)" aria-hidden />
-          <p>{t("onboarding.permissions.allGranted")}</p>
-        </div>
-      </OnboardingLayout>
-    );
-  }
-
-  const Icon = currentPermission.icon;
-  const bullets = t(currentPermission.bulletsKey, {
-    returnObjects: true,
-  }) as string[];
-  const isWaiting = currentStatus === "waiting";
-
   return (
     <OnboardingLayout
       currentStep="permissions"
       onBack={onBack}
       chromeVariant="story"
     >
-      <div className="ob-permission-story">
-        <div className="ob-story-hero">
-          <div className="ob-story-hero-bg" />
-          <img
-            className="ob-story-visual"
-            src={currentPermission.visual}
-            alt=""
-            aria-hidden
-          />
-          <div className="ob-story-hero-vignette" />
-          <div className="ob-story-nav">
-            <div className="ob-story-progress">
-              <span>
-                {t("onboarding.permissions.stepProgress", {
-                  current: Math.min(currentIndex + 1, totalPermissions),
-                  total: totalPermissions,
-                })}
-              </span>
-              <div className="ob-story-dots" aria-hidden>
-                {permissionOrder.map((id) => (
-                  <span
-                    key={id}
-                    className={
-                      id === currentPermissionId
-                        ? "ob-story-dot ob-story-dot-active"
-                        : permissions[id] === "granted" || skippedOptional[id]
-                          ? "ob-story-dot ob-story-dot-done"
-                          : "ob-story-dot"
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-            {!currentPermission.required && requiredPermissionsGranted && (
-              <button
-                type="button"
-                className={`ob-story-skip ${interactiveFocusRingClass}`}
-                onClick={handleSkipOptional}
-              >
-                {t("onboarding.permissions.skip")}
-              </button>
-            )}
+      <div className="ob-permission-grid-screen">
+        <header className="ob-permission-grid-header">
+          <div className="ob-privacy-badge">
+            <Eye size={18} aria-hidden />
+            <span>{t("onboarding.permissions.privacyBadge")}</span>
           </div>
+          <h1 className="ob-heading">
+            {t("onboarding.permissions.heading")}
+          </h1>
+          <p className="ob-subtext">
+            {t("onboarding.permissions.visualDescription")}
+          </p>
+        </header>
+
+        <div className="ob-permission-grid">
+          {permissionOrder.map((id) => {
+            const story = permissionStories[id];
+            const Icon = story.icon;
+            const status = permissions[id];
+            const isGranted = status === "granted";
+            const isWaiting = status === "waiting";
+            const isSkipped = Boolean(skippedOptional[id]);
+            const statusLabel = story.required
+              ? t("onboarding.permissions.required", {
+                  defaultValue: "Required",
+                })
+              : t("onboarding.permissions.optional", {
+                  defaultValue: "Optional",
+                });
+
+            return (
+              <section
+                key={id}
+                className={`ob-permission-grid-card ${
+                  isGranted ? "ob-permission-grid-card-granted" : ""
+                } ${isSkipped ? "ob-permission-grid-card-skipped" : ""}`}
+              >
+                <div className="ob-permission-card-visual" aria-hidden>
+                  <img src={story.visual} alt="" />
+                </div>
+                <div className="ob-permission-card-content">
+                  <div className="ob-permission-card-topline">
+                    <span className="ob-permission-card-icon" aria-hidden>
+                      <Icon size={21} />
+                    </span>
+                    <span className="ob-permission-card-status">
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  <h2>{t(story.titleKey)}</h2>
+                  <p>{t(story.descriptionKey)}</p>
+
+                  <div className="ob-permission-card-privacy">
+                    {t(story.privacyKey)}
+                  </div>
+                </div>
+
+                <div className="ob-permission-card-actions">
+                  {isGranted ? (
+                    <span className="ob-perm-granted-badge">
+                      <Check size={16} aria-hidden />
+                      {t("onboarding.permissions.granted")}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`ob-perm-allow-btn ${interactiveFocusRingClass}`}
+                      onClick={() => void handlePrimaryAction(id)}
+                      disabled={isWaiting}
+                    >
+                      {isWaiting ? (
+                        <>
+                          <Loader2
+                            size={16}
+                            className="ob-spinner"
+                            aria-hidden
+                          />
+                          {t("onboarding.permissions.waiting")}
+                        </>
+                      ) : (
+                        t(story.ctaKey)
+                      )}
+                    </button>
+                  )}
+
+                  {!story.required &&
+                    !isGranted &&
+                    !isSkipped &&
+                    requiredPermissionsGranted && (
+                      <button
+                        type="button"
+                        className={`ob-permission-skip-inline ${interactiveFocusRingClass}`}
+                        onClick={() => void handleSkipOptional(id)}
+                      >
+                        {t("onboarding.permissions.skip")}
+                      </button>
+                    )}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
-        <div className="ob-story-body">
-          <div className="ob-story-icon" aria-hidden>
-            <Icon size={42} aria-hidden />
+        <div className="ob-bottom-actions ob-permission-grid-actions">
+          <div className="ob-permission-grid-summary" aria-live="polite">
+            {requiredPermissionsGranted
+              ? optionalPermissionsDone
+                ? t("onboarding.permissions.allGranted")
+                : t("onboarding.permissions.completeDescription")
+              : t("onboarding.permissions.description")}
           </div>
-
-          <div className="ob-story-copy">
-            <div className="ob-story-eyebrow">
-              <span>{t(currentPermission.eyebrowKey)}</span>
-              <span>{statusLabel}</span>
-            </div>
-            <h1 className="ob-heading">{t(currentPermission.titleKey)}</h1>
-            <p className="ob-subtext">
-              {t(currentPermission.descriptionKey)}
-            </p>
-
-            <ul className="ob-story-bullets">
-              {bullets.map((bullet) => (
-                <li key={bullet}>
-                  <ChevronRight size={16} aria-hidden />
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="ob-story-privacy">
-            <div className="ob-story-privacy-icon" aria-hidden>
-              <Eye size={22} />
-            </div>
-            <p>{t(currentPermission.privacyKey)}</p>
-          </div>
-
-          <div className="ob-bottom-actions ob-story-actions">
+          <div className="ob-permission-grid-action-buttons">
             <button
               type="button"
               className={`ob-btn-primary ${interactiveFocusRingClass}`}
-              onClick={handlePrimaryAction}
-              disabled={isWaiting}
+              onClick={() => void handleContinue()}
+              disabled={!requiredPermissionsGranted}
             >
-              {isWaiting ? (
-                <>
-                  <Loader2 size={18} className="ob-spinner" aria-hidden />
-                  {t("onboarding.permissions.waiting")}
-                </>
-              ) : (
-                t(currentPermission.ctaKey)
-              )}
+              {t("onboarding.permissions.continue")}
             </button>
             {import.meta.env.DEV && isMacOS && !requiredPermissionsGranted && (
               <button

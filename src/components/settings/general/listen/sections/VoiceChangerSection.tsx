@@ -427,7 +427,7 @@ export const VoiceChangerSection: React.FC<{
 
   const content = (
     <div
-      className="space-y-4 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      className={`space-y-4 ${showTitle ? "px-4 py-3" : ""} outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]`}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       aria-label={t("listen.voiceChanger.panelAriaLabel", {

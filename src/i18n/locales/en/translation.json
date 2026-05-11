@@ -253,7 +253,7 @@
     },
     "permissions": {
       "title": "Permissions Required",
-      "description": "Vox Jot needs a couple of permissions to work properly.",
+      "description": "Grant the required permissions to continue. Screen Recording is optional for local visual context.",
       "microphone": {
         "title": "Microphone Access",
         "description": "Required to hear your voice for transcription.",
@@ -339,7 +339,7 @@
       "completeTitle": "Permissions are ready",
       "completeDescription": "Vox Jot has the access it needs for the first dictation flow.",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone, Accessibility, Input Monitoring, and Screen Recording so Vox Jot can capture your voice, place text in the right app, understand quick send-vs-delete changes, and build local OCR context from the active display."
+      "visualDescription": "Grant microphone, Accessibility, and Input Monitoring so Vox Jot can capture your voice, place text in the right app, and understand quick send-vs-delete changes. Optional Screen Recording adds local OCR context from the active display."
     },
     "steps": {
       "welcome": "Overview",
@@ -1575,7 +1575,7 @@
       "new": "New",
       "refresh": "Refresh",
       "clone": "Clone",
-      "useThisVoice": "Use This Voice",
+      "useThisVoice": "Use",
       "generating": "Generating…"
     },
     "soundTuning": {

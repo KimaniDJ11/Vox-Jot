@@ -88,3 +88,7 @@ tmp/
 onboarding/
 !src/assets/onboarding/
 !src/assets/onboarding/*.webp
+
+# Claude Code runtime state (per-machine, never commit)
+.claude/scheduled_tasks.lock
+.claude/projects/

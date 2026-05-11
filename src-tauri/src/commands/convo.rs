@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
@@ -237,6 +238,39 @@ pub fn convo_start_audio_capture(app: AppHandle) -> Result<ConvoAudioCaptureStat
 pub fn convo_stop_audio_capture(app: AppHandle) -> Result<Vec<u8>, String> {
     let controller = app.state::<Arc<ConvoController>>();
     controller.audio_capture.stop()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn convo_save_audio_capture(file_path: String, wav_bytes: Vec<u8>) -> Result<String, String> {
+    if wav_bytes.is_empty() {
+        return Err("No microphone audio was captured.".to_string());
+    }
+
+    let trimmed_path = file_path.trim();
+    if trimmed_path.is_empty() {
+        return Err("Choose where to save the microphone recording.".to_string());
+    }
+
+    let path = PathBuf::from(trimmed_path);
+    if path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.eq_ignore_ascii_case("wav"))
+        != Some(true)
+    {
+        return Err("Voice cloning recordings must be saved as WAV files.".to_string());
+    }
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|err| format!("Failed to create recording folder: {err}"))?;
+    }
+
+    std::fs::write(&path, wav_bytes)
+        .map_err(|err| format!("Failed to save microphone recording: {err}"))?;
+
+    Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]

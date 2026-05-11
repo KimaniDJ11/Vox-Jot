@@ -913,6 +913,7 @@ pub fn run(cli_args: CliArgs) {
         commands::convo::convo_apply_note_edit,
         commands::convo::convo_start_audio_capture,
         commands::convo::convo_stop_audio_capture,
+        commands::convo::convo_save_audio_capture,
         commands::convo::convo_send_audio_turn,
         commands::convo::convo_play_audio_reply,
         commands::convo::convo_ensure_helper_running,

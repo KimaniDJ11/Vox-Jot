@@ -65,9 +65,6 @@ export function useListenSpeechState() {
   const [busyProfileAction, setBusyProfileAction] = useState<string | null>(
     null,
   );
-  const [profileNameDraft, setProfileNameDraft] = useState("");
-  const [profileDescriptionDraft, setProfileDescriptionDraft] = useState("");
-  const [profileTranscriptDraft, setProfileTranscriptDraft] = useState("");
 
   const ttsEnabled = settings?.tts_enabled ?? false;
 
@@ -595,12 +592,6 @@ export function useListenSpeechState() {
     setBusyPackId,
     busyProfileAction,
     setBusyProfileAction,
-    profileNameDraft,
-    setProfileNameDraft,
-    profileDescriptionDraft,
-    setProfileDescriptionDraft,
-    profileTranscriptDraft,
-    setProfileTranscriptDraft,
     ttsEnabled,
     savePreset,
     setActivePreset,

@@ -15,16 +15,18 @@ const defaultVoiceArchitectUiDraft: VoiceArchitectUiDraftState = {
   saveProfileNameDraft: "",
   previewTextDraft: DEFAULT_TTS_PREVIEW_TEXT,
   modelSearchQuery: "",
-  createVoiceTool: "models",
+  createVoiceTool: "audio",
 };
 
 const defaultVoiceCloningDraft: VoiceCloningDraftState = {
   selectedCloneModelValue: "__none__",
   selectedProfileId: "__none__",
-  voiceCloneTool: "models",
+  voiceCloneTool: "audio",
   modelSearchQuery: "",
   referenceAudioPathDraft: "",
   referenceTranscriptDraft: "",
+  profileNameDraft: "",
+  profileDescriptionDraft: "",
 };
 
 export function buildVoiceArchitectDraftFromPreset(
@@ -103,10 +105,7 @@ function normalizeVoiceArchitectUiDraft(
       typeof draft.modelSearchQuery === "string"
         ? draft.modelSearchQuery
         : defaultVoiceArchitectUiDraft.modelSearchQuery,
-    createVoiceTool:
-      draft.createVoiceTool === "tuning"
-        ? "tuning"
-        : defaultVoiceArchitectUiDraft.createVoiceTool,
+    createVoiceTool: draft.createVoiceTool === "tuning" ? "tuning" : "audio",
   };
 }
 
@@ -157,8 +156,8 @@ function normalizeVoiceCloningDraft(
         ? draft.selectedProfileId
         : defaultVoiceCloningDraft.selectedProfileId,
     voiceCloneTool:
-      draft.voiceCloneTool === "profiles"
-        ? "profiles"
+      draft.voiceCloneTool === "profile"
+        ? "profile"
         : defaultVoiceCloningDraft.voiceCloneTool,
     modelSearchQuery:
       typeof draft.modelSearchQuery === "string"
@@ -172,5 +171,13 @@ function normalizeVoiceCloningDraft(
       typeof draft.referenceTranscriptDraft === "string"
         ? draft.referenceTranscriptDraft
         : defaultVoiceCloningDraft.referenceTranscriptDraft,
+    profileNameDraft:
+      typeof draft.profileNameDraft === "string"
+        ? draft.profileNameDraft
+        : defaultVoiceCloningDraft.profileNameDraft,
+    profileDescriptionDraft:
+      typeof draft.profileDescriptionDraft === "string"
+        ? draft.profileDescriptionDraft
+        : defaultVoiceCloningDraft.profileDescriptionDraft,
   };
 }

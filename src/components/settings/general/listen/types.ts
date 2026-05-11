@@ -23,14 +23,16 @@ export type VoiceArchitectUiDraftState = {
   saveProfileNameDraft: string;
   previewTextDraft: string;
   modelSearchQuery: string;
-  createVoiceTool: "models" | "tuning";
+  createVoiceTool: "audio" | "tuning";
 };
 
 export type VoiceCloningDraftState = {
   selectedCloneModelValue: string;
   selectedProfileId: string;
-  voiceCloneTool: "models" | "profiles";
+  voiceCloneTool: "audio" | "profile";
   modelSearchQuery: string;
   referenceAudioPathDraft: string;
   referenceTranscriptDraft: string;
+  profileNameDraft: string;
+  profileDescriptionDraft: string;
 };

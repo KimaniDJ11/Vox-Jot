@@ -8,32 +8,34 @@ import React, {
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
+
 import {
   FileAudio,
   FolderOpen,
+  Layers,
+  Loader2,
+  Mic,
   Search,
   Sparkles,
+  Square,
   Upload,
   X,
 } from "lucide-react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import Badge from "@/components/ui/Badge";
-import { SwitchControl } from "@/components/ui/SwitchControl";
+
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { modal } from "@/motion/springs";
-import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+
 import {
-  clearProfileCollectedData,
   createTtsVoiceProfile,
-  deleteTtsVoiceProfile,
   importTtsVoiceProfileSample,
-  setActiveImprovementProfile,
 } from "@/lib/ttsVoiceProfiles";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { ListenSpeechState } from "../useListenSpeechState";
@@ -63,11 +65,12 @@ export const VoiceCloningSection: React.FC<{
   const [selectedCloneModelValue, setSelectedCloneModelValue] = useState(
     initialDraft.selectedCloneModelValue,
   );
-  const [voiceCloneTool, setVoiceCloneTool] = useState<"models" | "profiles">(
+  const [voiceCloneTool, setVoiceCloneTool] = useState<"audio" | "profile">(
     initialDraft.voiceCloneTool,
   );
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
-  const [profilesWindowOpen, setProfilesWindowOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const [modelSearchQuery, setModelSearchQuery] = useState(
     initialDraft.modelSearchQuery,
   );
@@ -91,12 +94,11 @@ export const VoiceCloningSection: React.FC<{
   const [selectedProfileId, setSelectedProfileId] = useState(
     initialDraft.selectedProfileId,
   );
-  const selectedProfile =
-    visibleProfiles.find((profile) => profile.id === selectedProfileId) ?? null;
-  const lastSyncedProfileIdRef = useRef<string | null>(
-    initialDraft.selectedProfileId !== "__none__"
-      ? initialDraft.selectedProfileId
-      : null,
+  const [profileNameDraft, setProfileNameDraft] = useState(
+    initialDraft.profileNameDraft,
+  );
+  const [profileDescriptionDraft, setProfileDescriptionDraft] = useState(
+    initialDraft.profileDescriptionDraft,
   );
 
   useEffect(() => {
@@ -107,9 +109,13 @@ export const VoiceCloningSection: React.FC<{
       modelSearchQuery,
       referenceAudioPathDraft,
       referenceTranscriptDraft,
+      profileNameDraft,
+      profileDescriptionDraft,
     });
   }, [
     modelSearchQuery,
+    profileDescriptionDraft,
+    profileNameDraft,
     referenceAudioPathDraft,
     referenceTranscriptDraft,
     selectedCloneModelValue,
@@ -153,16 +159,6 @@ export const VoiceCloningSection: React.FC<{
     });
   }, [visibleProfiles]);
 
-  useEffect(() => {
-    const nextProfileId = selectedProfile?.id ?? null;
-    if (lastSyncedProfileIdRef.current === nextProfileId) {
-      return;
-    }
-    lastSyncedProfileIdRef.current = nextProfileId;
-    setReferenceAudioPathDraft("");
-    setReferenceTranscriptDraft(selectedProfile?.transcript ?? "");
-  }, [selectedProfile?.id, selectedProfile?.transcript]);
-
   const acceptReferenceAudioPath = useCallback(
     (path: string) => {
       if (path.split(".").pop()?.toLowerCase() !== "wav") {
@@ -172,7 +168,7 @@ export const VoiceCloningSection: React.FC<{
         return;
       }
       setReferenceAudioPathDraft(path);
-      setVoiceCloneTool("profiles");
+      setVoiceCloneTool("audio");
       speech.setStatusMessage(null);
     },
     [speech],
@@ -188,7 +184,7 @@ export const VoiceCloningSection: React.FC<{
   }, [acceptReferenceAudioPath]);
 
   useEffect(() => {
-    if (modelWindowOpen || profilesWindowOpen) {
+    if (modelWindowOpen) {
       setIsReferenceAudioDragOver(false);
       return;
     }
@@ -225,32 +221,121 @@ export const VoiceCloningSection: React.FC<{
       disposed = true;
       unlisten?.();
     };
-  }, [acceptReferenceAudioPath, modelWindowOpen, profilesWindowOpen]);
+  }, [acceptReferenceAudioPath, modelWindowOpen]);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    return () => {
+      if (isRecordingRef.current) {
+        void commands.convoStopAudioCapture();
+      }
+    };
+  }, []);
+
+  const startMicCapture = useCallback(async () => {
+    if (isRecording) return;
+    try {
+      setReferenceAudioPathDraft("");
+      speech.setStatusMessage(
+        t("listen.voiceCloning.listening", {
+          defaultValue: "Listening… tap stop when you are done speaking.",
+        }),
+      );
+      const result = await commands.convoStartAudioCapture();
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+      setIsRecording(true);
+    } catch (error) {
+      speech.setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not start microphone recording.",
+      );
+    }
+  }, [isRecording, speech, t]);
+
+  const stopMicCapture = useCallback(async () => {
+    if (!isRecording) return;
+    setIsRecording(false);
+    speech.setStatusMessage(
+      t("listen.voiceCloning.savingRecording", {
+        defaultValue: "Saving recording…",
+      }),
+    );
+    try {
+      const captureResult = await commands.convoStopAudioCapture();
+      if (captureResult.status === "error") {
+        throw new Error(captureResult.error);
+      }
+      if (captureResult.data.length === 0) {
+        speech.setStatusMessage("No microphone audio was captured.");
+        return;
+      }
+      let filePath = await save({
+        defaultPath: "voice-clone-reference.wav",
+        filters: [{ name: "WAV audio", extensions: ["wav"] }],
+      });
+      if (!filePath) {
+        speech.setStatusMessage(null);
+        return;
+      }
+      // macOS save dialog doesn't always append the extension.
+      if (!filePath.toLowerCase().endsWith(".wav")) {
+        filePath += ".wav";
+      }
+      const saveResult = await commands.convoSaveAudioCapture(
+        filePath,
+        captureResult.data,
+      );
+      if (saveResult.status === "error") {
+        throw new Error(saveResult.error);
+      }
+      setReferenceAudioPathDraft(saveResult.data);
+      setVoiceCloneTool("audio");
+      speech.setStatusMessage(
+        t("listen.voiceCloning.recordingSaved", {
+          defaultValue: "Recording saved. Ready to generate.",
+        }),
+      );
+    } catch (error) {
+      speech.setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to save microphone recording.",
+      );
+    }
+  }, [isRecording, speech, t]);
+
+  const toggleMicCapture = useCallback(async () => {
+    if (isRecording) {
+      await stopMicCapture();
+    } else {
+      await startMicCapture();
+    }
+  }, [isRecording, startMicCapture, stopMicCapture]);
 
   if (!speech.settings) return null;
 
-  const profilePickerOptions = [
-    {
-      value: "__none__",
-      label:
-        visibleProfiles.length > 0
-          ? selectedCloneModel
-            ? "No clone profile"
-            : "Browse profiles"
-          : "No clone profiles yet",
-    },
-    ...visibleProfiles.map((profile) => ({
-      value: profile.id,
-      label: profile.ready ? profile.label : `${profile.label} (Needs audio)`,
-    })),
-  ];
   const createPresetDisabled =
     !speech.ttsEnabled ||
-    !selectedProfile ||
     !selectedCloneModel ||
-    !profileSupportsModel(selectedProfile, selectedCloneModel) ||
-    (!selectedProfile.ready && !referenceAudioPathDraft) ||
+    !referenceAudioPathDraft ||
+    !profileNameDraft.trim() ||
+    isRecording ||
     speech.busyProfileAction === "generate";
+  const cloneReadinessMessage = !speech.ttsEnabled
+    ? "Enable text-to-speech before generating a cloned voice."
+    : !selectedCloneModel
+      ? "Choose a clone-capable model before generating."
+      : !referenceAudioPathDraft
+        ? "Record or choose a WAV reference file before generating."
+        : !profileNameDraft.trim()
+          ? "Name the new voice on the Profile tab to enable Generate."
+          : null;
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
   const filteredCloneModels = speech.cloneCapableModels.filter((model) => {
     if (!normalizedModelSearch) return true;
@@ -290,44 +375,71 @@ export const VoiceCloningSection: React.FC<{
 
   const handleSelectDraftCloneModel = (model: CatalogModelDescriptor) => {
     setSelectedCloneModelValue(cloneModelSelectionValue(model));
-    setVoiceCloneTool("models");
+    setVoiceCloneTool("audio");
     setModelWindowOpen(false);
     speech.setStatusMessage(null);
   };
 
-  const handleVoiceCloneToolChange = (value: "models" | "profiles") => {
+  const handleVoiceCloneToolChange = (value: "audio" | "profile") => {
     setVoiceCloneTool(value);
-    if (value === "models") {
-      setModelWindowOpen(true);
-      return;
-    }
-    setProfilesWindowOpen(true);
   };
 
   const generateCloneVoice = async () => {
-    if (!selectedProfile || !selectedCloneModel) return;
+    if (!selectedCloneModel) {
+      speech.setStatusMessage(
+        "Choose a clone-capable model before generating.",
+      );
+      return;
+    }
+    if (!referenceAudioPathDraft) {
+      speech.setStatusMessage(
+        "Provide a reference audio file or record your voice first.",
+      );
+      return;
+    }
+
+    const profileName = profileNameDraft.trim();
+    if (!profileName) {
+      speech.setStatusMessage(
+        "Give your new voice profile a name on the Profile tab.",
+      );
+      setVoiceCloneTool("profile");
+      return;
+    }
+
     speech.setBusyProfileAction("generate");
     speech.setStatusMessage(null);
 
     try {
-      let profileForPreset = selectedProfile;
-      if (referenceAudioPathDraft) {
-        profileForPreset = await importTtsVoiceProfileSample(
-          selectedProfile.id,
-          referenceAudioPathDraft,
-          referenceTranscriptDraft.trim() || null,
-        );
-        await speech.refreshProfiles();
-        setSelectedProfileId(profileForPreset.id);
-        setReferenceAudioPathDraft("");
-        setReferenceTranscriptDraft(profileForPreset.transcript ?? "");
-      }
-
-      await speech.createPresetFromProfile(
-        profileForPreset,
-        selectedCloneModel,
+      // Always create a brand-new profile for each clone.
+      const createdProfile = await createTtsVoiceProfile(
+        profileName,
+        profileDescriptionDraft || null,
+        referenceTranscriptDraft.trim() || null,
       );
-      setProfilesWindowOpen(false);
+
+      const importedProfile = await importTtsVoiceProfileSample(
+        createdProfile.id,
+        referenceAudioPathDraft,
+        referenceTranscriptDraft.trim() || null,
+      );
+
+      await speech.refreshProfiles();
+      setSelectedProfileId(importedProfile.id);
+
+      await speech.createPresetFromProfile(importedProfile, selectedCloneModel);
+
+      // Clear the drafts after successful generation.
+      setProfileNameDraft("");
+      setProfileDescriptionDraft("");
+      setReferenceAudioPathDraft("");
+      setReferenceTranscriptDraft("");
+      speech.setStatusMessage(
+        t("listen.voiceCloning.generated", {
+          profileLabel: profileName,
+          defaultValue: `"${profileName}" voice created and added to your library.`,
+        }),
+      );
     } catch (error) {
       speech.setStatusMessage(
         error instanceof Error
@@ -485,376 +597,73 @@ export const VoiceCloningSection: React.FC<{
     document.body,
   );
 
-  const profilesWindow = createPortal(
-    <AnimatePresence>
-      {profilesWindowOpen ? (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.12 }}
-          onClick={() => setProfilesWindowOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            aria-hidden="true"
+  const profileView = (
+    <div className="space-y-3">
+      <div className={whiteWorkflowCardClassName}>
+        <div className="space-y-3">
+          <div className="space-y-0.5">
+            <h3 className="text-sm font-semibold text-[var(--text)]">
+              {t("listen.voiceCloning.createProfile", {
+                defaultValue: "Create Profile",
+              })}
+            </h3>
+            <p className="text-xs text-[var(--muted)]">
+              {t("listen.voiceCloning.createProfileDescription", {
+                defaultValue:
+                  "Give the profile a name, then import one clear reference clip.",
+              })}
+            </p>
+          </div>
+          <Input
+            value={profileNameDraft}
+            onChange={(event) => setProfileNameDraft(event.target.value)}
+            placeholder={t("listen.placeholders.voiceProfileName", {
+              defaultValue: "New voice profile name",
+            })}
+            disabled={!speech.ttsEnabled}
+            className="w-full"
           />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="voice-clone-profiles-title"
-            className="relative max-h-[min(88vh,900px)] w-full max-w-[820px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.99 }}
-            transition={modal}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <h3
-                  id="voice-clone-profiles-title"
-                  className="truncate text-sm font-semibold text-[var(--text)]"
+          <Input
+            value={profileDescriptionDraft}
+            onChange={(event) => setProfileDescriptionDraft(event.target.value)}
+            placeholder={t("listen.placeholders.voiceProfileNote", {
+              defaultValue: "Optional note about this speaker",
+            })}
+            disabled={!speech.ttsEnabled}
+            className="w-full"
+          />
+        </div>
+      </div>
+
+      {visibleProfiles.length > 0 ? (
+        <div className={whiteWorkflowCardClassName}>
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+              {t("listen.voiceCloning.existingProfiles", {
+                defaultValue: "Existing Profiles",
+              })}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {visibleProfiles.map((profile) => (
+                <Badge
+                  key={profile.id}
+                  variant={profile.ready ? "success" : "secondary"}
+                  className="text-[11px]"
                 >
-                  {t("listen.voiceCloning.profiles", {
-                    defaultValue: "Profiles",
-                  })}
-                </h3>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {t("listen.voiceCloning.profilesWindowDetail", {
-                    defaultValue:
-                      "Choose or create the reference profile used when you generate a cloned voice.",
-                  })}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setProfilesWindowOpen(false)}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </Button>
+                  {profile.label}
+                  {profile.ready ? "" : " (needs audio)"}
+                </Badge>
+              ))}
             </div>
-
-            <div className="max-h-[calc(min(88vh,900px)-57px)] space-y-4 overflow-y-auto p-4">
-              <WorkflowField
-                label="Clone Profile"
-                hint={
-                  selectedCloneModel
-                    ? "Only profiles that work with the selected clone model are shown."
-                    : "Pick a model first to filter the profile library to compatible voices."
-                }
-              >
-                <SelectField
-                  value={selectedProfileId}
-                  onChange={(value) => {
-                    setSelectedProfileId(value);
-                    setVoiceCloneTool("profiles");
-                  }}
-                  disabled={!speech.ttsEnabled || speech.loadingProfiles}
-                  options={profilePickerOptions}
-                />
-              </WorkflowField>
-
-              {selectedProfile ? (
-                <div className="space-y-3 text-xs text-[var(--muted)]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedProfile.fully_optimized ? (
-                      <Badge
-                        variant="success"
-                        className="gap-1 px-2.5 py-1 text-[11px] font-semibold"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-                        {t("listen.voiceCloning.fullyOptimized")}
-                      </Badge>
-                    ) : selectedProfile.ready ? (
-                      <Badge
-                        variant="secondary"
-                        className="gap-1 bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-                        {t("listen.voiceCloning.readyForCloning")}
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="secondary"
-                        className="gap-1 bg-[var(--warning-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--warning)]"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)]" />
-                        {t("listen.voiceCloning.needsReferenceAudio")}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="ms-auto">
-                      <Button
-                        type="button"
-                        variant="danger-ghost"
-                        size="sm"
-                        disabled={
-                          !speech.ttsEnabled ||
-                          speech.busyProfileAction === "delete"
-                        }
-                        onClick={async () => {
-                          if (
-                            !confirmDestructiveAction(
-                              t("listen.voiceCloning.deleteProfileConfirm", {
-                                profileLabel: selectedProfile.label,
-                                defaultValue:
-                                  'Delete voice profile "{{profileLabel}}"?',
-                              }),
-                            )
-                          ) {
-                            return;
-                          }
-
-                          speech.setBusyProfileAction("delete");
-                          try {
-                            await deleteTtsVoiceProfile(selectedProfile.id);
-                            await speech.refreshProfiles();
-                          } catch (error) {
-                            console.error(
-                              "Failed to delete voice profile:",
-                              error,
-                            );
-                            toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : t("listen.voiceCloning.deleteProfileFailed", {
-                                    defaultValue:
-                                      "Could not delete voice profile.",
-                                  }),
-                            );
-                          } finally {
-                            speech.setBusyProfileAction(null);
-                          }
-                        }}
-                      >
-                        {t("listen.voiceCloning.deleteProfile")}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {selectedProfile.reference_audio_path ? (
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
-                        {t("listen.voiceCloning.audioFile")}
-                      </p>
-                      <p className="break-all font-mono text-[11px] text-[var(--text)]">
-                        {selectedProfile.reference_audio_path}
-                      </p>
-                    </div>
-                  ) : null}
-                  {selectedProfile.transcript ? (
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
-                        {t("listen.voiceCloning.transcript")}
-                      </p>
-                      <p className="text-[11px] text-[var(--text)]">
-                        {selectedProfile.transcript}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="italic text-[var(--muted)]">
-                      {t("listen.voiceCloning.transcriptHint")}
-                    </p>
-                  )}
-                  <div className="mt-2 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-[var(--text)]">
-                          {t("listen.voiceCloning.improveFromDictations")}
-                        </p>
-                        <p className="text-[10px] text-[var(--muted)]">
-                          {t(
-                            "listen.voiceCloning.improveFromDictationsDescription",
-                          )}
-                        </p>
-                      </div>
-                      <SwitchControl
-                        checked={selectedProfile.continuous_improvement_enabled}
-                        disabled={
-                          !speech.ttsEnabled || selectedProfile.fully_optimized
-                        }
-                        onChange={(checked) => {
-                          void setActiveImprovementProfile(
-                            selectedProfile.id,
-                            checked,
-                          ).then(() => speech.refreshProfiles());
-                        }}
-                      />
-                    </div>
-                    {(selectedProfile.collected_audio_duration_secs > 0 ||
-                      selectedProfile.continuous_improvement_enabled) && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-medium text-[var(--muted)]">
-                            {selectedProfile.fully_optimized
-                              ? "Fully optimized"
-                              : selectedProfile.continuous_improvement_enabled
-                                ? "Currently learning"
-                                : "Collection paused"}
-                          </span>
-                          <span className="font-mono text-[10px] text-[var(--muted)]">
-                            {`${Math.round(selectedProfile.collected_audio_duration_secs)}s / ${Math.round(selectedProfile.satisfactory_threshold_secs)}s`}
-                          </span>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--input)]">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              selectedProfile.fully_optimized
-                                ? "bg-[var(--success)]"
-                                : "bg-[var(--accent)]"
-                            }`}
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                (selectedProfile.collected_audio_duration_secs /
-                                  selectedProfile.satisfactory_threshold_secs) *
-                                  100,
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {selectedProfile.collected_audio_duration_secs > 0 ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          if (
-                            !confirmDestructiveAction(
-                              t(
-                                "listen.voiceCloning.clearCollectedDataConfirm",
-                                {
-                                  profileLabel: selectedProfile.label,
-                                  defaultValue:
-                                    'Clear collected training data for "{{profileLabel}}"?',
-                                },
-                              ),
-                            )
-                          ) {
-                            return;
-                          }
-
-                          try {
-                            await clearProfileCollectedData(selectedProfile.id);
-                            await speech.refreshProfiles();
-                          } catch (error) {
-                            console.error(
-                              "Failed to clear collected data:",
-                              error,
-                            );
-                            toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : t(
-                                    "listen.voiceCloning.clearCollectedDataFailed",
-                                    {
-                                      defaultValue:
-                                        "Could not clear collected data.",
-                                    },
-                                  ),
-                            );
-                          }
-                        }}
-                        disabled={!speech.ttsEnabled}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        {t("listen.voiceCloning.clearCollectedData")}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm leading-6 text-[var(--muted)]">
-                  {selectedCloneModel
-                    ? "Choose or create a clone profile to start using reference audio with this model."
-                    : "Choose a clone model first, then pick or create a profile to start building a cloned voice here."}
-                </p>
-              )}
-
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-                <div className="space-y-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-sm font-semibold text-[var(--text)]">
-                      {t("listen.voiceCloning.createProfile")}
-                    </h3>
-                    <p className="text-xs text-[var(--muted)]">
-                      {t("listen.voiceCloning.createProfileDescription")}
-                    </p>
-                  </div>
-                  <Input
-                    value={speech.profileNameDraft}
-                    onChange={(event) =>
-                      speech.setProfileNameDraft(event.target.value)
-                    }
-                    placeholder={t("listen.placeholders.voiceProfileName")}
-                    disabled={!speech.ttsEnabled}
-                    className="w-full"
-                  />
-                  <Input
-                    value={speech.profileDescriptionDraft}
-                    onChange={(event) =>
-                      speech.setProfileDescriptionDraft(event.target.value)
-                    }
-                    placeholder={t("listen.placeholders.voiceProfileNote")}
-                    disabled={!speech.ttsEnabled}
-                    className="w-full"
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={
-                        !speech.ttsEnabled ||
-                        !speech.profileNameDraft.trim() ||
-                        speech.busyProfileAction === "create"
-                      }
-                      onClick={async () => {
-                        speech.setBusyProfileAction("create");
-                        try {
-                          const createdProfile = await createTtsVoiceProfile(
-                            speech.profileNameDraft,
-                            speech.profileDescriptionDraft || null,
-                            speech.profileTranscriptDraft || null,
-                          );
-                          speech.setProfileNameDraft("");
-                          speech.setProfileDescriptionDraft("");
-                          speech.setProfileTranscriptDraft("");
-                          await speech.refreshProfiles();
-                          setSelectedProfileId(createdProfile.id);
-                        } finally {
-                          speech.setBusyProfileAction(null);
-                        }
-                      }}
-                    >
-                      {t("listen.voiceCloning.createProfileButton")}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       ) : null}
-    </AnimatePresence>,
-    document.body,
+    </div>
   );
 
   const content = (
     <>
       {modelWindow}
-      {profilesWindow}
       <div
         className={`space-y-3 ${
           !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
@@ -868,10 +677,14 @@ export const VoiceCloningSection: React.FC<{
             onClick={() => void generateCloneVoice()}
             disabled={createPresetDisabled}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            {speech.busyProfileAction === "generate" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
             {t("listen.voiceCloning.generate", { defaultValue: "Generate" })}
           </Button>
-          <SegmentedControl<"models" | "profiles">
+          <SegmentedControl<"audio" | "profile">
             value={voiceCloneTool}
             onChange={handleVoiceCloneToolChange}
             layoutId="voice-clone-tool-toggle"
@@ -880,100 +693,273 @@ export const VoiceCloningSection: React.FC<{
             })}
             items={[
               {
-                value: "models",
-                label: t("listen.createVoices.models", {
-                  defaultValue: "Models",
+                value: "audio",
+                label: t("listen.voiceCloning.audioTab", {
+                  defaultValue: "Audio",
                 }),
               },
               {
-                value: "profiles",
-                label: t("listen.voiceCloning.profiles", {
-                  defaultValue: "Profiles",
+                value: "profile",
+                label: t("listen.voiceCloning.profileTab", {
+                  defaultValue: "Profile",
                 }),
               },
             ]}
           />
+          <div className="ml-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setModelWindowOpen(true)}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              {t("listen.createVoices.models", { defaultValue: "Models" })}
+            </Button>
+          </div>
         </div>
 
-        {speech.statusMessage ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
-            {speech.statusMessage}
+        {speech.statusMessage || cloneReadinessMessage ? (
+          <div
+            className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]"
+            aria-live="polite"
+          >
+            {speech.statusMessage ?? cloneReadinessMessage}
           </div>
         ) : null}
 
-        <div
-          className={[
-            whiteWorkflowCardClassName,
-            "flex min-h-[190px] flex-col items-center justify-center gap-3 border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150",
-            isReferenceAudioDragOver
-              ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
-              : "",
-          ].join(" ")}
-        >
-          <div
-            className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
-            aria-hidden="true"
-          >
-            {isReferenceAudioDragOver ? (
-              <Upload className="h-5 w-5" />
-            ) : referenceAudioPathDraft ? (
-              <FileAudio className="h-5 w-5 text-[var(--accent)]" />
-            ) : (
-              <FileAudio className="h-5 w-5" />
-            )}
-          </div>
-          <div className="max-w-xl space-y-1">
-            <p className="text-sm font-medium text-[var(--text)]">
-              {referenceAudioPathDraft
-                ? basename(referenceAudioPathDraft)
-                : t("listen.voiceCloning.dropReferenceAudio", {
-                    defaultValue: "Drag & drop a WAV reference audio file",
-                  })}
-            </p>
-            <p className="text-xs leading-5 text-[var(--muted)]">
-              {t("listen.voiceCloning.referenceAudioHint", {
-                defaultValue:
-                  "Use a clear voice sample. The transcript can guide cloning; if left blank, Vox Jot will try to transcribe the sample.",
-              })}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon-sm"
-            onClick={() => void pickReferenceAudio()}
-            disabled={!speech.ttsEnabled}
-            aria-label={t("listen.voiceCloning.pickReferenceAudio", {
-              defaultValue: "Choose reference audio in Finder",
-            })}
-            title={t("listen.voiceCloning.pickReferenceAudio", {
-              defaultValue: "Choose reference audio in Finder",
-            })}
-          >
-            <FolderOpen aria-hidden />
-          </Button>
-        </div>
+        {voiceCloneTool === "audio" ? (
+          <>
+            <div
+              className={[
+                whiteWorkflowCardClassName,
+                "flex min-h-[190px] flex-col items-center justify-center gap-3 border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150",
+                isRecording
+                  ? "border-[var(--danger,red)] bg-[color-mix(in_srgb,var(--danger,red)_6%,transparent)]"
+                  : isReferenceAudioDragOver
+                    ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
+                    : referenceAudioPathDraft
+                      ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))]"
+                      : "",
+              ].join(" ")}
+            >
+              {/* Animated waveform during recording */}
+              {isRecording ? (
+                <div
+                  className="flex h-12 items-end gap-[3px]"
+                  aria-label="Recording audio"
+                >
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span
+                      key={i}
+                      className="w-[4px] rounded-full bg-[var(--danger,red)]"
+                      style={{
+                        animation: `voice-clone-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
+                      }}
+                    />
+                  ))}
+                  <style>{`
+                    @keyframes voice-clone-bar {
+                      0% { height: 8px; opacity: 0.4; }
+                      50% { height: 28px; opacity: 0.9; }
+                      100% { height: 14px; opacity: 0.6; }
+                    }
+                  `}</style>
+                </div>
+              ) : (
+                <div
+                  className={[
+                    "flex size-12 items-center justify-center rounded-full text-[var(--muted)]",
+                    referenceAudioPathDraft
+                      ? "bg-[var(--accent-soft,var(--input))]"
+                      : "bg-[var(--input)]",
+                  ].join(" ")}
+                  aria-hidden="true"
+                >
+                  {isReferenceAudioDragOver ? (
+                    <Upload className="h-5 w-5" />
+                  ) : referenceAudioPathDraft ? (
+                    <FileAudio className="h-5 w-5 text-[var(--accent)]" />
+                  ) : (
+                    <FileAudio className="h-5 w-5" />
+                  )}
+                </div>
+              )}
 
-        <div className={whiteWorkflowCardClassName}>
-          <WorkflowField
-            label={t("listen.voiceCloning.transcript", {
-              defaultValue: "Transcript",
-            })}
-            hint={t("listen.voiceCloning.transcriptForCloneHint", {
-              defaultValue: "Optional text for the reference audio.",
-            })}
-          >
-            <Textarea
-              value={referenceTranscriptDraft}
-              onChange={(event) =>
-                setReferenceTranscriptDraft(event.target.value)
-              }
-              placeholder={t("listen.placeholders.voiceProfileTranscript")}
-              disabled={!speech.ttsEnabled}
-              className="min-h-[176px]"
-            />
-          </WorkflowField>
-        </div>
+              <div className="max-w-xl w-full space-y-3">
+                {isRecording ? (
+                  <>
+                    <p className="text-sm font-semibold text-[var(--danger,red)]">
+                      {t("listen.voiceCloning.recordingActive", {
+                        defaultValue:
+                          "Recording… tap Stop when you are done speaking",
+                      })}
+                    </p>
+                    <p className="text-xs leading-5 text-[var(--muted)]">
+                      {t("listen.voiceCloning.recordingHint", {
+                        defaultValue:
+                          "Speak clearly and steadily. A 5–15 second clip works best.",
+                      })}
+                    </p>
+                  </>
+                ) : referenceAudioPathDraft ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
+                      <p className="text-sm font-semibold text-[var(--accent)]">
+                        {t("listen.voiceCloning.referenceAudioReady", {
+                          defaultValue: "Reference audio ready",
+                        })}
+                      </p>
+                    </div>
+                    <p className="font-mono text-xs text-[var(--text)]">
+                      {basename(referenceAudioPathDraft)}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-[var(--text)]">
+                      {t("listen.voiceCloning.dropReferenceAudio", {
+                        defaultValue:
+                          "Drag & drop a WAV file, browse files, or record your voice",
+                      })}
+                    </p>
+                    <p className="text-xs leading-5 text-[var(--muted)]">
+                      {t("listen.voiceCloning.referenceAudioHint", {
+                        defaultValue:
+                          "Use a clear, steady voice sample. The transcript can guide cloning; if left blank, Vox Jot will try to transcribe the sample.",
+                      })}
+                    </p>
+                  </div>
+                )}
+                {!isRecording ? (
+                  <>
+                    <div
+                      className="flex items-center justify-center gap-3 pt-1"
+                      role="group"
+                      aria-label={t(
+                        referenceAudioPathDraft
+                          ? "listen.voiceCloning.replaceReferenceActions"
+                          : "listen.voiceCloning.referenceAudioActions",
+                        {
+                          defaultValue: referenceAudioPathDraft
+                            ? "Replace reference audio"
+                            : "Reference audio",
+                        },
+                      )}
+                    >
+                      <Button
+                        type="button"
+                        variant="primary-soft"
+                        size="icon"
+                        onClick={() => void pickReferenceAudio()}
+                        disabled={!speech.ttsEnabled}
+                        aria-label={t(
+                          "listen.voiceCloning.pickReferenceAudio",
+                          {
+                            defaultValue: "Choose audio file in Finder",
+                          },
+                        )}
+                        title={t("listen.voiceCloning.pickReferenceAudio", {
+                          defaultValue: "Choose audio file in Finder",
+                        })}
+                      >
+                        <FolderOpen aria-hidden />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="icon"
+                        onClick={() => void toggleMicCapture()}
+                        disabled={!speech.ttsEnabled}
+                        aria-label={t("listen.voiceCloning.startRecording", {
+                          defaultValue: "Record from microphone",
+                        })}
+                        title={t("listen.voiceCloning.startRecording", {
+                          defaultValue: "Record from microphone",
+                        })}
+                      >
+                        <Mic aria-hidden />
+                      </Button>
+                    </div>
+                    {referenceAudioPathDraft ? (
+                      <p className="text-center text-[11px] leading-4 text-[var(--muted)]">
+                        {t("listen.voiceCloning.referenceLoadedHint", {
+                          defaultValue:
+                            "This audio will be used as the voice identity for cloning. You can replace it by dragging a new file or recording again.",
+                        })}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+              {isRecording ? (
+                <div
+                  className="flex items-center justify-center gap-3"
+                  role="group"
+                  aria-label={t("listen.voiceCloning.recordingActions", {
+                    defaultValue: "While recording",
+                  })}
+                >
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => void pickReferenceAudio()}
+                    disabled={!speech.ttsEnabled || isRecording}
+                    aria-label={t("listen.voiceCloning.pickReferenceAudio", {
+                      defaultValue: "Choose audio file in Finder",
+                    })}
+                    title={t("listen.voiceCloning.pickReferenceAudio", {
+                      defaultValue: "Choose audio file in Finder",
+                    })}
+                  >
+                    <FolderOpen aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="icon"
+                    onClick={() => void toggleMicCapture()}
+                    disabled={!speech.ttsEnabled}
+                    aria-label={t("listen.voiceCloning.stopRecording", {
+                      defaultValue: "Stop recording",
+                    })}
+                    title={t("listen.voiceCloning.stopRecording", {
+                      defaultValue: "Stop recording",
+                    })}
+                  >
+                    <Square className="h-3.5 w-3.5" aria-hidden />
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={whiteWorkflowCardClassName}>
+              <WorkflowField
+                label={t("listen.voiceCloning.transcript", {
+                  defaultValue: "Transcript",
+                })}
+                hint={t("listen.voiceCloning.transcriptForCloneHint", {
+                  defaultValue:
+                    "Optional text for the reference audio. If you are recording your voice, prepare the words you will say here first.",
+                })}
+              >
+                <Textarea
+                  value={referenceTranscriptDraft}
+                  onChange={(event) =>
+                    setReferenceTranscriptDraft(event.target.value)
+                  }
+                  placeholder={t("listen.placeholders.voiceProfileTranscript")}
+                  disabled={!speech.ttsEnabled}
+                  className="min-h-[176px]"
+                />
+              </WorkflowField>
+            </div>
+          </>
+        ) : (
+          profileView
+        )}
       </div>
     </>
   );

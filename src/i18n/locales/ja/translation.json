@@ -1445,7 +1445,10 @@
       "readyForCloning": "Ready for cloning",
       "needsReferenceAudio": "Needs reference audio",
       "audioFile": "Audio file",
-      "transcript": "Transcript"
+      "transcript": "Transcript",
+      "referenceAudioActions": "Reference audio",
+      "replaceReferenceActions": "Replace reference audio",
+      "recordingActions": "While recording"
     },
     "placeholders": {
       "styleInstructions": "Warm, calm, confident, closer to a product demo than a podcast host.",

@@ -2367,6 +2367,14 @@ async convoStopAudioCapture() : Promise<Result<number[], string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async convoSaveAudioCapture(filePath: string, wavBytes: number[]) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("convo_save_audio_capture", { filePath, wavBytes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async convoSendAudioTurn(sessionId: string, wavBytes: number[], context: string | null) : Promise<Result<ConvoTurnResponse, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("convo_send_audio_turn", { sessionId, wavBytes, context }) };

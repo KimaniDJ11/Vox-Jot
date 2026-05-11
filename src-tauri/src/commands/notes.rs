@@ -95,6 +95,12 @@ pub fn set_scratchpad_editor_armed(app: AppHandle, armed: bool) -> Result<(), St
 
 #[tauri::command]
 #[specta::specta]
+pub fn set_scratchpad_titlebar_drag_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    crate::scratchpad::set_scratchpad_titlebar_drag_enabled(&app, enabled)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn consume_scratchpad_target_note(app: AppHandle) -> Result<Option<i64>, String> {
     Ok(crate::scratchpad::consume_pending_note_target(&app))
 }

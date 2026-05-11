@@ -394,10 +394,17 @@ export function resolvedTuningControlsForModel(
   model: CatalogModelDescriptor | null | undefined,
 ) {
   const catalogControls = model?.delivery_support.advanced_controls ?? [];
-  const controls =
-    catalogControls.length > 0
-      ? [...catalogControls]
-      : fallbackTuningControlsForModel(model);
+  const controlsById = new Map<string, TtsAdvancedControlDescriptor>();
+
+  for (const control of fallbackTuningControlsForModel(model)) {
+    controlsById.set(control.id, control);
+  }
+
+  for (const control of catalogControls) {
+    controlsById.set(control.id, control);
+  }
+
+  const controls = [...controlsById.values()];
 
   if (
     model?.capabilities.supports_instruction_prompt &&

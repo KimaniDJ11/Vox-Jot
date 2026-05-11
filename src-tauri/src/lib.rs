@@ -868,6 +868,7 @@ pub fn run(cli_args: CliArgs) {
         commands::notes::show_scratchpad_for_note,
         commands::notes::toggle_scratchpad,
         commands::notes::set_scratchpad_editor_armed,
+        commands::notes::set_scratchpad_titlebar_drag_enabled,
         commands::notes::consume_scratchpad_target_note,
         commands::corrections::get_corrections,
         commands::corrections::delete_correction,
@@ -1172,6 +1173,11 @@ pub fn run(cli_args: CliArgs) {
                 log::info!("Theme changed to: {:?}", theme);
                 // Update tray icon to match new theme, maintaining idle state
                 utils::change_tray_icon(window.app_handle(), utils::TrayIconState::Idle);
+            }
+            tauri::WindowEvent::Focused(focused) => {
+                if window.label() == scratchpad::SCRATCHPAD_LABEL {
+                    scratchpad::notify_scratchpad_focus_change(window.app_handle(), *focused);
+                }
             }
             _ => {}
         })

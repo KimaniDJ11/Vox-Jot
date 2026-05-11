@@ -73,7 +73,18 @@ const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
 const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
 
 fn try_insert_into_focused_scratchpad(text: &str, app_handle: &AppHandle) -> Result<bool, String> {
-    if !crate::scratchpad::consume_pending_insert_target(app_handle) {
+    // First: honor the snapshot taken at dictation start.
+    let mut should_insert = crate::scratchpad::consume_pending_insert_target(app_handle);
+
+    // Belt-and-suspenders: if the snapshot was missed (e.g. transient blur
+    // during shortcut handling on macOS NSPanel), re-check at paste time
+    // whether the scratchpad currently holds focus.
+    if !should_insert && crate::scratchpad::scratchpad_currently_focused(app_handle) {
+        info!("Paste-time fallback: scratchpad is focused, routing dictation to Jot Pad");
+        should_insert = true;
+    }
+
+    if !should_insert {
         return Ok(false);
     }
 

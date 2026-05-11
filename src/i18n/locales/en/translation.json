@@ -1523,17 +1523,29 @@
     "recording": "Recording"
   },
   "jotPad": {
+    "title": "Jot Pad",
     "newNote": "New note",
     "empty": "No notes yet.",
     "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
     "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
     "untitled": "Untitled",
+    "untitledNote": "Untitled note",
     "titlePlaceholder": "Note title",
     "contentPlaceholder": "Start typing…",
     "noNoteSelected": "Select a note or create a new one",
     "createFirst": "Create a note",
     "pin": "Pin",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "speak": "Read aloud",
+    "stopSpeaking": "Stop reading",
+    "saveHint": "Save",
+    "lastEdited": "Last edited",
+    "charCount_one": "{{count}} char",
+    "charCount_other": "{{count}} chars",
+    "deleteConfirm": "Delete note \"{{noteTitle}}\"?",
+    "notes": "Notes",
+    "search": "Search notes",
+    "pinned": "Pinned"
   },
   "listen": {
     "tuning": {

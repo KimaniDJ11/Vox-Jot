@@ -465,7 +465,6 @@ export const VoiceArchitectSection: React.FC<{
     setDraftVoiceErrorMessage(null);
     setDraftProviderId(model.provider_id);
     setDraftModelId(model.id);
-    setCreateVoiceTool("audio");
     setModelWindowOpen(false);
     speech.setStatusMessage(null);
   };

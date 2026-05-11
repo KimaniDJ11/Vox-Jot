@@ -1,5 +1,6 @@
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -28,11 +29,26 @@ interface ScriptEditorProps {
   onCursorChange?: (selection: ScriptTextSelection) => void;
 }
 
+interface HistorySnapshot {
+  text: string;
+  selection: ScriptTextSelection;
+}
+
+const HISTORY_LIMIT = 150;
+const HISTORY_DEBOUNCE_MS = 400;
+
 export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
   ({ value, disabled = false, onChange, onCursorChange }, ref) => {
     const { t } = useTranslation();
     const editorRef = useRef<HTMLDivElement | null>(null);
     const latestValueRef = useRef(value);
+    const undoStackRef = useRef<HistorySnapshot[]>([]);
+    const redoStackRef = useRef<HistorySnapshot[]>([]);
+    const pendingHistorySnapshotRef = useRef<HistorySnapshot | null>(null);
+    const historyDebounceTimerRef = useRef<number | null>(null);
+    const isApplyingHistoryRef = useRef(false);
+    const isComposingRef = useRef(false);
+    const justEndedCompositionRef = useRef(false);
     const draggedTokenRef = useRef<{
       token: string;
       sourceOffset: number;
@@ -53,7 +69,141 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
 
     latestValueRef.current = value;
 
-    const insertText = (text: string) => {
+    const clearHistoryDebounce = () => {
+      if (historyDebounceTimerRef.current === null) {
+        return;
+      }
+      window.clearTimeout(historyDebounceTimerRef.current);
+      historyDebounceTimerRef.current = null;
+    };
+
+    const clearHistory = () => {
+      clearHistoryDebounce();
+      pendingHistorySnapshotRef.current = null;
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+    };
+
+    const makeSnapshot = (
+      text = latestValueRef.current,
+      selection = lastSelectionRef.current,
+    ): HistorySnapshot => ({
+      text,
+      selection: clampSelection(selection, text),
+    });
+
+    const liveSnapshot = (): HistorySnapshot => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return makeSnapshot();
+      }
+
+      return makeSnapshot(latestValueRef.current, currentSelection(editor));
+    };
+
+    const pushHistorySnapshot = (
+      stack: HistorySnapshot[],
+      snapshot: HistorySnapshot,
+    ) => {
+      const normalized = makeSnapshot(snapshot.text, snapshot.selection);
+      const previous = stack[stack.length - 1];
+      if (
+        previous &&
+        previous.text === normalized.text &&
+        selectionsEqual(previous.selection, normalized.selection)
+      ) {
+        return;
+      }
+
+      stack.push(normalized);
+      if (stack.length > HISTORY_LIMIT) {
+        stack.splice(0, stack.length - HISTORY_LIMIT);
+      }
+    };
+
+    const flushPendingHistory = () => {
+      clearHistoryDebounce();
+      const pending = pendingHistorySnapshotRef.current;
+      pendingHistorySnapshotRef.current = null;
+      if (!pending || pending.text === latestValueRef.current) {
+        return;
+      }
+
+      pushHistorySnapshot(undoStackRef.current, pending);
+    };
+
+    const beginHistoryChunk = (snapshot: HistorySnapshot) => {
+      if (isApplyingHistoryRef.current || pendingHistorySnapshotRef.current) {
+        return;
+      }
+
+      pendingHistorySnapshotRef.current = makeSnapshot(
+        snapshot.text,
+        snapshot.selection,
+      );
+      redoStackRef.current = [];
+    };
+
+    const scheduleHistoryFlush = () => {
+      if (isComposingRef.current) {
+        return;
+      }
+
+      clearHistoryDebounce();
+      historyDebounceTimerRef.current = window.setTimeout(() => {
+        flushPendingHistory();
+      }, HISTORY_DEBOUNCE_MS);
+    };
+
+    const recordImmediateHistory = (snapshot: HistorySnapshot) => {
+      if (isApplyingHistoryRef.current) {
+        return;
+      }
+
+      flushPendingHistory();
+      pushHistorySnapshot(undoStackRef.current, snapshot);
+      redoStackRef.current = [];
+    };
+
+    const applyHistory = (direction: "undo" | "redo") => {
+      const editor = editorRef.current;
+      if (!editor || disabled) {
+        return;
+      }
+
+      flushPendingHistory();
+      const sourceStack =
+        direction === "undo" ? undoStackRef.current : redoStackRef.current;
+      const targetStack =
+        direction === "undo" ? redoStackRef.current : undoStackRef.current;
+      const target = sourceStack.pop();
+      if (!target) {
+        return;
+      }
+
+      pushHistorySnapshot(targetStack, liveSnapshot());
+      const nextSelection = clampSelection(target.selection, target.text);
+
+      clearHistoryDebounce();
+      pendingHistorySnapshotRef.current = null;
+      isApplyingHistoryRef.current = true;
+      latestValueRef.current = target.text;
+      lastSelectionRef.current = nextSelection;
+      onChange(target.text);
+      renderDecoratedText(editor, target.text);
+      editor.focus();
+      restoreSelection(editor, nextSelection);
+      onCursorChange?.(nextSelection);
+
+      window.setTimeout(() => {
+        isApplyingHistoryRef.current = false;
+      }, 0);
+    };
+
+    const insertText = (
+      text: string,
+      options: { history?: "boundary" | "immediate" } = {},
+    ) => {
       const editor = editorRef.current;
       if (!editor || disabled) return;
 
@@ -67,23 +217,58 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
         end: nextOffset,
         lineNumber: lineNumberAtOffset(next, nextOffset),
       };
+      if (next === source && selectionsEqual(selection, nextSelection)) {
+        return;
+      }
 
+      const previousSnapshot = makeSnapshot(source, selection);
+      if (options.history === "boundary") {
+        beginHistoryChunk(previousSnapshot);
+      } else {
+        recordImmediateHistory(previousSnapshot);
+      }
+
+      latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
       renderDecoratedText(editor, next);
       editor.focus();
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
+
+      if (options.history === "boundary") {
+        flushPendingHistory();
+      }
     };
 
     useLayoutEffect(() => {
       const editor = editorRef.current;
-      if (!editor || plainText(editor) === value) {
+      if (!editor) {
         return;
       }
+
+      if (plainText(editor) === value) {
+        latestValueRef.current = value;
+        return;
+      }
+
+      if (!isApplyingHistoryRef.current) {
+        clearHistory();
+      }
+
+      const nextSelection = clampSelection(lastSelectionRef.current, value);
+      latestValueRef.current = value;
+      lastSelectionRef.current = nextSelection;
       renderDecoratedText(editor, value);
-      restoreSelection(editor, lastSelectionRef.current);
+      restoreSelection(editor, nextSelection);
     }, [value]);
+
+    useEffect(
+      () => () => {
+        clearHistoryDebounce();
+      },
+      [],
+    );
 
     useImperativeHandle(
       ref,
@@ -102,25 +287,117 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
       onCursorChange?.(nextSelection);
     };
 
-    const handleInput = () => {
+    const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
       const editor = editorRef.current;
       if (!editor) return;
+      const previous = makeSnapshot();
       const next = plainText(editor);
       const nextSelection = currentSelection(editor);
+      if (next !== previous.text && !pendingHistorySnapshotRef.current) {
+        beginHistoryChunk(previous);
+      }
+
+      latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
       renderDecoratedText(editor, next);
       restoreSelection(editor, nextSelection);
       onCursorChange?.(nextSelection);
+
+      if (isComposingRef.current) {
+        return;
+      }
+
+      if (
+        justEndedCompositionRef.current ||
+        isHistoryBoundaryInput(event.nativeEvent as InputEvent)
+      ) {
+        flushPendingHistory();
+        justEndedCompositionRef.current = false;
+        return;
+      }
+
+      scheduleHistoryFlush();
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const key = event.key.toLowerCase();
+      const isUndo = (event.metaKey || event.ctrlKey) && key === "z";
+      const isRedo =
+        ((event.metaKey || event.ctrlKey) && event.shiftKey && key === "z") ||
+        (event.ctrlKey && key === "y");
+
+      if (isUndo || isRedo) {
+        event.preventDefault();
+        event.stopPropagation();
+        applyHistory(isRedo ? "redo" : "undo");
+        return;
+      }
+
       if (event.key !== "Enter") {
         return;
       }
 
       event.preventDefault();
-      insertText("\n");
+      insertText("\n", { history: "boundary" });
+    };
+
+    const handleBeforeInput = (event: React.FormEvent<HTMLDivElement>) => {
+      const editor = editorRef.current;
+      if (!editor || disabled) {
+        return;
+      }
+
+      const inputEvent = event.nativeEvent as InputEvent;
+      if (inputEvent.inputType === "historyUndo") {
+        event.preventDefault();
+        applyHistory("undo");
+        return;
+      }
+
+      if (inputEvent.inputType === "historyRedo") {
+        event.preventDefault();
+        applyHistory("redo");
+        return;
+      }
+
+      if (
+        inputEvent.inputType === "insertParagraph" ||
+        inputEvent.inputType === "insertLineBreak"
+      ) {
+        event.preventDefault();
+        insertText("\n", { history: "boundary" });
+        return;
+      }
+
+      if (
+        inputEvent.isComposing ||
+        isComposingRef.current ||
+        !isMutatingInput(inputEvent.inputType)
+      ) {
+        return;
+      }
+
+      beginHistoryChunk(
+        snapshotFromBeforeInput(editor, inputEvent) ?? makeSnapshot(),
+      );
+    };
+
+    const handleCompositionStart = () => {
+      flushPendingHistory();
+      isComposingRef.current = true;
+      justEndedCompositionRef.current = false;
+      beginHistoryChunk(liveSnapshot());
+    };
+
+    const handleCompositionEnd = () => {
+      isComposingRef.current = false;
+      justEndedCompositionRef.current = true;
+      clearHistoryDebounce();
+      historyDebounceTimerRef.current = window.setTimeout(() => {
+        justEndedCompositionRef.current = false;
+        flushPendingHistory();
+      }, 0);
     };
 
     const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -294,6 +571,8 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
         lineNumber: lineNumberAtOffset(next, nextOffset),
       };
 
+      recordImmediateHistory(makeSnapshot(current, lastSelectionRef.current));
+      latestValueRef.current = next;
       lastSelectionRef.current = nextSelection;
       onChange(next);
       renderDecoratedText(editor, next);
@@ -325,22 +604,15 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
             disabled ? "cursor-not-allowed opacity-60" : ""
           }`}
           data-placeholder={t("storyStudio.script.placeholder")}
-          onBeforeInput={(event) => {
-            const inputEvent = event.nativeEvent as InputEvent;
-            if (
-              inputEvent.inputType !== "insertParagraph" &&
-              inputEvent.inputType !== "insertLineBreak"
-            ) {
-              return;
-            }
-            event.preventDefault();
-            insertText("\n");
-          }}
+          onBeforeInput={handleBeforeInput}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
           onKeyUp={updateSelection}
           onMouseUp={updateSelection}
           onFocus={updateSelection}
+          onBlur={flushPendingHistory}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           onPaste={handlePaste}
           onDragStart={handleDragStart}
           onDragEnd={() => {
@@ -908,9 +1180,69 @@ function clampSelection(
   selection: ScriptTextSelection,
   text: string,
 ): ScriptTextSelection {
+  const start = Math.min(Math.max(selection.start, 0), text.length);
+  const end = Math.min(Math.max(selection.end, 0), text.length);
   return {
-    start: Math.min(Math.max(selection.start, 0), text.length),
-    end: Math.min(Math.max(selection.end, 0), text.length),
-    lineNumber: lineNumberAtOffset(text, selection.start),
+    start,
+    end,
+    lineNumber: lineNumberAtOffset(text, start),
+  };
+}
+
+function selectionsEqual(
+  first: ScriptTextSelection,
+  second: ScriptTextSelection,
+): boolean {
+  return (
+    first.start === second.start &&
+    first.end === second.end &&
+    first.lineNumber === second.lineNumber
+  );
+}
+
+function isMutatingInput(inputType: string): boolean {
+  return inputType.startsWith("insert") || inputType.startsWith("delete");
+}
+
+function isHistoryBoundaryInput(inputEvent: InputEvent): boolean {
+  return (
+    inputEvent.inputType === "insertParagraph" ||
+    inputEvent.inputType === "insertLineBreak" ||
+    /\s/u.test(inputEvent.data ?? "")
+  );
+}
+
+function snapshotFromBeforeInput(
+  editor: HTMLDivElement,
+  inputEvent: InputEvent,
+): HistorySnapshot | null {
+  const ranges = inputEvent.getTargetRanges?.();
+  const range = ranges?.[0];
+  if (
+    !range ||
+    !editor.contains(range.startContainer) ||
+    !editor.contains(range.endContainer)
+  ) {
+    return null;
+  }
+
+  const text = plainText(editor);
+  const start = offsetForNodePosition(
+    editor,
+    range.startContainer,
+    range.startOffset,
+  );
+  const end = offsetForNodePosition(
+    editor,
+    range.endContainer,
+    range.endOffset,
+  );
+  return {
+    text,
+    selection: {
+      start: Math.min(start, end),
+      end: Math.max(start, end),
+      lineNumber: lineNumberAtOffset(text, Math.min(start, end)),
+    },
   };
 }

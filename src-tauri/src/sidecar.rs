@@ -42,6 +42,10 @@ const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
     "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|patches=voxtral_eos_v1";
 const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.3", "torch==2.11.0", "g2p_en==2.1.0"];
+const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
+const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
+const SPEECH_ANALYSIS_RUNTIME_MARKER: &str = "speech-analysis-runtime-2026-05-12-py311-v1";
+const SPEECH_ANALYSIS_REQUIREMENTS: &str = include_str!("../../speech-analysis-requirements.txt");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidecarBackend {
@@ -695,6 +699,55 @@ impl SidecarManager {
         python.exists().then_some(python)
     }
 
+    pub fn mlx_audio_runtime_installed_for_app(app: &tauri::AppHandle) -> bool {
+        let Ok(app_data_dir) = crate::portable::app_data_dir(app) else {
+            return false;
+        };
+        let venv_dir = app_data_dir.join(MLX_AUDIO_VENV_DIR);
+        let python = Self::mlx_audio_python_path(&venv_dir);
+        if !python.exists() {
+            return false;
+        }
+        let marker = venv_dir.join(MLX_AUDIO_VERSION_MARKER);
+        std::fs::read_to_string(marker)
+            .ok()
+            .map(|value| value.trim() == MLX_AUDIO_RUNTIME_MARKER)
+            .unwrap_or(false)
+    }
+
+    fn speech_analysis_venv_dir(&self) -> Result<PathBuf, String> {
+        let app_data_dir = crate::portable::app_data_dir(&self.app_handle)
+            .map_err(|err| format!("Failed to resolve app data dir for speech analysis: {err}"))?;
+        Ok(app_data_dir.join(SPEECH_ANALYSIS_VENV_DIR))
+    }
+
+    fn speech_analysis_python_path(venv_dir: &Path) -> PathBuf {
+        #[cfg(target_os = "windows")]
+        {
+            return venv_dir.join("Scripts").join("python.exe");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            venv_dir.join("bin").join("python")
+        }
+    }
+
+    pub fn speech_analysis_runtime_installed_for_app(app: &tauri::AppHandle) -> bool {
+        let Ok(app_data_dir) = crate::portable::app_data_dir(app) else {
+            return false;
+        };
+        let venv_dir = app_data_dir.join(SPEECH_ANALYSIS_VENV_DIR);
+        let python = Self::speech_analysis_python_path(&venv_dir);
+        if !python.exists() {
+            return false;
+        }
+        let marker = venv_dir.join(SPEECH_ANALYSIS_VERSION_MARKER);
+        std::fs::read_to_string(marker)
+            .ok()
+            .map(|value| value.trim() == SPEECH_ANALYSIS_RUNTIME_MARKER)
+            .unwrap_or(false)
+    }
+
     fn find_bootstrap_python() -> Option<String> {
         if let Ok(value) = std::env::var("VOX_JOT_MLX_AUDIO_PYTHON") {
             let trimmed = value.trim();
@@ -790,6 +843,105 @@ impl SidecarManager {
         std::fs::write(&version_marker, MLX_AUDIO_RUNTIME_MARKER)
             .map_err(|err| format!("Failed to write mlx-audio version marker: {err}"))?;
         self.emit_setup_progress("ready", "mlx-audio is ready.");
+        Ok(python)
+    }
+
+    pub fn ensure_speech_analysis_environment(&self) -> Result<PathBuf, String> {
+        if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_PYTHON") {
+            let python = PathBuf::from(path);
+            if python.exists() {
+                return Ok(python);
+            }
+        }
+
+        let venv_dir = self.speech_analysis_venv_dir()?;
+        let python = Self::speech_analysis_python_path(&venv_dir);
+        let version_marker = venv_dir.join(SPEECH_ANALYSIS_VERSION_MARKER);
+        let installed_version = std::fs::read_to_string(&version_marker)
+            .ok()
+            .map(|value| value.trim().to_string());
+        let needs_install = !python.exists()
+            || installed_version.as_deref() != Some(SPEECH_ANALYSIS_RUNTIME_MARKER);
+
+        if !needs_install {
+            return Ok(python);
+        }
+
+        std::fs::create_dir_all(&venv_dir)
+            .map_err(|err| format!("Failed to create speech-analysis venv dir: {err}"))?;
+
+        if !python.exists() {
+            let bootstrap_python = Self::find_bootstrap_python().ok_or_else(|| {
+                "Speech analysis requires Python 3 on PATH (or VOX_JOT_SPEECH_ANALYSIS_PYTHON set).".to_string()
+            })?;
+
+            self.emit_setup_progress(
+                "creating_venv",
+                "Preparing speech-analysis Python environment.",
+            );
+            let venv_status = Command::new(&bootstrap_python)
+                .args(["-m", "venv"])
+                .arg(&venv_dir)
+                .status()
+                .map_err(|err| {
+                    format!("Failed to create speech-analysis venv with {bootstrap_python}: {err}")
+                })?;
+            if !venv_status.success() {
+                return Err(format!(
+                    "Failed to create speech-analysis venv with {} (exit status {}).",
+                    bootstrap_python, venv_status
+                ));
+            }
+        }
+
+        let requirements_path = venv_dir.join("requirements.txt");
+        std::fs::write(&requirements_path, SPEECH_ANALYSIS_REQUIREMENTS)
+            .map_err(|err| format!("Failed to write speech-analysis requirements: {err}"))?;
+
+        self.emit_setup_progress("installing", "Installing pinned speech-analysis runtime.");
+        for pip_args in [
+            vec![
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "pip",
+                "setuptools",
+                "wheel",
+            ],
+            vec![
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "--force-reinstall",
+                "-r",
+                requirements_path
+                    .to_str()
+                    .ok_or_else(|| "Invalid speech-analysis requirements path.".to_string())?,
+            ],
+        ] {
+            let status = Command::new(&python)
+                .args(&pip_args)
+                .status()
+                .map_err(|err| {
+                    format!(
+                        "Failed to run '{}' inside the speech-analysis venv: {err}",
+                        pip_args.join(" ")
+                    )
+                })?;
+            if !status.success() {
+                return Err(format!(
+                    "Speech-analysis environment setup failed while running '{}' (exit status {}).",
+                    pip_args.join(" "),
+                    status
+                ));
+            }
+        }
+
+        std::fs::write(&version_marker, SPEECH_ANALYSIS_RUNTIME_MARKER)
+            .map_err(|err| format!("Failed to write speech-analysis version marker: {err}"))?;
+        self.emit_setup_progress("ready", "Speech analysis runtime is ready.");
         Ok(python)
     }
 

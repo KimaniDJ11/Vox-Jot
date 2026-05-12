@@ -55,6 +55,13 @@ interface SpeechAnalysisDownloadProgress {
   error?: string | null;
 }
 
+interface SttDownloadProgress {
+  model_id: string;
+  downloaded: number;
+  total: number;
+  percentage: number;
+}
+
 const taskMatchesGroup = (
   task: SpeechAnalysisTask,
   group: AnalysisGroup,
@@ -74,6 +81,17 @@ const readinessLabel = (model: SpeechAnalysisModelDescriptor): string =>
 
 const sourceKindLabel = (model: SpeechAnalysisModelDescriptor): string =>
   model.source_kind.replace(/_/g, " ");
+
+const speechAnalysisProgressCanCancel = (phase?: string): boolean =>
+  ![
+    "installing-model",
+    "installing-runtime",
+    "verifying-runtime",
+    "complete",
+    "failed",
+    "cancelled",
+    "cancelling",
+  ].includes(phase ?? "");
 
 const providerIconId = (model: SpeechAnalysisModelDescriptor): string => {
   if (model.provider.trim().toLowerCase() === "vox jot") {
@@ -133,10 +151,12 @@ const SpeechAnalysisEnginesSection: React.FC<
   >(null);
   const [activeGroup, setActiveGroup] = useState<AnalysisGroup>("asr");
   const viewSwitcherRef = useRef<HTMLDivElement>(null);
+  const catalogRef = useRef<SpeechAnalysisCatalog | null>(null);
 
   const loadCatalog = useCallback(async () => {
     const result = await commands.getSpeechAnalysisCatalog();
     if (result.status === "ok") {
+      catalogRef.current = result.data;
       setCatalog(result.data);
       setError(null);
     } else {
@@ -166,61 +186,148 @@ const SpeechAnalysisEnginesSection: React.FC<
       setActiveDownloads(new Set(downloads));
     });
 
-    const unlisten = listen<SpeechAnalysisDownloadProgress>(
-      "speech-analysis-download-progress",
-      (event) => {
+    const isSpeechAnalysisModel = (modelId: string): boolean =>
+      Boolean(catalogRef.current?.models.some((model) => model.id === modelId));
+
+    const unlisteners = Promise.all([
+      listen<SpeechAnalysisDownloadProgress>(
+        "speech-analysis-download-progress",
+        (event) => {
+          const progress = event.payload;
+          setDownloadProgress((current) => ({
+            ...current,
+            [progress.model_id]: progress,
+          }));
+          setActiveDownloads((current) => {
+            const next = new Set(current);
+            if (
+              progress.phase === "complete" ||
+              progress.phase === "failed" ||
+              progress.phase === "cancelled"
+            ) {
+              next.delete(progress.model_id);
+            } else {
+              next.add(progress.model_id);
+            }
+            return next;
+          });
+          setCancellingDownloads((current) => {
+            const next = new Set(current);
+            if (progress.phase === "cancelling") {
+              next.add(progress.model_id);
+            }
+            if (
+              progress.phase === "complete" ||
+              progress.phase === "failed" ||
+              progress.phase === "cancelled"
+            ) {
+              next.delete(progress.model_id);
+            }
+            return next;
+          });
+          if (progress.phase === "complete") {
+            void loadCatalog();
+          }
+          if (progress.phase === "cancelled") {
+            setDownloadProgress((current) => {
+              const next = { ...current };
+              delete next[progress.model_id];
+              return next;
+            });
+            void loadCatalog();
+          }
+          if (progress.phase === "failed" && progress.error) {
+            setError(progress.error);
+          }
+        },
+      ),
+      listen<SttDownloadProgress>("model-download-progress", (event) => {
         const progress = event.payload;
+        if (!isSpeechAnalysisModel(progress.model_id)) return;
+
         setDownloadProgress((current) => ({
           ...current,
-          [progress.model_id]: progress,
+          [progress.model_id]: {
+            model_id: progress.model_id,
+            phase: "downloading",
+            downloaded_bytes: progress.downloaded,
+            total_bytes: progress.total,
+          },
         }));
+        setActiveDownloads((current) =>
+          new Set(current).add(progress.model_id),
+        );
+      }),
+      listen<string>("model-download-complete", (event) => {
+        const modelId = event.payload;
+        if (!isSpeechAnalysisModel(modelId)) return;
+
         setActiveDownloads((current) => {
           const next = new Set(current);
-          if (
-            progress.phase === "complete" ||
-            progress.phase === "failed" ||
-            progress.phase === "cancelled"
-          ) {
-            next.delete(progress.model_id);
-          } else {
-            next.add(progress.model_id);
-          }
+          next.delete(modelId);
           return next;
         });
         setCancellingDownloads((current) => {
           const next = new Set(current);
-          if (progress.phase === "cancelling") {
-            next.add(progress.model_id);
-          }
-          if (
-            progress.phase === "complete" ||
-            progress.phase === "failed" ||
-            progress.phase === "cancelled"
-          ) {
-            next.delete(progress.model_id);
-          }
+          next.delete(modelId);
           return next;
         });
-        if (progress.phase === "complete") {
-          void loadCatalog();
-        }
-        if (progress.phase === "cancelled") {
-          setDownloadProgress((current) => {
-            const next = { ...current };
-            delete next[progress.model_id];
-            return next;
-          });
-          void loadCatalog();
-        }
-        if (progress.phase === "failed" && progress.error) {
-          setError(progress.error);
-        }
-      },
-    );
+        setDownloadProgress((current) => {
+          const next = { ...current };
+          delete next[modelId];
+          return next;
+        });
+        void loadCatalog();
+      }),
+      listen<string>("model-download-cancelled", (event) => {
+        const modelId = event.payload;
+        if (!isSpeechAnalysisModel(modelId)) return;
+
+        setActiveDownloads((current) => {
+          const next = new Set(current);
+          next.delete(modelId);
+          return next;
+        });
+        setCancellingDownloads((current) => {
+          const next = new Set(current);
+          next.delete(modelId);
+          return next;
+        });
+        setDownloadProgress((current) => {
+          const next = { ...current };
+          delete next[modelId];
+          return next;
+        });
+        void loadCatalog();
+      }),
+      listen<string>("model-deleted", (event) => {
+        const modelId = event.payload;
+        if (!isSpeechAnalysisModel(modelId)) return;
+
+        setActiveDownloads((current) => {
+          const next = new Set(current);
+          next.delete(modelId);
+          return next;
+        });
+        setCancellingDownloads((current) => {
+          const next = new Set(current);
+          next.delete(modelId);
+          return next;
+        });
+        setDownloadProgress((current) => {
+          const next = { ...current };
+          delete next[modelId];
+          return next;
+        });
+        void loadCatalog();
+      }),
+    ]);
 
     return () => {
       cancelled = true;
-      void unlisten.then((fn) => fn());
+      void unlisteners.then((fns) => {
+        fns.forEach((fn) => fn());
+      });
     };
   }, [loadCatalog]);
 
@@ -692,41 +799,78 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                 ? progress.file.slice(progress.file.lastIndexOf("/") + 1)
                 : progress.file
               : null;
+            const progressLabel = (() => {
+              if (isFailed) {
+                return t("modelHub.analysis.downloadProgress.failed", {
+                  defaultValue: "Setup failed",
+                });
+              }
+              if (isCancelling) {
+                return t("modelHub.analysis.downloadProgress.cancelling", {
+                  defaultValue: "Cancelling download...",
+                });
+              }
+              if (progress?.phase === "preparing") {
+                return t("modelHub.analysis.downloadProgress.preparing", {
+                  defaultValue: "Checking model files...",
+                });
+              }
+              if (progress?.phase === "recovering") {
+                return t("modelHub.analysis.downloadProgress.recovering", {
+                  defaultValue: "Resuming model download...",
+                });
+              }
+              if (progress?.phase === "downloading-related-assets") {
+                return t(
+                  "modelHub.analysis.downloadProgress.relatedAssets",
+                  {
+                    defaultValue: "Downloading required extra files...",
+                  },
+                );
+              }
+              if (progress?.phase === "installing-model") {
+                return t("modelHub.analysis.downloadProgress.installingModel", {
+                  defaultValue: "Installing model files...",
+                });
+              }
+              if (progress?.phase === "installing-runtime") {
+                return t(
+                  "modelHub.analysis.downloadProgress.installingRuntime",
+                  {
+                    defaultValue: "Installing required runtime...",
+                  },
+                );
+              }
+              if (progress?.phase === "complete") {
+                return t("modelHub.analysis.downloadProgress.ready", {
+                  defaultValue: "Ready to use",
+                });
+              }
+              if (progressPct !== null) {
+                return t("modelHub.analysis.downloadProgress.percent", {
+                  defaultValue: "Downloading model files {{percent}}%",
+                  percent: progressPct,
+                });
+              }
+              return t("modelHub.analysis.downloadProgress.downloading", {
+                defaultValue: "Downloading model files...",
+              });
+            })();
+
             const downloadState: HubDownloadState | undefined =
               isDownloading || isFailed
                 ? {
-                    label: isFailed
-                      ? t("modelHub.analysis.downloadProgress.failed", {
-                          defaultValue: "Download failed",
-                        })
-                      : isCancelling
-                        ? t("modelHub.analysis.downloadProgress.cancelling", {
-                            defaultValue: "Cancelling download...",
-                          })
-                        : progressPct !== null
-                          ? t("modelHub.analysis.downloadProgress.percent", {
-                              defaultValue: "Downloading {{percent}}%",
-                              percent: progressPct,
-                            })
-                          : progress?.phase === "downloading"
-                            ? t(
-                                "modelHub.analysis.downloadProgress.downloading",
-                                {
-                                  defaultValue: "Downloading...",
-                                },
-                              )
-                            : t(
-                                "modelHub.analysis.downloadProgress.preparing",
-                                {
-                                  defaultValue: "Preparing download...",
-                                },
-                              ),
+                    label: progressLabel,
                     detail: progressFileName ?? model.repo_id ?? null,
                     error: progress?.error ?? null,
-                    progress: progressPct,
-                    indeterminate: progressPct === null,
+                    progress:
+                      progress?.phase === "installing-model" ? 100 : progressPct,
+                    indeterminate:
+                      progressPct === null &&
+                      progress?.phase !== "installing-model",
                     cancelling: isCancelling,
-                    onCancel: isFailed
+                    onCancel:
+                      isFailed || !speechAnalysisProgressCanCancel(progress?.phase)
                       ? undefined
                       : () => onCancelDownload(model),
                     cancelLabel: t("modelHub.analysis.actions.cancelDownload", {

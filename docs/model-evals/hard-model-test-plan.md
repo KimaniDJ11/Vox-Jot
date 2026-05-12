@@ -20,7 +20,7 @@ Computer Use confirmed the installed app is running with these active models:
 | Surface            | Active model                            |
 | ------------------ | --------------------------------------- |
 | Speech (STT)       | Whisper Turbo                           |
-| Speech Analysis    | PyAnnote 3.1 + current dictation engine |
+| Speech Analysis    | Sortformer 4spk v1 (MLX) + current dictation engine |
 | Post-process (LLM) | `nemotron-3-nano-4b-q4_k_m:latest`      |
 | Voices (TTS)       | `chatterbox-turbo`                      |
 | Screen OCR         | Nemotron OCR v2                         |
@@ -141,7 +141,7 @@ and diarization alignment.
 
 | Tier                | Dataset / source                                              | Why it matters                                                                                        | Metric                               |
 | ------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Readiness           | `.venv/bin/python scripts/validate_speech_analysis_models.py` | Verifies adapters, dependencies, auth, and downloads using the dedicated speech-analysis environment. | ready/download_required/blocked      |
+| Readiness           | `.venv/bin/python scripts/validate_speech_analysis_models.py` | Verifies user-facing MLX speech-analysis adapters and downloads using the dedicated speech-analysis environment. | ready/download_required/blocked      |
 | Meeting speech      | AMI                                                           | Standard meeting-style diarization and ASR stress.                                                    | DER, JER, speaker count error        |
 | Wild video          | VoxConverse                                                   | Overlap, varied speakers, broadcast conditions.                                                       | DER, JER                             |
 | Noisy dinner-party  | CHiME-6                                                       | Distant microphones, natural overlap, domestic noise.                                                 | DER, WER, cpWER                      |

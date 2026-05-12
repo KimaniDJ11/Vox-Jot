@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
- * Evaluate file-transcription ASR sidecar models on the checked-in sample.
+ * Evaluate file-transcription ASR sidecar models on the checked-in samples.
  *
  * This intentionally stays outside live dictation. It calls the same Python
  * sidecar used by file transcription and writes a stable JSON/Markdown report.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,7 +27,7 @@ const REFERENCE =
 
 interface Config {
   models: string[];
-  samplePath: string;
+  samplePaths: string[];
   outputDir: string;
   attempts: number;
 }
@@ -51,6 +51,24 @@ interface ModelResult {
   model_id: string;
   label: string;
   status: "tested" | "skipped" | "failed";
+  attempts: number;
+  sample_count?: number;
+  exact_matches?: number;
+  text?: string;
+  wer?: number;
+  exact_match?: boolean;
+  latency_ms?: number;
+  real_time_factor?: number;
+  device?: string;
+  reason?: string;
+  samples?: SampleResult[];
+}
+
+interface SampleResult {
+  sample_id: string;
+  sample_path: string;
+  sample_16k_path: string;
+  status: "tested" | "failed";
   attempts: number;
   text?: string;
   wer?: number;
@@ -127,21 +145,31 @@ function parseArgs(): Config {
     .split(",")
     .map((model) => model.trim())
     .filter(Boolean);
+  const sampleArg = get("--sample", "");
+  const samplesDir = get(
+    "--samples-dir",
+    resolve(PROJECT_ROOT, "test-data/file-transcription-samples"),
+  );
   return {
     models,
-    samplePath: get(
-      "--sample",
-      resolve(
-        PROJECT_ROOT,
-        "test-data/file-transcription-samples/sample_speech_48k_mono.wav",
-      ),
-    ),
+    samplePaths: sampleArg
+      ? [resolve(PROJECT_ROOT, sampleArg)]
+      : discoverSamplePaths(samplesDir),
     outputDir: get(
       "--output-dir",
       resolve(PROJECT_ROOT, "output/file-asr-model-eval"),
     ),
     attempts: Math.max(1, Number.parseInt(get("--attempts", "3"), 10) || 3),
   };
+}
+
+function discoverSamplePaths(samplesDir: string): string[] {
+  const allowed = new Set([".wav", ".mp3", ".m4a", ".mp4"]);
+  return readdirSync(samplesDir)
+    .filter((entry) => entry.startsWith("sample_"))
+    .filter((entry) => allowed.has(extname(entry).toLowerCase()))
+    .sort()
+    .map((entry) => resolve(samplesDir, entry));
 }
 
 function selectedModels(config: Config): ModelSpec[] {
@@ -183,8 +211,14 @@ function wordErrorRate(reference: string, hypothesis: string): number {
   return editDistance(referenceWords, hypothesisWords) / referenceWords.length;
 }
 
+function safeSegment(value: string): string {
+  return value.replace(/[^a-z0-9._-]+/gi, "_").replace(/^_+|_+$/g, "");
+}
+
 function ensure16kSample(samplePath: string, outputRoot: string): string {
-  const wav16k = resolve(outputRoot, "sample-16k.wav");
+  const samplesDir = resolve(outputRoot, "samples-16k");
+  mkdirSync(samplesDir, { recursive: true });
+  const wav16k = resolve(samplesDir, `${safeSegment(basename(samplePath))}.wav`);
   execFileSync(
     "ffmpeg",
     [
@@ -226,7 +260,7 @@ function sampleDurationMs(samplePath: string): number {
 
 function modelDownloaded(modelId: string): boolean {
   const path = resolve(MODEL_ROOT, modelId);
-  if (existsSync(path)) return true;
+  if (modelSnapshotReady(path)) return true;
 
   const sttMlxPaths: Record<string, string> = {
     "mlx-qwen3-asr-0.6b": "MLX/mlx-community/Qwen3-ASR-0.6B-8bit",
@@ -235,7 +269,24 @@ function modelDownloaded(modelId: string): boolean {
     "mlx-vibevoice-asr-bf16": "MLX/mlx-community/VibeVoice-ASR-bf16",
   };
   const sttPath = sttMlxPaths[modelId];
-  return sttPath ? existsSync(resolve(STT_MODEL_ROOT, sttPath)) : false;
+  return sttPath ? modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true) : false;
+}
+
+function modelSnapshotReady(path: string, requireWeights = false): boolean {
+  if (!existsSync(path)) return false;
+  if (existsSync(resolve(path, "config.json"))) {
+    if (existsSync(resolve(path, "model.safetensors"))) return true;
+    if (
+      existsSync(resolve(path, "model.safetensors.index.json")) &&
+      readdirSync(path).some(
+        (name) => name.startsWith("model-") && name.endsWith(".safetensors"),
+      )
+    ) {
+      return true;
+    }
+  }
+  if (requireWeights) return false;
+  return existsSync(path);
 }
 
 function runSidecar(
@@ -320,8 +371,7 @@ function runSidecar(
 
 function evaluateModel(
   model: ModelSpec,
-  sample16k: string,
-  durationMs: number,
+  samples: { samplePath: string; sample16k: string; durationMs: number }[],
   attempts: number,
 ): ModelResult {
   if (!model.sidecar) {
@@ -346,20 +396,92 @@ function evaluateModel(
   }
 
   let last: ModelResult | null = null;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    last = runSidecar(model, sample16k, durationMs);
-    last.attempts = attempt;
-    if (last.status === "tested") return last;
+  const sampleResults: SampleResult[] = [];
+  for (const sample of samples) {
+    let sampleResult: ModelResult | null = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      sampleResult = runSidecar(model, sample.sample16k, sample.durationMs);
+      sampleResult.attempts = attempt;
+      if (sampleResult.status === "tested") break;
+    }
+    last = sampleResult;
+    sampleResults.push({
+      sample_id: basename(sample.samplePath),
+      sample_path: sample.samplePath,
+      sample_16k_path: sample.sample16k,
+      status: sampleResult?.status === "tested" ? "tested" : "failed",
+      attempts: sampleResult?.attempts ?? attempts,
+      text: sampleResult?.text,
+      wer: sampleResult?.wer,
+      exact_match: sampleResult?.exact_match,
+      latency_ms: sampleResult?.latency_ms,
+      real_time_factor: sampleResult?.real_time_factor,
+      device: sampleResult?.device,
+      reason: sampleResult?.reason,
+    });
   }
-  return (
-    last ?? {
+
+  const failed = sampleResults.find((sample) => sample.status === "failed");
+  if (failed) {
+    return {
       model_id: model.id,
       label: model.label,
       status: "failed",
-      attempts,
-      reason: "no attempt ran",
-    }
+      attempts: sampleResults.reduce((sum, sample) => sum + sample.attempts, 0),
+      sample_count: sampleResults.length,
+      reason: failed.reason ?? `${failed.sample_id} failed`,
+      samples: sampleResults,
+    };
+  }
+
+  const tested = sampleResults.filter(
+    (sample): sample is SampleResult & {
+      wer: number;
+      exact_match: boolean;
+      latency_ms: number;
+      real_time_factor: number;
+    } =>
+      sample.wer !== undefined &&
+      sample.exact_match !== undefined &&
+      sample.latency_ms !== undefined &&
+      sample.real_time_factor !== undefined,
   );
+  if (tested.length === 0) {
+    return (
+      last ?? {
+        model_id: model.id,
+        label: model.label,
+        status: "failed",
+        attempts,
+        reason: "no attempt ran",
+      }
+    );
+  }
+
+  const latency = tested.map((sample) => sample.latency_ms).sort((a, b) => a - b);
+  const rtf = tested.map((sample) => sample.real_time_factor).sort((a, b) => a - b);
+  const wer = tested.reduce((sum, sample) => sum + sample.wer, 0) / tested.length;
+  return {
+    model_id: model.id,
+    label: model.label,
+    status: "tested",
+    attempts: sampleResults.reduce((sum, sample) => sum + sample.attempts, 0),
+    sample_count: tested.length,
+    exact_matches: tested.filter((sample) => sample.exact_match).length,
+    text: tested.map((sample) => `${sample.sample_id}: ${sample.text}`).join("\n"),
+    wer,
+    exact_match: tested.every((sample) => sample.exact_match),
+    latency_ms: percentile(latency, 0.5),
+    real_time_factor: percentile(rtf, 0.5),
+    device: tested.find((sample) => sample.device)?.device,
+    samples: sampleResults,
+  };
+}
+
+function percentile(sorted: number[], q: number): number {
+  if (sorted.length === 0) return 0;
+  const index = Math.round((sorted.length - 1) * q);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, index))];
 }
 
 function buildMarkdown(results: ModelResult[]): string {
@@ -376,7 +498,9 @@ function buildMarkdown(results: ModelResult[]): string {
       [
         result.label,
         result.status,
-        result.exact_match === undefined
+        result.exact_matches !== undefined && result.sample_count !== undefined
+          ? `${result.exact_matches}/${result.sample_count}`
+          : result.exact_match === undefined
           ? "n/a"
           : result.exact_match
             ? "yes"
@@ -387,7 +511,10 @@ function buildMarkdown(results: ModelResult[]): string {
           ? "n/a"
           : result.real_time_factor.toFixed(2),
         result.device ?? "n/a",
-        result.reason ?? result.text ?? "",
+        result.reason ??
+          (result.status === "tested"
+            ? `completed ${result.sample_count ?? 0} samples`
+            : ""),
       ]
         .join(" | ")
         .replace(/^/, "| ")
@@ -399,8 +526,13 @@ function buildMarkdown(results: ModelResult[]): string {
 
 function main() {
   const config = parseArgs();
-  if (!existsSync(config.samplePath)) {
-    throw new Error(`Sample file not found: ${config.samplePath}`);
+  if (config.samplePaths.length === 0) {
+    throw new Error("No File ASR samples found.");
+  }
+  for (const samplePath of config.samplePaths) {
+    if (!existsSync(samplePath)) {
+      throw new Error(`Sample file not found: ${samplePath}`);
+    }
   }
   mkdirSync(config.outputDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -408,15 +540,18 @@ function main() {
   const latestRoot = resolve(config.outputDir, "latest");
   mkdirSync(outputRoot, { recursive: true });
 
-  const sample16k = ensure16kSample(config.samplePath, outputRoot);
-  const durationMs = sampleDurationMs(sample16k);
+  const samples = config.samplePaths.map((samplePath) => {
+    const sample16k = ensure16kSample(samplePath, outputRoot);
+    return { samplePath, sample16k, durationMs: sampleDurationMs(sample16k) };
+  });
   const results = selectedModels(config).map((model) =>
-    evaluateModel(model, sample16k, durationMs, config.attempts),
+    evaluateModel(model, samples, config.attempts),
   );
   const report = {
     generated_at: new Date().toISOString(),
-    sample_path: config.samplePath,
-    sample_16k_path: sample16k,
+    sample_paths: config.samplePaths,
+    sample_count: samples.length,
+    samples,
     reference: REFERENCE,
     model_root: MODEL_ROOT,
     results,

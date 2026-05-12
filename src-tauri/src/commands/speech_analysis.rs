@@ -2,7 +2,8 @@ use crate::speech_analysis::{
     self, HuggingFaceTokenStatus, SpeechAnalysisCatalog, SpeechAnalysisModelDescriptor,
     SpeechAnalysisSelection,
 };
-use tauri::AppHandle;
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
@@ -14,9 +15,10 @@ pub fn get_speech_analysis_catalog(app: AppHandle) -> Result<SpeechAnalysisCatal
 #[tauri::command]
 #[specta::specta]
 pub fn get_speech_analysis_model(
+    app: AppHandle,
     model_id: String,
 ) -> Result<Option<SpeechAnalysisModelDescriptor>, String> {
-    Ok(speech_analysis::model_by_id(&model_id))
+    Ok(speech_analysis::get_model(&app, &model_id))
 }
 
 #[tauri::command]
@@ -39,9 +41,78 @@ pub fn set_speech_analysis_selection(
 #[specta::specta]
 pub async fn download_speech_analysis_model(
     app: AppHandle,
+    sidecar_manager: State<'_, Arc<crate::sidecar::SidecarManager>>,
     model_id: String,
 ) -> Result<SpeechAnalysisModelDescriptor, String> {
-    speech_analysis::download_model(&app, model_id).await
+    let descriptor = speech_analysis::download_model(&app, model_id).await?;
+    let runtime_result = if speech_analysis::model_uses_managed_python_runtime(&descriptor.id) {
+        speech_analysis::emit_download_progress(
+            &app,
+            &descriptor.id,
+            "installing-runtime",
+            0,
+            0,
+            Some("speech-analysis Python runtime"),
+            None,
+            None,
+            None,
+        );
+        let sidecar = sidecar_manager.inner().clone();
+        tokio::task::spawn_blocking(move || sidecar.ensure_speech_analysis_environment())
+            .await
+            .map_err(|err| format!("Failed to join speech-analysis runtime setup task: {err}"))
+            .and_then(|result| result.map(|_| ()))
+    } else if speech_analysis::model_uses_mlx_native(&descriptor.id) {
+        speech_analysis::emit_download_progress(
+            &app,
+            &descriptor.id,
+            "installing-runtime",
+            0,
+            0,
+            Some("mlx-audio runtime"),
+            None,
+            None,
+            None,
+        );
+        let sidecar = sidecar_manager.inner().clone();
+        tokio::task::spawn_blocking(move || sidecar.ensure_mlx_audio_environment())
+            .await
+            .map_err(|err| format!("Failed to join mlx-audio runtime setup task: {err}"))
+            .and_then(|result| result.map(|_| ()))
+    } else {
+        Ok(())
+    };
+
+    if let Err(err) = runtime_result {
+        speech_analysis::emit_download_progress(
+            &app,
+            &descriptor.id,
+            "failed",
+            0,
+            0,
+            Some("runtime setup"),
+            None,
+            None,
+            Some(&err),
+        );
+        return Err(err);
+    }
+
+    speech_analysis::emit_download_progress(
+        &app,
+        &descriptor.id,
+        "complete",
+        0,
+        0,
+        Some("ready to use"),
+        None,
+        None,
+        None,
+    );
+    if crate::shared_model_assets::shared_mlx_asr_repo_id(&descriptor.id).is_some() {
+        let _ = app.emit("model-download-complete", &descriptor.id);
+    }
+    Ok(speech_analysis::get_model(&app, &descriptor.id).unwrap_or(descriptor))
 }
 
 #[tauri::command]

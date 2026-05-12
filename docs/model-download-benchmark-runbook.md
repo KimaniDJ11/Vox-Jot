@@ -19,7 +19,9 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
 - Ranked Testing view rows must come from the full suite for that tab.
 - TTS, TTS Style, and Voice Cloning ranked rows require the full `scripts/run-tts-model-eval.py` hard suite with ASR round-trip scoring enabled. Do not use `--case-limit` or `--no-asr-roundtrip` for ranked rows.
 - Live STT ranked rows require the full STT corpus, not a smoke subset.
-- File ASR is a one-sample repository smoke suite by design. Keep its notes clear so it is not confused with Live STT full-corpus ranking.
+- File ASR ranked rows require the full committed file-transcription sample set, not a single sample. The single-file path is a readiness smoke test only.
+- Smoke tests are temporary readiness checks. If a model has only smoke-test coverage, run the full relevant hard suite before adding or updating Testing view metrics.
+- A model that completes the full relevant benchmark suite must always be ranked, including specialized or language-specific models. Use notes for corpus/language caveats instead of leaving full-suite results unranked.
 - Recompute ranks after inserting full benchmark results. Do not leave notes that contradict the measured score, latency, WER, or pass count.
 
 ## Known Results To Preserve
@@ -27,21 +29,23 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
 - LongCat TTS: 1B 4-bit remains the best balance. 3.5B 4-bit improved WER but is slower. 1B bf16 tested slower than 1B 4-bit and should not become the default.
 - Higgs Audio: q8 is the preferred Higgs variant after hard-suite testing. q6 generated audio but had poor ASR round-trip WER, especially on multilingual prompts.
 - VoxCPM2: 8-bit outscored both the older 4-bit and bf16 rows. bf16 is slower and less accurate than 8-bit.
-- OuteTTS 0.6B: downloaded but blocked. The current mlx-audio 0.4.3 runtime reaches DAC decode with no audio token arrays (`[concatenate] No arrays provided`), so the checkpoint still cannot emit usable audio.
-- MOSS-TTS Local Transformer: downloaded and failed the full hard suite because mlx-audio cannot determine the model type. Keep disabled until bridge support is added.
-- MOSS-TTS 8B: downloaded and failed the full hard suite because mlx-audio cannot determine the model type. Keep disabled until bridge support is added.
+- OuteTTS: the Qwen3 `mlx-community/OuteTTS-1.0-0.6B-*` checkpoints still fail in mlx-audio 0.4.3 by reaching DAC decode with no audio token arrays (`[concatenate] No arrays provided`). The catalog uses `mlx-community/Llama-OuteTTS-1.0-1B-4bit` instead; keep the Qwen3 0.6B variants out until upstream generation emits decodable `<|c1_*|>/<|c2_*|>` tokens.
+- MOSS-TTS Local Transformer: removed from the user-facing app catalog after full-suite failure. The public `mlx-community/MOSS-TTS-Local-Transformer-MLX-8bit` conversion requires a different `mlx-speech` runtime path and fails in Vox Jot's mlx-audio bridge with incompatible tensor shapes.
+- MOSS-TTS 8B: removed from the user-facing app catalog after full-suite failure. PyPI `mlx-audio==0.4.3` does not include the required loader for `mlx-community/MOSS-TTS-8B-8bit`; the unreleased upstream loader is not production-ready for Vox Jot yet.
 - OmniVoice: fixed by switching from the incomplete `mlx-community/OmniVoice-bf16` mirror to upstream `k2-fsa/OmniVoice`, which includes the full Higgs audio tokenizer. Full hard TTS score 85.7, 5/5 cases, p50 7513 ms, p50 RTF 0.766. Full voice-clone score 87.7, 4/4 cases, p50 8355 ms, p50 RTF 0.972.
 - VibeVoice ASR: full 35-clip Live STT suite completed, but results are too slow and inaccurate for low-latency dictation: 0/35 normalized matches, WER 1.871, p50 11005 ms, p50 RTF 4.74. Keep positioned for file transcription experiments.
+- GigaAM v3: Russian-only. Rank it because it completed a full 35-case Russian Live STT suite, and keep the language/corpus caveat in the notes. The May 12, 2026 result is 15/35 normalized matches, WER 0.122, p50 97 ms, p50 RTF 0.03.
+- File ASR missing rows were closed on May 12, 2026 with the full five-format suite. Granite Speech 4.1 2B and Whisper Diarization completed successfully in lab testing, but they are no longer user-facing catalog entries because they depend on the legacy checkout-local Python sidecar runtime. Keep those results in reports only until a managed runtime ships.
 - FireRedASR2 and Qwen ASR 0.6B are real File ASR/STT candidates; keep their IDs and result notes aligned across scripts, sidecar mappings, and Testing view data.
-- Sortformer MLX v1/v2.1 are valid speaker-isolation results and should remain above older pyannote rows unless a newer full run changes the DER ranking.
-- DiariZen remains blocked because the checkpoint format needs pyannote.audio metadata/compatibility work; no upstream fix was found at the pinned commit.
+- Sortformer MLX v1/v2.1 are valid speaker-isolation results and remain the only user-facing downloadable speaker-isolation rows. The app now routes them through the managed `mlx-audio` runtime instead of the repo `.venv`.
+- DiariZen is removed from the user-facing app catalog and Testing view. Granite, Cohere Transcribe, PyAnnote, NeMo Sortformer, Reverb, WhisperX, MLX Sortformer, and Polyvoice stay in the user-facing speech-analysis hub and route through the managed speech-analysis runtime group at `IrieDinamik/vox-jot-speech-analysis-runtime`.
 
 ## Download Queue Notes
 
 - The TTS backlog queue should avoid duplicate Qwen downloads and should use `exit_code` or another non-reserved shell variable name; `status` is read-only in zsh.
 - Record each model start, finish, failure, repo, local directory, and timestamp.
 - When a queued download finishes, immediately run the full relevant benchmark, update `src/lib/*EvaluationResults.ts`, and update app catalog availability if the model fails.
-- The May 12, 2026 TTS backlog is fully downloaded. Do not rerun the old queue as if MOSS 8B is merely pending; it is downloaded and blocked by runtime/bridge behavior. OmniVoice should use the `k2-fsa/OmniVoice` snapshot, not the incomplete `mlx-community/OmniVoice-bf16` mirror.
+- The May 12, 2026 TTS backlog is fully downloaded. Do not rerun the old queue as if MOSS 8B is merely pending; it is downloaded but removed from the app catalog because runtime/bridge behavior is blocked. OmniVoice should use the `k2-fsa/OmniVoice` snapshot, not the incomplete `mlx-community/OmniVoice-bf16` mirror.
 
 ## Main App Feedback Loop
 

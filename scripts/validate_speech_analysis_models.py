@@ -56,10 +56,15 @@ class ModelReport:
 MODEL_CHECKS: tuple[ModelCheck, ...] = (
     ModelCheck("granite-speech-4-1-2b", "asr", "transformers", ("torch", "transformers", "librosa"), cloud_gpu_preferred=True),
     ModelCheck("cohere-transcribe-03-2026", "asr", "transformers", ("torch", "transformers", "librosa"), requires_hf_token=True, cloud_gpu_preferred=True),
+    ModelCheck("mlx-qwen3-asr-0.6b", "asr", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-qwen3-asr", "asr", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-fireredasr2-aed", "asr", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-vibevoice-asr-bf16", "asr", "mlx_audio", ("mlx_audio",)),
     ModelCheck("pyannote-community-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("pyannote-3-1", "diarization", "pyannote", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
-    ModelCheck("diarizen-wavlm-large-s80-md", "diarization", "diarizen", ("torch", "diarizen"), cloud_gpu_preferred=True),
     ModelCheck("nemo-sortformer-4spk-v1", "diarization", "nemo", ("torch", "nemo.collections.asr"), cloud_gpu_preferred=True),
+    ModelCheck("mlx-sortformer-4spk-v1", "diarization", "mlx_audio", ("mlx_audio",)),
+    ModelCheck("mlx-sortformer-4spk-v2-1", "diarization", "mlx_audio", ("mlx_audio",)),
     ModelCheck("reverb-diarization-v2", "diarization", "reverb", ("torch", "pyannote.audio"), requires_hf_token=True, cloud_gpu_preferred=True),
     ModelCheck("whisper-diarization", "asr_diarization", "whisper_diarization", ("torch", "whisperx"), cloud_gpu_preferred=True),
     ModelCheck("onnx-polyvoice-diarization", "diarization", "onnx_runtime", ()),
@@ -74,15 +79,15 @@ def module_exists(module_name: str) -> bool:
 
 
 def torch_device_summary() -> str:
-    if not module_exists("torch"):
-        return "torch unavailable"
+    if module_exists("torch"):
+        import torch
 
-    import torch
-
-    if torch.cuda.is_available():
-        return f"cuda:{torch.cuda.get_device_name(0)}"
-    if platform.system() == "Darwin" and torch.backends.mps.is_available():
-        return "mps"
+        if torch.cuda.is_available():
+            return f"cuda:{torch.cuda.get_device_name(0)}"
+        if platform.system() == "Darwin" and torch.backends.mps.is_available():
+            return "mps"
+    if module_exists("mlx_audio"):
+        return "mlx"
     return "cpu"
 
 
@@ -128,11 +133,24 @@ def speech_analysis_model_root() -> Path:
     return Path.home() / ".local" / "share" / "com.iriedinamik.voxjot" / "models" / "speech-analysis"
 
 
+def stt_model_root() -> Path:
+    if root := os.environ.get("VOX_JOT_STT_MODEL_ROOT"):
+        return Path(root).expanduser()
+    if platform.system() == "Darwin":
+        return Path.home() / "Library" / "Application Support" / "com.iriedinamik.voxjot" / "models" / "stt"
+    return Path.home() / ".local" / "share" / "com.iriedinamik.voxjot" / "models" / "stt"
+
+
 def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
     model_dir = speech_analysis_model_root() / model_id
+    model_dir = stt_model_root() / model_id if model_id.startswith("mlx-") and "asr" in model_id else model_dir
     required_files = {
         "granite-speech-4-1-2b": ("config.json", "model.safetensors.index.json"),
         "cohere-transcribe-03-2026": ("config.json", "model.safetensors"),
+        "mlx-qwen3-asr-0.6b": ("config.json", "model.safetensors"),
+        "mlx-qwen3-asr": ("config.json", "model.safetensors"),
+        "mlx-fireredasr2-aed": ("config.json", "model.safetensors"),
+        "mlx-vibevoice-asr-bf16": ("config.json", "model.safetensors"),
         "pyannote-community-1": (
             "config.yaml",
             "segmentation/pytorch_model.bin",
@@ -140,14 +158,16 @@ def downloaded_model_ready(model_id: str) -> tuple[bool, str]:
             "plda/plda.npz",
             "plda/xvec_transform.npz",
         ),
-        "pyannote-3-1": ("config.yaml", "segmentation/pytorch_model.bin"),
-        "diarizen-wavlm-large-s80-md": (
-            "config.toml",
-            "pytorch_model.bin",
-            "plda/plda.npz",
-            "plda/xvec_transform.npz",
+        "pyannote-3-1": (
+            "config.yaml",
+            "segmentation/config.yaml",
+            "segmentation/pytorch_model.bin",
+            "embedding/config.yaml",
+            "embedding/pytorch_model.bin",
         ),
         "nemo-sortformer-4spk-v1": ("diar_sortformer_4spk-v1.nemo",),
+        "mlx-sortformer-4spk-v1": ("config.json", "model.safetensors"),
+        "mlx-sortformer-4spk-v2-1": ("config.json", "model.safetensors"),
         "reverb-diarization-v2": ("config.yaml", "pytorch_model.bin"),
         "whisper-diarization": ("model.bin", "config.json"),
     }

@@ -328,7 +328,7 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             SpeechAnalysisEngine::Transformers,
             SpeechAnalysisRuntime::PythonSidecar,
             "Transformers/vLLM-compatible ASR adapter for Cohere Transcribe.",
-            SpeechAnalysisReadiness::Ready,
+            SpeechAnalysisReadiness::RequiresHfToken,
             &[
                 "en", "fr", "de", "it", "es", "pt", "el", "nl", "pl", "ja", "ko", "zh", "ar", "tr",
             ],
@@ -456,26 +456,6 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             capability(true, true, false, true, false, true, false, false, false),
         ),
         descriptor(
-            "diarizen-wavlm-large-s80-md",
-            "DiariZen WavLM Large S80 MD",
-            "BUT-FIT",
-            Some("BUT-FIT/diarizen-wavlm-large-s80-md-v2"),
-            SpeechAnalysisSourceKind::HuggingFace,
-            None,
-            Some("CC-BY-NC-4.0"),
-            false,
-            true,
-            Some("~1.5 GB"),
-            SpeechAnalysisTask::Diarization,
-            SpeechAnalysisEngine::Diarizen,
-            SpeechAnalysisRuntime::PythonSidecar,
-            "DiariZen diarization adapter with WavLM/Conformer backend.",
-            SpeechAnalysisReadiness::Ready,
-            &["mul"],
-            &["speaker_turns", "rttm"],
-            capability(true, true, false, false, true, true, false, false, false),
-        ),
-        descriptor(
             "nemo-sortformer-4spk-v1",
             "NVIDIA Sortformer 4spk v1",
             "NVIDIA",
@@ -570,7 +550,7 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             SpeechAnalysisEngine::WhisperDiarization,
             SpeechAnalysisRuntime::PythonSidecar,
             "Combined Whisper ASR and diarization adapter.",
-            SpeechAnalysisReadiness::RequiresRuntimeInstall,
+            SpeechAnalysisReadiness::Ready,
             &["mul"],
             &["text", "segments", "speaker_turns", "speaker_segments"],
             capability(true, true, true, false, true, true, false, false, false),
@@ -621,6 +601,10 @@ pub struct SpeechAnalysisDownloadProgress {
 }
 
 fn install_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
+    if let Some(path) = crate::shared_model_assets::shared_mlx_asr_stt_install_dir(app, model_id)? {
+        return Ok(path);
+    }
+
     Ok(storage_paths::speech_analysis_models_dir(app)
         .map_err(|err| format!("Failed to resolve speech analysis model dir: {err}"))?
         .join(model_id))
@@ -661,10 +645,23 @@ fn bundled_polyvoice_dir() -> Option<PathBuf> {
 }
 
 fn readiness_for(
+    app: &AppHandle,
     model: &SpeechAnalysisModelDescriptor,
     installed: bool,
 ) -> SpeechAnalysisReadiness {
     if installed {
+        if matches!(model.runtime, SpeechAnalysisRuntime::MlxNative)
+            && !crate::sidecar::SidecarManager::mlx_audio_runtime_installed_for_app(app)
+        {
+            return SpeechAnalysisReadiness::RequiresRuntimeInstall;
+        }
+        if matches!(
+            model.runtime,
+            SpeechAnalysisRuntime::PythonSidecar | SpeechAnalysisRuntime::OnnxCpu
+        ) && !crate::sidecar::SidecarManager::speech_analysis_runtime_installed_for_app(app)
+        {
+            return SpeechAnalysisReadiness::RequiresRuntimeInstall;
+        }
         return SpeechAnalysisReadiness::Ready;
     }
     if model.downloadable {
@@ -681,10 +678,24 @@ fn descriptor_with_install_state(
     app: &AppHandle,
     mut model: SpeechAnalysisModelDescriptor,
 ) -> SpeechAnalysisModelDescriptor {
+    let installed_shared_mlx_asr_path =
+        crate::shared_model_assets::installed_shared_mlx_asr_dir(app, &model.id)
+            .ok()
+            .flatten();
+
     let local_path = match model.source_kind {
         SpeechAnalysisSourceKind::BuiltIn | SpeechAnalysisSourceKind::RuntimeManaged => None,
         SpeechAnalysisSourceKind::LocalOnnxBundle if model.id == POLYVOICE_DIARIZATION_ID => {
-            bundled_polyvoice_dir()
+            crate::portable::resolve_resource(app, "resources/models/polyvoice")
+                .ok()
+                .or_else(bundled_polyvoice_dir)
+        }
+        SpeechAnalysisSourceKind::HuggingFace
+            if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() =>
+        {
+            installed_shared_mlx_asr_path
+                .clone()
+                .or_else(|| install_dir(app, &model.id).ok())
         }
         _ => install_dir(app, &model.id).ok(),
     };
@@ -702,27 +713,28 @@ fn descriptor_with_install_state(
 
     model.installed = installed;
     model.local_path = local_path.map(|p| p.to_string_lossy().to_string());
-    model.readiness = readiness_for(&model, installed);
+    model.readiness = readiness_for(app, &model, installed);
     model
 }
 
 fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
+    if crate::shared_model_assets::shared_mlx_asr_repo_id(model_id).is_some() {
+        return crate::shared_model_assets::shared_mlx_asr_has_required_files(path);
+    }
+
     let required_files: &[&str] = match model_id {
         "granite-speech-4-1-2b" => &["config.json", "model.safetensors.index.json"],
         "cohere-transcribe-03-2026" => &["config.json", "model.safetensors"],
-        "mlx-qwen3-asr-0.6b"
-        | "mlx-qwen3-asr"
-        | "mlx-fireredasr2-aed"
-        | "mlx-vibevoice-asr-bf16"
-        | "mlx-sortformer-4spk-v1"
-        | "mlx-sortformer-4spk-v2-1" => &["config.json", "model.safetensors"],
+        "mlx-sortformer-4spk-v1" | "mlx-sortformer-4spk-v2-1" => {
+            &["config.json", "model.safetensors"]
+        }
         "pyannote-community-1" => &["config.yaml"],
-        "pyannote-3-1" => &["config.yaml"],
-        "diarizen-wavlm-large-s80-md" => &[
-            "config.toml",
-            "pytorch_model.bin",
-            "plda/plda.npz",
-            "plda/xvec_transform.npz",
+        "pyannote-3-1" => &[
+            "config.yaml",
+            "segmentation/config.yaml",
+            "segmentation/pytorch_model.bin",
+            "embedding/config.yaml",
+            "embedding/pytorch_model.bin",
         ],
         "nemo-sortformer-4spk-v1" => &["diar_sortformer_4spk-v1.nemo"],
         "reverb-diarization-v2" => &["config.yaml", "pytorch_model.bin"],
@@ -865,7 +877,7 @@ fn hf_head_request(client: &reqwest::Client, url: &str) -> reqwest::RequestBuild
     }
 }
 
-fn emit_download_progress(
+pub fn emit_download_progress(
     app: &AppHandle,
     model_id: &str,
     phase: &str,
@@ -887,6 +899,30 @@ fn emit_download_progress(
         error: error.map(str::to_string),
     };
     let _ = app.emit("speech-analysis-download-progress", payload);
+}
+
+fn emit_shared_stt_download_progress(
+    app: &AppHandle,
+    model_id: &str,
+    downloaded_bytes: u64,
+    total_bytes: u64,
+) {
+    if crate::shared_model_assets::shared_mlx_asr_repo_id(model_id).is_none() {
+        return;
+    }
+
+    let percentage = if total_bytes > 0 {
+        (downloaded_bytes as f64 / total_bytes as f64) * 100.0
+    } else {
+        0.0
+    };
+    let payload = crate::managers::model::DownloadProgress {
+        model_id: model_id.to_string(),
+        downloaded: downloaded_bytes,
+        total: total_bytes,
+        percentage,
+    };
+    let _ = app.emit("model-download-progress", payload);
 }
 
 async fn fetch_hf_repo_files(
@@ -985,6 +1021,21 @@ async fn head_size(client: &reqwest::Client, url: &str) -> Option<u64> {
         })
 }
 
+#[derive(Debug, Clone)]
+struct HfDownloadFile {
+    path: String,
+    size: Option<u64>,
+}
+
+async fn local_file_len(path: &Path) -> Result<Option<u64>, String> {
+    match tokio_fs::metadata(path).await {
+        Ok(metadata) if metadata.is_file() => Ok(Some(metadata.len())),
+        Ok(_) => Ok(None),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(err) => Err(format!("Failed to inspect {}: {err}", path.display())),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn download_one_file(
     app: &AppHandle,
@@ -998,6 +1049,8 @@ async fn download_one_file(
     file_count: usize,
     total_bytes: u64,
     cumulative_bytes: &mut u64,
+    expected_bytes: Option<u64>,
+    resume_from: u64,
 ) -> Result<(), String> {
     ensure_download_not_cancelled(cancel_flag)?;
 
@@ -1012,19 +1065,35 @@ async fn download_one_file(
             .map_err(|err| format!("Failed to create {}: {err}", parent.display()))?;
     }
 
-    let response = hf_request(client, &url)
+    let mut request = hf_request(client, &url);
+    if resume_from > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={resume_from}-"));
+    }
+
+    let response = request
         .send()
         .await
         .map_err(|err| format!("Failed to fetch {rel_path}: {err}"))?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download {rel_path}: HTTP {}",
-            response.status()
-        ));
+    let status = response.status();
+    let is_resuming = resume_from > 0 && status == reqwest::StatusCode::PARTIAL_CONTENT;
+    if !status.is_success() {
+        return Err(format!("Failed to download {rel_path}: HTTP {}", status));
     }
     ensure_download_not_cancelled(cancel_flag)?;
 
-    let mut file = tokio_fs::File::create(target)
+    if resume_from > 0 && !is_resuming {
+        *cumulative_bytes = cumulative_bytes.saturating_sub(resume_from);
+    }
+
+    let mut open_options = tokio_fs::OpenOptions::new();
+    open_options.create(true).write(true);
+    if is_resuming {
+        open_options.append(true);
+    } else {
+        open_options.truncate(true);
+    }
+    let mut file = open_options
+        .open(target)
         .await
         .map_err(|err| format!("Failed to open {}: {err}", target.display()))?;
 
@@ -1052,13 +1121,143 @@ async fn download_one_file(
                 Some(file_count),
                 None,
             );
+            emit_shared_stt_download_progress(app, model_id, *cumulative_bytes, total_bytes);
             last_emit = Instant::now();
         }
     }
     file.flush()
         .await
         .map_err(|err| format!("Failed to flush {rel_path}: {err}"))?;
+    if let Some(expected) = expected_bytes {
+        if let Some(actual) = local_file_len(target).await? {
+            if actual != expected {
+                return Err(format!(
+                    "Downloaded {rel_path} but expected {expected} bytes and found {actual} bytes."
+                ));
+            }
+        }
+    }
     Ok(())
+}
+
+async fn download_hf_repo_to_dir(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    cancel_flag: &Arc<AtomicBool>,
+    model_id: &str,
+    repo_id: &str,
+    gated: bool,
+    target_dir: &Path,
+) -> Result<(), String> {
+    let files = fetch_hf_repo_files(client, repo_id, gated).await?;
+    let file_count = files.len();
+    let mut download_files = Vec::with_capacity(file_count);
+    let mut total_bytes = 0u64;
+
+    for file in files {
+        ensure_download_not_cancelled(cancel_flag)?;
+        let url = format!(
+            "https://huggingface.co/{repo_id}/resolve/main/{}",
+            encode_hf_path(&file)
+        );
+        let size = head_size(client, &url).await;
+        if let Some(size) = size {
+            total_bytes += size;
+        }
+        download_files.push(HfDownloadFile { path: file, size });
+    }
+
+    let mut cumulative = 0u64;
+    for (idx, file) in download_files.iter().enumerate() {
+        ensure_download_not_cancelled(cancel_flag)?;
+        let target = target_dir.join(&file.path);
+        let existing_len = local_file_len(&target).await?.unwrap_or(0);
+        if let Some(expected) = file.size {
+            if existing_len == expected {
+                cumulative += existing_len;
+                continue;
+            }
+        }
+        let resume_from = match file.size {
+            Some(expected) if existing_len > 0 && existing_len < expected => existing_len,
+            _ => 0,
+        };
+        cumulative += resume_from;
+        download_one_file(
+            app,
+            client,
+            cancel_flag,
+            model_id,
+            repo_id,
+            &file.path,
+            &target,
+            idx + 1,
+            file_count,
+            total_bytes,
+            &mut cumulative,
+            file.size,
+            resume_from,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn download_related_assets(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    cancel_flag: &Arc<AtomicBool>,
+    model: &SpeechAnalysisModelDescriptor,
+    staging: &Path,
+) -> Result<(), String> {
+    if model.id != "pyannote-3-1" {
+        return Ok(());
+    }
+
+    emit_download_progress(
+        app,
+        &model.id,
+        "downloading-related-assets",
+        0,
+        0,
+        Some("pyannote/segmentation-3.0"),
+        None,
+        None,
+        None,
+    );
+    download_hf_repo_to_dir(
+        app,
+        client,
+        cancel_flag,
+        &model.id,
+        "pyannote/segmentation-3.0",
+        true,
+        &staging.join("segmentation"),
+    )
+    .await?;
+
+    emit_download_progress(
+        app,
+        &model.id,
+        "downloading-related-assets",
+        0,
+        0,
+        Some("pyannote/wespeaker-voxceleb-resnet34-LM"),
+        None,
+        None,
+        None,
+    );
+    download_hf_repo_to_dir(
+        app,
+        client,
+        cancel_flag,
+        &model.id,
+        "pyannote/wespeaker-voxceleb-resnet34-LM",
+        true,
+        &staging.join("embedding"),
+    )
+    .await
 }
 
 pub async fn download_model(
@@ -1094,9 +1293,12 @@ pub async fn download_model(
     ACTIVE_DOWNLOADS.lock().await.remove(&model_id);
     DOWNLOAD_CANCEL_FLAGS.lock().await.remove(&model_id);
     if let Err(err) = &result {
-        let _ = cleanup_staging_dir(app, &model_id).await;
         if err == DOWNLOAD_CANCELLED_MESSAGE {
+            let _ = cleanup_staging_dir(app, &model_id).await;
             emit_download_progress(app, &model_id, "cancelled", 0, 0, None, None, None, None);
+            if crate::shared_model_assets::shared_mlx_asr_repo_id(&model_id).is_some() {
+                let _ = app.emit("model-download-cancelled", &model_id);
+            }
         } else {
             emit_download_progress(app, &model_id, "failed", 0, 0, None, None, None, Some(err));
         }
@@ -1120,20 +1322,42 @@ async fn download_model_inner(
     ensure_download_not_cancelled(cancel_flag)?;
     let file_count = files.len();
     let mut total_bytes = 0u64;
-    for file in &files {
+    let mut download_files = Vec::with_capacity(files.len());
+    for file in files {
         ensure_download_not_cancelled(cancel_flag)?;
         let url = format!(
             "https://huggingface.co/{repo_id}/resolve/main/{}",
-            encode_hf_path(file)
+            encode_hf_path(&file)
         );
-        if let Some(size) = head_size(&client, &url).await {
+        let size = head_size(&client, &url).await;
+        if let Some(size) = size {
             total_bytes += size;
         }
+        download_files.push(HfDownloadFile { path: file, size });
     }
+
+    let staging = staging_dir(app, &model.id)?;
+    ensure_download_not_cancelled(cancel_flag)?;
+    let has_partial = staging.exists();
+    if has_partial && !staging.is_dir() {
+        tokio_fs::remove_file(&staging)
+            .await
+            .map_err(|err| format!("Failed to clear invalid staging file: {err}"))?;
+    }
+    tokio_fs::create_dir_all(&staging)
+        .await
+        .map_err(|err| format!("Failed to create staging dir: {err}"))?;
+
+    let mut cumulative = 0u64;
+    let initial_phase = if has_partial {
+        "recovering"
+    } else {
+        "downloading"
+    };
     emit_download_progress(
         app,
         &model.id,
-        "downloading",
+        initial_phase,
         0,
         total_bytes,
         None,
@@ -1141,33 +1365,49 @@ async fn download_model_inner(
         Some(file_count),
         None,
     );
+    emit_shared_stt_download_progress(app, &model.id, 0, total_bytes);
 
-    let staging = staging_dir(app, &model.id)?;
-    ensure_download_not_cancelled(cancel_flag)?;
-    if staging.exists() {
-        tokio_fs::remove_dir_all(&staging)
-            .await
-            .map_err(|err| format!("Failed to clear staging dir: {err}"))?;
-    }
-    tokio_fs::create_dir_all(&staging)
-        .await
-        .map_err(|err| format!("Failed to create staging dir: {err}"))?;
-
-    let mut cumulative = 0u64;
-    for (idx, rel) in files.iter().enumerate() {
+    for (idx, file) in download_files.iter().enumerate() {
         ensure_download_not_cancelled(cancel_flag)?;
+        let target = staging.join(&file.path);
+        let existing_len = local_file_len(&target).await?.unwrap_or(0);
+        if let Some(expected) = file.size {
+            if existing_len == expected {
+                cumulative += existing_len;
+                emit_download_progress(
+                    app,
+                    &model.id,
+                    initial_phase,
+                    cumulative,
+                    total_bytes,
+                    Some(&file.path),
+                    Some(idx + 1),
+                    Some(file_count),
+                    None,
+                );
+                emit_shared_stt_download_progress(app, &model.id, cumulative, total_bytes);
+                continue;
+            }
+        }
+        let resume_from = match file.size {
+            Some(expected) if existing_len > 0 && existing_len < expected => existing_len,
+            _ => 0,
+        };
+        cumulative += resume_from;
         download_one_file(
             app,
             &client,
             cancel_flag,
             &model.id,
             repo_id,
-            rel,
-            &staging.join(rel),
+            &file.path,
+            &target,
             idx + 1,
             file_count,
             total_bytes,
             &mut cumulative,
+            file.size,
+            resume_from,
         )
         .await?;
         emit_download_progress(
@@ -1176,19 +1416,33 @@ async fn download_model_inner(
             "downloading",
             cumulative,
             total_bytes,
-            Some(rel),
+            Some(&file.path),
             Some(idx + 1),
             Some(file_count),
             None,
         );
+        emit_shared_stt_download_progress(app, &model.id, cumulative, total_bytes);
     }
 
     ensure_download_not_cancelled(cancel_flag)?;
+    download_related_assets(app, &client, cancel_flag, model, &staging).await?;
+    ensure_download_not_cancelled(cancel_flag)?;
     let final_dir = install_dir(app, &model.id)?;
+    if let Some(parent) = final_dir.parent() {
+        tokio_fs::create_dir_all(parent)
+            .await
+            .map_err(|err| format!("Failed to create {}: {err}", parent.display()))?;
+    }
     if final_dir.exists() {
         tokio_fs::remove_dir_all(&final_dir)
             .await
             .map_err(|err| format!("Failed to clear existing install: {err}"))?;
+    }
+    if !hugging_face_model_has_required_files(&model.id, &staging) {
+        return Err(format!(
+            "Downloaded {} but the required model files are still incomplete.",
+            model.label
+        ));
     }
     tokio_fs::rename(&staging, &final_dir)
         .await
@@ -1209,7 +1463,7 @@ async fn download_model_inner(
     emit_download_progress(
         app,
         &model.id,
-        "complete",
+        "installing-model",
         cumulative,
         total_bytes,
         None,
@@ -1236,14 +1490,21 @@ pub fn delete_model(
         ));
     }
 
-    let final_dir = install_dir(app, &model.id)?;
-    if final_dir.exists() {
-        fs::remove_dir_all(&final_dir).map_err(|err| {
-            format!(
-                "Failed to delete speech analysis model '{}': {err}",
-                final_dir.display()
-            )
-        })?;
+    let delete_dirs = if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() {
+        crate::shared_model_assets::shared_mlx_asr_candidate_dirs(app, &model.id)?
+    } else {
+        vec![install_dir(app, &model.id)?]
+    };
+
+    for dir in delete_dirs {
+        if dir.exists() {
+            fs::remove_dir_all(&dir).map_err(|err| {
+                format!(
+                    "Failed to delete speech analysis model '{}': {err}",
+                    dir.display()
+                )
+            })?;
+        }
     }
 
     let mut settings = get_settings(app);
@@ -1259,6 +1520,9 @@ pub fn delete_model(
     if changed {
         write_settings(app, settings.clone());
         let _ = app.emit("settings-changed", settings);
+    }
+    if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() {
+        let _ = app.emit("model-deleted", &model.id);
     }
 
     Ok(descriptor_with_install_state(app, model))
@@ -1290,8 +1554,39 @@ pub fn model_by_id(model_id: &str) -> Option<SpeechAnalysisModelDescriptor> {
         .find(|model| model.id == model_id)
 }
 
+pub fn model_uses_mlx_native(model_id: &str) -> bool {
+    model_by_id(model_id)
+        .is_some_and(|model| matches!(model.runtime, SpeechAnalysisRuntime::MlxNative))
+}
+
+pub fn model_uses_managed_python_runtime(model_id: &str) -> bool {
+    model_by_id(model_id).is_some_and(|model| {
+        matches!(
+            model.runtime,
+            SpeechAnalysisRuntime::PythonSidecar | SpeechAnalysisRuntime::OnnxCpu
+        )
+    })
+}
+
+pub fn get_model(app: &AppHandle, model_id: &str) -> Option<SpeechAnalysisModelDescriptor> {
+    model_by_id(model_id).map(|model| descriptor_with_install_state(app, model))
+}
+
 pub fn selection_from_settings(app: &AppHandle) -> SpeechAnalysisSelection {
-    let settings = get_settings(app);
+    let mut settings = get_settings(app);
+    let mut changed = false;
+    if model_by_id(&settings.file_transcription_asr_model_id).is_none() {
+        settings.file_transcription_asr_model_id = default_asr_model_id();
+        changed = true;
+    }
+    if model_by_id(&settings.file_transcription_diarization_model_id).is_none() {
+        settings.file_transcription_diarization_model_id = default_diarization_model_id();
+        changed = true;
+    }
+    if changed {
+        write_settings(app, settings.clone());
+        let _ = app.emit("settings-changed", settings.clone());
+    }
     SpeechAnalysisSelection {
         asr_model_id: settings.file_transcription_asr_model_id,
         diarization_model_id: settings.file_transcription_diarization_model_id,
@@ -1408,10 +1703,15 @@ mod tests {
             NO_DIARIZATION_ID,
             "granite-speech-4-1-2b",
             "cohere-transcribe-03-2026",
+            "mlx-qwen3-asr-0.6b",
+            "mlx-qwen3-asr",
+            "mlx-fireredasr2-aed",
+            "mlx-vibevoice-asr-bf16",
             "pyannote-community-1",
             "pyannote-3-1",
-            "diarizen-wavlm-large-s80-md",
             "nemo-sortformer-4spk-v1",
+            "mlx-sortformer-4spk-v1",
+            "mlx-sortformer-4spk-v2-1",
             "reverb-diarization-v2",
             "whisper-diarization",
             "onnx-polyvoice-diarization",

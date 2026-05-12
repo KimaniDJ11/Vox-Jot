@@ -5,15 +5,20 @@ use crate::managers::watch_folders::WatchFolderManager;
 use crate::settings::{
     get_settings, write_settings, ModelUnloadTimeout, WatchFolderConfig, WatchFolderOutputFormat,
 };
+use crate::sidecar::SidecarManager;
 use crate::speech_analysis::{
     self, SpeakerLabeledSegment, SpeakerTurn, SpeechAnalysisSegment, CURRENT_DICTATION_ASR_ID,
 };
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
+
+const SPEECH_ANALYSIS_SIDECAR_SOURCE: &str =
+    include_str!("../../../scripts/speech_analysis_sidecar.py");
 
 pub(crate) fn resample_linear(samples: &[f32], source_rate: u32, target_rate: u32) -> Vec<f32> {
     if samples.is_empty() || source_rate == target_rate {
@@ -247,7 +252,7 @@ struct SpeechAnalysisSidecarOutput {
     error: Option<String>,
 }
 
-fn speech_analysis_python_path() -> PathBuf {
+fn legacy_speech_analysis_python_path() -> PathBuf {
     if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_PYTHON") {
         return PathBuf::from(path);
     }
@@ -258,14 +263,88 @@ fn speech_analysis_python_path() -> PathBuf {
         .join("python")
 }
 
-fn speech_analysis_sidecar_path() -> PathBuf {
-    if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_SIDECAR") {
-        return PathBuf::from(path);
+fn speech_analysis_python_path(
+    sidecar_manager: &Arc<SidecarManager>,
+    asr_model_id: &str,
+    diarization_model_id: &str,
+) -> Result<PathBuf, String> {
+    if speech_analysis::model_uses_managed_python_runtime(asr_model_id)
+        || speech_analysis::model_uses_managed_python_runtime(diarization_model_id)
+    {
+        return sidecar_manager.ensure_speech_analysis_environment();
     }
-    std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join("scripts")
-        .join("speech_analysis_sidecar.py")
+
+    if speech_analysis::model_uses_mlx_native(asr_model_id)
+        || speech_analysis::model_uses_mlx_native(diarization_model_id)
+    {
+        return sidecar_manager.ensure_mlx_audio_environment();
+    }
+
+    let python = legacy_speech_analysis_python_path();
+    if python.exists() {
+        Ok(python)
+    } else {
+        Err(format!(
+            "Speech-analysis Python runtime not found at {}. Vox Jot will normally install the managed runtime automatically; set VOX_JOT_SPEECH_ANALYSIS_PYTHON only for local experiments.",
+            python.display()
+        ))
+    }
+}
+
+fn speech_analysis_sidecar_path(app: &AppHandle) -> Result<PathBuf, String> {
+    if let Ok(path) = std::env::var("VOX_JOT_SPEECH_ANALYSIS_SIDECAR") {
+        let path = PathBuf::from(path);
+        return if path.exists() {
+            Ok(path)
+        } else {
+            Err(format!(
+                "Speech-analysis sidecar not found at {}",
+                path.display()
+            ))
+        };
+    }
+
+    let runtime_dir = crate::portable::app_data_dir(app)
+        .map_err(|err| format!("Failed to resolve app data dir for speech analysis: {err}"))?
+        .join("speech-analysis-runtime");
+    fs::create_dir_all(&runtime_dir)
+        .map_err(|err| format!("Failed to create speech-analysis runtime dir: {err}"))?;
+    let sidecar = runtime_dir.join("speech_analysis_sidecar.py");
+    let should_write = fs::read_to_string(&sidecar)
+        .map(|existing| existing != SPEECH_ANALYSIS_SIDECAR_SOURCE)
+        .unwrap_or(true);
+    if should_write {
+        fs::write(&sidecar, SPEECH_ANALYSIS_SIDECAR_SOURCE)
+            .map_err(|err| format!("Failed to write speech-analysis sidecar: {err}"))?;
+    }
+    Ok(sidecar)
+}
+
+fn bundled_polyvoice_bin(app: &AppHandle) -> Option<PathBuf> {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    let relative = "resources/bin/macos-aarch64/polyvoice";
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    let relative = "resources/bin/macos-x64/polyvoice";
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let relative = "resources/bin/linux-x64/polyvoice";
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    let relative = "resources/bin/windows-x64/polyvoice.exe";
+    #[cfg(not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "x86_64")
+    )))]
+    let relative = "";
+
+    if relative.is_empty() {
+        return None;
+    }
+    crate::portable::resolve_resource(app, relative).ok()
+}
+
+fn bundled_polyvoice_model_dir(app: &AppHandle) -> Option<PathBuf> {
+    crate::portable::resolve_resource(app, "resources/models/polyvoice").ok()
 }
 
 fn parse_speech_analysis_sidecar_output(
@@ -284,31 +363,28 @@ fn parse_speech_analysis_sidecar_output(
 
 fn run_speech_analysis_sidecar(
     app: &AppHandle,
+    sidecar_manager: &Arc<SidecarManager>,
     audio_16k: &[f32],
     asr_model_id: &str,
     diarization_model_id: &str,
 ) -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
-    let python = speech_analysis_python_path();
-    if !python.exists() {
-        return Err(format!(
-            "Speech-analysis Python runtime not found at {}. Run scripts/bootstrap-speech-analysis-runtime.sh first.",
-            python.display()
-        ));
-    }
-
-    let sidecar = speech_analysis_sidecar_path();
-    if !sidecar.exists() {
-        return Err(format!(
-            "Speech-analysis sidecar not found at {}",
-            sidecar.display()
-        ));
-    }
+    let python = speech_analysis_python_path(sidecar_manager, asr_model_id, diarization_model_id)?;
+    let sidecar = speech_analysis_sidecar_path(app)?;
 
     let wav = write_temp_wav_16k(audio_16k)?;
     let model_root = crate::storage_paths::speech_analysis_models_dir(app)
         .map_err(|e| format!("Failed to resolve speech-analysis model directory: {e}"))?;
+    let stt_model_root = crate::storage_paths::stt_models_dir(app)
+        .map_err(|e| format!("Failed to resolve STT model directory: {e}"))?;
     let mut command = Command::new(&python);
     command.env("VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT", &model_root);
+    command.env("VOX_JOT_STT_MODEL_ROOT", &stt_model_root);
+    if let Some(polyvoice_bin) = bundled_polyvoice_bin(app) {
+        command.env("VOX_JOT_POLYVOICE_BIN", polyvoice_bin);
+    }
+    if let Some(polyvoice_model_dir) = bundled_polyvoice_model_dir(app) {
+        command.env("VOX_JOT_POLYVOICE_MODEL_DIR", polyvoice_model_dir);
+    }
     if let Some(token) = speech_analysis::hugging_face_token_for_runtime() {
         command.env("HF_TOKEN", token);
     }
@@ -407,6 +483,7 @@ pub struct TranscriptionFileResult {
 pub async fn transcribe_file(
     app: AppHandle,
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
+    sidecar_manager: State<'_, Arc<SidecarManager>>,
     correction_store: State<'_, Arc<CorrectionStore>>,
     path: String,
 ) -> Result<TranscriptionFileResult, String> {
@@ -416,6 +493,7 @@ pub async fn transcribe_file(
     let diarization_model_id = selection.diarization_model_id.clone();
     let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
     let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
+    let speech_sidecar_manager = sidecar_manager.inner().clone();
     let is_wav = path.to_ascii_lowercase().ends_with(".wav");
     let sidecar_app = app.clone();
     let ffmpeg_exe = if is_wav {
@@ -438,6 +516,7 @@ pub async fn transcribe_file(
                 let (sidecar_text, mut sidecar_segments, speaker_turns) =
                     run_speech_analysis_sidecar(
                         &sidecar_app,
+                        &speech_sidecar_manager,
                         &audio_16k,
                         &asr_model_id,
                         &diarization_model_id,
@@ -458,6 +537,7 @@ pub async fn transcribe_file(
             let speaker_turns = if use_diarization {
                 let (_, _, speaker_turns) = run_speech_analysis_sidecar(
                     &sidecar_app,
+                    &speech_sidecar_manager,
                     &audio_16k,
                     CURRENT_DICTATION_ASR_ID,
                     &diarization_model_id,

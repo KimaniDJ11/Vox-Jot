@@ -25,7 +25,7 @@ export interface SpeakerIsolationEvaluationResult {
 }
 
 export const SPEAKER_ISOLATION_EVALUATION_RUN = {
-  generatedAt: "2026-05-07T13:55:48Z",
+  generatedAt: "2026-05-12T17:55:30Z",
   suite: "Speaker isolation real-speech turn benchmark",
   corpus:
     "Eight Mini LibriSpeech real human speech clips from four speakers, spliced into alternating turns with 300 ms pauses.",
@@ -38,7 +38,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RUN = {
     "Coverage: higher is better.",
     "Confusion and latency: lower is better.",
   ],
-  reportPath: "output/speaker-isolation-eval/results-latest.json",
+  reportPath: "output/speaker-isolation-restored-results.json",
 };
 
 export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationResult[] =
@@ -67,7 +67,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       latencyMs: 10745,
       device: "mps",
       notes:
-        "Best DER on this fixture: 4/4 speakers, exact turn count, zero confusion. Routed through the shared mlx-audio runtime (mlx-audio 0.4.3 in the speech-analysis venv).",
+        "Best DER on this fixture: 4/4 speakers, exact turn count, zero confusion. Routed through the app-managed mlx-audio runtime.",
     },
     {
       modelId: "mlx-sortformer-4spk-v2-1",
@@ -102,7 +102,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.627,
       confusionRate: 0,
       falseAlarmRate: 0.01,
-      latencyMs: 1186,
+      latencyMs: 1149,
       device: "mps",
       notes:
         "Fastest tested option; exact turn count and zero confusion but slightly over-splits one speaker.",
@@ -121,7 +121,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.691,
       confusionRate: 0.155,
       falseAlarmRate: 0,
-      latencyMs: 7047,
+      latencyMs: 6976,
       device: "mps",
       notes:
         "Recovered the turn structure but merged speakers; useful fallback behind Polyvoice and the MLX Sortformer variants.",
@@ -140,10 +140,10 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.671,
       confusionRate: 0.234,
       falseAlarmRate: 0,
-      latencyMs: 12188,
+      latencyMs: 7520,
       device: "mps",
       notes:
-        "Unblocked after HF token + pyannote/segmentation-3.0 terms acceptance. Best speaker recovery (4/4) but over-segments into 15 turns.",
+        "Unblocked after HF token + nested local pyannote segmentation/embedding assets. Best speaker recovery (4/4) but over-segments into 15 turns.",
     },
     {
       modelId: "pyannote-community-1",
@@ -159,7 +159,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.671,
       confusionRate: 0.488,
       falseAlarmRate: 0,
-      latencyMs: 10604,
+      latencyMs: 12321,
       device: "mps",
       notes:
         "Runnable after downloading missing local assets, but collapsed the four-speaker fixture into one speaker on this pass.",
@@ -178,7 +178,7 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.671,
       confusionRate: 0.488,
       falseAlarmRate: 0,
-      latencyMs: 33613,
+      latencyMs: 31727,
       device: "cpu",
       notes:
         "WhisperX ASR ran, but diarization matched the one-speaker pyannote behavior and was the slowest tested option.",
@@ -197,18 +197,10 @@ export const SPEAKER_ISOLATION_EVALUATION_RESULTS: SpeakerIsolationEvaluationRes
       coverage: 0.999,
       confusionRate: 0.745,
       falseAlarmRate: 0.132,
-      latencyMs: 20424,
+      latencyMs: 9442,
       device: "mps",
       notes:
         "Covered the full audio but returned one continuous speaker segment, so it is not recommended from this run.",
-    },
-    {
-      modelId: "diarizen-wavlm-large-s80-md",
-      label: "DiariZen WavLM Large S80 MD",
-      status: "blocked",
-      latencyMs: 5773,
-      notes:
-        "Two layered incompatibilities with pyannote.audio 4.0.4: (1) DiariZen's pinned d52b8d5 commit passes `config=` and `seg_duration=` kwargs that pyannote 4.x dropped, and (2) the segmentation `pytorch_model.bin` lacks the `pyannote.audio.versions` metadata that 4.x's `Model.from_pretrained` requires. Kwarg patching alone is not enough — DiariZen needs an upstream release built against pyannote.audio 4.x checkpoints.",
     },
   ];
 

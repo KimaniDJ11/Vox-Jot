@@ -18,7 +18,6 @@ soundfile==0.13.1
 pyannote.audio==4.0.4
 whisperx==3.8.5
 nemo_toolkit[asr]==2.7.3
-git+https://github.com/BUTSpeechFIT/DiariZen.git@d52b8d5e3d96632b1a8a0dc34762bf811471e441
 
 onnx==1.21.0
 onnxruntime==1.25.1

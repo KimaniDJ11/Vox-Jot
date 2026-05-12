@@ -126,6 +126,16 @@ def local_model_path(model_id: str, required_files: tuple[str, ...] = ()) -> str
     return None
 
 
+def has_mlx_snapshot_weights(path: Path) -> bool:
+    if not path.is_dir() or not (path / "config.json").exists():
+        return False
+    if (path / "model.safetensors").exists():
+        return True
+    if not (path / "model.safetensors.index.json").exists():
+        return False
+    return any(path.glob("model-*.safetensors"))
+
+
 def repo_or_local(model_id: str, repo_id: str) -> str:
     required = {
         "pyannote-community-1": ("config.yaml",),
@@ -144,10 +154,42 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
             )
         )
         stt_path = stt_root / "MLX" / repo_id
-        if stt_path.exists() and stt_path.is_dir():
+        if has_mlx_snapshot_weights(stt_path):
             return str(stt_path)
 
     return repo_id
+
+
+def pyannote_repo_or_local(model_id: str, repo_id: str) -> str:
+    local_path = repo_or_local(model_id, repo_id)
+    if model_id != "pyannote-3-1" or local_path == repo_id:
+        return local_path
+
+    local_dir = Path(local_path)
+    segmentation = local_dir / "segmentation"
+    embedding = local_dir / "embedding"
+    if not (
+        (segmentation / "config.yaml").exists()
+        and (segmentation / "pytorch_model.bin").exists()
+        and (embedding / "config.yaml").exists()
+        and (embedding / "pytorch_model.bin").exists()
+    ):
+        return local_path
+
+    runtime_dir = local_dir / ".vox-jot-runtime"
+    runtime_dir.mkdir(exist_ok=True)
+    runtime_config = runtime_dir / "config.yaml"
+    config = (local_dir / "config.yaml").read_text(encoding="utf-8")
+    config = config.replace(
+        "segmentation: pyannote/segmentation-3.0",
+        f"segmentation: {json.dumps(str(segmentation))}",
+    )
+    config = config.replace(
+        "embedding: pyannote/wespeaker-voxceleb-resnet34-LM",
+        f"embedding: {json.dumps(str(embedding))}",
+    )
+    runtime_config.write_text(config, encoding="utf-8")
+    return str(runtime_dir)
 
 
 def read_audio_16k(audio_path: str) -> tuple[Any, int]:
@@ -360,7 +402,7 @@ def diarize_pyannote(audio_path: str, model_id: str) -> list[SpeakerTurn]:
     if not token:
         fail(f"{model_id} requires Hugging Face authentication")
 
-    repo_id = repo_or_local(model_id, PYANNOTE_REPOS[model_id])
+    repo_id = pyannote_repo_or_local(model_id, PYANNOTE_REPOS[model_id])
     try:
         pipeline = Pipeline.from_pretrained(repo_id, token=token)
     except TypeError:

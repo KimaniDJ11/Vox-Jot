@@ -488,16 +488,19 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
     MlxAudioTtsModelDefinition {
         provider_id: TTS_PROVIDER_MLX_OUTE_ID,
         provider_label: "MLX OuteTTS",
-        provider_description: "Compact OuteTTS synthesis via mlx-audio.",
-        model_id: "outetts-0.6b",
-        hf_model_id: "mlx-community/OuteTTS-1.0-0.6B-fp16",
-        local_dir_names: &["OuteTTS-1.0-0.6B-fp16"],
-        label: "OuteTTS 0.6B",
-        description: "Compact English TTS model with fast inference.",
+        provider_description: "OuteTTS synthesis via mlx-audio.",
+        model_id: "outetts-1b-4bit",
+        hf_model_id: "mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+        local_dir_names: &["Llama-OuteTTS-1.0-1B-4bit"],
+        label: "Llama OuteTTS 1B 4-bit",
+        description: "Working 4-bit Llama OuteTTS checkpoint with multilingual zero-shot cloning.",
         engine_family: "mlx_audio",
-        license_label: None,
-        supported_languages: &["en"],
-        supports_voice_cloning: false,
+        license_label: Some("CC-BY-NC-SA-4.0"),
+        supported_languages: &[
+            "en", "ar", "zh", "nl", "fr", "de", "it", "ja", "ko", "lt", "ru", "es", "pt", "be",
+            "bn", "ka", "hu", "lv", "fa", "pl", "sw", "ta", "uk",
+        ],
+        supports_voice_cloning: true,
         supports_instruction_prompt: false,
     },
     MlxAudioTtsModelDefinition {
@@ -794,42 +797,6 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         supports_instruction_prompt: true,
     },
     MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_MOSS_TTS_ID,
-        provider_label: "MLX MOSS-TTS",
-        provider_description: "MOSS-TTS multilingual speech generation through mlx-audio.",
-        model_id: "moss-tts-local-transformer",
-        hf_model_id: "OpenMOSS-Team/MOSS-TTS-Local-Transformer",
-        local_dir_names: &["MOSS-TTS-Local-Transformer"],
-        label: "MOSS-TTS Local Transformer",
-        description: "Blocked until the MLX bridge supports this checkpoint format.",
-        engine_family: "mlx_audio",
-        license_label: Some("Apache-2.0"),
-        supported_languages: &[
-            "zh", "en", "de", "es", "fr", "ja", "it", "he", "ko", "ru", "fa", "ar", "pl", "pt",
-            "cs", "da", "sv", "hu", "el", "tr",
-        ],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_MOSS_TTS_ID,
-        provider_label: "MLX MOSS-TTS",
-        provider_description: "MOSS-TTS multilingual speech generation through mlx-audio.",
-        model_id: "moss-tts-8b",
-        hf_model_id: "OpenMOSS-Team/MOSS-TTS",
-        local_dir_names: &["MOSS-TTS"],
-        label: "MOSS-TTS 8B",
-        description: "Blocked until the MLX bridge supports this checkpoint format.",
-        engine_family: "mlx_audio",
-        license_label: Some("Apache-2.0"),
-        supported_languages: &[
-            "zh", "en", "de", "es", "fr", "ja", "it", "he", "ko", "ru", "fa", "ar", "pl", "pt",
-            "cs", "da", "sv", "hu", "el", "tr",
-        ],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
         provider_id: TTS_PROVIDER_MLX_IRODORI_TTS_ID,
         provider_label: "MLX Irodori TTS",
         provider_description: "Japanese Irodori TTS voice cloning through mlx-audio.",
@@ -867,7 +834,8 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "k2-fsa/OmniVoice",
         local_dir_names: &["OmniVoice", "OmniVoice-bf16"],
         label: "OmniVoice",
-        description: "Omnilingual zero-shot TTS and voice cloning with the full upstream audio tokenizer.",
+        description:
+            "Omnilingual zero-shot TTS and voice cloning with the full upstream audio tokenizer.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &["mul"],
@@ -1074,15 +1042,6 @@ pub fn mlx_audio_tts_model_definition(
 
 pub fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str> {
     match model_id {
-        "outetts-0.6b" => Some(
-            "OuteTTS 0.6B is temporarily disabled because the current mlx-audio runtime does not generate usable audio for this checkpoint.",
-        ),
-        "moss-tts-local-transformer" => Some(
-            "MOSS-TTS Local Transformer is temporarily disabled because mlx-audio cannot determine the model type for this checkpoint. It needs bridge support before app use.",
-        ),
-        "moss-tts-8b" => Some(
-            "MOSS-TTS 8B is temporarily disabled because mlx-audio cannot determine the model type for this checkpoint. It needs bridge support before app use.",
-        ),
         _ => None,
     }
 }

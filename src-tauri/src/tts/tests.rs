@@ -9,8 +9,7 @@ use crate::settings::{
 use crate::translation::TranslationOrigin;
 
 use super::catalog::{
-    first_mlx_audio_model_for_provider, mlx_audio_definition_available,
-    mlx_audio_model_supports_inline_tags, mlx_audio_model_unavailable_reason,
+    mlx_audio_definition_available, mlx_audio_model_supports_inline_tags,
     mlx_audio_tts_model_definition, MANAGED_RUNTIME_MODEL_DEFINITIONS, QWEN3_PACK_DEFINITIONS,
 };
 use super::chunking::chunk_text;
@@ -144,19 +143,17 @@ fn hf_access_error_points_to_model_terms_page() {
 }
 
 #[test]
-fn outetts_checkpoint_is_marked_unavailable() {
-    let definition = mlx_audio_tts_model_definition("outetts-0.6b")
-        .expect("OuteTTS model definition should remain discoverable");
+fn outetts_catalog_uses_working_llama_checkpoint() {
+    let definition = mlx_audio_tts_model_definition("outetts-1b-4bit")
+        .expect("OuteTTS Llama model definition should remain discoverable");
 
-    assert!(!mlx_audio_definition_available(definition));
-    assert!(mlx_audio_model_unavailable_reason(definition.model_id)
-        .expect("blocked MLX checkpoints should explain why")
-        .contains("temporarily disabled"));
-}
-
-#[test]
-fn unavailable_mlx_provider_has_no_default_model() {
-    assert!(first_mlx_audio_model_for_provider(TTS_PROVIDER_MLX_OUTE_ID).is_none());
+    assert_eq!(
+        definition.hf_model_id,
+        "mlx-community/Llama-OuteTTS-1.0-1B-4bit"
+    );
+    assert_eq!(definition.local_dir_names, &["Llama-OuteTTS-1.0-1B-4bit"]);
+    assert!(definition.supports_voice_cloning);
+    assert!(mlx_audio_definition_available(definition));
 }
 
 #[test]
@@ -315,6 +312,11 @@ fn sidecar_payload_maps_expanded_mlx_provider_catalog_to_huggingface_ids() {
             TTS_PROVIDER_MLX_HIGGS_AUDIO_ID,
             "higgs-audio-v2-3b-q6",
             "mlx-community/higgs-audio-v2-3B-mlx-q6",
+        ),
+        (
+            TTS_PROVIDER_MLX_OUTE_ID,
+            "outetts-1b-4bit",
+            "mlx-community/Llama-OuteTTS-1.0-1B-4bit",
         ),
         (
             TTS_PROVIDER_MLX_MOSS_TTS_ID,

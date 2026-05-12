@@ -141,7 +141,7 @@ describe("resolveModelProviderId", () => {
         expected: "mlx_spark",
       },
       {
-        title: "OuteTTS 0.6B",
+        title: "Llama OuteTTS 1B 4-bit",
         runtimeProviderId: "mlx_oute",
         expected: "mlx_oute",
       },

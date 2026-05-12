@@ -66,19 +66,19 @@ Score bands: **45+ Ship · 30–44 Experimental · 18–29 Prototype · <18 Skip
 
 ### MLX-native (macOS Apple Silicon — Lane A)
 
-| Model              | Lic | Mac | Dom | Res | Pkg | Str | Lng | Com | Clo | **Total** | Verdict |
-| ------------------ | --- | --- | --- | --- | --- | --- | --- | --- | --- | --------- | ------- |
-| MLX Qwen3 TTS 0.6B | 12  | 12  | 9   | 9   | 6   | 3   | 2   | 2   | 3   | **58**    | Ship    |
-| MLX Ming Omni 0.5B | 12  | 12  | 9   | 9   | 6   | 3   | 1   | 2   | 3   | **57**    | Ship    |
-| MLX Kokoro 82M     | 12  | 12  | 9   | 9   | 6   | 3   | 2   | 3   | 0   | **56**    | Ship    |
-| MLX CSM 1B         | 12  | 12  | 9   | 9   | 6   | 3   | 0   | 2   | 3   | **56**    | Ship    |
-| MLX Qwen3 TTS 1.7B | 12  | 12  | 9   | 6   | 6   | 3   | 2   | 2   | 3   | **55**    | Ship    |
-| MLX Spark TTS 0.5B | 12  | 12  | 9   | 9   | 6   | 3   | 1   | 2   | 0   | **54**    | Ship    |
-| MLX Chatterbox     | 12  | 12  | 9   | 6   | 6   | 3   | 3   | 2   | 0   | **53**    | Ship    |
-| MLX OuteTTS 0.6B   | 12  | 12  | 9   | 9   | 6   | 3   | 0   | 2   | 0   | **53**    | Ship    |
-| MLX Voxtral TTS 4B | 12  | 12  | 9   | 3   | 6   | 3   | 2   | 3   | 0   | **50**    | Ship    |
-| MLX Dia 1.6B       | 12  | 12  | 9   | 6   | 6   | 3   | 0   | 2   | 0   | **50**    | Ship    |
-| MLX KugelAudio 7B  | 8   | 12  | 9   | 3   | 6   | 3   | 3   | 2   | 0   | **46**    | Ship    |
+| Model                      | Lic | Mac | Dom | Res | Pkg | Str | Lng | Com | Clo | **Total** | Verdict |
+| -------------------------- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --------- | ------- |
+| MLX Qwen3 TTS 0.6B         | 12  | 12  | 9   | 9   | 6   | 3   | 2   | 2   | 3   | **58**    | Ship    |
+| MLX Ming Omni 0.5B         | 12  | 12  | 9   | 9   | 6   | 3   | 1   | 2   | 3   | **57**    | Ship    |
+| MLX Kokoro 82M             | 12  | 12  | 9   | 9   | 6   | 3   | 2   | 3   | 0   | **56**    | Ship    |
+| MLX CSM 1B                 | 12  | 12  | 9   | 9   | 6   | 3   | 0   | 2   | 3   | **56**    | Ship    |
+| MLX Qwen3 TTS 1.7B         | 12  | 12  | 9   | 6   | 6   | 3   | 2   | 2   | 3   | **55**    | Ship    |
+| MLX Spark TTS 0.5B         | 12  | 12  | 9   | 9   | 6   | 3   | 1   | 2   | 0   | **54**    | Ship    |
+| MLX Chatterbox             | 12  | 12  | 9   | 6   | 6   | 3   | 3   | 2   | 0   | **53**    | Ship    |
+| MLX Llama OuteTTS 1B 4-bit | 12  | 12  | 9   | 9   | 6   | 3   | 0   | 2   | 0   | **53**    | Ship    |
+| MLX Voxtral TTS 4B         | 12  | 12  | 9   | 3   | 6   | 3   | 2   | 3   | 0   | **50**    | Ship    |
+| MLX Dia 1.6B               | 12  | 12  | 9   | 6   | 6   | 3   | 0   | 2   | 0   | **50**    | Ship    |
+| MLX KugelAudio 7B          | 8   | 12  | 9   | 3   | 6   | 3   | 3   | 2   | 0   | **46**    | Ship    |
 
 ### MLX-native notes
 
@@ -133,46 +133,46 @@ Score bands: **45+ Ship · 30–44 Experimental · 18–29 Prototype · <18 Skip
 
 ## Full rankings (all models, highest to lowest)
 
-| Rank | Model                | Domain | Score | Verdict      |
-| ---- | -------------------- | ------ | ----- | ------------ |
-| 1    | MLX Qwen3 TTS 0.6B   | TTS    | 58    | Ship         |
-| 2    | MLX Ming Omni 0.5B   | TTS    | 57    | Ship         |
-| 3    | Qwen3 Native         | TTS    | 56    | Ship         |
-| 4    | MLX Kokoro 82M       | TTS    | 56    | Ship         |
-| 5    | MLX CSM 1B           | TTS    | 56    | Ship         |
-| 6    | MLX Qwen3 TTS 1.7B   | TTS    | 55    | Ship         |
-| 7    | Whisper Small        | STT    | 54    | Ship         |
-| 8    | Parakeet V3          | STT    | 54    | Ship         |
-| 9    | MLX Parakeet V3      | STT    | 54    | Ship         |
-| 10   | MLX Spark TTS 0.5B   | TTS    | 54    | Ship         |
-| 11   | MLX Chatterbox       | TTS    | 53    | Ship         |
-| 12   | MLX OuteTTS 0.6B     | TTS    | 53    | Ship         |
-| 13   | Moonshine V2 Tiny    | STT    | 53    | Ship         |
-| 14   | Moonshine V2 Small   | STT    | 53    | Ship         |
-| 15   | Moonshine V2 Medium  | STT    | 53    | Ship         |
-| 16   | SenseVoice           | STT    | 52    | Ship         |
-| 17   | Sherpa ONNX zh+en    | TTS    | 51    | Ship         |
-| 18   | Whisper Medium       | STT    | 51    | Ship         |
-| 19   | Whisper Turbo        | STT    | 51    | Ship         |
-| 20   | Parakeet V2          | STT    | 51    | Ship         |
-| 21   | GigaAM v3            | STT    | 51    | Ship         |
-| 22   | MLX Whisper Turbo    | STT    | 51    | Ship         |
-| 23   | MLX Distil-Whisper   | STT    | 51    | Ship         |
-| 24   | MLX Voxtral TTS 4B   | TTS    | 50    | Ship         |
-| 25   | MLX Dia 1.6B         | TTS    | 50    | Ship         |
-| 26   | Moonshine Base       | STT    | 50    | Ship         |
-| 27   | macOS System (`say`) | TTS    | 50    | Ship         |
-| 28   | Sherpa ONNX en-US    | TTS    | 50    | Ship         |
-| 29   | MLX Qwen3 ASR        | STT    | 49    | Ship         |
-| 30   | Kokoro 82M (sidecar) | TTS    | 47    | Ship         |
-| 31   | MLX KugelAudio 7B    | TTS    | 46    | Ship         |
-| 32   | OpenVoice            | TTS    | 46    | Ship         |
-| 33   | Whisper Large        | STT    | 48    | Ship         |
-| 34   | Chatterbox (sidecar) | TTS    | 41    | Ship         |
-| 35   | Fish Speech 1.5      | TTS    | 41    | Ship         |
-| 36   | XTTS v2              | TTS    | 39    | Experimental |
-| 37   | Breeze ASR           | STT    | 45    | Ship         |
-| 38   | Qwen2 Audio 7B       | STT    | 31    | Experimental |
+| Rank | Model                      | Domain | Score | Verdict      |
+| ---- | -------------------------- | ------ | ----- | ------------ |
+| 1    | MLX Qwen3 TTS 0.6B         | TTS    | 58    | Ship         |
+| 2    | MLX Ming Omni 0.5B         | TTS    | 57    | Ship         |
+| 3    | Qwen3 Native               | TTS    | 56    | Ship         |
+| 4    | MLX Kokoro 82M             | TTS    | 56    | Ship         |
+| 5    | MLX CSM 1B                 | TTS    | 56    | Ship         |
+| 6    | MLX Qwen3 TTS 1.7B         | TTS    | 55    | Ship         |
+| 7    | Whisper Small              | STT    | 54    | Ship         |
+| 8    | Parakeet V3                | STT    | 54    | Ship         |
+| 9    | MLX Parakeet V3            | STT    | 54    | Ship         |
+| 10   | MLX Spark TTS 0.5B         | TTS    | 54    | Ship         |
+| 11   | MLX Chatterbox             | TTS    | 53    | Ship         |
+| 12   | MLX Llama OuteTTS 1B 4-bit | TTS    | 53    | Ship         |
+| 13   | Moonshine V2 Tiny          | STT    | 53    | Ship         |
+| 14   | Moonshine V2 Small         | STT    | 53    | Ship         |
+| 15   | Moonshine V2 Medium        | STT    | 53    | Ship         |
+| 16   | SenseVoice                 | STT    | 52    | Ship         |
+| 17   | Sherpa ONNX zh+en          | TTS    | 51    | Ship         |
+| 18   | Whisper Medium             | STT    | 51    | Ship         |
+| 19   | Whisper Turbo              | STT    | 51    | Ship         |
+| 20   | Parakeet V2                | STT    | 51    | Ship         |
+| 21   | GigaAM v3                  | STT    | 51    | Ship         |
+| 22   | MLX Whisper Turbo          | STT    | 51    | Ship         |
+| 23   | MLX Distil-Whisper         | STT    | 51    | Ship         |
+| 24   | MLX Voxtral TTS 4B         | TTS    | 50    | Ship         |
+| 25   | MLX Dia 1.6B               | TTS    | 50    | Ship         |
+| 26   | Moonshine Base             | STT    | 50    | Ship         |
+| 27   | macOS System (`say`)       | TTS    | 50    | Ship         |
+| 28   | Sherpa ONNX en-US          | TTS    | 50    | Ship         |
+| 29   | MLX Qwen3 ASR              | STT    | 49    | Ship         |
+| 30   | Kokoro 82M (sidecar)       | TTS    | 47    | Ship         |
+| 31   | MLX KugelAudio 7B          | TTS    | 46    | Ship         |
+| 32   | OpenVoice                  | TTS    | 46    | Ship         |
+| 33   | Whisper Large              | STT    | 48    | Ship         |
+| 34   | Chatterbox (sidecar)       | TTS    | 41    | Ship         |
+| 35   | Fish Speech 1.5            | TTS    | 41    | Ship         |
+| 36   | XTTS v2                    | TTS    | 39    | Experimental |
+| 37   | Breeze ASR                 | STT    | 45    | Ship         |
+| 38   | Qwen2 Audio 7B             | STT    | 31    | Experimental |
 
 ---
 

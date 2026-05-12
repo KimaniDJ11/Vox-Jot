@@ -98,7 +98,7 @@
       "id": "file-asr-hard",
       "domain": "file_asr",
       "objective": "Validate decode formats, long-form chunking, cancellation, timestamps, and subtitles.",
-      "local_commands": ["ls test-data/file-transcription-samples"],
+      "local_commands": ["bun run eval:file-asr"],
       "datasets": [
         {
           "id": "file-transcription-samples",

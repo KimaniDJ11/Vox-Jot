@@ -36,7 +36,7 @@ const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   "dia-1.6b": "~3.2 GB",
   "csm-1b": "~2.0 GB",
   "spark-tts-0.5b": "~1.0 GB",
-  "outetts-0.6b": "~1.2 GB",
+  "outetts-1b-4bit": "~700 MB",
   "ming-omni-0.5b": "~500 MB",
   "kugel-audio-7b": "~14 GB",
   "bark-small": "~1.5 GB",

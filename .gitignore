@@ -83,6 +83,8 @@ tmp/
 *.tar.gz
 *.onnx
 !src-tauri/resources/models/silero_vad_v4.onnx
+!src-tauri/resources/tts-runtime/
+!src-tauri/resources/tts-runtime/*.tar.gz
 
 # Onboarding screenshots (reference only, not in repo)
 onboarding/

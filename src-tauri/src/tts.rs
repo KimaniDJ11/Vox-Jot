@@ -120,6 +120,21 @@ const VIBEVOICE_HF_FILES: &[(&str, &str)] = &[
     ("preprocessor_config.json", "preprocessor_config.json"),
 ];
 
+fn hf_get(client: &reqwest::Client, url: &str) -> reqwest::RequestBuilder {
+    let request = client.get(url);
+    if let Some(token) = crate::speech_analysis::hugging_face_token_for_runtime() {
+        request.bearer_auth(token)
+    } else {
+        request
+    }
+}
+
+fn hf_access_error(repo_id: &str) -> String {
+    format!(
+        "{repo_id} requires Hugging Face access. Open https://huggingface.co/{repo_id}, accept the model terms, save a Hugging Face read token in Vox Jot, then download again."
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum TtsEngineKind {
@@ -1070,13 +1085,15 @@ impl TtsManager {
                     .map_err(|err| format!("Failed to create {}: {err}", parent.display()))?;
             }
 
-            let response = client
-                .get(&url)
+            let response = hf_get(&client, &url)
                 .send()
                 .await
                 .map_err(|err| format!("Failed to fetch {source} for {label}: {err}"))?;
             if !response.status().is_success() {
                 let _ = tokio_fs::remove_dir_all(&staging_dir).await;
+                if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+                    return Err(hf_access_error(repo_id));
+                }
                 return Err(format!(
                     "Failed to download {source} for {label}: HTTP {}",
                     response.status()
@@ -4186,11 +4203,20 @@ impl TtsManager {
         let api_url = format!("https://huggingface.co/api/models/{repo_id}");
         info!("HF snapshot: listing files from {api_url}");
 
-        let model_info: HfModelInfo = client
-            .get(&api_url)
+        let response = hf_get(&client, &api_url)
             .send()
             .await
-            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?
+            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?;
+        if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+            return Err(hf_access_error(repo_id));
+        }
+        if !response.status().is_success() {
+            return Err(format!(
+                "Failed to query HuggingFace API for {label}: HTTP {}",
+                response.status()
+            ));
+        }
+        let model_info: HfModelInfo = response
             .json()
             .await
             .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
@@ -4218,12 +4244,14 @@ impl TtsManager {
                 })?;
             }
             info!("HF snapshot: downloading {}", sibling.rfilename);
-            let response = client
-                .get(&file_url)
+            let response = hf_get(&client, &file_url)
                 .send()
                 .await
                 .map_err(|e| format!("Failed to download {}: {e}", sibling.rfilename))?;
             if !response.status().is_success() {
+                if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+                    return Err(hf_access_error(repo_id));
+                }
                 return Err(format!(
                     "Failed to download {}: HTTP {}",
                     sibling.rfilename,
@@ -4264,11 +4292,20 @@ impl TtsManager {
         let api_url = format!("https://huggingface.co/api/models/{repo_id}");
         info!("HF snapshot: listing files from {api_url}");
 
-        let model_info: HfModelInfo = client
-            .get(&api_url)
+        let response = hf_get(&client, &api_url)
             .send()
             .await
-            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?
+            .map_err(|e| format!("Failed to query HuggingFace API for {label}: {e}"))?;
+        if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+            return Err(hf_access_error(repo_id));
+        }
+        if !response.status().is_success() {
+            return Err(format!(
+                "Failed to query HuggingFace API for {label}: HTTP {}",
+                response.status()
+            ));
+        }
+        let model_info: HfModelInfo = response
             .json()
             .await
             .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
@@ -4292,12 +4329,14 @@ impl TtsManager {
                 })?;
             }
             info!("HF snapshot: downloading {}", sibling.rfilename);
-            let response = client
-                .get(&file_url)
+            let response = hf_get(&client, &file_url)
                 .send()
                 .await
                 .map_err(|e| format!("Failed to download {}: {e}", sibling.rfilename))?;
             if !response.status().is_success() {
+                if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+                    return Err(hf_access_error(repo_id));
+                }
                 return Err(format!(
                     "Failed to download {}: HTTP {}",
                     sibling.rfilename,

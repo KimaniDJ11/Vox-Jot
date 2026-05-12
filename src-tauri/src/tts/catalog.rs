@@ -258,7 +258,7 @@ pub const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = 
         supports_voice_cloning: true,
         supports_instruction_prompt: false,
         supports_inline_tags: false,
-        hf_repo_id: None,
+        hf_repo_id: Some("IrieDinamik/OpenVoice"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_CHATTERBOX_ID,
@@ -329,7 +329,7 @@ pub const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = 
         supports_voice_cloning: false,
         supports_instruction_prompt: false,
         supports_inline_tags: false,
-        hf_repo_id: None,
+        hf_repo_id: Some("IrieDinamik/kokoro"),
     },
     ManagedRuntimeModelDefinition {
         provider_id: TTS_PROVIDER_XTTS_ID,

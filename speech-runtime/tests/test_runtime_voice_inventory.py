@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from runtime.config import RuntimeConfig
+from runtime.config import ENGINE_SPECS, RuntimeConfig
 from runtime.engine_worker import EngineWorker
 from runtime.worker_host import WorkerHost
 
@@ -33,6 +33,12 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(voices[1]["locale"], "en-GB")
         self.assertEqual(voices[2]["locale"], "zh")
         self.assertEqual(voices[0]["label"], "Af Heart")
+
+    def test_kokoro_prefers_nested_archive_layout(self):
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "kokoro-82m-v1.0")
+
+        self.assertEqual(spec.model_dirs[0], "Kokoro/kokoro")
+        self.assertIn("kokoro/kokoro", spec.model_dirs)
 
     def test_openvoice_voice_inventory_normalizes_speakers_and_locales(self):
         worker = self.make_worker("openvoice", "openvoice")

@@ -8,6 +8,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   AlertTriangle,
   ChevronDown,
@@ -23,6 +24,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { commands } from "@/bindings";
+import type { HuggingFaceTokenStatus } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
@@ -31,11 +33,13 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
 import {
   ProviderIcon,
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
+import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import type {
   CatalogModelDescriptor,
   ProviderDescriptor,
@@ -53,6 +57,13 @@ import {
 } from "../utils";
 import { modelHasTuningControls } from "../tuningControls";
 
+const GATED_TTS_HF_ACCESS_URLS: Record<string, string> = {
+  "xtts-v2": "https://huggingface.co/coqui/XTTS-v2",
+};
+
+const ttsModelRequiresHfAccess = (model: CatalogModelDescriptor): boolean =>
+  Boolean(GATED_TTS_HF_ACCESS_URLS[model.id]);
+
 interface TtsHfDownloadProgress {
   repo_id: string;
   stage: string;
@@ -69,7 +80,16 @@ const SpeechModelLibraryCard: React.FC<{
   selected: boolean;
   speech: ListenSpeechState;
   downloadProgress?: TtsHfDownloadProgress;
-}> = ({ model, provider, active, selected, speech, downloadProgress }) => {
+  onGatedDownloadRequest: (model: CatalogModelDescriptor) => boolean;
+}> = ({
+  model,
+  provider,
+  active,
+  selected,
+  speech,
+  downloadProgress,
+  onGatedDownloadRequest,
+}) => {
   const { t } = useTranslation();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -212,6 +232,13 @@ const SpeechModelLibraryCard: React.FC<{
 
   const downloadOrActivate = useCallback(async () => {
     if (locallyDownloading || downloadProgress) return;
+    if (
+      model.downloadable &&
+      !model.installed &&
+      onGatedDownloadRequest(model)
+    ) {
+      return;
+    }
     setLocallyDownloading(model.downloadable && !model.installed);
     try {
       await speech.activateModel(model.provider_id, model.id);
@@ -225,6 +252,7 @@ const SpeechModelLibraryCard: React.FC<{
     model.id,
     model.installed,
     model.provider_id,
+    onGatedDownloadRequest,
     speech,
   ]);
 
@@ -390,6 +418,7 @@ const SpeechModelList: React.FC<{
   emptyMessage: string;
   showHeader?: boolean;
   ttsDownloadProgress: Record<string, TtsHfDownloadProgress>;
+  onGatedDownloadRequest: (model: CatalogModelDescriptor) => boolean;
 }> = ({
   title,
   count,
@@ -398,6 +427,7 @@ const SpeechModelList: React.FC<{
   emptyMessage,
   showHeader = true,
   ttsDownloadProgress,
+  onGatedDownloadRequest,
 }) => (
   <div className="space-y-3">
     {showHeader ? (
@@ -431,6 +461,7 @@ const SpeechModelList: React.FC<{
             selected={model.selected}
             speech={speech}
             downloadProgress={ttsDownloadProgress[model.id]}
+            onGatedDownloadRequest={onGatedDownloadRequest}
           />
         ))}
       </div>
@@ -465,6 +496,13 @@ export const EngineLibraryPanel: React.FC<{
   const [ttsDownloadProgress, setTtsDownloadProgress] = useState<
     Record<string, TtsHfDownloadProgress>
   >({});
+  const [hfTokenStatus, setHfTokenStatus] =
+    useState<HuggingFaceTokenStatus | null>(null);
+  const [gatedDownloadModel, setGatedDownloadModel] =
+    useState<CatalogModelDescriptor | null>(null);
+  const [hfTokenDraft, setHfTokenDraft] = useState("");
+  const [hfTokenError, setHfTokenError] = useState<string | null>(null);
+  const [savingHfToken, setSavingHfToken] = useState(false);
   const portalTarget = usePortalTarget(titleActionTargetId);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
   const languageSearchInputRef = useRef<HTMLInputElement>(null);
@@ -566,6 +604,110 @@ export const EngineLibraryPanel: React.FC<{
     () => filteredModels.filter((model) => !model.installed),
     [filteredModels],
   );
+
+  const loadHfTokenStatus = useCallback(async () => {
+    const result = await commands.getHuggingFaceTokenStatus();
+    if (result.status === "ok") {
+      setHfTokenStatus(result.data);
+    } else {
+      setHfTokenStatus({ configured: false, source: null });
+      setHfTokenError(result.error);
+    }
+  }, []);
+
+  const requestGatedDownload = useCallback(
+    (model: CatalogModelDescriptor): boolean => {
+      if (!ttsModelRequiresHfAccess(model)) return false;
+      setGatedDownloadModel(model);
+      setHfTokenDraft("");
+      setHfTokenError(null);
+      void loadHfTokenStatus();
+      return true;
+    },
+    [loadHfTokenStatus],
+  );
+
+  const closeGatedDownload = useCallback(() => {
+    if (savingHfToken) return;
+    setGatedDownloadModel(null);
+    setHfTokenDraft("");
+    setHfTokenError(null);
+  }, [savingHfToken]);
+
+  const confirmGatedDownload = useCallback(async () => {
+    if (!gatedDownloadModel || savingHfToken) return;
+    const token = hfTokenDraft.trim();
+    if (!token && !hfTokenStatus?.configured) {
+      setHfTokenError(
+        t("modelHub.analysis.hfAccess.tokenRequired", {
+          defaultValue:
+            "Paste a Hugging Face read token, or save one with the HF CLI first.",
+        }),
+      );
+      return;
+    }
+
+    setSavingHfToken(true);
+    setHfTokenError(null);
+    if (token) {
+      const result = await commands.setHuggingFaceToken(token);
+      if (result.status === "ok") {
+        setHfTokenStatus(result.data);
+        setHfTokenDraft("");
+      } else {
+        setHfTokenError(result.error);
+        setSavingHfToken(false);
+        return;
+      }
+    }
+
+    const model = gatedDownloadModel;
+    try {
+      await speech.activateModel(model.provider_id, model.id);
+      setGatedDownloadModel(null);
+      setHfTokenDraft("");
+      setHfTokenError(null);
+    } catch (error) {
+      setHfTokenError(
+        error instanceof Error
+          ? error.message
+          : t("modelHub.tts.downloadFailed", {
+              defaultValue: "Download failed.",
+            }),
+      );
+    } finally {
+      setSavingHfToken(false);
+    }
+  }, [
+    gatedDownloadModel,
+    hfTokenDraft,
+    hfTokenStatus?.configured,
+    savingHfToken,
+    speech,
+    t,
+  ]);
+
+  const clearHfToken = useCallback(async () => {
+    if (savingHfToken) return;
+    if (
+      !confirmDestructiveAction(
+        t("modelHub.analysis.hfAccess.clearTokenConfirm", {
+          defaultValue:
+            "Clear the saved Hugging Face token from Vox Jot? Gated model downloads will need a token again.",
+        }),
+      )
+    ) {
+      return;
+    }
+    const result = await commands.clearHuggingFaceToken();
+    if (result.status === "ok") {
+      setHfTokenStatus(result.data);
+      setHfTokenDraft("");
+      setHfTokenError(null);
+    } else {
+      setHfTokenError(result.error);
+    }
+  }, [savingHfToken, t]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -798,6 +940,7 @@ export const EngineLibraryPanel: React.FC<{
           models={downloadedModels}
           speech={speech}
           ttsDownloadProgress={ttsDownloadProgress}
+          onGatedDownloadRequest={requestGatedDownload}
           showHeader={false}
           emptyMessage={
             providerFilter !== "all" || languageFilter !== "all"
@@ -813,6 +956,7 @@ export const EngineLibraryPanel: React.FC<{
             models={availableModels}
             speech={speech}
             ttsDownloadProgress={ttsDownloadProgress}
+            onGatedDownloadRequest={requestGatedDownload}
             emptyMessage={
               providerFilter !== "all" || languageFilter !== "all"
                 ? "No available speech models match the current filters."
@@ -821,6 +965,36 @@ export const EngineLibraryPanel: React.FC<{
           />
         </div>
       </div>
+      <GatedHuggingFaceAccessDialog
+        open={Boolean(gatedDownloadModel)}
+        modelName={gatedDownloadModel?.label ?? ""}
+        titleId="tts-hf-access-title"
+        tokenStatus={hfTokenStatus}
+        tokenDraft={hfTokenDraft}
+        error={hfTokenError}
+        busy={savingHfToken}
+        onTokenDraftChange={setHfTokenDraft}
+        onOpenAccessPage={async () => {
+          if (!gatedDownloadModel) return;
+          const accessUrl = GATED_TTS_HF_ACCESS_URLS[gatedDownloadModel.id];
+          if (!accessUrl) return;
+          setHfTokenError(null);
+          try {
+            await openUrl(accessUrl);
+          } catch (error) {
+            setHfTokenError(
+              error instanceof Error
+                ? error.message
+                : t("modelHub.analysis.hfAccess.openAccessFailed", {
+                    defaultValue: "Failed to open Hugging Face access page.",
+                  }),
+            );
+          }
+        }}
+        onClearToken={clearHfToken}
+        onCancel={closeGatedDownload}
+        onConfirm={confirmGatedDownload}
+      />
     </div>
   );
 

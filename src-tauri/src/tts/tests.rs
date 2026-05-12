@@ -120,6 +120,30 @@ fn managed_catalog_includes_chatterbox_multilingual() {
 }
 
 #[test]
+fn managed_catalog_has_public_hf_fallbacks_for_private_release_models() {
+    let openvoice = MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| definition.model_id == "openvoice")
+        .expect("OpenVoice should stay in the managed TTS catalog");
+    let kokoro = MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| definition.model_id == "kokoro-82m-v1.0")
+        .expect("Kokoro 82M should stay in the managed TTS catalog");
+
+    assert_eq!(openvoice.hf_repo_id, Some("IrieDinamik/OpenVoice"));
+    assert_eq!(kokoro.hf_repo_id, Some("IrieDinamik/kokoro"));
+}
+
+#[test]
+fn hf_access_error_points_to_model_terms_page() {
+    let message = super::hf_access_error("coqui/XTTS-v2");
+
+    assert!(message.contains("https://huggingface.co/coqui/XTTS-v2"));
+    assert!(message.contains("accept the model terms"));
+    assert!(message.contains("Hugging Face read token"));
+}
+
+#[test]
 fn outetts_checkpoint_is_marked_unavailable() {
     let definition = mlx_audio_tts_model_definition("outetts-0.6b")
         .expect("OuteTTS model definition should remain discoverable");

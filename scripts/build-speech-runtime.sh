@@ -16,7 +16,12 @@ mkdir -p "$DIST_DIR"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-cp -R "$RUNTIME_SRC"/. "$BUILD_DIR"/
+tar -C "$RUNTIME_SRC" \
+  --exclude='./.venv' \
+  --exclude='./vendor' \
+  --exclude='*/__pycache__' \
+  --exclude='*.pyc' \
+  -cf - . | tar -C "$BUILD_DIR" -xf -
 
 "$PYTHON_BIN" -m venv "$BUILD_DIR/.venv"
 

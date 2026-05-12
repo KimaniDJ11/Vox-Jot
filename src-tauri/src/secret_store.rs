@@ -29,9 +29,8 @@ fn install_native_default_store() -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn install_native_default_store() -> Result<(), String> {
-    let store = windows_native_keyring_store::Store::new().map_err(|error| {
-        format!("Failed to open the Windows credential manager store: {error}")
-    })?;
+    let store = windows_native_keyring_store::Store::new()
+        .map_err(|error| format!("Failed to open the Windows credential manager store: {error}"))?;
     keyring_core::set_default_store(store);
     Ok(())
 }

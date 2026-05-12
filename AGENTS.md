@@ -40,7 +40,8 @@ Testing views must use full benchmark suite results for ranked model rows. Smoke
 - Run the full suite for the relevant tab before adding or changing a ranked row in `src/lib/*EvaluationResults.ts`.
 - For TTS, run the complete `scripts/run-tts-model-eval.py` suite with all suite cases and ASR round-trip scoring enabled. Do not use `--case-limit` or `--no-asr-roundtrip` for ranked TTS, TTS Style, or Voice Cloning rows.
 - For Live STT, run the full STT corpus used by the tab, not a small `--limit` smoke subset, before assigning a rank.
-- If only a smoke test has been run, keep the model unranked or clearly mark it as smoke-only in notes. Do not assign a numeric rank or position that can be confused with a full benchmark rank.
+- Smoke tests are temporary readiness checks only. If a model has only been smoke-tested, run the full relevant suite before adding or updating Testing view metrics; do not leave smoke-only rows as final benchmark data.
+- If a model has completed the full relevant benchmark suite, it must always receive a numeric rank. This applies to specialized, language-specific, or otherwise caveated models too; put corpus/language caveats in the notes, not by leaving the model unranked.
 - When full benchmark results are available, update the Testing view data with the measured score/latency/WER/pass metrics and recompute ranks against the existing full-suite results.
 - Preserve built-in Apple/system models in rankings and local storage cleanup. Never delete built-in Apple/system options while pruning downloadable models.
 

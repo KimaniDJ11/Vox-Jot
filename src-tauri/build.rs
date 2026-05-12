@@ -110,6 +110,7 @@ fn escape_string(s: &str) -> String {
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn build_apple_intelligence_bridge() {
     use std::env;
+    use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
@@ -132,6 +133,23 @@ fn build_apple_intelligence_bridge() {
     println!("cargo:rerun-if-changed={BRIDGE_HEADER}");
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
+    // Keep Swift/Clang module caches inside Cargo OUT_DIR so builds work in
+    // sandboxed environments that cannot write to user cache directories.
+    let swift_module_cache_dir = out_dir.join("swift-module-cache");
+    let clang_module_cache_dir = out_dir.join("clang-module-cache");
+    fs::create_dir_all(&swift_module_cache_dir)
+        .expect("Failed to create Swift module cache directory");
+    fs::create_dir_all(&clang_module_cache_dir)
+        .expect("Failed to create Clang module cache directory");
+    let swift_module_cache_dir_str = swift_module_cache_dir
+        .to_str()
+        .expect("Failed to convert Swift module cache dir to string");
+    let clang_module_cache_arg = format!(
+        "-fmodules-cache-path={}",
+        clang_module_cache_dir
+            .to_str()
+            .expect("Failed to convert Clang module cache dir to string")
+    );
     let object_paths = [
         out_dir.join("apple_intelligence.o"),
         out_dir.join("screen_context.o"),
@@ -201,13 +219,8 @@ fn build_apple_intelligence_bridge() {
     // Use macOS 11.0 as deployment target for compatibility
     // The @available(macOS 26.0, *) checks in Swift handle runtime availability
     // Weak linking for FoundationModels is handled via cargo:rustc-link-arg below
-    for (source, object_path) in [
-        (source_file, &object_paths[0]),
-        (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
-        (speech_source_file, &object_paths[2]),
-        (browser_url_source_file, &object_paths[3]),
-    ] {
-        let status = Command::new("xcrun")
+    let compile_swift_source = |source: &str, object_path: &Path| {
+        Command::new("xcrun")
             .args([
                 "swiftc",
                 "-target",
@@ -215,6 +228,12 @@ fn build_apple_intelligence_bridge() {
                 "-sdk",
                 &sdk_path,
                 "-O",
+                "-module-cache-path",
+                swift_module_cache_dir_str,
+                "-sdk-module-cache-path",
+                swift_module_cache_dir_str,
+                "-Xcc",
+                &clang_module_cache_arg,
                 "-import-objc-header",
                 BRIDGE_HEADER,
                 "-c",
@@ -224,10 +243,42 @@ fn build_apple_intelligence_bridge() {
                     .to_str()
                     .expect("Failed to convert object path to string"),
             ])
-            .status()
-            .expect("Failed to invoke swiftc for Apple Intelligence bridge");
+            .output()
+            .expect("Failed to invoke swiftc for Apple Intelligence bridge")
+    };
 
-        if !status.success() {
+    // Apple Intelligence source can use Swift macros. Some sandboxed build
+    // environments disallow swift-plugin-server, so fall back to the stub if
+    // the real implementation fails to compile.
+    let mut apple_intelligence_source_file = source_file;
+    let ai_output = compile_swift_source(apple_intelligence_source_file, &object_paths[0]);
+    if !ai_output.status.success() {
+        let stderr = String::from_utf8_lossy(&ai_output.stderr);
+        if apple_intelligence_source_file == REAL_SWIFT_FILE {
+            println!(
+                "cargo:warning=Apple Intelligence Swift macros unavailable; falling back to stub implementation"
+            );
+            apple_intelligence_source_file = STUB_SWIFT_FILE;
+            let stub_output =
+                compile_swift_source(apple_intelligence_source_file, &object_paths[0]);
+            if !stub_output.status.success() {
+                eprintln!("{}", String::from_utf8_lossy(&stub_output.stderr));
+                panic!("swiftc failed to compile {apple_intelligence_source_file}");
+            }
+        } else {
+            eprintln!("{stderr}");
+            panic!("swiftc failed to compile {apple_intelligence_source_file}");
+        }
+    }
+
+    for (source, object_path) in [
+        (SCREEN_CONTEXT_SWIFT_FILE, &object_paths[1]),
+        (speech_source_file, &object_paths[2]),
+        (browser_url_source_file, &object_paths[3]),
+    ] {
+        let output = compile_swift_source(source, object_path);
+        if !output.status.success() {
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
             panic!("swiftc failed to compile {source}");
         }
     }

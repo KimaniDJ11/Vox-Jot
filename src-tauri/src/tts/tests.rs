@@ -1,7 +1,10 @@
 use crate::settings::{
     TtsAutoReadbackMode, TtsAutoReadbackScope, TtsReadbackTextMode, TtsVoiceTuningSettings,
-    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_MLX_KOKORO_ID, TTS_PROVIDER_MLX_OUTE_ID,
-    TTS_PROVIDER_MLX_POCKET_TTS_ID,
+    TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_MLX_HIGGS_AUDIO_ID, TTS_PROVIDER_MLX_INDEXTTS_ID,
+    TTS_PROVIDER_MLX_IRODORI_TTS_ID, TTS_PROVIDER_MLX_KOKORO_ID,
+    TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID, TTS_PROVIDER_MLX_MELOTTS_ID,
+    TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_OUTE_ID,
+    TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
 };
 use crate::translation::TranslationOrigin;
 
@@ -252,6 +255,94 @@ fn sidecar_payload_maps_new_mlx_model_ids_to_huggingface_ids() {
         payload["extra_controls"]["model_id"],
         "mlx-community/pocket-tts-4bit"
     );
+}
+
+#[test]
+fn sidecar_payload_maps_expanded_mlx_provider_catalog_to_huggingface_ids() {
+    let tuning = TtsVoiceTuningSettings {
+        tempo_rate: 1.0,
+        expressiveness: 0.5,
+        exaggeration: 0.5,
+        randomness: 0.2,
+        guidance: 1.0,
+        stability: 0.5,
+        repetition_penalty: 1.2,
+        style_instructions: None,
+        advanced_overrides: std::collections::HashMap::new(),
+    };
+
+    let cases: &[(&str, &str, &str)] = &[
+        (
+            TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID,
+            "longcat-audiodit-1b-4bit",
+            "mlx-community/LongCat-AudioDiT-1B-4bit",
+        ),
+        (
+            TTS_PROVIDER_MLX_SOPRANO_ID,
+            "soprano-80m-4bit",
+            "mlx-community/Soprano-80M-4bit",
+        ),
+        (
+            TTS_PROVIDER_MLX_MELOTTS_ID,
+            "melotts-english",
+            "mlx-community/MeloTTS-English-MLX",
+        ),
+        (
+            TTS_PROVIDER_MLX_HIGGS_AUDIO_ID,
+            "higgs-audio-v2-3b-q6",
+            "mlx-community/higgs-audio-v2-3B-mlx-q6",
+        ),
+        (
+            TTS_PROVIDER_MLX_MOSS_TTS_ID,
+            "moss-tts-nano-100m",
+            "mlx-community/MOSS-TTS-Nano-100M",
+        ),
+        (
+            TTS_PROVIDER_MLX_IRODORI_TTS_ID,
+            "irodori-tts-500m-v2-4bit",
+            "mlx-community/Irodori-TTS-500M-v2-4bit",
+        ),
+        (
+            TTS_PROVIDER_MLX_INDEXTTS_ID,
+            "indextts-1-5",
+            "mlx-community/IndexTTS-1.5",
+        ),
+        (
+            TTS_PROVIDER_MLX_OMNIVOICE_ID,
+            "omnivoice",
+            "mlx-community/OmniVoice-bf16",
+        ),
+        (
+            TTS_PROVIDER_MLX_VIBEVOICE_ID,
+            "vibevoice-realtime-0-5b-4bit-mlx",
+            "mlx-community/VibeVoice-Realtime-0.5B-4bit",
+        ),
+    ];
+
+    for (provider_id, model_id, expected_hf_id) in cases {
+        let payload = build_sidecar_request_payload(
+            "Hello world",
+            provider_id,
+            Some(model_id),
+            None,
+            Some("en-US"),
+            None,
+            None,
+            &tuning,
+        );
+
+        assert_eq!(
+            payload["model"], *expected_hf_id,
+            "provider {} model {} should map to HF id {}",
+            provider_id, model_id, expected_hf_id
+        );
+        assert_eq!(
+            payload["extra_controls"]["model_id"], *expected_hf_id,
+            "provider {} extra_controls.model_id should map to HF id {}",
+            provider_id, expected_hf_id
+        );
+        assert_eq!(payload["extra_controls"]["provider_id"], *provider_id);
+    }
 }
 
 #[test]

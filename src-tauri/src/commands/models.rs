@@ -1415,10 +1415,12 @@ pub async fn set_tts_platform_selection(
             model.label
         ));
     }
-    if model.source_kind == CatalogSourceKind::Builtin && !model.installed && model.downloadable {
-        tts_manager.download_pack(&resolved_model_id).await?;
-    } else if model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID && !model.installed {
-        download_hf_tts_repo_impl(&app_handle, &resolved_model_id).await?;
+    if !model.installed && model.downloadable {
+        if model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
+            download_hf_tts_repo_impl(&app_handle, &resolved_model_id).await?;
+        } else {
+            tts_manager.download_pack(&resolved_model_id).await?;
+        }
     }
 
     let mut settings = get_settings(&app_handle);

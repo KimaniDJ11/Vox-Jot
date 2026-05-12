@@ -39,8 +39,9 @@ fn health_client() -> &'static reqwest::blocking::Client {
 }
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
-const MLX_AUDIO_RUNTIME_MARKER: &str = "mlx-audio==0.4.2|torch==2.11.0|patches=voxtral_eos_v1";
-const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.2", "torch==2.11.0"];
+const MLX_AUDIO_RUNTIME_MARKER: &str =
+    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|patches=voxtral_eos_v1";
+const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.3", "torch==2.11.0", "g2p_en==2.1.0"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidecarBackend {
@@ -839,10 +840,11 @@ impl SidecarManager {
         );
 
         if patched == contents {
-            return Err(format!(
-                "Failed to patch mlx-audio Voxtral tokenizer handling in '{}'",
+            warn!(
+                "Skipping mlx-audio Voxtral tokenizer patch because the expected upstream block was not found in '{}'",
                 voxtral_model_file.display()
-            ));
+            );
+            return Ok(());
         }
 
         std::fs::write(&voxtral_model_file, patched).map_err(|err| {

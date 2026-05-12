@@ -112,10 +112,53 @@ def bundled_csm_prompt() -> tuple[str, str] | None:
     return str(prompt_audio), prompt_text.read_text(encoding="utf-8").strip()
 
 
+def needs_bundled_conditioning_prompt(model_type: str | None, model_name: str) -> bool:
+    model_type_normalized = (model_type or "").lower()
+    return (
+        model_type_normalized in {"sesame", "csm", "moss_tts_nano", "moss_tts", "indextts"}
+        or "csm-1b" in model_name
+        or "moss-tts" in model_name
+        or "indextts" in model_name
+        or "index-tts" in model_name
+    )
+
+
 def normalize_generation_results(result):
     if hasattr(result, "audio") and hasattr(result, "sample_rate"):
         return [result]
     return result
+
+
+def patch_mlx_audio_load_config_for_indextts() -> None:
+    """Inject ``tokenizer_name`` into IndexTTS configs at load time.
+
+    The upstream IndexTTS ``ModelArgs`` dataclass requires ``tokenizer_name``,
+    but the official ``mlx-community/IndexTTS-1.5`` snapshot omits this field
+    from ``config.json``. Without the field, ``base_load_model`` fails with
+    ``ModelArgs.__init__() missing 1 required positional argument: 'tokenizer_name'``.
+
+    The Model constructor accepts either a HF repo id or a local directory
+    containing ``tokenizer.model``; the snapshot ships ``tokenizer.model``
+    alongside ``config.json``, so we default to the model_path.
+    """
+    from mlx_audio import utils as mlx_audio_utils
+
+    original_load_config = mlx_audio_utils.load_config
+    if getattr(original_load_config, "_vox_jot_indextts_patched", False):
+        return
+
+    def patched_load_config(model_path, **kwargs):
+        config = original_load_config(model_path, **kwargs)
+        try:
+            model_type = (config.get("model_type") or "").lower()
+        except AttributeError:
+            return config
+        if model_type == "indextts" and "tokenizer_name" not in config:
+            config["tokenizer_name"] = str(model_path)
+        return config
+
+    patched_load_config._vox_jot_indextts_patched = True  # type: ignore[attr-defined]
+    mlx_audio_utils.load_config = patched_load_config
 
 
 def display_model_name(model_name: str) -> str:
@@ -123,6 +166,24 @@ def display_model_name(model_name: str) -> str:
         return "Bark"
     if "fish-audio-s2-pro" in model_name:
         return "Fish Audio S2 Pro"
+    if "longcat-audiodit" in model_name:
+        return "LongCat AudioDiT"
+    if "soprano" in model_name:
+        return "Soprano"
+    if "melotts" in model_name or "melo-tts" in model_name:
+        return "MeloTTS"
+    if "higgs-audio" in model_name:
+        return "Higgs Audio v2"
+    if "moss-tts" in model_name:
+        return "MOSS-TTS"
+    if "irodori-tts" in model_name:
+        return "Irodori TTS"
+    if "indextts" in model_name or "index-tts" in model_name:
+        return "IndexTTS"
+    if "omnivoice" in model_name:
+        return "OmniVoice"
+    if "vibevoice" in model_name:
+        return "VibeVoice"
     if "lfm2.5-audio" in model_name or "lfm2-5-audio" in model_name:
         return "LFM2.5 Audio"
     if "pocket-tts" in model_name:
@@ -995,6 +1056,7 @@ def main() -> int:
     args = parse_args()
 
     try:
+        patch_mlx_audio_load_config_for_indextts()
         model_name = Path(args.model).name.lower()
         config = load_model_config(args.model)
         model_type = config.get("model_type") or config.get("architecture")
@@ -1011,11 +1073,11 @@ def main() -> int:
             ref_audio = None
             ref_text = args.ref_text
             ref_audio_path = args.ref_audio
-            if model_type == "sesame" and not ref_audio_path:
+            if needs_bundled_conditioning_prompt(model_type, model_name) and not ref_audio_path:
                 fallback_prompt = bundled_csm_prompt()
                 if fallback_prompt is None:
                     raise RuntimeError(
-                        "CSM requires a reference prompt, and the bundled Vox Jot fallback prompt is missing."
+                        f"{display_model_name(model_name)} requires a reference prompt, and the bundled Vox Jot fallback prompt is missing."
                     )
                 ref_audio_path, ref_text = fallback_prompt
 

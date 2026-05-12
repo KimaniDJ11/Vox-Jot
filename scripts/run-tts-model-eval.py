@@ -363,6 +363,31 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("pocket-tts-4bit", "MLX Pocket TTS 4-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-4bit", "MLX/mlx-community/pocket-tts-4bit"), "mlx-community/pocket-tts-4bit", supports_voice_cloning=True),
     ModelSpec("pocket-tts-8bit", "MLX Pocket TTS 8-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-8bit", "MLX/mlx-community/pocket-tts-8bit"), "mlx-community/pocket-tts-8bit", supports_voice_cloning=True),
     ModelSpec("voxtral-tts-4b", "MLX Voxtral TTS 4B", "mlx", "mlx_voxtral", ("MLX/Voxtral-TTS-4B-MLX-6bit", "MLX/Voxtral-4B-TTS-2603-mlx-bf16", "Voxtral-TTS-4B-MLX-6bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16"),
+    ModelSpec("longcat-audiodit-1b-4bit", "MLX LongCat AudioDiT 1B 4-bit", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-1B-4bit", "MLX/mlx-community/LongCat-AudioDiT-1B-4bit"), "mlx-community/LongCat-AudioDiT-1B-4bit", supports_voice_cloning=True),
+    ModelSpec("longcat-audiodit-1b-bf16", "MLX LongCat AudioDiT 1B bf16", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-1B-bf16", "MLX/mlx-community/LongCat-AudioDiT-1B-bf16"), "mlx-community/LongCat-AudioDiT-1B-bf16", supports_voice_cloning=True),
+    ModelSpec("longcat-audiodit-3-5b-4bit", "MLX LongCat AudioDiT 3.5B 4-bit", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-3.5B-4bit", "MLX/mlx-community/LongCat-AudioDiT-3.5B-4bit"), "mlx-community/LongCat-AudioDiT-3.5B-4bit", supports_voice_cloning=True),
+    ModelSpec("soprano-80m-4bit", "MLX Soprano 80M 4-bit", "mlx", "mlx_soprano", ("MLX/Soprano-80M-4bit", "MLX/mlx-community/Soprano-80M-4bit"), "mlx-community/Soprano-80M-4bit"),
+    ModelSpec("soprano-1-1-80m-bf16", "MLX Soprano 1.1 80M bf16", "mlx", "mlx_soprano", ("MLX/Soprano-1.1-80M-bf16", "MLX/mlx-community/Soprano-1.1-80M-bf16"), "mlx-community/Soprano-1.1-80M-bf16"),
+    ModelSpec("melotts-english", "MLX MeloTTS English", "mlx", "mlx_melotts", ("MLX/MeloTTS-English-MLX", "MLX/mlx-community/MeloTTS-English-MLX"), "mlx-community/MeloTTS-English-MLX"),
+    ModelSpec("higgs-audio-v2-3b-q6", "MLX Higgs Audio v2 3B q6", "mlx", "mlx_higgs_audio", ("MLX/higgs-audio-v2-3B-mlx-q6", "MLX/mlx-community/higgs-audio-v2-3B-mlx-q6"), "mlx-community/higgs-audio-v2-3B-mlx-q6", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("higgs-audio-v2-3b-q8", "MLX Higgs Audio v2 3B q8", "mlx", "mlx_higgs_audio", ("MLX/higgs-audio-v2-3B-mlx-q8", "MLX/mlx-community/higgs-audio-v2-3B-mlx-q8"), "mlx-community/higgs-audio-v2-3B-mlx-q8", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("moss-tts-nano-100m", "MLX MOSS-TTS Nano 100M", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS-Nano-100M", "MLX/mlx-community/MOSS-TTS-Nano-100M"), "mlx-community/MOSS-TTS-Nano-100M", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("moss-tts-local-transformer", "MLX MOSS-TTS Local Transformer", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS-Local-Transformer", "MLX/OpenMOSS-Team/MOSS-TTS-Local-Transformer"), "OpenMOSS-Team/MOSS-TTS-Local-Transformer", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("moss-tts-8b", "MLX MOSS-TTS 8B", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS", "MLX/OpenMOSS-Team/MOSS-TTS"), "OpenMOSS-Team/MOSS-TTS", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("irodori-tts-500m-v2-4bit", "MLX Irodori TTS 500M v2 4-bit", "mlx", "mlx_irodori_tts", ("MLX/Irodori-TTS-500M-v2-4bit", "MLX/mlx-community/Irodori-TTS-500M-v2-4bit"), "mlx-community/Irodori-TTS-500M-v2-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("indextts-1-5", "MLX IndexTTS 1.5", "mlx", "mlx_indextts", ("MLX/IndexTTS-1.5", "MLX/mlx-community/IndexTTS-1.5"), "mlx-community/IndexTTS-1.5", supports_voice_cloning=True),
+    ModelSpec("omnivoice", "MLX OmniVoice", "mlx", "mlx_omnivoice", ("MLX/OmniVoice-bf16", "MLX/OmniVoice", "MLX/mlx-community/OmniVoice-bf16"), "mlx-community/OmniVoice-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("vibevoice-realtime-0-5b-4bit-mlx", "MLX VibeVoice Realtime 0.5B 4-bit", "mlx", "mlx_vibevoice", ("MLX/VibeVoice-Realtime-0.5B-4bit", "MLX/mlx-community/VibeVoice-Realtime-0.5B-4bit"), "mlx-community/VibeVoice-Realtime-0.5B-4bit", supports_instruction_prompt=True),
+    ModelSpec("qwen3-tts-0.6b-customvoice", "MLX Qwen3 TTS 0.6B CustomVoice", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16", voice="serena", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("qwen3-tts-1.7b-customvoice", "MLX Qwen3 TTS 1.7B CustomVoice", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16", voice="serena", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("qwen3-tts-1.7b-base-8bit", "MLX Qwen3 TTS 1.7B Base 8-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-8bit", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("dia-1.6b-4bit", "MLX Dia 1.6B 4-bit", "mlx", "mlx_dia", ("MLX/Dia-1.6B-4bit", "MLX/mlx-community/Dia-1.6B-4bit"), "mlx-community/Dia-1.6B-4bit"),
+    ModelSpec("csm-1b-8bit", "MLX CSM 1B 8-bit", "mlx", "mlx_csm", ("MLX/csm-1b-8bit", "MLX/mlx-community/csm-1b-8bit"), "mlx-community/csm-1b-8bit", supports_voice_cloning=True),
+    ModelSpec("spark-tts-0.5b-4-6bit", "MLX Spark TTS 0.5B 4/6-bit", "mlx", "mlx_spark", ("MLX/Spark-TTS-0.5B-4-6bit", "MLX/mlx-community/Spark-TTS-0.5B-4-6bit"), "mlx-community/Spark-TTS-0.5B-4-6bit"),
+    ModelSpec("voxcpm2-8bit", "MLX VoxCPM2 8-bit", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-8bit", "MLX/mlx-community/VoxCPM2-8bit"), "mlx-community/VoxCPM2-8bit", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("voxcpm2-bf16", "MLX VoxCPM2 bf16", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-bf16", "MLX/mlx-community/VoxCPM2-bf16"), "mlx-community/VoxCPM2-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("voxtral-tts-4b-4bit", "MLX Voxtral TTS 4B 4-bit", "mlx", "mlx_voxtral", ("MLX/Voxtral-4B-TTS-2603-mlx-4bit", "MLX/mlx-community/Voxtral-4B-TTS-2603-mlx-4bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-4bit"),
+    ModelSpec("fish-audio-s2-pro-8bit", "MLX Fish Audio S2 Pro 8-bit", "mlx", "mlx_fish", ("MLX/fish-audio-s2-pro-8bit", "MLX/mlx-community/fish-audio-s2-pro-8bit"), "mlx-community/fish-audio-s2-pro-8bit", supports_voice_cloning=True),
 )
 
 
@@ -665,6 +690,8 @@ def synthesize_mlx(model: ModelSpec, model_root: Path, case: dict[str, Any], out
         "--repetition-penalty",
         str(case.get("controls", {}).get("repetition_penalty", 1.1)),
     ]
+    if model.voice:
+        command.extend(["--voice", model.voice])
     controls = case.get("controls", {})
     if "top_p" in controls:
         command.extend(["--top-p", str(controls["top_p"])])

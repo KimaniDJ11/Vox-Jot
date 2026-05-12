@@ -310,7 +310,7 @@ fn sidecar_payload_maps_expanded_mlx_provider_catalog_to_huggingface_ids() {
         (
             TTS_PROVIDER_MLX_OMNIVOICE_ID,
             "omnivoice",
-            "mlx-community/OmniVoice-bf16",
+            "k2-fsa/OmniVoice",
         ),
         (
             TTS_PROVIDER_MLX_VIBEVOICE_ID,

@@ -478,9 +478,17 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
   {
     modelId: "mlx-vibevoice-asr-bf16",
     label: "VibeVoice ASR 9B (MLX)",
-    status: "pending",
+    status: "tested",
+    rank: 31,
+    normalizedMatches: 0,
+    exactMatches: 0,
+    totalCases: 35,
+    averageWer: 1.871,
+    latencyP50Ms: 11005,
+    latencyP95Ms: 12331,
+    realTimeFactorP50: 4.74,
     notes:
-      "Installed in the local STT store with all four safetensor shards; smoke-checked transcription works but the model returns ~2.9x real-time factor and is intended for file transcription, not low-latency dictation. Full 35-clip benchmark pending.",
+      "Full 35-clip Mini LibriSpeech suite completed with no runner failures, but accuracy and latency are unsuitable for live dictation. Keep positioned for file transcription experiments, not low-latency dictation.",
   },
 ];
 

@@ -864,10 +864,10 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         provider_label: "MLX OmniVoice",
         provider_description: "OmniVoice multilingual TTS and cloning through mlx-audio.",
         model_id: "omnivoice",
-        hf_model_id: "mlx-community/OmniVoice-bf16",
-        local_dir_names: &["OmniVoice-bf16", "OmniVoice"],
+        hf_model_id: "k2-fsa/OmniVoice",
+        local_dir_names: &["OmniVoice", "OmniVoice-bf16"],
         label: "OmniVoice",
-        description: "Blocked because the current bridge emits silent audio.",
+        description: "Omnilingual zero-shot TTS and voice cloning with the full upstream audio tokenizer.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &["mul"],
@@ -1082,9 +1082,6 @@ pub fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str
         ),
         "moss-tts-8b" => Some(
             "MOSS-TTS 8B is temporarily disabled because mlx-audio cannot determine the model type for this checkpoint. It needs bridge support before app use.",
-        ),
-        "omnivoice" => Some(
-            "OmniVoice is temporarily disabled because the current mlx-audio bridge emits silent WAV output for this checkpoint.",
         ),
         _ => None,
     }

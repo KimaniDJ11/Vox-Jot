@@ -23,6 +23,9 @@ import soundfile as sf
 
 
 CURRENT_DICTATION_ASR_ID = "current_dictation_engine"
+APP_SUPPORT_MODEL_ROOT = (
+    Path.home() / "Library/Application Support/com.iriedinamik.voxjot/models"
+)
 
 
 ASR_REPOS = {
@@ -32,6 +35,7 @@ ASR_REPOS = {
 
 MLX_ASR_REPOS = {
     "mlx-qwen3-asr-0.6b": "mlx-community/Qwen3-ASR-0.6B-8bit",
+    "mlx-qwen3-asr": "mlx-community/Qwen3-ASR-1.7B-8bit",
     "mlx-qwen3-asr-1.7b": "mlx-community/Qwen3-ASR-1.7B-8bit",
     "mlx-fireredasr2-aed": "mlx-community/FireRedASR2-AED-mlx",
     "mlx-vibevoice-asr-bf16": "mlx-community/VibeVoice-ASR-bf16",
@@ -128,7 +132,22 @@ def repo_or_local(model_id: str, repo_id: str) -> str:
         "pyannote-3-1": ("config.yaml",),
         "reverb-diarization-v2": ("config.yaml", "pytorch_model.bin"),
     }.get(model_id, ())
-    return local_model_path(model_id, required) or repo_id
+    local_path = local_model_path(model_id, required)
+    if local_path:
+        return local_path
+
+    if model_id in MLX_ASR_REPOS:
+        stt_root = Path(
+            os.environ.get(
+                "VOX_JOT_STT_MODEL_ROOT",
+                str(APP_SUPPORT_MODEL_ROOT / "stt"),
+            )
+        )
+        stt_path = stt_root / "MLX" / repo_id
+        if stt_path.exists() and stt_path.is_dir():
+            return str(stt_path)
+
+    return repo_id
 
 
 def read_audio_16k(audio_path: str) -> tuple[Any, int]:

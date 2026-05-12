@@ -1319,7 +1319,7 @@ pub(crate) fn default_model_for_provider(provider_id: &str) -> String {
         return APPLE_INTELLIGENCE_DEFAULT_MODEL_ID.to_string();
     }
     if provider_id == OLLAMA_PROVIDER_ID {
-        return "qwen2.5:1.5b".to_string();
+        return "qwen2.5:0.5b".to_string();
     }
     if provider_id == "groq" {
         return "llama-3.1-8b-instant".to_string();
@@ -2881,7 +2881,7 @@ mod tests {
                 .post_process_models
                 .get(OLLAMA_PROVIDER_ID)
                 .map(String::as_str),
-            Some("qwen2.5:1.5b")
+            Some("qwen2.5:0.5b")
         );
         assert_eq!(
             settings.post_process_models.get("groq").map(String::as_str),

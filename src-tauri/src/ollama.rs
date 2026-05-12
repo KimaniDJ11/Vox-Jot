@@ -30,11 +30,6 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
         "~1.3 GB — fastest, lowest RAM",
     ),
     (
-        "qwen2.5:1.5b",
-        "Qwen 2.5 1.5B",
-        "~1.0 GB — stronger tiny model",
-    ),
-    (
         "smollm2:1.7b",
         "SmolLM2 1.7B",
         "~1.1 GB — more capable tiny model",
@@ -62,11 +57,6 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
     ),
     ("gemma2:2b", "Gemma 2 2B", "~1.6 GB — balanced tiny model"),
     (
-        "qwen2.5-coder:1.5b",
-        "Qwen 2.5 Coder 1.5B",
-        "~1.0 GB — tiny coding model",
-    ),
-    (
         "codegemma:2b",
         "CodeGemma 2B",
         "~1.6 GB — lightweight coding",
@@ -83,14 +73,14 @@ pub const RECOMMENDED_OLLAMA_MODELS: &[(&str, &str, &str)] = &[
     ),
     ("phi3:mini", "Phi-3 Mini", "~2.2 GB — lightweight reasoning"),
     (
-        "dolphin3:1b",
-        "Dolphin 3 1B",
-        "~0.8 GB — tiny general model",
+        "tinydolphin:1.1b",
+        "TinyDolphin 1.1B",
+        "~0.6 GB — tiny general model",
     ),
     (
-        "mistral-small:3b",
-        "Mistral Small 3B",
-        "~2.2 GB — efficient small model",
+        "mistral:7b-instruct-q2_K",
+        "Mistral 7B Instruct Q2_K",
+        "~2.7 GB — heavily quantized 7B instruct",
     ),
     (
         "deepseek-coder:1.3b",

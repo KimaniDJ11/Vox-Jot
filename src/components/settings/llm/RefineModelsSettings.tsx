@@ -119,8 +119,8 @@ const REFINE_MODEL_SIZE_HINTS: Record<string, string> = {
   "stable-code:3b": "~2.1 GB",
   "orca-mini:3b": "~2.0 GB",
   "phi3:mini": "~2.2 GB",
-  "dolphin3:1b": "~0.8 GB",
-  "mistral-small:3b": "~2.2 GB",
+  "tinydolphin:1.1b": "~0.6 GB",
+  "mistral:7b-instruct-q2_K": "~2.7 GB",
   "deepseek-coder:1.3b": "~1.0 GB",
 };
 

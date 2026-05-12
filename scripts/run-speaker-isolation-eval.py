@@ -20,6 +20,8 @@ DEFAULT_MODELS = (
     "pyannote-3-1",
     "diarizen-wavlm-large-s80-md",
     "nemo-sortformer-4spk-v1",
+    "mlx-sortformer-4spk-v1",
+    "mlx-sortformer-4spk-v2-1",
     "reverb-diarization-v2",
     "whisper-diarization",
     "onnx-polyvoice-diarization",

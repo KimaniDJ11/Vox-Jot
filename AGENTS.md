@@ -44,6 +44,16 @@ Testing views must use full benchmark suite results for ranked model rows. Smoke
 - When full benchmark results are available, update the Testing view data with the measured score/latency/WER/pass metrics and recompute ranks against the existing full-suite results.
 - Preserve built-in Apple/system models in rankings and local storage cleanup. Never delete built-in Apple/system options while pruning downloadable models.
 
+## Model Download and Catalog Operations
+
+Agents that download, benchmark, clean up, or expose models must follow `docs/model-download-benchmark-runbook.md` and keep its lessons reflected in the main app catalog, benchmark views, and scripts.
+
+- Use canonical app model IDs from the Rust/TypeScript catalogs. Do not add duplicate rows for equivalent Hugging Face repos, quantizations, aliases, or old local folder names.
+- Do not re-add the removed duplicate Qwen TTS CustomVoice/Base folders or duplicate Qwen LLM recommendations. Keep Qwen ASR canonicalized to `mlx-qwen3-asr` for the 1.7B model, with legacy aliases only for old artifacts.
+- Downloads belong in the app support model stores unless a script explicitly documents a temporary cache. Use resumable Hugging Face downloads where possible, record status/log paths, and keep pending downloads moving.
+- If testing proves a catalog model cannot run, mark it blocked/failed in the Testing view and disable it in the app catalog until the runtime bridge is fixed.
+- For TTS downloads, prefer `scripts/download-untested-tts-models.zsh` over ad hoc shell queues so other agents inherit the same paths, duplicate policy, and status logging.
+
 ## Text color visibility (contrast)
 
 Body copy and interactive labels must remain readable on real surfaces (`--panel-bg`, `--card`, `--bg`, overlays). Targets follow **WCAG 2.x**: **≥ 4.5:1** contrast for normal-sized text, **≥ 3:1** for large or bold UI text. Semi-transparent shells and backdrop blur effectively lighten or darken backgrounds; avoid stacking extra faintness.

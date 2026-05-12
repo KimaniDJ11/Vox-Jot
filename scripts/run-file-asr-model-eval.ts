@@ -18,6 +18,10 @@ const MODEL_ROOT = resolve(
   process.env.HOME ?? "",
   "Library/Application Support/com.iriedinamik.voxjot/models/speech-analysis",
 );
+const STT_MODEL_ROOT = resolve(
+  process.env.HOME ?? "",
+  "Library/Application Support/com.iriedinamik.voxjot/models/stt",
+);
 const REFERENCE =
   "This is a file transcription test for Vox Jot. One, two, three, four, five.";
 
@@ -84,6 +88,26 @@ const MODELS: ModelSpec[] = [
   {
     id: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
+    sidecar: true,
+  },
+  {
+    id: "mlx-qwen3-asr-0.6b",
+    label: "Qwen3 ASR 0.6B (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "mlx-qwen3-asr",
+    label: "Qwen3 ASR 1.7B (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "mlx-fireredasr2-aed",
+    label: "FireRedASR2 AED (MLX)",
+    sidecar: true,
+  },
+  {
+    id: "mlx-vibevoice-asr-bf16",
+    label: "VibeVoice ASR 9B (MLX)",
     sidecar: true,
   },
   {
@@ -202,7 +226,16 @@ function sampleDurationMs(samplePath: string): number {
 
 function modelDownloaded(modelId: string): boolean {
   const path = resolve(MODEL_ROOT, modelId);
-  return existsSync(path);
+  if (existsSync(path)) return true;
+
+  const sttMlxPaths: Record<string, string> = {
+    "mlx-qwen3-asr-0.6b": "MLX/mlx-community/Qwen3-ASR-0.6B-8bit",
+    "mlx-qwen3-asr": "MLX/mlx-community/Qwen3-ASR-1.7B-8bit",
+    "mlx-fireredasr2-aed": "MLX/mlx-community/FireRedASR2-AED-mlx",
+    "mlx-vibevoice-asr-bf16": "MLX/mlx-community/VibeVoice-ASR-bf16",
+  };
+  const sttPath = sttMlxPaths[modelId];
+  return sttPath ? existsSync(resolve(STT_MODEL_ROOT, sttPath)) : false;
 }
 
 function runSidecar(
@@ -229,6 +262,7 @@ function runSidecar(
       env: {
         ...process.env,
         VOX_JOT_SPEECH_ANALYSIS_MODEL_ROOT: MODEL_ROOT,
+        VOX_JOT_STT_MODEL_ROOT: STT_MODEL_ROOT,
       },
       encoding: "utf-8",
       timeout: 20 * 60 * 1000,

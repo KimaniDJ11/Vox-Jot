@@ -40,7 +40,7 @@ MLX_AUDIO_BRIDGE = PROJECT_ROOT / "src-tauri/resources/python/mlx_audio_generate
 MANAGED_RUNTIME = PROJECT_ROOT / "speech-runtime"
 MANAGED_WORKER = MANAGED_RUNTIME / "runtime/engine_worker.py"
 LEGACY_QWEN_RUNTIME = APP_SUPPORT / "tts-runtime/qwen3-macos-aarch64/qwen3-tts-macos-aarch64"
-DEFAULT_ASR_JUDGE_MODEL = APP_SUPPORT / "models/speech-analysis/whisper-diarization"
+DEFAULT_ASR_JUDGE_MODEL = "Systran/faster-whisper-small"
 DEFAULT_CLONE_REFERENCE_AUDIO = PROJECT_ROOT / "src-tauri/resources/python/mlx_csm_default_prompt.wav"
 DEFAULT_CLONE_REFERENCE_TEXT = PROJECT_ROOT / "src-tauri/resources/python/mlx_csm_default_prompt.txt"
 
@@ -339,16 +339,12 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("tts-sherpa-en-us-lessac-medium", "Sherpa Lessac Medium", "sherpa", "sherpa", ("tts-sherpa-en-us-lessac-medium",)),
     ModelSpec("tts-sherpa-zh-cn-melo", "Sherpa Melo Chinese/English", "sherpa", "sherpa", ("tts-sherpa-zh-cn-melo",)),
     ModelSpec("qwen3-0.6b-base", "Qwen3 Native 0.6B Base", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-base", "qwen3-0.6b-base"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-Base", supports_voice_cloning=True),
-    ModelSpec("qwen3-0.6b-customvoice", "Qwen3 Native 0.6B CustomVoice", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-customvoice", "qwen3-0.6b-customvoice"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"),
-    ModelSpec("qwen3-1.7b-customvoice", "Qwen3 Native 1.7B CustomVoice", "qwen3", "qwen3_native", ("qwen3/qwen3-1.7b-customvoice", "qwen3-1.7b-customvoice"), hf_repo="Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"),
     ModelSpec("lfm2-5-audio-1-5b-q4-0", "LFM2.5 Audio 1.5B GGUF Q4_0", "lfm_gguf", "lfm_audio_gguf", ("lfm-audio-gguf",)),
     ModelSpec("vibevoice-realtime-0-5b", "VibeVoice Realtime 0.5B", "vibevoice", "vibevoice", ("vibevoice",)),
     ModelSpec("kokoro-82m", "MLX Kokoro 82M", "mlx", "mlx_kokoro", ("MLX/Kokoro-82M-bf16", "MLX/mlx-community/Kokoro-82M-bf16", "Kokoro-82M-bf16"), "mlx-community/Kokoro-82M-bf16"),
     ModelSpec("chatterbox-mlx", "MLX Chatterbox", "mlx", "mlx_chatterbox", ("MLX/Chatterbox-fp16", "MLX/mlx-community/chatterbox-fp16", "Chatterbox-fp16"), "mlx-community/chatterbox-fp16"),
-    ModelSpec("qwen3-tts-0.6b", "MLX Qwen3 TTS 0.6B", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-0.6B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("qwen3-tts-0.6b-4bit", "MLX Qwen3 TTS 0.6B 4-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-Base-4bit", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit"), "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("qwen3-tts-1.7b", "MLX Qwen3 TTS 1.7B VoiceDesign", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-1.7B-VoiceDesign-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
-    ModelSpec("qwen3-tts-1.7b-base", "MLX Qwen3 TTS 1.7B Base", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("dia-1.6b", "MLX Dia 1.6B", "mlx", "mlx_dia", ("MLX/Dia-1.6B-fp16", "MLX/mlx-community/Dia-1.6B-fp16"), "mlx-community/Dia-1.6B-fp16"),
     ModelSpec("csm-1b", "MLX CSM 1B", "mlx", "mlx_csm", ("MLX/CSM-1B", "MLX/mlx-community/csm-1b"), "mlx-community/csm-1b", supports_voice_cloning=True),
     ModelSpec("spark-tts-0.5b", "MLX Spark TTS 0.5B", "mlx", "mlx_spark", ("MLX/Spark-TTS-0.5B-bf16", "MLX/mlx-community/Spark-TTS-0.5B-bf16"), "mlx-community/Spark-TTS-0.5B-bf16"),
@@ -372,14 +368,12 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("higgs-audio-v2-3b-q6", "MLX Higgs Audio v2 3B q6", "mlx", "mlx_higgs_audio", ("MLX/higgs-audio-v2-3B-mlx-q6", "MLX/mlx-community/higgs-audio-v2-3B-mlx-q6"), "mlx-community/higgs-audio-v2-3B-mlx-q6", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("higgs-audio-v2-3b-q8", "MLX Higgs Audio v2 3B q8", "mlx", "mlx_higgs_audio", ("MLX/higgs-audio-v2-3B-mlx-q8", "MLX/mlx-community/higgs-audio-v2-3B-mlx-q8"), "mlx-community/higgs-audio-v2-3B-mlx-q8", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("moss-tts-nano-100m", "MLX MOSS-TTS Nano 100M", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS-Nano-100M", "MLX/mlx-community/MOSS-TTS-Nano-100M"), "mlx-community/MOSS-TTS-Nano-100M", supports_instruction_prompt=True, supports_voice_cloning=True),
-    ModelSpec("moss-tts-local-transformer", "MLX MOSS-TTS Local Transformer", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS-Local-Transformer", "MLX/OpenMOSS-Team/MOSS-TTS-Local-Transformer"), "OpenMOSS-Team/MOSS-TTS-Local-Transformer", supports_instruction_prompt=True, supports_voice_cloning=True),
-    ModelSpec("moss-tts-8b", "MLX MOSS-TTS 8B", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS", "MLX/OpenMOSS-Team/MOSS-TTS"), "OpenMOSS-Team/MOSS-TTS", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("moss-tts-local-transformer", "MLX MOSS-TTS Local Transformer", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS-Local-Transformer", "MLX/OpenMOSS-Team/MOSS-TTS-Local-Transformer"), "OpenMOSS-Team/MOSS-TTS-Local-Transformer", supports_instruction_prompt=True, supports_voice_cloning=True, unavailable_reason="Disabled in app catalog: mlx-audio cannot determine the model type for this checkpoint until the MOSS bridge is fixed."),
+    ModelSpec("moss-tts-8b", "MLX MOSS-TTS 8B", "mlx", "mlx_moss_tts", ("MLX/MOSS-TTS", "MLX/OpenMOSS-Team/MOSS-TTS"), "OpenMOSS-Team/MOSS-TTS", supports_instruction_prompt=True, supports_voice_cloning=True, unavailable_reason="Disabled in app catalog: mlx-audio cannot determine the model type for this checkpoint until the MOSS bridge is fixed."),
     ModelSpec("irodori-tts-500m-v2-4bit", "MLX Irodori TTS 500M v2 4-bit", "mlx", "mlx_irodori_tts", ("MLX/Irodori-TTS-500M-v2-4bit", "MLX/mlx-community/Irodori-TTS-500M-v2-4bit"), "mlx-community/Irodori-TTS-500M-v2-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("indextts-1-5", "MLX IndexTTS 1.5", "mlx", "mlx_indextts", ("MLX/IndexTTS-1.5", "MLX/mlx-community/IndexTTS-1.5"), "mlx-community/IndexTTS-1.5", supports_voice_cloning=True),
-    ModelSpec("omnivoice", "MLX OmniVoice", "mlx", "mlx_omnivoice", ("MLX/OmniVoice-bf16", "MLX/OmniVoice", "MLX/mlx-community/OmniVoice-bf16"), "mlx-community/OmniVoice-bf16", supports_instruction_prompt=True, supports_voice_cloning=True),
+    ModelSpec("omnivoice", "MLX OmniVoice", "mlx", "mlx_omnivoice", ("MLX/OmniVoice-bf16", "MLX/OmniVoice", "MLX/mlx-community/OmniVoice-bf16"), "mlx-community/OmniVoice-bf16", supports_instruction_prompt=True, supports_voice_cloning=True, unavailable_reason="Disabled in app catalog: the current mlx-audio bridge emits silent WAV output for this checkpoint."),
     ModelSpec("vibevoice-realtime-0-5b-4bit-mlx", "MLX VibeVoice Realtime 0.5B 4-bit", "mlx", "mlx_vibevoice", ("MLX/VibeVoice-Realtime-0.5B-4bit", "MLX/mlx-community/VibeVoice-Realtime-0.5B-4bit"), "mlx-community/VibeVoice-Realtime-0.5B-4bit", supports_instruction_prompt=True),
-    ModelSpec("qwen3-tts-0.6b-customvoice", "MLX Qwen3 TTS 0.6B CustomVoice", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16"), "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16", voice="serena", supports_instruction_prompt=True, supports_voice_cloning=True),
-    ModelSpec("qwen3-tts-1.7b-customvoice", "MLX Qwen3 TTS 1.7B CustomVoice", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16"), "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16", voice="serena", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("qwen3-tts-1.7b-base-8bit", "MLX Qwen3 TTS 1.7B Base 8-bit", "mlx", "mlx_qwen3tts", ("MLX/Qwen3-TTS-12Hz-1.7B-Base-8bit", "MLX/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"), "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("dia-1.6b-4bit", "MLX Dia 1.6B 4-bit", "mlx", "mlx_dia", ("MLX/Dia-1.6B-4bit", "MLX/mlx-community/Dia-1.6B-4bit"), "mlx-community/Dia-1.6B-4bit"),
     ModelSpec("csm-1b-8bit", "MLX CSM 1B 8-bit", "mlx", "mlx_csm", ("MLX/csm-1b-8bit", "MLX/mlx-community/csm-1b-8bit"), "mlx-community/csm-1b-8bit", supports_voice_cloning=True),
@@ -408,7 +402,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-asr-roundtrip", action="store_true", help="Skip ASR round-trip WER scoring")
     parser.add_argument(
         "--asr-model",
-        default=str(DEFAULT_ASR_JUDGE_MODEL),
+        default=DEFAULT_ASR_JUDGE_MODEL,
         help="faster-whisper model path or id used as the ASR judge",
     )
     parser.add_argument(
@@ -418,6 +412,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--list", action="store_true", help="Print model inventory and exit")
     return parser.parse_args()
+
+
+def json_safe(value: Any) -> Any:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    return value
 
 
 def selected_models(raw: str, include_disabled: bool, suite: str = "hard") -> list[ModelSpec]:
@@ -1239,6 +1243,20 @@ def audio_health_component(cases: list[dict[str, Any]]) -> float:
     return max(0.0, 1.0 - (audio_penalty / len(cases)))
 
 
+def audio_failure_reason(metrics: dict[str, Any]) -> str | None:
+    duration = metrics.get("duration_s") or 0
+    rms = metrics.get("rms") or 0
+    peak = metrics.get("peak") or 0
+    silence_ratio = metrics.get("silence_ratio") or 1
+    if duration < 0.4:
+        return f"audio too short for benchmark scoring: duration_s={duration}"
+    if peak < 0.005 and silence_ratio >= 0.98:
+        return f"generated audio is silent: peak={peak}, rms={rms}, silence_ratio={silence_ratio}"
+    if rms < 0.001 and silence_ratio >= 0.98:
+        return f"generated audio is effectively silent: rms={rms}, silence_ratio={silence_ratio}"
+    return None
+
+
 def range_fit(value: float | None, low: float, high: float) -> float:
     if value is None:
         return 0.0
@@ -1483,11 +1501,27 @@ def run_model(
             shutil.copyfile(wav_path, output_path)
             final_path = output_path
         metrics = analyze_wav(final_path)
+        audio_error = audio_failure_reason(metrics)
         duration = metrics.get("duration_s") or 0
         latency_ms = baseline_case.get("latency_ms") if reuse_audio and baseline_case else round(elapsed * 1000)
         real_time_factor = (
             baseline_case.get("real_time_factor") if reuse_audio and baseline_case else round(elapsed / duration, 3) if duration else None
         )
+        if audio_error:
+            case_results.append(
+                {
+                    "case_id": case["id"],
+                    "label": case["label"],
+                    "reference_text": case["text"],
+                    "status": "failed",
+                    "latency_ms": latency_ms,
+                    "real_time_factor": real_time_factor,
+                    "audio": metrics,
+                    "error": audio_error,
+                    "output_path": str(final_path.relative_to(PROJECT_ROOT)),
+                }
+            )
+            continue
         style_alignment = evaluate_style_alignment(case, metrics) if suite == "style" else None
         clone_similarity = evaluate_clone_similarity(case, final_path) if suite == "voice_clone" else None
         asr_roundtrip = None
@@ -1778,7 +1812,9 @@ def main() -> int:
         },
         "results": results,
     }
-    (output_dir / summary_name).write_text(json.dumps(summary, indent=2) + "\n")
+    (output_dir / summary_name).write_text(
+        json.dumps(json_safe(summary), indent=2) + "\n"
+    )
     if args.suite == "style":
         write_listener_rating_template(output_dir, results)
     if args.suite == "voice_clone":

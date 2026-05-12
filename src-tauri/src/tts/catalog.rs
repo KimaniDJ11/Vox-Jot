@@ -171,25 +171,20 @@ pub struct Qwen3PackFeatures {
     pub supports_instruction_prompt: bool,
 }
 
-pub const QWEN3_PACK_DEFINITIONS: &[Qwen3PackDefinition] = &[
-    Qwen3PackDefinition {
-        id: "qwen3-0.6b-base",
-        label: "Qwen3 0.6B Base",
-        locale: "mul",
-        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-0.6B-Base"),
-    },
-    Qwen3PackDefinition {
-        id: "qwen3-0.6b-customvoice",
-        label: "Qwen3 0.6B CustomVoice",
-        locale: "mul",
-        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"),
-    },
-    Qwen3PackDefinition {
-        id: "qwen3-1.7b-customvoice",
-        label: "Qwen3 1.7B CustomVoice",
-        locale: "mul",
-        hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"),
-    },
+pub const QWEN3_PACK_DEFINITIONS: &[Qwen3PackDefinition] = &[Qwen3PackDefinition {
+    id: "qwen3-0.6b-base",
+    label: "Qwen3 0.6B Base",
+    locale: "mul",
+    hf_repo_id: Some("Qwen/Qwen3-TTS-12Hz-0.6B-Base"),
+}];
+
+const RETIRED_TTS_MODEL_IDS: &[&str] = &[
+    "qwen3-0.6b-customvoice",
+    "qwen3-1.7b-customvoice",
+    "qwen3-tts-0.6b",
+    "qwen3-tts-1.7b-base",
+    "qwen3-tts-0.6b-customvoice",
+    "qwen3-tts-1.7b-customvoice",
 ];
 
 pub const PACK_DEFINITIONS: &[PackDefinition] = &[
@@ -419,21 +414,6 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
         provider_label: "MLX Qwen3 TTS",
         provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
-        model_id: "qwen3-tts-0.6b",
-        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16",
-        local_dir_names: &["Qwen3-TTS-0.6B-Base-bf16"],
-        label: "Qwen3 TTS 0.6B",
-        description: "Smaller Qwen3 TTS model for multilingual synthesis and cloning.",
-        engine_family: "mlx_audio",
-        license_label: None,
-        supported_languages: &["zh", "en", "ja", "ko", "mul"],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
-        provider_label: "MLX Qwen3 TTS",
-        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
         model_id: "qwen3-tts-0.6b-4bit",
         hf_model_id: "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit",
         local_dir_names: &["Qwen3-TTS-12Hz-0.6B-Base-4bit"],
@@ -454,21 +434,6 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         local_dir_names: &["Qwen3-TTS-1.7B-VoiceDesign-bf16"],
         label: "Qwen3 TTS 1.7B",
         description: "Larger Qwen3 TTS model with richer voice design controls.",
-        engine_family: "mlx_audio",
-        license_label: None,
-        supported_languages: &["zh", "en", "ja", "ko", "mul"],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
-        provider_label: "MLX Qwen3 TTS",
-        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
-        model_id: "qwen3-tts-1.7b-base",
-        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16",
-        local_dir_names: &["Qwen3-TTS-12Hz-1.7B-Base-bf16"],
-        label: "Qwen3 TTS 1.7B Base",
-        description: "Larger base Qwen3 TTS checkpoint for multilingual synthesis and cloning.",
         engine_family: "mlx_audio",
         license_label: None,
         supported_languages: &["zh", "en", "ja", "ko", "mul"],
@@ -788,7 +753,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "mlx-community/higgs-audio-v2-3B-mlx-q6",
         local_dir_names: &["higgs-audio-v2-3B-mlx-q6"],
         label: "Higgs Audio v2 3B q6",
-        description: "Quantized multilingual Higgs Audio v2 with reference-audio cloning.",
+        description: "Lower-priority Higgs Audio v2 variant; q8 tested more reliable.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &["en", "zh", "ko", "de", "es"],
@@ -803,7 +768,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "mlx-community/higgs-audio-v2-3B-mlx-q8",
         local_dir_names: &["higgs-audio-v2-3B-mlx-q8"],
         label: "Higgs Audio v2 3B q8",
-        description: "Higher-quality quantized Higgs Audio v2 voice-cloning checkpoint.",
+        description: "Preferred Higgs Audio v2 checkpoint after full hard-suite testing.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &["en", "zh", "ko", "de", "es"],
@@ -836,7 +801,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "OpenMOSS-Team/MOSS-TTS-Local-Transformer",
         local_dir_names: &["MOSS-TTS-Local-Transformer"],
         label: "MOSS-TTS Local Transformer",
-        description: "Larger multilingual MOSS-TTS local-transformer checkpoint.",
+        description: "Blocked until the MLX bridge supports this checkpoint format.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &[
@@ -854,7 +819,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "OpenMOSS-Team/MOSS-TTS",
         local_dir_names: &["MOSS-TTS"],
         label: "MOSS-TTS 8B",
-        description: "Large multilingual MOSS-TTS checkpoint for high-quality speech generation.",
+        description: "Blocked until the MLX bridge supports this checkpoint format.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &[
@@ -902,7 +867,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         hf_model_id: "mlx-community/OmniVoice-bf16",
         local_dir_names: &["OmniVoice-bf16", "OmniVoice"],
         label: "OmniVoice",
-        description: "Broad multilingual TTS model with language tags and optional cloning.",
+        description: "Blocked because the current bridge emits silent audio.",
         engine_family: "mlx_audio",
         license_label: Some("Apache-2.0"),
         supported_languages: &["mul"],
@@ -922,36 +887,6 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         license_label: Some("MIT"),
         supported_languages: &["en"],
         supports_voice_cloning: false,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
-        provider_label: "MLX Qwen3 TTS",
-        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
-        model_id: "qwen3-tts-0.6b-customvoice",
-        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16",
-        local_dir_names: &["Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16"],
-        label: "Qwen3 TTS 0.6B CustomVoice",
-        description: "Qwen3 CustomVoice checkpoint with preset voices and emotion controls.",
-        engine_family: "mlx_audio",
-        license_label: Some("Apache-2.0"),
-        supported_languages: &["zh", "en", "ja", "ko", "mul"],
-        supports_voice_cloning: true,
-        supports_instruction_prompt: true,
-    },
-    MlxAudioTtsModelDefinition {
-        provider_id: TTS_PROVIDER_MLX_QWEN3TTS_ID,
-        provider_label: "MLX Qwen3 TTS",
-        provider_description: "Qwen3 voice design and multilingual synthesis via mlx-audio.",
-        model_id: "qwen3-tts-1.7b-customvoice",
-        hf_model_id: "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16",
-        local_dir_names: &["Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16"],
-        label: "Qwen3 TTS 1.7B CustomVoice",
-        description: "Larger Qwen3 CustomVoice checkpoint with richer preset voice control.",
-        engine_family: "mlx_audio",
-        license_label: Some("Apache-2.0"),
-        supported_languages: &["zh", "en", "ja", "ko", "mul"],
-        supports_voice_cloning: true,
         supports_instruction_prompt: true,
     },
     MlxAudioTtsModelDefinition {
@@ -1142,6 +1077,15 @@ pub fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str
         "outetts-0.6b" => Some(
             "OuteTTS 0.6B is temporarily disabled because the current mlx-audio runtime does not generate usable audio for this checkpoint.",
         ),
+        "moss-tts-local-transformer" => Some(
+            "MOSS-TTS Local Transformer is temporarily disabled because mlx-audio cannot determine the model type for this checkpoint. It needs bridge support before app use.",
+        ),
+        "moss-tts-8b" => Some(
+            "MOSS-TTS 8B is temporarily disabled because mlx-audio cannot determine the model type for this checkpoint. It needs bridge support before app use.",
+        ),
+        "omnivoice" => Some(
+            "OmniVoice is temporarily disabled because the current mlx-audio bridge emits silent WAV output for this checkpoint.",
+        ),
         _ => None,
     }
 }
@@ -1205,6 +1149,7 @@ pub(crate) fn supported_voice_profile_compatibility() -> VoiceProfileCompatibili
 pub fn is_known_tts_model_id(id: &str) -> bool {
     PACK_DEFINITIONS.iter().any(|p| p.id == id)
         || QWEN3_PACK_DEFINITIONS.iter().any(|p| p.id == id)
+        || RETIRED_TTS_MODEL_IDS.contains(&id)
         || MLX_AUDIO_TTS_MODEL_DEFINITIONS
             .iter()
             .any(|d| d.model_id == id)

@@ -356,7 +356,7 @@ pub fn built_in_catalog_models() -> Vec<SpeechAnalysisModelDescriptor> {
             capability(false, true, false, false, true, false, false, false, true),
         ),
         descriptor(
-            "mlx-qwen3-asr-1.7b",
+            "mlx-qwen3-asr",
             "Qwen3 ASR 1.7B (MLX)",
             "Alibaba Qwen",
             Some("mlx-community/Qwen3-ASR-1.7B-8bit"),
@@ -711,7 +711,7 @@ fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
         "granite-speech-4-1-2b" => &["config.json", "model.safetensors.index.json"],
         "cohere-transcribe-03-2026" => &["config.json", "model.safetensors"],
         "mlx-qwen3-asr-0.6b"
-        | "mlx-qwen3-asr-1.7b"
+        | "mlx-qwen3-asr"
         | "mlx-fireredasr2-aed"
         | "mlx-vibevoice-asr-bf16"
         | "mlx-sortformer-4spk-v1"

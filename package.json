@@ -51,6 +51,7 @@
     "eval:spelling": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json --exact-match",
     "eval:spelling:dry": "bun scripts/eval-post-process.ts --cases test-data/spelling-corpus/cases.json --dry-run",
     "eval:spelling:models": "bun scripts/run-spelling-model-eval.ts",
+    "eval:llm:pending": "bun scripts/run-pending-llm-benchmark-batch.ts",
     "eval:spelling:stt:generate": "bun scripts/generate-stt-spelling-audio.ts",
     "eval:spelling:stt": "bun scripts/run-stt-spelling-model-eval.ts",
     "eval:realworld:stt": "bun scripts/run-stt-spelling-model-eval.ts --manifest test-data/audio-regression/manifest.json --skip-generate --no-categories --output-dir output/stt-realworld-model-eval --summary-name stt-realworld-summary --suite-title \"STT Real-World Model Evaluation Matrix\" --description \"OpenSLR Mini LibriSpeech dev-clean-2 WAV clips from test-data/audio-regression. Post-processing is disabled, so this measures raw transcription only.\"",

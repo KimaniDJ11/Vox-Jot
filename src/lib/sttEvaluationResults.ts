@@ -475,6 +475,13 @@ export const STT_EVALUATION_RESULTS: SttEvaluationResult[] = [
     notes:
       "Russian-only model tested against English LibriSpeech; poor WER is expected.",
   },
+  {
+    modelId: "mlx-vibevoice-asr-bf16",
+    label: "VibeVoice ASR 9B (MLX)",
+    status: "pending",
+    notes:
+      "Installed in the local STT store with all four safetensor shards; smoke-checked transcription works but the model returns ~2.9x real-time factor and is intended for file transcription, not low-latency dictation. Full 35-clip benchmark pending.",
+  },
 ];
 
 export function getSttEvaluationResult(

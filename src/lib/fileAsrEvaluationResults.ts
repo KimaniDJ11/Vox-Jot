@@ -20,7 +20,7 @@ export interface FileAsrEvaluationResult {
 }
 
 export const FILE_ASR_EVALUATION_RUN = {
-  generatedAt: "2026-05-07T13:50:46Z",
+  generatedAt: "2026-05-12T05:54:34Z",
   suite: "File ASR real-world smoke benchmark",
   corpus:
     "Repository file-transcription sample: macOS-say spoken WAV phrase from test-data/file-transcription-samples.",
@@ -34,7 +34,7 @@ export const FILE_ASR_EVALUATION_RUN = {
     "Device is informational.",
   ],
   reportPath:
-    "output/file-asr-model-eval/2026-05-07T13-50-06/file-asr-summary.md",
+    "output/file-asr-model-eval/2026-05-12-mlx-asr/latest/file-asr-summary.md",
 };
 
 export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
@@ -50,7 +50,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "granite-speech-4-1-2b",
     label: "Granite Speech 4.1 2B",
     status: "tested",
-    rank: 3,
+    rank: 7,
     sampleCount: 1,
     exactMatches: 0,
     averageWer: 0.357,
@@ -64,7 +64,7 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
     modelId: "cohere-transcribe-03-2026",
     label: "Cohere Transcribe 03-2026",
     status: "tested",
-    rank: 1,
+    rank: 5,
     sampleCount: 1,
     exactMatches: 0,
     averageWer: 0.143,
@@ -75,10 +75,66 @@ export const FILE_ASR_EVALUATION_RESULTS: FileAsrEvaluationResult[] = [
       "Fastest File ASR sidecar result in the fresh run; it still hears Vox Jot as VoxJet on the sample.",
   },
   {
+    modelId: "mlx-fireredasr2-aed",
+    label: "FireRedASR2 AED (MLX)",
+    status: "tested",
+    rank: 1,
+    sampleCount: 1,
+    exactMatches: 0,
+    averageWer: 0.071,
+    latencyMs: 4322,
+    realTimeFactor: 0.6674903474903475,
+    device: "mps",
+    notes:
+      "Best File ASR smoke result after adding the MLX ASR models: low WER and faster than real time, though capitalization/punctuation normalization differs from the reference.",
+  },
+  {
+    modelId: "mlx-qwen3-asr-0.6b",
+    label: "Qwen3 ASR 0.6B (MLX)",
+    status: "tested",
+    rank: 2,
+    sampleCount: 1,
+    exactMatches: 0,
+    averageWer: 0.071,
+    latencyMs: 6082,
+    realTimeFactor: 0.9393050193050193,
+    device: "mps",
+    notes:
+      "Fast enough for the file-transcription smoke sample and only missed Vox Jot as Vox Jet.",
+  },
+  {
+    modelId: "mlx-vibevoice-asr-bf16",
+    label: "VibeVoice ASR 9B (MLX)",
+    status: "tested",
+    rank: 3,
+    sampleCount: 1,
+    exactMatches: 0,
+    averageWer: 0.071,
+    latencyMs: 25763,
+    realTimeFactor: 3.978841698841699,
+    device: "mps",
+    notes:
+      "Accurate on the sample but far slower than real time; keep this positioned for file transcription experiments, not live dictation.",
+  },
+  {
+    modelId: "mlx-qwen3-asr",
+    label: "Qwen3 ASR 1.7B (MLX)",
+    status: "tested",
+    rank: 4,
+    sampleCount: 1,
+    exactMatches: 0,
+    averageWer: 0.143,
+    latencyMs: 3791,
+    realTimeFactor: 0.5854826254826255,
+    device: "mps",
+    notes:
+      "Fastest MLX File ASR smoke result, but it heard Vox Jot as VoxChat.",
+  },
+  {
     modelId: "whisper-diarization",
     label: "Whisper Diarization",
     status: "tested",
-    rank: 2,
+    rank: 6,
     sampleCount: 1,
     exactMatches: 0,
     averageWer: 0.143,

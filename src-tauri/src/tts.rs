@@ -216,16 +216,6 @@ impl TtsManager {
                 supports_voice_cloning: true,
                 supports_instruction_prompt: false,
             },
-            "qwen3-0.6b-customvoice" => Qwen3PackFeatures {
-                description: "Preset voices with local native runtime.",
-                supports_voice_cloning: false,
-                supports_instruction_prompt: false,
-            },
-            "qwen3-1.7b-customvoice" => Qwen3PackFeatures {
-                description: "Preset voices plus expressive instruction control.",
-                supports_voice_cloning: false,
-                supports_instruction_prompt: true,
-            },
             _ => Qwen3PackFeatures {
                 description: "Qwen3 Native text-to-speech engine model.",
                 supports_voice_cloning: false,

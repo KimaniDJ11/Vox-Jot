@@ -1,0 +1,364 @@
+{
+  "metadata": {
+    "dataset_id": "synthetic-voxjot-russian-stt-v1",
+    "dataset_url": "test-data/russian-stt-corpus/cases.json",
+    "license": "local synthetic audio generated from repository test cases",
+    "generated_at": "2026-05-12T13:01:45.604Z",
+    "clip_count": 35,
+    "speech_synthesizer": "macOS say",
+    "voice": "Milena",
+    "rate": "185"
+  },
+  "entries": [
+    {
+      "id": "ru-daily-01",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-01.wav",
+      "expected_text": "сегодня утром я записал короткую заметку перед встречей.",
+      "duration_secs": 3.352,
+      "source_relpath": "ru-daily-01.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-01"
+    },
+    {
+      "id": "ru-daily-02",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-02.wav",
+      "expected_text": "пожалуйста напомни мне купить хлеб молоко и свежие овощи.",
+      "duration_secs": 3.263,
+      "source_relpath": "ru-daily-02.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-02"
+    },
+    {
+      "id": "ru-daily-03",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-03.wav",
+      "expected_text": "после обеда мы пойдем гулять в парк возле набережной.",
+      "duration_secs": 2.892,
+      "source_relpath": "ru-daily-03.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-03"
+    },
+    {
+      "id": "ru-daily-04",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-04.wav",
+      "expected_text": "я оставил ключи на кухонном столе рядом с телефоном.",
+      "duration_secs": 3.109,
+      "source_relpath": "ru-daily-04.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-04"
+    },
+    {
+      "id": "ru-daily-05",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-05.wav",
+      "expected_text": "вечером нужно позвонить врачу и перенести запись.",
+      "duration_secs": 2.796,
+      "source_relpath": "ru-daily-05.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-05"
+    },
+    {
+      "id": "ru-daily-06",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-06.wav",
+      "expected_text": "в новом кафе подают крепкий кофе и домашние пироги.",
+      "duration_secs": 3.074,
+      "source_relpath": "ru-daily-06.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-06"
+    },
+    {
+      "id": "ru-daily-07",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-daily-07.wav",
+      "expected_text": "погода изменилась поэтому возьми куртку и зонт.",
+      "duration_secs": 2.601,
+      "source_relpath": "ru-daily-07.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "daily-dictation",
+      "utterance_id": "ru-daily-07"
+    },
+    {
+      "id": "ru-work-01",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-01.wav",
+      "expected_text": "команда обсудила план релиза и список открытых задач.",
+      "duration_secs": 3.131,
+      "source_relpath": "ru-work-01.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-01"
+    },
+    {
+      "id": "ru-work-02",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-02.wav",
+      "expected_text": "нужно отправить клиенту отчет до конца рабочего дня.",
+      "duration_secs": 3.028,
+      "source_relpath": "ru-work-02.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-02"
+    },
+    {
+      "id": "ru-work-03",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-03.wav",
+      "expected_text": "на созвоне мы договорились перенести запуск на пятницу.",
+      "duration_secs": 3.167,
+      "source_relpath": "ru-work-03.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-03"
+    },
+    {
+      "id": "ru-work-04",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-04.wav",
+      "expected_text": "проверь пожалуйста документ и добавь комментарии к разделу про риски.",
+      "duration_secs": 3.53,
+      "source_relpath": "ru-work-04.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-04"
+    },
+    {
+      "id": "ru-work-05",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-05.wav",
+      "expected_text": "руководитель попросил подготовить краткое резюме для партнеров.",
+      "duration_secs": 3.481,
+      "source_relpath": "ru-work-05.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-05"
+    },
+    {
+      "id": "ru-work-06",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-06.wav",
+      "expected_text": "после демо надо собрать обратную связь и обновить дорожную карту.",
+      "duration_secs": 3.588,
+      "source_relpath": "ru-work-06.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-06"
+    },
+    {
+      "id": "ru-work-07",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-work-07.wav",
+      "expected_text": "задача заблокирована пока юридический отдел проверяет договор.",
+      "duration_secs": 3.483,
+      "source_relpath": "ru-work-07.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "work-dictation",
+      "utterance_id": "ru-work-07"
+    },
+    {
+      "id": "ru-tech-01",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-01.wav",
+      "expected_text": "сервер вернул ошибку потому что токен доступа истек.",
+      "duration_secs": 3.155,
+      "source_relpath": "ru-tech-01.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-01"
+    },
+    {
+      "id": "ru-tech-02",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-02.wav",
+      "expected_text": "приложение сохраняет настройки в локальной базе данных.",
+      "duration_secs": 3.193,
+      "source_relpath": "ru-tech-02.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-02"
+    },
+    {
+      "id": "ru-tech-03",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-03.wav",
+      "expected_text": "после обновления проверь логи и перезапусти сервис.",
+      "duration_secs": 2.903,
+      "source_relpath": "ru-tech-03.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-03"
+    },
+    {
+      "id": "ru-tech-04",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-04.wav",
+      "expected_text": "для интеграции нужен новый эндпоинт и отдельный ключ API.",
+      "duration_secs": 3.13,
+      "source_relpath": "ru-tech-04.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-04"
+    },
+    {
+      "id": "ru-tech-05",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-05.wav",
+      "expected_text": "мы переносим проект из GitHub в GitLab без потери истории.",
+      "duration_secs": 3.329,
+      "source_relpath": "ru-tech-05.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-05"
+    },
+    {
+      "id": "ru-tech-06",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-06.wav",
+      "expected_text": "модель должна работать локально без сетевых запросов.",
+      "duration_secs": 3.005,
+      "source_relpath": "ru-tech-06.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-06"
+    },
+    {
+      "id": "ru-tech-07",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-tech-07.wav",
+      "expected_text": "запусти тесты TypeScript и проверь сборку интерфейса.",
+      "duration_secs": 3.123,
+      "source_relpath": "ru-tech-07.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "technical",
+      "utterance_id": "ru-tech-07"
+    },
+    {
+      "id": "ru-num-01",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-01.wav",
+      "expected_text": "встреча начнется в десять тридцать утра по московскому времени.",
+      "duration_secs": 3.535,
+      "source_relpath": "ru-num-01.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-01"
+    },
+    {
+      "id": "ru-num-02",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-02.wav",
+      "expected_text": "счет на сорок пять тысяч рублей нужно оплатить до среды.",
+      "duration_secs": 3.237,
+      "source_relpath": "ru-num-02.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-02"
+    },
+    {
+      "id": "ru-num-03",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-03.wav",
+      "expected_text": "за последний квартал выручка выросла на двенадцать процентов.",
+      "duration_secs": 3.448,
+      "source_relpath": "ru-num-03.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-03"
+    },
+    {
+      "id": "ru-num-04",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-04.wav",
+      "expected_text": "запланируй напоминание на двадцать первое мая в девять утра.",
+      "duration_secs": 3.263,
+      "source_relpath": "ru-num-04.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-04"
+    },
+    {
+      "id": "ru-num-05",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-05.wav",
+      "expected_text": "в отчете указаны три ошибки первого уровня и семь предупреждений.",
+      "duration_secs": 3.713,
+      "source_relpath": "ru-num-05.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-05"
+    },
+    {
+      "id": "ru-num-06",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-06.wav",
+      "expected_text": "файл весит примерно двести мегабайт после сжатия.",
+      "duration_secs": 3.103,
+      "source_relpath": "ru-num-06.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-06"
+    },
+    {
+      "id": "ru-num-07",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-num-07.wav",
+      "expected_text": "поезд отправляется с третьего пути через пятнадцать минут.",
+      "duration_secs": 3.149,
+      "source_relpath": "ru-num-07.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "numbers-dates",
+      "utterance_id": "ru-num-07"
+    },
+    {
+      "id": "ru-name-01",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-01.wav",
+      "expected_text": "анна каренина остается одним из самых известных романов толстого.",
+      "duration_secs": 3.934,
+      "source_relpath": "ru-name-01.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-01"
+    },
+    {
+      "id": "ru-name-02",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-02.wav",
+      "expected_text": "владимир отправил презентацию марии и алексею.",
+      "duration_secs": 2.726,
+      "source_relpath": "ru-name-02.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-02"
+    },
+    {
+      "id": "ru-name-03",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-03.wav",
+      "expected_text": "самолет из санкт-петербурга прибыл в новосибирск без задержки.",
+      "duration_secs": 3.607,
+      "source_relpath": "ru-name-03.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-03"
+    },
+    {
+      "id": "ru-name-04",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-04.wav",
+      "expected_text": "яндекс браузер открыл страницу с результатами поиска.",
+      "duration_secs": 3.167,
+      "source_relpath": "ru-name-04.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-04"
+    },
+    {
+      "id": "ru-name-05",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-05.wav",
+      "expected_text": "команда из казани выиграла турнир в екатеринбурге.",
+      "duration_secs": 2.91,
+      "source_relpath": "ru-name-05.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-05"
+    },
+    {
+      "id": "ru-name-06",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-06.wav",
+      "expected_text": "сергей попросил ольгу проверить договор перед отправкой.",
+      "duration_secs": 2.969,
+      "source_relpath": "ru-name-06.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-06"
+    },
+    {
+      "id": "ru-name-07",
+      "audio_path": "/Users/dinamikjames/Apps/Vox Jot/test-data/stt-russian-regression/clips/ru-name-07.wav",
+      "expected_text": "музей пушкина открыл новую выставку в центре москвы.",
+      "duration_secs": 3.063,
+      "source_relpath": "ru-name-07.wav",
+      "speaker_id": "macos-say-Milena",
+      "chapter_id": "proper-nouns",
+      "utterance_id": "ru-name-07"
+    }
+  ]
+}

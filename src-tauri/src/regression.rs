@@ -1068,7 +1068,7 @@ fn tokenize_for_compare(text: &str) -> Vec<String> {
     let mut normalized = String::with_capacity(text.len());
     for ch in text.chars() {
         if ch.is_alphanumeric() || ch == '\'' {
-            normalized.push(ch.to_ascii_lowercase());
+            normalized.extend(ch.to_lowercase());
         } else {
             normalized.push(' ');
         }
@@ -1105,6 +1105,14 @@ mod tests {
         assert_eq!(
             normalize_compare_text("Hello, Vox Jot!"),
             normalize_compare_text("hello vox jot")
+        );
+    }
+
+    #[test]
+    fn normalization_ignores_unicode_case() {
+        assert_eq!(
+            normalize_compare_text("Сегодня утром"),
+            normalize_compare_text("сегодня утром")
         );
     }
 

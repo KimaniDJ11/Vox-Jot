@@ -26,7 +26,7 @@ const APP_SUPPORT = resolve(
 const STT_MODELS_DIR = resolve(APP_SUPPORT, "models/stt");
 const RELEASE_BASE =
   process.env.VOX_JOT_STT_MODELS_BASE_URL ??
-  "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models";
+  "https://huggingface.co/IrieDinamik/vox-jot-models/resolve/main";
 
 type ModelSpec =
   | {
@@ -58,39 +58,47 @@ const modelSpecs: ModelSpec[] = [
   ),
   whisper("turbo", "ggml-large-v3-turbo.bin"),
   whisper("large", "ggml-large-v3-q5_0.bin"),
-  releaseFile("breeze-asr", "breeze-asr-q5_k.bin"),
+  releaseFile("breeze-asr", "stt/breeze/breeze-asr-q5_k.bin"),
   releaseArchive(
     "parakeet-tdt-0.6b-v2",
     "parakeet-tdt-0.6b-v2-int8",
-    "parakeet-v2-int8.tar.gz",
+    "stt/parakeet/parakeet-v2-int8.tar.gz",
   ),
   releaseArchive(
     "parakeet-tdt-0.6b-v3",
     "parakeet-tdt-0.6b-v3-int8",
-    "parakeet-v3-int8.tar.gz",
+    "stt/parakeet/parakeet-v3-int8.tar.gz",
   ),
-  releaseArchive("moonshine-base", "moonshine-base", "moonshine-base.tar.gz"),
+  releaseArchive(
+    "moonshine-base",
+    "moonshine-base",
+    "stt/moonshine/moonshine-base.tar.gz",
+  ),
   releaseArchive(
     "moonshine-tiny-streaming-en",
     "moonshine-tiny-streaming-en",
-    "moonshine-tiny-streaming-en.tar.gz",
+    "stt/moonshine/moonshine-tiny-streaming-en.tar.gz",
   ),
   releaseArchive(
     "moonshine-small-streaming-en",
     "moonshine-small-streaming-en",
-    "moonshine-small-streaming-en.tar.gz",
+    "stt/moonshine/moonshine-small-streaming-en.tar.gz",
   ),
   releaseArchive(
     "moonshine-medium-streaming-en",
     "moonshine-medium-streaming-en",
-    "moonshine-medium-streaming-en.tar.gz",
+    "stt/moonshine/moonshine-medium-streaming-en.tar.gz",
   ),
   releaseArchive(
     "sense-voice-int8",
     "sense-voice-int8",
-    "sense-voice-int8.tar.gz",
+    "stt/sensevoice/sense-voice-int8.tar.gz",
   ),
-  releaseArchive("gigaam-v3-e2e-ctc", "gigaam-v3-e2e-ctc", "giga-am-v3.tar.gz"),
+  releaseArchive(
+    "gigaam-v3-e2e-ctc",
+    "gigaam-v3-e2e-ctc",
+    "stt/gigaam/giga-am-v3.tar.gz",
+  ),
   hfSnapshot(
     "mlx-whisper-large-v3-turbo",
     "MLX/mlx-community/whisper-large-v3-turbo-asr-fp16",
@@ -136,8 +144,13 @@ function hfFile(id: string, filename: string, repo: string): ModelSpec {
   };
 }
 
-function releaseFile(id: string, filename: string): ModelSpec {
-  return { id, filename, kind: "file", url: `${RELEASE_BASE}/${filename}` };
+function releaseFile(id: string, assetPath: string): ModelSpec {
+  return {
+    id,
+    filename: basename(assetPath),
+    kind: "file",
+    url: `${RELEASE_BASE}/${assetPath}`,
+  };
 }
 
 function releaseArchive(
@@ -362,7 +375,6 @@ function main() {
   ensureTool("curl");
   ensureTool("tar");
   ensureTool("hf");
-  ensureTool("gh");
   mkdirSync(STT_MODELS_DIR, { recursive: true });
 
   const selected = only

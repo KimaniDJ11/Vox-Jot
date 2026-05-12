@@ -48,6 +48,7 @@ mod screen_context_ocr_backup;
 mod screen_context_windows;
 mod secret_store;
 mod settings;
+mod shared_model_assets;
 mod shortcut;
 mod sidecar;
 mod signal_handle;

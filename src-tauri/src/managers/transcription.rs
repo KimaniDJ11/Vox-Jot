@@ -164,14 +164,14 @@ impl MlxAudioSttEngine {
 }
 
 fn mlx_audio_stt_model_ref(model_id: &str) -> Option<&'static str> {
+    if let Some(repo_id) = crate::shared_model_assets::shared_mlx_asr_repo_id(model_id) {
+        return Some(repo_id);
+    }
+
     match model_id {
         "mlx-whisper-large-v3-turbo" => Some("mlx-community/whisper-large-v3-turbo-asr-fp16"),
         "mlx-distil-whisper-large-v3" => Some("distil-whisper/distil-large-v3"),
-        "mlx-qwen3-asr-0.6b" => Some("mlx-community/Qwen3-ASR-0.6B-8bit"),
-        "mlx-qwen3-asr" => Some("mlx-community/Qwen3-ASR-1.7B-8bit"),
-        "mlx-fireredasr2-aed" => Some("mlx-community/FireRedASR2-AED-mlx"),
         "mlx-parakeet-v3" => Some("mlx-community/parakeet-tdt-0.6b-v3"),
-        "mlx-vibevoice-asr-bf16" => Some("mlx-community/VibeVoice-ASR-bf16"),
         "mlx-voxtral-mini-3b" => Some("mlx-community/Voxtral-Mini-3B-2507-bf16"),
         "mlx-voxtral-mini-4b-realtime" => Some("mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"),
         _ => None,

@@ -114,7 +114,7 @@ impl ModelManager {
 
     fn model_source_base_url() -> String {
         std::env::var("VOX_JOT_STT_MODELS_BASE_URL").unwrap_or_else(|_| {
-            "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.1.0-models".to_string()
+            "https://huggingface.co/IrieDinamik/vox-jot-models/resolve/main".to_string()
         })
     }
 
@@ -144,6 +144,14 @@ impl ModelManager {
         format!(
             "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{}",
             filename
+        )
+    }
+
+    fn vox_jot_models_resolve_url(path: &str) -> String {
+        format!(
+            "{}/{}",
+            Self::model_source_base_url().trim_end_matches('/'),
+            path
         )
     }
 
@@ -713,12 +721,12 @@ impl ModelManager {
                 description: "Optimized for Taiwanese Mandarin. Code-switching support."
                     .to_string(),
                 filename: "breeze-asr-q5_k.bin".to_string(),
-                url: Some(Self::model_url_for(
-                    "breeze-asr",
-                    "breeze-asr-q5_k.bin",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/breeze/breeze-asr-q5_k.bin",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "8efbf0ce8a3f50fe332b7617da787fb81354b358c288b008d3bdef8359df64c6".to_string(),
+                ),
                 size_mb: 1080,
                 is_downloaded: false,
                 is_downloading: false,
@@ -742,12 +750,12 @@ impl ModelManager {
                 name: "Parakeet V2".to_string(),
                 description: "English only. The best model for English speakers.".to_string(),
                 filename: "parakeet-tdt-0.6b-v2-int8".to_string(), // Directory name
-                url: Some(Self::model_url_for(
-                    "parakeet-tdt-0.6b-v2",
-                    "parakeet-v2-int8.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/parakeet/parakeet-v2-int8.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "0cfb21f242e32b08e029fdd2936da44ff1ed404aa0a64266720d3bb7e8805ae3".to_string(),
+                ),
                 size_mb: 473, // Approximate size for int8 quantized model
                 is_downloaded: false,
                 is_downloading: false,
@@ -780,12 +788,12 @@ impl ModelManager {
                 name: "Parakeet V3".to_string(),
                 description: "Fast and accurate. Supports 25 European languages.".to_string(),
                 filename: "parakeet-tdt-0.6b-v3-int8".to_string(), // Directory name
-                url: Some(Self::model_url_for(
-                    "parakeet-tdt-0.6b-v3",
-                    "parakeet-v3-int8.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/parakeet/parakeet-v3-int8.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "d5c1089f9f73666adfea5d62e15d4e078b911cc9cb1db557c3637fd4b80218cb".to_string(),
+                ),
                 size_mb: 478, // Approximate size for int8 quantized model
                 is_downloaded: false,
                 is_downloading: false,
@@ -808,12 +816,12 @@ impl ModelManager {
                 name: "Moonshine Base".to_string(),
                 description: "Very fast, English only. Handles accents well.".to_string(),
                 filename: "moonshine-base".to_string(),
-                url: Some(Self::model_url_for(
-                    "moonshine-base",
-                    "moonshine-base.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/moonshine/moonshine-base.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "40dfa1a3a345612d4e52fefddaad06ebd4683e5224e8d6a9708121e2c36928cf".to_string(),
+                ),
                 size_mb: 58,
                 is_downloaded: false,
                 is_downloading: false,
@@ -836,12 +844,12 @@ impl ModelManager {
                 name: "Moonshine V2 Tiny".to_string(),
                 description: "Ultra-fast, English only".to_string(),
                 filename: "moonshine-tiny-streaming-en".to_string(),
-                url: Some(Self::model_url_for(
-                    "moonshine-tiny-streaming-en",
-                    "moonshine-tiny-streaming-en.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/moonshine/moonshine-tiny-streaming-en.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "1ccd0e672a664acd268b100342c997bc680de71354474a489fe6ebf28a770760".to_string(),
+                ),
                 size_mb: 31,
                 is_downloaded: false,
                 is_downloading: false,
@@ -864,12 +872,12 @@ impl ModelManager {
                 name: "Moonshine V2 Small".to_string(),
                 description: "Fast, English only. Good balance of speed and accuracy.".to_string(),
                 filename: "moonshine-small-streaming-en".to_string(),
-                url: Some(Self::model_url_for(
-                    "moonshine-small-streaming-en",
-                    "moonshine-small-streaming-en.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/moonshine/moonshine-small-streaming-en.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "f6548b1215e7f9837cf2df2c041c1b43d9e0bbcf826b9670d04d011b452a3048".to_string(),
+                ),
                 size_mb: 100,
                 is_downloaded: false,
                 is_downloading: false,
@@ -892,12 +900,12 @@ impl ModelManager {
                 name: "Moonshine V2 Medium".to_string(),
                 description: "English only. High quality.".to_string(),
                 filename: "moonshine-medium-streaming-en".to_string(),
-                url: Some(Self::model_url_for(
-                    "moonshine-medium-streaming-en",
-                    "moonshine-medium-streaming-en.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/moonshine/moonshine-medium-streaming-en.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "301cb6a0eda5d0b608cd70d09435e78af960059f8e1c6a779f8428d27ede82a9".to_string(),
+                ),
                 size_mb: 192,
                 is_downloaded: false,
                 is_downloading: false,
@@ -928,12 +936,12 @@ impl ModelManager {
                 description: "Very fast. Chinese, English, Japanese, Korean, Cantonese."
                     .to_string(),
                 filename: "sense-voice-int8".to_string(),
-                url: Some(Self::model_url_for(
-                    "sense-voice-int8",
-                    "sense-voice-int8.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/sensevoice/sense-voice-int8.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "0d70ff6378fc516f7d4aae04b4daca8a4f7644dd00e17833b3c009e97c32ed3b".to_string(),
+                ),
                 size_mb: 160,
                 is_downloaded: false,
                 is_downloading: false,
@@ -959,12 +967,12 @@ impl ModelManager {
                 name: "GigaAM v3".to_string(),
                 description: "Russian speech recognition. Fast and accurate.".to_string(),
                 filename: "gigaam-v3-e2e-ctc".to_string(),
-                url: Some(Self::model_url_for(
-                    "gigaam-v3-e2e-ctc",
-                    "giga-am-v3.tar.gz",
-                    false,
+                url: Some(Self::vox_jot_models_resolve_url(
+                    "stt/gigaam/giga-am-v3.tar.gz",
                 )),
-                sha256: None,
+                sha256: Some(
+                    "61095c8fd66a0f107baaa851ab037b637254a5baa552b0fd1bc224b1c6a6dbe4".to_string(),
+                ),
                 size_mb: 225,
                 is_downloaded: false,
                 is_downloading: false,
@@ -1359,11 +1367,19 @@ impl ModelManager {
                     true
                 } else {
                     let model_path = self.models_dir.join(&model.filename);
-                    if model.is_directory {
+                    let primary_path_exists = if model.is_directory {
                         model_path.is_dir()
                     } else {
                         model_path.is_file()
-                    }
+                    };
+                    primary_path_exists
+                        || crate::shared_model_assets::installed_shared_mlx_asr_dir(
+                            &self.app_handle,
+                            &model.id,
+                        )
+                        .ok()
+                        .flatten()
+                        .is_some()
                 };
                 model.is_downloading = active_downloads.contains(&model.id);
                 model.partial_size = 0;
@@ -2323,6 +2339,20 @@ impl ModelManager {
                 info!("Model directory deleted successfully");
                 deleted_something = true;
             }
+            if let Ok(paths) = crate::shared_model_assets::shared_mlx_asr_candidate_dirs(
+                &self.app_handle,
+                model_id,
+            ) {
+                for shared_path in paths {
+                    if shared_path == model_path || !shared_path.exists() {
+                        continue;
+                    }
+                    info!("Deleting shared model directory at: {:?}", shared_path);
+                    fs::remove_dir_all(&shared_path)?;
+                    info!("Shared model directory deleted successfully");
+                    deleted_something = true;
+                }
+            }
         } else {
             // Delete complete model file if it exists
             if model_path.exists() {
@@ -2392,6 +2422,11 @@ impl ModelManager {
             // For directory-based models, ensure the directory exists and is complete
             if model_path.exists() && model_path.is_dir() && !partial_path.exists() {
                 Ok(model_path)
+            } else if let Some(shared_path) =
+                crate::shared_model_assets::installed_shared_mlx_asr_dir(&self.app_handle, model_id)
+                    .map_err(|err| anyhow::anyhow!(err))?
+            {
+                Ok(shared_path)
             } else {
                 Err(anyhow::anyhow!(
                     "Complete model directory not found: {}",

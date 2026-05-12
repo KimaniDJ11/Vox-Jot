@@ -1,0 +1,192 @@
+{
+  "metadata": {
+    "corpus_id": "voxjot-russian-stt-v1",
+    "description": "Russian-language STT evaluation cases for Russian-only ASR models. The cases cover everyday dictation, work context, technical terms, numbers, dates, names, and punctuation-like phrasing.",
+    "generated_at": "2026-05-12",
+    "case_count": 35,
+    "categories": {
+      "daily-dictation": "Everyday Russian dictation phrases",
+      "work-dictation": "Business and productivity dictation",
+      "technical": "Technical words, product names, and mixed Latin/Cyrillic terms",
+      "numbers-dates": "Numbers, dates, times, and amounts",
+      "proper-nouns": "Names, locations, and brand names"
+    }
+  },
+  "cases": [
+    {
+      "id": "ru-daily-01",
+      "category": "daily-dictation",
+      "expected_output": "сегодня утром я записал короткую заметку перед встречей."
+    },
+    {
+      "id": "ru-daily-02",
+      "category": "daily-dictation",
+      "expected_output": "пожалуйста напомни мне купить хлеб молоко и свежие овощи."
+    },
+    {
+      "id": "ru-daily-03",
+      "category": "daily-dictation",
+      "expected_output": "после обеда мы пойдем гулять в парк возле набережной."
+    },
+    {
+      "id": "ru-daily-04",
+      "category": "daily-dictation",
+      "expected_output": "я оставил ключи на кухонном столе рядом с телефоном."
+    },
+    {
+      "id": "ru-daily-05",
+      "category": "daily-dictation",
+      "expected_output": "вечером нужно позвонить врачу и перенести запись."
+    },
+    {
+      "id": "ru-daily-06",
+      "category": "daily-dictation",
+      "expected_output": "в новом кафе подают крепкий кофе и домашние пироги."
+    },
+    {
+      "id": "ru-daily-07",
+      "category": "daily-dictation",
+      "expected_output": "погода изменилась поэтому возьми куртку и зонт."
+    },
+    {
+      "id": "ru-work-01",
+      "category": "work-dictation",
+      "expected_output": "команда обсудила план релиза и список открытых задач."
+    },
+    {
+      "id": "ru-work-02",
+      "category": "work-dictation",
+      "expected_output": "нужно отправить клиенту отчет до конца рабочего дня."
+    },
+    {
+      "id": "ru-work-03",
+      "category": "work-dictation",
+      "expected_output": "на созвоне мы договорились перенести запуск на пятницу."
+    },
+    {
+      "id": "ru-work-04",
+      "category": "work-dictation",
+      "expected_output": "проверь пожалуйста документ и добавь комментарии к разделу про риски."
+    },
+    {
+      "id": "ru-work-05",
+      "category": "work-dictation",
+      "expected_output": "руководитель попросил подготовить краткое резюме для партнеров."
+    },
+    {
+      "id": "ru-work-06",
+      "category": "work-dictation",
+      "expected_output": "после демо надо собрать обратную связь и обновить дорожную карту."
+    },
+    {
+      "id": "ru-work-07",
+      "category": "work-dictation",
+      "expected_output": "задача заблокирована пока юридический отдел проверяет договор."
+    },
+    {
+      "id": "ru-tech-01",
+      "category": "technical",
+      "expected_output": "сервер вернул ошибку потому что токен доступа истек."
+    },
+    {
+      "id": "ru-tech-02",
+      "category": "technical",
+      "expected_output": "приложение сохраняет настройки в локальной базе данных."
+    },
+    {
+      "id": "ru-tech-03",
+      "category": "technical",
+      "expected_output": "после обновления проверь логи и перезапусти сервис."
+    },
+    {
+      "id": "ru-tech-04",
+      "category": "technical",
+      "expected_output": "для интеграции нужен новый эндпоинт и отдельный ключ API."
+    },
+    {
+      "id": "ru-tech-05",
+      "category": "technical",
+      "expected_output": "мы переносим проект из GitHub в GitLab без потери истории."
+    },
+    {
+      "id": "ru-tech-06",
+      "category": "technical",
+      "expected_output": "модель должна работать локально без сетевых запросов."
+    },
+    {
+      "id": "ru-tech-07",
+      "category": "technical",
+      "expected_output": "запусти тесты TypeScript и проверь сборку интерфейса."
+    },
+    {
+      "id": "ru-num-01",
+      "category": "numbers-dates",
+      "expected_output": "встреча начнется в десять тридцать утра по московскому времени."
+    },
+    {
+      "id": "ru-num-02",
+      "category": "numbers-dates",
+      "expected_output": "счет на сорок пять тысяч рублей нужно оплатить до среды."
+    },
+    {
+      "id": "ru-num-03",
+      "category": "numbers-dates",
+      "expected_output": "за последний квартал выручка выросла на двенадцать процентов."
+    },
+    {
+      "id": "ru-num-04",
+      "category": "numbers-dates",
+      "expected_output": "запланируй напоминание на двадцать первое мая в девять утра."
+    },
+    {
+      "id": "ru-num-05",
+      "category": "numbers-dates",
+      "expected_output": "в отчете указаны три ошибки первого уровня и семь предупреждений."
+    },
+    {
+      "id": "ru-num-06",
+      "category": "numbers-dates",
+      "expected_output": "файл весит примерно двести мегабайт после сжатия."
+    },
+    {
+      "id": "ru-num-07",
+      "category": "numbers-dates",
+      "expected_output": "поезд отправляется с третьего пути через пятнадцать минут."
+    },
+    {
+      "id": "ru-name-01",
+      "category": "proper-nouns",
+      "expected_output": "анна каренина остается одним из самых известных романов толстого."
+    },
+    {
+      "id": "ru-name-02",
+      "category": "proper-nouns",
+      "expected_output": "владимир отправил презентацию марии и алексею."
+    },
+    {
+      "id": "ru-name-03",
+      "category": "proper-nouns",
+      "expected_output": "самолет из санкт-петербурга прибыл в новосибирск без задержки."
+    },
+    {
+      "id": "ru-name-04",
+      "category": "proper-nouns",
+      "expected_output": "яндекс браузер открыл страницу с результатами поиска."
+    },
+    {
+      "id": "ru-name-05",
+      "category": "proper-nouns",
+      "expected_output": "команда из казани выиграла турнир в екатеринбурге."
+    },
+    {
+      "id": "ru-name-06",
+      "category": "proper-nouns",
+      "expected_output": "сергей попросил ольгу проверить договор перед отправкой."
+    },
+    {
+      "id": "ru-name-07",
+      "category": "proper-nouns",
+      "expected_output": "музей пушкина открыл новую выставку в центре москвы."
+    }
+  ]
+}

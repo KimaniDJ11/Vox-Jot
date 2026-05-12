@@ -172,8 +172,9 @@ describe("ScriptEditor custom history", () => {
   });
 
   it("clears stale history when the controlled value changes externally", async () => {
-    let setExternalValue: React.Dispatch<React.SetStateAction<string>> =
-      () => {};
+    let setExternalValue: React.Dispatch<
+      React.SetStateAction<string>
+    > = () => {};
     const Harness = () => {
       const [value, setValue] = useState("");
       setExternalValue = setValue;

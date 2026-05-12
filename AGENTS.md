@@ -33,6 +33,17 @@ Vox Jot is a latency-sensitive dictation app. All agents and AI coding tools mus
 - Prefer deferred/background persistence, cached metadata, precomputed state, and UI-only rendering over synchronous work in the dictation pipeline.
 - When completing a change, report whether latency is expected to be unchanged, improved, or at risk, and mention any validation performed.
 
+## Model Benchmark and Testing View Policy
+
+Testing views must use full benchmark suite results for ranked model rows. Smoke tests are allowed only for development readiness checks and must not be presented as ranked leaderboard results.
+
+- Run the full suite for the relevant tab before adding or changing a ranked row in `src/lib/*EvaluationResults.ts`.
+- For TTS, run the complete `scripts/run-tts-model-eval.py` suite with all suite cases and ASR round-trip scoring enabled. Do not use `--case-limit` or `--no-asr-roundtrip` for ranked TTS, TTS Style, or Voice Cloning rows.
+- For Live STT, run the full STT corpus used by the tab, not a small `--limit` smoke subset, before assigning a rank.
+- If only a smoke test has been run, keep the model unranked or clearly mark it as smoke-only in notes. Do not assign a numeric rank or position that can be confused with a full benchmark rank.
+- When full benchmark results are available, update the Testing view data with the measured score/latency/WER/pass metrics and recompute ranks against the existing full-suite results.
+- Preserve built-in Apple/system models in rankings and local storage cleanup. Never delete built-in Apple/system options while pruning downloadable models.
+
 ## Text color visibility (contrast)
 
 Body copy and interactive labels must remain readable on real surfaces (`--panel-bg`, `--card`, `--bg`, overlays). Targets follow **WCAG 2.x**: **≥ 4.5:1** contrast for normal-sized text, **≥ 3:1** for large or bold UI text. Semi-transparent shells and backdrop blur effectively lighten or darken backgrounds; avoid stacking extra faintness.

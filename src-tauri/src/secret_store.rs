@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 
 #[cfg(test)]
 use std::collections::{HashMap, HashSet};
@@ -16,35 +16,61 @@ pub trait SecretStore: Send + Sync {
 #[derive(Default)]
 struct KeyringSecretStore;
 
-impl KeyringSecretStore {
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-    fn ensure_native_backend(entry: &keyring::Entry, account: &str) -> Result<(), String> {
-        if entry
-            .get_credential()
-            .downcast_ref::<keyring::mock::MockCredential>()
-            .is_some()
-        {
-            return Err(format!(
-                "Secure credential backend is unavailable for '{account}': keyring resolved to an in-memory mock backend instead of the native OS store."
-            ));
+static DEFAULT_STORE_INIT: Once = Once::new();
+static DEFAULT_STORE_INIT_ERROR: Mutex<Option<String>> = Mutex::new(None);
+
+#[cfg(target_os = "macos")]
+fn install_native_default_store() -> Result<(), String> {
+    let store = apple_native_keyring_store::keychain::Store::new()
+        .map_err(|error| format!("Failed to open the macOS keychain credential store: {error}"))?;
+    keyring_core::set_default_store(store);
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn install_native_default_store() -> Result<(), String> {
+    let store = windows_native_keyring_store::Store::new().map_err(|error| {
+        format!("Failed to open the Windows credential manager store: {error}")
+    })?;
+    keyring_core::set_default_store(store);
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn install_native_default_store() -> Result<(), String> {
+    let store = dbus_secret_service_keyring_store::Store::new().map_err(|error| {
+        format!("Failed to open the Linux Secret Service credential store: {error}")
+    })?;
+    keyring_core::set_default_store(store);
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+fn install_native_default_store() -> Result<(), String> {
+    Err("No native credential store backend is available on this platform.".to_string())
+}
+
+fn ensure_default_store_installed() -> Result<(), String> {
+    DEFAULT_STORE_INIT.call_once(|| {
+        if let Err(error) = install_native_default_store() {
+            *DEFAULT_STORE_INIT_ERROR
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(error);
         }
+    });
+    DEFAULT_STORE_INIT_ERROR
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+        .map_or(Ok(()), Err)
+}
 
-        Ok(())
-    }
-
-    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-    fn ensure_native_backend(_entry: &keyring::Entry, _account: &str) -> Result<(), String> {
-        Ok(())
-    }
-
-    fn entry(&self, account: &str) -> Result<keyring::Entry, String> {
-        let entry = keyring::Entry::new(POST_PROCESS_KEY_SERVICE, account).map_err(|error| {
+impl KeyringSecretStore {
+    fn entry(&self, account: &str) -> Result<keyring_core::Entry, String> {
+        ensure_default_store_installed()?;
+        keyring_core::Entry::new(POST_PROCESS_KEY_SERVICE, account).map_err(|error| {
             format!("Failed to initialize credential entry for '{account}': {error}")
-        })?;
-
-        Self::ensure_native_backend(&entry, account)?;
-
-        Ok(entry)
+        })
     }
 }
 
@@ -52,7 +78,7 @@ impl SecretStore for KeyringSecretStore {
     fn get_secret(&self, account: &str) -> Result<Option<String>, String> {
         match self.entry(account)?.get_password() {
             Ok(secret) => Ok(Some(secret)),
-            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(keyring_core::Error::NoEntry) => Ok(None),
             Err(error) => Err(format!(
                 "Failed to read credential for '{account}': {error}"
             )),
@@ -67,7 +93,7 @@ impl SecretStore for KeyringSecretStore {
 
     fn clear_secret(&self, account: &str) -> Result<(), String> {
         match self.entry(account)?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Ok(()) | Err(keyring_core::Error::NoEntry) => Ok(()),
             Err(error) => Err(format!(
                 "Failed to delete credential for '{account}': {error}"
             )),

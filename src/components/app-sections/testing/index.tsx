@@ -109,8 +109,14 @@ function splitRanked<
   T extends { status: string; rank?: number; label: string },
 >(results: T[]) {
   return {
-    ranked: orderByRank(results.filter((result) => result.status === "tested")),
-    unranked: results.filter((result) => result.status !== "tested"),
+    ranked: orderByRank(
+      results.filter(
+        (result) => result.status === "tested" && result.rank !== undefined,
+      ),
+    ),
+    unranked: results.filter(
+      (result) => result.status !== "tested" || result.rank === undefined,
+    ),
   };
 }
 

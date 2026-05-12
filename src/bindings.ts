@@ -2553,12 +2553,12 @@ export type OcrBackendKind =
  */
 "paddle_det_rec" |
 /**
- * PaddleOCR-VL stacks (one model handles end-to-end OCR/VL).
+ * Reserved for PaddleOCR-VL stacks that can run in the local sidecar.
  */
 "paddle_vl" |
 /**
  * Generic transformers VL stack (LightOnOCR, Chandra, Qwen2.5-VL,
- * Nemotron, GLM-OCR, DeepSeek-OCR, Dots.OCR, olmOCR-2).
+ * GLM-OCR, olmOCR-2).
  */
 "transformers_vl" |
 /**

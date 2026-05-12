@@ -18,12 +18,12 @@ export interface ScreenOcrEvaluationResult {
 }
 
 export const SCREEN_OCR_EVALUATION_RUN = {
-  generatedAt: "2026-05-08T19:24:09Z",
+  generatedAt: "2026-05-12T03:24:29Z",
   suite: "Screen OCR real-world fixture benchmark",
   corpus:
     "Six generated real-world surfaces: settings, browser release note, code review, dense benchmark table, untrusted prompt-looking document, and muted note.",
   limitations:
-    "Generated screenshot fixtures only. This run enumerates the real app OCR model directory. Blocked rows are installed or cataloged engines whose local model package is incompatible with the current macOS OCR runtime loader.",
+    "Generated screenshot fixtures only. This run enumerates OCR engines that the macOS app can actually execute locally. CUDA/Linux-native, Docker-only, or upstream-incompatible OCR packages are excluded from the shippable catalog until they have a local sidecar route.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "Score: required phrase recall across all fixtures.",
@@ -32,7 +32,7 @@ export const SCREEN_OCR_EVALUATION_RUN = {
     "Confidence is the engine-reported mean confidence when available.",
   ],
   reportPath:
-    "output/screen-ocr-eval/2026-05-08T19-24-09Z/screen-ocr-summary.md",
+    "output/screen-ocr-eval/2026-05-12T03-24-29Z/screen-ocr-summary.md",
 };
 
 export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
@@ -46,7 +46,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 89,
+    averageLatencyMs: 88,
     averageConfidence: 1,
     strongestCategory: "settings, code, tables, prompt-looking documents",
     weakestCategory: "not yet tested on live multilingual or rotated text",
@@ -77,31 +77,22 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 1537,
+    averageLatencyMs: 2079,
     averageConfidence: 0.9848472038904825,
     notes:
       "PaddleOCR detector/recognizer route using the installed PP-OCRv5 pack.",
   },
   {
-    engineId: "paddleocr-vl-1.5",
-    label: "PaddleOCR-VL 1.5",
-    status: "blocked",
-    totalCases: 6,
-    totalPhrases: 29,
-    notes:
-      "Installed, but the local Transformers package cannot instantiate this mirror because the model config is missing the expected text_config.",
-  },
-  {
     engineId: "lighton-ocr-2-1b",
     label: "LightOnOCR-2 1B",
     status: "tested",
-    rank: 4,
+    rank: 5,
     score: 100,
     passedCases: 6,
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 6751,
+    averageLatencyMs: 8418,
     averageConfidence: 0.6499999761581421,
     notes: "Transformers LightOnOCR route using the installed local weights.",
   },
@@ -115,18 +106,9 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 55933,
+    averageLatencyMs: 63431,
     averageConfidence: 0.6499999761581421,
     notes: "Transformers VL route using the installed local weights.",
-  },
-  {
-    engineId: "dots-ocr",
-    label: "Dots.OCR",
-    status: "blocked",
-    totalCases: 6,
-    totalPhrases: 29,
-    notes:
-      "Installed and dependencies are present, but the current Transformers 5 generation path fails inside the Dots.OCR remote code on macOS.",
   },
   {
     engineId: "olmocr-2-7b",
@@ -138,30 +120,21 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 20507,
+    averageLatencyMs: 22093,
     averageConfidence: 0.6499999761581421,
     notes: "Transformers VL route using the installed local weights.",
-  },
-  {
-    engineId: "deepseek-ocr-2",
-    label: "DeepSeek-OCR 2",
-    status: "blocked",
-    totalCases: 6,
-    totalPhrases: 29,
-    notes:
-      "Installed, but the DeepSeek-OCR 2 remote code targets a Transformers API path that is not available in the current shared Transformers 5 runtime.",
   },
   {
     engineId: "glm-ocr",
     label: "GLM-OCR",
     status: "tested",
-    rank: 5,
+    rank: 4,
     score: 100,
     passedCases: 6,
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 7127,
+    averageLatencyMs: 8111,
     averageConfidence: 0.6499999761581421,
     notes: "Transformers VL route using the installed local weights.",
   },
@@ -175,18 +148,9 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 11083,
+    averageLatencyMs: 11882,
     averageConfidence: 0.6499999761581421,
     notes: "Transformers VL route using the installed local weights.",
-  },
-  {
-    engineId: "nemotron-ocr-v2",
-    label: "Nemotron OCR v2",
-    status: "blocked",
-    totalCases: 6,
-    totalPhrases: 29,
-    notes:
-      "Installed, but this package is not a Transformers OCR model; it ships a custom Nemotron OCR runtime with native extensions that is not wired into the macOS OCR sidecar.",
   },
 ];
 

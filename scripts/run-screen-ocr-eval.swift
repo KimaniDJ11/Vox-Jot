@@ -79,15 +79,11 @@ let appDataOcrRoot = FileManager.default
 
 let catalog: [CatalogEntry] = [
     CatalogEntry(id: "pp-ocrv5", label: "PP-OCRv5", backend: "paddle_det_rec"),
-    CatalogEntry(id: "paddleocr-vl-1.5", label: "PaddleOCR-VL 1.5", backend: "paddle_vl"),
     CatalogEntry(id: "lighton-ocr-2-1b", label: "LightOnOCR-2 1B", backend: "transformers_vl"),
     CatalogEntry(id: "chandra-ocr-2", label: "Chandra OCR 2", backend: "transformers_vl"),
-    CatalogEntry(id: "dots-ocr", label: "Dots.OCR", backend: "transformers_vl"),
     CatalogEntry(id: "olmocr-2-7b", label: "olmOCR-2 7B", backend: "transformers_vl"),
-    CatalogEntry(id: "deepseek-ocr-2", label: "DeepSeek-OCR 2", backend: "transformers_vl"),
     CatalogEntry(id: "glm-ocr", label: "GLM-OCR", backend: "transformers_vl"),
     CatalogEntry(id: "qwen2.5-vl-3b", label: "Qwen2.5-VL 3B Instruct", backend: "transformers_vl"),
-    CatalogEntry(id: "nemotron-ocr-v2", label: "Nemotron OCR v2", backend: "transformers_vl"),
 ]
 
 func font(_ name: String, _ size: CGFloat) -> NSFont {

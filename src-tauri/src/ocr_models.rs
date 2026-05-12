@@ -68,10 +68,10 @@ pub enum OcrCatalogSourceKind {
 pub enum OcrBackendKind {
     /// Paddle-style detector + recognizer pair (PP-OCRv5).
     PaddleDetRec,
-    /// PaddleOCR-VL stacks (one model handles end-to-end OCR/VL).
+    /// Reserved for PaddleOCR-VL stacks that can run in the local sidecar.
     PaddleVl,
     /// Generic transformers VL stack (LightOnOCR, Chandra, Qwen2.5-VL,
-    /// Nemotron, GLM-OCR, DeepSeek-OCR, Dots.OCR, olmOCR-2).
+    /// GLM-OCR, olmOCR-2).
     TransformersVl,
     /// Tesseract `tessdata_best` traineddata packs — feeds the existing
     /// backup engine, not a "neural" backend.
@@ -116,19 +116,6 @@ const CATALOG: &[OcrCatalogEntry] = &[
         hf_repo_id: "IrieDinamik/ocr-mirror-ppocrv5",
     },
     OcrCatalogEntry {
-        id: "paddleocr-vl-1.5",
-        title: "PaddleOCR-VL 1.5",
-        vendor: "PaddlePaddle",
-        description: "End-to-end vision-language OCR. Handles complex layouts, tables, and mixed scripts.",
-        source_kind: OcrCatalogSourceKind::LocalDirectory,
-        backend: OcrBackendKind::PaddleVl,
-        conventional_subdir: "PaddleOCR-VL-1.5",
-        required_files: &["config.json"],
-        size_hint_label: "~3 GB",
-        languages_label: "Multilingual",
-        hf_repo_id: "IrieDinamik/ocr-mirror-paddleocr-vl-1.5",
-    },
-    OcrCatalogEntry {
         id: "lighton-ocr-2-1b",
         title: "LightOnOCR-2 1B",
         vendor: "LightOn",
@@ -155,19 +142,6 @@ const CATALOG: &[OcrCatalogEntry] = &[
         hf_repo_id: "IrieDinamik/ocr-mirror-chandra-ocr-2",
     },
     OcrCatalogEntry {
-        id: "dots-ocr",
-        title: "Dots.OCR",
-        vendor: "Dots",
-        description: "Compact VL OCR optimised for screenshots and UI text. Fast on Apple silicon.",
-        source_kind: OcrCatalogSourceKind::LocalDirectory,
-        backend: OcrBackendKind::TransformersVl,
-        conventional_subdir: "dots.ocr",
-        required_files: &["config.json"],
-        size_hint_label: "~2 GB",
-        languages_label: "Multilingual",
-        hf_repo_id: "IrieDinamik/ocr-mirror-dots-ocr",
-    },
-    OcrCatalogEntry {
         id: "olmocr-2-7b",
         title: "olmOCR-2 7B",
         vendor: "Allen AI",
@@ -179,19 +153,6 @@ const CATALOG: &[OcrCatalogEntry] = &[
         size_hint_label: "~14 GB",
         languages_label: "English-first",
         hf_repo_id: "IrieDinamik/ocr-mirror-olmocr-2-7b-1025",
-    },
-    OcrCatalogEntry {
-        id: "deepseek-ocr-2",
-        title: "DeepSeek-OCR 2",
-        vendor: "DeepSeek",
-        description: "DeepSeek's second-generation OCR VL stack. Strong layout + handwriting recovery.",
-        source_kind: OcrCatalogSourceKind::LocalDirectory,
-        backend: OcrBackendKind::TransformersVl,
-        conventional_subdir: "DeepSeek-OCR-2",
-        required_files: &["config.json"],
-        size_hint_label: "~6 GB",
-        languages_label: "Multilingual",
-        hf_repo_id: "IrieDinamik/ocr-deepseek-ocr-2",
     },
     OcrCatalogEntry {
         id: "glm-ocr",
@@ -218,19 +179,6 @@ const CATALOG: &[OcrCatalogEntry] = &[
         size_hint_label: "~6 GB",
         languages_label: "Multilingual",
         hf_repo_id: "IrieDinamik/ocr-qwen2-5-vl-3b",
-    },
-    OcrCatalogEntry {
-        id: "nemotron-ocr-v2",
-        title: "Nemotron OCR v2",
-        vendor: "NVIDIA",
-        description: "NVIDIA's Nemotron OCR v2. Strong on diagrams and forms.",
-        source_kind: OcrCatalogSourceKind::LocalDirectory,
-        backend: OcrBackendKind::TransformersVl,
-        conventional_subdir: "nemotron-ocr-v2",
-        required_files: &["config.json"],
-        size_hint_label: "~6 GB",
-        languages_label: "Multilingual",
-        hf_repo_id: "IrieDinamik/ocr-nemotron-ocr-v2",
     },
     OcrCatalogEntry {
         id: "tessdata-best",

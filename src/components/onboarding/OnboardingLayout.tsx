@@ -3,7 +3,12 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import "./onboarding.css";
 
-export type OnboardingStepName = "welcome" | "permissions" | "setup" | "learn";
+export type OnboardingStepName =
+  | "welcome"
+  | "permissions"
+  | "setup"
+  | "refine"
+  | "learn";
 
 interface OnboardingLayoutProps {
   currentStep: OnboardingStepName;
@@ -27,6 +32,7 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
     { key: "welcome", label: t("onboarding.steps.welcome") },
     { key: "permissions", label: t("onboarding.steps.permissions") },
     { key: "setup", label: t("onboarding.steps.setup") },
+    { key: "refine", label: t("onboarding.steps.refine") },
     { key: "learn", label: t("onboarding.steps.learn") },
   ];
   const currentIndex = steps.findIndex((s) => s.key === currentStep);

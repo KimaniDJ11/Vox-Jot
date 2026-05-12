@@ -57,9 +57,7 @@ import {
 } from "../utils";
 import { modelHasTuningControls } from "../tuningControls";
 
-const GATED_TTS_HF_ACCESS_URLS: Record<string, string> = {
-  "xtts-v2": "https://huggingface.co/coqui/XTTS-v2",
-};
+const GATED_TTS_HF_ACCESS_URLS: Record<string, string> = {};
 
 const ttsModelRequiresHfAccess = (model: CatalogModelDescriptor): boolean =>
   Boolean(GATED_TTS_HF_ACCESS_URLS[model.id]);
@@ -303,15 +301,27 @@ const SpeechModelLibraryCard: React.FC<{
       ? {
           label: downloadProgress?.error
             ? t("listen.engineLibrary.downloadFailed", {
-                defaultValue: "Download failed",
+                defaultValue: "Setup failed",
               })
             : downloadProgress?.stage === "preparing"
-              ? t("modelHub.ocr.download.preparing", {
-                  defaultValue: "Preparing download...",
+              ? t("listen.engineLibrary.downloadPreparing", {
+                  defaultValue: "Checking model files...",
                 })
-              : t("settings.refineModels.actions.downloadingUnknown", {
-                  defaultValue: "Downloading...",
-                }),
+              : downloadProgress?.stage === "installing-runtime"
+                ? t("listen.engineLibrary.installingRuntime", {
+                    defaultValue: "Installing required runtime...",
+                  })
+                : downloadProgress?.stage === "complete"
+                  ? t("listen.engineLibrary.ready", {
+                      defaultValue: "Ready to use",
+                    })
+                  : locallyDownloading && !downloadProgress
+                    ? t("listen.engineLibrary.preparingModel", {
+                        defaultValue: "Preparing model...",
+                      })
+                    : t("settings.refineModels.actions.downloadingUnknown", {
+                        defaultValue: "Downloading model files...",
+                      }),
           detail:
             progressFileName ??
             provider?.runtime.label ??

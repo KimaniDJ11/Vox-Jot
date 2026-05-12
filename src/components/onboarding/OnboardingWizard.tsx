@@ -6,9 +6,15 @@ import { modal } from "@/motion/springs";
 import WelcomeStep from "./WelcomeStep";
 import PermissionsStep from "./PermissionsStep";
 import ModelStep from "./ModelStep";
+import RefineStep from "./RefineStep";
 import TutorialStep from "./TutorialStep";
 
-type WizardStep = "welcome" | "permissions" | "model" | "tutorial";
+type WizardStep =
+  | "welcome"
+  | "permissions"
+  | "model"
+  | "refine"
+  | "tutorial";
 
 interface OnboardingWizardProps {
   /** Called when the user finishes the entire onboarding flow. */
@@ -27,6 +33,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   const goToPermissions = useCallback(() => setStep("permissions"), []);
   const goToModel = useCallback(() => setStep("model"), []);
+  const goToRefine = useCallback(() => setStep("refine"), []);
   const goToTutorial = useCallback(() => setStep("tutorial"), []);
   const handlePermissionsComplete = useCallback(() => {
     if (skipToPermissions) {
@@ -42,8 +49,10 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           return "welcome";
         case "model":
           return "permissions";
-        case "tutorial":
+        case "refine":
           return "model";
+        case "tutorial":
+          return "refine";
         default:
           return prev;
       }
@@ -62,7 +71,9 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           />
         );
       case "model":
-        return <ModelStep onModelSelected={goToTutorial} onBack={goBack} />;
+        return <ModelStep onModelSelected={goToRefine} onBack={goBack} />;
+      case "refine":
+        return <RefineStep onComplete={goToTutorial} onBack={goBack} />;
       case "tutorial":
         return <TutorialStep onComplete={onComplete} onBack={goBack} />;
       default:

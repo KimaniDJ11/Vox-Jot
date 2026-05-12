@@ -190,7 +190,41 @@
       "welcome": "Overview",
       "permissions": "Permissions",
       "setup": "Model",
+      "refine": "Refine",
       "learn": "First Dictation"
+    },
+    "refine": {
+      "title": "Want a local Refine engine?",
+      "description": "Refine polishes dictated text after transcription — cleanup, formatting, or rewriting. For fully local Refine, Vox Jot can install Ollama and a small model now. You can skip this and set it up later.",
+      "bullets": {
+        "local": "Runs entirely on this device once installed — no cloud calls.",
+        "tiny": "Installs Ollama plus a small ~0.4 GB Qwen 2.5 0.5B model.",
+        "optional": "Optional. You can skip now and configure any Refine provider later."
+      },
+      "installCta": "Install local Refine engine",
+      "skipCta": "Skip for now",
+      "footnote": "If you skip, Refine still works once you connect a cloud provider in Settings > Models & AI.",
+      "cardTitle": "Polish dictated text, privately",
+      "cardDescription": "Refine runs after transcription to clean up filler words, fix punctuation, or rewrite in a tone.",
+      "checking": "Checking for Ollama…",
+      "checkingDescription": "Looking for an existing local Refine engine on this device.",
+      "installing": {
+        "title": "Installing Ollama",
+        "description": "This installs the local Refine engine. Network activity is normal here."
+      },
+      "pulling": {
+        "title": "Downloading the default Refine model",
+        "description": "Pulling {{model}}. This usually takes a minute or two on a fast connection."
+      },
+      "ready": {
+        "title": "Local Refine is ready",
+        "description": "Ollama is installed and the default model is available. Continuing to the next step."
+      },
+      "errors": {
+        "installFailed": "Could not install Ollama automatically. You can skip this step and install it later from Settings > Models & AI.",
+        "startFailed": "Ollama was installed but could not be started. You can skip and try again from settings.",
+        "pullFailed": "Could not download the default Refine model. You can skip and download it later."
+      }
     },
     "welcome": {
       "title": "Set up private voice dictation that actually fits your workflow",

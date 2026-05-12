@@ -3,6 +3,7 @@ export { default as OnboardingLayout } from "./OnboardingLayout";
 export { default as WelcomeStep } from "./WelcomeStep";
 export { default as PermissionsStep } from "./PermissionsStep";
 export { default as ModelStep } from "./ModelStep";
+export { default as RefineStep } from "./RefineStep";
 export { default as TutorialStep } from "./TutorialStep";
 
 // Legacy exports preserved for other consumers

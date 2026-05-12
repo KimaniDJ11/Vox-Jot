@@ -188,7 +188,14 @@ type RefineDownloadProgress = {
   downloaded?: number;
   total?: number;
   percentage?: number;
-  stage: "preparing" | "downloading" | "importing" | "complete" | "failed";
+  stage:
+    | "preparing"
+    | "installing_ollama"
+    | "starting_ollama"
+    | "downloading"
+    | "importing"
+    | "complete"
+    | "failed";
 };
 
 const formatBytes = (bytes: number): string => {
@@ -572,13 +579,31 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     return null;
   }, [activeModels]);
 
-  const ensureOllamaReady = async (): Promise<void> => {
+  const setModelProgressStage = (
+    modelId: string,
+    stage: RefineDownloadProgress["stage"],
+  ) => {
+    setProgressMap((prev) => ({
+      ...prev,
+      [modelId]: {
+        model_id: modelId,
+        stage,
+        downloaded: 0,
+        total: 0,
+        percentage: 0,
+      },
+    }));
+  };
+
+  const ensureOllamaReady = async (modelId?: string): Promise<void> => {
     if (ollamaProvider?.installed === false) {
+      if (modelId) setModelProgressStage(modelId, "installing_ollama");
       await invoke("install_ollama");
       return;
     }
 
     if (ollamaProvider?.running === false) {
+      if (modelId) setModelProgressStage(modelId, "starting_ollama");
       await invoke("start_ollama_serve");
     }
   };
@@ -650,7 +675,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }));
     try {
       if (model.runtime_provider_id === "ollama") {
-        await ensureOllamaReady();
+        await ensureOllamaReady(model.runtime_model_id);
       }
       await invoke("install_refine_model", {
         providerId: model.runtime_provider_id,
@@ -1026,16 +1051,42 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     if (progress.stage === "preparing") {
       return {
         label: t("modelHub.analysis.downloadProgress.preparing", {
-          defaultValue: "Preparing download...",
+          defaultValue: "Checking runtime...",
         }),
         detail: model.runtime_label,
         indeterminate: true,
       };
     }
 
+    if (progress.stage === "installing_ollama") {
+      return {
+        label: t("settings.refineModels.actions.installingOllama", {
+          defaultValue: "Installing Ollama...",
+        }),
+        detail: t("settings.refineModels.actions.installingOllamaDetail", {
+          defaultValue: "Local refine runtime",
+        }),
+        indeterminate: true,
+      };
+    }
+
+    if (progress.stage === "starting_ollama") {
+      return {
+        label: t("settings.refineModels.actions.startingOllama", {
+          defaultValue: "Starting Ollama...",
+        }),
+        detail: t("settings.refineModels.actions.startingOllamaDetail", {
+          defaultValue: "Preparing the local refine service",
+        }),
+        indeterminate: true,
+      };
+    }
+
     if (progress.stage === "importing") {
       return {
-        label: t("settings.refineModels.actions.installingIntoOllama"),
+        label: t("settings.refineModels.actions.installingIntoOllama", {
+          defaultValue: "Installing into Ollama...",
+        }),
         detail: model.runtime_label,
         indeterminate: true,
       };

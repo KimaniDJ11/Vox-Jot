@@ -511,6 +511,21 @@ fn known_model_runtime(model_id: &str) -> Option<(EngineType, &'static str, bool
             "MLX/mlx-community/Qwen3-ASR-1.7B-8bit",
             true,
         )),
+        "mlx-qwen3-asr-0.6b" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/Qwen3-ASR-0.6B-8bit",
+            true,
+        )),
+        "mlx-fireredasr2-aed" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/FireRedASR2-AED-mlx",
+            true,
+        )),
+        "mlx-vibevoice-asr-bf16" => Some((
+            EngineType::MlxAudioStt,
+            "MLX/mlx-community/VibeVoice-ASR-bf16",
+            true,
+        )),
         "mlx-parakeet-v3" => Some((
             EngineType::MlxAudioStt,
             "MLX/mlx-community/parakeet-tdt-0.6b-v3",

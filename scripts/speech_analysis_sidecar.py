@@ -30,6 +30,18 @@ ASR_REPOS = {
     "cohere-transcribe-03-2026": "CohereLabs/cohere-transcribe-03-2026",
 }
 
+MLX_ASR_REPOS = {
+    "mlx-qwen3-asr-0.6b": "mlx-community/Qwen3-ASR-0.6B-8bit",
+    "mlx-qwen3-asr-1.7b": "mlx-community/Qwen3-ASR-1.7B-8bit",
+    "mlx-fireredasr2-aed": "mlx-community/FireRedASR2-AED-mlx",
+    "mlx-vibevoice-asr-bf16": "mlx-community/VibeVoice-ASR-bf16",
+}
+
+MLX_DIARIZATION_REPOS = {
+    "mlx-sortformer-4spk-v1": "mlx-community/diar_sortformer_4spk-v1-fp16",
+    "mlx-sortformer-4spk-v2-1": "mlx-community/diar_streaming_sortformer_4spk-v2.1-fp16",
+}
+
 PYANNOTE_REPOS = {
     "pyannote-community-1": "pyannote/speaker-diarization-community-1",
     "pyannote-3-1": "pyannote/speaker-diarization-3.1",
@@ -204,6 +216,46 @@ def transcribe_transformers(audio_path: str, model_id: str) -> tuple[str, list[S
     return text, segments
 
 
+def coerce_segment(segment: Any) -> Segment | None:
+    if isinstance(segment, dict):
+        start = segment.get("start", segment.get("start_time", 0))
+        end = segment.get("end", segment.get("end_time", start))
+        text = normalize_text(segment.get("text"))
+    else:
+        start = getattr(segment, "start", getattr(segment, "start_time", 0))
+        end = getattr(segment, "end", getattr(segment, "end_time", start))
+        text = normalize_text(getattr(segment, "text", ""))
+    if not text:
+        return None
+    start_ms = max(0, round(float(start) * 1000))
+    end_ms = max(start_ms, round(float(end) * 1000))
+    return Segment(start_ms=start_ms, end_ms=end_ms, text=text)
+
+
+def transcribe_mlx_audio(audio_path: str, model_id: str) -> tuple[str, list[Segment]]:
+    from mlx_audio.stt import load
+
+    model = load(repo_or_local(model_id, MLX_ASR_REPOS[model_id]))
+    result = model.generate(audio_path)
+    segments: list[Segment] = []
+    for attr in ("segments", "sentences"):
+        for segment in getattr(result, attr, []) or []:
+            coerced = coerce_segment(segment)
+            if coerced:
+                segments.append(coerced)
+        if segments:
+            break
+
+    raw_text = getattr(result, "text", "") or ""
+    if segments and raw_text.lstrip().startswith(("[", "{")):
+        # VibeVoice-style models return structured JSON in ``result.text``;
+        # prefer the already-parsed segment texts so callers receive plain text.
+        text = normalize_text(" ".join(segment.text for segment in segments))
+    else:
+        text = normalize_text(raw_text)
+    return text, segments
+
+
 def transcribe_cohere(audio_path: str) -> tuple[str, list[Segment]]:
     import torch
     from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
@@ -372,6 +424,48 @@ def diarize_nemo_sortformer(audio_path: str) -> list[SpeakerTurn]:
     return turns
 
 
+def coerce_speaker_turn(segment: Any, source_model_id: str) -> SpeakerTurn | None:
+    if isinstance(segment, dict):
+        speaker = segment.get("speaker", segment.get("speaker_id", "SPEAKER_00"))
+        start = segment.get("start", segment.get("start_time", 0))
+        end = segment.get("end", segment.get("end_time", start))
+        confidence = segment.get("confidence")
+    else:
+        speaker = getattr(segment, "speaker", getattr(segment, "speaker_id", "SPEAKER_00"))
+        start = getattr(segment, "start", getattr(segment, "start_time", 0))
+        end = getattr(segment, "end", getattr(segment, "end_time", start))
+        confidence = getattr(segment, "confidence", None)
+    start_ms = max(0, round(float(start) * 1000))
+    end_ms = max(0, round(float(end) * 1000))
+    if end_ms <= start_ms:
+        return None
+    return SpeakerTurn(
+        speaker_id=str(speaker),
+        start_ms=start_ms,
+        end_ms=end_ms,
+        confidence=float(confidence) if confidence is not None else None,
+        source_model_id=source_model_id,
+    )
+
+
+def diarize_mlx_sortformer(audio_path: str, model_id: str) -> list[SpeakerTurn]:
+    from mlx_audio.vad import load
+
+    model = load(repo_or_local(model_id, MLX_DIARIZATION_REPOS[model_id]))
+    if hasattr(model, "generate_stream") and model_id.endswith("v2-1"):
+        raw_segments: list[Any] = []
+        for result in model.generate_stream(audio_path, chunk_duration=5.0, verbose=False):
+            raw_segments.extend(getattr(result, "segments", []) or [])
+    else:
+        result = model.generate(audio_path, threshold=0.5, verbose=False)
+        raw_segments = getattr(result, "segments", []) or []
+    return [
+        turn
+        for segment in raw_segments
+        if (turn := coerce_speaker_turn(segment, model_id)) is not None
+    ]
+
+
 def diarize_diarizen(audio_path: str) -> list[SpeakerTurn]:
     from diarizen.pipelines.inference import DiariZenPipeline
     from huggingface_hub import hf_hub_download
@@ -531,6 +625,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         text, segments = transcribe_granite(args.audio)
     elif args.asr_model == "cohere-transcribe-03-2026":
         text, segments = transcribe_cohere(args.audio)
+    elif args.asr_model in MLX_ASR_REPOS:
+        text, segments = transcribe_mlx_audio(args.audio, args.asr_model)
     elif args.asr_model in ASR_REPOS:
         text, segments = transcribe_transformers(args.audio, args.asr_model)
 
@@ -540,6 +636,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         speaker_turns = diarize_nemo_sortformer(args.audio)
     elif args.diarization_model == "diarizen-wavlm-large-s80-md":
         speaker_turns = diarize_diarizen(args.audio)
+    elif args.diarization_model in MLX_DIARIZATION_REPOS:
+        speaker_turns = diarize_mlx_sortformer(args.audio, args.diarization_model)
     elif args.diarization_model == "onnx-polyvoice-diarization":
         speaker_turns = diarize_polyvoice_onnx(args.audio)
 

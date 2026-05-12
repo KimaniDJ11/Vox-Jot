@@ -1196,6 +1196,74 @@ impl ModelManager {
                     is_custom: false,
                 },
             );
+
+            let mut insert_mlx_audio_stt =
+                |id: &str,
+                 name: &str,
+                 description: &str,
+                 repo_id: &str,
+                 size_mb: u64,
+                 accuracy_score: f32,
+                 speed_score: f32,
+                 supported_languages: &[&str]| {
+                    available_models.insert(
+                        id.to_string(),
+                        ModelInfo {
+                            id: id.to_string(),
+                            name: name.to_string(),
+                            description: description.to_string(),
+                            filename: format!("MLX/{repo_id}"),
+                            url: Some(Self::hf_snapshot_url(repo_id)),
+                            sha256: None,
+                            size_mb,
+                            is_downloaded: false,
+                            is_downloading: false,
+                            partial_size: 0,
+                            is_directory: true,
+                            engine_type: EngineType::MlxAudioStt,
+                            accuracy_score,
+                            speed_score,
+                            supports_translation: false,
+                            is_recommended: false,
+                            supported_languages: supported_languages
+                                .iter()
+                                .map(|language| (*language).to_string())
+                                .collect(),
+                            is_custom: false,
+                        },
+                    );
+                };
+
+            insert_mlx_audio_stt(
+                "mlx-qwen3-asr-0.6b",
+                "Qwen3 ASR 0.6B (MLX)",
+                "Smaller Qwen3 ASR checkpoint for multilingual Apple Silicon transcription.",
+                "mlx-community/Qwen3-ASR-0.6B-8bit",
+                900,
+                0.86,
+                0.88,
+                &["zh", "en", "ja", "ko", "mul"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-fireredasr2-aed",
+                "FireRedASR2 AED (MLX)",
+                "Chinese and English conformer-decoder ASR through the shared mlx-audio runtime.",
+                "mlx-community/FireRedASR2-AED-mlx",
+                2600,
+                0.87,
+                0.62,
+                &["zh", "en"],
+            );
+            insert_mlx_audio_stt(
+                "mlx-vibevoice-asr-bf16",
+                "VibeVoice ASR 9B (MLX)",
+                "Large ASR model with timestamp and diarization-oriented outputs; best for longer files, not low-latency dictation.",
+                "mlx-community/VibeVoice-ASR-bf16",
+                18000,
+                0.90,
+                0.35,
+                &["en", "zh"],
+            );
         }
 
         // Auto-discover custom Whisper models (.bin files) in the models directory

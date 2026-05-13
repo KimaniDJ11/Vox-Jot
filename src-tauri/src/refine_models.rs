@@ -298,11 +298,149 @@ fn is_active_model(
 }
 
 fn ollama_model_matches(installed: &[String], candidate: &str) -> bool {
-    installed.iter().any(|model| {
-        model == candidate
-            || model.starts_with(candidate)
-            || candidate.starts_with(model.split(':').next().unwrap_or(model))
-    })
+    let candidate = candidate.trim();
+    if candidate.is_empty() {
+        return false;
+    }
+
+    installed
+        .iter()
+        .map(|model| model.trim())
+        .filter(|model| !model.is_empty())
+        .any(|model| {
+            model == candidate
+                || model == format!("{candidate}:latest")
+                || candidate == format!("{model}:latest")
+        })
+}
+
+fn ollama_model_ids_equivalent(left: &str, right: &str) -> bool {
+    ollama_model_matches(&[left.to_string()], right)
+        || ollama_model_matches(&[right.to_string()], left)
+}
+
+fn remove_local_ollama_rows_shadowed_by_installed_hf_imports(
+    models: &mut Vec<RefineModelDescriptor>,
+    hf_models: &[RefineModelDescriptor],
+) {
+    let installed_hf_ollama_model_ids = hf_models
+        .iter()
+        .filter(|model| {
+            model.runtime_provider_id == OLLAMA_PROVIDER_ID
+                && model.installed
+                && matches!(model.source_kind, RefineModelSourceKind::HuggingFace)
+        })
+        .map(|model| model.runtime_model_id.clone())
+        .collect::<Vec<_>>();
+
+    models.retain(|model| {
+        if model.runtime_provider_id != OLLAMA_PROVIDER_ID
+            || !matches!(model.source_kind, RefineModelSourceKind::Ollama)
+        {
+            return true;
+        }
+
+        !installed_hf_ollama_model_ids
+            .iter()
+            .any(|hf_model_id| ollama_model_ids_equivalent(&model.runtime_model_id, hf_model_id))
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ollama_model_ids_equivalent, ollama_model_matches,
+        remove_local_ollama_rows_shadowed_by_installed_hf_imports, RefineModelDescriptor,
+        RefineModelSourceKind, OLLAMA_PROVIDER_ID,
+    };
+
+    fn refine_model(
+        source_kind: RefineModelSourceKind,
+        runtime_model_id: &str,
+        installed: bool,
+    ) -> RefineModelDescriptor {
+        RefineModelDescriptor {
+            id: format!("{source_kind:?}:{runtime_model_id}"),
+            title: runtime_model_id.to_string(),
+            description: String::new(),
+            source_kind,
+            source_label: String::new(),
+            runtime_provider_id: OLLAMA_PROVIDER_ID.to_string(),
+            runtime_model_id: runtime_model_id.to_string(),
+            runtime_label: String::new(),
+            installed,
+            active: false,
+            runnable: installed,
+            downloadable: !installed,
+            source_repo_id: None,
+            source_file_name: None,
+            source_url: None,
+            note: None,
+        }
+    }
+
+    #[test]
+    fn ollama_model_matches_exact_tags_without_cross_tag_bleed() {
+        let installed = vec!["smollm2:1.7b".to_string()];
+
+        assert!(ollama_model_matches(&installed, "smollm2:1.7b"));
+        assert!(!ollama_model_matches(&installed, "smollm2:360m"));
+        assert!(!ollama_model_matches(&installed, "smollm2:135m"));
+    }
+
+    #[test]
+    fn ollama_model_matches_latest_tag_alias_only() {
+        assert!(ollama_model_matches(
+            &["llama3.2:latest".to_string()],
+            "llama3.2",
+        ));
+        assert!(ollama_model_matches(
+            &["llama3.2".to_string()],
+            "llama3.2:latest",
+        ));
+        assert!(!ollama_model_matches(
+            &["llama3.2:3b".to_string()],
+            "llama3.2:1b",
+        ));
+    }
+
+    #[test]
+    fn ollama_model_ids_equivalent_handles_hf_import_latest_alias() {
+        assert!(ollama_model_ids_equivalent(
+            "smollm2-1.7b-instruct-gguf-q4_k_m",
+            "smollm2-1.7b-instruct-gguf-q4_k_m:latest",
+        ));
+        assert!(!ollama_model_ids_equivalent("smollm2:1.7b", "smollm2:360m",));
+    }
+
+    #[test]
+    fn installed_hf_imports_hide_duplicate_local_ollama_rows() {
+        let mut local_models = vec![
+            refine_model(
+                RefineModelSourceKind::Ollama,
+                "smollm2-1.7b-instruct-gguf-q4_k_m:latest",
+                true,
+            ),
+            refine_model(RefineModelSourceKind::Ollama, "mistral:7b", true),
+            refine_model(RefineModelSourceKind::Ollama, "qwen2.5:0.5b", true),
+        ];
+        let hf_models = vec![
+            refine_model(
+                RefineModelSourceKind::HuggingFace,
+                "smollm2-1.7b-instruct-gguf-q4_k_m",
+                true,
+            ),
+            refine_model(RefineModelSourceKind::HuggingFace, "qwen2.5:0.5b", false),
+        ];
+
+        remove_local_ollama_rows_shadowed_by_installed_hf_imports(&mut local_models, &hf_models);
+
+        let remaining = local_models
+            .iter()
+            .map(|model| model.runtime_model_id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(remaining, vec!["mistral:7b", "qwen2.5:0.5b"]);
+    }
 }
 
 fn sanitize_runtime_model_id(value: &str) -> String {
@@ -814,6 +952,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
 
     let (lmstudio_status, lmstudio_models) = fetch_lmstudio_models(&settings).await;
     providers.push(lmstudio_status);
+    remove_local_ollama_rows_shadowed_by_installed_hf_imports(&mut models, &hf_models);
     models.extend(lmstudio_models);
     models.extend(hf_models);
 
@@ -1062,6 +1201,16 @@ async fn ensure_hf_gguf_downloaded(
             if let Some(expected) = remote_size {
                 if local_size >= expected {
                     log::info!("ensure_hf_gguf_downloaded: {file_name} already complete ({local_size} / {expected} bytes)");
+                    let _ = app.emit(
+                        "refine-download-progress",
+                        serde_json::json!({
+                            "model_id": model_id,
+                            "downloaded": local_size,
+                            "total": expected,
+                            "percentage": 100.0f64,
+                            "stage": "importing",
+                        }),
+                    );
                     return Ok(());
                 }
                 log::warn!(
@@ -1069,6 +1218,16 @@ async fn ensure_hf_gguf_downloaded(
                 );
             } else {
                 log::info!("ensure_hf_gguf_downloaded: {file_name} exists ({local_size} bytes), cannot verify size — assuming complete");
+                let _ = app.emit(
+                    "refine-download-progress",
+                    serde_json::json!({
+                        "model_id": model_id,
+                        "downloaded": local_size,
+                        "total": local_size,
+                        "percentage": 100.0f64,
+                        "stage": "importing",
+                    }),
+                );
                 return Ok(());
             }
         }

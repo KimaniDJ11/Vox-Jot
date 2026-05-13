@@ -652,6 +652,14 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       toast.success(
         t("settings.refineModels.toast.removed", { title: model.title }),
       );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : t("settings.refineModels.toast.removeError", {
+              defaultValue: "Could not remove this model from Ollama.",
+            });
+      toast.error(message);
     } finally {
       setBusyModelIds((prev) => {
         const next = new Set(prev);

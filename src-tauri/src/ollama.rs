@@ -481,7 +481,7 @@ pub async fn pull_ollama_model_impl(app: &AppHandle, model_name: String) -> Resu
 pub async fn delete_ollama_model_impl(model_name: String) -> Result<(), String> {
     let client = reqwest::Client::new();
     let url = format!("{}/api/delete", OLLAMA_BASE_URL);
-    let body = serde_json::json!({ "name": model_name });
+    let body = delete_ollama_model_payload(&model_name);
 
     let response = client
         .delete(&url)
@@ -491,10 +491,15 @@ pub async fn delete_ollama_model_impl(model_name: String) -> Result<(), String> 
         .map_err(|e| format!("Failed to connect to Ollama: {}", e))?;
 
     if !response.status().is_success() {
+        let status = response.status();
         let err = response.text().await.unwrap_or_default();
-        return Err(format!("Failed to delete model: {}", err));
+        return Err(format!("Failed to delete model ({status}): {err}"));
     }
     Ok(())
+}
+
+fn delete_ollama_model_payload(model_name: &str) -> serde_json::Value {
+    serde_json::json!({ "model": model_name })
 }
 
 // ─── Tauri Commands ───────────────────────────────────────────────────────────
@@ -551,4 +556,17 @@ pub async fn start_ollama_serve() -> Result<(), String> {
         .map_err(|e| format!("Failed to start Ollama ({}): {}", binary, e))?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::delete_ollama_model_payload;
+
+    #[test]
+    fn delete_payload_uses_ollama_model_key() {
+        assert_eq!(
+            delete_ollama_model_payload("smollm2:135m"),
+            serde_json::json!({ "model": "smollm2:135m" })
+        );
+    }
 }

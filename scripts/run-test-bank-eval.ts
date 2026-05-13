@@ -24,6 +24,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = resolve(__dirname, "..");
+const SAFE_OUTPUT_SEGMENT = /^[A-Za-z0-9._-]+$/;
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -66,6 +67,21 @@ function parseArgs(): Config {
       resolve(PROJECT_ROOT, "output/test-bank-eval"),
     ),
   };
+}
+
+function assertSafePathSegment(segment: string, field: string): void {
+  if (!SAFE_OUTPUT_SEGMENT.test(segment)) {
+    throw new Error(`Unsafe ${field}: ${segment}`);
+  }
+}
+
+function childPath(parent: string, segment: string, field: string): string {
+  assertSafePathSegment(segment, field);
+  return `${parent}/${segment}`;
+}
+
+function fixedChildPath(parent: string, filename: string): string {
+  return `${parent}/${filename}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,7 +157,7 @@ function runEval(
   label: string,
   config: Config,
 ): string {
-  const outDir = resolve(outputDir, label);
+  const outDir = childPath(outputDir, label, "output label");
   mkdirSync(outDir, { recursive: true });
 
   const evalScript = resolve(PROJECT_ROOT, "scripts/eval-post-process.ts");
@@ -218,7 +234,7 @@ function mergeResults(dirs: string[], outputDir: string): void {
   const allResults: (EvalResult & { source: string })[] = [];
 
   for (const dir of dirs) {
-    const jsonPath = resolve(dir, "eval-results.json");
+    const jsonPath = fixedChildPath(dir, "eval-results.json");
     if (!existsSync(jsonPath)) continue;
     const data: EvalSummary = JSON.parse(readFileSync(jsonPath, "utf-8"));
     const source = dir.split("/").pop() || "unknown";
@@ -275,11 +291,11 @@ function mergeResults(dirs: string[], outputDir: string): void {
     results: allResults,
   };
 
-  const combinedDir = resolve(outputDir, "combined");
+  const combinedDir = fixedChildPath(outputDir, "combined");
   mkdirSync(combinedDir, { recursive: true });
 
   writeFileSync(
-    resolve(combinedDir, "combined-results.json"),
+    fixedChildPath(combinedDir, "combined-results.json"),
     JSON.stringify(combined, null, 2),
   );
 
@@ -321,7 +337,10 @@ function mergeResults(dirs: string[], outputDir: string): void {
     lines.push(`| ${route} | ${count} |`);
   }
 
-  writeFileSync(resolve(combinedDir, "combined-results.md"), lines.join("\n"));
+  writeFileSync(
+    fixedChildPath(combinedDir, "combined-results.md"),
+    lines.join("\n"),
+  );
 
   console.log(`\nCombined results → ${combinedDir}/`);
 }
@@ -333,7 +352,11 @@ function mergeResults(dirs: string[], outputDir: string): void {
 async function main() {
   const config = parseArgs();
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const outputDir = resolve(config.outputDir, timestamp);
+  const outputDir = childPath(
+    resolve(config.outputDir),
+    timestamp,
+    "timestamp",
+  );
   mkdirSync(outputDir, { recursive: true });
 
   console.log(`\n╔${"═".repeat(58)}╗`);
@@ -368,7 +391,10 @@ async function main() {
     if (config.suite === "sanity") {
       const file: CasesFile = JSON.parse(readFileSync(testBankCases, "utf-8"));
       const filtered = filterCases(file.cases, config.suite);
-      const tmpPath = resolve(outputDir, "_filtered-test-bank-cases.json");
+      const tmpPath = fixedChildPath(
+        outputDir,
+        "_filtered-test-bank-cases.json",
+      );
       writeFileSync(
         tmpPath,
         JSON.stringify({ metadata: file.metadata, cases: filtered }, null, 2),
@@ -389,7 +415,10 @@ async function main() {
       const file: CasesFile = JSON.parse(readFileSync(spellingCases, "utf-8"));
       const filtered = filterCases(file.cases, config.suite);
       if (filtered.length > 0) {
-        const tmpPath = resolve(outputDir, "_filtered-spelling-cases.json");
+        const tmpPath = fixedChildPath(
+          outputDir,
+          "_filtered-spelling-cases.json",
+        );
         writeFileSync(
           tmpPath,
           JSON.stringify({ metadata: file.metadata, cases: filtered }, null, 2),

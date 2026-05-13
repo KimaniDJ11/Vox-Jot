@@ -170,7 +170,7 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
       await get().checkStatus();
       return true;
     } catch (e) {
-      console.error(`Failed to pull Ollama model ${modelName}:`, e);
+      console.error("Failed to pull Ollama model:", { modelName, error: e });
       const newPullingSet = new Set(get().pullingModels);
       newPullingSet.delete(modelName);
       set({ pullingModels: newPullingSet });
@@ -187,7 +187,7 @@ export const useOllamaStore = create<OllamaStore>((set, get) => ({
       await get().checkStatus();
       return true;
     } catch (e) {
-      console.error(`Failed to delete Ollama model ${modelName}:`, e);
+      console.error("Failed to delete Ollama model:", { modelName, error: e });
       return false;
     }
   },

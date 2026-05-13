@@ -16,15 +16,28 @@ interface ValidationResult {
   extra: string[][];
 }
 
-function getLanguages(): string[] {
+function getLocaleFiles(): Map<string, string> {
   const entries = fs.readdirSync(LOCALES_DIR, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isDirectory() && entry.name !== REFERENCE_LANG)
-    .map((entry) => entry.name)
-    .sort();
+  const localeFiles = new Map<string, string>();
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^[A-Za-z0-9_-]+$/.test(entry.name)) {
+      continue;
+    }
+    localeFiles.set(
+      entry.name,
+      `${LOCALES_DIR}/${entry.name}/translation.json`,
+    );
+  }
+
+  return localeFiles;
 }
 
-const LANGUAGES = getLanguages();
+const LOCALE_FILES = getLocaleFiles();
+const LANGUAGES = [...LOCALE_FILES.keys()]
+  .filter((lang) => lang !== REFERENCE_LANG)
+  .sort();
+const UNSAFE_OBJECT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 // Colors for terminal output
 const colors: Record<string, string> = {
@@ -64,20 +77,28 @@ function getAllKeyPaths(
 function hasKeyPath(obj: TranslationData, keyPath: string[]): boolean {
   let current: unknown = obj;
   for (const key of keyPath) {
+    if (UNSAFE_OBJECT_KEYS.has(key)) {
+      return false;
+    }
     if (
       typeof current !== "object" ||
       current === null ||
-      (current as Record<string, unknown>)[key] === undefined
+      !Object.hasOwn(current, key)
     ) {
       return false;
     }
-    current = (current as Record<string, unknown>)[key];
+    const currentRecord = current as Record<string, unknown>;
+    current = currentRecord[key];
   }
   return true;
 }
 
 function loadTranslationFile(lang: string): TranslationData | null {
-  const filePath = path.join(LOCALES_DIR, lang, "translation.json");
+  const filePath = LOCALE_FILES.get(lang);
+  if (!filePath) {
+    console.error(colorize("✗ Unknown locale:", "red"), lang);
+    return null;
+  }
 
   try {
     const content = fs.readFileSync(filePath, "utf8");

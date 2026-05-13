@@ -80,7 +80,7 @@ const AccessibilityPermissions: React.FC<AccessibilityPermissionsProps> = ({
         await requestInputMonitoringPermission();
       }
     } catch (error) {
-      console.error(`Error requesting ${permission} permission:`, error);
+      console.error("Error requesting permission:", { permission, error });
     } finally {
       await refreshPermissions();
       setBusyPermission(null);

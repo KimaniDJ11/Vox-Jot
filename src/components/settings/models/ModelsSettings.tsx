@@ -223,7 +223,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     try {
       await deleteModel(modelId);
     } catch (err) {
-      console.error(`Failed to delete model ${modelId}:`, err);
+      console.error("Failed to delete model:", { modelId, err });
     }
   };
 
@@ -231,7 +231,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     try {
       await cancelDownload(modelId);
     } catch (err) {
-      console.error(`Failed to cancel download for ${modelId}:`, err);
+      console.error("Failed to cancel model download:", { modelId, err });
     }
   };
 

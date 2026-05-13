@@ -407,7 +407,7 @@ export const useSettingsStore = create<SettingsStore>()(
       try {
         await commands.playTestSound(soundType);
       } catch (error) {
-        console.error(`Failed to play test sound (${soundType}):`, error);
+        console.error("Failed to play test sound:", { soundType, error });
       }
     },
 
@@ -445,7 +445,10 @@ export const useSettingsStore = create<SettingsStore>()(
           console.warn(`No handler for setting: ${String(key)}`);
         }
       } catch (error) {
-        console.error(`Failed to update setting ${String(key)}:`, error);
+        console.error("Failed to update setting:", {
+          key: String(key),
+          error,
+        });
         if (settings) {
           set((state) => ({
             settings: state.settings
@@ -752,7 +755,7 @@ export const useSettingsStore = create<SettingsStore>()(
           throw new Error(result.data.error || "Failed to update binding");
         }
       } catch (error) {
-        console.error(`Failed to update binding ${id}:`, error);
+        console.error("Failed to update binding:", { id, error });
 
         // Rollback on error
         if (originalBinding && get().settings) {
@@ -790,7 +793,7 @@ export const useSettingsStore = create<SettingsStore>()(
         await commands.resetBinding(id);
         await refreshSettings();
       } catch (error) {
-        console.error(`Failed to reset binding ${id}:`, error);
+        console.error("Failed to reset binding:", { id, error });
       } finally {
         setUpdating(updateKey, false);
       }
@@ -858,10 +861,10 @@ export const useSettingsStore = create<SettingsStore>()(
         }
         await refreshSettings();
       } catch (error) {
-        console.error(
-          `Failed to update post-process ${settingType.replace("_", " ")}:`,
+        console.error("Failed to update post-process setting:", {
+          settingType,
           error,
-        );
+        });
       } finally {
         setUpdating(updateKey, false);
       }

@@ -1054,13 +1054,13 @@ def repair_wav_riff_header(path: str) -> None:
 
 def main() -> int:
     args = parse_args()
+    used_conditioning_retry = False
 
     try:
         patch_mlx_audio_load_config_for_indextts()
         model_name = Path(args.model).name.lower()
         config = load_model_config(args.model)
         model_type = config.get("model_type") or config.get("architecture")
-        used_conditioning_retry = False
 
         if model_type == "lfm_audio":
             audio, sample_rate = generate_lfm_audio(args)
@@ -1131,7 +1131,7 @@ def main() -> int:
         return 0
     except Exception as exc:
         model_name = Path(args.model).name.lower()
-        detail = describe_bridge_error(exc, model_name, locals().get("used_conditioning_retry", False))
+        detail = describe_bridge_error(exc, model_name, used_conditioning_retry)
         print(f"MLX bridge failed: {detail}", file=sys.stderr)
         if os.environ.get("VOX_JOT_DEBUG_MLX_AUDIO") == "1":
             traceback.print_exc(file=sys.stderr)

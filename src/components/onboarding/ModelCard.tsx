@@ -159,7 +159,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const sizeLabel =
     Number(model.size_mb) > 0
       ? formatModelSize(Number(model.size_mb))
-      : t("modelSelector.noDownload", { defaultValue: "No download" });
+      : t("modelHub.chips.internalStorage", { defaultValue: "Internal" });
   const languagesSummary = formatLanguageCount(
     model.supported_languages,
     t("settings.general.language.auto", { defaultValue: "Auto" }),
@@ -195,8 +195,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
               ? t("modelSelector.sizeDetail", {
                   defaultValue: "Approximate disk size after download.",
                 })
-              : t("modelSelector.noDownloadDetail", {
-                  defaultValue: "Uses a built-in or configured local runtime.",
+              : t("modelHub.chips.internalStorageDetail", {
+                  defaultValue: "Uses a built-in local runtime.",
                 }),
         }
       : null,

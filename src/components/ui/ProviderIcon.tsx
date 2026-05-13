@@ -266,6 +266,93 @@ function TencentMark({ size }: { size: number; color: string }) {
   );
 }
 
+function LightOnMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M8 5v14h8.5"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.4 5.5 18 10l-4.6 4.5"
+        fill="none"
+        stroke="#A5B4FC"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function DatalabMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={8} cy={12} r={3.2} fill="#FFFFFF" />
+      <circle cx={16} cy={8} r={3.2} fill="#DDD6FE" />
+      <circle cx={16} cy={16} r={3.2} fill="#FFFFFF" />
+      <path
+        d="M10.8 10.8 13.2 9.2M10.8 13.2l2.4 1.6"
+        stroke="#7C3AED"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function Ai2Mark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4.5 19 10.5 5h3L19.5 19h-3.2l-1-2.7H8.7l-1 2.7H4.5Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M9.7 13.4h4.6L12 7.5l-2.3 5.9Z"
+        fill="#0F766E"
+      />
+      <path
+        d="M18.2 6.2h1.7v7.5"
+        fill="none"
+        stroke="#A7F3D0"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ZhipuMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6 6h12L7 18h11"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.5 6.5c1.4 1.5 2.1 3.3 2.1 5.5s-.7 4-2.1 5.5"
+        fill="none"
+        stroke="#BFDBFE"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function SystemMark({ size, color }: { size: number; color: string }) {
   const s = size * 0.68;
   return (
@@ -283,6 +370,31 @@ function SystemMark({ size, color }: { size: number; color: string }) {
         strokeWidth={2}
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function PolyvoiceMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4.5 16.2c1.7-3.3 3.8-3.3 5.4 0s3.8 3.3 5.4 0 3.8-3.3 5.2 0"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 10.3c1.4-2.4 3.1-2.4 4.5 0s3.2 2.4 4.5 0 3.1-2.4 4.2 0"
+        fill="none"
+        stroke="#BAE6FD"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <circle cx={7.2} cy={5.8} r={2.1} fill="#FFFFFF" />
+      <circle cx={12} cy={5.8} r={2.1} fill="#DBEAFE" />
+      <circle cx={16.8} cy={5.8} r={2.1} fill="#FFFFFF" />
     </svg>
   );
 }
@@ -348,6 +460,27 @@ function ResembleMark({ size }: { size: number; color: string }) {
         fill="none"
         stroke="#E9D5FF"
         strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SupertonicMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6.2 7.4h11.6M6.2 12h11.6M6.2 16.6h11.6"
+        stroke="#FFFFFF"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.1 7.4c1.3 2.2 2.6 2.2 3.9 0s2.6-2.2 3.9 0M8.1 16.6c1.3-2.2 2.6-2.2 3.9 0s2.6 2.2 3.9 0"
+        fill="none"
+        stroke="#F9A8D4"
+        strokeWidth={1.6}
         strokeLinecap="round"
       />
     </svg>
@@ -596,6 +729,556 @@ function VoxJotMark({ size, color }: { size: number; color: string }) {
   );
 }
 
+function FalconMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M5 5h14v3.6H9.1v3.1h8.2v3.5H9.1V20H5V5Z" fill="#FFFFFF" />
+      <path
+        d="M12.5 5c3.5 1.3 5.7 3.4 6.5 6.3-2.2-.9-4.4-.9-6.5 0"
+        fill="none"
+        stroke="#C4B5FD"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IbmMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      {[5, 8.5, 12, 15.5].map((y) => (
+        <path
+          key={y}
+          d={`M3 ${y}h4.2M9 ${y}h2.6l1.1 1.8L13.8 ${y}h2.6M18.1 ${y}H21`}
+          stroke="#FFFFFF"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function OpenMossMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 18V7l4.7 6.2L14.4 7v11"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.8 9.5c1.6 1.4 2.4 3 2.4 4.6s-.8 3.2-2.4 4.4"
+        fill="none"
+        stroke="#BBF7D0"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IrodoriMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 5v14"
+        stroke="#FFFFFF"
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 7.5c3.2-2.2 6-2.2 8.4 0M7.4 16.5c3.2 2.2 6.3 2.2 9.2 0"
+        fill="none"
+        stroke="#FBCFE8"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IndexTtsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <rect x={6} y={4} width={12} height={16} rx={2} fill="#FFFFFF" />
+      <path
+        d="M9 8h6M9 12h6M9 16h3"
+        stroke="#F97316"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function LongCatMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path d="M6 18V6h3.8v8.7H18V18H6Z" fill="#111827" />
+      <path
+        d="M11.2 6.5c3.9.7 6.2 2.9 6.8 6.7-2-1-4-1.1-6-.3"
+        fill="none"
+        stroke="#F97316"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SopranoMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6 16.5c2.2 2.1 9.8 2.1 12 0 1.2-1.1.6-3.2-1-4.1l-7.5-4.1c-1.9-1-1.5-3.8.7-4.2 2.1-.4 4.7.1 6.1 1.3"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8.2 12.5h7.6"
+        stroke="#E9D5FF"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MeloTtsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 18V7l4.3 5.8L13.6 7v11"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M16.3 8.5c1.7.9 2.7 2.2 2.7 3.8s-1 2.9-2.7 3.8"
+        fill="none"
+        stroke="#BFDBFE"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CohereMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 12a7 7 0 0 1 14 0v.3c0 2.7-2.2 4.7-4.9 4.7H10c-.9 0-1.7-.4-2.3-1H6a3 3 0 1 1 0-6h5.5"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PyAnnoteMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={7.2} cy={12} r={2.4} fill="#FFFFFF" />
+      <circle cx={16.8} cy={12} r={2.4} fill="#FFFFFF" />
+      <path
+        d="M4 7.5c0-1.4 1-2.4 2.4-2.4M20 7.5c0-1.4-1-2.4-2.4-2.4M4 16.5c0 1.4 1 2.4 2.4 2.4M20 16.5c0 1.4-1 2.4-2.4 2.4"
+        fill="none"
+        stroke="#F472B6"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <path
+        d="M10 12h4"
+        stroke="#FFFFFF"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function RevaiMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5.5 5h6.2a4.1 4.1 0 0 1 0 8.2H9V19H5.5V5Zm3.5 5.6h2.4a1.5 1.5 0 0 0 0-3H9v3Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="m13.4 12.8 4.7 6.2h-3.8l-3.6-4.8"
+        fill="#FFFFFF"
+      />
+      <circle cx={18.5} cy={6.5} r={1.6} fill="#22D3EE" />
+    </svg>
+  );
+}
+
+function WhisperXMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M3.5 12c2.4-3.6 5.5-3.6 8 0s5.6 3.6 8 0"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="m15 6 4 4-4 4M19 6l-4 4 4 4"
+        fill="none"
+        stroke="#F87171"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function OllamaMark({ size }: { size: number; color: string }) {
+  const s = size * 0.66;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M8 3.4c-1.6.7-2.4 2.6-2.4 4.7v3.6c-1 .6-1.6 1.8-1.6 3.1 0 1.6.8 3 2 3.6V20h3v-1.5h5V20h3v-1.6c1.2-.6 2-2 2-3.6 0-1.3-.6-2.5-1.6-3.1V8.1c0-2.1-.8-4-2.4-4.7-1.5 1.3-2.6 2.7-3 4.4h-.6c-.4-1.7-1.5-3.1-3-4.4Z"
+        fill="#FFFFFF"
+      />
+      <circle cx={9.5} cy={12.4} r={1.1} fill="#111827" />
+      <circle cx={14.5} cy={12.4} r={1.1} fill="#111827" />
+    </svg>
+  );
+}
+
+function GroqMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3a8.4 8.4 0 0 0-7.2 12.7L3.4 21l5.3-1.4A8.4 8.4 0 1 0 12 3Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M11 8h2.5a2.6 2.6 0 0 1 2.5 2.6c0 1.5-1.1 2.6-2.5 2.6H11M11 8v8M11 13.2h.6L15 16.5"
+        fill="none"
+        stroke="#F55036"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CerebrasMark({ size }: { size: number; color: string }) {
+  const s = size * 0.68;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 4a8 8 0 1 0 6 13.3"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 8.2a6 6 0 1 0 7 8"
+        fill="none"
+        stroke="#F97316"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <circle cx={17.5} cy={6.5} r={1.5} fill="#F97316" />
+    </svg>
+  );
+}
+
+function OpenRouterMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M3 12c2.5-2 5-2 7.5 0s5 2 7.5 0"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <path
+        d="m17 7 4 5-4 5"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={6} cy={12} r={1.5} fill="#A78BFA" />
+    </svg>
+  );
+}
+
+function LmStudioMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <rect x={3.5} y={5} width={17} height={11} rx={2} fill="#FFFFFF" />
+      <path
+        d="M7 19h10"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 9v3.5h3"
+        fill="none"
+        stroke="#0EA5A4"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13 12.5V9l1.7 2 1.7-2v3.5"
+        fill="none"
+        stroke="#0EA5A4"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PaddlePaddleMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3.5 19 8v8l-7 4.5L5 16V8l7-4.5Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M9.5 9.5h3.6a2.4 2.4 0 0 1 0 4.8H9.5V9.5Zm0 4.8V18"
+        fill="none"
+        stroke="#2563EB"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TesseractMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M6 4h12v3.5h-4.2V20h-3.6V7.5H6V4Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M7.5 9.5h2M14.5 9.5h2M7.5 15h2M14.5 15h2"
+        stroke="#F59E0B"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DotsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <circle cx={6.5} cy={12} r={2.2} fill="#FFFFFF" />
+      <circle cx={12} cy={12} r={2.2} fill="#FFFFFF" />
+      <circle cx={17.5} cy={12} r={2.2} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function K2FsaMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 5v14M5 12l6-7M5 12l6 7"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 7.5c1.4-.7 3-.7 3.6.4.7 1.2-.3 2.6-1.6 3.5l-2 1.4h3.6V14"
+        fill="none"
+        stroke="#BFDBFE"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function FireRedMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M12 3.2c2.1 2.4 2.5 4.6 1.3 6.6 1.7-.5 3-.2 4.1 1 1.6 1.7 2.4 4.2 1.3 6.4-1.2 2.4-3.6 3.6-6.7 3.6-3 0-5.4-1.2-6.7-3.6-1.2-2.2-.3-4.7 1.4-6.4 1-1.2 2.4-1.5 4.1-1-1.2-2-.8-4.2 1.2-6.6Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M12 11c1 1.4 1.4 2.6.4 3.8.9-.2 1.6 0 2.1.7.8 1 .6 2.4-.4 3.2-1 .8-2.5.8-3.6 0-1-.8-1.2-2.2-.4-3.2.5-.7 1.2-.9 2.1-.7-1-1.2-.5-2.4.5-3.8Z"
+        fill="#DC2626"
+      />
+    </svg>
+  );
+}
+
+function BosonMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <ellipse
+        cx={12}
+        cy={12}
+        rx={9}
+        ry={4}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+      />
+      <ellipse
+        cx={12}
+        cy={12}
+        rx={9}
+        ry={4}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        transform="rotate(60 12 12)"
+      />
+      <ellipse
+        cx={12}
+        cy={12}
+        rx={9}
+        ry={4}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        transform="rotate(120 12 12)"
+      />
+      <circle cx={12} cy={12} r={2} fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function PiperMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M5 17c2.8-9.2 8.2-13 14-12-1.6 6.4-5.1 10.6-10 11l-1.8 4.5L5 17Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M9 14c2.4-4.3 5.2-6.4 8.5-7"
+        fill="none"
+        stroke="#7C3AED"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      <circle cx={16} cy={8.5} r={1.1} fill="#7C3AED" />
+    </svg>
+  );
+}
+
+function F5TtsMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M7 5h9v3.2H10v3h5v3.1h-5V19H7V5Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M14.5 13.5c1.4 0 2.5 1 2.5 2.4s-1.1 2.5-2.5 2.5"
+        fill="none"
+        stroke="#F472B6"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <circle cx={18.3} cy={6.2} r={1.6} fill="#F472B6" />
+    </svg>
+  );
+}
+
+function ParlerMark({ size }: { size: number; color: string }) {
+  const s = size * 0.7;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M4 11c0-3.9 3.6-7 8-7s8 3.1 8 7-3.6 7-8 7c-.9 0-1.7-.1-2.5-.3L5 20l1.4-3.5C5 15.2 4 13.2 4 11Z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M8.5 11h7M8.5 8.5h7M8.5 13.5h5"
+        stroke="#F59E0B"
+        strokeWidth={1.4}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MediatekMark({ size }: { size: number; color: string }) {
+  const s = size * 0.72;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
+      <path
+        d="M3 18V6l4.5 8L12 6v12"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 6h6M18 6v12"
+        stroke="#FFFFFF"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // ---------- Brand Configurations ----------
 
 type MarkComponent = (props: {
@@ -636,7 +1319,7 @@ const BRANDS: Record<string, BrandConfig> = {
   },
   google: { bg: "#FFFFFF", fg: "#4285F4", letter: "G", mark: GoogleMark },
   deepseek: { bg: "#4D6BFE", fg: "#FFFFFF", letter: "D", mark: DeepSeekMark },
-  mediatek: { bg: "#E60012", fg: "#FFFFFF", letter: "MT" },
+  mediatek: { bg: "#E60012", fg: "#FFFFFF", letter: "MT", mark: MediatekMark },
   liquid_ai: {
     bg: "#00A7A7",
     fg: "#FFFFFF",
@@ -644,11 +1327,23 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: LiquidAIMark,
   },
   tencent: { bg: "#2563EB", fg: "#FFFFFF", letter: "T", mark: TencentMark },
-  groq: { bg: "#F55036", fg: "#FFFFFF", letter: "G" },
-  cerebras: { bg: "#0F172A", fg: "#FFFFFF", letter: "C" },
-  openrouter: { bg: "#111827", fg: "#FFFFFF", letter: "OR" },
-  zai: { bg: "#2563EB", fg: "#FFFFFF", letter: "Z" },
-  lmstudio: { bg: "#0EA5A4", fg: "#FFFFFF", letter: "LM" },
+  groq: { bg: "#F55036", fg: "#FFFFFF", letter: "G", mark: GroqMark },
+  cerebras: { bg: "#0F172A", fg: "#FFFFFF", letter: "C", mark: CerebrasMark },
+  falcon: { bg: "#6D28D9", fg: "#FFFFFF", letter: "F", mark: FalconMark },
+  ibm: { bg: "#0F62FE", fg: "#FFFFFF", letter: "IBM", mark: IbmMark },
+  openrouter: {
+    bg: "#111827",
+    fg: "#FFFFFF",
+    letter: "OR",
+    mark: OpenRouterMark,
+  },
+  zai: { bg: "#2563EB", fg: "#FFFFFF", letter: "Z", mark: ZhipuMark },
+  lmstudio: {
+    bg: "#0EA5A4",
+    fg: "#FFFFFF",
+    letter: "LM",
+    mark: LmStudioMark,
+  },
   qwen: { bg: "#FFFFFF", fg: "#6F42C1", letter: "Q", mark: QwenMark },
   useful_sensors: {
     bg: "#4F46E5",
@@ -663,12 +1358,22 @@ const BRANDS: Record<string, BrandConfig> = {
     mark: FunAudioMark,
   },
   sber: { bg: "#21A038", fg: "#FFFFFF", letter: "G", mark: SberMark },
-  ai2: { bg: "#0F766E", fg: "#FFFFFF", letter: "A2" },
-  paddlepaddle: { bg: "#2563EB", fg: "#FFFFFF", letter: "P" },
-  lighton: { bg: "#111827", fg: "#FFFFFF", letter: "L" },
-  datalab: { bg: "#7C3AED", fg: "#FFFFFF", letter: "D" },
-  dots: { bg: "#111827", fg: "#FFFFFF", letter: "D" },
-  tesseract: { bg: "#4B5563", fg: "#FFFFFF", letter: "T" },
+  ai2: { bg: "#0F766E", fg: "#FFFFFF", letter: "A2", mark: Ai2Mark },
+  paddlepaddle: {
+    bg: "#2563EB",
+    fg: "#FFFFFF",
+    letter: "P",
+    mark: PaddlePaddleMark,
+  },
+  lighton: { bg: "#111827", fg: "#FFFFFF", letter: "L", mark: LightOnMark },
+  datalab: { bg: "#7C3AED", fg: "#FFFFFF", letter: "D", mark: DatalabMark },
+  dots: { bg: "#111827", fg: "#FFFFFF", letter: "D", mark: DotsMark },
+  tesseract: {
+    bg: "#4B5563",
+    fg: "#FFFFFF",
+    letter: "T",
+    mark: TesseractMark,
+  },
   huggingface: {
     bg: "#FFD21E",
     fg: "#1F2937",
@@ -682,9 +1387,21 @@ const BRANDS: Record<string, BrandConfig> = {
     letter: "OS",
     mark: SystemMark,
   },
+  polyvoice: {
+    bg: "#2563EB",
+    fg: "#FFFFFF",
+    letter: "PV",
+    mark: PolyvoiceMark,
+  },
   sherpa: { bg: "#2563EB", fg: "#FFFFFF", letter: "S", mark: SherpaMark },
   myshell: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M", mark: MyShellMark },
   resemble: { bg: "#7C3AED", fg: "#FFFFFF", letter: "R", mark: ResembleMark },
+  supertonic: {
+    bg: "#B33C7A",
+    fg: "#FFFFFF",
+    letter: "S3",
+    mark: SupertonicMark,
+  },
   hexgrad: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
   kokoro: { bg: "#F59E0B", fg: "#111827", letter: "K", mark: KokoroMark },
   coqui: { bg: "#00C853", fg: "#FFFFFF", letter: "C", mark: CoquiMark },
@@ -719,16 +1436,62 @@ const BRANDS: Record<string, BrandConfig> = {
   kyutai: { bg: "#FF4F8B", fg: "#FFFFFF", letter: "K", mark: KyutaiMark },
   openbmb: { bg: "#2563EB", fg: "#FFFFFF", letter: "B", mark: OpenBmbMark },
   suno: { bg: "#7C3AED", fg: "#FFFFFF", letter: "S", mark: SunoMark },
-  meituan: { bg: "#FFD100", fg: "#111827", letter: "M" },
-  boson: { bg: "#0EA5E9", fg: "#FFFFFF", letter: "B" },
-  soprano: { bg: "#A855F7", fg: "#FFFFFF", letter: "S" },
-  melotts: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M" },
-  openmoss: { bg: "#059669", fg: "#FFFFFF", letter: "M" },
-  irodori: { bg: "#EC4899", fg: "#FFFFFF", letter: "I" },
-  indextts: { bg: "#F97316", fg: "#FFFFFF", letter: "I" },
-  k2fsa: { bg: "#2563EB", fg: "#FFFFFF", letter: "K2" },
-  firered: { bg: "#DC2626", fg: "#FFFFFF", letter: "FR" },
-  ollama: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "O" },
+  meituan: { bg: "#FFD100", fg: "#111827", letter: "M", mark: LongCatMark },
+  soprano: { bg: "#A855F7", fg: "#FFFFFF", letter: "S", mark: SopranoMark },
+  melotts: { bg: "#3B82F6", fg: "#FFFFFF", letter: "M", mark: MeloTtsMark },
+  openmoss: { bg: "#059669", fg: "#FFFFFF", letter: "M", mark: OpenMossMark },
+  irodori: { bg: "#EC4899", fg: "#FFFFFF", letter: "I", mark: IrodoriMark },
+  indextts: {
+    bg: "#F97316",
+    fg: "#FFFFFF",
+    letter: "I",
+    mark: IndexTtsMark,
+  },
+  k2fsa: { bg: "#2563EB", fg: "#FFFFFF", letter: "K2", mark: K2FsaMark },
+  firered: {
+    bg: "#DC2626",
+    fg: "#FFFFFF",
+    letter: "FR",
+    mark: FireRedMark,
+  },
+  ollama: { bg: "#1A1A2E", fg: "#FFFFFF", letter: "O", mark: OllamaMark },
+  boson: { bg: "#0EA5E9", fg: "#FFFFFF", letter: "B", mark: BosonMark },
+  cohere: { bg: "#FF7759", fg: "#FFFFFF", letter: "C", mark: CohereMark },
+  piper: { bg: "#5B21B6", fg: "#FFFFFF", letter: "P", mark: PiperMark },
+  rhasspy: { bg: "#5B21B6", fg: "#FFFFFF", letter: "P", mark: PiperMark },
+  f5tts: { bg: "#1E1B4B", fg: "#FFFFFF", letter: "F5", mark: F5TtsMark },
+  swivid: { bg: "#1E1B4B", fg: "#FFFFFF", letter: "F5", mark: F5TtsMark },
+  parler: {
+    bg: "#FCC419",
+    fg: "#1F2937",
+    letter: "Pa",
+    mark: ParlerMark,
+  },
+  pyannote: {
+    bg: "#7C3AED",
+    fg: "#FFFFFF",
+    letter: "PY",
+    mark: PyAnnoteMark,
+  },
+  revai: { bg: "#0F172A", fg: "#FFFFFF", letter: "R", mark: RevaiMark },
+  whisperx: {
+    bg: "#1E3A8A",
+    fg: "#FFFFFF",
+    letter: "WX",
+    mark: WhisperXMark,
+  },
+  xiaohongshu: {
+    bg: "#FF2442",
+    fg: "#FFFFFF",
+    letter: "XHS",
+    mark: FireRedMark,
+  },
+  cohere_labs: {
+    bg: "#FF7759",
+    fg: "#FFFFFF",
+    letter: "CL",
+    mark: CohereMark,
+  },
   custom: { bg: "var(--accent-2)", fg: "var(--inverse-text)", letter: "C" },
   generic: { bg: "var(--muted)", fg: "var(--inverse-text)", letter: "?" },
 };
@@ -751,6 +1514,9 @@ const PROVIDER_BRAND: Record<string, string> = {
   stt_mlx_audio: "apple",
   stt_apple_speech: "apple",
   stt_hf_verified: "huggingface",
+  polyvoice: "polyvoice",
+  wespeaker: "polyvoice",
+  silero: "polyvoice",
   nvidia: "nvidia",
   useful_sensors: "useful_sensors",
   funaudillm: "funaudillm",
@@ -766,6 +1532,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   // TTS builtin providers
   system_builtin: "system",
   system_tts: "system",
+  sherpa: "sherpa",
   sherpa_pack: "sherpa",
   sherpa_onnx: "sherpa",
   qwen3_native: "qwen",
@@ -773,6 +1540,7 @@ const PROVIDER_BRAND: Record<string, string> = {
   // TTS managed runtime providers
   openvoice: "myshell",
   chatterbox: "resemble",
+  supertonic: "supertonic",
   kokoro: "kokoro",
   xtts: "coqui",
   // TTS MLX Audio providers
@@ -823,6 +1591,10 @@ const PROVIDER_BRAND: Record<string, string> = {
   liquid_ai: "liquid_ai",
   tencent: "tencent",
   hunyuan: "tencent",
+  falcon: "falcon",
+  tii: "falcon",
+  ibm: "ibm",
+  granite: "ibm",
   meituan: "meituan",
   boson: "boson",
   soprano: "soprano",
@@ -832,6 +1604,24 @@ const PROVIDER_BRAND: Record<string, string> = {
   indextts: "indextts",
   k2fsa: "k2fsa",
   firered: "firered",
+  // Speech-analysis / file-ASR providers
+  cohere: "cohere",
+  cohere_labs: "cohere",
+  coherelabs: "cohere",
+  pyannote: "pyannote",
+  revai: "revai",
+  reverb: "revai",
+  whisperx: "whisperx",
+  xiaohongshu: "firered",
+  sortformer: "nvidia",
+  // HF TTS Verified families
+  piper: "piper",
+  rhasspy: "piper",
+  f5tts: "f5tts",
+  swivid: "f5tts",
+  parler: "parler",
+  speecht5: "microsoft",
+  // Model family aliases for LLMs
   gemma: "google",
   gemini: "google",
   llama: "meta",
@@ -870,6 +1660,8 @@ const RUNTIME_HOST_IDS = new Set([
   "lmstudio",
   "huggingface",
   "openrouter",
+  "groq",
+  "cerebras",
   "stt_hf_verified",
   "stt_whisper",
   "stt_parakeet",
@@ -899,9 +1691,15 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "current dictation", providerId: "vox_jot" },
   { keyword: "apple intelligence", providerId: "apple" },
   { keyword: "apple speech", providerId: "apple" },
+  { keyword: "polyvoice", providerId: "polyvoice" },
+  { keyword: "wespeaker", providerId: "wespeaker" },
+  { keyword: "we speaker", providerId: "wespeaker" },
+  { keyword: "silero", providerId: "silero" },
   { keyword: "distil-whisper", providerId: "huggingface" },
   { keyword: "breeze-asr", providerId: "mediatek" },
   { keyword: "breeze asr", providerId: "mediatek" },
+  { keyword: "whisper diarization", providerId: "whisperx" },
+  { keyword: "whisperx", providerId: "whisperx" },
   { keyword: "faster-whisper", providerId: "huggingface" },
   { keyword: "whisper", providerId: "stt_whisper" },
   { keyword: "parakeet", providerId: "stt_parakeet" },
@@ -914,17 +1712,48 @@ const FAMILY_RULES: FamilyRule[] = [
   { keyword: "qwen3 asr", providerId: "stt_qwen" },
   { keyword: "fireredasr", providerId: "firered" },
   { keyword: "firered", providerId: "firered" },
+  { keyword: "xiaohongshu", providerId: "firered" },
+  { keyword: "cohere transcribe", providerId: "cohere" },
+  { keyword: "coherelabs", providerId: "cohere" },
+  { keyword: "cohere labs", providerId: "cohere" },
+  { keyword: "cohere", providerId: "cohere" },
+  { keyword: "pyannote", providerId: "pyannote" },
+  { keyword: "reverb diarization", providerId: "revai" },
+  { keyword: "reverb", providerId: "revai" },
+  { keyword: "revai", providerId: "revai" },
+  { keyword: "sortformer", providerId: "nvidia" },
+  // HF TTS Verified collection labels
+  { keyword: "piper-voices", providerId: "piper" },
+  { keyword: "piper voices", providerId: "piper" },
+  { keyword: "rhasspy/piper", providerId: "piper" },
+  { keyword: "rhasspy", providerId: "piper" },
+  { keyword: "piper", providerId: "piper" },
+  { keyword: "speecht5", providerId: "microsoft" },
+  { keyword: "speech t5", providerId: "microsoft" },
+  { keyword: "parler-tts", providerId: "parler" },
+  { keyword: "parler tts", providerId: "parler" },
+  { keyword: "parler", providerId: "parler" },
+  { keyword: "f5-tts", providerId: "f5tts" },
+  { keyword: "f5 tts", providerId: "f5tts" },
+  { keyword: "swivid", providerId: "f5tts" },
+  { keyword: "tada-", providerId: "huggingface" },
+  { keyword: "tada ", providerId: "huggingface" },
   { keyword: "voxtral", providerId: "mistral" },
   { keyword: "lfm2", providerId: "liquid_ai" },
   { keyword: "lfm audio", providerId: "liquid_ai" },
   { keyword: "liquid", providerId: "liquid_ai" },
   { keyword: "hunyuan", providerId: "tencent" },
   { keyword: "tencent", providerId: "tencent" },
+  { keyword: "granite", providerId: "ibm" },
+  { keyword: "falcon", providerId: "falcon" },
+  { keyword: "tii", providerId: "tii" },
   { keyword: "smollm", providerId: "huggingface" },
   { keyword: "smol lm", providerId: "huggingface" },
   { keyword: "vibevoice", providerId: "microsoft" },
   { keyword: "openvoice", providerId: "openvoice" },
   { keyword: "chatterbox", providerId: "chatterbox" },
+  { keyword: "supertonic", providerId: "supertonic" },
+  { keyword: "supertone", providerId: "supertonic" },
   { keyword: "kokoro", providerId: "kokoro" },
   { keyword: "xtts", providerId: "xtts" },
   { keyword: "nvidia", providerId: "nvidia" },
@@ -1058,7 +1887,14 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   meta: "Meta Llama",
   liquid_ai: "Liquid AI",
   tencent: "Tencent Hunyuan",
+  falcon: "TII Falcon",
+  tii: "Technology Innovation Institute",
+  ibm: "IBM Granite",
+  granite: "IBM Granite",
   huggingface: "Hugging Face",
+  polyvoice: "Polyvoice",
+  wespeaker: "WeSpeaker",
+  silero: "Silero",
   microsoft: "Microsoft",
   google: "Google",
   mistral: "Mistral AI",
@@ -1074,6 +1910,7 @@ const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   indextts: "IndexTTS",
   k2fsa: "k2-fsa",
   firered: "FireRedASR",
+  supertonic: "Supertonic",
   ollama: "Ollama",
 };
 

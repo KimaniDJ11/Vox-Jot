@@ -906,7 +906,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     if (knownSize) return knownSize;
 
     if (model.source_kind === "managed_provider") {
-      return t("modelSelector.noDownload", { defaultValue: "No download" });
+      return model.runtime_provider_id === "apple_intelligence"
+        ? t("modelHub.chips.internalStorage", { defaultValue: "Internal" })
+        : t("modelHub.chips.externalStorage", {
+            defaultValue: "External storage",
+          });
     }
 
     if (model.source_kind === "lm_studio") {
@@ -965,10 +969,14 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         icon: <HardDrive className="h-3 w-3" />,
         detail:
           model.source_kind === "managed_provider"
-            ? t("modelSelector.noDownloadDetail", {
-                defaultValue:
-                  "Uses a configured provider and stores no local model in Vox Jot.",
-              })
+            ? model.runtime_provider_id === "apple_intelligence"
+              ? t("modelHub.chips.internalStorageDetail", {
+                  defaultValue: "Uses a built-in local runtime.",
+                })
+              : t("modelHub.chips.externalStorageDetail", {
+                  defaultValue:
+                    "Uses a configured provider and stores no local model in Vox Jot.",
+                })
             : t("modelHub.chips.storageSizeDetail", {
                 defaultValue: "Approximate model storage footprint.",
               }),

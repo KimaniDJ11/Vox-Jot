@@ -100,6 +100,11 @@ describe("resolveModelProviderId", () => {
         expected: "mistral",
       },
       {
+        title: "FireRedASR2 AED (MLX)",
+        runtimeProviderId: "stt_mlx_audio",
+        expected: "firered",
+      },
+      {
         title: "Apple Speech",
         runtimeProviderId: "stt_apple_speech",
         expected: "apple",
@@ -108,6 +113,16 @@ describe("resolveModelProviderId", () => {
         title: "Current Dictation Engine Vox Jot",
         runtimeProviderId: "generic",
         expected: "vox_jot",
+      },
+      {
+        title: "Polyvoice ONNX Diarization",
+        runtimeProviderId: "generic",
+        expected: "polyvoice",
+      },
+      {
+        title: "Wespeaker voxceleb ResNet34 embeddings",
+        runtimeProviderId: "generic",
+        expected: "wespeaker",
       },
 
       // TTS
@@ -120,6 +135,16 @@ describe("resolveModelProviderId", () => {
         title: "Chatterbox",
         runtimeProviderId: "chatterbox",
         expected: "chatterbox",
+      },
+      {
+        title: "Supertonic 3",
+        runtimeProviderId: "supertonic",
+        expected: "supertonic",
+      },
+      {
+        title: "Supertone/supertonic-3",
+        runtimeProviderId: "generic",
+        expected: "supertonic",
       },
       { title: "Kokoro 82M", runtimeProviderId: "kokoro", expected: "kokoro" },
       { title: "XTTS v2", runtimeProviderId: "xtts", expected: "xtts" },
@@ -171,6 +196,21 @@ describe("resolveModelProviderId", () => {
         expected: "mlx_lfm_audio",
       },
       {
+        title: "LongCat AudioDiT 3.5B 4-bit",
+        runtimeProviderId: "mlx_longcat_audiodit",
+        expected: "mlx_longcat_audiodit",
+      },
+      {
+        title: "Soprano 80M 4-bit",
+        runtimeProviderId: "mlx_soprano",
+        expected: "mlx_soprano",
+      },
+      {
+        title: "MeloTTS English",
+        runtimeProviderId: "mlx_melotts",
+        expected: "mlx_melotts",
+      },
+      {
         title: "Pocket TTS 4-bit",
         runtimeProviderId: "mlx_pocket_tts",
         expected: "mlx_pocket_tts",
@@ -189,6 +229,21 @@ describe("resolveModelProviderId", () => {
         title: "VibeVoice Realtime 0.5B",
         runtimeProviderId: "vibevoice",
         expected: "vibevoice",
+      },
+      {
+        title: "MOSS-TTS Nano 100M",
+        runtimeProviderId: "mlx_moss_tts",
+        expected: "mlx_moss_tts",
+      },
+      {
+        title: "Irodori TTS 500M v2 4-bit",
+        runtimeProviderId: "mlx_irodori_tts",
+        expected: "mlx_irodori_tts",
+      },
+      {
+        title: "IndexTTS 1.5",
+        runtimeProviderId: "mlx_indextts",
+        expected: "mlx_indextts",
       },
       {
         title: "System Voices",
@@ -261,6 +316,16 @@ describe("resolveModelProviderId", () => {
         expected: "meta",
       },
       {
+        title: "llama-3.1-8b-instant",
+        runtimeProviderId: "groq",
+        expected: "meta",
+      },
+      {
+        title: "llama-3.3-70b",
+        runtimeProviderId: "cerebras",
+        expected: "meta",
+      },
+      {
         title: "Qwen 2.5 1.5B Instruct",
         runtimeProviderId: "ollama",
         expected: "qwen",
@@ -291,9 +356,139 @@ describe("resolveModelProviderId", () => {
         expected: "huggingface",
       },
       {
+        title: "Falcon 3 1B",
+        runtimeProviderId: "ollama",
+        expected: "falcon",
+      },
+      {
+        title: "Granite 3.1 Dense 2B",
+        runtimeProviderId: "ollama",
+        expected: "ibm",
+      },
+      {
+        title: "Granite 3.1 MoE 1B",
+        runtimeProviderId: "ollama",
+        expected: "ibm",
+      },
+      {
         title: "Tencent Hunyuan A13B",
         runtimeProviderId: "openrouter",
         expected: "tencent",
+      },
+
+      // File ASR / Speech Analysis / Speaker Isolation
+      {
+        title: "IBM Granite Granite Speech 4.1 2B ibm-granite/granite-speech-4.1-2b",
+        runtimeProviderId: "huggingface",
+        expected: "ibm",
+      },
+      {
+        title: "CohereLabs Cohere Transcribe 03-2026 CohereLabs/cohere-transcribe-03-2026",
+        runtimeProviderId: "huggingface",
+        expected: "cohere",
+      },
+      {
+        title: "Alibaba Qwen Qwen3 ASR 0.6B (MLX) mlx-community/Qwen3-ASR-0.6B-8bit",
+        runtimeProviderId: "huggingface",
+        expected: "stt_qwen",
+      },
+      {
+        title: "Xiaohongshu FireRedASR2 AED (MLX) mlx-community/FireRedASR2-AED-mlx",
+        runtimeProviderId: "huggingface",
+        expected: "firered",
+      },
+      {
+        title: "Microsoft VibeVoice ASR 9B (MLX) mlx-community/VibeVoice-ASR-bf16",
+        runtimeProviderId: "huggingface",
+        expected: "microsoft",
+      },
+      {
+        title: "pyannote PyAnnote Community-1 pyannote/speaker-diarization-community-1",
+        runtimeProviderId: "huggingface",
+        expected: "pyannote",
+      },
+      {
+        title: "pyannote PyAnnote 3.1 pyannote/speaker-diarization-3.1",
+        runtimeProviderId: "huggingface",
+        expected: "pyannote",
+      },
+      {
+        title: "NVIDIA Sortformer 4spk v1 nvidia/diar_sortformer_4spk-v1",
+        runtimeProviderId: "huggingface",
+        expected: "nvidia",
+      },
+      {
+        title: "NVIDIA Sortformer 4spk v1 (MLX) mlx-community/diar_sortformer_4spk-v1-fp16",
+        runtimeProviderId: "huggingface",
+        expected: "nvidia",
+      },
+      {
+        title: "NVIDIA Sortformer 4spk v2.1 (MLX) mlx-community/diar_streaming_sortformer_4spk-v2.1-fp16",
+        runtimeProviderId: "huggingface",
+        expected: "nvidia",
+      },
+      {
+        title: "Revai Revai Reverb Diarization V2 Revai/reverb-diarization-v2",
+        runtimeProviderId: "huggingface",
+        expected: "revai",
+      },
+      {
+        title: "WhisperX Whisper Diarization Systran/faster-whisper-large-v3",
+        runtimeProviderId: "huggingface",
+        expected: "whisperx",
+      },
+      {
+        title: "polyvoice Polyvoice ONNX Diarization Wespeaker/wespeaker-voxceleb-resnet34",
+        runtimeProviderId: "generic",
+        expected: "polyvoice",
+      },
+      {
+        title: "Vox Jot Current Dictation Engine",
+        runtimeProviderId: "generic",
+        expected: "vox_jot",
+      },
+      {
+        title: "Vox Jot No Speaker Labels",
+        runtimeProviderId: "generic",
+        expected: "vox_jot",
+      },
+
+      // HF TTS Verified collection (sidecar runtime)
+      {
+        title: "piper-voices rhasspy/piper-voices",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "piper",
+      },
+      {
+        title: "speecht5 tts microsoft/speecht5_tts",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "microsoft",
+      },
+      {
+        title: "parler-tts-mini-v1.1 parler-tts/parler-tts-mini-v1.1",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "parler",
+      },
+      {
+        title:
+          "parler-tts-mini-multilingual-v1.1 parler-tts/parler-tts-mini-multilingual-v1.1",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "parler",
+      },
+      {
+        title: "F5-TTS SWivid/F5-TTS",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "f5tts",
+      },
+      {
+        title: "outetts-0.3-1b OuteAI/OuteTTS-0.3-1B",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "mlx_oute",
+      },
+      {
+        title: "tada-1b tada/tada-1b",
+        runtimeProviderId: "local_sidecar_api",
+        expected: "huggingface",
       },
     ];
 
@@ -324,10 +519,17 @@ describe("resolveModelProviderId", () => {
       "stt_gigaam",
       "liquid_ai",
       "tencent",
+      "falcon",
+      "ibm",
+      "lighton",
+      "datalab",
+      "ai2",
+      "zai",
       "system_builtin",
       "sherpa_pack",
       "openvoice",
       "chatterbox",
+      "supertonic",
       "kokoro",
       "xtts",
       "mlx_kokoro",
@@ -342,11 +544,54 @@ describe("resolveModelProviderId", () => {
       "mlx_bark",
       "mlx_fish_audio",
       "mlx_lfm_audio",
+      "mlx_longcat_audiodit",
+      "mlx_soprano",
+      "mlx_melotts",
       "mlx_pocket_tts",
       "mlx_voxcpm",
       "mlx_voxtral_tts",
+      "mlx_moss_tts",
+      "mlx_irodori_tts",
+      "mlx_indextts",
       "lfm_audio_gguf",
       "vibevoice",
+      "polyvoice",
+      "wespeaker",
+      "silero",
+      // Cloud LLM providers
+      "openai",
+      "anthropic",
+      "google",
+      "deepseek",
+      "qwen",
+      "meta",
+      "microsoft",
+      "mistral",
+      "huggingface",
+      "ollama",
+      "groq",
+      "cerebras",
+      "openrouter",
+      "lmstudio",
+      // OCR providers
+      "paddlepaddle",
+      "tesseract",
+      "dots",
+      // File ASR / Speech analysis
+      "cohere",
+      "pyannote",
+      "revai",
+      "whisperx",
+      "firered",
+      "piper",
+      "f5tts",
+      "parler",
+      "boson",
+      "k2fsa",
+      "mediatek",
+      // Misc
+      "nvidia",
+      "sherpa",
     ];
 
     for (const providerId of providerIds) {

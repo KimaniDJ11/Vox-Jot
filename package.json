@@ -57,7 +57,9 @@
     "eval:realworld:stt": "bun scripts/run-stt-spelling-model-eval.ts --manifest test-data/audio-regression/manifest.json --skip-generate --no-categories --output-dir output/stt-realworld-model-eval --summary-name stt-realworld-summary --suite-title \"STT Real-World Model Evaluation Matrix\" --description \"OpenSLR Mini LibriSpeech dev-clean-2 WAV clips from test-data/audio-regression. Post-processing is disabled, so this measures raw transcription only.\"",
     "models:stt:download-all": "bun scripts/download-all-stt-models.ts",
     "models:validate-public": "bun scripts/validate-public-model-catalog.ts",
+    "audit:distribution": "bun scripts/audit-distribution-readiness.ts",
     "check:translations": "bun scripts/check-translations.ts",
+    "audit:translations": "bun scripts/audit-untranslated-locales.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"
   },
   "dependencies": {

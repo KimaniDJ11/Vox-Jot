@@ -1,19 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Activity,
-  ChevronDown,
-  Gauge,
-  Globe,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Activity, Gauge } from "lucide-react";
 import type { ModelCardStatus } from "@/components/onboarding";
 import { ModelCard } from "@/components/onboarding";
 import { useModelStore } from "@/stores/modelStore";
@@ -36,6 +24,15 @@ import {
   STT_EVALUATION_RUN,
   type SttEvaluationResult,
 } from "@/lib/sttEvaluationResults";
+import ModelListControls from "@/components/model-hub/ModelListControls";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  splitInstalledModels,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
 
 // check if model supports a language based on its supported_languages list
 const modelSupportsLanguage = (model: ModelInfo, langCode: string): boolean => {
@@ -48,6 +45,7 @@ interface ModelsSettingsProps {
   showActiveModelBanner?: boolean;
   /** Optional text filter from model hub search (applied with language/provider filters). */
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
   hubFilterLabels?: boolean;
   /** When true, shows the STT benchmark split panel beside the model list. */
@@ -58,20 +56,29 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery = "",
+  modelHubControls,
   hubFilterLabels = false,
   showEvaluationPanel = false,
 }) => {
   const { t } = useTranslation();
   const [switchingModelId, setSwitchingModelId] = useState<string | null>(null);
-  const [languageFilter, setLanguageFilter] = useState("all");
-  const [providerFilter, setProviderFilter] = useState("all");
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const [languageSearch, setLanguageSearch] = useState("");
+  const [localLanguageFilter, setLocalLanguageFilter] = useState("all");
+  const [localProviderFilter, setLocalProviderFilter] = useState("all");
+  const [localSortMode, setLocalSortMode] =
+    useState<ModelSortMode>("best_match");
+  const languageFilter =
+    modelHubControls?.languageFilter ?? localLanguageFilter;
+  const providerFilter =
+    modelHubControls?.providerFilter ?? localProviderFilter;
+  const sortMode = modelHubControls?.sortMode ?? localSortMode;
+  const setLanguageFilter =
+    modelHubControls?.setLanguageFilter ?? setLocalLanguageFilter;
+  const setProviderFilter =
+    modelHubControls?.setProviderFilter ?? setLocalProviderFilter;
+  const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const portalTarget = usePortalTarget(titleActionTargetId);
   const [platformOverview, setPlatformOverview] =
     useState<ModelPlatformOverview | null>(null);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const {
     models,
     currentModel,
@@ -95,40 +102,20 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     }
   }, []);
 
-  // click outside handler for language dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        languageDropdownRef.current &&
-        !languageDropdownRef.current.contains(event.target as Node)
-      ) {
-        setLanguageDropdownOpen(false);
-        setLanguageSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // focus search input when dropdown opens
-  useEffect(() => {
-    if (languageDropdownOpen && languageSearchInputRef.current) {
-      languageSearchInputRef.current.focus();
-    }
-  }, [languageDropdownOpen]);
-
   useEffect(() => {
     void loadPlatformOverview();
   }, [loadPlatformOverview, models, currentModel]);
 
-  // filtered languages for dropdown (exclude "auto")
-  const filteredLanguages = useMemo(() => {
-    return LANGUAGES.filter(
-      (lang) =>
-        lang.value !== "auto" &&
-        lang.label.toLowerCase().includes(languageSearch.toLowerCase()),
-    );
-  }, [languageSearch]);
+  const languageOptions = useMemo(
+    () => [
+      { value: "all", label: hubFilterLabels ? "Language" : "All Languages" },
+      ...LANGUAGES.filter((lang) => lang.value !== "auto").map((lang) => ({
+        value: lang.value,
+        label: lang.label,
+      })),
+    ],
+    [hubFilterLabels],
+  );
 
   // Get selected language label
   const idleLanguageFilterLabel = hubFilterLabels
@@ -139,7 +126,10 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     if (languageFilter === "all") {
       return idleLanguageFilterLabel;
     }
-    return LANGUAGES.find((lang) => lang.value === languageFilter)?.label || "";
+    return (
+      LANGUAGES.find((lang) => lang.value === languageFilter)?.label ||
+      languageFilter
+    );
   }, [languageFilter, idleLanguageFilterLabel]);
   const hasActiveFilter = languageFilter !== "all";
 
@@ -162,16 +152,56 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     }
     return (
       sttProviderOptions.find((provider) => provider.value === providerFilter)
-        ?.label || idle
+        ?.label ||
+      providerFilter ||
+      idle
     );
   }, [hubFilterLabels, providerFilter, sttProviderOptions]);
-  const hasActiveProviderFilter = providerFilter !== "all";
 
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      providerFilter !== "all" &&
+      !sttProviderOptions.some((provider) => provider.value === providerFilter)
+    ) {
+      setProviderFilter("all");
+    }
+  }, [modelHubControls, providerFilter, setProviderFilter, sttProviderOptions]);
+
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      languageFilter !== "all" &&
+      !languageOptions.some((language) => language.value === languageFilter)
+    ) {
+      setLanguageFilter("all");
+    }
+  }, [languageFilter, languageOptions, modelHubControls, setLanguageFilter]);
   const sttCatalogById = useMemo(() => {
     return new Map(
       (platformOverview?.stt.models ?? []).map((model) => [model.id, model]),
     );
   }, [platformOverview]);
+
+  const providerRankById = useMemo(
+    () =>
+      new Map(
+        sttProviderOptions.map((provider, index) => [provider.value, index]),
+      ),
+    [sttProviderOptions],
+  );
+
+  const sortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+
+  const selectedSortLabel = useMemo(
+    () =>
+      sortOptions.find((option) => option.value === sortMode)?.label ??
+      "Best Match",
+    [sortMode, sortOptions],
+  );
 
   const getModelStatus = (modelId: string): ModelCardStatus => {
     if (modelId in extractingModels) {
@@ -264,37 +294,57 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     });
   }, [models, languageFilter, providerFilter, sttCatalogById, hubSearchQuery]);
 
-  // Split filtered models into downloaded (including custom) and available sections
   const { downloadedModels, availableModels } = useMemo(() => {
-    const downloaded: ModelInfo[] = [];
-    const available: ModelInfo[] = [];
-
-    for (const model of filteredModels) {
-      if (
+    const split = splitInstalledModels(filteredModels, (model) => {
+      return (
         model.is_custom ||
         model.is_downloaded ||
         model.id in downloadingModels ||
         model.id in extractingModels
-      ) {
-        downloaded.push(model);
-      } else {
-        available.push(model);
-      }
-    }
-
-    // Sort: active model first, then non-custom, then custom at the bottom
-    downloaded.sort((a, b) => {
-      if (a.id === currentModel) return -1;
-      if (b.id === currentModel) return 1;
-      if (a.is_custom !== b.is_custom) return a.is_custom ? 1 : -1;
-      return 0;
+      );
     });
 
-    return {
-      downloadedModels: downloaded,
-      availableModels: available,
+    const accessors = {
+      label: (model: ModelInfo) => model.name,
+      active: (model: ModelInfo) => model.id === currentModel,
+      installed: (model: ModelInfo) => model.is_downloaded || model.is_custom,
+      runnable: (model: ModelInfo) => model.is_downloaded || model.is_custom,
+      inProgress: (model: ModelInfo) =>
+        model.id in downloadingModels || model.id in extractingModels,
+      recommended: (model: ModelInfo) => model.is_recommended,
+      rank: (model: ModelInfo) => getSttEvaluationResult(model.id)?.rank,
+      latencyMs: (model: ModelInfo) =>
+        getSttEvaluationResult(model.id)?.latencyP50Ms,
+      sizeMb: (model: ModelInfo) => Number(model.size_mb) || undefined,
+      providerRank: (model: ModelInfo) => {
+        const providerId = sttCatalogById.get(model.id)?.provider_id;
+        return providerId ? providerRankById.get(providerId) : undefined;
+      },
     };
-  }, [filteredModels, downloadingModels, extractingModels, currentModel]);
+
+    return {
+      downloadedModels: orderModelList(
+        split.downloadedModels,
+        "downloaded",
+        sortMode,
+        accessors,
+      ),
+      availableModels: orderModelList(
+        split.availableModels,
+        "available",
+        sortMode,
+        accessors,
+      ),
+    };
+  }, [
+    filteredModels,
+    downloadingModels,
+    extractingModels,
+    currentModel,
+    providerRankById,
+    sortMode,
+    sttCatalogById,
+  ]);
 
   const currentModelInfo =
     models.find((model) => model.id === currentModel) || null;
@@ -333,140 +383,28 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
     currentModelInfo && getSttEvaluationResult(currentModelInfo.id);
 
   const filterAction = (
-    <div className="flex items-center gap-2">
-      <div
-        className={`relative inline-flex ${hubFilterLabels ? "h-10 w-10 shrink-0" : "w-36"}`}
-      >
-        <select
-          value={providerFilter}
-          onChange={(event) => setProviderFilter(event.target.value)}
-          className={`${hubFilterLabels ? "h-full" : "min-h-9"} w-full appearance-none rounded-full border py-1.5 text-xs font-semibold shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hubFilterLabels
-              ? hasActiveProviderFilter
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] px-0 text-transparent"
-                : "border-[var(--border)] bg-[var(--card)] px-0 text-transparent"
-              : "border-[var(--border)] bg-[var(--card)] pe-9 ps-3 text-[var(--text)]"
-          }`}
-          aria-label={`Filter speech models by provider: ${selectedProviderLabel}`}
-          title={`Provider: ${selectedProviderLabel}`}
-        >
-          {sttProviderOptions.map((provider) => (
-            <option
-              key={provider.value}
-              value={provider.value}
-              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
-            >
-              {provider.label}
-            </option>
-          ))}
-        </select>
-        {hubFilterLabels ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {hasActiveProviderFilter ? (
-              <ProviderIcon providerId={providerFilter} size="sm" />
-            ) : (
-              <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
-            )}
-          </div>
-        ) : (
-          <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-        )}
-      </div>
-      <div className="relative" ref={languageDropdownRef}>
-        <button
-          type="button"
-          onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hasActiveFilter
-              ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
-              : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
-          } ${hubFilterLabels ? "h-10 w-10 px-0" : "min-h-9 w-36 px-3"}`}
-          aria-haspopup="listbox"
-          aria-expanded={languageDropdownOpen}
-          aria-label={`Filter speech models by language: ${selectedLanguageLabel}`}
-          title={`Language: ${selectedLanguageLabel}`}
-        >
-          <Globe className={hubFilterLabels ? "h-4 w-4" : "h-3 w-3"} />
-          {hubFilterLabels ? null : (
-            <>
-              <span className="min-w-0 flex-1 truncate text-left">
-                {selectedLanguageLabel}
-              </span>
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${
-                  languageDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </>
-          )}
-        </button>
-
-        {languageDropdownOpen && (
-          <div className="absolute top-full right-0 z-50 mt-1 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
-            <div className="border-b border-mid-gray/40 p-2">
-              <input
-                ref={languageSearchInputRef}
-                type="text"
-                value={languageSearch}
-                onChange={(e) => setLanguageSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && filteredLanguages.length > 0) {
-                    setLanguageFilter(filteredLanguages[0].value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  } else if (e.key === "Escape") {
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }
-                }}
-                placeholder={t("settings.general.language.searchPlaceholder")}
-                className="w-full rounded-md border border-mid-gray/40 bg-mid-gray/10 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-logo-primary"
-              />
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setLanguageFilter("all");
-                  setLanguageDropdownOpen(false);
-                  setLanguageSearch("");
-                }}
-                className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                  languageFilter === "all"
-                    ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                    : "hover:bg-mid-gray/10"
-                }`}
-              >
-                {idleLanguageFilterLabel}
-              </button>
-              {filteredLanguages.map((lang) => (
-                <button
-                  key={lang.value}
-                  type="button"
-                  onClick={() => {
-                    setLanguageFilter(lang.value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }}
-                  className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                    languageFilter === lang.value
-                      ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                      : "hover:bg-mid-gray/10"
-                  }`}
-                >
-                  {lang.label}
-                </button>
-              ))}
-              {filteredLanguages.length === 0 && (
-                <div className="px-3 py-2 text-center text-sm text-[var(--muted)]">
-                  {t("settings.general.language.noResults")}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <ModelListControls
+      provider={{
+        value: providerFilter,
+        options: sttProviderOptions,
+        onChange: setProviderFilter,
+        label: selectedProviderLabel,
+        show: sttProviderOptions.length > 2,
+      }}
+      language={{
+        value: languageFilter,
+        options: languageOptions,
+        onChange: setLanguageFilter,
+        label: selectedLanguageLabel,
+        show: true,
+      }}
+      sort={{
+        value: sortMode,
+        options: sortOptions,
+        onChange: setSortMode,
+        label: selectedSortLabel,
+      }}
+    />
   );
 
   if (loading) {
@@ -529,7 +467,7 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
 
         {activeEvaluation ? (
           <EvaluationResultBlock
-            title="Active model"
+            title={t("settings.models.evaluation.activeModel")}
             modelName={currentModelInfo?.name ?? activeEvaluation.label}
             result={activeEvaluation}
           />
@@ -793,14 +731,15 @@ const EvaluationResultBlock: React.FC<{
   title?: string;
   compact?: boolean;
 }> = ({ modelName, result, title, compact = false }) => {
+  const { t } = useTranslation();
   const statusLabel =
     result.status === "tested"
       ? result.rank
         ? `#${result.rank}`
-        : "Tested"
+        : t("settings.models.evaluation.tested")
       : result.status === "blocked"
-        ? "Blocked"
-        : "Pending";
+        ? t("settings.models.evaluation.blocked")
+        : t("settings.models.evaluation.pending");
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-3">
@@ -826,12 +765,12 @@ const EvaluationResultBlock: React.FC<{
         >
           <MiniMetric
             icon={<Gauge className="h-3.5 w-3.5" />}
-            label="WER"
+            label={t("settings.models.evaluation.wer")}
             value={formatWer(result.averageWer)}
           />
           <MiniMetric
             icon={<Activity className="h-3.5 w-3.5" />}
-            label="Match"
+            label={t("settings.models.evaluation.match")}
             value={`${result.normalizedMatches ?? 0}/${result.totalCases ?? 0}`}
           />
           {!compact ? (

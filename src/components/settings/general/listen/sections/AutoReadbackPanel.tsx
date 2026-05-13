@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   type TtsAutoReadbackMode,
   type TtsAutoReadbackScope,
@@ -15,14 +16,15 @@ export const AutoReadbackPanel: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
+  const { t } = useTranslation();
   const settings = speech.settings;
   if (!settings) return null;
 
   const content = (
     <div className={whiteFlatSectionSurfaceClassName}>
       <SettingContainer
-        title="Auto Readback"
-        description="Choose when Vox Jot automatically speaks the final output."
+        title={t("listen.autoReadback.title")}
+        description={t("listen.autoReadback.description")}
         descriptionMode="tooltip"
         grouped={true}
         disabled={!speech.ttsEnabled}
@@ -39,11 +41,14 @@ export const AutoReadbackPanel: React.FC<{
             !speech.ttsEnabled || speech.isUpdating("tts_auto_readback_mode")
           }
           options={[
-            { value: "off", label: "Off" },
-            { value: "after_output", label: "After output" },
+            { value: "off", label: t("common.off") },
+            {
+              value: "after_output",
+              label: t("listen.autoReadback.modes.afterOutput"),
+            },
             {
               value: "after_preview_confirm",
-              label: "After preview confirm",
+              label: t("listen.autoReadback.modes.afterPreviewConfirm"),
             },
           ]}
         />
@@ -51,8 +56,8 @@ export const AutoReadbackPanel: React.FC<{
 
       <div className="border-t border-[var(--border)]">
         <SettingContainer
-          title="Readback Scope"
-          description="Control whether automatic readback applies only to dictation or also to selection actions."
+          title={t("listen.autoReadback.scopeTitle")}
+          description={t("listen.autoReadback.scopeDescription")}
           descriptionMode="tooltip"
           grouped={true}
           disabled={!speech.ttsEnabled}
@@ -69,10 +74,13 @@ export const AutoReadbackPanel: React.FC<{
               !speech.ttsEnabled || speech.isUpdating("tts_auto_readback_scope")
             }
             options={[
-              { value: "dictation_only", label: "Dictation only" },
+              {
+                value: "dictation_only",
+                label: t("listen.autoReadback.scopes.dictationOnly"),
+              },
               {
                 value: "dictation_and_selection",
-                label: "Dictation and selection",
+                label: t("listen.autoReadback.scopes.dictationAndSelection"),
               },
             ]}
           />
@@ -81,8 +89,8 @@ export const AutoReadbackPanel: React.FC<{
 
       <div className="border-t border-[var(--border)]">
         <SettingContainer
-          title="Readback Text"
-          description="Choose whether bilingual output reads the translated block or the full final output."
+          title={t("listen.autoReadback.textTitle")}
+          description={t("listen.autoReadback.textDescription")}
           descriptionMode="tooltip"
           grouped={true}
           disabled={!speech.ttsEnabled}
@@ -99,8 +107,14 @@ export const AutoReadbackPanel: React.FC<{
               !speech.ttsEnabled || speech.isUpdating("tts_readback_text_mode")
             }
             options={[
-              { value: "final_output", label: "Final output" },
-              { value: "translated_block", label: "Translated block" },
+              {
+                value: "final_output",
+                label: t("listen.autoReadback.textModes.finalOutput"),
+              },
+              {
+                value: "translated_block",
+                label: t("listen.autoReadback.textModes.translatedBlock"),
+              },
             ]}
           />
         </SettingContainer>
@@ -113,8 +127,8 @@ export const AutoReadbackPanel: React.FC<{
             void speech.updateSetting("tts_stop_on_record", enabled)
           }
           isUpdating={speech.isUpdating("tts_stop_on_record")}
-          label="Stop Speech On Record"
-          description="Cancel current speech output as soon as recording starts."
+          label={t("listen.autoReadback.stopOnRecord")}
+          description={t("listen.autoReadback.stopOnRecordDescription")}
           descriptionMode="tooltip"
           grouped={true}
           disabled={!speech.ttsEnabled}
@@ -127,5 +141,9 @@ export const AutoReadbackPanel: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="Auto-Readback">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("listen.autoReadback.groupTitle")}>
+      {content}
+    </SettingsGroup>
+  );
 };

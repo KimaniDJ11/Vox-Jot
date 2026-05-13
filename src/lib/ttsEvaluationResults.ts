@@ -785,3 +785,9 @@ export const TTS_EVALUATION_RESULTS: TtsEvaluationResult[] = [
       "Only one of five hard-suite prompts passed; keep available for manual testing, not recommended as a default.",
   },
 ];
+
+export function getTtsEvaluationResult(
+  modelId: string,
+): TtsEvaluationResult | undefined {
+  return TTS_EVALUATION_RESULTS.find((result) => result.modelId === modelId);
+}

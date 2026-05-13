@@ -6,6 +6,7 @@ import RefineModelsSettings from "@/components/settings/llm/RefineModelsSettings
 import { SnippetSettings } from "@/components/settings/snippets/SnippetSettings";
 import { WriteRulesSettings } from "@/components/settings/write-rules/WriteRulesSettings";
 import { SettingsGroup } from "@/components/ui";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 
 export const RefineTranslationSection: React.FC = () => {
   const { t } = useTranslation();
@@ -14,6 +15,7 @@ export const RefineTranslationSection: React.FC = () => {
       <SettingsGroup
         title={t("appSections.sections.translationTitle")}
         description={t("appSections.sections.translationDescription")}
+        showTitle={false}
       >
         <TranslationSettingsCard />
       </SettingsGroup>
@@ -35,12 +37,14 @@ export const RefineModelsSection: React.FC<{
   titleActionTargetId?: string;
   hubSearchQuery?: string;
   onHubSearchQueryChange?: (value: string) => void;
+  modelHubControls?: ModelHubControlState;
   hubFilterLabels?: boolean;
   showEvaluationPanel?: boolean;
 }> = ({
   titleActionTargetId,
   hubSearchQuery,
   onHubSearchQueryChange,
+  modelHubControls,
   hubFilterLabels,
   showEvaluationPanel,
 }) => (
@@ -49,6 +53,7 @@ export const RefineModelsSection: React.FC<{
       titleActionTargetId={titleActionTargetId}
       hubSearchQuery={hubSearchQuery}
       onHubSearchQueryChange={onHubSearchQueryChange}
+      modelHubControls={modelHubControls}
       hubFilterLabels={hubFilterLabels}
       showEvaluationPanel={showEvaluationPanel}
     />

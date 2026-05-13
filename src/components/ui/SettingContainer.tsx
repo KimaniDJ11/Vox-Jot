@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { HighlightTrack } from "@/motion/HighlightTrack";
 import {
@@ -37,6 +38,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   disabled = false,
   tooltipPosition = "top",
 }) => {
+  const { t } = useTranslation();
   const [showTooltip, setShowTooltip] = useState(false);
   const [hovered, setHovered] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +79,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       onClick={toggleTooltip}
-      aria-label="More information"
+      aria-label={t("common.moreInformation")}
       aria-expanded={showTooltip}
     >
       <svg

@@ -12,19 +12,15 @@ import { useTranslation } from "react-i18next";
 import {
   Activity,
   AlertTriangle,
-  Brain,
   Check,
-  ChevronDown,
   Cloud,
   Cpu,
   Download,
   Gauge,
-  Globe,
   HardDrive,
+  KeyRound,
   Loader2,
-  Monitor,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Wrench,
 } from "lucide-react";
@@ -42,14 +38,28 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "@/components/model-hub/modelIdentityChips";
+import ModelListControls from "@/components/model-hub/ModelListControls";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
-import { LANGUAGES } from "@/lib/constants/languages";
 import {
   getLlmEvaluationResult,
   LLM_EVALUATION_RESULTS,
   LLM_EVALUATION_RUN,
   type LlmEvaluationResult,
 } from "@/lib/llmEvaluationResults";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -82,6 +92,7 @@ type RefineModelDescriptor = {
   active: boolean;
   runnable: boolean;
   downloadable: boolean;
+  requires_api_key: boolean;
   source_repo_id?: string | null;
   source_file_name?: string | null;
   source_url?: string | null;
@@ -210,6 +221,7 @@ type RefineModelsSettingsProps = {
   /** When both are set, search is controlled by the parent (e.g. model hub) and the inline search card is hidden. */
   hubSearchQuery?: string;
   onHubSearchQueryChange?: (value: string) => void;
+  modelHubControls?: ModelHubControlState;
   /** When true, idle filter labels use "Provider" / "Language" (model hub toolbar). */
   hubFilterLabels?: boolean;
   showEvaluationPanel?: boolean;
@@ -219,6 +231,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   titleActionTargetId,
   hubSearchQuery,
   onHubSearchQueryChange,
+  modelHubControls,
   hubFilterLabels = false,
   showEvaluationPanel = true,
 }) => {
@@ -227,10 +240,15 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const [catalog, setCatalog] = useState<RefineModelCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [providerFilter, setProviderFilter] = useState("all");
-  const [languageFilter, setLanguageFilter] = useState("all");
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const [languageSearch, setLanguageSearch] = useState("");
+  const [localProviderFilter, setLocalProviderFilter] = useState("all");
+  const [localSortMode, setLocalSortMode] =
+    useState<ModelSortMode>("best_match");
+  const providerFilter =
+    modelHubControls?.providerFilter ?? localProviderFilter;
+  const sortMode = modelHubControls?.sortMode ?? localSortMode;
+  const setProviderFilter =
+    modelHubControls?.setProviderFilter ?? setLocalProviderFilter;
+  const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const [localQuery, setLocalQuery] = useState("");
   const useHubSearch =
     hubSearchQuery !== undefined && onHubSearchQueryChange !== undefined;
@@ -239,8 +257,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     ? (value) => onHubSearchQueryChange?.(value)
     : setLocalQuery;
   const portalTarget = usePortalTarget(titleActionTargetId);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const [busyModelIds, setBusyModelIds] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<
     Record<string, RefineDownloadProgress>
@@ -410,45 +426,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     };
   }, [loadCatalog]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        languageDropdownRef.current &&
-        !languageDropdownRef.current.contains(event.target as Node)
-      ) {
-        setLanguageDropdownOpen(false);
-        setLanguageSearch("");
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (languageDropdownOpen && languageSearchInputRef.current) {
-      languageSearchInputRef.current.focus();
-    }
-  }, [languageDropdownOpen]);
-
-  const filteredLanguages = useMemo(
-    () =>
-      LANGUAGES.filter(
-        (language) =>
-          language.value !== "auto" &&
-          language.label.toLowerCase().includes(languageSearch.toLowerCase()),
-      ),
-    [languageSearch],
-  );
-
-  const allRefineLanguageLabels = useMemo(
-    () =>
-      LANGUAGES.filter((language) => language.value !== "auto").map(
-        (language) => `${language.value} ${language.label}`,
-      ),
-    [],
-  );
-
   const refineProviderOptions = useMemo(() => {
     const idle = hubFilterLabels ? "Provider" : "All providers";
     return [
@@ -467,22 +444,39 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     return (
       refineProviderOptions.find(
         (provider) => provider.value === providerFilter,
-      )?.label ?? idle
+      )?.label ??
+      providerFilter ??
+      idle
     );
   }, [hubFilterLabels, providerFilter, refineProviderOptions]);
-  const hasActiveProviderFilter = providerFilter !== "all";
 
-  const idleLanguageLabel = hubFilterLabels ? "Language" : "All languages";
-  const selectedLanguageLabel = useMemo(() => {
-    if (languageFilter === "all") {
-      return idleLanguageLabel;
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      providerFilter !== "all" &&
+      !refineProviderOptions.some(
+        (provider) => provider.value === providerFilter,
+      )
+    ) {
+      setProviderFilter("all");
     }
-    return (
-      LANGUAGES.find((language) => language.value === languageFilter)?.label ??
-      idleLanguageLabel
-    );
-  }, [idleLanguageLabel, languageFilter]);
-  const hasActiveLanguageFilter = languageFilter !== "all";
+  }, [
+    modelHubControls,
+    providerFilter,
+    refineProviderOptions,
+    setProviderFilter,
+  ]);
+
+  const sortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedSortLabel = useMemo(
+    () =>
+      sortOptions.find((option) => option.value === sortMode)?.label ??
+      "Best Match",
+    [sortMode, sortOptions],
+  );
 
   const getProviderFilterId = useCallback((model: RefineModelDescriptor) => {
     if (model.source_kind === "hugging_face") {
@@ -502,11 +496,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         return false;
       }
 
-      if (languageFilter !== "all") {
-        // Refine models in the hub are general post-processing models, so we
-        // treat them as multilingual rather than hiding the language control.
-      }
-
       if (!normalized) {
         return true;
       }
@@ -523,27 +512,65 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         model.runtime_label,
         model.runtime_model_id,
         model.source_repo_id ?? "",
-        ...allRefineLanguageLabels,
       ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(normalized);
     });
   }, [
-    allRefineLanguageLabels,
     catalog?.models,
     getProviderFilterId,
-    languageFilter,
     providerFilter,
     query,
     refineProviderOptions,
   ]);
 
-  const activeModels = filteredModels.filter((model) => model.active);
-  const readyModels = filteredModels.filter(
-    (model) => !model.active && model.installed,
+  const providerRankById = useMemo(
+    () =>
+      new Map(
+        refineProviderOptions.map((provider, index) => [provider.value, index]),
+      ),
+    [refineProviderOptions],
   );
-  const downloadableModels = filteredModels.filter((model) => !model.installed);
+
+  const refineAccessors = useMemo(
+    () => ({
+      label: (model: RefineModelDescriptor) => model.title,
+      active: (model: RefineModelDescriptor) => model.active,
+      installed: (model: RefineModelDescriptor) => model.installed,
+      runnable: (model: RefineModelDescriptor) => model.runnable,
+      recommended: (model: RefineModelDescriptor) => model.active,
+      rank: (model: RefineModelDescriptor) =>
+        getLlmEvaluationResult(model.runtime_model_id)?.rank,
+      latencyMs: (model: RefineModelDescriptor) =>
+        getLlmEvaluationResult(model.runtime_model_id)?.latencyP50Ms,
+      providerRank: (model: RefineModelDescriptor) =>
+        providerRankById.get(getProviderFilterId(model)),
+    }),
+    [getProviderFilterId, providerRankById],
+  );
+
+  const downloadedModels = useMemo(
+    () =>
+      orderModelList(
+        filteredModels.filter((model) => model.installed),
+        "downloaded",
+        sortMode,
+        refineAccessors,
+      ),
+    [filteredModels, refineAccessors, sortMode],
+  );
+  const downloadableModels = useMemo(
+    () =>
+      orderModelList(
+        filteredModels.filter((model) => !model.installed),
+        "available",
+        sortMode,
+        refineAccessors,
+      ),
+    [filteredModels, refineAccessors, sortMode],
+  );
+  const activeModels = downloadedModels.filter((model) => model.active);
   const ollamaProvider = useMemo(
     () =>
       catalog?.providers.find((provider) => provider.id === "ollama") ?? null,
@@ -768,6 +795,30 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       ollamaProvider?.installed !== false &&
       ollamaProvider?.running === false;
 
+    if (model.requires_api_key) {
+      const label = t("settings.refineModels.actions.apiKeyRequired", {
+        provider: model.runtime_label.replace(/\s+runtime$/i, ""),
+        defaultValue: "API key required",
+      });
+      return {
+        kind: "custom",
+        node: (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled
+            title={label}
+            aria-label={label}
+            className="h-8 shrink-0 gap-1 px-2 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
+          >
+            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            API
+          </Button>
+        ),
+      };
+    }
+
     if (model.active) return null;
 
     const showOllamaRemove =
@@ -851,21 +902,33 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         label: t("settings.refineModels.badges.active"),
         variant: "primary",
         icon: <Check className="h-3 w-3" />,
-        detail: "Currently used to refine dictated text.",
+        detail: t("settings.refineModels.badges.activeDetail"),
+      });
+    } else if (model.requires_api_key) {
+      items.push({
+        id: "api-key-needed",
+        label: t("settings.refineModels.badges.apiKeyNeeded", {
+          defaultValue: "API key",
+        }),
+        variant: "secondary",
+        icon: <KeyRound className="h-3 w-3" />,
+        detail: t("settings.refineModels.badges.apiKeyNeededDetail", {
+          defaultValue: "Add this provider's API key before use.",
+        }),
       });
     } else if (model.installed) {
       items.push({
         id: "ready",
         label: t("settings.refineModels.badges.ready"),
         variant: "success",
-        detail: "Installed locally — click card to use.",
+        detail: t("settings.refineModels.badges.readyDetail"),
       });
     } else {
       items.push({
         id: "needs-download",
         label: t("settings.refineModels.badges.needsDownload"),
         variant: "secondary",
-        detail: "Click the download icon to fetch this model.",
+        detail: t("settings.refineModels.badges.needsDownloadDetail"),
       });
     }
     return items;
@@ -928,10 +991,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     const evaluation = getLlmEvaluationResult(model.runtime_model_id);
     const haystack =
       `${model.title} ${model.id} ${model.runtime_model_id} ${model.source_repo_id ?? ""}`.toLowerCase();
-    const parameterMatch = haystack.match(/(\d+(?:\.\d+)?)\s*([bm])\b/);
-    const parameterLabel = parameterMatch
-      ? `${parameterMatch[1]}${parameterMatch[2].toUpperCase()}`
-      : null;
     const isLocal =
       model.runtime_provider_id === "ollama" ||
       model.runtime_provider_id === "lmstudio" ||
@@ -941,54 +1000,60 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       haystack.includes("tool") ||
       haystack.includes("json") ||
       haystack.includes("function");
+    const storageSizeLabel = buildStorageSizeLabel(model);
+    const identityChips = buildModelIdentityChips({
+      params: inferParameterClass([
+        model.title,
+        model.id,
+        model.runtime_model_id,
+        model.source_repo_id,
+        model.source_file_name,
+      ]),
+      arch: inferArchitectureLabel(
+        [model.title, model.id, model.runtime_model_id, model.source_repo_id],
+        model.source_label,
+      ),
+      format: inferRuntimeFormat(
+        [
+          model.runtime_label,
+          model.runtime_provider_id,
+          model.source_kind,
+          model.source_file_name,
+        ],
+        model.runtime_label,
+      ),
+    });
+
+    const sizeChip: CompactBadgeItem = {
+      id: "capability-size",
+      label: storageSizeLabel,
+      variant: "secondary" as const,
+      icon: <HardDrive className="h-3 w-3" />,
+      detail:
+        model.source_kind === "managed_provider"
+          ? model.runtime_provider_id === "apple_intelligence"
+            ? t("modelHub.chips.internalStorageDetail", {
+                defaultValue: "Uses a built-in local runtime.",
+              })
+            : t("modelHub.chips.externalStorageDetail", {
+                defaultValue:
+                  "Uses a configured provider and stores no local model in Vox Jot.",
+              })
+          : t("modelHub.chips.storageSizeDetail", {
+              defaultValue: "Approximate model storage footprint.",
+            }),
+    };
 
     return [
-      {
-        id: "capability-deployment",
-        label: isLocal
-          ? t("modelHub.chips.local", { defaultValue: "Local" })
-          : t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
-        variant: "secondary" as const,
-        icon: isLocal ? (
-          <Monitor className="h-3 w-3" />
-        ) : (
-          <Cloud className="h-3 w-3" />
-        ),
-        detail: isLocal
-          ? t("modelHub.chips.localDetail", {
-              defaultValue: "Runs on this Mac or through a local runtime.",
-            })
-          : t("modelHub.chips.cloudDetail", {
-              defaultValue: "Uses a configured network provider.",
-            }),
-      },
-      {
-        id: "capability-size",
-        label: buildStorageSizeLabel(model),
-        variant: "secondary" as const,
-        icon: <HardDrive className="h-3 w-3" />,
-        detail:
-          model.source_kind === "managed_provider"
-            ? model.runtime_provider_id === "apple_intelligence"
-              ? t("modelHub.chips.internalStorageDetail", {
-                  defaultValue: "Uses a built-in local runtime.",
-                })
-              : t("modelHub.chips.externalStorageDetail", {
-                  defaultValue:
-                    "Uses a configured provider and stores no local model in Vox Jot.",
-                })
-            : t("modelHub.chips.storageSizeDetail", {
-                defaultValue: "Approximate model storage footprint.",
-              }),
-      },
-      parameterLabel
+      ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+      !isLocal
         ? {
-            id: "capability-family",
-            label: parameterLabel,
+            id: "capability-deployment",
+            label: t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
             variant: "secondary" as const,
-            icon: <Brain className="h-3 w-3" />,
-            detail: t("modelHub.chips.parameterDetail", {
-              defaultValue: "Model family or approximate parameter size.",
+            icon: <Cloud className="h-3 w-3" />,
+            detail: t("modelHub.chips.cloudDetail", {
+              defaultValue: "Uses a configured network provider.",
             }),
           }
         : null,
@@ -1158,141 +1223,21 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   );
 
   const filterAction = (
-    <div className="flex items-center gap-2">
-      <div
-        className={`relative inline-flex ${hubFilterLabels ? "h-10 w-10 shrink-0" : "w-36"}`}
-      >
-        <select
-          value={providerFilter}
-          onChange={(event) => setProviderFilter(event.target.value)}
-          className={`${hubFilterLabels ? "h-full" : "min-h-9"} w-full appearance-none rounded-full border py-1.5 text-xs font-semibold shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hubFilterLabels
-              ? hasActiveProviderFilter
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] px-0 text-transparent"
-                : "border-[var(--border)] bg-[var(--card)] px-0 text-transparent"
-              : "border-[var(--border)] bg-[var(--card)] pe-9 ps-3 text-[var(--text)]"
-          }`}
-          aria-label={`Filter post-process models by provider: ${selectedProviderLabel}`}
-          title={`Provider: ${selectedProviderLabel}`}
-        >
-          {refineProviderOptions.map((provider) => (
-            <option
-              key={provider.value}
-              value={provider.value}
-              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
-            >
-              {provider.label}
-            </option>
-          ))}
-        </select>
-        {hubFilterLabels ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {hasActiveProviderFilter ? (
-              <ProviderIcon providerId={providerFilter} size="sm" />
-            ) : (
-              <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
-            )}
-          </div>
-        ) : (
-          <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-        )}
-      </div>
-
-      <div className="relative" ref={languageDropdownRef}>
-        <button
-          type="button"
-          onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hasActiveLanguageFilter
-              ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
-              : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
-          } ${hubFilterLabels ? "h-10 w-10 px-0" : "min-h-9 w-36 px-3"}`}
-          aria-haspopup="listbox"
-          aria-expanded={languageDropdownOpen}
-          aria-label={`Filter post-process models by language: ${selectedLanguageLabel}`}
-          title={`Language: ${selectedLanguageLabel}`}
-        >
-          <Globe className={hubFilterLabels ? "h-4 w-4" : "h-3 w-3"} />
-          {hubFilterLabels ? null : (
-            <>
-              <span className="min-w-0 flex-1 truncate text-left">
-                {selectedLanguageLabel}
-              </span>
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${
-                  languageDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </>
-          )}
-        </button>
-
-        {languageDropdownOpen && (
-          <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
-            <div className="border-b border-mid-gray/40 p-2">
-              <input
-                ref={languageSearchInputRef}
-                type="text"
-                value={languageSearch}
-                onChange={(event) => setLanguageSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && filteredLanguages.length > 0) {
-                    setLanguageFilter(filteredLanguages[0].value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  } else if (event.key === "Escape") {
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }
-                }}
-                placeholder={t("settings.general.language.searchPlaceholder")}
-                className="w-full rounded-md border border-mid-gray/40 bg-mid-gray/10 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-logo-primary"
-              />
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setLanguageFilter("all");
-                  setLanguageDropdownOpen(false);
-                  setLanguageSearch("");
-                }}
-                className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                  languageFilter === "all"
-                    ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                    : "hover:bg-mid-gray/10"
-                }`}
-              >
-                {idleLanguageLabel}
-              </button>
-              {filteredLanguages.map((language) => (
-                <button
-                  key={language.value}
-                  type="button"
-                  onClick={() => {
-                    setLanguageFilter(language.value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }}
-                  className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                    languageFilter === language.value
-                      ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                      : "hover:bg-mid-gray/10"
-                  }`}
-                >
-                  {language.label}
-                </button>
-              ))}
-              {filteredLanguages.length === 0 ? (
-                <div className="px-3 py-2 text-center text-sm text-[var(--muted)]">
-                  {t("settings.general.language.noResults")}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <ModelListControls
+      provider={{
+        value: providerFilter,
+        options: refineProviderOptions,
+        onChange: setProviderFilter,
+        label: selectedProviderLabel,
+        show: refineProviderOptions.length > 2,
+      }}
+      sort={{
+        value: sortMode,
+        options: sortOptions,
+        onChange: setSortMode,
+        label: selectedSortLabel,
+      }}
+    />
   );
 
   const renderSection = (
@@ -1364,6 +1309,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 onClick={
                   model.active ||
                   isBusy ||
+                  model.requires_api_key ||
                   confirmingDeleteRuntimeId === model.runtime_model_id
                     ? undefined
                     : () => handleCardClick(model)
@@ -1399,11 +1345,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
         <div className="grid grid-cols-2 gap-2">
           <MetricTile
-            label="Tested"
+            label={t("settings.refineModels.evaluation.tested")}
             value={`${LLM_EVALUATION_RESULTS.filter((r) => r.status === "tested").length}`}
           />
           <MetricTile
-            label="Best pass"
+            label={t("settings.refineModels.evaluation.bestPass")}
             value={formatPercent(
               LLM_EVALUATION_RESULTS.filter(
                 (r) => r.status === "tested" && r.passRate !== undefined,
@@ -1430,7 +1376,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
 
         {activeEvaluation ? (
           <LlmEvaluationResultBlock
-            title="Active model"
+            title={t("settings.refineModels.evaluation.activeModel")}
             modelName={activeEvaluation.model.title}
             result={activeEvaluation.result}
           />
@@ -1554,16 +1500,16 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             ) : (
               <div className="space-y-6">
                 {renderSection(
-                  t("settings.refineModels.sections.readyNow"),
+                  "Downloaded Models",
                   t("settings.refineModels.sections.readyNowDescription"),
-                  [...activeModels, ...readyModels],
+                  downloadedModels,
                   t("settings.refineModels.sections.readyNowEmpty"),
                   t("settings.refineModels.sections.readyNowEmptyDescription"),
                   true,
                 )}
 
                 {renderSection(
-                  t("settings.refineModels.sections.availableToAdd"),
+                  "Available to Download",
                   "",
                   downloadableModels,
                   t("settings.refineModels.sections.availableToAddEmpty"),
@@ -1732,12 +1678,12 @@ const LlmEvaluationResultBlock: React.FC<{
         >
           <MiniMetric
             icon={<Gauge className="h-3.5 w-3.5" />}
-            label="Pass"
+            label={t("settings.refineModels.evaluation.pass")}
             value={`${result.passed ?? 0}/${result.totalCases ?? 0}`}
           />
           <MiniMetric
             icon={<Activity className="h-3.5 w-3.5" />}
-            label="Sim"
+            label={t("settings.refineModels.evaluation.similarityShort")}
             value={formatPercent(result.averageSimilarity)}
           />
           {!compact ? (

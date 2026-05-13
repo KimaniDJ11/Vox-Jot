@@ -1,25 +1,16 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   AlertTriangle,
-  ChevronDown,
   Check,
-  Cloud,
   Dna,
   Globe,
   HardDrive,
   Loader2,
   Mic2,
-  Monitor,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
@@ -33,13 +24,29 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "@/components/model-hub/modelIdentityChips";
 import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
 import {
   ProviderIcon,
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
 import { LANGUAGES } from "@/lib/constants/languages";
+import ModelListControls from "@/components/model-hub/ModelListControls";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import type {
   CatalogModelDescriptor,
   ProviderDescriptor,
@@ -96,26 +103,26 @@ const SpeechModelLibraryCard: React.FC<{
     active
       ? {
           id: "active",
-          label: "Active",
+          label: t("listen.engineLibrary.badges.active"),
           variant: "primary",
           icon: <Check className="h-3.5 w-3.5" />,
-          detail: "Currently the active TTS voice.",
+          detail: t("listen.engineLibrary.badges.activeDetail"),
         }
       : null,
     !active && selected
       ? {
           id: "selected",
-          label: "Selected",
+          label: t("listen.engineLibrary.badges.selected"),
           variant: "primary",
-          detail: "Chosen in settings — click card to activate.",
+          detail: t("listen.engineLibrary.badges.selectedDetail"),
         }
       : null,
     model.installed && !active && !selected
       ? {
           id: "downloaded",
-          label: "Downloaded",
+          label: t("listen.engineLibrary.badges.downloaded"),
           variant: "secondary",
-          detail: "Voice pack is installed locally.",
+          detail: t("listen.engineLibrary.badges.downloadedDetail"),
         }
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
@@ -125,38 +132,41 @@ const SpeechModelLibraryCard: React.FC<{
     sourceKindLabel(model.source_kind),
   ].filter((part): part is string => Boolean(part));
   const subline = sublineParts.join(" · ");
-  const isLocal = model.capabilities.local_only || provider?.local_only;
   const languageCoverage = formatLanguageCoverage(model);
   const supportsStyle = modelHasTuningControls(model);
+  const storageSizeLabel = ttsStorageSizeLabel(model, t);
+  const identityChips = buildModelIdentityChips({
+    params: inferParameterClass([
+      model.label,
+      model.id,
+      provider?.label,
+      model.source_label,
+    ]),
+    arch: inferArchitectureLabel(
+      [model.label, model.id, provider?.label, model.runtime.engine_family],
+      provider?.label,
+    ),
+    format: inferRuntimeFormat(
+      [
+        model.runtime.label,
+        model.runtime.engine_family,
+        model.source_label,
+        model.id,
+      ],
+      model.runtime.label,
+    ),
+  });
+  const sizeChip: CompactBadgeItem = {
+    id: "capability-size",
+    label: storageSizeLabel,
+    variant: "secondary" as const,
+    icon: <HardDrive className="h-3 w-3" />,
+    detail: t("modelHub.chips.storageSizeDetail", {
+      defaultValue: "Approximate model storage footprint.",
+    }),
+  };
   const capabilityChips: CompactBadgeItem[] = [
-    {
-      id: "capability-deployment",
-      label: isLocal
-        ? t("modelHub.chips.local", { defaultValue: "Local" })
-        : t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
-      variant: "secondary",
-      icon: isLocal ? (
-        <Monitor className="h-3 w-3" />
-      ) : (
-        <Cloud className="h-3 w-3" />
-      ),
-      detail: isLocal
-        ? t("modelHub.chips.localDetail", {
-            defaultValue: "Runs on this Mac or through a local runtime.",
-          })
-        : t("modelHub.chips.cloudDetail", {
-            defaultValue: "Uses a configured network provider.",
-          }),
-    },
-    {
-      id: "capability-size",
-      label: ttsStorageSizeLabel(model, t),
-      variant: "secondary" as const,
-      icon: <HardDrive className="h-3 w-3" />,
-      detail: t("modelHub.chips.storageSizeDetail", {
-        defaultValue: "Approximate model storage footprint.",
-      }),
-    },
+    ...mergeSizeWithIdentityChips(identityChips, sizeChip),
     languageCoverage
       ? {
           id: "capability-languages",
@@ -489,6 +499,7 @@ export const EngineLibraryPanel: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   hubFilterLabels?: boolean;
 }> = ({
   speech,
@@ -496,13 +507,24 @@ export const EngineLibraryPanel: React.FC<{
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery = "",
+  modelHubControls,
   hubFilterLabels = false,
 }) => {
   const { t } = useTranslation();
-  const [providerFilter, setProviderFilter] = useState("all");
-  const [languageFilter, setLanguageFilter] = useState("all");
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
-  const [languageSearch, setLanguageSearch] = useState("");
+  const [localProviderFilter, setLocalProviderFilter] = useState("all");
+  const [localLanguageFilter, setLocalLanguageFilter] = useState("all");
+  const [localSortMode, setLocalSortMode] =
+    useState<ModelSortMode>("best_match");
+  const providerFilter =
+    modelHubControls?.providerFilter ?? localProviderFilter;
+  const languageFilter =
+    modelHubControls?.languageFilter ?? localLanguageFilter;
+  const sortMode = modelHubControls?.sortMode ?? localSortMode;
+  const setProviderFilter =
+    modelHubControls?.setProviderFilter ?? setLocalProviderFilter;
+  const setLanguageFilter =
+    modelHubControls?.setLanguageFilter ?? setLocalLanguageFilter;
+  const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const [ttsDownloadProgress, setTtsDownloadProgress] = useState<
     Record<string, TtsHfDownloadProgress>
   >({});
@@ -514,8 +536,6 @@ export const EngineLibraryPanel: React.FC<{
   const [hfTokenError, setHfTokenError] = useState<string | null>(null);
   const [savingHfToken, setSavingHfToken] = useState(false);
   const portalTarget = usePortalTarget(titleActionTargetId);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
-  const languageSearchInputRef = useRef<HTMLInputElement>(null);
   const providerOptions = useMemo(
     () => [
       {
@@ -529,22 +549,28 @@ export const EngineLibraryPanel: React.FC<{
     ],
     [hubFilterLabels, speech.visibleProviders],
   );
-  const filteredLanguages = useMemo(
-    () =>
-      LANGUAGES.filter(
-        (lang) =>
-          lang.value !== "auto" &&
-          lang.label.toLowerCase().includes(languageSearch.toLowerCase()),
-      ),
-    [languageSearch],
+  const languageOptions = useMemo(
+    () => [
+      {
+        value: "all",
+        label: hubFilterLabels ? "Language" : "All Languages",
+      },
+      ...LANGUAGES.filter((lang) => lang.value !== "auto").map((lang) => ({
+        value: lang.value,
+        label: lang.label,
+      })),
+    ],
+    [hubFilterLabels],
   );
   const selectedLanguageLabel = useMemo(() => {
     if (languageFilter === "all") {
       return hubFilterLabels ? "Language" : "All Languages";
     }
-    return LANGUAGES.find((lang) => lang.value === languageFilter)?.label ?? "";
+    return (
+      LANGUAGES.find((lang) => lang.value === languageFilter)?.label ??
+      languageFilter
+    );
   }, [hubFilterLabels, languageFilter]);
-  const hasActiveLanguageFilter = languageFilter !== "all";
   const selectedProviderLabel = useMemo(() => {
     const idle = hubFilterLabels ? "Provider" : "All providers";
     if (providerFilter === "all") {
@@ -552,10 +578,49 @@ export const EngineLibraryPanel: React.FC<{
     }
     return (
       providerOptions.find((provider) => provider.value === providerFilter)
-        ?.label ?? idle
+        ?.label ??
+      providerFilter ??
+      idle
     );
   }, [hubFilterLabels, providerFilter, providerOptions]);
-  const hasActiveProviderFilter = providerFilter !== "all";
+
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      providerFilter !== "all" &&
+      !providerOptions.some((provider) => provider.value === providerFilter)
+    ) {
+      setProviderFilter("all");
+    }
+  }, [modelHubControls, providerFilter, providerOptions, setProviderFilter]);
+
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      languageFilter !== "all" &&
+      !languageOptions.some((language) => language.value === languageFilter)
+    ) {
+      setLanguageFilter("all");
+    }
+  }, [languageFilter, languageOptions, modelHubControls, setLanguageFilter]);
+
+  const providerRankById = useMemo(
+    () =>
+      new Map(
+        speech.visibleProviders.map((provider, index) => [provider.id, index]),
+      ),
+    [speech.visibleProviders],
+  );
+  const sortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedSortLabel = useMemo(
+    () =>
+      sortOptions.find((option) => option.value === sortMode)?.label ??
+      "Best Match",
+    [sortMode, sortOptions],
+  );
   const filteredModels = useMemo(
     () =>
       speech.visibleModels.filter((model) => {
@@ -599,20 +664,46 @@ export const EngineLibraryPanel: React.FC<{
     ],
   );
   const downloadedModels = useMemo(() => {
-    const list = filteredModels.filter((model) => model.installed);
-    const ap = speech.activePreset;
-    if (!ap) return list;
-    const idx = list.findIndex(
-      (m) => m.provider_id === ap.provider_id && m.id === ap.model_id,
+    return orderModelList(
+      filteredModels.filter((model) => model.installed),
+      "downloaded",
+      sortMode,
+      {
+        label: (model) => model.label,
+        active: (model) =>
+          model.provider_id === speech.activePreset?.provider_id &&
+          model.id === speech.activePreset?.model_id,
+        installed: (model) => model.installed,
+        runnable: (model) => model.runnable,
+        recommended: (model) => model.active || model.selected,
+        rank: (model) => getTtsEvaluationResult(model.id)?.rank,
+        latencyMs: (model) => getTtsEvaluationResult(model.id)?.latencyP50Ms,
+        providerRank: (model) => providerRankById.get(model.provider_id),
+      },
     );
-    if (idx <= 0) return list;
-    const next = [...list];
-    const [activeRow] = next.splice(idx, 1);
-    return [activeRow, ...next];
-  }, [filteredModels, speech.activePreset]);
+  }, [filteredModels, providerRankById, sortMode, speech.activePreset]);
   const availableModels = useMemo(
-    () => filteredModels.filter((model) => !model.installed),
-    [filteredModels],
+    () =>
+      orderModelList(
+        filteredModels.filter((model) => !model.installed),
+        "available",
+        sortMode,
+        {
+          label: (model) => model.label,
+          active: (model) =>
+            model.provider_id === speech.activePreset?.provider_id &&
+            model.id === speech.activePreset?.model_id,
+          installed: (model) => model.installed,
+          runnable: (model) => model.runnable,
+          recommended: (model) => model.selected,
+          gated: (model) => ttsModelRequiresHfAccess(model),
+          blocked: (model) => model.capabilities.coming_soon,
+          rank: (model) => getTtsEvaluationResult(model.id)?.rank,
+          latencyMs: (model) => getTtsEvaluationResult(model.id)?.latencyP50Ms,
+          providerRank: (model) => providerRankById.get(model.provider_id),
+        },
+      ),
+    [filteredModels, providerRankById, sortMode, speech.activePreset],
   );
 
   const loadHfTokenStatus = useCallback(async () => {
@@ -720,27 +811,6 @@ export const EngineLibraryPanel: React.FC<{
   }, [savingHfToken, t]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        languageDropdownRef.current &&
-        !languageDropdownRef.current.contains(event.target as Node)
-      ) {
-        setLanguageDropdownOpen(false);
-        setLanguageSearch("");
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (languageDropdownOpen && languageSearchInputRef.current) {
-      languageSearchInputRef.current.focus();
-    }
-  }, [languageDropdownOpen]);
-
-  useEffect(() => {
     let unlisten: (() => void) | undefined;
     void (async () => {
       unlisten = await listen<TtsHfDownloadProgress>(
@@ -766,137 +836,28 @@ export const EngineLibraryPanel: React.FC<{
   if (!speech.settings) return null;
 
   const filterAction = (
-    <div className="flex items-center gap-2">
-      <div
-        className={`relative inline-flex ${hubFilterLabels ? "h-10 w-10 shrink-0" : "w-36"}`}
-      >
-        <select
-          value={providerFilter}
-          onChange={(event) => setProviderFilter(event.target.value)}
-          className={`${hubFilterLabels ? "h-full" : "min-h-9"} w-full appearance-none rounded-full border py-1.5 text-xs font-semibold shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hubFilterLabels
-              ? hasActiveProviderFilter
-                ? "border-[var(--accent)] bg-[var(--accent-soft)] px-0 text-transparent"
-                : "border-[var(--border)] bg-[var(--card)] px-0 text-transparent"
-              : "border-[var(--border)] bg-[var(--card)] pe-9 ps-3 text-[var(--text)]"
-          }`}
-          aria-label={`Filter listen models by provider: ${selectedProviderLabel}`}
-          title={`Provider: ${selectedProviderLabel}`}
-        >
-          {providerOptions.map((provider) => (
-            <option
-              key={provider.value}
-              value={provider.value}
-              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
-            >
-              {provider.label}
-            </option>
-          ))}
-        </select>
-        {hubFilterLabels ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {hasActiveProviderFilter ? (
-              <ProviderIcon providerId={providerFilter} size="sm" />
-            ) : (
-              <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
-            )}
-          </div>
-        ) : (
-          <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-        )}
-      </div>
-      <div className="relative" ref={languageDropdownRef}>
-        <button
-          type="button"
-          onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-          className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold transition-colors shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hasActiveLanguageFilter
-              ? "rounded-full bg-logo-primary text-[var(--inverse-text)]"
-              : "rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--card),var(--panel-bg)_12%)]"
-          } ${hubFilterLabels ? "h-10 w-10 px-0" : "min-h-9 w-36 px-3"}`}
-          aria-haspopup="listbox"
-          aria-expanded={languageDropdownOpen}
-          aria-label={`Filter listen models by language: ${selectedLanguageLabel}`}
-          title={`Language: ${selectedLanguageLabel}`}
-        >
-          <Globe className={hubFilterLabels ? "h-4 w-4" : "h-3 w-3"} />
-          {hubFilterLabels ? null : (
-            <>
-              <span className="min-w-0 flex-1 truncate text-left">
-                {selectedLanguageLabel}
-              </span>
-              <ChevronDown
-                className={`h-3 w-3 transition-transform ${
-                  languageDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </>
-          )}
-        </button>
-
-        {languageDropdownOpen && (
-          <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]">
-            <div className="border-b border-mid-gray/40 p-2">
-              <input
-                ref={languageSearchInputRef}
-                type="text"
-                value={languageSearch}
-                onChange={(event) => setLanguageSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && filteredLanguages.length > 0) {
-                    setLanguageFilter(filteredLanguages[0].value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  } else if (event.key === "Escape") {
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }
-                }}
-                placeholder={t("listen.placeholders.searchLanguages")}
-                className="w-full rounded-md border border-mid-gray/40 bg-mid-gray/10 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-logo-primary"
-              />
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setLanguageFilter("all");
-                  setLanguageDropdownOpen(false);
-                  setLanguageSearch("");
-                }}
-                className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                  languageFilter === "all"
-                    ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                    : "hover:bg-mid-gray/10"
-                }`}
-              >
-                {hubFilterLabels
-                  ? "Language"
-                  : t("listen.engineLibrary.allLanguages")}
-              </button>
-              {filteredLanguages.map((language) => (
-                <button
-                  key={language.value}
-                  type="button"
-                  onClick={() => {
-                    setLanguageFilter(language.value);
-                    setLanguageDropdownOpen(false);
-                    setLanguageSearch("");
-                  }}
-                  className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
-                    languageFilter === language.value
-                      ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
-                      : "hover:bg-mid-gray/10"
-                  }`}
-                >
-                  {language.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <ModelListControls
+      provider={{
+        value: providerFilter,
+        options: providerOptions,
+        onChange: setProviderFilter,
+        label: selectedProviderLabel,
+        show: providerOptions.length > 2,
+      }}
+      language={{
+        value: languageFilter,
+        options: languageOptions,
+        onChange: setLanguageFilter,
+        label: selectedLanguageLabel,
+        show: true,
+      }}
+      sort={{
+        value: sortMode,
+        options: sortOptions,
+        onChange: setSortMode,
+        label: selectedSortLabel,
+      }}
+    />
   );
 
   const content = (
@@ -945,7 +906,7 @@ export const EngineLibraryPanel: React.FC<{
           <div className="flex justify-end px-5">{filterAction}</div>
         ) : null}
         <SpeechModelList
-          title="Downloaded Models"
+          title={t("listen.engineLibrary.downloadedModels")}
           count={downloadedModels.length}
           models={downloadedModels}
           speech={speech}
@@ -954,14 +915,14 @@ export const EngineLibraryPanel: React.FC<{
           showHeader={false}
           emptyMessage={
             providerFilter !== "all" || languageFilter !== "all"
-              ? "No downloaded speech models match the current filters."
-              : "No compatible TTS models have been downloaded for this Mac yet."
+              ? t("listen.engineLibrary.noDownloadedMatches")
+              : t("listen.engineLibrary.noDownloadedModels")
           }
         />
 
         <div className="border-t border-[var(--border)] pt-4">
           <SpeechModelList
-            title="Available to Download"
+            title={t("listen.engineLibrary.availableToDownload")}
             count={availableModels.length}
             models={availableModels}
             speech={speech}
@@ -969,8 +930,8 @@ export const EngineLibraryPanel: React.FC<{
             onGatedDownloadRequest={requestGatedDownload}
             emptyMessage={
               providerFilter !== "all" || languageFilter !== "all"
-                ? "No available speech models match the current filters."
-                : "Every compatible speech model is already downloaded or active."
+                ? t("listen.engineLibrary.noAvailableMatches")
+                : t("listen.engineLibrary.allModelsReady")
             }
           />
         </div>
@@ -1012,5 +973,9 @@ export const EngineLibraryPanel: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="Engine Library">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("listen.engineLibrary.title")}>
+      {content}
+    </SettingsGroup>
+  );
 };

@@ -204,7 +204,7 @@ export const FileTranscriptionPanel: React.FC = () => {
   }, [runTranscription]);
 
   return (
-    <div className="space-y-4" aria-busy={isRunning}>
+    <div className="space-y-7" aria-busy={isRunning}>
       <SettingsGroup
         noCard
         title={t("dictate.fileTranscription.title", {
@@ -214,6 +214,8 @@ export const FileTranscriptionPanel: React.FC = () => {
           defaultValue:
             "Transcribe one audio or video file, or watch folders and save transcripts automatically.",
         })}
+        showTitle={false}
+        descriptionOnlyGap="controls"
       >
         <WatchedFoldersToolbar view={view} onViewChange={setView} />
       </SettingsGroup>

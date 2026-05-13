@@ -250,12 +250,14 @@ export const WriteRulesSettings: React.FC = () => {
 
   // ─── LIST MODE ────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {profileWindow}
       <SettingsGroup
         noCard
         title={t("refine.writeRules.title")}
         description={t("refine.writeRules.description")}
+        showTitle={false}
+        descriptionOnlyGap="controls"
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button

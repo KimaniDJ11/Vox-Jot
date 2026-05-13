@@ -400,9 +400,18 @@ const ScreenContextSettingsSection: React.FC = () => {
               void updateSetting("context_capture_mode", value as never)
             }
             options={[
-              { value: "always_frequent", label: "Live updates" },
-              { value: "adaptive_cache", label: "Balanced" },
-              { value: "mostly_on_demand", label: "On-demand first" },
+              {
+                value: "always_frequent",
+                label: t("settings.screenContext.captureMode.alwaysFrequent"),
+              },
+              {
+                value: "adaptive_cache",
+                label: t("settings.screenContext.captureMode.adaptiveCache"),
+              },
+              {
+                value: "mostly_on_demand",
+                label: t("settings.screenContext.captureMode.mostlyOnDemand"),
+              },
             ]}
             disabled={controlsDisabled || isUpdating("context_capture_mode")}
           />
@@ -421,9 +430,18 @@ const ScreenContextSettingsSection: React.FC = () => {
               void updateSetting("screen_context_ocr_quality", value as never)
             }
             options={[
-              { value: "fast", label: "Fast" },
-              { value: "balanced", label: "Balanced" },
-              { value: "accurate", label: "Accurate" },
+              {
+                value: "fast",
+                label: t("settings.screenContext.ocrQuality.fast"),
+              },
+              {
+                value: "balanced",
+                label: t("settings.screenContext.ocrQuality.balanced"),
+              },
+              {
+                value: "accurate",
+                label: t("settings.screenContext.ocrQuality.accurate"),
+              },
             ]}
             disabled={
               controlsDisabled || isUpdating("screen_context_ocr_quality")

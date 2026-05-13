@@ -50,6 +50,7 @@ pub struct RefineModelDescriptor {
     pub active: bool,
     pub runnable: bool,
     pub downloadable: bool,
+    pub requires_api_key: bool,
     pub source_repo_id: Option<String>,
     pub source_file_name: Option<String>,
     pub source_url: Option<String>,
@@ -204,11 +205,34 @@ fn provider_detail(provider: &settings::PostProcessProvider) -> String {
     format!("Provider endpoint: {}", provider.base_url)
 }
 
-fn make_managed_provider_status(provider: &settings::PostProcessProvider) -> RefineProviderStatus {
+fn managed_provider_requires_api_key(provider: &settings::PostProcessProvider) -> bool {
+    provider.id != APPLE_INTELLIGENCE_PROVIDER_ID
+        && provider.id != OLLAMA_PROVIDER_ID
+        && provider.id != "lmstudio"
+        && provider.id != "custom"
+        && !settings::post_process_provider_is_local(provider)
+}
+
+fn managed_provider_has_api_key(
+    settings: &settings::AppSettings,
+    provider: &settings::PostProcessProvider,
+) -> bool {
+    !managed_provider_requires_api_key(provider)
+        || settings
+            .post_process_api_key_status
+            .get(&provider.id)
+            .copied()
+            .unwrap_or(false)
+}
+
+fn make_managed_provider_status(
+    settings: &settings::AppSettings,
+    provider: &settings::PostProcessProvider,
+) -> RefineProviderStatus {
     let available = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         crate::apple_intelligence::check_apple_intelligence_availability()
     } else {
-        true
+        managed_provider_has_api_key(settings, provider)
     };
 
     RefineProviderStatus {
@@ -227,11 +251,13 @@ fn make_managed_provider_model(
     provider: &settings::PostProcessProvider,
 ) -> Option<RefineModelDescriptor> {
     let runtime_model_id = configured_model_id(settings, &provider.id);
-    let is_active = is_active_model(settings, &provider.id, &runtime_model_id);
+    let needs_api_key = managed_provider_requires_api_key(provider)
+        && !managed_provider_has_api_key(settings, provider);
+    let is_active = is_active_model(settings, &provider.id, &runtime_model_id) && !needs_api_key;
     let available = if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
         crate::apple_intelligence::check_apple_intelligence_availability()
     } else {
-        true
+        !needs_api_key
     };
 
     if runtime_model_id.trim().is_empty() && !is_active {
@@ -269,14 +295,20 @@ fn make_managed_provider_model(
         runtime_provider_id: provider.id.clone(),
         runtime_model_id,
         runtime_label: format!("{} runtime", provider.label),
-        installed: true,
+        installed: !needs_api_key,
         active: is_active,
         runnable: available,
         downloadable: false,
+        requires_api_key: needs_api_key,
         source_repo_id: None,
         source_file_name: None,
         source_url: None,
-        note: if available {
+        note: if needs_api_key {
+            Some(format!(
+                "Add an API key for {} before using this cloud model.",
+                provider.label
+            ))
+        } else if available {
             None
         } else {
             Some("This provider is configured but unavailable on this machine.".to_string())
@@ -372,6 +404,7 @@ mod tests {
             active: false,
             runnable: installed,
             downloadable: !installed,
+            requires_api_key: false,
             source_repo_id: None,
             source_file_name: None,
             source_url: None,
@@ -690,6 +723,7 @@ async fn fetch_lmstudio_models(
                     active: is_active_model(settings, "lmstudio", &model_id),
                     runnable: true,
                     downloadable: false,
+                    requires_api_key: false,
                     source_repo_id: None,
                     source_file_name: None,
                     source_url: Some("http://localhost:1234".to_string()),
@@ -771,6 +805,7 @@ fn build_local_ollama_models(
             active: is_active_model(settings, OLLAMA_PROVIDER_ID, model_id),
             runnable: status.running,
             downloadable: false,
+            requires_api_key: false,
             source_repo_id: None,
             source_file_name: None,
             source_url: Some("https://ollama.com/library".to_string()),
@@ -802,6 +837,7 @@ fn build_hf_fallback_models(
             active: is_active_model(settings, OLLAMA_PROVIDER_ID, spec.runtime_model_id),
             runnable: ollama_status.installed && ollama_status.running,
             downloadable: true,
+            requires_api_key: false,
             source_repo_id: Some(spec.repo_id.to_string()),
             source_file_name: Some(spec.file_name.to_string()),
             source_url: Some(format!("https://huggingface.co/{}", spec.repo_id)),
@@ -850,6 +886,7 @@ fn build_dynamic_hf_models(
                 active: is_active_model(settings, OLLAMA_PROVIDER_ID, &runtime_model_id),
                 runnable: ollama_status.installed && ollama_status.running,
                 downloadable: true,
+                requires_api_key: false,
                 source_repo_id: Some(repo_id.clone()),
                 source_file_name: None,
                 source_url: Some(format!("https://huggingface.co/{repo_id}")),
@@ -937,6 +974,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
             active: is_active_model(&settings, OLLAMA_PROVIDER_ID, &model.id),
             runnable: installed && ollama_status.running,
             downloadable: !installed,
+            requires_api_key: false,
             source_repo_id: None,
             source_file_name: None,
             source_url: Some(format!("https://ollama.com/library/{}", model.id)),
@@ -962,7 +1000,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
         .collect::<HashSet<_>>();
     for provider in &settings.post_process_providers {
         if seen_provider_ids.insert(provider.id.clone()) {
-            providers.push(make_managed_provider_status(provider));
+            providers.push(make_managed_provider_status(&settings, provider));
         }
     }
 
@@ -1067,6 +1105,21 @@ pub async fn set_refine_model_selection_impl(
             return Err(format!(
                 "LM Studio does not currently expose '{}'. Load it in LM Studio first.",
                 model_id
+            ));
+        }
+    } else {
+        let Some(provider) = find_provider(&settings, &provider_id) else {
+            return Err(format!(
+                "Provider '{}' is not configured in this build.",
+                provider_id
+            ));
+        };
+        if managed_provider_requires_api_key(provider)
+            && !managed_provider_has_api_key(&settings, provider)
+        {
+            return Err(format!(
+                "Add an API key for {} before selecting this cloud refine model.",
+                provider.label
             ));
         }
     }

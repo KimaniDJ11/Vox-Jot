@@ -28,11 +28,14 @@ export const AppLanguageSelector: React.FC<AppLanguageSelectorProps> =
     }));
 
     const handleLanguageChange = async (langCode: string) => {
+      const previousLanguage = i18n.language;
       await ensureLanguageResource(langCode);
       await i18n.changeLanguage(langCode);
       try {
         await setAppLanguageWithSync(langCode);
       } catch (error) {
+        await ensureLanguageResource(previousLanguage);
+        await i18n.changeLanguage(previousLanguage);
         console.error("Failed to apply app language change:", error);
       }
     };

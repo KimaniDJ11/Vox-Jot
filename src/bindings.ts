@@ -2633,7 +2633,7 @@ export type RecordingOverlayStyle =
 "notch"
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type RefineModelCatalog = { providers: RefineProviderStatus[]; models: RefineModelDescriptor[] }
-export type RefineModelDescriptor = { id: string; title: string; description: string; source_kind: RefineModelSourceKind; source_label: string; runtime_provider_id: string; runtime_model_id: string; runtime_label: string; installed: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_repo_id: string | null; source_file_name: string | null; source_url: string | null; note: string | null }
+export type RefineModelDescriptor = { id: string; title: string; description: string; source_kind: RefineModelSourceKind; source_label: string; runtime_provider_id: string; runtime_model_id: string; runtime_label: string; installed: boolean; active: boolean; runnable: boolean; downloadable: boolean; requires_api_key: boolean; source_repo_id: string | null; source_file_name: string | null; source_url: string | null; note: string | null }
 export type RefineModelSourceKind = "ollama" | "lm_studio" | "hugging_face" | "managed_provider"
 export type RefineProviderStatus = { id: string; label: string; available: boolean; local_only: boolean; installed: boolean; running: boolean; detail: string }
 export type ResolvedWriteRule = { rule_id: string; rule_name: string; matched_bundle_id: string | null; matched_app_name: string | null; matched_url: string | null; matched_url_pattern: string | null; overrides: WriteRuleOverrides }

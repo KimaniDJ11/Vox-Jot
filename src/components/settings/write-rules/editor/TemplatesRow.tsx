@@ -10,9 +10,8 @@
 
 import React from "react";
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PROFILE_TEMPLATES, type ProfileTemplateId } from "../lib/templates";
-
-const heading = "Start from a template";
 
 interface TemplatesRowProps {
   selectedId: ProfileTemplateId | null;
@@ -23,15 +22,21 @@ export const TemplatesRow: React.FC<TemplatesRowProps> = ({
   selectedId,
   onSelect,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div>
-      <p className="mb-2 text-xs font-medium text-[var(--muted)]">{heading}</p>
+      <p className="mb-2 text-xs font-medium text-[var(--muted)]">
+        {t("refine.writeRules.templates.heading")}
+      </p>
       <div className="flex flex-wrap gap-2">
         {PROFILE_TEMPLATES.map((template) => (
           <TemplateChip
             key={template.id}
-            label={template.label}
-            description={template.description}
+            label={t(`refine.writeRules.templates.${template.id}.label`)}
+            description={t(
+              `refine.writeRules.templates.${template.id}.description`,
+            )}
             icon={template.icon}
             selected={selectedId === template.id}
             onClick={() => onSelect(template.id)}

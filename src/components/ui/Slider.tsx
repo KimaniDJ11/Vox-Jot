@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   interactiveFocusRingClass,
@@ -78,6 +79,7 @@ export const Slider: React.FC<SliderProps> = ({
   defaultValue,
   rangeHint,
 }) => {
+  const { t } = useTranslation();
   const { localValue, handleChange, commit } = useDeferredSliderValue(
     value,
     onChange,
@@ -217,6 +219,7 @@ const CompactSlider: React.FC<{
   onResetToDefault,
   rangeHint,
 }) => {
+  const { t } = useTranslation();
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
   const canReset = defaultValue !== undefined && !disabled;
@@ -241,7 +244,7 @@ const CompactSlider: React.FC<{
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
             onClick={() => setShowTooltip(!showTooltip)}
-            aria-label="More information"
+            aria-label={t("common.moreInformation")}
           >
             <svg
               className="h-3.5 w-3.5 select-none"

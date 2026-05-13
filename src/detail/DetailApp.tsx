@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
 import { commands } from "@/bindings";
 import { useRefreshSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
@@ -50,52 +51,52 @@ const FileTranscriptionSection = lazy(() =>
 /** Map of section IDs to their title + component. */
 const SECTION_MAP: Record<
   string,
-  { title: string; component: React.ComponentType }
+  { titleKey: string; component: React.ComponentType }
 > = {
   history: {
-    title: "History",
+    titleKey: "appSections.nav.dictate.history",
     component: DictateHistorySection,
   },
   "phrase-keys": {
-    title: "Phrase Keys",
+    titleKey: "appSections.nav.refine.phraseKeys",
     component: RefinePhraseKeysSection,
   },
   "write-profiles": {
-    title: "Write Profiles",
+    titleKey: "appSections.nav.refine.writeProfiles",
     component: RefineProfilesSection,
   },
   "stt-models": {
-    title: "Speech Models",
+    titleKey: "appSections.nav.settings.aiSetup",
     component: () => (
       <DictateModelsSection titleActionTargetId="stt-models-section-actions" />
     ),
   },
   "llm-models": {
-    title: "Refine Models",
+    titleKey: "appSections.nav.settings.aiSetup",
     component: RefineModelsSection,
   },
   corrections: {
-    title: "Learned Corrections",
+    titleKey: "appSections.nav.dictate.corrections",
     component: () => (
       <LearnedCorrectionsSection titleActionTargetId="corrections-section-actions" />
     ),
   },
   "learned-corrections": {
-    title: "Learned Corrections",
+    titleKey: "appSections.nav.dictate.corrections",
     component: () => (
       <LearnedCorrectionsSection titleActionTargetId="learned-corrections-section-actions" />
     ),
   },
   "jot-pad": {
-    title: "Jot Pad",
+    titleKey: "appSections.nav.dictate.jotPad",
     component: JotPadSection,
   },
   "file-transcription": {
-    title: "File Transcription",
+    titleKey: "appSections.nav.dictate.fileTranscription",
     component: FileTranscriptionSection,
   },
   "model-hub": {
-    title: "",
+    titleKey: "",
     component: ModelHubSection,
   },
 };
@@ -112,6 +113,7 @@ function getSectionFromUrl(): string {
 }
 
 const DetailApp: React.FC = () => {
+  const { t } = useTranslation();
   const [sectionId, setSectionId] = useState(getSectionFromUrl);
   const { app_theme: appTheme, app_font_scale: appFontScale } =
     useSettingsSlice(["app_theme", "app_font_scale"] as const);
@@ -158,11 +160,12 @@ const DetailApp: React.FC = () => {
   }, [sectionId]);
 
   const entry = SECTION_MAP[sectionId];
+  const entryTitle = entry?.titleKey ? t(entry.titleKey) : "";
 
   if (!entry) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-[var(--muted)]">
-        <p>{`Unknown section: ${sectionId}`}</p>
+        <p>{t("detail.unknownSection", { section: sectionId })}</p>
       </div>
     );
   }
@@ -188,15 +191,15 @@ const DetailApp: React.FC = () => {
         ) : (
           <div
             className={`flex w-full items-center gap-4 pl-16 ${
-              entry.title ? "justify-between" : "justify-end"
+              entryTitle ? "justify-between" : "justify-end"
             }`}
           >
-            {entry.title ? (
+            {entryTitle ? (
               <h1
                 className="text-sm font-bold text-[var(--text)]"
                 data-tauri-drag-region=""
               >
-                {entry.title}
+                {entryTitle}
               </h1>
             ) : null}
             <div

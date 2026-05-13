@@ -221,6 +221,7 @@ fn get_filler_words_for_language(lang: &str) -> &'static [&'static str] {
         "ko" => &["hmm", "mmm"],
         "vi" => &["hmm", "mmm", "hm"],
         "zh" => &["hmm", "mmm"],
+        "auto" => &[],
         // Conservative universal fallback (no "um", "eh", "ha")
         _ => &[
             "uh", "uhm", "umm", "uhh", "uhhh", "ah", "hmm", "hm", "mmm", "mm", "mh", "ehh",
@@ -273,13 +274,13 @@ fn collapse_stutters(text: &str) -> String {
 /// Filters transcription output by removing filler words and stutter artifacts.
 ///
 /// This function cleans up raw transcription text by:
-/// 1. Removing filler words based on the app language (or custom list)
+/// 1. Removing filler words based on the selected speech language (or custom list)
 /// 2. Collapsing repeated 1-2 letter stutters (e.g., "wh wh wh" -> "wh")
 /// 3. Cleaning up excess whitespace
 ///
 /// # Arguments
 /// * `text` - The raw transcription text to filter
-/// * `lang` - The app language code (e.g., "en", "pt-BR") used to select filler words
+/// * `lang` - The selected speech language code (e.g., "en", "pt-BR") used to select filler words
 /// * `custom_filler_words` - Optional user-provided filler word list. `Some(vec)` overrides
 ///   language defaults; `Some(empty vec)` disables filtering; `None` uses language defaults.
 ///
@@ -499,6 +500,13 @@ mod tests {
         let text = "um I think this works";
         let result = filter_transcription_output(text, "xx", &None);
         assert_eq!(result, "um I think this works");
+    }
+
+    #[test]
+    fn test_filter_auto_language_does_not_use_app_language_fillers() {
+        let text = "um I think uh this works";
+        let result = filter_transcription_output(text, "auto", &None);
+        assert_eq!(result, "um I think uh this works");
     }
 
     #[test]

@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { SettingContainer } from "../ui/SettingContainer";
 import { ResetButton } from "../ui/ResetButton";
 import { useSettings } from "../../hooks/useSettings";
-import { LANGUAGES } from "../../lib/constants/languages";
+import {
+  getLanguageSearchText,
+  getLocalizedLanguageLabel,
+  LANGUAGES,
+} from "../../lib/constants/languages";
 import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
@@ -20,7 +24,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   grouped = false,
   supportedLanguages,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { getSetting, updateSetting, resetSetting, isUpdating } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,14 +68,27 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   const filteredLanguages = useMemo(
     () =>
       availableLanguages.filter((language) =>
-        language.label.toLowerCase().includes(searchQuery.toLowerCase()),
+        (language.value === "auto"
+          ? `${t("settings.general.language.auto")} ${getLanguageSearchText(
+              language,
+              i18n.language,
+            )}`
+          : getLanguageSearchText(language, i18n.language)
+        ).includes(searchQuery.toLowerCase()),
       ),
-    [searchQuery, availableLanguages],
+    [searchQuery, availableLanguages, i18n.language, t],
   );
 
   const selectedLanguageName =
-    LANGUAGES.find((lang) => lang.value === selectedLanguage)?.label ||
-    t("settings.general.language.auto");
+    selectedLanguage === "auto"
+      ? t("settings.general.language.auto")
+      : getLocalizedLanguageLabel(
+          LANGUAGES.find((lang) => lang.value === selectedLanguage) ?? {
+            value: selectedLanguage,
+            label: selectedLanguage,
+          },
+          i18n.language,
+        );
 
   const handleLanguageSelect = async (languageCode: string) => {
     await updateSetting("selected_language", languageCode);
@@ -172,7 +189,14 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                       onClick={() => handleLanguageSelect(language.value)}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="truncate">{language.label}</span>
+                        <span className="truncate">
+                          {language.value === "auto"
+                            ? t("settings.general.language.auto")
+                            : getLocalizedLanguageLabel(
+                                language,
+                                i18n.language,
+                              )}
+                        </span>
                       </div>
                     </button>
                   ))

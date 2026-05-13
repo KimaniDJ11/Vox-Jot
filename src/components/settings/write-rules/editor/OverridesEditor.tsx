@@ -18,6 +18,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type {
   LLMPrompt,
   ModelInfo,
@@ -28,7 +29,6 @@ import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import {
   countActiveOverrides,
-  GROUP_LABELS,
   OVERRIDE_REGISTRY,
   type OverrideGroup,
   type OverrideSpec,
@@ -45,16 +45,14 @@ interface OverridesEditorProps {
 
 const GROUP_ORDER: OverrideGroup[] = ["speech", "refine", "output"];
 
-const emptyHint =
-  "This profile uses your global settings. Add an override below to change behavior here.";
-const addOverrideLabel = "Add override";
-const noneRemainingLabel = "Every available override is set.";
-const resetAllLabel = "Reset all";
-const removeOverrideTitle = "Remove override";
-const removeOverrideAria = (label: string) => `Remove ${label} override`;
-const notAvailableLabel = "n/a";
-const notAvailableTitle =
-  "No options available — set up the global value first.";
+const overrideLabelKey = (spec: OverrideSpec) =>
+  `refine.writeRules.overrides.${spec.key}.label`;
+const overrideDescriptionKey = (spec: OverrideSpec) =>
+  `refine.writeRules.overrides.${spec.key}.description`;
+const overrideGroupKey = (group: OverrideGroup) =>
+  `refine.writeRules.overrideGroups.${group}`;
+const overrideOptionKey = (spec: OverrideSpec, value: string) =>
+  `refine.writeRules.overrideOptions.${spec.key}.${value}`;
 
 export const OverridesEditor: React.FC<OverridesEditorProps> = ({
   overrides,
@@ -63,6 +61,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
   prompts,
   onChange,
 }) => {
+  const { t } = useTranslation();
   const ctx = useMemo(
     () => ({ models, tones, prompts }),
     [models, tones, prompts],
@@ -78,7 +77,9 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
   return (
     <div className="space-y-3">
       {activeCount === 0 ? (
-        <p className="text-xs text-[var(--muted)]">{emptyHint}</p>
+        <p className="text-xs text-[var(--muted)]">
+          {t("refine.writeRules.overridesEditor.emptyHint")}
+        </p>
       ) : (
         <ul className="divide-y divide-[var(--ring-hairline)] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--input)]/40">
           {activeSpecs.map((spec) => (
@@ -107,7 +108,7 @@ export const OverridesEditor: React.FC<OverridesEditorProps> = ({
             className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:text-[var(--danger)]"
           >
             <RotateCcw className="h-3 w-3" aria-hidden />
-            {resetAllLabel}
+            {t("refine.writeRules.overridesEditor.resetAll")}
           </button>
         ) : null}
       </div>
@@ -125,16 +126,24 @@ const OverrideRow: React.FC<{
   };
   onChange: (overrides: WriteRuleOverrides) => void;
 }> = ({ spec, overrides, context, onChange }) => {
-  const options = spec.options(context);
+  const { t } = useTranslation();
+  const options = spec.options(context).map((option) => {
+    const translated = t(overrideOptionKey(spec, option.value), {
+      defaultValue: option.label,
+    });
+    return { ...option, label: translated };
+  });
+  const specLabel = t(overrideLabelKey(spec));
+  const specDescription = t(overrideDescriptionKey(spec));
   return (
     <li className="grid items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(120px,160px)_minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-[var(--text)]">
-          {spec.label}
+          {specLabel}
         </p>
         <p className="truncate text-[11px] text-[var(--muted)]">
-          {GROUP_LABELS[spec.group]}
-          {spec.description ? ` · ${spec.description}` : ""}
+          {t(overrideGroupKey(spec.group))}
+          {spec.description ? ` · ${specDescription}` : ""}
         </p>
       </div>
       <Dropdown
@@ -146,8 +155,10 @@ const OverrideRow: React.FC<{
         type="button"
         onClick={() => onChange(spec.reset(overrides))}
         className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--danger)]"
-        aria-label={removeOverrideAria(spec.label)}
-        title={removeOverrideTitle}
+        aria-label={t("refine.writeRules.overridesEditor.removeOverrideAria", {
+          label: specLabel,
+        })}
+        title={t("refine.writeRules.overridesEditor.removeOverride")}
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -165,6 +176,7 @@ const AddOverrideMenu: React.FC<{
   };
   onChange: (overrides: WriteRuleOverrides) => void;
 }> = ({ inactiveSpecs, overrides, context, onChange }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -194,7 +206,9 @@ const AddOverrideMenu: React.FC<{
 
   if (inactiveSpecs.length === 0) {
     return (
-      <p className="text-xs italic text-[var(--muted)]">{noneRemainingLabel}</p>
+      <p className="text-xs italic text-[var(--muted)]">
+        {t("refine.writeRules.overridesEditor.noneRemaining")}
+      </p>
     );
   }
 
@@ -207,7 +221,7 @@ const AddOverrideMenu: React.FC<{
         onClick={() => setOpen((prev) => !prev)}
       >
         <Plus className="h-3.5 w-3.5" />
-        {addOverrideLabel}
+        {t("refine.writeRules.overridesEditor.addOverride")}
       </Button>
       {open ? (
         <div
@@ -225,11 +239,13 @@ const AddOverrideMenu: React.FC<{
             return (
               <div key={group} className="py-1">
                 <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  {GROUP_LABELS[group]}
+                  {t(overrideGroupKey(group))}
                 </p>
                 {specs.map((spec) => {
                   const next = spec.defaultValueWhenAdded(overrides, context);
                   const disabled = next === null;
+                  const specLabel = t(overrideLabelKey(spec));
+                  const specDescription = t(overrideDescriptionKey(spec));
                   return (
                     <button
                       key={spec.key}
@@ -247,12 +263,18 @@ const AddOverrideMenu: React.FC<{
                           ? "cursor-not-allowed text-[var(--muted)] opacity-50"
                           : "text-[var(--text)] hover:bg-[var(--input)]",
                       ].join(" ")}
-                      title={disabled ? notAvailableTitle : spec.description}
+                      title={
+                        disabled
+                          ? t("refine.writeRules.overridesEditor.notAvailable")
+                          : specDescription
+                      }
                     >
-                      <span>{spec.label}</span>
+                      <span>{specLabel}</span>
                       {disabled ? (
                         <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                          {notAvailableLabel}
+                          {t(
+                            "refine.writeRules.overridesEditor.notAvailableShort",
+                          )}
                         </span>
                       ) : null}
                     </button>

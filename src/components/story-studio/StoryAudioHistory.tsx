@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -100,26 +107,6 @@ const storyChipClassName =
 const storyMetaSeparatorClassName =
   "shrink-0 text-[color-mix(in_srgb,var(--muted),transparent_50%)]";
 
-const dockedSpeedLabel = "Speed";
-const dockedSaveAsLabel = "Save as";
-const dockedSaveCopyLabel = "Save copy";
-const noGeneratedAudioTitle = "No generated audio yet";
-const noGeneratedAudioDescription =
-  "Generated stories will appear here after the first render.";
-const starredLabel = "Starred";
-const generatedInLabel = "Generated in";
-const expressionTagsUsedLabel = "Expression tags";
-const inlinePromptUsedLabel = "Inline prompt";
-const renderingGroupLabel = "Rendering";
-const queuePositionLabel = "Queue";
-const noSelectedAudioTitle = "No generated audio selected";
-const noSelectedAudioDescription =
-  "Render audio in Studio or switch back to Timeline.";
-const noScriptSavedLabel = "No script was saved with this audio file.";
-const storyAudioViewItems = [
-  { value: "timeline", label: "Timeline" },
-  { value: "player", label: "Player" },
-] satisfies Array<{ value: StoryAudioView; label: string }>;
 const playbackRateOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const fixedSampleRateOptions = [16_000, 24_000, 44_100, 48_000];
 const storyExpressionTokenPattern = /(\[[^\]\n]{1,80}\]|\([^()\n]{1,80}\))/g;
@@ -140,8 +127,21 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
   onCancelJob,
   onCreateProcessed,
 }) => {
+  const { t, i18n } = useTranslation();
+  const storyAudioViewItems = useMemo(
+    () =>
+      [
+        { value: "timeline", label: t("storyAudio.tabs.timeline") },
+        { value: "player", label: t("storyAudio.tabs.player") },
+      ] satisfies Array<{ value: StoryAudioView; label: string }>,
+    [t],
+  );
   const sortedItems = sortStoryAudioItems(items);
-  const groupedItems = groupStoryAudioItems(sortedItems);
+  const groupedItems = groupStoryAudioItems(
+    sortedItems,
+    t,
+    i18n.resolvedLanguage,
+  );
   const selectedItem =
     sortedItems.find((item) => item.id === selectedAudioId) ??
     sortedItems[0] ??
@@ -157,18 +157,24 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
       : null;
 
   return (
-    <section className="space-y-3" aria-label="Generated story audio">
+    <section
+      className="space-y-3"
+      aria-label={t("storyAudio.generatedAudioAriaLabel")}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl<StoryAudioView>
           items={storyAudioViewItems}
           value={view}
           onChange={onViewChange}
-          ariaLabel="Generated audio view"
+          ariaLabel={t("storyAudio.viewAriaLabel")}
           layoutId="generated-audio-view"
         />
         {selectedItem && view === "player" ? (
           <p className="min-w-0 truncate text-xs font-medium text-[var(--muted)]">
-            {`${selectedIndex + 1} of ${sortedItems.length}`}
+            {t("storyAudio.position", {
+              current: selectedIndex + 1,
+              total: sortedItems.length,
+            })}
           </p>
         ) : null}
       </div>
@@ -176,16 +182,16 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
       {isLoading ? (
         <div className="flat-card overflow-visible px-5 py-8 text-center">
           <p className="text-sm font-semibold text-[var(--text)]">
-            Loading story audio...
+            {t("storyAudio.loading")}
           </p>
         </div>
       ) : groupedItems.length === 0 && jobs.length === 0 ? (
         <div className="flat-card overflow-visible px-5 py-8 text-center">
           <p className="text-sm font-semibold text-[var(--text)]">
-            {noGeneratedAudioTitle}
+            {t("storyAudio.emptyTitle")}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {noGeneratedAudioDescription}
+            {t("storyAudio.emptyDescription")}
           </p>
         </div>
       ) : view === "player" ? (
@@ -204,7 +210,7 @@ export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
             <section className="space-y-2.5">
               <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                  {renderingGroupLabel}
+                  {t("storyAudio.status.rendering")}
                 </p>
               </div>
               <div className="space-y-3">
@@ -511,6 +517,7 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
   onToggleStarred,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const [showCopied, setShowCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const hasScript = item.script_text.trim().length > 0;
@@ -522,10 +529,10 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
       return URL.createObjectURL(blob);
     } catch (error) {
       console.error("Failed to load story audio:", error);
-      toast.error("Could not load story audio.");
+      toast.error(t("storyAudio.errors.load"));
       return null;
     }
-  }, [item.output_path]);
+  }, [item.output_path, t]);
 
   const handleCopyScript = async () => {
     if (!hasScript) return;
@@ -535,7 +542,7 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
       window.setTimeout(() => setShowCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy story script:", error);
-      toast.error("Could not copy story script.");
+      toast.error(t("storyAudio.errors.copyScript"));
     }
   };
 
@@ -546,8 +553,16 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
         onClick={() => void handleCopyScript()}
         className={historyActionButtonClassName}
         disabled={!hasScript}
-        title={hasScript ? "Copy script" : "No script saved"}
-        aria-label={hasScript ? "Copy script" : "No script saved"}
+        title={
+          hasScript
+            ? t("storyAudio.actions.copyScript")
+            : t("storyAudio.noScriptSaved")
+        }
+        aria-label={
+          hasScript
+            ? t("storyAudio.actions.copyScript")
+            : t("storyAudio.noScriptSaved")
+        }
       >
         {showCopied ? (
           <Check width={14} height={14} />
@@ -559,8 +574,8 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
         type="button"
         onClick={() => onReveal(item)}
         className={historyActionButtonClassName}
-        title="Show audio file in folder"
-        aria-label="Show audio file in folder"
+        title={t("storyAudio.actions.showInFolder")}
+        aria-label={t("storyAudio.actions.showInFolder")}
       >
         <FolderOpen width={14} height={14} aria-hidden />
       </button>
@@ -572,8 +587,16 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
             ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:text-[var(--accent)]/80"
             : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
         }`}
-        title={item.starred ? "Unstar story audio" : "Star story audio"}
-        aria-label={item.starred ? "Unstar story audio" : "Star story audio"}
+        title={
+          item.starred
+            ? t("storyAudio.actions.unstar")
+            : t("storyAudio.actions.star")
+        }
+        aria-label={
+          item.starred
+            ? t("storyAudio.actions.unstar")
+            : t("storyAudio.actions.star")
+        }
       >
         <Star
           width={14}
@@ -590,8 +613,8 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
               setShowDeleteConfirm(false);
             }}
             className={historyConfirmDeleteButtonClassName}
-            title="Delete story audio"
-            aria-label="Delete story audio"
+            title={t("storyAudio.actions.delete")}
+            aria-label={t("storyAudio.actions.delete")}
           >
             <Trash2 width={14} height={14} />
           </button>
@@ -599,8 +622,8 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
             type="button"
             onClick={() => setShowDeleteConfirm(false)}
             className={historyActionButtonClassName}
-            title="Cancel delete"
-            aria-label="Cancel delete"
+            title={t("storyAudio.actions.cancelDelete")}
+            aria-label={t("storyAudio.actions.cancelDelete")}
           >
             <X width={14} height={14} />
           </button>
@@ -610,8 +633,8 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
           type="button"
           onClick={() => setShowDeleteConfirm(true)}
           className={historyDangerActionButtonClassName}
-          title="Delete story audio"
-          aria-label="Delete story audio"
+          title={t("storyAudio.actions.delete")}
+          aria-label={t("storyAudio.actions.delete")}
         >
           <Trash2 width={14} height={14} />
         </button>
@@ -620,6 +643,7 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
   );
 
   const meta = <StoryAudioMetaLine item={item} />;
+  const fallbackTitle = t("storyAudio.untitledStory");
 
   return (
     <article
@@ -629,7 +653,7 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
           ? "border-[color-mix(in_srgb,var(--accent),transparent_45%)] bg-[var(--accent-soft)]"
           : ""
       }`}
-      title="Open in player"
+      title={t("storyAudio.actions.openInPlayer")}
     >
       <div onClick={(event) => event.stopPropagation()}>
         <AudioPlayer
@@ -638,7 +662,7 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
           initialDuration={
             item.duration_ms > 0 ? item.duration_ms / 1000 : undefined
           }
-          title={item.title || "Untitled Story"}
+          title={item.title || fallbackTitle}
           meta={meta}
           actions={actions}
           starred={item.starred}
@@ -651,11 +675,12 @@ const StoryAudioHistoryCard: React.FC<StoryAudioHistoryCardProps> = ({
 
 /** Compact one-line metadata, dot-separated, that replaces the chip cluster. */
 const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
+  const { t } = useTranslation();
   const hasScript = item.script_text.trim().length > 0;
   const lineLabel =
     item.line_count > 0
-      ? `${item.line_count} line${item.line_count === 1 ? "" : "s"}`
-      : "Audio file";
+      ? t("storyAudio.meta.lines", { count: item.line_count })
+      : t("storyAudio.meta.audioFile");
 
   const parts: React.ReactNode[] = [
     <span key="time">{formatStoryTime(item.created_at_ms)}</span>,
@@ -667,7 +692,7 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
   if (typeof item.cast_count === "number" && item.cast_count > 0) {
     parts.push(
       <span key="cast">
-        {item.cast_count === 1 ? "1 cast member" : `${item.cast_count} cast`}
+        {t("storyAudio.meta.cast", { count: item.cast_count })}
       </span>,
     );
   }
@@ -677,7 +702,7 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
   ) {
     parts.push(
       <span key="gen">
-        {generatedInLabel.toLowerCase()}{" "}
+        {t("storyAudio.meta.generatedIn")}{" "}
         {formatGenerationTime(item.generation_time_ms)}
       </span>,
     );
@@ -700,14 +725,16 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
           className="h-1.5 w-1.5 rounded-full bg-[var(--success)]"
         />
       ) : null}
-      {hasScript ? "Script saved" : "Audio only"}
+      {hasScript
+        ? t("storyAudio.meta.scriptSaved")
+        : t("storyAudio.meta.audioOnly")}
     </span>,
   );
   if (item.expression_tags_used) {
-    parts.push(<span key="exp">{expressionTagsUsedLabel.toLowerCase()}</span>);
+    parts.push(<span key="exp">{t("storyAudio.meta.expressionTags")}</span>);
   }
   if (item.inline_prompt_used) {
-    parts.push(<span key="inl">{inlinePromptUsedLabel.toLowerCase()}</span>);
+    parts.push(<span key="inl">{t("storyAudio.meta.inlinePrompt")}</span>);
   }
 
   return (
@@ -747,6 +774,7 @@ const StoryAudioPlayerView: React.FC<{
   onRename,
   onCreateProcessed,
 }) => {
+  const { t } = useTranslation();
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -904,10 +932,10 @@ const StoryAudioPlayerView: React.FC<{
     return (
       <div className="flat-card px-5 py-8 text-center">
         <p className="text-sm font-semibold text-[var(--text)]">
-          {noSelectedAudioTitle}
+          {t("storyAudio.noSelectionTitle")}
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          {noSelectedAudioDescription}
+          {t("storyAudio.noSelectionDescription")}
         </p>
       </div>
     );
@@ -926,7 +954,7 @@ const StoryAudioPlayerView: React.FC<{
           </pre>
         ) : (
           <p className="text-base font-medium leading-7 text-[var(--muted)]">
-            {noScriptSavedLabel}
+            {t("storyAudio.noScriptSaved")}
           </p>
         )}
       </div>
@@ -1045,17 +1073,19 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   onAudioPause,
   onAudioEnded,
 }) => {
+  const { t } = useTranslation();
   const hasAudio = duration > 0;
+  const fallbackTitle = t("storyAudio.untitledStory");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(item.title || "Untitled Story");
+  const [draftTitle, setDraftTitle] = useState(item.title || fallbackTitle);
   const [isRenaming, setIsRenaming] = useState(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isEditingTitle) {
-      setDraftTitle(item.title || "Untitled Story");
+      setDraftTitle(item.title || fallbackTitle);
     }
-  }, [isEditingTitle, item.id, item.title]);
+  }, [fallbackTitle, isEditingTitle, item.id, item.title]);
 
   useEffect(() => {
     if (isEditingTitle) {
@@ -1066,7 +1096,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
 
   const commitTitle = async () => {
     const nextTitle = draftTitle.trim();
-    const currentTitle = item.title || "Untitled Story";
+    const currentTitle = item.title || fallbackTitle;
     if (isRenaming) return;
     if (!nextTitle || nextTitle === currentTitle) {
       setDraftTitle(currentTitle);
@@ -1101,8 +1131,8 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
           type="button"
           onClick={onTogglePlay}
           disabled={isLoadingAudio}
-          aria-label={isPlaying ? "Pause" : "Play"}
-          title={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? t("common.pause") : t("common.play")}
+          title={isPlaying ? t("common.pause") : t("common.play")}
           className={`relative inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--inverse-text)] transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50 disabled:hover:scale-100 ${
             isPlaying
               ? "shadow-[0_14px_36px_-12px_color-mix(in_srgb,var(--accent),transparent_25%)]"
@@ -1130,23 +1160,25 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
                   event.preventDefault();
                   event.currentTarget.blur();
                 } else if (event.key === "Escape") {
-                  setDraftTitle(item.title || "Untitled Story");
+                  setDraftTitle(item.title || fallbackTitle);
                   setIsEditingTitle(false);
                 }
               }}
               disabled={isRenaming}
               className="h-7 min-w-0 rounded-md border border-[var(--accent)] bg-[var(--input)] px-2 text-base font-semibold leading-6 text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)] disabled:opacity-70"
-              aria-label="Story audio title"
+              aria-label={t("storyAudio.titleAriaLabel")}
             />
           ) : (
             <button
               type="button"
               onClick={() => setIsEditingTitle(true)}
               className="min-w-0 truncate rounded-md text-start text-base font-semibold leading-6 text-[var(--text)] transition-colors hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
-              title="Rename story audio"
-              aria-label={`Rename story audio: ${item.title || "Untitled Story"}`}
+              title={t("storyAudio.actions.rename")}
+              aria-label={t("storyAudio.actions.renameWithTitle", {
+                title: item.title || fallbackTitle,
+              })}
             >
-              {item.title || "Untitled Story"}
+              {item.title || fallbackTitle}
             </button>
           )}
           <div className="flex min-w-0 items-center gap-1.5 truncate text-[12px] leading-5 text-[var(--muted)]">
@@ -1169,7 +1201,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
                   ·
                 </span>
                 <span>
-                  {`${item.line_count} line${item.line_count === 1 ? "" : "s"}`}
+                  {t("storyAudio.meta.lines", { count: item.line_count })}
                 </span>
               </>
             ) : null}
@@ -1184,8 +1216,8 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             }
             disabled={!previousItem}
             className={historyActionButtonClassName}
-            title="Previous generated audio"
-            aria-label="Previous generated audio"
+            title={t("storyAudio.actions.previous")}
+            aria-label={t("storyAudio.actions.previous")}
           >
             <SkipBack width={16} height={16} />
           </button>
@@ -1196,8 +1228,8 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             }
             disabled={!nextItem}
             className={historyActionButtonClassName}
-            title="Next generated audio"
-            aria-label="Next generated audio"
+            title={t("storyAudio.actions.next")}
+            aria-label={t("storyAudio.actions.next")}
           >
             <SkipForward width={16} height={16} />
           </button>
@@ -1205,8 +1237,8 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             type="button"
             onClick={() => onReveal(item)}
             className={historyActionButtonClassName}
-            title="Show audio file in folder"
-            aria-label="Show audio file in folder"
+            title={t("storyAudio.actions.showInFolder")}
+            aria-label={t("storyAudio.actions.showInFolder")}
           >
             <FolderOpen width={15} height={15} />
           </button>
@@ -1255,7 +1287,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             onChange={onScrub}
             disabled={!hasAudio}
             className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
-            aria-label="Audio timeline"
+            aria-label={t("storyAudio.timelineAriaLabel")}
           />
         </div>
       </div>
@@ -1263,7 +1295,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
       {/* Bottom control row: speed, sample rate, save */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-          <span>{dockedSpeedLabel}</span>
+          <span>{t("storyAudio.controls.speed")}</span>
           <PlaybackRatePopover
             value={playbackRate}
             options={playbackRateOptions}
@@ -1271,7 +1303,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
           />
         </div>
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-          <span>{dockedSaveAsLabel}</span>
+          <span>{t("storyAudio.controls.saveAs")}</span>
           <SampleRatePopover
             value={sampleRateHz}
             options={sampleRateOptions}
@@ -1282,15 +1314,15 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             onClick={onSaveProcessed}
             disabled={isSaving}
             className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
-            title="Save processed copy"
-            aria-label="Save processed copy"
+            title={t("storyAudio.controls.saveProcessedCopy")}
+            aria-label={t("storyAudio.controls.saveProcessedCopy")}
           >
             {isSaving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
               <Save className="h-3.5 w-3.5" aria-hidden />
             )}
-            {dockedSaveCopyLabel}
+            {t("storyAudio.controls.saveCopy")}
           </button>
         </div>
       </div>
@@ -1442,9 +1474,10 @@ const StoryRenderJobCard: React.FC<{
   nowMs: number;
   onCancel: (job: StoryRenderJobSummary) => void;
 }> = ({ job, nowMs, onCancel }) => {
+  const { t } = useTranslation();
   const isLive = isLiveStoryRenderJob(job);
   const progress = getStoryRenderJobProgress(job);
-  const statusLabel = formatStoryRenderJobStatus(job);
+  const statusLabel = formatStoryRenderJobStatus(job, t);
   const elapsedFrom = job.started_at_ms ?? job.queued_at_ms;
   const elapsedMs = Math.max(0, nowMs - elapsedFrom);
 
@@ -1480,7 +1513,7 @@ const StoryRenderJobCard: React.FC<{
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
           <div className="flex min-w-0 items-center gap-2">
             <p className="m-0 min-w-0 truncate text-sm font-semibold leading-5 text-[var(--text)]">
-              {job.title || "Untitled Story"}
+              {job.title || t("storyAudio.untitledStory")}
             </p>
             <span className="ml-auto shrink-0 text-[11px] font-semibold tabular-nums text-[var(--muted)]">
               {Math.round(progress)}%
@@ -1490,8 +1523,8 @@ const StoryRenderJobCard: React.FC<{
                 type="button"
                 onClick={() => onCancel(job)}
                 className={historyDangerActionButtonClassName}
-                title="Cancel story render"
-                aria-label="Cancel story render"
+                title={t("storyAudio.actions.cancelRender")}
+                aria-label={t("storyAudio.actions.cancelRender")}
               >
                 <X width={14} height={14} />
               </button>
@@ -1527,8 +1560,11 @@ const StoryRenderJobCard: React.FC<{
             </span>
             <span>
               {job.total_lines > 0
-                ? `${job.current_line}/${job.total_lines} lines`
-                : "Preparing"}
+                ? t("storyAudio.meta.lineProgress", {
+                    current: job.current_line,
+                    total: job.total_lines,
+                  })
+                : t("storyAudio.status.preparing")}
             </span>
             <span aria-hidden className={storyMetaSeparatorClassName}>
               ·
@@ -1549,7 +1585,7 @@ const StoryRenderJobCard: React.FC<{
                 <span aria-hidden className={storyMetaSeparatorClassName}>
                   ·
                 </span>
-                <span>{formatQueuePosition(job.queue_position)}</span>
+                <span>{formatQueuePosition(job.queue_position, t)}</span>
               </>
             ) : null}
           </div>
@@ -1565,7 +1601,11 @@ const StoryRenderJobCard: React.FC<{
   );
 };
 
-function groupStoryAudioItems(items: StoryAudioItem[]): Array<{
+function groupStoryAudioItems(
+  items: StoryAudioItem[],
+  t: ReturnType<typeof useTranslation>["t"],
+  locale?: string,
+): Array<{
   key: string;
   label: string;
   items: StoryAudioItem[];
@@ -1583,7 +1623,7 @@ function groupStoryAudioItems(items: StoryAudioItem[]): Array<{
 
     groups.push({
       key,
-      label: formatStoryGroupLabel(item.created_at_ms),
+      label: formatStoryGroupLabel(item.created_at_ms, t, locale),
       items: [item],
     });
 
@@ -1615,29 +1655,40 @@ function isLiveStoryRenderJob(job: StoryRenderJobSummary): boolean {
   );
 }
 
-function formatStoryRenderJobStatus(job: StoryRenderJobSummary): string {
+function formatStoryRenderJobStatus(
+  job: StoryRenderJobSummary,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
   if (job.status === "queued") {
     return job.queue_position && job.queue_position > 1
-      ? `Queued at position ${job.queue_position}`
-      : "Queued";
+      ? t("storyAudio.status.queuedAtPosition", {
+          position: job.queue_position,
+        })
+      : t("storyAudio.status.queued");
   }
   if (job.status === "assembling") {
-    return "Assembling final audio";
+    return t("storyAudio.status.assembling");
   }
   if (job.status === "failed") {
-    return "Generation failed";
+    return t("storyAudio.status.failed");
   }
   if (job.status === "cancelled") {
-    return "Cancelled";
+    return t("storyAudio.status.cancelled");
   }
   if (job.total_lines > 0) {
-    return `Generating line ${job.current_line} of ${job.total_lines}`;
+    return t("storyAudio.status.generatingLine", {
+      current: job.current_line,
+      total: job.total_lines,
+    });
   }
-  return "Generating";
+  return t("storyAudio.status.generating");
 }
 
-function formatQueuePosition(position: number): string {
-  return `${queuePositionLabel} #${position}`;
+function formatQueuePosition(
+  position: number,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  return t("storyAudio.status.queuePosition", { position });
 }
 
 function getStoryRenderJobProgress(job: StoryRenderJobSummary): number {
@@ -1674,10 +1725,14 @@ function getStoryDateKey(timestampMs: number): string {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }
 
-function formatStoryGroupLabel(timestampMs: number): string {
+function formatStoryGroupLabel(
+  timestampMs: number,
+  t: ReturnType<typeof useTranslation>["t"],
+  locale?: string,
+): string {
   const date = new Date(timestampMs);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return t("storyAudio.unknownDate");
   }
 
   const today = new Date();
@@ -1686,10 +1741,10 @@ function formatStoryGroupLabel(timestampMs: number): string {
     today.getMonth() === date.getMonth() &&
     today.getDate() === date.getDate()
   ) {
-    return "Today";
+    return t("storyAudio.today");
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     month: "long",
     day: "numeric",
     year: "numeric",

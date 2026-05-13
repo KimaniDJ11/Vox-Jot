@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Layers, Loader2, Play, Search, X } from "lucide-react";
 import { commands } from "@/bindings";
 import type { VoiceInfo } from "@/bindings";
+import ModelListControls from "@/components/model-hub/ModelListControls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -17,6 +18,14 @@ import {
   type TtsVoicePresetInput,
 } from "@/lib/ttsVoicePresets";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import { LANGUAGES } from "@/lib/constants/languages";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import {
   speechLibraryCardClassName,
@@ -34,6 +43,7 @@ import {
   localeLabel,
   profileSupportsModel,
   resolveVoiceModelSelection,
+  ttsModelSupportsLanguage,
 } from "../utils";
 import { resolvedTuningControlsForModel } from "../tuningControls";
 import {
@@ -89,6 +99,10 @@ export const VoiceArchitectSection: React.FC<{
   const [modelSearchQuery, setModelSearchQuery] = useState(
     initialUiDraft.modelSearchQuery,
   );
+  const [modelProviderFilter, setModelProviderFilter] = useState("all");
+  const [modelLanguageFilter, setModelLanguageFilter] = useState("all");
+  const [modelSortMode, setModelSortMode] =
+    useState<ModelSortMode>("best_match");
   const [createVoiceTool, setCreateVoiceTool] = useState<"audio" | "tuning">(
     initialUiDraft.createVoiceTool,
   );
@@ -342,8 +356,6 @@ export const VoiceArchitectSection: React.FC<{
     draftVoiceProfileId,
     speech.activePreset?.voice_profile_id,
   ]);
-  if (!speech.settings || !speech.activePreset) return null;
-
   const draftVoiceOptions = [
     {
       value: "__auto__",
@@ -359,7 +371,72 @@ export const VoiceArchitectSection: React.FC<{
     })),
   ];
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
+  const modelProviderOptions = useMemo(
+    () => [
+      { value: "all", label: "Provider" },
+      ...speech.visibleProviders.map((provider) => ({
+        value: provider.id,
+        label: provider.label,
+      })),
+    ],
+    [speech.visibleProviders],
+  );
+  const selectedModelProviderLabel = useMemo(
+    () =>
+      modelProviderOptions.find(
+        (option) => option.value === modelProviderFilter,
+      )?.label ?? "Provider",
+    [modelProviderFilter, modelProviderOptions],
+  );
+  const modelLanguageOptions = useMemo(
+    () => [
+      { value: "all", label: "Language" },
+      ...LANGUAGES.filter((language) => language.value !== "auto").map(
+        (language) => ({
+          value: language.value,
+          label: language.label,
+        }),
+      ),
+    ],
+    [],
+  );
+  const selectedModelLanguageLabel = useMemo(
+    () =>
+      modelLanguageOptions.find(
+        (option) => option.value === modelLanguageFilter,
+      )?.label ?? "Language",
+    [modelLanguageFilter, modelLanguageOptions],
+  );
+  const modelSortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedModelSortLabel = useMemo(
+    () =>
+      modelSortOptions.find((option) => option.value === modelSortMode)
+        ?.label ?? "Best Match",
+    [modelSortMode, modelSortOptions],
+  );
+  const modelProviderRankById = useMemo(
+    () =>
+      new Map(
+        speech.visibleProviders.map((provider, index) => [provider.id, index]),
+      ),
+    [speech.visibleProviders],
+  );
   const filteredDraftModels = availableDraftModels.filter((model) => {
+    if (
+      modelProviderFilter !== "all" &&
+      model.provider_id !== modelProviderFilter
+    ) {
+      return false;
+    }
+    if (
+      modelLanguageFilter !== "all" &&
+      !ttsModelSupportsLanguage(model, modelLanguageFilter)
+    ) {
+      return false;
+    }
     if (!normalizedModelSearch) return true;
 
     const providerLabel =
@@ -378,24 +455,27 @@ export const VoiceArchitectSection: React.FC<{
       .toLowerCase();
     return haystack.includes(normalizedModelSearch);
   });
-  const orderedDraftModels = [...filteredDraftModels].sort((first, second) => {
-    const firstIsDraft =
-      first.provider_id === draftProviderIdForControls &&
-      first.id === draftModelIdForControls;
-    const secondIsDraft =
-      second.provider_id === draftProviderIdForControls &&
-      second.id === draftModelIdForControls;
-
-    if (firstIsDraft !== secondIsDraft) {
-      return firstIsDraft ? -1 : 1;
-    }
-
-    if (first.installed !== second.installed) {
-      return first.installed ? -1 : 1;
-    }
-
-    return 0;
-  });
+  const orderedDraftModels = orderModelList(
+    filteredDraftModels,
+    "downloaded",
+    modelSortMode,
+    {
+      label: (model: CatalogModelDescriptor) => model.label,
+      active: (model: CatalogModelDescriptor) =>
+        model.provider_id === draftProviderIdForControls &&
+        model.id === draftModelIdForControls,
+      installed: (model: CatalogModelDescriptor) => model.installed,
+      runnable: (model: CatalogModelDescriptor) => model.runnable,
+      recommended: (model: CatalogModelDescriptor) => model.selected,
+      rank: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.rank,
+      latencyMs: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.latencyP50Ms,
+      providerRank: (model: CatalogModelDescriptor) =>
+        modelProviderRankById.get(model.provider_id),
+    },
+  );
+  if (!speech.settings || !speech.activePreset) return null;
   const isPreviewingDraft = speech.previewingPresetId === "__draft__";
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
@@ -542,68 +622,106 @@ export const VoiceArchitectSection: React.FC<{
             </div>
 
             <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
-              <label
-                className="relative flex h-10 w-full items-center"
-                aria-label={t("listen.createVoices.searchModelsAriaLabel", {
-                  defaultValue: "Search voice models",
-                })}
-              >
-                <Search
-                  className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                  aria-hidden
-                />
-                <Input
-                  type="text"
-                  role="searchbox"
-                  autoComplete="off"
-                  value={modelSearchQuery}
-                  onChange={(event) => setModelSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape" && modelSearchQuery) {
-                      setModelSearchQuery("");
-                      event.preventDefault();
-                    }
-                  }}
-                  placeholder={t("listen.createVoices.searchModels", {
-                    defaultValue: "Search TTS models",
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className="relative flex h-10 min-w-[220px] flex-1 items-center"
+                  aria-label={t("listen.createVoices.searchModelsAriaLabel", {
+                    defaultValue: "Search voice models",
                   })}
-                  className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                />
-                {modelSearchQuery ? (
-                  <button
-                    type="button"
-                    className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    onClick={() => setModelSearchQuery("")}
-                    aria-label={t("listen.createVoices.clearModelSearch", {
-                      defaultValue: "Clear model search",
+                >
+                  <Search
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <Input
+                    type="text"
+                    role="searchbox"
+                    autoComplete="off"
+                    value={modelSearchQuery}
+                    onChange={(event) =>
+                      setModelSearchQuery(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && modelSearchQuery) {
+                        setModelSearchQuery("");
+                        event.preventDefault();
+                      }
+                    }}
+                    placeholder={t("listen.createVoices.searchModels", {
+                      defaultValue: "Search TTS models",
                     })}
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                ) : null}
-              </label>
+                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                  />
+                  {modelSearchQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => setModelSearchQuery("")}
+                      aria-label={t("listen.createVoices.clearModelSearch", {
+                        defaultValue: "Clear model search",
+                      })}
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                <ModelListControls
+                  provider={{
+                    value: modelProviderFilter,
+                    options: modelProviderOptions,
+                    onChange: setModelProviderFilter,
+                    label: selectedModelProviderLabel,
+                    show: modelProviderOptions.length > 2,
+                  }}
+                  language={{
+                    value: modelLanguageFilter,
+                    options: modelLanguageOptions,
+                    onChange: setModelLanguageFilter,
+                    label: selectedModelLanguageLabel,
+                    show: true,
+                  }}
+                  sort={{
+                    value: modelSortMode,
+                    options: modelSortOptions,
+                    onChange: setModelSortMode,
+                    label: selectedModelSortLabel,
+                  }}
+                />
+              </div>
             </div>
 
             <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
               {filteredDraftModels.length > 0 ? (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {orderedDraftModels.map((model) => (
-                    <DraftVoiceModelLibraryCard
-                      key={`${model.provider_id}::${model.id}`}
-                      model={model}
-                      provider={
-                        speech.visibleProviders.find(
-                          (provider) => provider.id === model.provider_id,
-                        ) ?? null
-                      }
-                      selected={
-                        model.provider_id === draftProviderIdForControls &&
-                        model.id === draftModelIdForControls
-                      }
-                      disabled={!speech.ttsEnabled}
-                      onSelect={() => handleSelectDraftModel(model)}
-                    />
-                  ))}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text)]">
+                      {t("listen.createVoices.availableModels", {
+                        defaultValue: "Available Models",
+                      })}
+                    </h4>
+                    <Badge variant="secondary">
+                      {orderedDraftModels.length}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {orderedDraftModels.map((model) => (
+                      <DraftVoiceModelLibraryCard
+                        key={`${model.provider_id}::${model.id}`}
+                        model={model}
+                        provider={
+                          speech.visibleProviders.find(
+                            (provider) => provider.id === model.provider_id,
+                          ) ?? null
+                        }
+                        selected={
+                          model.provider_id === draftProviderIdForControls &&
+                          model.id === draftModelIdForControls
+                        }
+                        disabled={!speech.ttsEnabled}
+                        onSelect={() => handleSelectDraftModel(model)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className={speechLibraryCardClassName}>
@@ -647,8 +765,8 @@ export const VoiceArchitectSection: React.FC<{
   );
 
   const contentSpacingClassName = showTitle
-    ? "space-y-3 px-4 py-3"
-    : "space-y-3";
+    ? "space-y-7 px-4 py-3"
+    : "space-y-7";
   const audioView = (
     <>
       <div className={whiteWorkflowCardClassName}>
@@ -656,7 +774,7 @@ export const VoiceArchitectSection: React.FC<{
           <div className="min-w-0 flex-1 space-y-3">
             {!isVoiceFixedToModel(draftProviderIdForControls) &&
             !supportsDraftManualVoiceId ? (
-              <WorkflowField label="Voice">
+              <WorkflowField label={t("listen.createVoices.workflow.voice")}>
                 <SelectField
                   value={draftVoiceId}
                   onChange={(value) => {
@@ -690,7 +808,9 @@ export const VoiceArchitectSection: React.FC<{
             ) : null}
 
             {draftSupportsVoiceCloning ? (
-              <WorkflowField label="Clone Profile">
+              <WorkflowField
+                label={t("listen.createVoices.workflow.cloneProfile")}
+              >
                 <SelectField
                   value={draftVoiceProfileId}
                   onChange={(value) => {
@@ -717,7 +837,9 @@ export const VoiceArchitectSection: React.FC<{
             ) : null}
 
             {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
-              <WorkflowField label="Manual Voice ID">
+              <WorkflowField
+                label={t("listen.createVoices.workflow.manualVoiceId")}
+              >
                 <Input
                   value={speech.activePreset.voice_id ?? ""}
                   onChange={(event) =>
@@ -890,5 +1012,9 @@ export const VoiceArchitectSection: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="Create Voices">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("appSections.nav.listen.createVoices")}>
+      {content}
+    </SettingsGroup>
+  );
 };

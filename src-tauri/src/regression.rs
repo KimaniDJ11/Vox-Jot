@@ -861,7 +861,7 @@ fn transcribe_audio(
     }
 
     let filter_language = match settings.selected_language.as_str() {
-        "auto" => settings.app_language.as_str(),
+        "auto" => "auto",
         "zh-Hans" | "zh-Hant" => "zh",
         lang => lang,
     };

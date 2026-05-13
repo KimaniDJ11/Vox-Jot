@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Download, Loader2, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -8,6 +9,7 @@ import {
   type CompactBadgeItem,
 } from "@/components/ui/CompactOverflow";
 import { ProviderIcon } from "@/components/ui/ProviderIcon";
+import { dedupeCapabilityChips } from "@/components/model-hub/modelIdentityChips";
 
 export type HubCardVariant = "default" | "featured";
 
@@ -128,7 +130,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   description,
   secondary,
   capabilityChips,
-  capabilityChipsMaxVisible = 4,
+  capabilityChipsMaxVisible = 6,
   footerMetaItems,
   footerMetaIcon,
   footerMetaMaxVisible = 3,
@@ -143,6 +145,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   active = false,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const isClickable = Boolean(onClick) && !disabled;
   const isFeatured = variant === "featured";
 
@@ -173,8 +176,12 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   };
 
   const trailingNode = renderTrailing(trailing);
+  const visibleCapabilityChips = capabilityChips
+    ? dedupeCapabilityChips(capabilityChips)
+    : undefined;
   const hasCapabilityRow =
-    (capabilityChips && capabilityChips.length > 0) || Boolean(secondary);
+    (visibleCapabilityChips && visibleCapabilityChips.length > 0) ||
+    Boolean(secondary);
   const inlineFooterExtraParts = getInlineFooterExtraParts(footerExtra);
 
   return (
@@ -232,9 +239,9 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {hasCapabilityRow ? (
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {capabilityChips && capabilityChips.length > 0 ? (
+            {visibleCapabilityChips && visibleCapabilityChips.length > 0 ? (
               <CompactBadgeRow
-                items={capabilityChips}
+                items={visibleCapabilityChips}
                 maxVisible={capabilityChipsMaxVisible}
                 overflowLabel={`${title} capabilities`}
               />
@@ -256,7 +263,10 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
       {downloadState ? (
         renderDownloadState(downloadState)
       ) : inlineFooterExtraParts ? (
-        renderInlineFooterExtra(inlineFooterExtraParts)
+        renderInlineFooterExtra(
+          inlineFooterExtraParts,
+          t("modelHub.actionConfirmation"),
+        )
       ) : (
         <div className="flex min-w-0 items-center gap-2">
           {footerMetaItems && footerMetaItems.length > 0 ? (
@@ -313,7 +323,10 @@ function getInlineFooterExtraParts(
   return children.length >= 2 ? children : null;
 }
 
-function renderInlineFooterExtra(parts: React.ReactNode[]): React.ReactNode {
+function renderInlineFooterExtra(
+  parts: React.ReactNode[],
+  actionConfirmationLabel: string,
+): React.ReactNode {
   const [message, actions] = parts;
 
   return (
@@ -321,7 +334,7 @@ function renderInlineFooterExtra(parts: React.ReactNode[]): React.ReactNode {
       className="flex min-h-11 min-w-0 flex-wrap items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] px-2.5 py-1.5 sm:flex-nowrap"
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
-      aria-label="Model action confirmation"
+      aria-label={actionConfirmationLabel}
       role="group"
     >
       <div className="min-w-[12rem] flex-1 overflow-hidden [&_p]:!truncate [&_p]:!text-xs [&_p]:!leading-4 [&_p+p]:!mt-0.5 [&_p+p]:!line-clamp-1 [&_p+p]:!text-[11px] [&_p+p]:!text-[var(--muted)] [&_svg]:shrink-0">

@@ -2,11 +2,9 @@ import React from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   Check,
-  Cloud,
   Dna,
   Globe,
   HardDrive,
-  Monitor,
   SlidersHorizontal,
   Sparkles,
   X,
@@ -16,6 +14,13 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { type CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import HubModelCard from "@/components/model-hub/HubModelCard";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "@/components/model-hub/modelIdentityChips";
 import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import type {
   CatalogModelDescriptor,
@@ -147,9 +152,9 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   onSelect: () => void;
 }> = ({ model, provider, selected, disabled, onSelect }) => {
   const { t } = useTranslation();
-  const isLocal = model.capabilities.local_only || provider?.local_only;
   const languageCoverage = formatLanguageCoverage(model);
   const supportsStyle = modelHasTuningControls(model);
+  const storageSizeLabel = ttsStorageSizeLabel(model, t);
   const availabilityLabel = model.installed
     ? t("modelHub.tts.downloaded", { defaultValue: "Downloaded" })
     : model.downloadable
@@ -190,35 +195,38 @@ export const DraftVoiceModelLibraryCard: React.FC<{
     provider?.label,
     sourceKindLabel(model.source_kind),
   ].filter((part): part is string => Boolean(part));
+  const identityChips = buildModelIdentityChips({
+    params: inferParameterClass([
+      model.label,
+      model.id,
+      provider?.label,
+      model.source_label,
+    ]),
+    arch: inferArchitectureLabel(
+      [model.label, model.id, provider?.label, model.runtime.engine_family],
+      provider?.label,
+    ),
+    format: inferRuntimeFormat(
+      [
+        model.runtime.label,
+        model.runtime.engine_family,
+        model.source_label,
+        model.id,
+      ],
+      model.runtime.label,
+    ),
+  });
+  const sizeChip: CompactBadgeItem = {
+    id: "capability-size",
+    label: storageSizeLabel,
+    variant: "secondary",
+    icon: <HardDrive className="h-3 w-3" />,
+    detail: t("modelHub.chips.storageSizeDetail", {
+      defaultValue: "Approximate model storage footprint.",
+    }),
+  };
   const capabilityChips: CompactBadgeItem[] = [
-    {
-      id: "capability-deployment",
-      label: isLocal
-        ? t("modelHub.chips.local", { defaultValue: "Local" })
-        : t("modelHub.chips.cloud", { defaultValue: "Cloud" }),
-      variant: "secondary",
-      icon: isLocal ? (
-        <Monitor className="h-3 w-3" />
-      ) : (
-        <Cloud className="h-3 w-3" />
-      ),
-      detail: isLocal
-        ? t("modelHub.chips.localDetail", {
-            defaultValue: "Runs on this Mac or through a local runtime.",
-          })
-        : t("modelHub.chips.cloudDetail", {
-            defaultValue: "Uses a configured network provider.",
-          }),
-    },
-    {
-      id: "capability-size",
-      label: ttsStorageSizeLabel(model, t),
-      variant: "secondary",
-      icon: <HardDrive className="h-3 w-3" />,
-      detail: t("modelHub.chips.storageSizeDetail", {
-        defaultValue: "Approximate model storage footprint.",
-      }),
-    },
+    ...mergeSizeWithIdentityChips(identityChips, sizeChip),
     languageCoverage
       ? {
           id: "capability-languages",

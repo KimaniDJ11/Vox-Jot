@@ -1,39 +1,41 @@
 {
   "tray": {
-    "startRecording": "Start Recording",
+    "startRecording": "録音を開始する",
     "settings": "設定",
-    "copyLastTranscript": "最新の文字起こしをコピー",
-    "quit": "終了",
+    "copyLastTranscript": "最後のトランスクリプトをコピー",
+    "quit": "やめる",
     "cancel": "キャンセル",
     "jotPad": "Jot Pad",
-    "speakSelected": "Speak Selected",
-    "dictateMode": "Dictate",
-    "refineMode": "Refine",
-    "listenMode": "Listen"
+    "speakSelected": "選択したものを読み上げる",
+    "dictateMode": "口述する",
+    "refineMode": "絞り込む",
+    "listenMode": "聞いてください"
   },
   "sidebar": {
-    "collapsePanel": "設定サイドバーを隠す",
+    "collapsePanel": "設定サイドバーを非表示にする",
     "expandPanel": "設定サイドバーを表示",
     "system": "システム",
     "models": "モデル",
     "dataPrivacy": "プライバシーとデータ",
-    "experimental": "ラボ",
-    "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "experimental": "研究室",
+    "ollama": "LLMモデル",
+    "corrections": "辞書",
     "snippets": "フレーズキー",
-    "styles": "ライトプロファイル",
-    "history": "履歴",
+    "styles": "プロファイルの書き込み",
+    "history": "歴史",
     "debug": "デバッグ",
-    "about": "概要",
-    "settingsLabel": "Settings"
+    "about": "について",
+    "settingsLabel": "設定",
+    "settingsButton": "設定",
+    "sectionNavigation": "セクションのナビゲーション"
   },
   "onboarding": {
-    "subtitle": "開始するには、文字起こしモデルを選択してください",
+    "subtitle": "まず、文字起こしモデルを選択してください",
     "recommended": "おすすめ",
     "download": "ダウンロード",
     "downloading": "ダウンロード中...",
-    "customModelDescription": "公式サポート対象外",
-    "downloadFailed": "ダウンロードに失敗しました。もう一度お試しください。",
+    "customModelDescription": "公式にはサポートされていません",
+    "downloadFailed": "ダウンロードに失敗しました。もう一度試してください。",
     "modelCard": {
       "accuracy": "精度",
       "speed": "速度"
@@ -41,31 +43,31 @@
     "models": {
       "small": {
         "name": "Whisper Small",
-        "description": "高速でそこそこ正確。"
+        "description": "高速かつかなり正確です。"
       },
       "medium": {
         "name": "Whisper Medium",
-        "description": "良好な精度、中程度の速度"
+        "description": "良好な精度、中速"
       },
       "turbo": {
         "name": "Whisper Turbo",
-        "description": "精度と速度のバランスが良い。"
+        "description": "精度とスピードのバランスが取れています。"
       },
       "large": {
         "name": "Whisper Large",
-        "description": "良好な精度、ただし低速。"
+        "description": "精度は良いですが、遅いです。"
       },
       "parakeet-tdt-0.6b-v2": {
         "name": "Parakeet V2",
-        "description": "英語のみ。英語話者に最適なモデル。"
+        "description": "英語のみ。英語を話す人に最適なモデル。"
       },
       "parakeet-tdt-0.6b-v3": {
         "name": "Parakeet V3",
-        "description": "高速で正確"
+        "description": "速くて正確"
       },
       "moonshine-base": {
         "name": "Moonshine Base",
-        "description": "非常に高速、英語のみ。アクセントにも対応。"
+        "description": "非常に高速で、英語のみです。アクセントを上手に取り入れています。"
       },
       "moonshine-tiny-streaming-en": {
         "name": "Moonshine V2 Tiny",
@@ -73,500 +75,526 @@
       },
       "moonshine-small-streaming-en": {
         "name": "Moonshine V2 Small",
-        "description": "高速、英語のみ。速度と精度のバランスが良い。"
+        "description": "早いです、英語のみです。スピードと精度のバランスが良い。"
       },
       "moonshine-medium-streaming-en": {
         "name": "Moonshine V2 Medium",
         "description": "英語のみ。高品質。"
       },
       "breeze-asr": {
-        "name": "Breeze ASR",
-        "description": "台湾華語に最適化。コードスイッチングに対応。"
+        "name": "そよ風ASR",
+        "description": "台湾中国語用に最適化されています。コードスイッチングのサポート。"
       },
       "sense-voice-int8": {
-        "name": "SenseVoice",
-        "description": "非常に高速。中国語、英語、日本語、韓国語、広東語。"
+        "name": "センスボイス",
+        "description": "とても速いです。中国語、英語、日本語、韓国語、広東語。"
       },
       "gigaam-v3-e2e-ctc": {
-        "name": "GigaAM v3",
-        "description": "ロシア語音声認識。高速かつ高精度。"
+        "name": "ギガAM v3",
+        "description": "ロシア語の音声認識。速くて正確。"
       }
     },
     "errors": {
-      "loadModels": "利用可能なモデルの読み込みに失敗しました",
+      "loadModels": "利用可能なモデルをロードできませんでした",
       "downloadModel": "モデルのダウンロードに失敗しました: {{error}}"
     },
     "permissions": {
-      "title": "権限が必要です",
-      "description": "Vox Jotが正常に動作するにはいくつかの権限が必要です。",
+      "title": "必要な権限",
+      "description": "続行するには必要な権限を付与してください。画面録画は、ローカルのビジュアルコンテキストではオプションです。",
       "microphone": {
-        "title": "マイクへのアクセス",
+        "title": "マイクアクセス",
         "description": "文字起こしのためにあなたの声を聞くために必要です。",
         "cardTitle": "Allow Vox Jot to use your microphone",
-        "cardDescription": "Vox Jot only needs the microphone while you are dictating.",
-        "eyebrow": "Voice capture",
-        "storyTitle": "Microphone Access",
-        "storyDescription": "Powers local dictation so Vox Jot can hear you only when you choose to record.",
+        "cardDescription": "Vox Jot がマイクを必要とするのは、ディクテーション中のみです。",
+        "eyebrow": "音声キャプチャ",
+        "storyTitle": "マイクアクセス",
+        "storyDescription": "ローカルのディクテーションを強化して、録音を選択した場合にのみ Vox Jot があなたの声を聞くことができるようにします。",
         "bullets": [
-          "Capture your voice for speech-to-text.",
-          "Run transcription locally on your Mac.",
-          "Use your selected microphone during dictation."
+          "音声をテキストに変換するためにあなたの声をキャプチャします。",
+          "Mac でローカルに文字起こしを実行します。",
+          "ディクテーション中に選択したマイクを使用します。"
         ],
-        "privacy": "Only listens while you are actively dictating.",
-        "cta": "Enable Microphone"
+        "privacy": "積極的にディクテーションしている間だけ聞いてください。",
+        "cta": "マイクを有効にする"
       },
       "accessibility": {
         "title": "アクセシビリティへのアクセス",
-        "description": "アプリケーションに文字起こしテキストを入力するために必要です。",
+        "description": "文字起こししたテキストをアプリケーションに入力するために必要です。",
         "cardTitle": "Allow Vox Jot to insert spoken words",
-        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using.",
-        "eyebrow": "Text output",
-        "storyTitle": "Accessibility",
-        "storyDescription": "Lets Vox Jot paste or type your transcript into the app and field you are already using.",
+        "cardDescription": "これにより、Vox Jot は、アクティブに使用しているフィールドに転写されたテキストを配置できるようになります。",
+        "eyebrow": "テキスト出力",
+        "storyTitle": "アクセシビリティ",
+        "storyDescription": "Vox Jot は、すでに使用しているアプリとフィールドにトランスクリプトを貼り付けるか入力します。",
         "bullets": [
-          "Place transcribed text where your cursor is focused.",
-          "Trigger dictation from anywhere with the global shortcut.",
-          "Keep the normal paste flow fast after transcription."
+          "カーソルがフォーカスされている場所に転写されたテキストを配置します。",
+          "グローバル ショートカットを使用して、どこからでもディクテーションをトリガーできます。",
+          "転写後は通常のペーストの流れを速く保ちます。"
         ],
-        "privacy": "Only controls text insertion for Vox Jot actions; it does not read document contents.",
-        "cta": "Enable Accessibility"
+        "privacy": "Vox Jot アクションのテキスト挿入のみを制御します。文書の内容は読み取られません。",
+        "cta": "アクセシビリティを有効にする"
       },
-      "grant": "権限を許可",
-      "granted": "許可済み",
-      "waiting": "待機中...",
-      "allGranted": "準備完了！",
+      "grant": "許可を与える",
+      "granted": "確かに",
+      "waiting": "待っています...",
+      "allGranted": "準備完了です！",
       "errors": {
-        "checkFailed": "権限の確認に失敗しました。もう一度お試しください。",
-        "requestFailed": "権限のリクエストに失敗しました。もう一度お試しください。"
+        "checkFailed": "権限の確認に失敗しました。もう一度試してください。",
+        "requestFailed": "許可のリクエストに失敗しました。もう一度試してください。"
       },
-      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
-      "continue": "Continue",
-      "moreInfo": "More info",
-      "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app.",
+      "heading": "ディクテーションツールキットを有効にする",
+      "continue": "セットアップを続行する",
+      "moreInfo": "詳細情報",
+      "visualPath": "システム設定 -> プライバシーとセキュリティ",
+      "visualDescription": "マイク、アクセシビリティ、および入力モニタリングを許可すると、Vox Jot があなたの音声をキャプチャし、適切なアプリにテキストを配置し、送信と削除の変更を迅速に理解できるようになります。オプションの画面録画では、アクティブなディスプレイからローカル OCR コンテキストを追加します。",
       "inputMonitoring": {
-        "title": "Input Monitoring",
-        "description": "Required so Vox Jot can better tell the difference between sending a message and manually clearing text.",
+        "title": "入力モニタリング",
+        "description": "Vox Jot がメッセージの送信とテキストの手動クリアの違いをよりよく区別できるようにするために必要です。",
         "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
-        "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
-        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app.",
-        "eyebrow": "Keyboard state",
-        "storyTitle": "Input Monitoring",
-        "storyDescription": "Helps Vox Jot understand shortcut and key state locally so dictation behaves correctly across apps.",
+        "cardDescription": "これにより、Vox Jot はクイック編集、Enter-to-send アクション、および削除によるクリアに気づくことができます。入力した内容は記録されません。",
+        "manualCleanupHint": "ここで macOS に古い Vox Jot エントリが表示されている場合は、それを削除して /Applications/Vox Jot.app を有効にします。",
+        "eyebrow": "キーボードの状態",
+        "storyTitle": "入力モニタリング",
+        "storyDescription": "Vox Jot がローカルでショートカットとキーの状態を理解できるようにすることで、アプリ間でディクテーションが正しく動作します。",
         "bullets": [
-          "Detect start and stop shortcut state reliably.",
-          "Understand quick send-versus-delete changes.",
-          "Keep correction tracking local to this device."
+          "ショートカットの開始と停止の状態を確実に検出します。",
+          "送信と削除の簡単な変更を理解します。",
+          "修正追跡をこのデバイスのローカルに維持します。"
         ],
-        "privacy": "Does not log what you type or store your keystrokes.",
-        "cta": "Enable Input Monitoring"
+        "privacy": "入力内容を記録したり、キーストロークを保存したりしません。",
+        "cta": "入力モニタリングを有効にする"
       },
       "screenRecording": {
-        "title": "Screen Recording",
-        "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
+        "title": "画面録画",
+        "description": "Vox Jot がアクティブなディスプレイからローリング OCR キャッシュを構築し、それをローカルのディクテーション コンテキストとして使用できるようにするために必要です。",
         "cardTitle": "Allow Vox Jot to read active-screen context locally",
-        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating.",
-        "eyebrow": "Visual context",
-        "storyTitle": "Screen Recording",
-        "storyDescription": "Optionally powers local OCR context so Vox Jot can better handle names, jargon, and phrase keys.",
+        "cardDescription": "これにより、Vox Jot が定期的にアクティブな表示になり、ディクテーションを開始するときに名前、専門用語、フレーズ キーがより正確になります。",
+        "eyebrow": "視覚的なコンテキスト",
+        "storyTitle": "画面録画",
+        "storyDescription": "オプションで、ローカル OCR コンテキストを強化して、Vox Jot が名前、専門用語、フレーズ キーをより適切に処理できるようにします。",
         "bullets": [
-          "Read active-screen context for better dictation accuracy.",
-          "Recognize visible terms without cloud processing.",
-          "Improve phrase keys and app-aware writing."
+          "アクティブ画面のコンテキストを読み取り、ディクテーションの精度を向上させます。",
+          "クラウド処理なしで目に見える用語を認識します。",
+          "フレーズキーとアプリ対応の書き込みを改善します。"
         ],
-        "privacy": "Only used for local context features; you can skip this and enable it later.",
-        "cta": "Enable Screen Recording"
+        "privacy": "ローカル コンテキスト機能にのみ使用されます。これをスキップして、後で有効にすることもできます。",
+        "cta": "画面録画を有効にする"
       },
-      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context.",
-      "checking": "Checking permissions...",
-      "required": "Required",
-      "optional": "Optional",
-      "skip": "Skip",
-      "stepProgress": "{{current}} of {{total}}",
-      "completeTitle": "Permissions are ready",
-      "completeDescription": "Vox Jot has the access it needs for the first dictation flow."
+      "privacyBadge": "Vox Jot はデバイス上でディクテーションを実行します。私たちがあなたの音声、キーストローク、画面のコンテキストをアップロードすることはありません。",
+      "checking": "権限を確認しています...",
+      "required": "必須",
+      "optional": "オプション",
+      "skip": "スキップ",
+      "stepProgress": "{{current}}/{{total}}",
+      "completeTitle": "権限の準備ができました",
+      "completeDescription": "Vox Jot には、最初のディクテーション フローに必要なアクセス権があります。"
     },
     "steps": {
-      "welcome": "Overview",
-      "permissions": "Permissions",
-      "setup": "Model",
-      "refine": "Refine",
-      "learn": "First Dictation"
+      "welcome": "概要",
+      "permissions": "権限",
+      "setup": "モデル",
+      "refine": "絞り込む",
+      "learn": "初めてのディクテーション"
     },
     "refine": {
-      "title": "Want a local Refine engine?",
-      "description": "Refine polishes dictated text after transcription — cleanup, formatting, or rewriting. For fully local Refine, Vox Jot can install Ollama and a small model now. You can skip this and set it up later.",
+      "title": "ローカルの Refine エンジンが必要ですか?",
+      "description": "書き起こし後に、クリーンアップ、書式設定、または書き換えなどを行って、口述テキストを洗練します。完全にローカルな Refine の場合、Vox Jot は Ollama と小規模モデルをインストールできるようになりました。これをスキップして、後で設定することもできます。",
       "bullets": {
-        "local": "Runs entirely on this device once installed — no cloud calls.",
-        "tiny": "Installs Ollama plus a small ~0.4 GB Qwen 2.5 0.5B model.",
-        "optional": "Optional. You can skip now and configure any Refine provider later."
+        "local": "インストールすると、このデバイス上で完全に実行されます。クラウド呼び出しはありません。",
+        "tiny": "Ollama に加えて、小型の ~0.4 GB Qwen 2.5 0.5B モデルをインストールします。",
+        "optional": "オプション。ここでスキップして、後で任意の絞り込みプロバイダーを構成できます。"
       },
-      "installCta": "Install local Refine engine",
-      "skipCta": "Skip for now",
-      "footnote": "If you skip, Refine still works once you connect a cloud provider in Settings > Models & AI.",
-      "cardTitle": "Polish dictated text, privately",
-      "cardDescription": "Refine runs after transcription to clean up filler words, fix punctuation, or rewrite in a tone.",
+      "installCta": "ローカルのリファイン エンジンをインストールする",
+      "skipCta": "今のところスキップしてください",
+      "footnote": "スキップした場合でも、[設定] > [モデルと AI] でクラウド プロバイダーに接続すると、Refine は引き続き機能します。",
+      "cardTitle": "ポーランド語の口述テキスト、非公開",
+      "cardDescription": "Refine は文字起こし後に実行され、つなぎ言葉をクリーンアップしたり、句読点を修正したり、調子を変えて書き直したりします。",
       "checking": "Checking for Ollama…",
-      "checkingDescription": "Looking for an existing local Refine engine on this device.",
+      "checkingDescription": "このデバイス上の既存のローカル調整エンジンを探しています。",
       "installing": {
         "title": "Installing Ollama",
-        "description": "This installs the local Refine engine. Network activity is normal here."
+        "description": "これにより、ローカルの Refine エンジンがインストールされます。ここではネットワークアクティビティは正常です。"
       },
       "pulling": {
-        "title": "Downloading the default Refine model",
-        "description": "Pulling {{model}}. This usually takes a minute or two on a fast connection."
+        "title": "デフォルトのリファインモデルのダウンロード",
+        "description": "{{model}}を引いています。高速接続の場合、これには通常 1 ～ 2 分かかります。"
       },
       "ready": {
-        "title": "Local Refine is ready",
-        "description": "Ollama is installed and the default model is available. Continuing to the next step."
+        "title": "ローカルリファインの準備が完了しました",
+        "description": "Ollama がインストールされており、デフォルトのモデルが使用可能です。次のステップに進みます。"
       },
       "errors": {
-        "installFailed": "Could not install Ollama automatically. You can skip this step and install it later from Settings > Models & AI.",
-        "startFailed": "Ollama was installed but could not be started. You can skip and try again from settings.",
-        "pullFailed": "Could not download the default Refine model. You can skip and download it later."
+        "installFailed": "Ollama を自動的にインストールできませんでした。この手順をスキップして、後で [設定] > [モデルと AI] からインストールできます。",
+        "startFailed": "Ollama はインストールされましたが、起動できませんでした。設定からスキップして再試行できます。",
+        "pullFailed": "デフォルトの Refine モデルをダウンロードできませんでした。スキップして後でダウンロードすることもできます。"
       }
     },
     "welcome": {
-      "title": "Set up private voice dictation that actually fits your workflow",
-      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "title": "実際にワークフローに適合するプライベート音声ディクテーションを設定する",
+      "description": "Vox Jot を使用すると、任意のアプリに話しかけることができ、文字起こしをデバイス上でローカルに保持し、オプションで貼り付ける前に最終テキストを仕上げることもできます。",
       "cta": "Set Up Vox Jot",
-      "cardTitle": "Built for everyday dictation",
-      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "cardTitle": "日常のディクテーション用に構築",
+      "cardDescription": "まずコア フローを動作させ、Vox Jot がどのように動作するかがわかったら出力を調整します。",
       "features": [
-        "Download a local speech model that matches your speed and accuracy needs.",
-        "Grant the permissions Vox Jot needs to listen and type into other apps.",
-        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+        "速度と精度のニーズに合ったローカル音声モデルをダウンロードします。",
+        "Vox Jot が他のアプリをリッスンして入力するために必要な権限を付与します。",
+        "通常のディクテーションのショートカットを今すぐ学習し、必要に応じて後で洗練されたディクテーションを構成します。"
       ],
       "highlights": {
         "local": {
-          "title": "Local transcription",
-          "description": "Your speech model runs on your own machine."
+          "title": "ローカル転写",
+          "description": "音声モデルは独自のマシン上で実行されます。"
         },
         "anywhere": {
-          "title": "Works across apps",
-          "description": "Dictate into messages, docs, notes, and forms."
+          "title": "複数のアプリで動作",
+          "description": "メッセージ、ドキュメント、メモ、フォームに口述入力します。"
         },
         "polish": {
-          "title": "Optional cleanup",
-          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+          "title": "オプションのクリーンアップ",
+          "description": "後でよりスマートな書式設定やヘルプの書き換えが必要な場合は、後処理を使用します。"
         }
       }
     },
     "setup": {
-      "title": "Choose the transcription model you want to start with",
-      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
-      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
-      "cardTitle": "Everything stays on your device",
-      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "title": "開始したい文字起こしモデルを選択してください",
+      "description": "モデルは音声認識をローカルで処理します。推奨オプションはほとんどの人をカバーしており、後で [設定] > [モデル] からいつでもモデルを変更できます。",
+      "footnote": "速度、言語サポート、精度のバランスを変更したい場合は、後でモデルを切り替えることができます。",
+      "cardTitle": "すべてがデバイス上に残ります",
+      "cardDescription": "音声モデルは一度ダウンロードされると、音声を送信せずに Vox Jot で書き起こすことができます。",
       "downloading": {
-        "title": "Downloading your speech model",
-        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+        "title": "音声モデルをダウンロードする",
+        "description": "これはセットアップ中にのみ発生します。完了すると、Vox Jot はローカルで転写する準備が整います。"
       },
       "advanced": {
-        "show": "Show more model options",
-        "hide": "Hide extra model options"
+        "show": "さらにモデルオプションを表示",
+        "hide": "追加のモデル オプションを非表示にする"
       }
     },
     "firstDictation": {
-      "title": "You are ready for your first dictation",
-      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "title": "初めてのディクテーションの準備ができました",
+      "description": "通常のディクテーション ショートカットから始めて、自然に話し、カーソルがフォーカスされている場所に Vox Jot が結果を貼り付けます。",
       "cta": "Open Vox Jot",
       "steps": [
-        "Place your cursor in any text field where you want the transcript to go.",
-        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
-        "Adjust output, paste behavior, or polished dictation later from Settings."
+        "トランスクリプトを配置する任意のテキスト フィールドにカーソルを置きます。",
+        "ディクテーションのショートカットを使用して録音を開始し、話し終わったら停止します。",
+        "後で [設定] から出力、貼り付け動作、洗練されたディクテーションを調整します。"
       ],
       "shortcuts": {
         "dictation": {
-          "label": "Regular dictation",
-          "description": "Use this for fast speech-to-text in any app."
+          "label": "定期的なディクテーション",
+          "description": "あらゆるアプリで音声を高速にテキストに変換するためにこれを使用します。"
         },
         "postProcess": {
-          "label": "Polished dictation",
-          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
-          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+          "label": "洗練されたディクテーション",
+          "descriptionEnabled": "このショートカットは現在準備ができており、貼り付ける前にポストプロセス設定を実行します。",
+          "descriptionDisabled": "よりスマートなクリーンアップまたは書き換え動作が必要な場合は、ポストプロセスで後ほどこれを設定します。"
         }
       },
       "postProcessReady": {
-        "title": "Post Process is already available",
-        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+        "title": "ポストプロセスはすでに利用可能です",
+        "description": "通常のディクテーションを使い続けることも、クリーンアップ、書式設定、またはプロバイダーによる書き換えが必要なときにいつでも洗練されたショートカットを使用することもできます。"
       },
       "postProcessLater": {
-        "title": "Post Process is easy to add later",
-        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+        "title": "ポストプロセスは後から簡単に追加できます",
+        "description": "[後処理] ページはサイドバーに表示されたままになるため、いつでも戻って有効化し、プロバイダーを選択し、貼り付ける前に結果をテストできます。"
       },
       "tip": {
-        "title": "Start simple, tune later",
-        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+        "title": "シンプルに始めて、後で調整する",
+        "description": "最も早い方法は、最初に生のディクテーションを機能させることです。それがうまくいったと感じたら、貼り付け設定を調整し、メイン アプリからのディクテーションを洗練させます。"
       }
     },
     "common": {
-      "back": "Back"
+      "back": "戻る"
     }
   },
   "modelSelector": {
     "custom": "カスタム",
     "active": "アクティブ",
-    "switching": "切替中...",
-    "noModelsAvailable": "利用可能なモデルがありません",
-    "extracting": "{{modelName}}を展開中...",
-    "extractingMultiple": "{{count}}個のモデルを展開中...",
-    "extractingGeneric": "展開中...",
-    "downloading": "ダウンロード中 {{percentage}}%",
-    "downloadingMultiple": "{{count}}個のモデルをダウンロード中...",
-    "modelReady": "モデル準備完了",
-    "loading": "{{modelName}}を読み込み中...",
+    "switching": "切り替え中...",
+    "noModelsAvailable": "利用可能なモデルはありません",
+    "extracting": "{{modelName}} を抽出中...",
+    "extractingMultiple": "{{count}} モデルを抽出しています...",
+    "extractingGeneric": "抽出中...",
+    "downloading": "{{percentage}}% をダウンロード中",
+    "downloadingMultiple": "{{count}} モデルをダウンロードしています...",
+    "modelReady": "モデルの準備完了",
+    "loading": "{{modelName}}を読み込んでいます...",
     "loadingGeneric": "読み込み中...",
     "modelError": "モデルエラー",
     "modelUnloaded": "モデルがアンロードされました",
-    "noModelDownloadRequired": "モデルなし - ダウンロードが必要",
+    "noModelDownloadRequired": "モデルなし - ダウンロードが必要です",
     "deleteModel": "{{modelName}}を削除",
-    "downloadSpeed": "{{speed}} MB/s",
+    "downloadSpeed": "{{speed}} MB/秒",
     "capabilities": {
       "languageSelection": "複数の入力言語をサポート",
       "multiLanguage": "多言語",
-      "translation": "英語への翻訳が可能",
-      "translate": "英語に翻訳",
-      "singleLanguage": "この言語のみ対応",
+      "translation": "英語に翻訳できる",
+      "translate": "英語に翻訳する",
+      "singleLanguage": "この言語のみをサポートします",
       "languageOnly": "{{language}}のみ"
     },
     "cancel": "キャンセル",
-    "cancelDownload": "ダウンロードをキャンセル",
-    "deleteConfirm": "Delete {{modelName}}? Files will be removed from disk.",
-    "deleteActiveConfirm": "Delete {{modelName}}? It is the active model — you'll need to pick another to dictate.",
-    "confirmDelete": "Delete"
+    "cancelDownload": "ダウンロードをキャンセルする",
+    "deleteConfirm": "{{modelName}}を削除しますか?ファイルはディスクから削除されます。",
+    "deleteActiveConfirm": "{{modelName}}を削除しますか?これはアクティブなモデルです。指示するには別のモデルを選択する必要があります。",
+    "confirmDelete": "削除"
   },
   "settings": {
     "snippets": {
       "toggle": {
-        "title": "Phrase keys",
-        "label": "Enable phrase keys",
-        "description": "Expand short spoken triggers into full text while you dictate. Say your trigger and Vox Jot inserts the saved text."
+        "title": "フレーズキー",
+        "label": "フレーズキーを有効にする",
+        "description": "口述筆記中に、短い音声トリガーを全文に展開します。トリガーを言うと、Vox Jot が保存されたテキストを挿入します。"
       },
       "list": {
-        "title": "Trigger Phrases",
-        "empty": "No phrase keys yet. Add a trigger and the text it should expand to.",
-        "add": "Add phrase key",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
-        "trigger": "Spoken trigger",
-        "expansion": "Expands to",
-        "triggerPlaceholder": "What you say (e.g. my email)",
-        "expansionPlaceholder": "What gets typed (e.g. user@example.com)",
-        "emptyDescription": "Phrase keys expand short spoken triggers into saved text while you dictate.",
-        "emptyExample": "For example, say “my email” to insert “hello@example.com.”",
-        "myKeys": "My keys",
-        "importedKeys": "Imported keys",
-        "viewLabel": "Phrase keys view",
-        "importDropHint": "Drag & drop a phrase keys JSON file here",
-        "pickImportFile": "Pick JSON file",
-        "importSuccess": "Phrase keys imported.",
-        "importFailed": "Failed to import phrase keys.",
-        "importJsonOnly": "Choose a JSON phrase keys file.",
-        "importTooLarge": "That file is too large to import.",
-        "duplicateTrigger": "A phrase key already uses that spoken trigger."
+        "title": "トリガーフレーズ",
+        "empty": "フレーズキーはまだありません。",
+        "add": "フレーズキーを追加",
+        "import": "インポート",
+        "export": "エクスポート",
+        "clearAll": "すべてクリア",
+        "trigger": "音声トリガー",
+        "expansion": "に拡張します",
+        "triggerPlaceholder": "あなたが言ったこと（私のメールなど）",
+        "expansionPlaceholder": "入力される内容 (例: user@example.com)",
+        "emptyDescription": "フレーズ キーは、ディクテーション中に短い音声トリガーを保存されたテキストに展開します。",
+        "emptyExample": "たとえば、「私のメールアドレス」と発声して「hello@example.com」を挿入します。",
+        "myKeys": "私の鍵",
+        "importedKeys": "インポートされたキー",
+        "viewLabel": "フレーズキービュー",
+        "importDropHint": "ここにフレーズ キー JSON ファイルをドラッグ アンド ドロップします",
+        "pickImportFile": "JSON ファイルを選択してください",
+        "importSuccess": "フレーズキーがインポートされました。",
+        "importFailed": "フレーズキーのインポートに失敗しました。",
+        "importJsonOnly": "JSON フレーズ キー ファイルを選択します。",
+        "importTooLarge": "そのファイルは大きすぎてインポートできません。",
+        "duplicateTrigger": "フレーズ キーはすでにその音声トリガーを使用しています。"
       }
     },
     "styles": {
-      "title": "Write profiles",
-      "description": "Write profiles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
-      "disabledMessage": "Enable write profiles to automatically match tone to the app you are dictating into.",
+      "title": "プロファイルの書き込み",
+      "description": "Slack ではロボットのように聞こえたり、メールではカジュアルになりすぎたりしないでください。 Vox Jot は、ディクテーション対象のアプリまたは Web サイトに基づいて、トーン、モデル、出力動作を切り替えることができます。",
+      "disabledMessage": "書き込みプロファイルを有効にして、口述筆記しているアプリにトーンを自動的に一致させます。",
       "toggle": {
-        "label": "Enable app-aware write profiles",
-        "description": "Apply a different writing profile for chat, email, notes, and other apps based on where you dictate."
+        "label": "アプリごとに書き方を自動でマッチング",
+        "description": "口述する場所に応じて、チャット、電子メール、メモ、その他のアプリで異なる書き込み動作を使用します。"
       },
       "tones": {
-        "title": "Starter profiles",
-        "description": "Start with built-in presets, adjust their instructions as needed, and add custom profiles only when you want something extra.",
-        "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
+        "title": "スタータープロファイル",
+        "description": "組み込みのプリセットから始めて、必要に応じてその指示を調整し、追加のものが必要な場合にのみカスタム プロファイルを追加します。",
+        "helper": "デフォルトのプリセットはほとんどのワークフローをカバーします。チャットにはカジュアル、電子メールとドキュメントにはプロフェッショナル、その他すべてにはニュートラルです。",
         "columns": {
           "id": "Profile ID",
-          "label": "Display name",
-          "instruction": "Instruction"
+          "label": "表示名",
+          "instruction": "指示"
         },
         "placeholders": {
           "id": "casual",
-          "label": "Casual",
-          "instruction": "Use a casual, conversational tone suitable for chat messages."
+          "label": "カジュアル",
+          "instruction": "チャット メッセージに適したカジュアルで会話的な口調を使用します。"
         },
-        "add": "Add custom profile",
-        "restore": "Restore starter profiles",
-        "starterBadge": "Starter",
-        "customBadge": "Custom",
-        "unused": "No apps mapped yet",
-        "editId": "Edit profile ID"
+        "add": "カスタムプロファイルを追加する",
+        "restore": "スタータープロファイルを復元する",
+        "starterBadge": "スターター",
+        "customBadge": "カスタム",
+        "unused": "まだマッピングされているアプリはありません",
+        "editId": "プロファイルキーを編集する"
       },
       "mappings": {
-        "title": "App mappings",
-        "description": "Assign apps to a profile. Bundle IDs are the most reliable match key.",
+        "title": "アプリのマッピング",
+        "description": "アプリをプロファイルに割り当てると、音声入力中にトーンが自動的に切り替わります。",
         "columns": {
-          "appName": "App",
-          "bundleId": "Bundle ID",
-          "tone": "Profile"
+          "appName": "アプリ",
+          "bundleId": "アプリ識別子",
+          "tone": "プロフィール"
         },
         "placeholders": {
-          "appName": "Slack",
+          "appName": "たるみ",
           "bundleId": "com.tinyspeck.slackmacgap"
         },
-        "selectTone": "Select profile…",
-        "add": "Add app",
-        "empty": "No app mappings yet. Add one below to tailor tone per app."
+        "selectTone": "プロフィールを選択してください…",
+        "add": "アプリを追加",
+        "empty": "アプリのマッピングはまだありません。アプリごとにトーンを調整するには、以下に 1 つを追加します。"
       },
-      "empty": "No write profiles yet.",
-      "emptyDescription": "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
-      "emptyExample": "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
-      "createFirstProfile": "Create your first profile"
+      "empty": "書き込みプロファイルはまだありません。",
+      "emptyDescription": "プロファイルを作成して、音声入力しているアプリまたは Web サイトに基づいて、トーン、エンジン、または出力動作を自動的に切り替えます。",
+      "emptyExample": "たとえば、Slack はカジュアルなままにし、メールとドキュメントではよりクリーンなプロフェッショナル スタイルを使用します。",
+      "createFirstProfile": "最初のプロフィールを作成する"
     },
     "modelSettings": {
-      "title": "{{model}} 設定",
-      "noSettingsNeeded": "このモデルは設定不要で自動的に動作します。"
+      "title": "{{model}}の設定",
+      "noSettingsNeeded": "このモデルは、設定を必要とせずに自動的に機能します。"
     },
     "models": {
       "title": "転写モデル",
-      "description": "転写モデルを選択するか、追加のモデルをダウンロードします。異なるモデルは精度と速度のレベルが異なります。",
+      "description": "転写モデルを選択するか、追加のモデルをダウンロードします。モデルが異なれば、提供される精度と速度のレベルも異なります。",
       "downloaded": "ダウンロード済み",
       "available": "ダウンロード可能",
-      "deleteConfirm": "{{modelName}}を削除してもよろしいですか？再度使用するにはダウンロードが必要です。",
-      "deleteActiveConfirm": "{{modelName}}は現在使用中のモデルです。削除すると、新しいモデルを選択するまで文字起こしが停止します。本当に削除しますか？",
-      "deleteTitle": "モデルを削除",
+      "deleteConfirm": "{{modelName}} を削除してもよろしいですか?使用するには再度ダウンロードする必要があります。",
+      "deleteActiveConfirm": "{{modelName}} がアクティブなモデルです。これを削除すると、新しいモデルを選択するまで転写が停止されます。本気ですか？",
+      "deleteTitle": "モデルの削除",
       "filters": {
         "all": "すべて",
         "multiLanguage": "多言語",
         "translation": "翻訳",
         "allLanguages": "すべての言語"
       },
-      "noModelsMatch": "このフィルターに一致するモデルがありません。",
-      "yourModels": "ダウンロード済みモデル",
+      "noModelsMatch": "このフィルターに一致するモデルはありません。",
+      "yourModels": "ダウンロードしたモデル",
       "availableModels": "ダウンロード可能",
-      "activeSpeechModel": "Active Speech Model",
-      "clearFilterHint": "Clear the language filter to browse the full model list again."
+      "activeSpeechModel": "アクティブスピーチモデル",
+      "clearFilterHint": "言語フィルターをクリアして、完全なモデルのリストを再度参照します。",
+      "evaluation": {
+        "activeModel": "アクティブモデル",
+        "wer": "WER",
+        "match": "一致",
+        "tested": "テスト済み",
+        "blocked": "ブロックされました",
+        "pending": "保留中"
+      }
     },
     "general": {
       "title": "一般",
       "shortcut": {
         "title": "Vox Jotショートカット",
-        "description": "音声録音を開始するキーボードショートカットを設定",
-        "loading": "ショートカットを読み込み中...",
+        "description": "キーボード ショートカットを設定して音声テキスト録音をトリガーする",
+        "loading": "ショートカットを読み込んでいます...",
         "none": "ショートカットが設定されていません",
         "notFound": "ショートカットが見つかりません",
         "pressKeys": "キーを押してください...",
         "bindings": {
           "transcribe": {
-            "name": "文字起こしショートカット",
-            "description": "音声を録音して文字起こしするためのキーボードショートカット。"
+            "name": "文字起こしのショートカット",
+            "description": "音声を録音して文字に起こすためのキーボード ショートカット。"
           },
           "cancel": {
-            "name": "キャンセルショートカット",
-            "description": "現在の録音をキャンセルするためのキーボードショートカット。"
+            "name": "ショートカットをキャンセル",
+            "description": "現在の録音をキャンセルするためのキーボード ショートカット。"
           },
           "transcribe_with_post_process": {
             "name": "後処理ホットキー",
-            "description": "オプション：文字起こしに常にAI後処理を適用する専用ホットキー。"
+            "description": "オプション: 文字起こしに AI 後処理を常に適用する専用ホットキー。"
           },
           "toggle_command_menu": {
-            "name": "Command Menu",
-            "description": "Open the command palette from anywhere."
+            "name": "コマンドメニュー",
+            "description": "どこからでもコマンド パレットを開きます。"
           }
         },
         "errors": {
-          "restore": "元のショートカットを復元できませんでした",
-          "set": "ショートカットを設定できませんでした: {{error}}",
+          "restore": "元のショートカットの復元に失敗しました",
+          "set": "ショートカットの設定に失敗しました: {{error}}",
           "reset": "ショートカットを元の値にリセットできませんでした"
         }
       },
       "language": {
         "title": "言語",
-        "description": "音声認識の言語を選択してください。自動を選択すると言語を自動的に判定します。特定の言語を選択すると、その言語の精度が向上する場合があります。",
-        "descriptionUnsupported": "Parakeetモデルは言語を自動的に検出します。手動選択は不要です。",
+        "description": "音声認識の言語を選択します。 [自動] では言語が自動的に決定されますが、特定の言語を選択すると、その言語の精度が向上します。",
+        "descriptionUnsupported": "Parakeet モデルは言語を自動的に検出します。手動で選択する必要はありません。",
         "searchPlaceholder": "言語を検索...",
         "noResults": "言語が見つかりません",
         "auto": "自動"
       },
       "pushToTalk": {
         "label": "プッシュトゥトーク",
-        "description": "押し続けて録音、離して停止"
+        "description": "押し続けると録音、放すと停止します",
+        "modes": {
+          "toggle": {
+            "title": "トグル",
+            "description": "1 回押すと開始し、もう一度押すと停止します。"
+          },
+          "hold": {
+            "title": "Push-to-talk",
+            "description": "ショートカットを押したまま話します。"
+          }
+        },
+        "states": {
+          "keyPress": "キーを押す",
+          "nextPress": "次に押す",
+          "holdKey": "ホールドキー",
+          "release": "リリース",
+          "micOn": "マイクオン",
+          "micOff": "マイクオフ"
+        }
       },
       "fileTranscription": {
-        "movedHint": "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it."
+        "movedHint": "ファイルの文字起こしは、[ディクテーション] → [ファイルの文字起こし] に移動しました。音声またはビデオ ファイルをドラッグして文字に起こします。"
       }
     },
     "sound": {
       "title": "サウンド",
       "microphone": {
         "title": "マイク",
-        "description": "使用するマイクデバイスを選択",
+        "description": "好みのマイクデバイスを選択してください",
         "placeholder": "マイクを選択...",
         "loading": "読み込み中..."
       },
       "audioFeedback": {
         "label": "音声フィードバック",
-        "description": "録音の開始と停止時にサウンドを再生"
+        "description": "録音の開始時と停止時に音を鳴らす"
       },
       "outputDevice": {
         "title": "出力デバイス",
-        "description": "フィードバックサウンド用の音声出力デバイスを選択",
-        "placeholder": "出力デバイスを選択...",
+        "description": "フィードバックサウンド用に好みのオーディオ出力デバイスを選択してください",
+        "placeholder": "出力デバイスを選択してください...",
         "loading": "読み込み中..."
       },
       "volume": {
-        "title": "音量",
-        "description": "音声フィードバックの音量を調整"
+        "title": "ボリューム",
+        "description": "オーディオフィードバック音の音量を調整する"
       },
       "audioEnhancement": {
-        "label": "Noise Reduction (RNNoise)",
-        "description": "Denoise microphone audio before speech detection and transcription."
+        "label": "ノイズリダクション",
+        "description": "音声検出と文字起こしの前にマイク音声のノイズを除去します。"
       }
     },
     "advanced": {
-      "title": "詳細設定",
+      "title": "上級者向け",
       "groups": {
         "app": "アプリ",
         "output": "出力",
-        "transcription": "文字起こし",
-        "history": "履歴",
-        "experimental": "ラボ"
+        "transcription": "転写",
+        "history": "歴史",
+        "experimental": "研究室"
       },
       "experimentalToggle": {
-        "label": "ラボ機能",
-        "description": "開発中のオプションを有効にします。注意してご利用ください。"
+        "label": "ラボの機能",
+        "description": "開発中の機能 (デフォルトでオン - いつでもオフにできます)。"
       },
       "startHidden": {
-        "label": "非表示で起動",
-        "description": "ウィンドウを開かずにシステムトレイに起動。"
+        "label": "非表示で開始",
+        "description": "ウィンドウを開かずにシステム トレイに起動します。"
       },
       "autostart": {
-        "label": "起動時に実行",
-        "description": "コンピューターにログインしたときにVox Jotを自動的に起動。"
+        "label": "スタートアップ時に起動",
+        "description": "コンピュータにログインすると、Vox Jot が自動的に起動します。"
       },
       "showTrayIcon": {
         "label": "トレイアイコンを表示",
-        "description": "システムトレイにVox Jotのアイコンを表示します。"
+        "description": "システム トレイに Vox Jot アイコンを表示します。"
       },
       "overlay": {
         "title": "オーバーレイ位置",
-        "description": "録音と文字起こし中に視覚的なフィードバックオーバーレイを表示。Linuxでは「なし」を推奨。",
+        "description": "録音および文字起こし中に視覚的なフィードバック オーバーレイを表示します。 Linux では「なし」が推奨されます。",
         "options": {
           "none": "なし",
           "bottom": "下",
-          "top": "上"
+          "top": "トップへ"
         },
         "style": {
-          "title": "Overlay Style",
-          "description": "Minimal shows only a small pill with level bars. Detailed adds full level meters and live partial text.",
-          "compact": "Minimal",
-          "detailed": "Detailed",
-          "minimal": "Minimal",
-          "minimalDescription": "Single dot — the smallest possible recording cue.",
-          "notch": "Notch",
-          "notchDescription": "Hugs the camera notch on M-series MacBooks (top center).",
-          "compactDescription": "Small pill with live level bars.",
-          "detailedDescription": "Wider overlay with mic status and partial text."
+          "title": "オーバーレイスタイル",
+          "description": "コンパクトはレベルバー付きの小さな錠剤を示します。詳細は部分的なテキスト ストリップを追加します。最小ではドットのみが表示されます。ノッチは、M シリーズ MacBook のカメラのノッチにぴったりフィットします。",
+          "compact": "コンパクト",
+          "detailed": "詳細",
+          "minimal": "最小限",
+          "minimalDescription": "シングルドット — 可能な最小の録音キュー。",
+          "notch": "ノッチ",
+          "notchDescription": "M シリーズ MacBook のカメラ ノッチ (上部中央) にぴったりフィットします。",
+          "compactDescription": "ライブレベルバーが付いた小さな錠剤。",
+          "detailedDescription": "マイクのステータスと部分的なテキストを含む幅広いオーバーレイ。"
         }
       },
       "pasteMethod": {
         "title": "貼り付け方法",
-        "description": "テキストの挿入方法を選択。直接：システム入力でタイピングをシミュレート。なし：貼り付けをスキップし、履歴/クリップボードのみ更新。",
+        "description": "テキストの挿入方法を選択します。ダイレクトはテキストを直接入力します。 [なし] では、結果を貼り付けずに保存します。",
         "options": {
           "clipboard": "クリップボード ({{modifier}}+V)",
           "clipboardCtrlShiftV": "クリップボード (Ctrl+Shift+V)",
@@ -575,84 +603,89 @@
           "none": "なし",
           "externalScript": "外部スクリプト"
         },
-        "externalScriptPlaceholder": "/path/to/your/script.sh"
+        "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "directDescription": "クリップボードを使用せずに、フォーカスされたフィールドに最終テキストを入力します。",
+        "clipboardDescription": "テキストをコピーし、システムの貼り付けショートカットを送信して、クリップボードを復元します。",
+        "clipboardOnly": "クリップボードのみ",
+        "clipboardOnlyDescription": "テキストをコピーし、自動貼り付けアクションをスキップします。",
+        "platformMethods": "プラットフォームメソッド"
       },
       "typingTool": {
         "title": "タイピングツール",
-        "description": "直接貼り付け方式で使用する Linux のタイピングツールを選択します。Auto は自動的に最適なツールを検出して使用します。",
+        "description": "直接貼り付け方法に使用する Linux タイピング ツールを選択します。 [自動] は、システムに最適なツールを自動的に検出して使用します。",
         "options": {
-          "auto": "Auto（推奨）"
+          "auto": "自動 (推奨)"
         }
       },
       "clipboardHandling": {
         "title": "クリップボードの処理",
-        "description": "クリップボードを変更しないを選択すると、文字起こし後も現在のクリップボード内容が保持されます。クリップボードにコピーを選択すると、貼り付け後も文字起こし結果がクリップボードに残ります。",
+        "description": "「クリップボードを変更しない」では、転写後に現在のクリップボードの内容が保持されます。 「クリップボードにコピー」では、貼り付け後に文字起こし結果がクリップボードに残ります。",
         "options": {
-          "dontModify": "クリップボードを変更しない",
+          "dontModify": "クリップボードを変更しないでください",
           "copyToClipboard": "クリップボードにコピー"
         }
       },
       "autoSubmit": {
         "title": "自動送信",
-        "description": "テキスト挿入後に選択したキーの組み合わせを自動的に送信します。macOSではCmd+Enter、Windows/LinuxではSuper+Enterが適用されます。",
+        "description": "テキストの挿入後に、選択したキーの組み合わせを自動的に送信します。 Cmd+Enter は macOS に適用されますが、Windows/Linux では Super+Enter が使用されます。",
         "options": {
           "off": "オフ",
-          "enter": "Enter",
+          "enter": "入力してください",
           "cmdEnter": "Cmd+Enter",
           "superEnter": "Super+Enter",
           "ctrlEnter": "Ctrl+Enter"
         }
       },
       "translateToEnglish": {
-        "label": "英語に翻訳",
-        "description": "文字起こし中に他の言語から英語に自動的に翻訳。",
-        "descriptionUnsupported": "翻訳は{{model}}モデルではサポートされていません。"
+        "label": "英語に翻訳する",
+        "description": "文字起こし中に音声を他の言語から英語に自動的に翻訳します。",
+        "descriptionUnsupported": "{{model}} モデルでは変換はサポートされていません。"
       },
       "modelUnload": {
-        "title": "モデルのアンロード",
-        "description": "指定時間モデルが使用されていない場合、GPU/CPUメモリを自動的に解放",
+        "title": "モデルのメモリを解放する",
+        "description": "音声モデルがしばらくアイドル状態になったときに、自動的にメモリを解放します。",
         "options": {
-          "never": "しない",
-          "immediately": "即座に",
-          "min2": "2分後",
-          "min5": "5分後",
-          "min10": "10分後",
-          "min15": "15分後",
-          "hour1": "1時間後",
-          "sec5": "5秒後（デバッグ）"
+          "never": "決してしない（次の最速ディクテーション）",
+          "immediately": "即時 (メモリ使用量が最も少ない)",
+          "min2": "2 分後 (メモリをすぐに節約します)",
+          "min5": "5分後（バランス）",
+          "min10": "10分後（保温時間が長くなります）",
+          "min15": "15 分後 (リロードが少なくなります)",
+          "hour1": "1時間後（頻繁に使用する場合に最適）",
+          "sec5": "5秒後(デバッグ)"
         }
       },
       "customWords": {
-        "title": "カスタム単語",
-        "description": "よく誤認識または誤入力される単語を追加します。システムは自動的に類似した発音の単語をリストに合わせて修正します。",
-        "placeholder": "単語を追加",
+        "title": "カスタムワード",
+        "description": "文字起こし中に聞き間違いやスペルミスが多い単語を追加します。システムは、リストに一致するように発音の似た単語を自動的に修正します。",
+        "placeholder": "一言追加",
         "add": "追加",
-        "remove": "{{word}}を削除",
-        "duplicate": "「{{word}}」は既に存在します"
+        "remove": "{{word}} を削除",
+        "duplicate": "「{{word}}」はすでに存在します"
       },
       "theme": {
-        "title": "Theme",
-        "description": "Choose the app appearance.",
+        "title": "テーマ",
+        "description": "アプリの外観を選択します。",
         "options": {
-          "light": "Light",
-          "dark": "Dark",
-          "system": "System",
-          "sepia": "Sepia",
-          "ocean": "Ocean",
-          "forest": "Forest",
-          "rose": "Rose",
-          "slate": "Slate",
-          "solarized": "Solarized",
-          "graphite": "Graphite"
+          "light": "ライト",
+          "dark": "暗い",
+          "system": "システム",
+          "sepia": "セピア",
+          "ocean": "オーシャン",
+          "forest": "森",
+          "rose": "ローズ",
+          "slate": "スレート",
+          "solarized": "ソラライズド",
+          "graphite": "グラファイト"
         }
       },
       "fontScale": {
-        "title": "Text Size",
-        "description": "Increase or decrease readable text across Vox Jot."
+        "title": "文字サイズ",
+        "description": "Vox Jot 全体で読み取り可能なテキストを増減します。"
       }
     },
     "postProcessing": {
-      "title": "後処理",
+      "title": "ポストプロセス",
       "hotkey": {
         "title": "ホットキー"
       },
@@ -660,329 +693,329 @@
         "title": "API（OpenAI互換）",
         "provider": {
           "title": "プロバイダー",
-          "description": "OpenAI互換のプロバイダーを選択。"
+          "description": "OpenAI と互換性のあるプロバイダーを選択します。"
         },
         "appleIntelligence": {
           "title": "Apple Intelligence",
-          "description": "完全にデバイス上で動作。APIキーやネットワークアクセスは不要。",
-          "requirements": "macOS Tahoe（26.0）以降を実行するApple Silicon Macが必要です。システム設定でApple Intelligenceを有効にする必要があります。",
-          "unavailable": "このデバイスではApple Intelligenceを利用できません。macOS Tahoe（26.0）以降を実行し、システム設定でApple Intelligenceが有効になっているApple Silicon Macが必要です。"
+          "description": "完全にデバイス上で実行されます。 API キーやネットワーク アクセスは必要ありません。",
+          "requirements": "macOS 26 以降を実行する Apple Silicon Mac が必要です。 Apple Intelligence はシステム設定で有効にする必要があります。",
+          "unavailable": "Apple Intelligence はこのデバイスでは使用できません。システム設定で Apple Intelligence が有効になっており、macOS 26 以降を実行している Apple Silicon Mac が必要です。"
         },
         "baseUrl": {
           "title": "ベースURL",
-          "description": "選択したプロバイダーのAPIベースURL。カスタムプロバイダーのみ編集可能。",
+          "description": "API 選択したプロバイダーのベース URL。カスタムプロバイダーのみを編集できます。",
           "placeholder": "https://api.openai.com/v1"
         },
         "apiKey": {
-          "title": "APIキー",
-          "description": "選択したプロバイダーのAPIキー。",
-          "placeholder": "sk-..."
+          "title": "API キー",
+          "description": "選択したプロバイダーの API キー。",
+          "placeholder": "スク..."
         },
         "model": {
           "title": "モデル",
-          "descriptionApple": "オプションの数値トークン制限を指定するか、デフォルトのオンデバイスプリセットを使用。",
-          "descriptionCustom": "カスタムエンドポイントが期待するモデル識別子を指定。",
-          "descriptionDefault": "選択したプロバイダーが提供するモデルを選択。",
+          "descriptionApple": "Apple Intelligence は、組み込みのオンデバイス モデルを使用します。追加のモデルを選択する必要はありません。",
+          "descriptionCustom": "カスタム エンドポイントで予期されるモデル識別子を指定します。",
+          "descriptionDefault": "選択したプロバイダーによって公開されているモデルを選択します。",
           "placeholderApple": "Apple Intelligence",
-          "placeholderWithOptions": "モデルを検索または選択",
-          "placeholderNoOptions": "モデル名を入力",
-          "refreshModels": "モデルを更新"
+          "placeholderWithOptions": "モデルを検索または選択します",
+          "placeholderNoOptions": "モデル名を入力してください",
+          "refreshModels": "モデルを更新する"
         }
       },
       "prompts": {
         "title": "プロンプト",
         "selectedPrompt": {
           "title": "選択したプロンプト",
-          "description": "文字起こしを改善するテンプレートを選択するか、新しく作成します。プロンプトテキスト内で${output}を使用して、キャプチャした文字起こしを参照します。"
+          "description": "文字起こしを調整するためのテンプレートを選択するか、新しいテンプレートを作成します。キャプチャされたトランスクリプトを参照するには、プロンプト テキスト内で ${output} を使用します。明確な修正や構造上の手がかりがない限り、控えめな編集を好みます。"
         },
-        "noPrompts": "プロンプトがありません",
-        "selectPrompt": "プロンプトを選択",
-        "createNew": "新しいプロンプトを作成",
-        "promptLabel": "プロンプト名",
-        "promptLabelPlaceholder": "プロンプト名を入力",
-        "promptInstructions": "プロンプトの指示",
-        "promptInstructionsPlaceholder": "文字起こし後に実行する指示を記述します。例：以下のテキストの文法と明瞭さを改善してください: ${output}",
-        "promptTip": "ヒント：<code>${output}</code>を使用して、文字起こしテキストをプロンプトに挿入します。",
-        "updatePrompt": "プロンプトを更新",
-        "deletePrompt": "プロンプトを削除",
-        "createPrompt": "プロンプトを作成",
+        "noPrompts": "利用可能なプロンプトはありません",
+        "selectPrompt": "プロンプトを選択してください",
+        "createNew": "新しいプロンプトの作成",
+        "promptLabel": "プロンプトラベル",
+        "promptLabelPlaceholder": "プロンプト名を入力してください",
+        "promptInstructions": "即時指示",
+        "promptInstructionsPlaceholder": "文字起こし後に実行する命令を書きます。例: 意味を正確に保ち、​​技術的なトークンを保持し、明確な修正またはリストの手がかりが存在する場合にのみ、より重い書式設定を適用します。転写: ${output}",
+        "promptTip": "ヒント: <code>${output}</code> を使用して、転写されたテキストをプロンプトに挿入します。不完全な発話に対する明示的なルールを追加して、短い断片がトランスクリプトの近くに残るようにします。",
+        "updatePrompt": "更新プロンプト",
+        "deletePrompt": "プロンプトの削除",
+        "createPrompt": "プロンプトの作成",
         "cancel": "キャンセル",
-        "selectToEdit": "上からプロンプトを選択して、詳細を表示・編集します。",
-        "createFirst": "上の「新しいプロンプトを作成」をクリックして、最初の後処理プロンプトを作成してください。"
+        "selectToEdit": "上のプロンプトを選択して、その詳細を表示および編集します。",
+        "createFirst": "上の [新しいプロンプトの作成] をクリックして、最初の後処理プロンプトを作成します。"
       },
       "apple": {
         "title": "Apple Cleanup",
-        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "description": "音声認識が完了した後、Apple Intelligence を使用してローカルで文字起こしを磨きます。",
         "mode": {
-          "title": "Mode",
-          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
-          "literal": "Literal: preserve wording",
-          "intent": "Intent: clean false starts and formatting"
+          "title": "モード",
+          "description": "リテラルは可能な限り文言を保持します。インテントは誤った開始を削除し、明らかなリストまたは段落をフォーマットすることができます。",
+          "literal": "リテラル: 文言を保持します",
+          "intent": "目的: クリーンな誤ったスタートとフォーマット"
         },
         "rewriteStrength": {
-          "title": "Rewrite Strength",
-          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
-          "conservative": "Conservative",
-          "balanced": "Balanced",
-          "aggressive": "Aggressive"
+          "title": "書き換え強度",
+          "description": "Apple Intelligence がインテント モードでフレージングをどの程度積極的に書き換えるかを制御します。",
+          "conservative": "保守的",
+          "balanced": "バランスのとれた",
+          "aggressive": "アグレッシブ"
         },
         "preview": {
-          "label": "Show preview before paste",
-          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+          "label": "貼り付ける前にプレビューを表示する",
+          "description": "レビュー ウィンドウを開いて、最終テキストを貼り付ける前に承認または編集できるようにします。"
         },
         "fallback": {
-          "label": "Fallback to normalized text on failure",
-          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+          "label": "失敗時に正規化されたテキストにフォールバックする",
+          "description": "Apple Intelligence が失敗するか使用できない場合は、生の結果の代わりに辞書で正規化されたトランスクリプトを使用します。"
         }
       },
       "appAware": {
-        "title": "App-Aware Tone",
-        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "title": "アプリを意識したトーン",
+        "description": "必要に応じて、Apple Intelligence 書き換えトーンをディクテーション対象のアプリに一致させます。ライブ ディクテーションでは現在の最前面のアプリが使用され、プレビュー テスターでは下で選択したアプリが使用されます。",
         "toggle": {
-          "label": "Enable app-aware tone",
-          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+          "label": "アプリ対応トーンを有効にする",
+          "description": "Slack や Mail などのアプリを、さまざまな Apple Intelligence トーン命令に合わせます。"
         },
         "tones": {
-          "title": "Tone definitions",
-          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "title": "トーンの定義",
+          "description": "再利用可能なトーン プリセットを定義します。各トーンは、Apple Intelligence プロンプトに有界書き換えガイダンスを追加します。",
           "columns": {
             "id": "Tone ID",
-            "label": "Display name",
-            "instruction": "Instruction"
+            "label": "表示名",
+            "instruction": "指示"
           },
           "placeholders": {
             "id": "casual",
-            "label": "Casual",
-            "instruction": "Use a casual, conversational tone suitable for chat messages."
+            "label": "カジュアル",
+            "instruction": "チャット メッセージに適したカジュアルで会話的な口調を使用します。"
           },
-          "add": "Add tone"
+          "add": "トーンを追加する"
         },
         "mappings": {
-          "title": "App mappings",
-          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "title": "アプリのマッピング",
+          "description": "アプリ バンドル ID をトーン プリセットにマップします。バンドル ID は、ローカライズされたアプリ名よりも安定しているため、照合に使用されます。",
           "columns": {
-            "appName": "App name",
-            "bundleId": "Bundle ID",
-            "tone": "Tone"
+            "appName": "アプリ名",
+            "bundleId": "バンドルID",
+            "tone": "トーン"
           },
           "placeholders": {
-            "appName": "Slack",
+            "appName": "たるみ",
             "bundleId": "com.tinyspeck.slackmacgap"
           },
-          "add": "Add app mapping"
+          "add": "アプリマッピングを追加"
         },
-        "remove": "Remove",
-        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+        "remove": "削除",
+        "disabledMessage": "アプリ認識トーンを有効にして、さまざまなアプリのクリーンアップ手順をカスタマイズします。"
       },
       "dictionary": {
-        "title": "Dictionary",
+        "title": "辞書",
         "editor": {
-          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs.",
-          "title": "優先する表記"
+          "description": "話し言葉とその好ましい書き言葉を定義します。 Vox Jot は、最終的なクリーンアップまたは貼り付けの前にこれらの置換を適用します。",
+          "title": "推奨されるスペル"
         },
-        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
-        "empty": "No personal dictionary entries yet.",
+        "duplicateWarning": "重複した発話フレーズが検出されました。最も長い一致または最も優先度の高い一致が勝ちます。",
+        "empty": "個人辞書の項目はまだありません。",
         "columns": {
-          "spoken": "Spoken",
-          "written": "Written",
-          "exactOnly": "Exact only"
+          "spoken": "話し言葉",
+          "written": "書かれた",
+          "exactOnly": "完全一致のみ"
         },
         "placeholders": {
-          "spoken": "swift ui",
+          "spoken": "迅速なUI",
           "written": "SwiftUI"
         },
-        "add": "Add entry",
-        "remove": "Remove",
-        "duplicateBadge": "Duplicate spoken phrase"
+        "add": "エントリを追加",
+        "remove": "削除",
+        "duplicateBadge": "重複した発話フレーズ"
       },
       "preview": {
-        "title": "Preview Tester",
+        "title": "プレビューテスター",
         "testInput": {
-          "title": "Try sample text",
-          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
-          "placeholder": "Paste or type sample transcript text here"
+          "title": "サンプルテキストを試してみる",
+          "description": "記録を開始せずに、サンプル テキストに対して現在の Apple Intelligence 構成を実行します。",
+          "placeholder": "ここにトランスクリプトのサンプルテキストを貼り付けるか入力します"
         },
         "previewApp": {
-          "label": "Preview as app",
-          "none": "No app override"
+          "label": "アプリとしてプレビュー",
+          "none": "アプリの上書きなし"
         },
-        "run": "Preview output",
-        "runLoading": "Previewing...",
-        "outputLabel": "Preview result",
-        "dictionaryHits": "Dictionary hits: {{hits}}",
-        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
-        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "run": "出力のプレビュー",
+        "runLoading": "プレビュー中...",
+        "outputLabel": "結果のプレビュー",
+        "dictionaryHits": "辞書のヒット数: {{hits}}",
+        "appContext": "アプリコンテキスト: {{app}}。適用音色：{{tone}}。",
+        "editSummary": "追加された箇条書き: {{bullets}}。追加された段落: {{paragraphs}}。",
         "errors": {
-          "generic": "Unable to preview post-processing right now."
+          "generic": "現在、後処理をプレビューできません。"
         },
         "modal": {
-          "title": "Review polished text",
-          "description": "Apple Intelligence changed this transcription before pasting.",
-          "originalLabel": "Normalized transcript",
-          "editedLabel": "Text to paste",
-          "cancel": "Cancel paste",
-          "apply": "Paste text"
+          "title": "洗練されたテキストをレビューする",
+          "description": "Apple Intelligence は、貼り付ける前にこの転写を変更しました。",
+          "originalLabel": "正規化されたトランスクリプト",
+          "editedLabel": "貼り付けるテキスト",
+          "cancel": "貼り付けをキャンセル",
+          "apply": "テキストを貼り付ける"
         },
-        "disabledMessage": "Turn on Post Process to try previewing polished output."
+        "disabledMessage": "後処理をオンにして、洗練された出力をプレビューしてみます。"
       },
-      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "description": "簡単なプロバイダーの設定から、貼り付け前のレビューや Apple 固有のクリーンアップ オプションまで、Vox Jot が文字起こし後にディクテーションをどのように洗練するかを制御します。",
       "sections": {
         "setup": {
-          "title": "Setup",
-          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+          "title": "セットアップ",
+          "description": "後処理をオンにし、その実行方法を選択して、プロバイダーの構成を完了します。"
         },
         "review": {
-          "title": "Paste Review",
-          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+          "title": "レビューを貼り付け",
+          "description": "洗練されたテキストをすぐに貼り付けるか、最初に確認するかを決定します。"
         },
         "appleCleanup": {
           "title": "Apple Cleanup",
-          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+          "description": "Apple Intelligence がフレージングを書き換えて失敗ケースを処理する方法を調整します。"
         },
         "applePersonalization": {
           "title": "Apple Personalization",
-          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+          "description": "クリーンアップを実行する前に、アプリごとにトーンを一致させ、優先スペルの一貫性を保ちます。"
         },
         "prompting": {
-          "title": "Prompting",
-          "description": "Choose or edit the prompt template used by network providers."
+          "title": "プロンプト",
+          "description": "ネットワークプロバイダーが使用するプロンプトテンプレートを選択または編集します。"
         },
         "preview": {
-          "title": "Try It",
-          "description": "Preview the current configuration against sample text without recording live audio."
+          "title": "試してみる",
+          "description": "ライブオーディオを録音せずに、サンプルテキストに対して現在の設定をプレビューします。"
         }
       },
       "review": {
         "toggle": {
-          "label": "Review polished text before paste",
-          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+          "label": "貼り付ける前に洗練されたテキストを確認する",
+          "description": "後処理された最終的なテキストをレビュー ウィンドウに表示して、貼り付ける前に編集またはキャンセルできるようにします。"
         },
         "status": {
-          "disabled": "Turn on Post Process first to enable review-before-paste.",
-          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
-          "off": "Polished text will be pasted immediately after processing finishes."
+          "disabled": "まずポストプロセスをオンにして、貼り付け前のレビューを有効にします。",
+          "enabled": "Vox Jot は貼り付ける前に一時停止し、最終的に洗練されたテキストを確認または編集できます。",
+          "off": "磨き上げた文字は処理終了後すぐに貼り付けられます。"
         }
       },
       "status": {
-        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
-        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
-        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
-        "missingBaseUrl": "Set a base URL for your custom provider.",
-        "missingApiKey": "Add an API key for the selected provider.",
-        "missingModel": "Choose or enter a model for the selected provider.",
-        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
-        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
-        "ready": "Post Process is configured and ready to use."
+        "disabled": "ポストプロセスはオフです。ここでプロバイダーのセットアップを完了し、準備ができたらいつでもプロバイダーをオンにすることができます。",
+        "noProvider": "Vox Jot が洗練されたディクテーションを実行できるようにするには、プロバイダーを選択してください。",
+        "appleUnavailable": "Apple Intelligence が選択されていますが、現在このデバイスでは使用できません。",
+        "missingBaseUrl": "カスタムプロバイダーのベース URL を設定します。",
+        "missingApiKey": "選択したプロバイダーの API キーを追加します。",
+        "missingModel": "選択したプロバイダーのモデルを選択または入力します。",
+        "missingPrompt": "Vox Jot がトランスクリプトを調整する方法を理解できるように、プロンプトを選択します。",
+        "finishSetup": "ポストプロセスはオンになっていますが、いくつかのセットアップ手順がまだ不足しています。",
+        "ready": "ポストプロセスが構成され、すぐに使用できるようになりました。"
       },
       "localPrivacy": {
-        "label": "Local Privacy Mode",
-        "description": "Force all post-processing to run on-device only. Cloud providers will be disabled while this is on.",
-        "cloudDisabled": "Cloud post-processing providers are disabled while Local Privacy Mode is enabled."
+        "label": "ローカルプライバシーモード",
+        "description": "すべての後処理をデバイス上でのみ実行するように強制します。これがオンになっている間、クラウド プロバイダーは無効になります。",
+        "cloudDisabled": "ローカル プライバシー モードが有効になっている間、クラウド後処理プロバイダーは無効になります。"
       }
     },
     "history": {
-      "title": "履歴",
-      "openFolder": "録音フォルダを開く",
-      "loading": "履歴を読み込み中...",
-      "empty": "まだ文字起こしがありません。録音を開始して履歴を作成しましょう！",
+      "title": "歴史",
+      "openFolder": "録音フォルダーを開く",
+      "loading": "履歴を読み込んでいます...",
+      "empty": "まだディクテーションはありません。最近の履歴を構築するために話し始めてください。",
       "copyToClipboard": "文字起こしをクリップボードにコピー",
-      "save": "文字起こしを保存",
-      "unsave": "保存から削除",
-      "delete": "エントリーを削除",
-      "deleteError": "エントリーの削除に失敗しました。もう一度お試しください。",
-      "promptUsed": "Prompt used",
+      "save": "文字起こしを保存する",
+      "unsave": "保存済みから削除",
+      "delete": "エントリの削除",
+      "deleteError": "エントリの削除に失敗しました。もう一度試してください。",
+      "promptUsed": "使用されるプロンプト",
       "fieldObservation": {
-        "title": "Field observation",
-        "copyPair": "Copy pair",
-        "copied": "Copied correction pair",
-        "timestamp": "Observed at {{time}}",
-        "failed": "Could not read field text for observation: {{error}}"
+        "title": "画面上のヒント",
+        "copyPair": "コピー修正",
+        "copied": "コピーされた補正ペア",
+        "timestamp": "{{time}} でキャプチャ",
+        "failed": "画面上のテキストをキャプチャできませんでした: {{error}}"
       },
-      "correctionsApplied": "Corrections applied",
-      "deleteConfirm": "Are you sure you want to delete this entry?",
-      "loadError": "Failed to load history: {{error}}",
-      "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}",
+      "correctionsApplied": "適用された修正",
+      "deleteConfirm": "このエントリを削除してもよろしいですか?",
+      "loadError": "履歴のロードに失敗しました: {{error}}",
+      "saveError": "録画を履歴に保存できませんでした: {{error}}",
+      "saveToggleError": "保存されたステータスの更新に失敗しました: {{error}}",
       "badges": {
-        "appA11y": "Application: {{appName}}"
+        "appA11y": "アプリケーション: {{appName}}"
       },
-      "showRecordingInFolder": "フォルダ内の録音を表示",
-      "revealError": "録音を表示できません: {{error}}"
+      "showRecordingInFolder": "フォルダー内の録画を表示",
+      "revealError": "録画を表示できませんでした: {{error}}"
     },
     "debug": {
       "title": "デバッグ",
       "logDirectory": {
         "title": "ログディレクトリ",
-        "description": "ログファイルの保存場所",
-        "loadError": "Failed to load log directory"
+        "description": "ログファイルが保存される場所",
+        "loadError": "ログディレクトリのロードに失敗しました"
       },
       "logLevel": {
         "title": "ログレベル",
-        "description": "ログの詳細度を設定",
+        "description": "ロギングの詳細度を設定する",
         "options": {
-          "error": "Error",
-          "warn": "Warn",
-          "info": "Info",
-          "debug": "Debug",
-          "trace": "Trace"
+          "error": "エラー",
+          "warn": "警告する",
+          "info": "情報",
+          "debug": "デバッグ",
+          "trace": "トレース"
         }
       },
       "updateChecks": {
-        "label": "アップデートを確認",
+        "label": "アップデートをチェックする",
         "description": "Vox Jotの新しいバージョンを自動的にチェック"
       },
       "soundTheme": {
         "label": "サウンドテーマ",
-        "description": "録音開始・停止フィードバックのサウンドテーマを選択"
+        "description": "録音開始および停止フィードバックのサウンドテーマを選択します"
       },
       "wordCorrectionThreshold": {
-        "title": "単語修正しきい値",
+        "title": "単語修正のしきい値",
         "description": "カスタム単語修正の感度"
       },
       "historyLimit": {
-        "title": "履歴上限",
-        "description": "保持する履歴エントリーの最大数",
-        "entries": "件"
+        "title": "履歴制限",
+        "description": "保持する履歴エントリの最大数",
+        "entries": "エントリ"
       },
       "recordingRetention": {
         "title": "録音の自動削除",
-        "description": "古い録音を自動的に削除して容量を節約",
-        "never": "しない",
-        "preserveLimit": "最新{{count}}件を保持",
+        "description": "古い録音を自動的に削除してスペースを節約します",
+        "never": "決してしない",
+        "preserveLimit": "最新の{{count}}を保持する",
         "days3": "3日後",
         "weeks2": "2週間後",
         "months3": "3ヶ月後",
-        "placeholder": "保持期間を選択..."
+        "placeholder": "保存期間を選択してください..."
       },
       "alwaysOnMicrophone": {
-        "label": "マイク常時オン",
-        "description": "より速い応答のためにマイクをアクティブに保つ"
+        "label": "常時オンのマイク",
+        "description": "応答を速くするためにマイクをアクティブにしておく"
       },
       "clamshellMicrophone": {
         "title": "クラムシェルマイク",
-        "description": "ノートパソコンの蓋を閉じたときに使用するマイク"
+        "description": "ラップトップの蓋が閉じているときに使用するマイク"
       },
       "postProcessingToggle": {
         "label": "後処理",
-        "description": "文字起こし後のAIによるテキスト改善を有効化"
+        "description": "文字起こし後に AI を利用したテキスト調整を有効にする"
       },
       "muteWhileRecording": {
-        "label": "録音中にミュート",
-        "description": "録音中にシステムオーディオをミュート"
+        "label": "録音中にミュートする",
+        "description": "録音中にシステムオーディオをミュートする"
       },
       "appendTrailingSpace": {
-        "label": "末尾にスペースを追加",
-        "description": "貼り付けた文字起こしの後にスペースを追加"
+        "label": "末尾のスペースを追加",
+        "description": "文字起こしを貼り付けた後にスペースを追加します"
       },
       "keyboardImplementation": {
-        "title": "キーボード実装",
-        "description": "キーボードショートカットのバックエンドを選択してください。",
-        "bindingsReset": "キーボードショートカットに互換性がなかったため、デフォルトにリセットされました",
+        "title": "キーボードの実装",
+        "description": "キーボード ショートカット バックエンドを選択します。",
+        "bindingsReset": "キーボード ショートカットに互換性がないため、デフォルトにリセットされました",
         "options": {
           "tauri": "Tauri Global Shortcut",
-          "handy_keys": "Handy Keys"
+          "handy_keys": "ハンディキー"
         },
-        "changeConfirm": "Change keyboard backend? Shortcuts that are incompatible with the new backend may be reset to defaults."
+        "changeConfirm": "キーボードのバックエンドを変更しますか?新しいバックエンドと互換性のないショートカットはデフォルトにリセットされる場合があります。"
       },
       "paths": {
         "appData": "アプリデータ:",
@@ -990,17 +1023,21 @@
         "settings": "設定:"
       },
       "pasteDelay": {
-        "title": "貼り付け遅延",
-        "description": "貼り付けキー送信前の遅延（ミリ秒）。間違ったテキストが貼り付けられる場合は増やしてください。"
+        "title": "ペースト遅延",
+        "description": "貼り付けキーストロークを送信するまでの遅延 (ミリ秒単位)。間違ったテキストが貼り付けられている場合は増加します。"
       },
       "audioDucking": {
-        "label": "Audio Ducking",
-        "description": "Lower other apps' volume while recording, then restore it when recording stops."
+        "label": "オーディオダッキング",
+        "description": "録音中に他のアプリの音量を下げ、録音が停止したら元に戻します。",
+        "system": "システム",
+        "input": "入力",
+        "enabledStatus": "録音中にバックグラウンドオーディオが低下する",
+        "disabledStatus": "バックグラウンドオーディオは変化しない"
       },
-      "routeInputPlaceholder": "Paste some dictated text to inspect the cleanup route."
+      "routeInputPlaceholder": "口述テキストを貼り付けて、クリーンアップ ルートを検査します。"
     },
     "about": {
-      "title": "概要",
+      "title": "について",
       "version": {
         "title": "バージョン",
         "description": "Vox Jotの現在のバージョン"
@@ -1011,11 +1048,11 @@
       },
       "sourceCode": {
         "title": "ソースコード",
-        "description": "ソースコードを見て貢献する",
-        "button": "GitHubで見る"
+        "description": "ソースコードを表示して貢献する",
+        "button": "GitHub で見る"
       },
       "supportDevelopment": {
-        "title": "開発を支援",
+        "title": "サポート開発",
         "description": "Vox Jotの開発を支援してください",
         "button": "寄付する"
       },
@@ -1023,229 +1060,281 @@
         "title": "謝辞",
         "whisper": {
           "title": "Whisper.cpp",
-          "description": "OpenAIのWhisper自動音声認識モデルの高性能推論",
-          "details": "Vox Jotは高速でローカルな音声からテキストへの変換にWhisper.cppを使用しています。Georgi Gerganov氏と貢献者の皆様の素晴らしい仕事に感謝します。"
+          "description": "OpenAI の Whisper 自動音声認識モデルの高性能推論",
+          "details": "Vox Jot は、高速なローカル音声テキスト変換処理に Whisper.cpp を使用します。 Georgi Gerganov と寄稿者による素晴らしい仕事に感謝します。"
         }
       }
     },
     "corrections": {
-      "title": "Auto-Corrections",
-      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
+      "title": "辞書",
+      "description": "Vox Jot による文字起こし方法を形成する単語、スペル、学習した修正を管理します。",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "File transcription",
-        "label": "Apply dictionary & learned corrections",
-        "description": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output."
+        "sectionTitle": "ファイルの転写",
+        "label": "辞書と学習した修正を適用する",
+        "description": "ライブディクテーションと同様に、ファイルトランスクリプトに個人辞書と修正ストアを使用します。未加工の音声テキスト変換出力を維持するには、オフにします。"
       },
       "tracking": {
-        "label": "Correction Tracking",
-        "description": "Monitor text fields after paste to learn from your corrections."
+        "label": "修正の追跡",
+        "description": "貼り付け後のテキスト フィールドを監視して、修正から学びます。チャット アプリとメモ アプリに自動的に適応します。"
       },
       "dictionary": {
-        "title": "Learned Corrections",
-        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
+        "title": "学習した修正",
+        "empty": "まだ学習済みの修正はありません。",
+        "import": "インポート",
+        "export": "エクスポート",
+        "clearAll": "すべてクリア",
         "search": {
-          "placeholder": "Search corrections",
-          "ariaLabel": "Search learned corrections",
-          "clear": "Clear search",
-          "empty": "No corrections match your search for '{{query}}'.",
-          "dictionaryPlaceholder": "Search dictionary",
-          "dictionaryAriaLabel": "Search dictionary",
-          "dictionaryEmpty": "No dictionary entries match your search for '{{query}}'."
+          "placeholder": "検索の修正",
+          "ariaLabel": "学習した修正を検索する",
+          "clear": "検索をクリア",
+          "empty": "「{{query}}」の検索に一致する修正はありません。",
+          "dictionaryPlaceholder": "辞書を検索する",
+          "dictionaryAriaLabel": "辞書を検索する",
+          "dictionaryEmpty": "「{{query}}」の検索に一致する辞書エントリはありません。"
         },
         "columns": {
-          "original": "Original",
-          "corrected": "Corrected",
-          "frequency": "Freq",
-          "confidence": "Conf",
-          "source": "Source App",
-          "active": "Active"
+          "original": "オリジナル",
+          "corrected": "修正しました",
+          "frequency": "修正された時間",
+          "confidence": "自信",
+          "source": "ソースアプリ",
+          "active": "アクティブ"
         },
-        "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
-        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling.",
-        "emptyDictionary": "No dictionary entries yet.",
-        "emptyDictionaryDescription": "Add or import correction entries to make Vox Jot prefer those spellings.",
-        "emptyDictionaryExample": "For example, map “swift ui” to “SwiftUI.”",
-        "importSuccess": "Imported {{count}} corrections.",
-        "importFailed": "Failed to import corrections.",
+        "emptyDescription": "Vox Jot は、ディクテーション後に行った編集から学習し、後で同じ間違いを避けるために使用します。",
+        "emptyExample": "たとえば、「type Whisper」を「Typewhisper」に変更すると、Vox Jot はそのスペルを思い出すことができます。",
+        "emptyDictionary": "まだ辞書項目がありません。",
+        "emptyDictionaryDescription": "修正エントリを追加またはインポートして、Vox Jot がそれらのスペルを優先するようにします。",
+        "emptyDictionaryExample": "たとえば、「swift ui」を「SwiftUI」にマップします。",
+        "importSuccess": "{{count}} 修正をインポートしました。",
+        "importFailed": "修正のインポートに失敗しました。",
         "views": {
-          "ariaLabel": "Corrections view",
-          "corrections": "Corrections",
-          "dictionary": "Dictionary"
+          "ariaLabel": "辞書ビュー",
+          "corrections": "訂正",
+          "dictionary": "辞書"
+        },
+        "approveCorrectionAria": "修正を承認 {{original}} から {{corrected}}",
+        "approveAlways": "承認して必ず申請してください",
+        "deleteOriginalPhrase": "元のフレーズを削除",
+        "groupStatus": {
+          "off": "オフ",
+          "offTitle": "このグループ内のすべての修正は無効になります。",
+          "manual": "マニュアル",
+          "manualTitle": "このグループ内のすべての修正は手動で承認されます。",
+          "applying": "申請中",
+          "applyingTitle": "このグループ内の有効な修正はすべて適用できます。",
+          "review": "レビュー",
+          "reviewTitle": "このグループ内の少なくとも 1 つの修正は、承認されるまで自動適用がブロックされます。",
+          "lowConfidence": "低信頼性",
+          "lowConfidenceTitle": "少なくとも 1 つの補正には十分な観測値がありますが、信頼性が低いです。",
+          "learning": "学習",
+          "learningTitle": "自動適用する前にさらに確認を待っています。"
         }
       }
     },
     "dataPrivacy": {
       "introTitle": "How Vox Jot handles your data",
-      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "introBody": "音声は、インストールしたモデルを使用してデバイス上で書き起こされます。オプションの AI 後処理は、デバイス上 (Apple Intelligence など) または構成したプロバイダーを通じて実行できます。トランスクリプト履歴と保持制限は、このコンピューターにローカルに保存されているデータにのみ適用されます。クラウド アカウントがないため、Vox Jot のサーバーには何も送信されません。",
       "groups": {
-        "storage": "Storage & history",
-        "postProcessing": "AI post-processing"
+        "storage": "ストレージと履歴",
+        "postProcessing": "AI 後処理"
       }
     },
     "experimental": {
-      "title": "ラボ"
+      "title": "研究室"
     },
     "globalLanguageSync": {
-      "syncAutomatically": "Sync future app-language changes automatically"
+      "title": "グローバル言語同期",
+      "description": "インターフェイス言語、音声認識言語、および音声出力の選択を 1 か所で揃えてください。",
+      "syncAutomatically": "今後のアプリ言語の変更を自動的に同期する",
+      "syncing": "同期中...",
+      "syncNow": "今すぐ同期する",
+      "enabledStatus": "アプリの言語を変更すると、音声設定も調整されます。",
+      "disabledStatus": "アプリの言語の変更は音声設定とは別に行われます。",
+      "defaultStatus": "アプリ全体を現在のアプリ言語に再調整する場合にこれを使用します。",
+      "done": "言語の同期が完了しました。",
+      "failed": "言語の同期に失敗しました。"
     },
     "refineModels": {
-      "title": "Refine Models",
-      "description": "Pick one cleanup model list without thinking about where it comes from first. Vox Jot handles the right runtime action behind each button.",
-      "refresh": "Refresh",
+      "title": "モデルを改良する",
+      "description": "最初にどこから来たのかを考えずに、クリーンアップ モデル リストを 1 つ選択します。 Vox Jot は、各ボタンの背後で適切な実行時アクションを処理します。",
+      "refresh": "リフレッシュ",
       "search": {
-        "title": "Search refine models",
-        "description": "Filter by model name, source, runtime, or repo.",
-        "placeholder": "Try: qwen, nemotron, ollama, lm studio"
+        "title": "検索絞り込みモデル",
+        "description": "モデル名、ソース、ランタイム、またはリポジトリでフィルターします。",
+        "placeholder": "試してください: qwen、nemotron、ollam、lm studio"
       },
       "sections": {
-        "readyNow": "Ready Now",
-        "readyNowDescription": "These models are already available on this Mac and can be activated immediately.",
-        "readyNowEmpty": "No ready refine models yet.",
-        "readyNowEmptyDescription": "Download one below, start a local provider, or import a GGUF from Hugging Face.",
-        "availableToAdd": "Available To Add",
-        "availableToAddDescription": "These entries can be downloaded into Ollama and selected automatically when the install finishes.",
-        "availableToAddEmpty": "No downloadable refine models match this search.",
-        "availableToAddEmptyDescription": "Try a different search term or import a custom Hugging Face GGUF below."
+        "readyNow": "準備完了",
+        "readyNowDescription": "これらのモデルはすでにこの Mac で利用可能であり、すぐにアクティブ化できます。",
+        "readyNowEmpty": "準備ができているリファイン モデルはまだありません。",
+        "readyNowEmptyDescription": "以下からダウンロードするか、ローカルプロバイダーを開始するか、Hugging Face から GGUF をインポートします。",
+        "availableToAdd": "追加可能",
+        "availableToAddDescription": "これらのエントリは Ollama にダウンロードでき、インストールの完了時に自動的に選択されます。",
+        "availableToAddEmpty": "この検索に一致するダウンロード可能な絞り込みモデルはありません。",
+        "availableToAddEmptyDescription": "別の検索語を試すか、以下のカスタム Hugging Face GGUF をインポートしてください。"
       },
       "badges": {
-        "ready": "Ready",
-        "active": "Active",
-        "needsDownload": "Needs download",
-        "needsSetup": "Needs setup"
+        "ready": "準備完了",
+        "active": "アクティブ",
+        "needsDownload": "ダウンロードが必要です",
+        "needsSetup": "セットアップが必要です",
+        "apiKeyNeeded": "APIキー",
+        "apiKeyNeededDetail": "使用する前に、このプロバイダーの API キーを追加してください。",
+        "activeDetail": "現在、口述テキストを調整するために使用されています。",
+        "readyDetail": "ローカルにインストール - カードをクリックして使用します。",
+        "needsDownloadDetail": "ダウンロード アイコンをクリックしてこのモデルを取得します。"
       },
       "actions": {
-        "active": "Active",
-        "use": "Use",
-        "switching": "Switching...",
-        "downloadAndUse": "Download & Use",
+        "active": "アクティブ",
+        "use": "使用する",
+        "switching": "切り替え中...",
+        "downloadAndUse": "ダウンロードして使用する",
         "installOllama": "Install Ollama",
         "startOllama": "Start Ollama",
-        "unavailable": "Unavailable",
-        "preparing": "Preparing...",
-        "downloading": "Downloading {{percent}}%",
-        "importing": "Importing...",
-        "installingIntoOllama": "Installing into Ollama...",
-        "removeFromOllama": "Remove {{title}}",
-        "confirmRemoveModel": "Remove {{title}} from Ollama and delete local import files? If this model is selected for Refine, Vox Jot will fall back to the default Ollama model entry."
+        "unavailable": "利用不可",
+        "preparing": "準備中...",
+        "downloading": "{{percent}}% をダウンロード中",
+        "importing": "インポート中...",
+        "installingIntoOllama": "Ollama にインストール中...",
+        "removeFromOllama": "{{title}} を削除",
+        "confirmRemoveModel": "{{title}} を Ollama から削除し、ローカルインポートファイルを削除しますか?このモデルがリファインに選択された場合、Vox Jot はデフォルトの Ollama モデル エントリに戻ります。",
+        "apiKeyRequired": "API キーが必要です"
       },
       "customImport": {
-        "title": "Custom Import",
-        "description": "Bring in any Hugging Face GGUF repo, install it into Ollama, and switch Vox Jot to it in one flow.",
+        "title": "カスタムインポート",
+        "description": "Hugging Face GGUF リポジトリを取り込み、それを Ollama にインストールし、1 つのフローで Vox Jot をそれに切り替えます。",
         "importDescription": "Import a GGUF without leaving settings",
-        "importHint": "Paste a Hugging Face repo like <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Leave the file blank to let Vox Jot pick a sensible GGUF automatically.",
+        "importHint": "<mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono> のような Hugging Face リポジトリを貼り付けます。ファイルを空白のままにして、Vox Jot が適切な GGUF を自動的に選択できるようにします。",
         "repoLabel": "Hugging Face repo",
         "repoPlaceholder": "org/model-GGUF",
         "modelNameLabel": "Ollama model name",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
         "fileLabel": "GGUF file",
-        "filePlaceholder": "Optional .gguf file name",
-        "runtimeTarget": "Runtime target",
-        "runtimeDescription": "Imports are installed into Ollama, then selected as the active refine model.",
-        "importAndUse": "Import & Use",
-        "importingCustom": "Importing..."
+        "filePlaceholder": "オプションの .gguf ファイル名",
+        "runtimeTarget": "ランタイムターゲット",
+        "runtimeDescription": "インポートは Ollama にインストールされ、アクティブなリファイン モデルとして選択されます。",
+        "importAndUse": "インポートと使用",
+        "importingCustom": "インポート中..."
       },
-      "source": "Source: {{repoId}}",
-      "loading": "Loading refine models...",
+      "source": "出典: {{repoId}}",
+      "loading": "改良モデルを読み込んでいます...",
       "toast": {
-        "activated": "{{title}} is now the active refine model.",
-        "installed": "{{title}} was downloaded and selected.",
-        "activateError": "Failed to activate refine model.",
-        "installError": "Failed to install refine model.",
-        "importError": "Failed to import Hugging Face GGUF.",
-        "importSuccess": "{{modelId}} was imported into Ollama and selected.",
-        "enterRepo": "Enter a Hugging Face repo ID first.",
-        "removed": "{{title}} was removed from Ollama."
+        "activated": "{{title}} がアクティブなリファイン モデルになりました。",
+        "installed": "{{title}} がダウンロードされて選択されました。",
+        "activateError": "リファインモデルのアクティブ化に失敗しました。",
+        "installError": "リファインモデルのインストールに失敗しました。",
+        "importError": "Hugging Face GGUF のインポートに失敗しました。",
+        "importSuccess": "{{modelId}} は Ollama にインポートされ、選択されました。",
+        "enterRepo": "まず、Hugging Face リポジトリ ID を入力します。",
+        "removed": "{{title}} は Ollama から削除されました。"
+      },
+      "evaluation": {
+        "tested": "テスト済み",
+        "bestPass": "ベストパス",
+        "activeModel": "アクティブモデル",
+        "pass": "パス",
+        "similarityShort": "シム"
       }
     },
     "screenContext": {
-      "title": "Screen Context",
-      "intro": "When you dictate, Vox Jot can glance at what's on screen and run on-device OCR so the refine pass understands names, tabs, and field labels you were looking at. Captures stay on your Mac.",
-      "enableLabel": "Screen context",
-      "enableDescription": "Take periodic on-device screenshots and feed the OCR text into refine passes.",
-      "permissionCtaLabel": "Screen Recording permission required",
-      "permissionCtaDescription": "macOS hasn't granted Vox Jot permission to capture the screen. Open System Settings to allow it.",
-      "permissionCtaButton": "Open Screen Recording Settings",
-      "captureCadenceTitle": "Capture cadence",
-      "contextBudgetTitle": "Context budget",
-      "pauseOnIdleLabel": "Pause when idle",
-      "pauseOnIdleDescription": "Stop capturing after you haven't dictated for a while; resumes automatically on your next dictation.",
-      "idleThresholdLabel": "Idle threshold",
-      "idleThresholdDescription": "How long without dictation before Vox Jot pauses screen captures.",
+      "title": "画面のコンテキスト",
+      "intro": "口述入力すると、Vox Jot は表示されている画面テキストを読み取って、名前、ラベル、コンテキストを改善できます。キャプチャは Mac に残ります。",
+      "enableLabel": "画面のコンテキスト",
+      "enableDescription": "バックグラウンドで画面テキストをキャプチャして、ディクテーションのクリーンアップを改善します。",
+      "permissionCtaLabel": "画面録画許可が必要です",
+      "permissionCtaDescription": "macOS は、画面をキャプチャする権限を Vox Jot に付与していません。システム設定を開いて許可してください。",
+      "permissionCtaButton": "画面録画設定を開く",
+      "captureCadenceTitle": "更新頻度",
+      "contextBudgetTitle": "コンテキスト量",
+      "pauseOnIdleLabel": "アイドル状態のときに一時停止する",
+      "pauseOnIdleDescription": "しばらくディクテーションをしなかった場合は、キャプチャを停止してください。次のディクテーションで自動的に再開されます。",
+      "idleThresholdLabel": "後に一時停止します",
+      "idleThresholdDescription": "Vox Jot が画面キャプチャを一時停止するまでのディクテーションなしの時間。",
       "idleThresholdValue": "{{seconds}}s",
-      "exclusionsTitle": "Excluded apps",
-      "exclusionsDescription": "Vox Jot will never capture the screen while one of these apps is frontmost. Great for password managers, banking, or any app you want kept private.",
-      "exclusionsEmpty": "No excluded apps yet.",
-      "addCurrentAppLabel": "Add current app",
-      "addCurrentAppResolving": "Detecting frontmost app...",
-      "addCurrentAppFailed": "Couldn't detect a frontmost app to exclude.",
-      "addCurrentAppAlreadyExcluded": "{{name}} is already excluded.",
-      "removeExclusionLabel": "Remove",
+      "exclusionsTitle": "除外されたアプリ",
+      "exclusionsDescription": "これらのアプリのいずれかが最前面にある間、Vox Jot は画面をキャプチャしません。パスワード マネージャー、銀行取引、またはプライベートに保ちたいアプリに最適です。",
+      "exclusionsEmpty": "除外されたアプリはまだありません。",
+      "addCurrentAppLabel": "現在のアプリを追加",
+      "addCurrentAppResolving": "最前面のアプリを検出しています...",
+      "addCurrentAppFailed": "除外する最前面のアプリが検出できませんでした。",
+      "addCurrentAppAlreadyExcluded": "{{name}} はすでに除外されています。",
+      "removeExclusionLabel": "削除",
       "statusLabel": "Status:",
-      "statusUnknown": "unknown",
-      "statusDisabled": "Disabled",
-      "statusExcluded": "Paused — excluded app",
-      "statusPausedIdle": "Paused — idle",
-      "screenRecordingLabel": "Screen Recording permission:",
-      "screenRecordingGranted": "Granted",
-      "screenRecordingMissing": "Missing",
-      "cacheSizeLabel": "Cache size:",
-      "latestContextAgeLabel": "Latest context age:",
-      "latestContextAgeValue": "{{ms}} ms",
-      "latestContextAgeUnavailable": "Unavailable",
-      "debugPreviewTitle": "Latest OCR preview (debug)",
-      "debugPreviewEmpty": "No cached OCR snippet yet.",
-      "ocrEngineLabel": "OCR engine",
-      "ocrEngineDescription": "Pick which engine reads text from screen captures. The default uses your operating system's built-in OCR and falls back to the cross-platform engine if it fails.",
-      "ocrEngineNativeThenBackup": "Native, fall back to cross-platform",
-      "ocrEngineNativeOnly": "Native only",
-      "ocrEngineBackupOnly": "Cross-platform only (Tesseract)",
-      "ocrEngineAuto": "Auto",
-      "ocrEngineHelpLinux": "Linux always uses the cross-platform engine — install `tesseract` and `grim` (Wayland) or `import`/`gnome-screenshot` (X11).",
-      "ocrEngineHelpWindows": "Windows uses Windows.Media.Ocr by default and falls back to Tesseract when the system OCR fails or returns empty results.",
-      "ocrEngineHelpMacos": "Apple silicon Macs always use Apple Vision; the cross-platform engine is reserved for QA and Intel-Mac experiments."
+      "statusUnknown": "不明",
+      "statusDisabled": "障害者",
+      "statusExcluded": "一時停止 - 除外されたアプリ",
+      "statusPausedIdle": "一時停止 — アイドル状態",
+      "screenRecordingLabel": "画面録画許可:",
+      "screenRecordingGranted": "確かに",
+      "screenRecordingMissing": "行方不明",
+      "cacheSizeLabel": "保存されたスナップショット:",
+      "latestContextAgeLabel": "最終更新日:",
+      "latestContextAgeValue": "{{ms}} ミリ秒",
+      "latestContextAgeUnavailable": "利用不可",
+      "debugPreviewTitle": "最新の画面テキストプレビュー（デバッグ）",
+      "debugPreviewEmpty": "キャプチャされたプレビュー テキストはまだありません。",
+      "ocrEngineLabel": "OCRエンジン",
+      "ocrEngineDescription": "スクリーン キャプチャからテキストを読み取るエンジンを選択します。デフォルトでは、オペレーティング システムの組み込み OCR が使用され、失敗した場合はクロスプラットフォーム エンジンにフォールバックします。",
+      "ocrEngineNativeThenBackup": "ネイティブ、クロスプラットフォームにフォールバック",
+      "ocrEngineNativeOnly": "ネイティブのみ",
+      "ocrEngineBackupOnly": "クロスプラットフォームのみ (Tesseract)",
+      "ocrEngineAuto": "自動",
+      "ocrEngineHelpLinux": "Linux は常にクロスプラットフォーム エンジンを使用します。`tesseract` と `grim` (Wayland) または `import`/`gnome-screenshot` (X11) をインストールします。",
+      "ocrEngineHelpWindows": "Windows はデフォルトで Windows.Media.Ocr を使用し、システム OCR が失敗するか空の結果を返すと Tesseract に戻ります。",
+      "ocrEngineHelpMacos": "Apple シリコン Mac は常に Apple Vision を使用します。クロスプラットフォーム エンジンは、QA および Intel-Mac の実験用に予約されています。",
+      "captureMode": {
+        "alwaysFrequent": "ライブアップデート",
+        "adaptiveCache": "バランスのとれた",
+        "mostlyOnDemand": "まずはオンデマンド"
+      },
+      "ocrQuality": {
+        "fast": "速い",
+        "balanced": "バランスのとれた",
+        "accurate": "正確"
+      }
     },
     "diagnostics": {
       "localApi": {
-        "label": "Enable local API",
-        "description": "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — never reachable from the network.",
-        "copyUrl": "Copy URL",
-        "port": "Port",
-        "portHint": "Restart applies on blur.",
-        "errorPrefix": "API error:",
-        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt",
-        "portRangeError": "Port must be between 1024 and 65535.",
-        "enableConfirm": "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private."
+        "label": "ローカル API を有効にする",
+        "description": "vox-jot CLI およびその他のローカル ツールで、HTTP ではなく Vox Jot を駆動できるようにします。ループバックのみ - ネットワークからはアクセスできません。",
+        "copyUrl": "URLをコピー",
+        "port": "港",
+        "portHint": "再起動はブラーに適用されます。",
+        "errorPrefix": "API エラー:",
+        "cliHint": "試してみてください: vox-jot 転写パス/to/file.wav --format srt",
+        "portRangeError": "ポートは 1024 ～ 65535 でなければなりません。",
+        "enableConfirm": "ローカル HTTP API を有効にしますか?この Mac 上のローカル ツールは、表示されたトークンを使用して Vox Jot を制御できます。トークンを非公開にしておきます。"
       }
     },
     "speechCleanup": {
-      "fillerWordsPlaceholder": "um\nuh\nlike"
+      "fillerWordsPlaceholder": "えーっと\nああ\n好き"
     },
     "translation": {
-      "providerPlaceholder": "Choose a provider",
-      "modelPlaceholder": "Choose or type a model",
-      "customModelPlaceholder": "Type a custom translation model id"
+      "providerPlaceholder": "プロバイダーを選択する",
+      "modelPlaceholder": "モデルを選択または入力します",
+      "customModelPlaceholder": "カスタム翻訳モデル ID を入力します"
+    },
+    "soundPicker": {
+      "preview": "サウンドテーマのプレビュー (再生が開始してから停止します)"
     }
   },
   "footer": {
-    "downloadingModel": "{{model}}をダウンロード中...",
-    "checkingUpdates": "アップデートを確認中...",
-    "updateAvailable": "アップデートあり: {{version}}",
-    "updateAvailableShort": "アップデートあり",
-    "upToDate": "最新です",
+    "downloadingModel": "{{model}} をダウンロード中...",
+    "checkingUpdates": "アップデートをチェックしています...",
+    "updateAvailable": "利用可能なアップデート: {{version}}",
+    "updateAvailableShort": "利用可能なアップデート",
+    "upToDate": "最新の状態",
     "downloadUpdate": "アップデートをダウンロード",
     "restart": "再起動",
-    "updateCheckingDisabled": "アップデート確認無効",
+    "updateCheckingDisabled": "更新チェックが無効になっています",
     "downloading": "ダウンロード中... {{progress}}%",
     "installing": "インストール中...",
     "preparing": "準備中...",
-    "checkForUpdates": "アップデートを確認",
-    "modelNotSet": "Model not set",
-    "llmNotSet": "LLM not set",
+    "checkForUpdates": "アップデートをチェックする",
+    "modelNotSet": "モデルが設定されていません",
+    "llmNotSet": "LLM が設定されていません",
     "llmPrefix": "LLM: {{name}}",
-    "noModelsAvailable": "No models available"
+    "noModelsAvailable": "利用可能なモデルはありません"
   },
   "common": {
     "loading": "読み込み中...",
@@ -1257,34 +1346,43 @@
     "delete": "削除",
     "edit": "編集",
     "create": "作成",
-    "update": "更新",
+    "update": "アップデート",
     "close": "閉じる",
     "open": "開く",
     "default": "デフォルト",
     "enabled": "有効",
-    "disabled": "無効",
+    "disabled": "障害者",
     "on": "オン",
     "off": "オフ",
     "yes": "はい",
     "no": "いいえ",
     "noOptionsFound": "オプションが見つかりません",
-    "active": "Active",
-    "downloaded": "Downloaded",
-    "dismiss": "Dismiss",
-    "done": "Done"
+    "active": "アクティブ",
+    "downloaded": "ダウンロード済み",
+    "dismiss": "解雇する",
+    "done": "完了",
+    "custom": "カスタム",
+    "moreInformation": "詳細情報",
+    "copy": "コピー",
+    "copyToClipboard": "クリップボードにコピー",
+    "downloading": "ダウンロード中...",
+    "notAvailable": "利用できません",
+    "pause": "一時停止",
+    "play": "遊ぶ",
+    "refresh": "リフレッシュ"
   },
   "accessibility": {
     "permissionsRequired": "アクセシビリティ権限が必要です",
-    "permissionsDescription": "Vox Jotが文字起こしテキストを入力するには、アクセシビリティ権限が必要です。",
+    "permissionsDescription": "Vox Jot には、テキストを入力するためのアクセシビリティ、送信と削除の動作をよりよく理解するための入力モニタリング、およびディクテーション中のスクリーンショット ベースの OCR コンテキストのための画面録画が必要です。",
     "openSettings": "システム設定を開く",
-    "dismiss": "閉じる",
+    "dismiss": "解雇する",
     "permissionsTitle": "macOS permissions need attention",
-    "permissionNeeded": "Permission Needed"
+    "permissionNeeded": "許可が必要です"
   },
   "errors": {
-    "loadDirectory": "ディレクトリの読み込みエラー: {{error}}",
-    "recordingFailed": "録音の開始に失敗しました: {{error}}",
-    "modelLoadFailed": "モデルの読み込みに失敗しました: {{model}}",
+    "loadDirectory": "ディレクトリのロード中にエラーが発生しました: {{error}}",
+    "recordingFailed": "記録の開始に失敗しました: {{error}}",
+    "modelLoadFailed": "モデルのロードに失敗しました: {{model}}",
     "modelLoadFailedUnknown": "不明なモデル"
   },
   "appLanguage": {
@@ -1292,370 +1390,558 @@
     "description": "Vox Jotインターフェースの言語を変更"
   },
   "overlay": {
-    "transcribing": "文字起こし中...",
+    "transcribing": "転記中...",
     "processing": "処理中...",
-    "recording": "Recording"
+    "recording": "録音"
   },
   "titleBar": {
-    "streak": "{{count}}d streak",
-    "totalWords": "{{count}} words",
-    "todayWords": "{{count}} today",
+    "streak": "{{count}}d ストリーク",
+    "totalWords": "{{count}} 単語",
+    "todayWords": "今日の{{count}}",
     "accuracy": "{{value}}%",
-    "noStats": "No dictations yet"
+    "noStats": "まだディクテーションはありません",
+    "streakLabel": "ストリーク",
+    "totalWordsLabel": "言葉",
+    "todayLabel": "今日",
+    "appsLabel": "アプリ",
+    "appsUsed": "使用した{{count}}アプリ"
   },
   "ollama": {
     "title": "Ollama — Local LLM Engine",
-    "description": "Ollama runs tiny AI models locally on your device for post-processing transcripts. No internet required after setup.",
-    "notInstalled": "Ollama is not installed. Click below to install it automatically.",
+    "description": "Ollama は、後処理トランスクリプトのために、デバイス上で小さな AI モデルをローカルに実行します。セットアップ後はインターネットは必要ありません。",
+    "notInstalled": "Ollama がインストールされていません。以下をクリックすると自動的にインストールされます。",
     "install": "Install Ollama",
-    "installing": "Installing...",
-    "notRunning": "Ollama is installed but not running.",
+    "installing": "インストール中...",
+    "notRunning": "Ollama はインストールされていますが、実行されていません。",
     "start": "Start Ollama",
-    "checking": "Checking...",
-    "titleBarStatusCheckFailed": "Unable to verify Ollama. It may be unreachable.",
+    "checking": "確認中...",
+    "titleBarStatusCheckFailed": "Ollama を確認できません。到達できない可能性があります。",
     "ready": "Ollama is installed and ready",
-    "downloadedModels": "Downloaded LLM Models",
-    "noDownloaded": "No local LLM models downloaded yet.",
-    "availableModels": "Available to Download",
+    "downloadedModels": "ダウンロードされたLLMモデル",
+    "noDownloaded": "ローカルの LLM モデルはまだダウンロードされていません。",
+    "availableModels": "ダウンロード可能",
     "localModel": "Local Ollama model",
-    "setActive": "Set Active",
-    "download": "Download",
-    "pulling": "Pulling {{progress}}%",
-    "qualityEst": "quality est",
-    "speedEst": "speed est",
-    "pullError": "Could not start model download. Ensure Ollama is running and try again.",
-    "activateError": "Could not activate this model. Please try again.",
-    "activeRefineModel": "Active Refine Model",
+    "setActive": "アクティブに設定",
+    "download": "ダウンロード",
+    "pulling": "{{progress}}%を引く",
+    "qualityEst": "品質評価",
+    "speedEst": "推定速度",
+    "pullError": "モデルのダウンロードを開始できませんでした。 Ollama が実行されていることを確認して、再試行してください。",
+    "activateError": "このモデルをアクティブ化できませんでした。もう一度試してください。",
+    "activeRefineModel": "アクティブリファインモデル",
     "ollamaBadge": "Ollama",
     "localOllamaModel": "Local Ollama Model",
-    "quality": "Quality",
-    "speed": "Speed"
+    "quality": "品質",
+    "speed": "速度"
   },
   "jotPad": {
-    "newNote": "New note",
-    "empty": "No notes yet. Click + to create one.",
-    "untitled": "Untitled",
-    "titlePlaceholder": "Note title",
-    "contentPlaceholder": "Start typing…",
-    "noNoteSelected": "Select a note or create a new one",
-    "createFirst": "Create a note",
-    "pin": "Pin",
-    "unpin": "Unpin",
-    "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
-    "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
+    "newNote": "新しいメモ",
+    "empty": "まだメモはありません。",
+    "untitled": "無題",
+    "titlePlaceholder": "ノートのタイトル",
+    "contentPlaceholder": "入力を開始してください…",
+    "noNoteSelected": "メモを選択するか、新しいメモを作成します",
+    "createFirst": "メモを作成する",
+    "pin": "ピン",
+    "unpin": "固定を解除する",
+    "emptyDescription": "メモを作成して、口述筆記した考え、下書き、断片を手元に置いておきます。",
+    "emptyExample": "たとえば、ここで会議のメモを口述筆記し、Convo に依頼してきれいな要約に変換してもらいます。",
     "title": "Jot Pad",
-    "untitledNote": "Untitled note",
-    "speak": "Read aloud",
-    "stopSpeaking": "Stop reading",
-    "saveHint": "Save",
-    "lastEdited": "Last edited",
-    "charCount_one": "{{count}} char",
-    "charCount_other": "{{count}} chars",
-    "deleteConfirm": "Delete note \"{{noteTitle}}\"?",
-    "notes": "Notes",
-    "search": "Search notes",
-    "pinned": "Pinned"
+    "untitledNote": "無題のメモ",
+    "speak": "声に出して読む",
+    "stopSpeaking": "読むのをやめる",
+    "saveHint": "保存",
+    "lastEdited": "最終編集",
+    "charCount_one": "{{count}} 文字",
+    "charCount_other": "{{count}} 文字",
+    "deleteConfirm": "メモ「{{noteTitle}}」を削除しますか?",
+    "notes": "注意事項",
+    "search": "メモを検索する",
+    "pinned": "固定された"
   },
   "convo": {
-    "title": "Convo",
+    "title": "コンボ",
     "selection": {
-      "label": "Selection",
-      "title": "Selection",
-      "emptyState": "Highlight text in any app, then start a conversation about it.",
-      "pastePrompt": "Or paste text below to discuss:",
-      "refreshSelection": "Refresh Selection",
-      "copyLastReply": "Copy Last Reply",
-      "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
-      "copiedReply": "Copied the last reply.",
+      "label": "選択",
+      "title": "選択",
+      "emptyState": "アプリ内のテキストをハイライト表示して、それについて会話を始めます。",
+      "pastePrompt": "または、以下のテキストを貼り付けて議論してください。",
+      "refreshSelection": "選択範囲を更新",
+      "copyLastReply": "最後の返信をコピー",
+      "refreshFailed": "現在、選択範囲またはクリップボードのスニペットをキャプチャできませんでした。",
+      "copiedReply": "最後の返信をコピーしました。",
       "starterPrompts": [
-        "Summarize the selected text",
-        "Rewrite it more clearly",
-        "Pull out action items"
+        "選択したテキストを要約します",
+        "もっとわかりやすく書き直してください",
+        "アクションアイテムを引き出す"
       ]
     },
     "jotpad": {
       "label": "Jot Pad",
       "title": "Jot Pad",
-      "emptyState": "Start a conversation about your current note.",
-      "replaceNote": "Replace Note",
-      "appendToNote": "Append to Note",
-      "copyDraft": "Copy Draft",
-      "noteReplaced": "Replaced the current note.",
-      "noteReplaceFailed": "Couldn't replace the note.",
-      "noteAppended": "Appended the draft to the note.",
-      "noteAppendFailed": "Couldn't append to the note.",
-      "draftCopied": "Copied the draft.",
+      "emptyState": "現在のメモについて会話を始めます。",
+      "replaceNote": "メモを置き換える",
+      "appendToNote": "メモに追加",
+      "copyDraft": "ドラフトのコピー",
+      "noteReplaced": "現在のノートを置き換えました。",
+      "noteReplaceFailed": "メモを置き換えることはできませんでした。",
+      "noteAppended": "ドラフトをメモに追加しました。",
+      "noteAppendFailed": "メモに追加できませんでした。",
+      "draftCopied": "ドラフトをコピーしました。",
       "starterPrompts": [
-        "Turn this note into a clean draft",
-        "Find the main points",
-        "Suggest next steps"
+        "このメモを白紙に戻します",
+        "要点を見つける",
+        "次のステップを提案する"
       ]
     },
     "settingsCoach": {
-      "label": "Settings Coach",
-      "title": "Settings Coach",
-      "emptyState": "Ask me anything about Vox Jot's features and settings.",
-      "openFailed": "Couldn't open that settings section.",
+      "label": "設定コーチ",
+      "title": "設定コーチ",
+      "emptyState": "Vox Jot の機能や設定について何でも聞いてください。",
+      "openFailed": "その設定セクションを開けませんでした。",
       "starterPrompts": [
-        "Help me reduce dictation latency",
-        "Explain post-processing setup",
-        "Show privacy-related settings"
+        "ディクテーションの待ち時間を短縮してください",
+        "後処理セットアップの説明",
+        "プライバシー関連の設定を表示する"
       ]
     },
     "filesContext": {
-      "label": "Files & Context",
-      "title": "Files & Context",
-      "emptyState": "Paste text, attach files, or select a folder to discuss.",
-      "attachFiles": "Attach Files",
-      "attachFolder": "Attach Folder",
-      "pasteText": "Paste Text",
-      "cancel": "Cancel",
+      "label": "ファイルとコンテキスト",
+      "title": "ファイルとコンテキスト",
+      "emptyState": "テキストを貼り付けたり、ファイルを添付したり、ディスカッションするフォルダーを選択したりできます。",
+      "attachFiles": "ファイルを添付する",
+      "attachFolder": "フォルダーの添付",
+      "pasteText": "テキストを貼り付け",
+      "cancel": "キャンセル",
       "charCount": "({{count}}k)",
       "starterPrompts": [
-        "Summarize the attached context",
-        "Compare the key details",
-        "Draft a response from this context"
+        "添付されたコンテキストを要約する",
+        "主要な詳細を比較する",
+        "このコンテキストから応答の草案を作成する"
       ]
     },
     "common": {
-      "speakReplies": "Speak Replies",
-      "resetConversation": "Reset Conversation",
-      "typeMessage": "Type a message...",
-      "send": "Send",
-      "holdToSpeak": "Hold to speak",
-      "recording": "Recording...",
-      "thinking": "Thinking...",
-      "unavailable": "PersonaPlex conversation requires Apple Silicon (M1 or later).",
-      "helperNotRunning": "PersonaPlex helper is not running. Start the audio-server on port 8765.",
-      "helperStarting": "Starting PersonaPlex helper...",
-      "helperStartFailed": "Couldn't start the PersonaPlex audio helper.",
-      "sendFailed": "The assistant couldn't respond to that message.",
-      "audioCaptureFailed": "Couldn't start audio capture. Check microphone permissions.",
-      "audioTurnFailed": "The audio turn failed. Try again or type instead."
+      "speakReplies": "返事を話す",
+      "resetConversation": "会話をリセット",
+      "typeMessage": "メッセージを入力してください...",
+      "send": "送信",
+      "holdToSpeak": "押し続けて話す",
+      "recording": "録音中...",
+      "thinking": "考え中...",
+      "unavailable": "PersonaPlex 会話には Apple Silicon (M1 以降) が必要です。",
+      "helperNotRunning": "PersonaPlex ヘルパーが実行されていません。ポート 8765 でオーディオサーバーを起動します。",
+      "helperStarting": "PersonaPlex ヘルパーを開始しています...",
+      "helperStartFailed": "PersonaPlex オーディオ ヘルパーを開始できませんでした。",
+      "sendFailed": "アシスタントはそのメッセージに応答できませんでした。",
+      "audioCaptureFailed": "オーディオキャプチャを開始できませんでした。マイクの許可を確認してください。",
+      "audioTurnFailed": "オーディオターンに失敗しました。もう一度試すか、代わりに入力してください。"
     }
   },
   "listen": {
     "tuning": {
-      "styleInstructions": "Style Instructions",
-      "appliedTo": "Tuning applies to {{model}}",
-      "resetAll": "Reset all",
-      "resetAllHint": "Reset every parameter to its default value",
-      "noExtraControls": "No verified generation controls are available for this model in Vox Jot yet.",
+      "styleInstructions": "スタイルノート",
+      "appliedTo": "チューニングは{{model}}に適用されます",
+      "resetAll": "すべてリセット",
+      "resetAllHint": "すべてのパラメータをデフォルト値にリセットします",
+      "noExtraControls": "Vox Jot では、このモデルで使用できる検証済みの生成コントロールはまだありません。",
       "groups": {
-        "delivery": "Delivery",
-        "style": "Style",
-        "sampler": "Sampler",
-        "guidance": "Guidance",
-        "advanced": "Advanced"
+        "delivery": "配送",
+        "style": "スタイル",
+        "sampler": "サンプラー",
+        "guidance": "ガイダンス",
+        "advanced": "上級者向け"
       }
     },
     "myVoices": {
-      "active": "Active",
-      "activePreset": "Active preset: <bold>{{name}}</bold>",
-      "saveAs": "Save As",
-      "previewText": "Preview Text",
-      "preview": "Preview",
-      "stop": "Stop",
-      "draftModeHint": "Provider and model changes stay in draft mode until you save them as a new voice profile.",
-      "savedProfiles": "Profiles",
-      "saveCurrent": "Save Current",
-      "new": "New",
-      "refresh": "Refresh",
-      "clone": "Clone",
-      "useThisVoice": "Use This Voice",
-      "generating": "Generating…"
+      "active": "アクティブ",
+      "activePreset": "アクティブなプリセット: <bold>{{name}}</bold>",
+      "saveAs": "名前を付けて保存",
+      "previewText": "テキストのプレビュー",
+      "preview": "プレビュー",
+      "stop": "停止",
+      "draftModeHint": "変更は、新しい音声プロファイルとして保存するまで下書きとして残ります。",
+      "savedProfiles": "プロフィール",
+      "saveCurrent": "現在の保存",
+      "new": "新しい",
+      "refresh": "リフレッシュ",
+      "clone": "クローン",
+      "useThisVoice": "使用する",
+      "generating": "生成中…"
     },
     "soundTuning": {
-      "tuneTitle": "Tune the active profile and listen immediately",
-      "activeProfileIs": "The active profile is",
-      "previewFromHere": ". Preview from here while you adjust the delivery sliders below.",
-      "preview": "Preview",
-      "stop": "Stop",
-      "previewText": "Preview Text"
+      "tuneTitle": "この音声を調整すると、すぐに変化が聞こえます",
+      "activeProfileIs": "アクティブなプロファイルは",
+      "previewFromHere": "。ここからプレビューしながら、以下の配信スライダーを調整します。",
+      "preview": "プレビュー",
+      "stop": "停止",
+      "previewText": "テキストのプレビュー"
     },
     "packManager": {
-      "title": "Pack Manager",
-      "description": "Download or remove offline speech packs without leaving Settings.",
-      "remove": "Remove",
-      "download": "Download"
+      "title": "パックマネージャー",
+      "description": "設定を終了せずに、オフライン音声パックをダウンロードまたは削除します。",
+      "remove": "削除",
+      "download": "ダウンロード"
     },
     "engineLibrary": {
-      "allLanguages": "All Languages",
-      "activeListenModel": "Active Listen Model",
-      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+      "allLanguages": "すべての言語",
+      "activeListenModel": "現在の音声モデル",
+      "chooseProviderModel": "このプロファイルの音声ソースとモデルを選択します。",
+      "title": "エンジンライブラリ",
+      "downloadedModels": "ダウンロードしたモデル",
+      "availableToDownload": "ダウンロード可能",
+      "noDownloadedMatches": "現在のフィルタに一致するダウンロードされた音声モデルはありません。",
+      "noDownloadedModels": "この Mac には、互換性のある TTS モデルがまだダウンロードされていません。",
+      "noAvailableMatches": "現在のフィルタに一致する利用可能な音声モデルはありません。",
+      "allModelsReady": "互換性のある音声モデルはすべてすでにダウンロードされているか、アクティブになっています。",
+      "badges": {
+        "active": "アクティブ",
+        "activeDetail": "現在アクティブなTTSの声。",
+        "selected": "選択済み",
+        "selectedDetail": "設定で選択 — カードをクリックして有効にします。",
+        "downloaded": "ダウンロード済み",
+        "downloadedDetail": "音声パックはローカルにインストールされます。"
+      }
     },
     "voiceCloning": {
-      "cloneProfiles": "Clone Profiles",
-      "cloneProfilesDescription": "Create reusable voice-clone source profiles, then turn any ready profile into a saved voice preset.",
-      "refresh": "Refresh",
-      "createPreset": "Create preset",
-      "importWav": "Import WAV",
-      "deleteProfile": "Delete profile",
-      "transcriptHint": "Transcript: Optional, but helpful for clone quality.",
-      "improveFromDictations": "Improve from my dictations",
-      "improveFromDictationsDescription": "Uses your speech-to-text dictations to refine this clone locally.",
-      "clearCollectedData": "Clear collected data",
-      "cloningInactiveHint": "Voice cloning becomes active when a preset or model uses `Qwen3 0.6B Base`.",
-      "createProfile": "Create Profile",
-      "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
-      "createProfileButton": "Create profile",
-      "importWavIntoLatest": "Import WAV into latest",
-      "cloneTarget": "Clone Target",
-      "nextStep": "Next Step",
-      "fullyOptimized": "Fully optimized",
-      "readyForCloning": "Ready for cloning",
-      "needsReferenceAudio": "Needs reference audio",
-      "audioFile": "Audio file",
-      "transcript": "Transcript",
-      "referenceAudioActions": "Reference audio",
-      "replaceReferenceActions": "Replace reference audio",
-      "recordingActions": "While recording"
+      "cloneProfiles": "プロファイルのクローンを作成する",
+      "cloneProfilesDescription": "再利用可能な音声クローン ソース プロファイルを作成し、準備ができたプロファイルを保存された音声プリセットに変換します。",
+      "refresh": "リフレッシュ",
+      "createPreset": "プリセットの作成",
+      "importWav": "WAVをインポート",
+      "deleteProfile": "プロフィールの削除",
+      "transcriptHint": "トランスクリプト: オプションですが、クローンの品質に役立ちます。",
+      "improveFromDictations": "私の口述から学ぶ",
+      "improveFromDictationsDescription": "過去のディクテーションを使用して、このデバイス上のこのクローン音声を改善します。",
+      "clearCollectedData": "収集したデータをクリアする",
+      "cloningInactiveHint": "音声クローン作成は、サポートされている音声モデルでのみ使用できます。",
+      "createProfile": "プロファイルの作成",
+      "createProfileDescription": "プロファイルに名前を付けて、明確なリファレンス クリップを 1 つインポートします。",
+      "createProfileButton": "プロフィールの作成",
+      "importWavIntoLatest": "WAVを最新のものにインポート",
+      "cloneTarget": "クローンターゲット",
+      "nextStep": "次のステップ",
+      "fullyOptimized": "完全に最適化された",
+      "readyForCloning": "クローン作成の準備ができました",
+      "needsReferenceAudio": "リファレンスオーディオが必要です",
+      "audioFile": "音声ファイル",
+      "transcript": "成績証明書",
+      "referenceAudioActions": "参考音声",
+      "replaceReferenceActions": "リファレンスオーディオを置き換える",
+      "recordingActions": "録音中",
+      "recordingAudio": "音声の録音"
     },
     "placeholders": {
-      "styleInstructions": "Warm, calm, confident, closer to a product demo than a podcast host.",
-      "savedVoiceName": "Name this saved voice",
-      "manualVoiceId": "Speaker / voice ID",
-      "searchLanguages": "Search languages",
-      "voiceProfileName": "New voice profile name",
-      "voiceProfileNote": "Optional note about this speaker",
-      "voiceProfileTranscript": "Use the exact words spoken when you have them."
+      "styleInstructions": "温かく、穏やかで、自信に満ちており、ポッドキャストのホストというよりは製品デモに近いです。",
+      "savedVoiceName": "保存した音声に名前を付けます",
+      "manualVoiceId": "スピーカー/音声 ID",
+      "searchLanguages": "検索言語",
+      "voiceProfileName": "新しい音声プロファイル名",
+      "voiceProfileNote": "このスピーカーに関するオプションのメモ",
+      "voiceProfileTranscript": "話された言葉を正確に使用してください。"
     },
     "voices": {
-      "viewAriaLabel": "Voices view",
-      "profiles": "Profiles"
+      "viewAriaLabel": "ボイスビュー",
+      "profiles": "プロフィール"
     },
     "voiceChanger": {
-      "title": "Voice Changer",
-      "downloadingOpenVoice": "Preparing OpenVoice for offline voice changing.",
-      "preparing": "Preparing offline voice changer.",
-      "converting": "Converting voice.",
-      "convertedWith": "Converted with {{profileLabel}}.",
-      "failed": "Voice conversion failed.",
-      "source": "Source",
-      "noAudioSelected": "No audio selected",
-      "noReadyProfiles": "No ready profiles",
-      "toneBlend": "Tone blend",
-      "convert": "Convert",
-      "output": "Output",
-      "chooseWav": "Choose WAV",
-      "targetProfile": "Target profile",
-      "noConvertedAudio": "No converted audio yet",
-      "outputTitle": "Voice Changer output",
-      "outputPlaceholder": "Converted audio appears here.",
-      "panelAriaLabel": "Voice Changer controls",
-      "listening": "Listening. Tap stop when you are done speaking.",
-      "recordingFailed": "Could not start microphone recording.",
-      "finalizingRecording": "Finalizing microphone recording.",
-      "noMicAudio": "No microphone audio was captured.",
-      "stopAndConvert": "Stop & Convert",
-      "recordMic": "Record Mic",
-      "recordShortcutHint": "Focus this panel and press R to start or stop mic capture.",
-      "loadingOutput": "Loading converted audio.",
+      "title": "ボイスチェンジャー",
+      "downloadingOpenVoice": "オフライン音声変更用に OpenVoice を準備しています。",
+      "preparing": "オフラインボイスチェンジャーを準備中です。",
+      "converting": "音声を変換します。",
+      "convertedWith": "{{profileLabel}}で変換されます。",
+      "failed": "音声変換に失敗しました。",
+      "source": "ソース",
+      "noAudioSelected": "オーディオが選択されていません",
+      "noReadyProfiles": "準備ができたプロファイルはありません",
+      "toneBlend": "トーンブレンド",
+      "convert": "変換する",
+      "output": "出力",
+      "chooseWav": "WAVを選択してください",
+      "targetProfile": "ターゲットプロファイル",
+      "noConvertedAudio": "変換されたオーディオはまだありません",
+      "outputTitle": "ボイスチェンジャー出力",
+      "outputPlaceholder": "変換されたオーディオがここに表示されます。",
+      "panelAriaLabel": "ボイスチェンジャーのコントロール",
+      "listening": "聞いています。話し終わったら「停止」をタップします。",
+      "recordingFailed": "マイク録音を開始できませんでした。",
+      "finalizingRecording": "マイク録音を終了します。",
+      "noMicAudio": "マイク音声はキャプチャされませんでした。",
+      "stopAndConvert": "停止して変換",
+      "recordMic": "マイクを録音する",
+      "recordShortcutHint": "このパネルにフォーカスを合わせて R を押して、マイクのキャプチャを開始または停止します。",
+      "loadingOutput": "変換されたオーディオをロードしています。",
       "wait": {
-        "downloadStarting": "Checking the local speech pack and installing any missing runtime pieces.",
-        "downloadStillWorking": "Still preparing OpenVoice. First setup can take a while.",
-        "prepare": "Starting the offline speech runtime and checking the selected target voice.",
-        "finalize": "Saving your microphone take as a clean WAV source.",
-        "loadOutput": "Reading the converted WAV and preparing playback.",
-        "convertWarmup": "Loading OpenVoice and warming up the converter.",
-        "convertExtracting": "Extracting tone color from your source and target profile.",
-        "convertMapping": "Mapping your delivery into the selected voice.",
-        "convertStillWorking": "Still working. Longer clips and first runs can take extra time.",
+        "downloadStarting": "ローカルの音声パックを確認し、不足しているランタイム部分があればインストールします。",
+        "downloadStillWorking": "OpenVoice はまだ準備中です。最初のセットアップには時間がかかる場合があります。",
+        "prepare": "オフライン音声ランタイムを起動し、選択したターゲット音声を確認します。",
+        "finalize": "マイクテイクをクリーンな WAV ソースとして保存します。",
+        "loadOutput": "変換されたWAVを読み込み、再生の準備をします。",
+        "convertWarmup": "OpenVoice をロードし、コンバータをウォームアップしています。",
+        "convertExtracting": "ソースとターゲットのプロファイルから音色を抽出します。",
+        "convertMapping": "選択した音声に配信をマッピングします。",
+        "convertStillWorking": "まだ働いています。長いクリップや最初のランでは、さらに時間がかかる場合があります。",
         "elapsed": "{{seconds}}s"
+      }
+    },
+    "speechOutput": {
+      "title": "音声出力を有効にする",
+      "description": "ディクテーション、翻訳、または選択フローの後に、最終的な Vox Jot 出力を読み返します。"
+    },
+    "speechPacks": {
+      "title": "スピーチパック"
+    },
+    "autoReadback": {
+      "title": "自動リードバック",
+      "groupTitle": "Auto-Readback",
+      "description": "Vox Jot が最終出力を自動的に読み上げる場合を選択します。",
+      "modes": {
+        "afterOutput": "出力後",
+        "afterPreviewConfirm": "プレビュー確認後"
+      },
+      "scopeTitle": "リードバック範囲",
+      "scopeDescription": "自動リードバックをディクテーションのみに適用するか、選択アクションにも適用するかを制御します。",
+      "scopes": {
+        "dictationOnly": "ディクテーションのみ",
+        "dictationAndSelection": "ディクテーションと選択"
+      },
+      "textTitle": "リードバックテキスト",
+      "textDescription": "バイリンガル出力で翻訳されたブロックを読み取るか、完全な最終出力を読み取るかを選択します。",
+      "textModes": {
+        "finalOutput": "最終出力",
+        "translatedBlock": "翻訳されたブロック"
+      },
+      "stopOnRecord": "録音上のスピーチを停止する",
+      "stopOnRecordDescription": "録音が開始されたらすぐに現在の音声出力をキャンセルします。"
+    },
+    "createVoices": {
+      "workflow": {
+        "voice": "声",
+        "cloneProfile": "プロファイルのクローンを作成する",
+        "manualVoiceId": "マニュアルボイス ID"
       }
     }
   },
   "refine": {
     "writeRules": {
-      "title": "Write Profiles",
-      "description": "Pick the right tone, engine, and shortcuts based on which app or website you're dictating into.",
-      "newRule": "New profile",
-      "edit": "Edit",
-      "delete": "Delete",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "priority": "Priority",
-      "urlCaptureLabel": "Capture browser URL for website rules",
+      "title": "プロファイルの書き込み",
+      "description": "ディクテーションするアプリや Web サイトに基づいて、適切なトーン、エンジン、ショートカットを選択してください。",
+      "newRule": "新しいプロフィール",
+      "edit": "編集",
+      "delete": "削除",
+      "enabled": "有効",
+      "disabled": "障害者",
+      "priority": "優先順位",
+      "urlCaptureLabel": "Web サイト ルールのブラウザー URL をキャプチャします",
       "view": {
-        "individual": "Individual",
-        "grouped": "Grouped"
+        "individual": "個人",
+        "grouped": "グループ化された"
       },
       "matchers": {
-        "appsLabel": "Apps",
-        "urlsLabel": "URLs",
-        "addUrlPattern": "Add URL pattern (e.g. *.gmail.com)",
-        "searchAppsPlaceholder": "Search apps…"
+        "appsLabel": "アプリ",
+        "urlsLabel": "URL",
+        "addUrlPattern": "URL パターンを追加します (例: *.gmail.com)",
+        "searchAppsPlaceholder": "アプリを検索…"
       },
       "overrides": {
-        "speech": "Speech",
-        "refine": "Refine",
-        "output": "Output",
-        "noOverride": "Use global setting"
+        "speech": "スピーチ",
+        "refine": "絞り込む",
+        "output": "出力",
+        "noOverride": "グローバル設定を使用する",
+        "stt_model_id": {
+          "label": "STTモデル",
+          "description": "ここでは別の音声テキスト変換エンジンを使用します。"
+        },
+        "stt_language": {
+          "label": "言語",
+          "description": "このプロファイルに特定の入力言語を強制します。"
+        },
+        "translate_to_english": {
+          "label": "英語に翻訳する",
+          "description": "Whisper 変換動作をオーバーライドします。"
+        },
+        "tone_id": {
+          "label": "トーン",
+          "description": ""
+        },
+        "post_process_prompt_id": {
+          "label": "ポストプロセスプロンプト",
+          "description": ""
+        },
+        "force_post_process": {
+          "label": "Post-processing",
+          "description": "このプロファイルが一致する場合、AI 後処理を強制的にオンまたはオフにします。"
+        },
+        "auto_submit": {
+          "label": "Auto-submit",
+          "description": "ディクテーション後、自動的に Enter キーを押します。"
+        },
+        "paste_method": {
+          "label": "貼り付け方法",
+          "description": ""
+        },
+        "append_trailing_space": {
+          "label": "末尾のスペース",
+          "description": "ディクテーションされたテキストの後にスペースを追加します。"
+        },
+        "mute_while_recording": {
+          "label": "録音中にミュートする",
+          "description": "このプロファイルの録音中は他のアプリの音声を消音します。"
+        }
       },
       "test": {
-        "button": "Test against current app",
-        "result": "Matched: {{rule}}",
-        "noMatch": "No rule matches."
+        "button": "現在のアプリに対してテストする",
+        "result": "一致しました: {{rule}}",
+        "noMatch": "一致するルールはありません。"
       },
-      "overlayBadgeOpen": "Open profile in settings",
+      "overlayBadgeOpen": "設定でプロフィールを開く",
       "editor": {
-        "namePlaceholder": "e.g. Slack & Discord chats"
+        "namePlaceholder": "例: Slack と Discord チャット"
+      },
+      "row": {
+        "disabled": "障害者",
+        "activeNow": "現在アクティブです",
+        "anyApp": "あらゆるアプリ",
+        "multipleApps": "{{count}} アプリ",
+        "moreApps": "+{{count}}",
+        "inheritsGlobal": "グローバル設定を継承します",
+        "editProfile": "プロフィールの編集",
+        "deleteProfile": "プロフィールの削除",
+        "overrideTone": "トーン",
+        "overrideEngine": "エンジン",
+        "overrideLanguage": "ラング",
+        "translateToEnglish": "翻訳 -> EN",
+        "overridePrompt": "プロンプト",
+        "autoSubmit": "Auto-submit",
+        "noAutoSubmit": "自動送信なし",
+        "alwaysPostProcess": "常に後処理",
+        "skipPostProcess": "後処理をスキップする",
+        "trailingSpace": "末尾のスペース",
+        "noTrailingSpace": "末尾のスペースなし",
+        "muteWhileRecording": "録音中にミュートする"
+      },
+      "templates": {
+        "heading": "テンプレートから始める",
+        "blank": {
+          "label": "空白",
+          "description": "ゼロから始めましょう。"
+        },
+        "email": {
+          "label": "電子メール",
+          "description": "句読点は洗練されており、自動送信はありません。"
+        },
+        "coding": {
+          "label": "コーディング",
+          "description": "英語、貼り付け、自動送信なし。"
+        },
+        "chat": {
+          "label": "チャット",
+          "description": "素早く、カジュアルに、自動送信をオンにします。"
+        },
+        "notes": {
+          "label": "注意事項",
+          "description": "常に末尾にスペースを付けて磨きます。"
+        }
+      },
+      "overrideGroups": {
+        "speech": "スピーチ",
+        "refine": "絞り込む",
+        "output": "出力"
+      },
+      "overridesEditor": {
+        "emptyHint": "このプロファイルはグローバル設定を使用します。ここでの動作を変更するには、以下にオーバーライドを追加します。",
+        "addOverride": "オーバーライドを追加",
+        "noneRemaining": "使用可能なすべてのオーバーライドが設定されます。",
+        "resetAll": "すべてリセット",
+        "removeOverride": "オーバーライドを削除",
+        "removeOverrideAria": "{{label}} オーバーライドを削除",
+        "notAvailableShort": "n/a",
+        "notAvailable": "使用可能なオプションはありません。最初にグローバル値を設定してください。"
+      },
+      "overrideOptions": {
+        "translate_to_english": {
+          "on": "英語に翻訳する",
+          "off": "元の言語を維持する"
+        },
+        "force_post_process": {
+          "on": "後処理を常に実行する",
+          "off": "後処理をスキップする"
+        },
+        "auto_submit": {
+          "on": "Auto-submit",
+          "off": "自動送信しないでください"
+        },
+        "paste_method": {
+          "ctrl_v": "Ctrl+V",
+          "direct": "直接入力",
+          "none": "貼り付けないでください",
+          "ctrl_shift_v": "Ctrl+Shift+V",
+          "shift_insert": "Shift+Insert",
+          "external_script": "外部スクリプト"
+        },
+        "append_trailing_space": {
+          "on": "末尾のスペースを追加する",
+          "off": "末尾のスペースなし"
+        },
+        "mute_while_recording": {
+          "on": "録音中にミュートする",
+          "off": "オーディオを再生し続ける"
+        }
       }
     }
   },
   "dictate": {
     "fileTranscription": {
-      "title": "File Transcription",
-      "dropHint": "Drag & drop an audio or video file here",
-      "orLabel": "or",
-      "pickFile": "Pick File",
-      "transcribing": "Transcribing…",
-      "copy": "Copy",
-      "placeholder": "Transcript appears here after processing.",
+      "title": "ファイルの転写",
+      "dropHint": "ここにオーディオまたはビデオ ファイルをドラッグ アンド ドロップします",
+      "orLabel": "または",
+      "pickFile": "ファイルの選択",
+      "transcribing": "文字起こし中…",
+      "copy": "コピー",
+      "placeholder": "処理後のトランスクリプトがここに表示されます。",
       "selectedLabel": "Selected:",
-      "outputLabel": "Transcript",
-      "fileDialogLabel": "Audio / Video",
+      "outputLabel": "成績証明書",
+      "fileDialogLabel": "オーディオ/ビデオ",
       "errors": {
-        "heading": "Transcription failed",
-        "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
-        "copyFailed": "Failed to copy transcription.",
-        "exportFailed": "Failed to export subtitles."
+        "heading": "転写に失敗しました",
+        "failed": "ファイルの転記に失敗しました。 .wav ファイルを試すか、FFmpeg をインストールしてください。",
+        "copyFailed": "文字起こしのコピーに失敗しました。",
+        "exportFailed": "字幕のエクスポートに失敗しました。"
       },
-      "exportSrt": "Save .srt",
-      "exportVtt": "Save .vtt",
-      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export.",
-      "description": "Transcribe one audio or video file, or watch folders and save transcripts automatically."
+      "exportSrt": ".srt を保存",
+      "exportVtt": ".vtt を保存",
+      "exportSrtUnavailable": "このエンジンはタイムスタンプを提供しません。 SRT/VTT エクスポートの場合は、Whisper または Parakeet に切り替えます。",
+      "description": "1 つのオーディオ ファイルまたはビデオ ファイルを文字起こしするか、フォルダーを視聴してトランスクリプトを自動的に保存します。"
     },
     "watchFolders": {
-      "title": "Watched folders",
-      "description": "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
-      "add": "Add folder",
-      "empty": "No folders yet. Add one to get started.",
-      "remove": "Remove folder",
-      "toggleAria": "Enable or disable this watched folder",
-      "formatText": "Text",
+      "title": "監視フォルダー",
+      "description": "音声ファイルをこれらのフォルダーのいずれかにドロップすると、Vox Jot が自動的に文字起こしします。",
+      "add": "フォルダーの追加",
+      "empty": "監視フォルダーはまだありません。",
+      "remove": "フォルダーを削除する",
+      "toggleAria": "この監視フォルダーを有効または無効にします",
+      "formatText": "テキスト",
       "formatSrt": "SRT",
       "formatVtt": "VTT",
-      "formatAria": "Output format",
-      "recentActivity": "Recent activity",
-      "emptyDescription": "Add a folder to transcribe audio files automatically when you drop them in.",
-      "emptyExample": "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT."
+      "formatAria": "出力フォーマット",
+      "recentActivity": "最近の活動",
+      "emptyDescription": "フォルダーを追加すると、オーディオ ファイルをドロップしたときに自動的に文字起こしされます。",
+      "emptyExample": "たとえば、インタビュー フォルダーを監視し、新しい録画をテキスト、SRT、または VTT として保存します。"
     }
   },
   "modelHub": {
     "ocr": {
       "filters": {
-        "providerIdle": "Provider",
-        "languageIdle": "Language",
-        "allProviders": "All providers",
-        "osNative": "OS native OCR",
-        "hybrid": "Smart (native + fallback)",
-        "tesseract": "Tesseract",
-        "autoRouting": "Auto routing",
-        "providerAria": "Filter OCR engines by provider",
-        "languageAria": "Filter OCR engines by language",
-        "system": "System OCR",
-        "neural": "Neural OCR"
+        "providerIdle": "プロバイダー",
+        "languageIdle": "言語",
+        "allProviders": "すべてのプロバイダー",
+        "osNative": "OS ネイティブ OCR",
+        "hybrid": "スマート (ネイティブ + フォールバック)",
+        "tesseract": "テッセラクト",
+        "autoRouting": "自動ルーティング",
+        "providerAria": "プロバイダーごとに OCR エンジンをフィルターする",
+        "languageAria": "OCR エンジンを言語でフィルタリングする",
+        "system": "システム OCR",
+        "neural": "ニューラル OCR"
       },
       "vendor": {
         "hybrid": "Apple / Microsoft + Tesseract",
@@ -1666,582 +1952,812 @@
         "linuxSystem": "System OCR utilities"
       },
       "languages": {
-        "hybrid": "System languages plus Tesseract-trained languages when fallback runs.",
-        "nativeOnly": "Follows your OS language and regional text recognition settings.",
-        "tesseract": "Depends on installed tessdata packs (often English-first unless you add more).",
-        "auto": "Matches app and dictation language coverage where the OS allows."
+        "hybrid": "システム言語と、フォールバック実行時の Tesseract でトレーニングされた言語。",
+        "nativeOnly": "OS 言語と地域のテキスト認識設定に従います。",
+        "tesseract": "インストールされている tessdata パックに依存します (追加しない限り、多くの場合英語が最初になります)。",
+        "auto": "OS が許可するアプリとディクテーション言語の範囲に一致します。"
       },
       "badges": {
-        "active": "Active",
-        "activeDetail": "Currently selected screen OCR engine.",
-        "vendorDetail": "Screen OCR runtime used for this mode."
+        "active": "アクティブ",
+        "activeDetail": "現在選択されている画面 OCR エンジン。",
+        "vendorDetail": "このモードに使用される画面 OCR ランタイム。"
       },
       "options": {
         "nativeThenBackup": {
-          "title": "Smart (default)",
-          "description": "Use the OS-native OCR first, fall back to Tesseract on failure or empty results."
+          "title": "スマート (デフォルト)",
+          "description": "最初に OS ネイティブの OCR を使用し、失敗または空の結果が発生した場合は Tesseract にフォールバックします。"
         },
         "nativeOnly": {
-          "title": "System OCR only",
-          "description": "Use the operating system's built-in OCR only — Apple Vision on macOS, Windows.Media.Ocr on Windows."
+          "title": "システム OCR のみ",
+          "description": "オペレーティング システムの組み込み OCR のみを使用します。macOS では Apple Vision、Windows では Windows.Media.Ocr を使用します。"
         },
         "backupOnly": {
-          "title": "Tesseract only",
-          "description": "Always use the bundled Tesseract engine. Useful for parity testing or when system OCR underperforms."
+          "title": "テッセラクトのみ",
+          "description": "常にバンドルされている Tesseract エンジンを使用してください。パリティテストや、システム OCR のパフォーマンスが低い場合に役立ちます。"
         },
         "auto": {
-          "title": "Auto",
-          "description": "Let Vox Jot pick the best engine for your platform and current language coverage."
+          "title": "自動",
+          "description": "Vox Jot にお使いのプラットフォームと現在の言語対応範囲に最適なエンジンを選択させてください。"
         }
       },
       "meta": {
-        "balanced": "Balanced",
-        "recommended": "Recommended",
-        "fastest": "Fastest path",
-        "osBuiltIn": "OS built-in",
+        "balanced": "バランスのとれた",
+        "recommended": "おすすめ",
+        "fastest": "最速パス",
+        "osBuiltIn": "OS内蔵",
         "crossPlatform": "Cross-platform",
-        "requiresTesseract": "Requires Tesseract",
-        "adaptive": "Adaptive"
+        "requiresTesseract": "Tesseractが必要です",
+        "adaptive": "アダプティブ"
       },
       "systemCard": {
-        "title": "System OCR",
-        "description": "Built-in routing across Apple Vision / Windows.Media.Ocr and the bundled Tesseract fallback.",
-        "routingLabel": "Routing"
+        "title": "システム OCR",
+        "description": "Apple Vision / Windows.Media.Ocr およびバンドルされた Tesseract フォールバックにわたる組み込みルーティング。",
+        "routingLabel": "ルーティング"
       },
       "actions": {
-        "import": "Import {{modelName}} from disk",
-        "remove": "Remove {{modelName}}",
-        "pickFolderTitle": "Pick the folder that contains {{modelName}}",
+        "import": "{{modelName}} をディスクからインポートする",
+        "remove": "{{modelName}} を削除",
+        "pickFolderTitle": "{{modelName}} が含まれるフォルダーを選択します",
         "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
-        "importFromDisk": "Import from folder"
+        "importFromDisk": "フォルダーからインポート"
       },
-      "confirmRemove": "Remove {{modelName}}? Files will be deleted from the app's OCR cache.",
-      "empty": "No OCR engines match the current filters.",
+      "confirmRemove": "{{modelName}} を削除しますか?ファイルはアプリの OCR キャッシュから削除されます。",
+      "empty": "現在のフィルターに一致する OCR エンジンはありません。",
       "download": {
-        "preparing": "Preparing download…",
+        "preparing": "ダウンロードを準備しています…",
         "percent": "{{value}}%"
       }
     },
     "tts": {
-      "remove": "Remove {{modelName}}",
-      "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
+      "remove": "{{modelName}} を削除",
+      "confirmRemove": "{{modelName}} を削除しますか?ダウンロードした音声ファイルはこのMacから削除されます。"
+    },
+    "actionConfirmation": "モデル動作確認",
+    "search": {
+      "globalPlaceholder": "名前、言語、プロバイダーでモデルを検索...",
+      "ariaLabel": "モデルを検索する"
+    },
+    "tabs": {
+      "stt": "スピーチ (STT)",
+      "analysis": "音声分析",
+      "llm": "絞り込み (LLM)",
+      "tts": "声 (TTS)",
+      "ocr": "画面 OCR"
     }
   },
   "commandMenu": {
-    "searchPlaceholder": "Type a command or search...",
-    "esc": "esc",
-    "noResults": "No results.",
+    "searchPlaceholder": "コマンドを入力するか検索...",
+    "esc": "エスケープ",
+    "noResults": "結果はありません。",
     "groups": {
-      "navigate": "Navigate",
-      "actions": "Actions",
-      "open": "Open",
-      "theme": "Theme",
-      "jumpTo": "Jump to"
+      "navigate": "ナビゲート",
+      "actions": "アクション",
+      "open": "開く",
+      "theme": "テーマ",
+      "jumpTo": "にジャンプ"
     },
     "actions": {
-      "startDictation": "Start dictation",
-      "startDictationSubtitle": "Open the Dictate workspace",
-      "goToRefine": "Go to Refine",
-      "goToListen": "Go to Listen",
-      "openSettings": "Open Settings",
+      "startDictation": "ディクテーションを開始する",
+      "startDictationSubtitle": "ディクテーションワークスペースを開く",
+      "goToRefine": "絞り込みに移動",
+      "goToListen": "聞きに行く",
+      "openSettings": "設定を開く",
       "openJotPad": "Open Jot Pad",
-      "disablePostProcess": "Disable post-process",
-      "enablePostProcess": "Enable post-process",
-      "postProcessOn": "AI cleanup is on",
-      "postProcessOff": "AI cleanup is off",
-      "openLastTranscription": "Open last transcription",
-      "openLastTranscriptionSubtitle": "Jump to recent history",
-      "copyLastTranscription": "Copy last transcription",
-      "copyLastTranscriptionSubtitle": "Copy the most recent transcript",
-      "cancelOperation": "Cancel current operation",
-      "openRecordings": "Open recordings folder",
-      "openLogs": "Open logs folder",
-      "openAppData": "Open app data folder",
-      "switchTheme": "Switch theme → {{name}}",
-      "applyWriteProfile": "Apply write profile → Write profiles",
-      "applyWriteProfileSubtitle": "Jump to write profiles",
-      "insertPhraseKey": "Insert phrase key → Phrase keys",
-      "insertPhraseKeySubtitle": "Jump to phrase key settings",
-      "jumpTo": "Jump to {{label}}"
+      "disablePostProcess": "ポストプロセスを無効にする",
+      "enablePostProcess": "後処理を有効にする",
+      "postProcessOn": "AI クリーンアップがオンになっています",
+      "postProcessOff": "AI クリーンアップはオフです",
+      "openLastTranscription": "最後の文字起こしを開く",
+      "openLastTranscriptionSubtitle": "最近の履歴にジャンプ",
+      "copyLastTranscription": "最後の文字起こしをコピーする",
+      "copyLastTranscriptionSubtitle": "最新のトランスクリプトをコピーする",
+      "cancelOperation": "現在の操作をキャンセルします",
+      "openRecordings": "録音フォルダーを開く",
+      "openLogs": "ログフォルダーを開く",
+      "openAppData": "アプリデータフォルダーを開く",
+      "switchTheme": "テーマを切り替える → {{name}}",
+      "applyWriteProfile": "書き込みプロファイルを適用 → 書き込みプロファイル",
+      "applyWriteProfileSubtitle": "プロファイルの書き込みにジャンプ",
+      "insertPhraseKey": "フレーズキーを挿入 → フレーズキー",
+      "insertPhraseKeySubtitle": "フレーズキー設定へジャンプ",
+      "jumpTo": "{{label}} へジャンプ"
     },
     "themes": {
-      "system": "System",
-      "light": "Light",
-      "dark": "Dark",
-      "graphite": "Graphite",
-      "slate": "Slate",
-      "sepia": "Sepia",
-      "ocean": "Ocean",
-      "rose": "Rose",
-      "forest": "Forest",
-      "solarized": "Solarized"
-    }
+      "system": "システム",
+      "light": "ライト",
+      "dark": "暗い",
+      "graphite": "グラファイト",
+      "slate": "スレート",
+      "sepia": "セピア",
+      "ocean": "オーシャン",
+      "rose": "ローズ",
+      "forest": "森",
+      "solarized": "ソラライズド"
+    },
+    "label": "コマンドメニュー"
   },
   "storyStudio": {
     "cast": {
-      "characterPlaceholder": "Narrator"
+      "characterPlaceholder": "ナレーター",
+      "title": "キャスト",
+      "description": "保存したリッスンボイスをスクリプトのキャラクターに割り当てます。",
+      "addCharacter": "キャラクターの追加",
+      "character": "キャラクター",
+      "voicePreset": "ボイスプリセット",
+      "action": "アクション",
+      "chooseVoice": "音声を選択",
+      "removeConfirm": "文字「{{name}}」を削除しますか?",
+      "removeCharacter": "文字を削除する"
     },
     "script": {
-      "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
-    }
+      "placeholder": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。"
+    },
+    "defaultTitle": "タイトルのない物語",
+    "defaultScript": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。",
+    "emptyVoicesTitle": "ストーリーを作成する前に音声を保存する",
+    "emptyVoicesDescription": "Story Studio は、Listen/My Voices プリセットをキャストとして使用します。少なくとも 1 つの音声プリセットを作成または保存し、ここに戻って文字を割り当てます。",
+    "openMyVoices": "オープン・マイ・ヴォイス",
+    "storyTitle": "物語のタイトル",
+    "fixBeforeRendering": "レンダリング前に修正する",
+    "generate": "生成する",
+    "queued": "キューに入れられました",
+    "toolAriaLabel": "スタジオツール",
+    "tools": {
+      "script": "スクリプト",
+      "cast": "キャスト"
+    },
+    "expressionTags": "式タグ",
+    "clearExpressionSearch": "表現タグ検索のクリア",
+    "expressionControlsTitle": "式のコントロール",
+    "noExpressionTagMatches": "この検索に一致する式タグはありません。",
+    "customTagPlaceholder": "カスタムタグ",
+    "lineInstruction": "ライン命令",
+    "lineInstructionPlaceholder": "この行をどのように実行するかを説明します。",
+    "closeExpressionControls": "式コントロールを閉じる",
+    "pauseBetweenLines": "行間で一時停止する"
   },
   "appSections": {
     "common": {
-      "save": "Save",
-      "useDefaults": "Use defaults",
-      "saveModel": "Save model",
-      "analyzeRoute": "Analyze route",
-      "analyzing": "Analyzing...",
-      "createNote": "Create note",
-      "loadingNotes": "Loading notes...",
-      "untitled": "Untitled",
-      "emptyNote": "Empty note"
+      "save": "保存",
+      "useDefaults": "デフォルトを使用する",
+      "saveModel": "モデルの保存",
+      "analyzeRoute": "ルートを解析する",
+      "analyzing": "分析中...",
+      "createNote": "メモを作成する",
+      "loadingNotes": "メモを読み込んでいます...",
+      "untitled": "無題",
+      "emptyNote": "空のメモ",
+      "loadingSection": "セクションを読み込み中..."
     },
     "corrections": {
-      "demoTitle": "Smart corrections demo",
-      "demoDescription": "Shows how learned fixes become visible without relying on color alone.",
-      "appliedPill": "Correction applied",
-      "rawLabel": "Raw",
-      "fixedLabel": "Fixed",
-      "demoPrefix": "I am going",
-      "demoWrongWord": "two",
-      "demoFixedWord": "to",
-      "demoSuffix": "the store",
+      "demoTitle": "スマート補正のデモ",
+      "demoDescription": "学習した修正が色だけに依存せずにどのように表示されるかを示します。",
+      "appliedPill": "修正が適用されました",
+      "rawLabel": "生",
+      "fixedLabel": "修正済み",
+      "demoPrefix": "行きます",
+      "demoWrongWord": "2つ",
+      "demoFixedWord": "に",
+      "demoSuffix": "店",
       "summaryTitle": "How Vox Jot learns",
-      "summaryDescription": "Save corrections once and they automatically apply to future dictations. Use the dictionary view to inspect or remove entries.",
-      "openDictionary": "Open dictionary",
-      "automaticTitle": "Automatic learning",
-      "automaticDetail": "Edits you make near new text become candidate rules.",
-      "manualTitle": "Manual entries",
-      "manualDetail": "Add names, acronyms, or brand spellings directly."
+      "summaryDescription": "修正を一度保存すると、今後のディクテーションに自動的に適用されます。辞書ビューを使用して、エントリを検査または削除します。",
+      "openDictionary": "辞書を開く",
+      "automaticTitle": "自動学習",
+      "automaticDetail": "新しいテキストの近くで加えた編集が候補ルールになります。",
+      "manualTitle": "手動入力",
+      "manualDetail": "名前、頭字語、またはブランドのスペルを直接追加します。"
     },
     "routePreview": {
-      "title": "Processing route preview",
-      "description": "Dictation starts on-device; optional cleanup follows the selected refine provider.",
-      "localRoute": "Local route",
-      "cloudRoute": "Cloud route",
-      "localAi": "Local AI",
-      "cloudAi": "Cloud AI",
-      "localDetail": "Mic → device model → paste",
-      "cloudDetail": "Mic → network → provider",
-      "offlineCapable": "Offline capable",
-      "usesInternet": "Uses internet"
+      "title": "処理ルートのプレビュー",
+      "description": "ディクテーションはデバイス上で開始されます。オプションのクリーンアップは、選択した絞り込みプロバイダーに従います。",
+      "localRoute": "ローカルルート",
+      "cloudRoute": "クラウドルート",
+      "localAi": "ローカル AI",
+      "cloudAi": "クラウド AI",
+      "localDetail": "マイク→デバイスモデル→ペースト",
+      "cloudDetail": "マイク→ネットワーク→プロバイダー",
+      "offlineCapable": "オフライン対応",
+      "usesInternet": "インターネットを使用します"
     },
     "retention": {
-      "title": "Recording retention",
-      "day1": "Day 1",
-      "day7": "Day 7",
-      "day30": "Day 30",
+      "title": "録音保持",
+      "day1": "1日目",
+      "day7": "7日目",
+      "day30": "30日目",
       "autoDelete": "Auto-delete",
-      "never": "Keep until removed",
-      "preserveLimit": "Keep saved history limit",
-      "days3": "Delete after 3 days",
-      "weeks2": "Delete after 2 weeks",
-      "months3": "Delete after 3 months"
+      "never": "取り外されるまで保管してください",
+      "preserveLimit": "保存された履歴の制限を維持する",
+      "days3": "3日後に削除",
+      "weeks2": "2週間後に削除",
+      "months3": "3ヶ月経ったら削除"
     },
     "routeMonitor": {
-      "label": "Route monitor",
-      "error": "Error",
-      "analyzed": "Analyzed",
-      "waiting": "Waiting",
-      "inputStaged": "Input staged for route analysis",
-      "waitingForInput": "Waiting for dictation input...",
-      "analyzing": "Analyzing route...",
-      "complete": "Route analysis complete",
-      "ready": "Analyze route ready",
-      "errorEmpty": "Enter some text to inspect.",
-      "errorAnalysisFailed": "Analysis failed.",
-      "groupTitle": "Route debugger"
+      "label": "ルートモニター",
+      "error": "エラー",
+      "analyzed": "分析済み",
+      "waiting": "待っています",
+      "inputStaged": "ルート分析のためにステージングされた入力",
+      "waitingForInput": "ディクテーション入力を待っています...",
+      "analyzing": "ルートを分析中...",
+      "complete": "ルート解析完了",
+      "ready": "ルート分析準備完了",
+      "errorEmpty": "検査するテキストを入力します。",
+      "errorAnalysisFailed": "分析に失敗しました。",
+      "groupTitle": "ルートデバッガ"
     },
     "sections": {
-      "recentHistoryTitle": "Recent history",
-      "recentHistoryDescription": "Review transcripts, playback recordings, and reuse or save past dictations.",
-      "translationTitle": "Translation",
-      "translationDescription": "Set the target language and choose how translated dictation should be processed.",
-      "myVoicesTitle": "My voices",
-      "myVoicesDescription": "Manage saved voice profiles and choose which one Vox Jot uses for spoken output.",
-      "voiceCloningTitle": "Voice cloning",
-      "voiceCloningDescription": "Create clone profiles from reference audio, then turn them into saved Listen voices.",
+      "recentHistoryTitle": "最近の履歴",
+      "recentHistoryDescription": "トランスクリプトを確認し、録音を再生し、過去の口述を再利用または保存します。",
+      "translationTitle": "翻訳",
+      "translationDescription": "ターゲット言語を設定し、翻訳されたディクテーションの処理方法を選択します。",
+      "myVoicesTitle": "声",
+      "myVoicesDescription": "音声プロファイルを管理し、オフライン ボイス チェンジャーを使用して録音された音声を変換します。",
+      "voiceCloningTitle": "音声クローン",
+      "voiceCloningDescription": "リファレンスオーディオからクローンプロファイルを作成し、保存されたリッスンボイスに変換します。",
       "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Capture quick notes in the floating pad and reopen them when you need to keep working.",
-      "studioTitle": "Studio",
-      "studioDescription": "Assign saved voices to characters, edit a script, and render story audio.",
-      "generatedAudioTitle": "Generated audio",
-      "generatedAudioDescription": "Replay, reveal, copy, star, or remove audio rendered from Studio.",
-      "dictionaryTitle": "Dictionary"
+      "jotPadDescription": "フローティング パッドに簡単なメモを取り込み、作業を続ける必要があるときに再度メモを開きます。",
+      "studioTitle": "スタジオ",
+      "studioDescription": "保存した音声をキャラクターに割り当て、スクリプトを編集し、ストーリー音声をレンダリングします。",
+      "generatedAudioTitle": "生成された音声",
+      "generatedAudioDescription": "Studio からレンダリングされたオーディオを再生、公開、コピー、スター付け、または削除します。",
+      "dictionaryTitle": "辞書"
     },
     "groups": {
-      "dictation": "Dictation",
-      "app": "App",
-      "writeProfiles": "Write profiles",
-      "featureToggles": "Feature toggles",
-      "dictationShortcuts": "Dictation shortcuts",
-      "textActionShortcuts": "Text action shortcuts",
-      "speechOutputDevice": "Speech output device",
-      "speechCleanup": "Speech cleanup",
-      "translationProviderOverrides": "Translation provider overrides",
-      "labs": "Labs",
-      "localApi": "Local API",
-      "acknowledgments": "Acknowledgments",
-      "dictationLanguage": "Dictation language",
-      "appearance": "Appearance",
-      "appBehavior": "App behavior",
-      "manageFromViewsTitle": "Manage from these views",
-      "manageFromViewsDescription": "Each main view has full controls — Settings only carries the global on/off toggles.",
-      "microphoneInput": "Microphone input",
-      "cueSoundsOverlay": "Cue sounds & overlay",
-      "insertionBehavior": "Insertion behavior",
-      "textShaping": "Text shaping",
-      "translationProviderOverride": "Translation provider override",
-      "privacyControls": "Privacy",
-      "captureMode": "Capture mode",
-      "captureModeDescription": "Choose how often Vox Jot updates screen text while the app is open.",
-      "textRecognitionQuality": "Text recognition quality",
-      "textRecognitionQualityDescription": "Choose faster capture or more accurate text recognition.",
-      "recognitionEngine": "Recognition engine",
-      "recognitionTimeout": "Recognition timeout",
-      "recognitionTimeoutDescription": "How long Vox Jot waits when reading text from one screen capture.",
-      "recencyWindow": "Recency window",
-      "recencyWindowDescription": "How recent captured screen text must be before Vox Jot refreshes it.",
-      "contextAmount": "Context amount",
-      "contextAmountDescription": "How much recent screen text Vox Jot can use during dictation cleanup.",
-      "activeLabel": "Active"
+      "dictation": "ディクテーション",
+      "app": "アプリ",
+      "writeProfiles": "プロファイルの書き込み",
+      "featureToggles": "機能の切り替え",
+      "dictationShortcuts": "ディクテーションのショートカット",
+      "textActionShortcuts": "テキストアクションのショートカット",
+      "speechOutputDevice": "音声出力装置",
+      "speechCleanup": "スピーチのクリーンアップ",
+      "translationProviderOverrides": "翻訳プロバイダーのオーバーライド",
+      "labs": "研究室",
+      "localApi": "ローカル API",
+      "acknowledgments": "謝辞",
+      "dictationLanguage": "ディクテーション言語",
+      "appearance": "外観",
+      "appBehavior": "アプリの動作",
+      "manageFromViewsTitle": "これらのビューから管理する",
+      "manageFromViewsDescription": "各メイン ビューには完全なコントロールがあり、設定にはグローバルなオン/オフ切り替えのみが含まれます。",
+      "microphoneInput": "マイク入力",
+      "cueSoundsOverlay": "キューサウンドとオーバーレイ",
+      "insertionBehavior": "挿入動作",
+      "textShaping": "テキストの整形",
+      "translationProviderOverride": "翻訳プロバイダーのオーバーライド",
+      "privacyControls": "プライバシー",
+      "captureMode": "キャプチャモード",
+      "captureModeDescription": "アプリが開いている間に Vox Jot が画面テキストを更新する頻度を選択します。",
+      "textRecognitionQuality": "テキスト認識品質",
+      "textRecognitionQualityDescription": "より高速なキャプチャまたはより正確なテキスト認識を選択してください。",
+      "recognitionEngine": "認識エンジン",
+      "recognitionTimeout": "認識タイムアウト",
+      "recognitionTimeoutDescription": "1 つの画面キャプチャからテキストを読み取るときに Vox Jot が待機する時間。",
+      "recencyWindow": "リーセンシーウィンドウ",
+      "recencyWindowDescription": "Vox Jot が画面テキストを更新する前に、キャプチャされた画面テキストがどのくらい最新のものである必要があります。",
+      "contextAmount": "コンテキスト量",
+      "contextAmountDescription": "Vox Jot がディクテーションのクリーンアップ中に使用できる最近の画面テキストの量。",
+      "activeLabel": "アクティブ"
     },
     "soundPicker": {
-      "label": "Sound theme",
-      "description": "Choose the start and stop cue sounds Vox Jot plays around recording."
+      "label": "サウンドテーマ",
+      "description": "Vox Jot が録音中に再生する開始および停止キュー サウンドを選択します。"
     },
     "speechVolume": {
-      "label": "Speech volume",
-      "description": "Global playback volume for spoken output on the selected output device."
+      "label": "話量",
+      "description": "選択した出力デバイスでの音声出力のグローバル再生音量。"
     },
     "fillerWords": {
-      "title": "Custom filler words",
-      "description": "Add one filler word per line to override the default speech cleanup list. Leave this blank to use Vox Jot's defaults."
+      "title": "カスタムフィラーワード",
+      "description": "デフォルトの音声クリーンアップ リストを上書きするには、1 行に 1 つのフィラー単語を追加します。 Vox Jot のデフォルトを使用するには、これを空白のままにします。"
     },
     "translationProvider": {
-      "title": "Translation provider",
-      "description": "Choose which provider handles translation when Vox Jot uses AI-assisted translation routes.",
-      "modelTitle": "Translation model",
-      "modelDescription": "Pick a provider-specific translation model. This uses the same provider catalog as cleanup and rewrite setup.",
-      "appleNotice": "Apple Intelligence does not need a separate model override here.",
-      "translatePhraseKeysLabel": "Translate phrase keys",
-      "translatePhraseKeysDescription": "Apply translation rules to phrase-key expansions when they are inserted into translated output."
+      "title": "翻訳プロバイダー",
+      "description": "Vox Jot が AI 支援の変換ルートを使用する場合に、どのプロバイダーが変換を処理するかを選択します。",
+      "modelTitle": "翻訳モデル",
+      "modelDescription": "プロバイダー固有の変換モデルを選択します。これは、クリーンアップおよび書き換えセットアップと同じプロバイダー カタログを使用します。",
+      "appleNotice": "ここで、Apple Intelligence は別のモデル オーバーライドを必要としません。",
+      "translatePhraseKeysLabel": "フレーズキーを翻訳する",
+      "translatePhraseKeysDescription": "フレーズキー拡張が翻訳出力に挿入されるときに、翻訳ルールを適用します。"
     },
     "privacy": {
-      "localPrivacyModeLabel": "Local privacy mode",
-      "localPrivacyModeDescription": "Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available.",
-      "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.",
-      "heroOnTitle": "Local privacy on",
-      "heroOnDetail": "Cleanup and translation prefer on-device providers. Cloud routes are skipped when a local route exists.",
-      "heroOffTitle": "Cloud routes allowed",
-      "heroOffDetail": "Faster cleanup using configured cloud providers. Switch on local privacy to keep everything offline.",
-      "storageGroupTitle": "Storage",
-      "historyGroupTitle": "History",
-      "filesGroupTitle": "Files",
+      "localPrivacyModeLabel": "ローカルプライバシーモード",
+      "localPrivacyModeDescription": "可能な場合はローカル ルートでクリーンアップと変換を維持し、ローカル ルートが使用できない場合はクラウドのみの動作を無効にします。",
+      "localPrivacyNotice": "ローカル プライバシー モードが有効になっています。 Vox Jot は、ローカルのクリーンアップおよび翻訳プロバイダーを優先します。",
+      "heroOnTitle": "ローカルプライバシーオン",
+      "heroOnDetail": "クリーンアップと変換では、デバイス上のプロバイダーが優先されます。ローカル ルートが存在する場合、クラウド ルートはスキップされます。",
+      "heroOffTitle": "許可されるクラウドルート",
+      "heroOffDetail": "構成されたクラウドプロバイダーを使用したクリーンアップの高速化。ローカル プライバシーをオンにして、すべてをオフラインに保ちます。",
+      "storageGroupTitle": "ストレージ",
+      "historyGroupTitle": "歴史",
+      "filesGroupTitle": "ファイル",
       "previewLocalFirst": "Local-first",
-      "previewEnforced": "Enforced",
-      "previewAllowed": "Allowed",
-      "previewAudioCapture": "Audio capture",
-      "previewCleanup": "Cleanup",
-      "previewProvider": "Provider"
+      "previewEnforced": "強制",
+      "previewAllowed": "許可される",
+      "previewAudioCapture": "オーディオキャプチャ",
+      "previewCleanup": "クリーンアップ",
+      "previewProvider": "プロバイダー"
     },
     "diagnostics": {
-      "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.",
-      "labsTitle": "Experimental Labs",
-      "labsDescription": "Try in-progress features. They may change or disappear between updates.",
-      "localApiTitle": "Local API",
-      "localApiDescription": "Expose Vox Jot to local scripts and shortcuts on this machine.",
-      "developerTitle": "Developer tools",
-      "developerDescription": "Inspect log files, route analysis, and lower-level debugging when debug mode is on.",
+      "debugRevealNotice": "必要に応じて Cmd/Ctrl + Shift + D を押すと、より詳細なデバッグ ツールが表示されます。",
+      "labsTitle": "実験室",
+      "labsDescription": "開発中の機能を試してください。これらは更新の間に変更または消滅する可能性があります。",
+      "localApiTitle": "ローカル API",
+      "localApiDescription": "Vox Jot をこのマシン上のローカル スクリプトとショートカットに公開します。",
+      "developerTitle": "開発者ツール",
+      "developerDescription": "デバッグ モードがオンの場合、ログ ファイル、ルート分析、および下位レベルのデバッグを検査します。",
       "terminalCommand": "vox-jot --diagnostics",
-      "terminalServicesOnline": "services online",
-      "terminalInputReady": "input ready",
-      "terminalDebugEnabled": "debug ENABLED",
-      "terminalDebugOff": "debug off",
-      "statOn": "On",
-      "statOff": "Off",
-      "statLabs": "Labs",
-      "statDebug": "Debug",
-      "debugToggleLabel": "Debug mode",
-      "debugToggleDescription": "Reveals developer tools, the route debugger, and log level controls. Also bumps file logs to Debug verbosity. Shortcut: ⌘/Ctrl + Shift + D."
+      "terminalServicesOnline": "オンラインサービス",
+      "terminalInputReady": "入力準備完了",
+      "terminalDebugEnabled": "ENABLEDをデバッグする",
+      "terminalDebugOff": "デバッグオフ",
+      "statOn": "オン",
+      "statOff": "オフ",
+      "statLabs": "研究室",
+      "statDebug": "デバッグ",
+      "debugToggleLabel": "デバッグモード",
+      "debugToggleDescription": "開発者ツール、ルート デバッガー、ログ レベルの制御を明らかにします。また、ファイル ログをデバッグの詳細度に高めます。ショートカット: ⌘/Ctrl + Shift + D。"
     },
     "about": {
-      "version": "Version {{version}}",
-      "versionUnknown": "unknown",
-      "summaryPrimary": "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.",
-      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.",
-      "highlightsTitle": "What's inside",
-      "highlightLocalTitle": "Local speech",
-      "highlightLocalDetail": "Whisper / Parakeet inference with optional Silero VAD.",
-      "highlightRefineTitle": "Refine providers",
-      "highlightRefineDetail": "Plug in OpenAI, Anthropic, Ollama, Apple Intelligence, and more.",
-      "highlightListenTitle": "Listen voices",
-      "highlightListenDetail": "Custom TTS packs, voice cloning, and Story Studio.",
-      "stackTitle": "Built with",
+      "version": "バージョン {{version}}",
+      "versionUnknown": "不明",
+      "summaryPrimary": "Vox Jot は、Whisper ファミリ モデル、TTS エンジン、システム タイピング統合などのローカル音声認識、翻訳、再生ツールを中心に構築されています。",
+      "summarySecondary": "このアプリは、ローカル オーディオ キャプチャ、AI クリーンアップ、履歴、Jot Pad を 1 つのデスクトップ ワークフローに結合します。",
+      "highlightsTitle": "中には何が入っているのか",
+      "highlightLocalTitle": "現地でのスピーチ",
+      "highlightLocalDetail": "オプションの Silero VAD を使用した Whisper / Parakeet 推論。",
+      "highlightRefineTitle": "プロバイダーを絞り込む",
+      "highlightRefineDetail": "OpenAI、Anthropic、Ollama、Apple Intelligence などを接続します。",
+      "highlightListenTitle": "声を聞く",
+      "highlightListenDetail": "カスタム TTS パック、音声クローン、Story Studio。",
+      "stackTitle": "で構築",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust audio pipeline"
     },
     "jotPad": {
-      "empty": "Start your first note",
-      "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
-      "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
+      "empty": "最初のメモを開始する",
+      "emptyDescription": "Jot Pad に口述または入力して、考えを手元に置いておきます。",
+      "emptyExample": "たとえば、ここで会議のメモを口述筆記し、それを洗練して簡潔な要約にします。"
     },
     "hero": {
       "general": {
-        "eyebrow": "Settings",
-        "title": "App & Dictation",
-        "description": "Choose how Vox Jot looks, which language it listens for, and how the app behaves on this Mac.",
-        "themeStat": "Theme",
-        "fontStat": "Text size",
-        "languageStat": "Listening",
-        "previewLabel": "App preview",
-        "autoLabel": "Auto"
+        "eyebrow": "設定",
+        "title": "アプリとディクテーション",
+        "description": "Vox Jot の外観、リッスンする言語、およびこの Mac でのアプリの動作を選択します。",
+        "themeStat": "テーマ",
+        "fontStat": "文字サイズ",
+        "languageStat": "リスニング",
+        "previewLabel": "アプリのプレビュー",
+        "autoLabel": "自動"
       },
       "shortcuts": {
-        "eyebrow": "Keyboard",
-        "title": "Shortcuts",
-        "description": "Trigger dictation, refine selected text, and play back speech without leaving your keyboard.",
-        "primary": "Primary",
-        "textActions": "Text actions"
+        "eyebrow": "キーボード",
+        "title": "ショートカット",
+        "description": "キーボードから離れることなく、ディクテーションをトリガーし、選択したテキストを調整し、音声を再生します。",
+        "primary": "プライマリー",
+        "textActions": "テキストアクション"
       },
       "recording": {
-        "eyebrow": "Audio",
-        "title": "Recording & Devices",
-        "description": "Pick the microphone Vox Jot listens to, tune feedback cues, and shape how your speech is cleaned up.",
-        "input": "Input",
-        "output": "Output",
-        "monitoring": "Monitoring"
+        "eyebrow": "オーディオ",
+        "title": "録音とデバイス",
+        "description": "Vox Jot が聞くマイクを選択し、フィードバック キューを調整し、スピーチをどのようにクリーンアップするかを調整します。",
+        "input": "入力",
+        "output": "出力",
+        "monitoring": "モニタリング"
       },
       "outputPaste": {
-        "eyebrow": "Delivery",
-        "title": "Output & Paste",
-        "description": "Control how transcribed text lands in the focused app — instant paste, simulated typing, or clipboard.",
-        "previewSource": "Spoken",
-        "previewTarget": "Pasted into focused app"
+        "eyebrow": "配送",
+        "title": "出力と貼り付け",
+        "description": "文字起こしされたテキストが、インスタントペースト、シミュレートされた入力、またはクリップボードなど、フォーカスされたアプリにどのように配置されるかを制御します。",
+        "previewSource": "話し言葉",
+        "previewTarget": "フォーカスされたアプリに貼り付けられます"
       },
       "corrections": {
-        "eyebrow": "Learning",
-        "title": "Corrections",
-        "description": "Teach Vox Jot how to spell names, brands, and recurring phrases so dictation looks right the first time."
+        "eyebrow": "学習",
+        "title": "訂正",
+        "description": "Vox Jot に名前、ブランド、繰り返し現れるフレーズの綴り方を教えて、ディクテーションが最初から正しく行われるようにします。"
       },
       "models": {
-        "eyebrow": "Intelligence",
-        "title": "Models & AI",
-        "description": "Choose providers, route requests, and decide what runs on this device versus in the cloud."
+        "eyebrow": "インテリジェンス",
+        "title": "モデルとAI",
+        "description": "プロバイダーを選択し、リクエストをルーティングし、このデバイスとクラウドで何を実行するかを決定します。"
       },
       "screenContext": {
-        "eyebrow": "Context",
-        "title": "Screen Context",
-        "description": "Let Vox Jot glance at visible text near the focused app so cleanup and rewrites stay on topic."
+        "eyebrow": "コンテキスト",
+        "title": "画面のコンテキスト",
+        "description": "Vox Jot で、フォーカスされたアプリの近くに表示されているテキストを一目見て、クリーンアップと書き換えがトピックに留まるようにします。"
       },
       "privacy": {
-        "eyebrow": "Your data",
-        "title": "Privacy & Storage",
-        "description": "Decide what stays on-device, how long recordings linger, and where files live on disk."
+        "eyebrow": "あなたのデータ",
+        "title": "プライバシーとストレージ",
+        "description": "デバイス上に何を残すか、録音をどのくらいの時間保存するか、ファイルがディスク上のどこに存在するかを決定します。"
       },
       "diagnostics": {
-        "eyebrow": "Advanced",
+        "eyebrow": "上級者向け",
         "title": "Labs & Diagnostics",
-        "description": "Try experimental features, expose the local API, and inspect what Vox Jot is doing under the hood."
+        "description": "実験的な機能を試し、ローカルの API を公開し、内部で Vox Jot が何をしているかを検査します。"
       },
       "about": {
-        "eyebrow": "About",
+        "eyebrow": "について",
         "title": "Vox Jot",
-        "description": "Local-first dictation, refine, and listen — built around Whisper-family models, custom TTS engines, and system-level typing integrations."
+        "description": "ローカルファーストのディクテーション、絞り込み、リスニング — Whisper ファミリ モデル、カスタム TTS エンジン、およびシステム レベルのタイピング統合を中心に構築されています。"
       }
     },
     "cross": {
       "writeProfiles": {
-        "title": "Manage write profiles",
-        "description": "App-aware tone, rewrites, and Phrase Keys",
-        "destination": "Refine"
+        "title": "書き込みプロファイルの管理",
+        "description": "アプリ対応のトーン、リライト、フレーズキー",
+        "destination": "絞り込む"
       },
       "speechModels": {
-        "title": "Browse speech models",
+        "title": "音声モデルを参照する",
         "description": "Download, swap, and manage Whisper/Parakeet builds",
-        "destination": "Dictate"
+        "destination": "口述する"
       },
       "refineModels": {
-        "title": "Browse refine models",
-        "description": "Cleanup, translate, and rewrite providers",
-        "destination": "Refine"
+        "title": "モデルを参照して改良する",
+        "description": "プロバイダーのクリーンアップ、変換、および書き換え",
+        "destination": "絞り込む"
       },
       "voices": {
-        "title": "Manage voices",
-        "description": "Voice packs, cloning, and playback",
-        "destination": "Listen"
+        "title": "音声を管理する",
+        "description": "ボイスパック、クローン作成、および再生",
+        "destination": "聞いてください"
       },
       "translation": {
-        "title": "Translation",
-        "description": "Set target language and rules",
-        "destination": "Refine"
+        "title": "翻訳",
+        "description": "ターゲット言語とルールを設定する",
+        "destination": "絞り込む"
       },
       "dictionary": {
-        "title": "Open dictionary",
+        "title": "辞書を開く",
         "description": "Review every correction Vox Jot has learned",
-        "destination": "Dictate"
+        "destination": "口述する"
       }
     },
     "shortcuts": {
       "groups": {
         "dictate": {
-          "title": "Dictate",
-          "description": "Start or stop dictation, cancel, and open the command menu."
+          "title": "口述する",
+          "description": "ディクテーションを開始または停止したり、キャンセルしたり、コマンド メニューを開きます。"
         },
         "refine": {
-          "title": "Refine selected text",
-          "description": "Rewrite or translate whatever is currently selected."
+          "title": "選択したテキストを絞り込む",
+          "description": "現在選択されているものを書き換えるか翻訳します。"
         },
         "listen": {
-          "title": "Listen",
-          "description": "Speak selected text aloud and control playback."
+          "title": "聞いてください",
+          "description": "選択したテキストを読み上げて、再生を制御します。"
         }
       },
       "preview": {
-        "title": "Quick keys",
-        "subtitle": "Tap a chord to record dictation, refine, or listen.",
-        "hold": "Hold to record"
+        "title": "クイックキー",
+        "subtitle": "コードをタップして、ディクテーションを録音したり、修正したり、聞いたりします。",
+        "hold": "長押しして録音する"
       }
     },
     "device": {
-      "input": "Microphone",
-      "output": "Speaker",
-      "feedback": "Audio feedback",
-      "previewTitle": "Audio pipeline preview",
-      "previewDescription": "Vox Jot listens, optionally enhances voice, and plays cues during the dictation loop.",
-      "stepMic": "Mic input",
-      "stepEnhance": "Voice clarity",
-      "stepFeedback": "Cue sounds",
-      "stepOutput": "TTS playback",
-      "noDevice": "No device selected"
+      "input": "マイク",
+      "output": "スピーカー",
+      "feedback": "音声フィードバック",
+      "previewTitle": "オーディオパイプラインのプレビュー",
+      "previewDescription": "Vox Jot は音声を聞き、オプションで音声を強化し、ディクテーション ループ中にキューを再生します。",
+      "stepMic": "マイク入力",
+      "stepEnhance": "音声の明瞭さ",
+      "stepFeedback": "キュー音",
+      "stepOutput": "TTS 再生",
+      "noDevice": "デバイスが選択されていません"
     },
     "output": {
-      "previewTitle": "Output preview",
-      "previewDescription": "See how Vox Jot delivers transcribed text into the focused app.",
-      "sourceLabel": "Spoken",
-      "targetLabel": "Inserted",
-      "sampleSource": "Send that report when you get a minute",
-      "sampleTarget": "Send that report when you get a minute.",
-      "methodTitle": "Insertion methods",
-      "methodPaste": "Clipboard paste",
-      "methodPasteDetail": "Fastest. Replaces your clipboard temporarily.",
-      "methodType": "Simulated typing",
-      "methodTypeDetail": "Works in apps that block paste — slower but reliable.",
-      "methodNone": "Copy only",
-      "methodNoneDetail": "Just puts the text on your clipboard."
+      "previewTitle": "出力プレビュー",
+      "previewDescription": "Vox Jot がどのように文字起こしされたテキストをフォーカスされたアプリに配信するかをご覧ください。",
+      "sourceLabel": "話し言葉",
+      "targetLabel": "挿入されました",
+      "sampleSource": "時間ができたらそのレポートを送信してください",
+      "sampleTarget": "時間ができたらそのレポートを送信してください。",
+      "methodTitle": "挿入方法",
+      "methodPaste": "クリップボードペースト",
+      "methodPasteDetail": "最速。クリップボードを一時的に置き換えます。",
+      "methodType": "シミュレートされたタイピング",
+      "methodTypeDetail": "貼り付けをブロックするアプリでも動作します。速度は遅くなりますが、信頼性は高くなります。",
+      "methodNone": "コピーのみ",
+      "methodNoneDetail": "テキストをクリップボードに置くだけです。"
     },
     "models": {
-      "routeTitle": "Provider routing",
-      "routeDescription": "Vox Jot picks a route per request. Local stays offline; cloud uses your selected providers.",
+      "routeTitle": "プロバイダールーティング",
+      "routeDescription": "Vox Jot はリクエストごとにルートを選択します。ローカルはオフラインのままです。クラウドは選択したプロバイダーを使用します。",
       "localRouteHeading": "Local-first",
-      "cloudRouteHeading": "Cloud assist",
-      "advancedEvaluationTitle": "Refine model evaluation (advanced)",
-      "fileTranscriptionTitle": "File transcription",
-      "fileTranscriptionDetail": "Drop in audio or video to transcribe",
-      "managementTitle": "Manage models from these views",
-      "managementSubtitle": "Settings only carries provider routing. Browse, download, and swap individual models in the dedicated catalogs.",
-      "cleanupLabel": "Cleanup",
-      "routeLabel": "Route",
-      "routeLocal": "Local",
-      "routeCloud": "Cloud"
+      "cloudRouteHeading": "クラウドアシスト",
+      "advancedEvaluationTitle": "モデル評価を調整する (上級)",
+      "fileTranscriptionTitle": "ファイルの転写",
+      "fileTranscriptionDetail": "音声またはビデオをドロップして文字起こしします",
+      "managementTitle": "これらのビューからモデルを管理します",
+      "managementSubtitle": "設定ではプロバイダー ルーティングのみが行われます。専用カタログ内の個々のモデルを参照、ダウンロード、交換します。",
+      "cleanupLabel": "クリーンアップ",
+      "routeLabel": "ルート",
+      "routeLocal": "ローカル",
+      "routeCloud": "クラウド"
     },
     "screenContext": {
-      "previewBadgeOn": "Capture enabled",
-      "previewBadgeOff": "Capture paused",
-      "permissionTitle": "Screen Recording permission",
-      "permissionDetail": "Required so Vox Jot can read the visible text near the active app.",
-      "permissionGranted": "Granted",
-      "permissionMissing": "Action required",
-      "advancedToggle": "Advanced capture tuning",
-      "previewLabel": "Visible text → context window",
-      "previewLive": "Live",
-      "previewPaused": "Paused",
-      "previewActiveApp": "Active app",
-      "previewContextText": "Context text",
-      "captureStatusLabel": "Capture status",
-      "permissionStatLabel": "Screen permission",
-      "cacheStatLabel": "Cache size",
-      "debugPreviewHeader": "Debug preview"
+      "previewBadgeOn": "キャプチャが有効になっています",
+      "previewBadgeOff": "キャプチャが一時停止されました",
+      "permissionTitle": "画面録画許可",
+      "permissionDetail": "Vox Jot がアクティブなアプリの近くに表示されているテキストを読み取ることができるようにするために必要です。",
+      "permissionGranted": "確かに",
+      "permissionMissing": "アクションが必要です",
+      "advancedToggle": "高度なキャプチャチューニング",
+      "previewLabel": "表示テキスト → コンテキストウィンドウ",
+      "previewLive": "ライブ",
+      "previewPaused": "一時停止中",
+      "previewActiveApp": "アクティブなアプリ",
+      "previewContextText": "コンテキストテキスト",
+      "captureStatusLabel": "キャプチャステータス",
+      "permissionStatLabel": "画面の許可",
+      "cacheStatLabel": "キャッシュサイズ",
+      "debugPreviewHeader": "デバッグプレビュー"
     },
     "nav": {
       "dictate": {
-        "history": "Recent History",
-        "corrections": "Dictionary",
+        "history": "最近の履歴",
+        "corrections": "辞書",
         "jotPad": "Jot Pad",
-        "fileTranscription": "File Transcription"
+        "fileTranscription": "ファイルの転写"
       },
       "refine": {
-        "writeProfiles": "Write Profiles",
-        "phraseKeys": "Phrase Keys",
-        "translation": "Translation"
+        "writeProfiles": "プロファイルの書き込み",
+        "phraseKeys": "フレーズキー",
+        "translation": "翻訳"
       },
       "listen": {
-        "createVoices": "Create Voices",
-        "myVoices": "Voices",
-        "voiceCloning": "Voice Cloning",
-        "studio": "Studio",
-        "generatedAudio": "Generated Audio"
+        "createVoices": "ボイスを作成する",
+        "myVoices": "声",
+        "voiceCloning": "音声クローン作成",
+        "studio": "スタジオ",
+        "generatedAudio": "生成されたオーディオ"
       },
       "settings": {
-        "general": "App & Dictation",
-        "shortcuts": "Shortcuts",
-        "recordingDevices": "Recording & Devices",
-        "outputPaste": "Output & Paste",
-        "correctionsSettings": "Corrections",
-        "aiSetup": "Models & AI",
-        "modelTesting": "Testing",
-        "screenContext": "Screen Context",
-        "privacy": "Privacy & Storage",
-        "diagnostics": "Diagnostics",
-        "about": "About Vox Jot"
+        "general": "アプリとディクテーション",
+        "shortcuts": "ショートカット",
+        "recordingDevices": "録音とデバイス",
+        "outputPaste": "出力と貼り付け",
+        "correctionsSettings": "訂正",
+        "aiSetup": "モデルとAI",
+        "modelTesting": "テスト",
+        "screenContext": "画面のコンテキスト",
+        "privacy": "プライバシーとストレージ",
+        "diagnostics": "診断",
+        "about": "Vox Jotについて"
       }
     }
   },
   "testing": {
     "tabs": {
-      "fileAsr": "File ASR",
+      "fileAsr": "ファイルASR",
       "llm": "LLM",
-      "stt": "Live STT",
-      "screenOcr": "Screen OCR"
+      "stt": "ライブ STT",
+      "screenOcr": "画面 OCR"
     },
     "notRanked": {
-      "title": "Not yet ranked",
-      "description": "Models awaiting benchmark, blocked, or pending download."
+      "title": "まだランク付けされていません",
+      "description": "ベンチマークを待っているモデル、ブロックされているモデル、またはダウンロードが保留中のモデル。"
     },
     "empty": {
-      "title": "No ranked results",
-      "description": "Run the benchmark to populate this leaderboard."
+      "title": "ランク付けされた結果はありません",
+      "description": "ベンチマークを実行して、このリーダーボードにデータを入力します。"
     },
     "metrics": {
-      "device": "Device",
-      "promptProfile": "Profile",
-      "score": "Score",
-      "pass": "Pass",
-      "phrases": "Phrases",
-      "latency": "Latency",
-      "confidence": "Confidence"
+      "device": "デバイス",
+      "promptProfile": "プロフィール",
+      "score": "スコア",
+      "pass": "パス",
+      "phrases": "フレーズ",
+      "latency": "レイテンシ",
+      "confidence": "自信"
     },
     "categories": {
-      "strongest": "Strongest",
-      "weakest": "Weakest"
+      "strongest": "最強",
+      "weakest": "最弱"
     },
     "counts": {
-      "tested": "{{count}} tested",
-      "pending": "{{count}} pending",
-      "blocked": "{{count}} blocked"
+      "tested": "{{count}} テスト済み",
+      "pending": "{{count}} 保留中",
+      "blocked": "{{count}} がブロックされました"
     }
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Select an option..."
+      "placeholder": "オプションを選択してください..."
     },
     "pathDisplay": {
-      "pathLabel": "Filesystem path"
+      "pathLabel": "ファイルシステムのパス"
     },
     "resetButton": {
-      "label": "Reset"
+      "label": "リセット"
     }
+  },
+  "translationSettings": {
+    "sections": {
+      "selection": {
+        "title": "選択翻訳",
+        "description": "ハイライト表示されたテキスト翻訳の配信方法を選択します。"
+      },
+      "output": {
+        "title": "翻訳出力",
+        "description": "ディクテーションをソース言語のままにするか、翻訳するか、ソースと翻訳の両方を表示するかを選択します。"
+      },
+      "targetLanguage": {
+        "title": "対象言語",
+        "description": "Vox Jot が翻訳する言語を選択します。"
+      },
+      "method": {
+        "title": "翻訳方法",
+        "description": "自動はほとんどの人にとって機能します。必要な場合にのみ、特定の方法を選択してください。"
+      },
+      "bilingualLayout": {
+        "title": "バイリンガルレイアウト",
+        "description": "原文と翻訳の両方が表示されている場合に、どのブロックが最初に表示されるかを選択します。"
+      },
+      "dictationDestination": {
+        "title": "ディクテーションの宛先",
+        "description": "翻訳されたディクテーションを直接貼り付けるか、最初にプレビューを開くか、Jot Pad に移動するかを選択します。"
+      }
+    },
+    "labels": {
+      "detectedSource": "検出された発生源",
+      "targetOutput": "目標出力"
+    },
+    "output": {
+      "source": {
+        "title": "ソースのみ",
+        "description": "検出された言語で口述テキストを保持します。"
+      },
+      "translated": {
+        "title": "翻訳のみ",
+        "description": "翻訳結果だけを貼り付けます。"
+      },
+      "bilingual": {
+        "title": "バイリンガル",
+        "description": "訳文と原文を一緒に見せてください。"
+      }
+    },
+    "route": {
+      "auto": {
+        "title": "自動",
+        "description": "この言語に利用可能な最適なルートを選択してください。"
+      },
+      "whisperEnglish": {
+        "title": "高速オンデバイス",
+        "description": "Whisper のローカル英語翻訳パスを使用します。"
+      },
+      "localAi": {
+        "title": "ローカル AI",
+        "description": "構成されている場合は、オンデバイス モデルを使用します。"
+      },
+      "remoteAi": {
+        "title": "オンライン AI",
+        "description": "選択したクラウドプロバイダーを使用します。"
+      },
+      "offlinePack": {
+        "title": "オフラインパック",
+        "description": "インストールされている言語パックを使用します。"
+      }
+    },
+    "bilingual": {
+      "translationFirst": {
+        "title": "まずは翻訳",
+        "description": "翻訳されたブロックでリードします。"
+      },
+      "sourceFirst": {
+        "title": "ソースファースト",
+        "description": "オリジナルの口述ブロックでリードします。"
+      }
+    },
+    "destination": {
+      "pasteInPlace": {
+        "title": "所定の位置に貼り付けます",
+        "description": "翻訳されたディクテーションをフォーカスされたアプリに送信します。"
+      },
+      "previewThenPaste": {
+        "title": "最初にプレビューする",
+        "description": "貼り付ける前に翻訳を確認してください。"
+      },
+      "openInJotPad": {
+        "title": "Jot Pad で開く",
+        "description": "翻訳されたテキストをスクラッチパッドにルーティングします。"
+      }
+    },
+    "selection": {
+      "replaceSelection": {
+        "title": "選択範囲を置換",
+        "description": "強調表示されたテキストを翻訳と入れ替えます。"
+      },
+      "previewThenReplace": {
+        "title": "最初にプレビューする",
+        "description": "選択したテキストを置換する前に確認してください。"
+      },
+      "openInJotPad": {
+        "title": "Jot Pad で開く",
+        "description": "翻訳された選択範囲をスクラッチパッドに送信します。"
+      }
+    }
+  },
+  "appModes": {
+    "dictate": "口述する",
+    "refine": "絞り込む",
+    "listen": "聞いてください"
+  },
+  "storyAudio": {
+    "generatedAudioAriaLabel": "生成されたストーリー音声",
+    "viewAriaLabel": "生成されたオーディオビュー",
+    "tabs": {
+      "timeline": "タイムライン",
+      "player": "プレーヤー"
+    },
+    "position": "{{current}}/{{total}}",
+    "loading": "ストーリー音声を読み込んでいます...",
+    "emptyTitle": "音声はまだ生成されていません",
+    "emptyDescription": "生成されたストーリーは、最初のレンダリング後にここに表示されます。",
+    "noSelectionTitle": "生成されたオーディオが選択されていません",
+    "noSelectionDescription": "Studio でオーディオをレンダリングするか、タイムラインに戻ります。",
+    "unknownDate": "日付不明",
+    "today": "今日",
+    "timelineAriaLabel": "オーディオタイムライン",
+    "controls": {
+      "speed": "速度",
+      "saveAs": "名前を付けて保存",
+      "saveCopy": "コピーを保存",
+      "saveProcessedCopy": "処理済みのコピーを保存する"
+    },
+    "starred": "スター付き",
+    "noScriptSaved": "この音声ファイルにはスクリプトが保存されていません。",
+    "untitledStory": "タイトルのない物語",
+    "titleAriaLabel": "ストーリー音声のタイトル",
+    "errors": {
+      "load": "ストーリーの音声を読み込めませんでした。",
+      "copyScript": "ストーリー スクリプトをコピーできませんでした。"
+    },
+    "actions": {
+      "copyScript": "スクリプトのコピー",
+      "showInFolder": "フォルダー内の音声ファイルを表示",
+      "star": "スターストーリーオーディオ",
+      "unstar": "ストーリーオーディオのスターを外す",
+      "delete": "ストーリーの音声を削除する",
+      "cancelDelete": "削除のキャンセル",
+      "openInPlayer": "プレーヤーで開く",
+      "rename": "ストーリーオーディオの名前を変更する",
+      "renameWithTitle": "ストーリーオーディオの名前を変更: {{title}}",
+      "previous": "以前に生成されたオーディオ",
+      "next": "次に生成されるオーディオ",
+      "cancelRender": "ストーリーのレンダリングをキャンセルする"
+    },
+    "meta": {
+      "lines": "{{count}} 行",
+      "lines_plural": "{{count}} 行",
+      "audioFile": "音声ファイル",
+      "cast": "{{count}} キャストメンバー",
+      "cast_plural": "{{count}} キャスト",
+      "generatedIn": "で生成された",
+      "scriptSaved": "スクリプトが保存されました",
+      "audioOnly": "音声のみ",
+      "expressionTags": "式タグ",
+      "inlinePrompt": "インラインプロンプト",
+      "lineProgress": "{{current}}/{{total}} 行"
+    },
+    "status": {
+      "rendering": "レンダリング",
+      "preparing": "準備中",
+      "queued": "キューに入れられました",
+      "queuedAtPosition": "{{position}} の位置でキューに入れられました",
+      "assembling": "最終的なオーディオの組み立て",
+      "failed": "生成に失敗しました",
+      "cancelled": "キャンセルされました",
+      "generatingLine": "{{total}} のライン {{current}} を生成しています",
+      "generating": "生成中",
+      "queuePosition": "キュー #{{position}}"
+    }
+  },
+  "detail": {
+    "unknownSection": "不明なセクション: {{section}}"
   }
 }

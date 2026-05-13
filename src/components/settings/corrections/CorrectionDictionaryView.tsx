@@ -204,54 +204,57 @@ const getEntryStatusClassName = (entry: StoredCorrection): string => {
   }
 };
 
-const getGroupStatus = (group: CorrectionGroup) => {
+const getGroupStatus = (
+  group: CorrectionGroup,
+  t: ReturnType<typeof useTranslation>["t"],
+) => {
   const total = group.entries.length;
   if (group.disabledCount === total) {
     return {
-      label: "Off",
-      title: "All corrections in this group are disabled.",
+      label: t("settings.corrections.dictionary.groupStatus.off"),
+      title: t("settings.corrections.dictionary.groupStatus.offTitle"),
       className:
         "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
     };
   }
   if (group.manualCount === total) {
     return {
-      label: "Manual",
-      title: "All corrections in this group are manually approved.",
+      label: t("settings.corrections.dictionary.groupStatus.manual"),
+      title: t("settings.corrections.dictionary.groupStatus.manualTitle"),
       className:
         "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]",
     };
   }
   if (group.manualCount + group.eligibleCount === total) {
     return {
-      label: "Applying",
-      title: "Every enabled correction in this group is eligible to apply.",
+      label: t("settings.corrections.dictionary.groupStatus.applying"),
+      title: t("settings.corrections.dictionary.groupStatus.applyingTitle"),
       className:
         "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]",
     };
   }
   if (group.blockedCount > 0) {
     return {
-      label: "Review",
-      title:
-        "At least one correction in this group is blocked from auto-apply until approved.",
+      label: t("settings.corrections.dictionary.groupStatus.review"),
+      title: t("settings.corrections.dictionary.groupStatus.reviewTitle"),
       className:
         "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
     };
   }
   if (group.lowConfidenceCount > 0) {
     return {
-      label: "Low conf",
-      title:
-        "At least one correction has enough observations but low confidence.",
+      label: t("settings.corrections.dictionary.groupStatus.lowConfidence"),
+      title: t(
+        "settings.corrections.dictionary.groupStatus.lowConfidenceTitle",
+      ),
       className:
         "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
     };
   }
 
   return {
-    label: "Learning",
-    title: "Waiting for more confirmations before auto-applying.",
+    label: t("settings.corrections.dictionary.groupStatus.learning"),
+    title: t("settings.corrections.dictionary.groupStatus.learningTitle"),
     className: "border-[var(--border)] bg-[var(--input)] text-[var(--muted)]",
   };
 };
@@ -990,12 +993,17 @@ export const CorrectionDictionaryView: React.FC<
             </div>
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-[var(--muted)] md:block md:space-y-1">
-              <span
-                className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroupStatus(group).className}`}
-                title={getGroupStatus(group).title}
-              >
-                {getGroupStatus(group).label}
-              </span>
+              {(() => {
+                const groupStatus = getGroupStatus(group, t);
+                return (
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${groupStatus.className}`}
+                    title={groupStatus.title}
+                  >
+                    {groupStatus.label}
+                  </span>
+                );
+              })()}
               <span className="block text-[var(--text)]">
                 {t("settings.corrections.dictionary.columns.frequency", {
                   defaultValue: "Uses",
@@ -1045,7 +1053,7 @@ export const CorrectionDictionaryView: React.FC<
   };
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-7">
       {addDialog}
       {showHeaderTitle ? (
         <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3 px-5">
@@ -1059,6 +1067,8 @@ export const CorrectionDictionaryView: React.FC<
           noCard
           title={sectionTitle}
           description={t("settings.corrections.description")}
+          showTitle={false}
+          descriptionOnlyGap="controls"
         >
           {actionButtons}
         </SettingsGroup>
@@ -1093,6 +1103,7 @@ const OriginalChip: React.FC<{
   onDelete: (id: number) => Promise<void>;
   onApprove: (entry: StoredCorrection) => Promise<void>;
 }> = ({ entry, onUpdate, onDelete, onApprove }) => {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.original);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1158,8 +1169,14 @@ const OriginalChip: React.FC<{
           type="button"
           className="shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--success)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           onClick={() => void onApprove(entry)}
-          aria-label={`Approve correction ${entry.original} to ${entry.corrected}`}
-          title="Approve and always apply"
+          aria-label={t(
+            "settings.corrections.dictionary.approveCorrectionAria",
+            {
+              original: entry.original,
+              corrected: entry.corrected,
+            },
+          )}
+          title={t("settings.corrections.dictionary.approveAlways")}
         >
           <CheckCircle2 className="h-3 w-3" aria-hidden />
         </button>
@@ -1168,7 +1185,7 @@ const OriginalChip: React.FC<{
         type="button"
         className="-mr-0.5 shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         onClick={() => void onDelete(entry.id)}
-        aria-label="Delete original phrase"
+        aria-label={t("settings.corrections.dictionary.deleteOriginalPhrase")}
       >
         <X className="h-2.5 w-2.5" aria-hidden />
       </button>

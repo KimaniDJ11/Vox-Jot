@@ -265,10 +265,11 @@ const PrimaryModeSwitcher: React.FC<{
   activeMode: PrimaryMode;
   onSelect: (mode: PrimaryMode) => void;
 }> = ({ activeMode, onSelect }) => {
+  const { t } = useTranslation();
   const items: Array<{ id: PrimaryMode; label: string }> = [
-    { id: "dictate", label: "Dictate" },
-    { id: "refine", label: "Refine" },
-    { id: "listen", label: "Listen" },
+    { id: "dictate", label: t("appModes.dictate") },
+    { id: "refine", label: t("appModes.refine") },
+    { id: "listen", label: t("appModes.listen") },
   ];
 
   return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
@@ -17,6 +17,12 @@ import {
   type ModelHubScope,
   type ModelHubTabId,
 } from "@/components/model-hub/modelHubTabs";
+import {
+  DEFAULT_MODEL_HUB_CONTROL_VALUES,
+  type ModelHubControlState,
+  type ModelHubControlValues,
+} from "@/components/model-hub/modelHubControls";
+import type { ModelSortMode } from "@/lib/modelListOrdering";
 
 const ALL_TABS = MODEL_HUB_TAB_DEFS;
 
@@ -62,8 +68,34 @@ const ModelHubSection: React.FC = () => {
   const [analysisTabLabelOverride, setAnalysisTabLabelOverride] = useState<
     string | null
   >(null);
+  const [controlValues, setControlValues] = useState<ModelHubControlValues>({
+    ...DEFAULT_MODEL_HUB_CONTROL_VALUES,
+  });
   const searchPortalTarget = usePortalTarget(MODEL_HUB_SEARCH_SLOT_ID);
   const visibleTab = scope === "analysis" ? "analysis" : activeTab;
+
+  const setControlValue = useCallback(
+    <K extends keyof ModelHubControlValues>(
+      key: K,
+      value: ModelHubControlValues[K],
+    ) => {
+      setControlValues((current) => ({
+        ...current,
+        [key]: value,
+      }));
+    },
+    [],
+  );
+
+  const modelHubControls: ModelHubControlState = useMemo(
+    () => ({
+      ...controlValues,
+      setProviderFilter: (value) => setControlValue("providerFilter", value),
+      setLanguageFilter: (value) => setControlValue("languageFilter", value),
+      setSortMode: (value: ModelSortMode) => setControlValue("sortMode", value),
+    }),
+    [controlValues, setControlValue],
+  );
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
@@ -209,7 +241,9 @@ const ModelHubSection: React.FC = () => {
         <div className="min-w-0 flex-1 pt-3">
           {scope === "analysis" ? (
             <SpeechAnalysisEnginesSection
+              titleActionTargetId="model-hub-section-actions"
               hubSearchQuery={query}
+              modelHubControls={modelHubControls}
               onHeaderTitleChange={setAnalysisTabLabelOverride}
             />
           ) : (
@@ -223,13 +257,24 @@ const ModelHubSection: React.FC = () => {
                   }
                   showActiveModelBanner={false}
                   hubSearchQuery={query}
+                  modelHubControls={
+                    visibleTab === "stt" ? modelHubControls : undefined
+                  }
                   hubFilterLabels
                 />
               </div>
 
               <div className={visibleTab === "analysis" ? "block" : "hidden"}>
                 <SpeechAnalysisEnginesSection
+                  titleActionTargetId={
+                    visibleTab === "analysis"
+                      ? "model-hub-section-actions"
+                      : undefined
+                  }
                   hubSearchQuery={query}
+                  modelHubControls={
+                    visibleTab === "analysis" ? modelHubControls : undefined
+                  }
                   onHeaderTitleChange={setAnalysisTabLabelOverride}
                 />
               </div>
@@ -243,6 +288,9 @@ const ModelHubSection: React.FC = () => {
                   }
                   hubSearchQuery={query}
                   onHubSearchQueryChange={setQuery}
+                  modelHubControls={
+                    visibleTab === "llm" ? modelHubControls : undefined
+                  }
                   hubFilterLabels
                   showEvaluationPanel={false}
                 />
@@ -258,6 +306,9 @@ const ModelHubSection: React.FC = () => {
                   }
                   showActiveModelBanner={false}
                   hubSearchQuery={query}
+                  modelHubControls={
+                    visibleTab === "tts" ? modelHubControls : undefined
+                  }
                   hubFilterLabels
                 />
               </div>
@@ -270,6 +321,9 @@ const ModelHubSection: React.FC = () => {
                       : undefined
                   }
                   hubSearchQuery={query}
+                  modelHubControls={
+                    visibleTab === "ocr" ? modelHubControls : undefined
+                  }
                   hubFilterLabels
                 />
               </div>

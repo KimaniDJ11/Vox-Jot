@@ -24,6 +24,7 @@ import {
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { commands } from "@/bindings";
+import ModelListControls from "@/components/model-hub/ModelListControls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -38,6 +39,14 @@ import {
   importTtsVoiceProfileSample,
 } from "@/lib/ttsVoiceProfiles";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import { LANGUAGES } from "@/lib/constants/languages";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import {
   speechLibraryCardClassName,
@@ -49,6 +58,7 @@ import {
   getModelLanguageItems,
   isDraftVoiceModelAvailable,
   profileSupportsModel,
+  ttsModelSupportsLanguage,
 } from "../utils";
 import { readVoiceCloningDraft, writeVoiceCloningDraft } from "../draftStorage";
 import {
@@ -75,6 +85,10 @@ export const VoiceCloningSection: React.FC<{
   const [modelSearchQuery, setModelSearchQuery] = useState(
     initialDraft.modelSearchQuery,
   );
+  const [modelProviderFilter, setModelProviderFilter] = useState("all");
+  const [modelLanguageFilter, setModelLanguageFilter] = useState("all");
+  const [modelSortMode, setModelSortMode] =
+    useState<ModelSortMode>("best_match");
   const [referenceAudioPathDraft, setReferenceAudioPathDraft] = useState(
     initialDraft.referenceAudioPathDraft,
   );
@@ -132,9 +146,10 @@ export const VoiceCloningSection: React.FC<{
     const activeCloneModel =
       speech.activeModel?.capabilities.supports_voice_cloning &&
       isDraftVoiceModelAvailable(speech.activeModel)
-      ? speech.activeModel
-      : null;
-    const fallbackCloneModel = activeCloneModel ?? availableCloneModels[0] ?? null;
+        ? speech.activeModel
+        : null;
+    const fallbackCloneModel =
+      activeCloneModel ?? availableCloneModels[0] ?? null;
 
     setSelectedCloneModelValue((current) => {
       if (
@@ -323,8 +338,6 @@ export const VoiceCloningSection: React.FC<{
     }
   }, [isRecording, startMicCapture, stopMicCapture]);
 
-  if (!speech.settings) return null;
-
   const createPresetDisabled =
     !speech.ttsEnabled ||
     !selectedCloneModel ||
@@ -342,7 +355,72 @@ export const VoiceCloningSection: React.FC<{
           ? "Name the new voice on the Profile tab to enable Generate."
           : null;
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
+  const modelProviderOptions = useMemo(
+    () => [
+      { value: "all", label: "Provider" },
+      ...speech.allProviders.map((provider) => ({
+        value: provider.id,
+        label: provider.label,
+      })),
+    ],
+    [speech.allProviders],
+  );
+  const selectedModelProviderLabel = useMemo(
+    () =>
+      modelProviderOptions.find(
+        (option) => option.value === modelProviderFilter,
+      )?.label ?? "Provider",
+    [modelProviderFilter, modelProviderOptions],
+  );
+  const modelLanguageOptions = useMemo(
+    () => [
+      { value: "all", label: "Language" },
+      ...LANGUAGES.filter((language) => language.value !== "auto").map(
+        (language) => ({
+          value: language.value,
+          label: language.label,
+        }),
+      ),
+    ],
+    [],
+  );
+  const selectedModelLanguageLabel = useMemo(
+    () =>
+      modelLanguageOptions.find(
+        (option) => option.value === modelLanguageFilter,
+      )?.label ?? "Language",
+    [modelLanguageFilter, modelLanguageOptions],
+  );
+  const modelSortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedModelSortLabel = useMemo(
+    () =>
+      modelSortOptions.find((option) => option.value === modelSortMode)
+        ?.label ?? "Best Match",
+    [modelSortMode, modelSortOptions],
+  );
+  const modelProviderRankById = useMemo(
+    () =>
+      new Map(
+        speech.allProviders.map((provider, index) => [provider.id, index]),
+      ),
+    [speech.allProviders],
+  );
   const filteredCloneModels = availableCloneModels.filter((model) => {
+    if (
+      modelProviderFilter !== "all" &&
+      model.provider_id !== modelProviderFilter
+    ) {
+      return false;
+    }
+    if (
+      modelLanguageFilter !== "all" &&
+      !ttsModelSupportsLanguage(model, modelLanguageFilter)
+    ) {
+      return false;
+    }
     if (!normalizedModelSearch) return true;
     const providerLabel =
       speech.allProviders.find((provider) => provider.id === model.provider_id)
@@ -361,22 +439,28 @@ export const VoiceCloningSection: React.FC<{
       .toLowerCase();
     return haystack.includes(normalizedModelSearch);
   });
-  const orderedCloneModels = [...filteredCloneModels].sort((first, second) => {
-    const firstIsDraft =
-      cloneModelSelectionValue(first) === selectedCloneModelValue;
-    const secondIsDraft =
-      cloneModelSelectionValue(second) === selectedCloneModelValue;
+  const orderedCloneModels = orderModelList(
+    filteredCloneModels,
+    "downloaded",
+    modelSortMode,
+    {
+      label: (model: CatalogModelDescriptor) => model.label,
+      active: (model: CatalogModelDescriptor) =>
+        cloneModelSelectionValue(model) === selectedCloneModelValue,
+      installed: (model: CatalogModelDescriptor) => model.installed,
+      runnable: (model: CatalogModelDescriptor) => model.runnable,
+      recommended: (model: CatalogModelDescriptor) =>
+        model.capabilities.supports_voice_cloning,
+      rank: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.rank,
+      latencyMs: (model: CatalogModelDescriptor) =>
+        getTtsEvaluationResult(model.id)?.latencyP50Ms,
+      providerRank: (model: CatalogModelDescriptor) =>
+        modelProviderRankById.get(model.provider_id),
+    },
+  );
 
-    if (firstIsDraft !== secondIsDraft) {
-      return firstIsDraft ? -1 : 1;
-    }
-
-    if (first.installed !== second.installed) {
-      return first.installed ? -1 : 1;
-    }
-
-    return 0;
-  });
+  if (!speech.settings) return null;
 
   const handleSelectDraftCloneModel = (model: CatalogModelDescriptor) => {
     setSelectedCloneModelValue(cloneModelSelectionValue(model));
@@ -518,68 +602,106 @@ export const VoiceCloningSection: React.FC<{
             </div>
 
             <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
-              <label
-                className="relative flex h-10 w-full items-center"
-                aria-label={t("listen.voiceCloning.searchModelsAriaLabel", {
-                  defaultValue: "Search clone-capable models",
-                })}
-              >
-                <Search
-                  className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                  aria-hidden
-                />
-                <Input
-                  type="text"
-                  role="searchbox"
-                  autoComplete="off"
-                  value={modelSearchQuery}
-                  onChange={(event) => setModelSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape" && modelSearchQuery) {
-                      setModelSearchQuery("");
-                      event.preventDefault();
-                    }
-                  }}
-                  placeholder={t("listen.voiceCloning.searchModels", {
-                    defaultValue: "Search clone models",
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  className="relative flex h-10 min-w-[220px] flex-1 items-center"
+                  aria-label={t("listen.voiceCloning.searchModelsAriaLabel", {
+                    defaultValue: "Search clone-capable models",
                   })}
-                  className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                />
-                {modelSearchQuery ? (
-                  <button
-                    type="button"
-                    className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    onClick={() => setModelSearchQuery("")}
-                    aria-label={t("listen.createVoices.clearModelSearch", {
-                      defaultValue: "Clear model search",
+                >
+                  <Search
+                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <Input
+                    type="text"
+                    role="searchbox"
+                    autoComplete="off"
+                    value={modelSearchQuery}
+                    onChange={(event) =>
+                      setModelSearchQuery(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && modelSearchQuery) {
+                        setModelSearchQuery("");
+                        event.preventDefault();
+                      }
+                    }}
+                    placeholder={t("listen.voiceCloning.searchModels", {
+                      defaultValue: "Search clone models",
                     })}
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                ) : null}
-              </label>
+                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+                  />
+                  {modelSearchQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                      onClick={() => setModelSearchQuery("")}
+                      aria-label={t("listen.createVoices.clearModelSearch", {
+                        defaultValue: "Clear model search",
+                      })}
+                    >
+                      <X className="h-3 w-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                <ModelListControls
+                  provider={{
+                    value: modelProviderFilter,
+                    options: modelProviderOptions,
+                    onChange: setModelProviderFilter,
+                    label: selectedModelProviderLabel,
+                    show: modelProviderOptions.length > 2,
+                  }}
+                  language={{
+                    value: modelLanguageFilter,
+                    options: modelLanguageOptions,
+                    onChange: setModelLanguageFilter,
+                    label: selectedModelLanguageLabel,
+                    show: true,
+                  }}
+                  sort={{
+                    value: modelSortMode,
+                    options: modelSortOptions,
+                    onChange: setModelSortMode,
+                    label: selectedModelSortLabel,
+                  }}
+                />
+              </div>
             </div>
 
             <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
               {filteredCloneModels.length > 0 ? (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {orderedCloneModels.map((model) => (
-                    <DraftVoiceModelLibraryCard
-                      key={`${model.provider_id}::${model.id}`}
-                      model={model}
-                      provider={
-                        speech.allProviders.find(
-                          (provider) => provider.id === model.provider_id,
-                        ) ?? null
-                      }
-                      selected={
-                        cloneModelSelectionValue(model) ===
-                        selectedCloneModelValue
-                      }
-                      disabled={!speech.ttsEnabled || speech.loadingPlatform}
-                      onSelect={() => handleSelectDraftCloneModel(model)}
-                    />
-                  ))}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text)]">
+                      {t("listen.createVoices.availableModels", {
+                        defaultValue: "Available Models",
+                      })}
+                    </h4>
+                    <Badge variant="secondary">
+                      {orderedCloneModels.length}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {orderedCloneModels.map((model) => (
+                      <DraftVoiceModelLibraryCard
+                        key={`${model.provider_id}::${model.id}`}
+                        model={model}
+                        provider={
+                          speech.allProviders.find(
+                            (provider) => provider.id === model.provider_id,
+                          ) ?? null
+                        }
+                        selected={
+                          cloneModelSelectionValue(model) ===
+                          selectedCloneModelValue
+                        }
+                        disabled={!speech.ttsEnabled || speech.loadingPlatform}
+                        onSelect={() => handleSelectDraftCloneModel(model)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className={speechLibraryCardClassName}>
@@ -672,7 +794,7 @@ export const VoiceCloningSection: React.FC<{
     <>
       {modelWindow}
       <div
-        className={`space-y-3 ${
+        className={`space-y-7 ${
           !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""
         }`}
       >
@@ -754,7 +876,7 @@ export const VoiceCloningSection: React.FC<{
               {isRecording ? (
                 <div
                   className="flex h-12 items-end gap-[3px]"
-                  aria-label="Recording audio"
+                  aria-label={t("listen.voiceCloning.recordingAudio")}
                 >
                   {[0, 1, 2, 3, 4].map((i) => (
                     <span
@@ -975,5 +1097,9 @@ export const VoiceCloningSection: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="Voice Cloning">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("appSections.sections.voiceCloningTitle")}>
+      {content}
+    </SettingsGroup>
+  );
 };

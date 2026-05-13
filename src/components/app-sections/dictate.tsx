@@ -11,17 +11,20 @@ import { ModelsSettings } from "@/components/settings/models/ModelsSettings";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionIntro } from "@/components/app-sections/shared";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 
 export const DictateModelsSection: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   hubFilterLabels?: boolean;
   showEvaluationPanel?: boolean;
 }> = ({
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery,
+  modelHubControls,
   hubFilterLabels,
   showEvaluationPanel,
 }) => (
@@ -30,6 +33,7 @@ export const DictateModelsSection: React.FC<{
       titleActionTargetId={titleActionTargetId}
       showActiveModelBanner={showActiveModelBanner}
       hubSearchQuery={hubSearchQuery}
+      modelHubControls={modelHubControls}
       hubFilterLabels={hubFilterLabels}
       showEvaluationPanel={showEvaluationPanel}
     />

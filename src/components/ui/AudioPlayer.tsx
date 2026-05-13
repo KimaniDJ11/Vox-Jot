@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, Pause, Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
@@ -62,6 +63,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   artwork,
   initialDuration,
 }) => {
+  const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(initialDuration || 0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -322,8 +324,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             ) : null}
             {starred ? (
               <span
-                aria-label="Starred"
-                title="Starred"
+                aria-label={t("storyAudio.starred")}
+                title={t("storyAudio.starred")}
                 className="inline-flex h-4 shrink-0 items-center rounded-full bg-[var(--accent-soft)] px-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]"
               >
                 {STARRED_GLYPH}
@@ -384,7 +386,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
               onMouseDown={handleSliderMouseDown}
               onTouchStart={handleSliderTouchStart}
               disabled={!hasAudio}
-              aria-label="Audio timeline"
+              aria-label={t("storyAudio.timelineAriaLabel")}
               className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
             />
           </div>

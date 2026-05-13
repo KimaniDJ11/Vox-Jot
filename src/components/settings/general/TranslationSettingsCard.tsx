@@ -22,9 +22,13 @@ import type {
   TranslationOutputMode,
   TranslationRoutePreference,
 } from "../../../bindings";
+import { useTranslation } from "react-i18next";
 import { SettingContainer } from "../../ui/SettingContainer";
 import { useSettings } from "../../../hooks/useSettings";
-import { LANGUAGES } from "../../../lib/constants/languages";
+import {
+  getLocalizedLanguageLabel,
+  LANGUAGES,
+} from "../../../lib/constants/languages";
 import {
   SelectionDot,
   visualizationStateClass,
@@ -33,9 +37,6 @@ import {
 const TARGET_LANGUAGES = LANGUAGES.filter(
   (language) => language.value !== "auto",
 );
-
-const detectedSourceLabel = "Detected source";
-const targetOutputLabel = "Target output";
 
 type ChoiceOption<T extends string> = {
   value: T;
@@ -305,6 +306,7 @@ const DeliveryPreview: React.FC<{
 };
 
 export const TranslationSettingsCard: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const { settings, updateSetting, isUpdating } = useSettings();
 
   if (!settings) {
@@ -313,30 +315,34 @@ export const TranslationSettingsCard: React.FC = () => {
 
   const translationMode = settings.translation_output_mode ?? "source";
   const isTranslatedMode = translationMode !== "source";
+  const targetLanguageOptions = TARGET_LANGUAGES.map((language) => ({
+    value: language.value,
+    label: getLocalizedLanguageLabel(language, i18n.language),
+  }));
   const targetLanguage =
-    TARGET_LANGUAGES.find(
+    targetLanguageOptions.find(
       (language) => language.value === settings.translation_target_language,
-    ) ?? TARGET_LANGUAGES.find((language) => language.value === "en");
+    ) ?? targetLanguageOptions.find((language) => language.value === "en");
 
   const outputOptions: Array<ChoiceOption<TranslationOutputMode>> = [
     {
       value: "source",
-      title: "Source only",
-      description: "Keep dictated text in the detected language.",
+      title: t("translationSettings.output.source.title"),
+      description: t("translationSettings.output.source.description"),
       icon: <FileText className="h-4 w-4" aria-hidden />,
       preview: <OutputPreview mode="source" />,
     },
     {
       value: "translated",
-      title: "Translated only",
-      description: "Paste just the translated result.",
+      title: t("translationSettings.output.translated.title"),
+      description: t("translationSettings.output.translated.description"),
       icon: <Languages className="h-4 w-4" aria-hidden />,
       preview: <OutputPreview mode="translated" />,
     },
     {
       value: "bilingual",
-      title: "Bilingual",
-      description: "Show the translation and original together.",
+      title: t("translationSettings.output.bilingual.title"),
+      description: t("translationSettings.output.bilingual.description"),
       icon: <Columns2 className="h-4 w-4" aria-hidden />,
       preview: <OutputPreview mode="bilingual" />,
     },
@@ -345,36 +351,36 @@ export const TranslationSettingsCard: React.FC = () => {
   const routeOptions: Array<ChoiceOption<TranslationRoutePreference>> = [
     {
       value: "auto",
-      title: "Automatic",
-      description: "Pick the best available route for this language.",
+      title: t("translationSettings.route.auto.title"),
+      description: t("translationSettings.route.auto.description"),
       icon: <Wand2 className="h-4 w-4" aria-hidden />,
       preview: <RoutePreview route="auto" />,
     },
     {
       value: "whisper_english",
-      title: "Fast on-device",
-      description: "Use Whisper's local English translation path.",
+      title: t("translationSettings.route.whisperEnglish.title"),
+      description: t("translationSettings.route.whisperEnglish.description"),
       icon: <Zap className="h-4 w-4" aria-hidden />,
       preview: <RoutePreview route="whisper_english" />,
     },
     {
       value: "local_ai",
-      title: "Local AI",
-      description: "Use an on-device model when configured.",
+      title: t("translationSettings.route.localAi.title"),
+      description: t("translationSettings.route.localAi.description"),
       icon: <Cpu className="h-4 w-4" aria-hidden />,
       preview: <RoutePreview route="local_ai" />,
     },
     {
       value: "remote_ai",
-      title: "Online AI",
-      description: "Use the selected cloud provider.",
+      title: t("translationSettings.route.remoteAi.title"),
+      description: t("translationSettings.route.remoteAi.description"),
       icon: <Cloud className="h-4 w-4" aria-hidden />,
       preview: <RoutePreview route="remote_ai" />,
     },
     {
       value: "offline_pack",
-      title: "Offline pack",
-      description: "Use an installed language pack.",
+      title: t("translationSettings.route.offlinePack.title"),
+      description: t("translationSettings.route.offlinePack.description"),
       icon: <HardDrive className="h-4 w-4" aria-hidden />,
       preview: <RoutePreview route="offline_pack" />,
     },
@@ -385,15 +391,17 @@ export const TranslationSettingsCard: React.FC = () => {
   > = [
     {
       value: "translation_then_source",
-      title: "Translation first",
-      description: "Lead with the translated block.",
+      title: t("translationSettings.bilingual.translationFirst.title"),
+      description: t(
+        "translationSettings.bilingual.translationFirst.description",
+      ),
       icon: <Languages className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="translation_then_source" />,
     },
     {
       value: "source_then_translation",
-      title: "Source first",
-      description: "Lead with the original dictated block.",
+      title: t("translationSettings.bilingual.sourceFirst.title"),
+      description: t("translationSettings.bilingual.sourceFirst.description"),
       icon: <FileText className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="source_then_translation" />,
     },
@@ -402,22 +410,28 @@ export const TranslationSettingsCard: React.FC = () => {
   const destinationOptions: Array<ChoiceOption<TranslationDestinationMode>> = [
     {
       value: "paste_in_place",
-      title: "Paste in place",
-      description: "Send translated dictation to the focused app.",
+      title: t("translationSettings.destination.pasteInPlace.title"),
+      description: t(
+        "translationSettings.destination.pasteInPlace.description",
+      ),
       icon: <Clipboard className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="paste_in_place" />,
     },
     {
       value: "preview_then_paste",
-      title: "Preview first",
-      description: "Confirm the translation before pasting.",
+      title: t("translationSettings.destination.previewThenPaste.title"),
+      description: t(
+        "translationSettings.destination.previewThenPaste.description",
+      ),
       icon: <Eye className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="preview_then_paste" />,
     },
     {
       value: "open_in_jot_pad",
-      title: "Open in Jot Pad",
-      description: "Route the translated text to the scratchpad.",
+      title: t("translationSettings.destination.openInJotPad.title"),
+      description: t(
+        "translationSettings.destination.openInJotPad.description",
+      ),
       icon: <NotebookText className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="open_in_jot_pad" />,
     },
@@ -428,22 +442,26 @@ export const TranslationSettingsCard: React.FC = () => {
   > = [
     {
       value: "replace_selection",
-      title: "Replace selection",
-      description: "Swap highlighted text with the translation.",
+      title: t("translationSettings.selection.replaceSelection.title"),
+      description: t(
+        "translationSettings.selection.replaceSelection.description",
+      ),
       icon: <Replace className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="replace_selection" />,
     },
     {
       value: "preview_then_replace",
-      title: "Preview first",
-      description: "Review before replacing selected text.",
+      title: t("translationSettings.selection.previewThenReplace.title"),
+      description: t(
+        "translationSettings.selection.previewThenReplace.description",
+      ),
       icon: <Eye className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="preview_then_replace" />,
     },
     {
       value: "open_in_jot_pad",
-      title: "Open in Jot Pad",
-      description: "Send the translated selection to the scratchpad.",
+      title: t("translationSettings.selection.openInJotPad.title"),
+      description: t("translationSettings.selection.openInJotPad.description"),
       icon: <NotebookText className="h-4 w-4" aria-hidden />,
       preview: <DeliveryPreview kind="open_in_jot_pad" />,
     },
@@ -452,8 +470,8 @@ export const TranslationSettingsCard: React.FC = () => {
   return (
     <>
       <SettingContainer
-        title="Selection Translation"
-        description="Choose how highlighted text translation is delivered."
+        title={t("translationSettings.sections.selection.title")}
+        description={t("translationSettings.sections.selection.description")}
         descriptionMode="inline"
         layout="stacked"
       >
@@ -471,8 +489,8 @@ export const TranslationSettingsCard: React.FC = () => {
       </SettingContainer>
 
       <SettingContainer
-        title="Translation Output"
-        description="Choose whether dictation stays in the source language, is translated, or shows both source and translation."
+        title={t("translationSettings.sections.output.title")}
+        description={t("translationSettings.sections.output.description")}
         descriptionMode="inline"
         layout="stacked"
       >
@@ -487,8 +505,10 @@ export const TranslationSettingsCard: React.FC = () => {
       </SettingContainer>
 
       <SettingContainer
-        title="Target Language"
-        description="Choose the language Vox Jot should translate into."
+        title={t("translationSettings.sections.targetLanguage.title")}
+        description={t(
+          "translationSettings.sections.targetLanguage.description",
+        )}
         descriptionMode="inline"
         layout="stacked"
         disabled={!isTranslatedMode}
@@ -501,12 +521,16 @@ export const TranslationSettingsCard: React.FC = () => {
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--text)]">
-                  {targetLanguage?.label ?? "English"}
+                  {targetLanguage?.label ??
+                    getLocalizedLanguageLabel(
+                      { value: "en", label: "English" },
+                      i18n.language,
+                    )}
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
-                  <span>{detectedSourceLabel}</span>
+                  <span>{t("translationSettings.labels.detectedSource")}</span>
                   <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
-                  <span>{targetOutputLabel}</span>
+                  <span>{t("translationSettings.labels.targetOutput")}</span>
                 </div>
               </div>
             </div>
@@ -520,15 +544,15 @@ export const TranslationSettingsCard: React.FC = () => {
               disabled={
                 !isTranslatedMode || isUpdating("translation_target_language")
               }
-              options={TARGET_LANGUAGES}
+              options={targetLanguageOptions}
             />
           </div>
         </div>
       </SettingContainer>
 
       <SettingContainer
-        title="Translation Method"
-        description="Automatic works for most people. Choose a specific method only if you need one."
+        title={t("translationSettings.sections.method.title")}
+        description={t("translationSettings.sections.method.description")}
         descriptionMode="inline"
         layout="stacked"
         disabled={!isTranslatedMode}
@@ -548,8 +572,10 @@ export const TranslationSettingsCard: React.FC = () => {
 
       {translationMode === "bilingual" && (
         <SettingContainer
-          title="Bilingual Layout"
-          description="Choose which block appears first when both source and translation are shown."
+          title={t("translationSettings.sections.bilingualLayout.title")}
+          description={t(
+            "translationSettings.sections.bilingualLayout.description",
+          )}
           descriptionMode="inline"
           layout="stacked"
         >
@@ -568,8 +594,10 @@ export const TranslationSettingsCard: React.FC = () => {
       )}
 
       <SettingContainer
-        title="Dictation Destination"
-        description="Choose whether translated dictation pastes directly, opens a preview first, or goes to Jot Pad."
+        title={t("translationSettings.sections.dictationDestination.title")}
+        description={t(
+          "translationSettings.sections.dictationDestination.description",
+        )}
         descriptionMode="inline"
         layout="stacked"
         disabled={!isTranslatedMode}

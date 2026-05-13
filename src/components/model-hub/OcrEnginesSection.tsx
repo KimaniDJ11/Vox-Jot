@@ -9,9 +9,7 @@ import {
   Globe,
   HardDrive,
   Loader2,
-  Monitor,
   ScanSearch,
-  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -28,6 +26,13 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "@/components/model-hub/modelIdentityChips";
 import { Button } from "@/components/ui/Button";
 import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
@@ -36,6 +41,15 @@ import {
   ProviderIcon,
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
+import ModelListControls from "@/components/model-hub/ModelListControls";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getScreenOcrEvaluationResult } from "@/lib/screenOcrEvaluationResults";
 
 type OcrProviderFilterValue = "all" | "system" | "neural" | "tesseract";
 
@@ -95,6 +109,7 @@ const SYSTEM_POLICY_OPTIONS: SystemPolicyOption[] = [
 interface OcrEnginesSectionProps {
   titleActionTargetId?: string;
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   hubFilterLabels?: boolean;
 }
 
@@ -154,6 +169,7 @@ function ocrBackendLabel(model: OcrModelDescriptor, translate: TFunction) {
 const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   titleActionTargetId,
   hubSearchQuery,
+  modelHubControls,
   hubFilterLabels = false,
 }) => {
   const { t } = useTranslation();
@@ -169,8 +185,22 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     (engineValue as ScreenContextOcrEngine | undefined) ?? "native_then_backup";
   const currentNeural = (neuralModelId as string | undefined | null) ?? null;
 
-  const [providerFilter, setProviderFilter] =
+  const [localProviderFilter, setLocalProviderFilter] =
     useState<OcrProviderFilterValue>("all");
+  const [localSortMode, setLocalSortMode] =
+    useState<ModelSortMode>("best_match");
+  const providerFilter = (
+    modelHubControls?.providerFilter ?? localProviderFilter
+  ) as OcrProviderFilterValue;
+  const sortMode = modelHubControls?.sortMode ?? localSortMode;
+  const setProviderFilter = useCallback((value: OcrProviderFilterValue) => {
+    if (modelHubControls) {
+      modelHubControls.setProviderFilter(value);
+      return;
+    }
+    setLocalProviderFilter(value);
+  }, [modelHubControls]);
+  const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const [catalog, setCatalog] = useState<OcrModelCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -381,10 +411,32 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     }
     return (
       providerSelectOptions.find((option) => option.value === providerFilter)
-        ?.label ?? idle
+        ?.label ??
+      providerFilter ??
+      idle
     );
   }, [hubFilterLabels, providerFilter, providerSelectOptions, t]);
-  const hasActiveProviderFilter = providerFilter !== "all";
+
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      providerFilter !== "all" &&
+      !providerSelectOptions.some((option) => option.value === providerFilter)
+    ) {
+      setProviderFilter("all");
+    }
+  }, [modelHubControls, providerFilter, providerSelectOptions, setProviderFilter]);
+
+  const sortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedSortLabel = useMemo(
+    () =>
+      sortOptions.find((option) => option.value === sortMode)?.label ??
+      "Best Match",
+    [sortMode, sortOptions],
+  );
 
   const showSystemCard = useMemo(() => {
     if (providerFilter === "neural" || providerFilter === "tesseract")
@@ -435,58 +487,69 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   }, [catalog, hubSearchQuery, providerFilter]);
 
   const installedCatalogModels = useMemo(() => {
-    const models = filteredCatalogModels.filter((model) => model.installed);
-    const activeIndex = models.findIndex((model) => model.id === currentNeural);
-    if (activeIndex <= 0) return models;
-    const next = [...models];
-    const [activeModel] = next.splice(activeIndex, 1);
-    return [activeModel, ...next];
-  }, [currentNeural, filteredCatalogModels]);
+    return orderModelList(
+      filteredCatalogModels.filter((model) => model.installed),
+      "downloaded",
+      sortMode,
+      {
+        label: (model) => model.title,
+        active: (model) => model.id === currentNeural,
+        installed: (model) => model.installed,
+        runnable: (model) => model.runnable,
+        rank: (model) => getScreenOcrEvaluationResult(model.id)?.rank,
+        latencyMs: (model) =>
+          getScreenOcrEvaluationResult(model.id)?.averageLatencyMs,
+        providerRank: (model) =>
+          model.backend === "tessdata_pack"
+            ? 0
+            : model.backend === "paddle_det_rec"
+              ? 1
+              : 2,
+      },
+    );
+  }, [currentNeural, filteredCatalogModels, sortMode]);
 
   const downloadableCatalogModels = useMemo(
-    () => filteredCatalogModels.filter((model) => !model.installed),
-    [filteredCatalogModels],
+    () =>
+      orderModelList(
+        filteredCatalogModels.filter((model) => !model.installed),
+        "available",
+        sortMode,
+        {
+          label: (model) => model.title,
+          active: (model) => model.id === currentNeural,
+          installed: (model) => model.installed,
+          runnable: (model) => model.runnable,
+          rank: (model) => getScreenOcrEvaluationResult(model.id)?.rank,
+          latencyMs: (model) =>
+            getScreenOcrEvaluationResult(model.id)?.averageLatencyMs,
+          providerRank: (model) =>
+            model.backend === "tessdata_pack"
+              ? 0
+              : model.backend === "paddle_det_rec"
+                ? 1
+                : 2,
+        },
+      ),
+    [currentNeural, filteredCatalogModels, sortMode],
   );
 
   const providerLanguageFilters = hubFilterLabels ? (
-    <div className="flex items-center gap-2">
-      <div className="relative inline-flex h-10 w-10 shrink-0">
-        <select
-          value={providerFilter}
-          onChange={(event) =>
-            setProviderFilter(event.target.value as OcrProviderFilterValue)
-          }
-          className={`h-full w-full appearance-none rounded-full border px-0 py-1.5 text-xs font-semibold text-transparent shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
-            hasActiveProviderFilter
-              ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-              : "border-[var(--border)] bg-[var(--card)]"
-          }`}
-          aria-label={t("modelHub.ocr.filters.providerAria", {
-            defaultValue: "Filter OCR engines by provider",
-          })}
-          title={`Provider: ${selectedProviderLabel}`}
-        >
-          {providerSelectOptions.map((opt) => (
-            <option
-              key={opt.value}
-              value={opt.value}
-              style={{ color: "var(--text)", backgroundColor: "var(--card)" }}
-            >
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          {providerFilter === "all" ? (
-            <SlidersHorizontal className="h-4 w-4 text-[var(--text)]" />
-          ) : providerFilter === "neural" ? (
-            <ScanSearch className="h-4 w-4 text-[var(--text)]" />
-          ) : (
-            <ProviderIcon providerId={providerFilter} size="sm" />
-          )}
-        </div>
-      </div>
-    </div>
+    <ModelListControls
+      provider={{
+        value: providerFilter,
+        options: providerSelectOptions,
+        onChange: (value) => setProviderFilter(value as OcrProviderFilterValue),
+        label: selectedProviderLabel,
+        show: true,
+      }}
+      sort={{
+        value: sortMode,
+        options: sortOptions,
+        onChange: setSortMode,
+        label: selectedSortLabel,
+      }}
+    />
   ) : null;
 
   const headerContent =
@@ -532,15 +595,14 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           "Built-in routing across Apple Vision / Windows.Media.Ocr and the bundled Tesseract fallback.",
       })}
       capabilityChips={[
-        {
-          id: "capability-deployment",
-          label: t("modelHub.chips.local", { defaultValue: "Local" }),
-          variant: "secondary",
-          icon: <Monitor className="h-3 w-3" />,
-          detail: t("modelHub.chips.localDetail", {
-            defaultValue: "Runs on this Mac or through a local runtime.",
-          }),
-        },
+        ...buildModelIdentityChips({
+          params: inferParameterClass(["System OCR", systemVendor]),
+          arch: inferArchitectureLabel(["System OCR", systemVendor], systemVendor),
+          format: inferRuntimeFormat(
+            [systemVendor, currentEngine],
+            t("modelHub.ocr.meta.osBuiltIn", { defaultValue: "OS built-in" }),
+          ),
+        }),
         {
           id: "capability-coverage",
           label: t("modelHub.ocr.meta.osBuiltIn", {
@@ -632,25 +694,33 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     ].filter(Boolean) as CompactBadgeItem[];
 
     const backendLabel = ocrBackendLabel(model, t);
+    const identityChips = buildModelIdentityChips({
+      params: inferParameterClass([
+        model.title,
+        model.id,
+        model.vendor,
+        backendLabel,
+      ]),
+      arch: inferArchitectureLabel(
+        [model.title, model.id, model.vendor, backendLabel],
+        model.vendor,
+      ),
+      format: inferRuntimeFormat(
+        [backendLabel, model.backend, model.source_kind, model.hf_repo_id],
+        backendLabel,
+      ),
+    });
+    const sizeChip: CompactBadgeItem = {
+      id: "capability-size",
+      label: model.size_hint_label,
+      variant: "secondary",
+      icon: <HardDrive className="h-3 w-3" />,
+      detail: t("modelSelector.sizeDetail", {
+        defaultValue: "Approximate disk size after download.",
+      }),
+    };
     const capabilityChips: CompactBadgeItem[] = [
-      {
-        id: "capability-deployment",
-        label: t("modelHub.chips.local", { defaultValue: "Local" }),
-        variant: "secondary",
-        icon: <Monitor className="h-3 w-3" />,
-        detail: t("modelHub.chips.localDetail", {
-          defaultValue: "Runs on this Mac or through a local runtime.",
-        }),
-      },
-      {
-        id: "capability-size",
-        label: model.size_hint_label,
-        variant: "secondary",
-        icon: <HardDrive className="h-3 w-3" />,
-        detail: t("modelSelector.sizeDetail", {
-          defaultValue: "Approximate disk size after download.",
-        }),
-      },
+      ...mergeSizeWithIdentityChips(identityChips, sizeChip),
       {
         id: "capability-languages",
         label: model.languages_label,

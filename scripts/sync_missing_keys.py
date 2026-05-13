@@ -2,7 +2,8 @@
 """Copy any keys present in en/translation.json but missing from other locales.
 
 This is a quick one-off used after large additions to the English source. The
-copies retain the English text — translators replace them in follow-up passes.
+copies retain the English text, so always run `bun run audit:translations`
+afterward to find copied values that still need localization.
 """
 from __future__ import annotations
 

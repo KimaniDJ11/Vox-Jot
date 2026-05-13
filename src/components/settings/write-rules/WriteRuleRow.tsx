@@ -13,6 +13,7 @@
 
 import React from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type {
   InstalledApp,
   LLMPrompt,
@@ -24,11 +25,6 @@ import { Button } from "@/components/ui/Button";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { AppMonogram } from "./AppMonogram";
 
-const disabledLabel = "Disabled";
-const activeNowLabel = "Active now";
-const anyAppLabel = "Any app";
-const multipleAppsLabel = (count: number) => `${count} apps`;
-const noOverridesLabel = "Inherits global settings";
 const urlChipPrefix = "URL ·";
 const moreSuffix = (n: number) => ` +${n}`;
 
@@ -53,6 +49,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const bundleIds = rule.matchers.bundle_ids ?? [];
   const urls = rule.matchers.url_patterns ?? [];
 
@@ -91,10 +88,12 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
       return appNameFor(primaryBundleId);
     }
     if (bundleIds.length > 1) {
-      return multipleAppsLabel(bundleIds.length);
+      return t("refine.writeRules.row.multipleApps", {
+        count: bundleIds.length,
+      });
     }
-    return anyAppLabel;
-  }, [appNameFor, bundleIds, primaryBundleId, urls]);
+    return t("refine.writeRules.row.anyApp");
+  }, [appNameFor, bundleIds, primaryBundleId, t, urls]);
 
   const showPrimaryAppIcon =
     bundleIds.length === 1 && urls.length === 0 && primaryBundleId !== null;
@@ -103,29 +102,45 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
   const overridesSummary = React.useMemo(() => {
     const o = rule.overrides;
     const parts: string[] = [];
-    if (o.tone_id) parts.push(`Tone · ${toneById.get(o.tone_id) ?? o.tone_id}`);
+    if (o.tone_id)
+      parts.push(
+        `${t("refine.writeRules.row.overrideTone")} · ${toneById.get(o.tone_id) ?? o.tone_id}`,
+      );
     if (o.stt_model_id)
-      parts.push(`Engine · ${modelById.get(o.stt_model_id) ?? o.stt_model_id}`);
-    if (o.stt_language) parts.push(`Lang · ${o.stt_language}`);
-    if (o.translate_to_english === true) parts.push("Translate → EN");
+      parts.push(
+        `${t("refine.writeRules.row.overrideEngine")} · ${modelById.get(o.stt_model_id) ?? o.stt_model_id}`,
+      );
+    if (o.stt_language)
+      parts.push(
+        `${t("refine.writeRules.row.overrideLanguage")} · ${o.stt_language}`,
+      );
+    if (o.translate_to_english === true)
+      parts.push(t("refine.writeRules.row.translateToEnglish"));
     if (o.post_process_prompt_id)
       parts.push(
-        `Prompt · ${promptById.get(o.post_process_prompt_id) ?? o.post_process_prompt_id}`,
+        `${t("refine.writeRules.row.overridePrompt")} · ${promptById.get(o.post_process_prompt_id) ?? o.post_process_prompt_id}`,
       );
-    if (o.auto_submit === true) parts.push("Auto-submit");
-    if (o.auto_submit === false) parts.push("No auto-submit");
-    if (o.force_post_process === true) parts.push("Always post-process");
-    if (o.force_post_process === false) parts.push("Skip post-process");
+    if (o.auto_submit === true)
+      parts.push(t("refine.writeRules.row.autoSubmit"));
+    if (o.auto_submit === false)
+      parts.push(t("refine.writeRules.row.noAutoSubmit"));
+    if (o.force_post_process === true)
+      parts.push(t("refine.writeRules.row.alwaysPostProcess"));
+    if (o.force_post_process === false)
+      parts.push(t("refine.writeRules.row.skipPostProcess"));
     if (
       o.append_trailing_space !== null &&
       o.append_trailing_space !== undefined
     )
       parts.push(
-        o.append_trailing_space ? "Trailing space" : "No trailing space",
+        o.append_trailing_space
+          ? t("refine.writeRules.row.trailingSpace")
+          : t("refine.writeRules.row.noTrailingSpace"),
       );
-    if (o.mute_while_recording === true) parts.push("Mute while recording");
+    if (o.mute_while_recording === true)
+      parts.push(t("refine.writeRules.row.muteWhileRecording"));
     return parts;
-  }, [rule.overrides, toneById, modelById, promptById]);
+  }, [rule.overrides, toneById, modelById, promptById, t]);
 
   return (
     <div
@@ -157,12 +172,12 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
             {isActive ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                 <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                {activeNowLabel}
+                {t("refine.writeRules.row.activeNow")}
               </span>
             ) : null}
             {!rule.enabled ? (
               <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
-                {disabledLabel}
+                {t("refine.writeRules.row.disabled")}
               </span>
             ) : null}
           </div>
@@ -198,7 +213,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
             title={overridesSummary.join(" · ")}
           >
             {overridesSummary.length === 0
-              ? noOverridesLabel
+              ? t("refine.writeRules.row.inheritsGlobal")
               : overridesSummary.join(" · ")}
           </p>
         </div>
@@ -209,7 +224,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
             variant="ghost"
             size="icon-sm"
             onClick={onEdit}
-            aria-label="Edit profile"
+            aria-label={t("refine.writeRules.row.editProfile")}
           >
             <Pencil />
           </Button>
@@ -218,7 +233,7 @@ export const WriteRuleRow: React.FC<WriteRuleRowProps> = ({
             variant="danger-ghost"
             size="icon-sm"
             onClick={onDelete}
-            aria-label="Delete profile"
+            aria-label={t("refine.writeRules.row.deleteProfile")}
           >
             <Trash2 />
           </Button>

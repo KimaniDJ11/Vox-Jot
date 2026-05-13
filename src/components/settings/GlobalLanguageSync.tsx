@@ -24,23 +24,19 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
       await updateSetting("global_language_sync_enabled", checked);
       setStatusMessage(
         checked
-          ? "App language changes will also align speech settings."
-          : "App language changes will stay separate from speech settings.",
+          ? t("settings.globalLanguageSync.enabledStatus")
+          : t("settings.globalLanguageSync.disabledStatus"),
       );
     };
 
     const handleSyncNow = async () => {
       setIsSyncing(true);
       try {
-        const result = await applyGlobalLanguageSync(
-          currentAppLanguage,
-          "manual",
-        );
-        setStatusMessage(result.message);
+        await applyGlobalLanguageSync(currentAppLanguage, "manual");
+        setStatusMessage(t("settings.globalLanguageSync.done"));
       } catch (error) {
-        setStatusMessage(
-          error instanceof Error ? error.message : "Language sync failed.",
-        );
+        console.error("Language sync failed:", error);
+        setStatusMessage(t("settings.globalLanguageSync.failed"));
       } finally {
         setIsSyncing(false);
       }
@@ -48,8 +44,8 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
 
     return (
       <SettingContainer
-        title="Global Language Sync"
-        description="Keep the interface language, speech recognition language, and speech output selection aligned from one place."
+        title={t("settings.globalLanguageSync.title")}
+        description={t("settings.globalLanguageSync.description")}
         descriptionMode={descriptionMode}
         grouped={grouped}
         layout="stacked"
@@ -78,11 +74,12 @@ export const GlobalLanguageSync: React.FC<GlobalLanguageSyncProps> = React.memo(
               onClick={() => void handleSyncNow()}
               disabled={isSyncing}
             >
-              {isSyncing ? "Syncing..." : "Sync now"}
+              {isSyncing
+                ? t("settings.globalLanguageSync.syncing")
+                : t("settings.globalLanguageSync.syncNow")}
             </Button>
             <p className="text-xs leading-5 text-[var(--muted)]">
-              {statusMessage ??
-                "Use this when you want the whole app to re-align with the current app language."}
+              {statusMessage ?? t("settings.globalLanguageSync.defaultStatus")}
             </p>
           </div>
         </div>

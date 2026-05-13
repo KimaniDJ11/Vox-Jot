@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   CheckCircle2,
@@ -59,29 +60,6 @@ interface StoryRenderRequest {
   line_instructions: Array<{ line_number: number; style_instructions: string }>;
 }
 
-const defaultScript =
-  "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it.";
-const emptyVoicesTitle = "Save a voice before building a story";
-const emptyVoicesDescription =
-  "Story Studio uses Listen/My Voices presets as the cast. Create or save at least one voice preset, then come back here to assign characters.";
-const openMyVoicesLabel = "Open My Voices";
-const refreshLabel = "Refresh";
-const storyTitleLabel = "Story title";
-const fixBeforeRenderingLabel = "Fix before rendering";
-const generateLabel = "Generate";
-const queuedLabel = "Queued";
-const studioToolAriaLabel = "Studio tools";
-const expressionTagsLabel = "Expression tags";
-const clearExpressionSearchLabel = "Clear expression tag search";
-const expressionControlsTitle = "Expression controls";
-const noExpressionTagMatchesLabel = "No expression tags match this search.";
-const customTagPlaceholder = "Custom tag";
-const addCustomTagLabel = "Add";
-const lineInstructionLabel = "Line instruction";
-const lineInstructionPlaceholder =
-  "Describe how this line should be performed.";
-const closeExpressionControlsLabel = "Close expression controls";
-const pauseBetweenLinesLabel = "Pause between lines";
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
 type StudioTool = "script" | "cast";
@@ -107,22 +85,27 @@ interface ExpressionContext {
 }
 
 const defaultStudioDraft: StoryStudioDraft = {
-  title: "Untitled Story",
+  title: "",
   cast: [],
-  scriptText: defaultScript,
+  scriptText: "",
   pauseMs: 500,
   activeTool: "script",
   lineInstructions: {},
 };
 
 export const StoryStudioSection: React.FC = () => {
+  const { t } = useTranslation();
   const initialDraft = useMemo(readStoredStudioDraft, []);
 
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-  const [title, setTitle] = useState(initialDraft.title);
+  const [title, setTitle] = useState(
+    initialDraft.title || t("storyStudio.defaultTitle"),
+  );
   const [cast, setCast] = useState<StoryCastMemberDraft[]>(initialDraft.cast);
-  const [scriptText, setScriptText] = useState(initialDraft.scriptText);
+  const [scriptText, setScriptText] = useState(
+    initialDraft.scriptText || t("storyStudio.defaultScript"),
+  );
   const [pauseMs, setPauseMs] = useState(initialDraft.pauseMs);
   const [activeTool, setActiveTool] = useState<StudioTool>(
     initialDraft.activeTool,
@@ -327,10 +310,10 @@ export const StoryStudioSection: React.FC = () => {
         <div className="max-w-md text-center">
           <Volume2 className="mx-auto mb-4 h-8 w-8 text-[var(--accent)]" />
           <h3 className="text-lg font-semibold text-[var(--text)]">
-            {emptyVoicesTitle}
+            {t("storyStudio.emptyVoicesTitle")}
           </h3>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {emptyVoicesDescription}
+            {t("storyStudio.emptyVoicesDescription")}
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Button
@@ -338,7 +321,7 @@ export const StoryStudioSection: React.FC = () => {
               variant="primary"
               onClick={() => void commands.showDetailView("my-voices")}
             >
-              {openMyVoicesLabel}
+              {t("storyStudio.openMyVoices")}
             </Button>
             <Button
               type="button"
@@ -346,7 +329,7 @@ export const StoryStudioSection: React.FC = () => {
               onClick={() => void refreshPresets()}
             >
               <RefreshCw className="h-4 w-4" />
-              {refreshLabel}
+              {t("common.refresh")}
             </Button>
           </div>
         </div>
@@ -371,17 +354,19 @@ export const StoryStudioSection: React.FC = () => {
               ) : (
                 <WandSparkles className="h-3.5 w-3.5" />
               )}
-              {isQueueingRender || showQueuedAck ? queuedLabel : generateLabel}
+              {isQueueingRender || showQueuedAck
+                ? t("storyStudio.queued")
+                : t("storyStudio.generate")}
             </Button>
 
             <SegmentedControl<StudioTool>
               value={activeTool}
               onChange={setActiveTool}
               layoutId="story-studio-tool-toggle"
-              ariaLabel={studioToolAriaLabel}
+              ariaLabel={t("storyStudio.toolAriaLabel")}
               items={[
-                { value: "script", label: "Script" },
-                { value: "cast", label: "Cast" },
+                { value: "script", label: t("storyStudio.tools.script") },
+                { value: "cast", label: t("storyStudio.tools.cast") },
               ]}
             />
           </div>
@@ -391,7 +376,7 @@ export const StoryStudioSection: React.FC = () => {
               <div className="relative">
                 <label
                   className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
-                  aria-label={expressionTagsLabel}
+                  aria-label={t("storyStudio.expressionTags")}
                 >
                   <Sparkles
                     className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
@@ -418,7 +403,7 @@ export const StoryStudioSection: React.FC = () => {
                     }}
                     placeholder={
                       expressionEnabled
-                        ? expressionTagsLabel
+                        ? t("storyStudio.expressionTags")
                         : expressionCapability.emptyLabel
                     }
                     disabled={!expressionEnabled}
@@ -431,7 +416,7 @@ export const StoryStudioSection: React.FC = () => {
                       type="button"
                       className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                       onClick={() => setExpressionQuery("")}
-                      aria-label={clearExpressionSearchLabel}
+                      aria-label={t("storyStudio.clearExpressionSearch")}
                     >
                       <X className="h-3 w-3" aria-hidden />
                     </button>
@@ -491,7 +476,7 @@ export const StoryStudioSection: React.FC = () => {
             >
               <div className="mb-1 flex items-center gap-2 font-semibold">
                 <AlertCircle className="h-4 w-4 text-[var(--danger)]" />
-                {fixBeforeRenderingLabel}
+                {t("storyStudio.fixBeforeRendering")}
               </div>
               <ul className="space-y-1 pl-6">
                 {visibleValidationErrors.map((error) => (
@@ -511,7 +496,7 @@ export const StoryStudioSection: React.FC = () => {
           {activeTool === "script" ? (
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
               <label className="mb-4 block text-sm font-medium text-[var(--text)]">
-                {storyTitleLabel}
+                {t("storyStudio.storyTitle")}
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
@@ -537,7 +522,7 @@ export const StoryStudioSection: React.FC = () => {
               />
 
               <label className="block text-sm font-medium text-[var(--text)]">
-                {pauseBetweenLinesLabel}
+                {t("storyStudio.pauseBetweenLines")}
                 <input
                   type="number"
                   min={0}
@@ -616,6 +601,7 @@ const ExpressionPopover: React.FC<{
   onInsertTag,
   onInstructionChange,
 }) => {
+  const { t } = useTranslation();
   const [customTag, setCustomTag] = useState("");
   const normalizedFilter = filter.trim().toLocaleLowerCase();
   const filteredTags = capability.tags.filter(
@@ -637,12 +623,12 @@ const ExpressionPopover: React.FC<{
     <div
       className="absolute right-0 z-30 mt-2 w-[min(26rem,calc(100vw-3rem))] rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
       role="dialog"
-      aria-label={expressionControlsTitle}
+      aria-label={t("storyStudio.expressionControlsTitle")}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-[var(--text)]">
-            {expressionControlsTitle}
+            {t("storyStudio.expressionControlsTitle")}
           </p>
           <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
             {contextLabel}
@@ -652,7 +638,7 @@ const ExpressionPopover: React.FC<{
           type="button"
           className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           onClick={onClose}
-          aria-label={closeExpressionControlsLabel}
+          aria-label={t("storyStudio.closeExpressionControls")}
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </button>
@@ -682,7 +668,7 @@ const ExpressionPopover: React.FC<{
             ))
           ) : (
             <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted)]">
-              {noExpressionTagMatchesLabel}
+              {t("storyStudio.noExpressionTagMatches")}
             </p>
           )}
 
@@ -691,7 +677,7 @@ const ExpressionPopover: React.FC<{
               <Input
                 value={customTag}
                 onChange={(event) => setCustomTag(event.target.value)}
-                placeholder={customTagPlaceholder}
+                placeholder={t("storyStudio.customTagPlaceholder")}
                 className="h-10 min-w-0 flex-1 rounded-lg text-sm"
               />
               <Button
@@ -706,7 +692,7 @@ const ExpressionPopover: React.FC<{
                   setCustomTag("");
                 }}
               >
-                {addCustomTagLabel}
+                {t("common.add")}
               </Button>
             </div>
           ) : null}
@@ -718,12 +704,12 @@ const ExpressionPopover: React.FC<{
           className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}
         >
           <p className="text-xs font-semibold uppercase text-[var(--muted)]">
-            {lineInstructionLabel}
+            {t("storyStudio.lineInstruction")}
           </p>
           <Textarea
             value={instruction}
             onChange={(event) => onInstructionChange(event.target.value)}
-            placeholder={lineInstructionPlaceholder}
+            placeholder={t("storyStudio.lineInstructionPlaceholder")}
             className="min-h-[84px] !rounded-xl text-sm"
           />
           <div className="flex flex-wrap gap-1.5">

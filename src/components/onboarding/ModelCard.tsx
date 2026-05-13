@@ -8,7 +8,6 @@ import {
   HardDrive,
   Languages,
   Loader2,
-  Monitor,
 } from "lucide-react";
 import type { ModelInfo } from "@/bindings";
 import { formatModelSize } from "../../lib/utils/format";
@@ -26,6 +25,13 @@ import {
   providerDisplayName,
   resolveModelProviderId,
 } from "../ui/ProviderIcon";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "../model-hub/modelIdentityChips";
 
 const formatLanguageAbbreviation = (language: string): string => {
   const trimmed = language.trim();
@@ -173,33 +179,38 @@ const ModelCard: React.FC<ModelCardProps> = ({
     displayName.toLowerCase().includes("realtime") ||
     model.id.toLowerCase().includes("realtime");
 
+  const identityChips = buildModelIdentityChips({
+    params: inferParameterClass([displayName, model.id, model.filename]),
+    arch: inferArchitectureLabel(
+      [displayName, model.id, displayProviderLabel, providerLabel],
+      displayProviderLabel,
+    ),
+    format: inferRuntimeFormat(
+      [runtimeLabel, model.engine_type, model.filename, model.id],
+      runtimeLabel,
+    ),
+  });
+
+  const sizeChip: CompactBadgeItem | null = sizeLabel
+    ? {
+        id: "capability-size",
+        label: sizeLabel,
+        variant: "secondary" as const,
+        icon: <HardDrive className="h-3 w-3" />,
+        detail:
+          Number(model.size_mb) > 0
+            ? t("modelSelector.sizeDetail", {
+                defaultValue: "Approximate disk size after download.",
+              })
+            : t("modelHub.chips.internalStorageDetail", {
+                defaultValue: "Uses a built-in local runtime.",
+              }),
+      }
+    : null;
+
   // Capability chips — fact-style differentiators above the divider. Cap at 4.
   const capabilityChips: CompactBadgeItem[] = [
-    {
-      id: "capability-deployment",
-      label: t("modelHub.chips.local", { defaultValue: "Local" }),
-      variant: "secondary" as const,
-      icon: <Monitor className="h-3 w-3" />,
-      detail: t("modelHub.chips.localDetail", {
-        defaultValue: "Runs on this Mac or through a local runtime.",
-      }),
-    },
-    sizeLabel
-      ? {
-          id: "capability-size",
-          label: sizeLabel,
-          variant: "secondary" as const,
-          icon: <HardDrive className="h-3 w-3" />,
-          detail:
-            Number(model.size_mb) > 0
-              ? t("modelSelector.sizeDetail", {
-                  defaultValue: "Approximate disk size after download.",
-                })
-              : t("modelHub.chips.internalStorageDetail", {
-                  defaultValue: "Uses a built-in local runtime.",
-                }),
-        }
-      : null,
+    ...mergeSizeWithIdentityChips(identityChips, sizeChip),
     languagesSummary
       ? {
           id: "capability-languages",

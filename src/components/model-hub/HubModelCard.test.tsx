@@ -117,7 +117,7 @@ describe("HubModelCard", () => {
     );
 
     const inlineConfirmation = view.container.querySelector(
-      '[aria-label="Model action confirmation"]',
+      '[aria-label="modelHub.actionConfirmation"]',
     );
     expect(inlineConfirmation).not.toBeNull();
     expect(inlineConfirmation?.textContent).toContain(deleteTitle);
@@ -143,13 +143,37 @@ describe("HubModelCard", () => {
     );
 
     expect(
-      view.container.querySelector('[aria-label="Model action confirmation"]'),
+      view.container.querySelector('[aria-label="modelHub.actionConfirmation"]'),
     ).toBeNull();
     expect(view.container.textContent).toContain("Runtime");
     expect(view.container.textContent).toContain(routingControlsLabel);
     expect(
       view.container.querySelector('[data-testid="routing-controls"]'),
     ).not.toBeNull();
+
+    await view.cleanup();
+  });
+
+  it("dedupes repeated metadata chips while preserving separate params and size chips", async () => {
+    const view = await render(
+      <HubModelCard
+        title="Tesseract OCR"
+        capabilityChips={[
+          { id: "identity-params", label: "Params 1.5B" },
+          { id: "capability-size", label: "1.5B" },
+          { id: "identity-arch", label: "Arch Tesseract" },
+          { id: "capability-backend", label: "Tesseract" },
+          { id: "identity-format", label: "Format Tessdata" },
+          { id: "capability-source", label: "Tessdata" },
+        ]}
+      />,
+    );
+
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("Params 1.5B");
+    expect(text.match(/1\.5B/g)).toHaveLength(2);
+    expect(text.match(/Tesseract/g)).toHaveLength(2);
+    expect(text.match(/Tessdata/g)).toHaveLength(1);
 
     await view.cleanup();
   });

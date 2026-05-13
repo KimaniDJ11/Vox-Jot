@@ -136,28 +136,31 @@ const MiniStatusPill: React.FC<{
  * Section: App & Dictation
  * ─────────────────────────────────────────────────────────────────────────── */
 
-const themeLabel = (theme: string) => {
+const themeLabel = (
+  theme: string,
+  t: ReturnType<typeof useTranslation>["t"],
+) => {
   switch (theme) {
     case "light":
-      return "Light";
+      return t("settings.advanced.theme.options.light");
     case "dark":
-      return "Dark";
+      return t("settings.advanced.theme.options.dark");
     case "sepia":
-      return "Sepia";
+      return t("settings.advanced.theme.options.sepia");
     case "ocean":
-      return "Ocean";
+      return t("settings.advanced.theme.options.ocean");
     case "forest":
-      return "Forest";
+      return t("settings.advanced.theme.options.forest");
     case "rose":
-      return "Rose";
+      return t("settings.advanced.theme.options.rose");
     case "slate":
-      return "Slate";
+      return t("settings.advanced.theme.options.slate");
     case "solarized":
-      return "Solarized";
+      return t("settings.advanced.theme.options.solarized");
     case "graphite":
-      return "Graphite";
+      return t("settings.advanced.theme.options.graphite");
     case "system":
-      return "System";
+      return t("settings.advanced.theme.options.system");
     default:
       return theme;
   }
@@ -181,7 +184,7 @@ const GeneralHero: React.FC = () => {
       stats={[
         {
           label: t("appSections.hero.general.themeStat"),
-          value: themeLabel(theme),
+          value: themeLabel(theme, t),
         },
         {
           label: t("appSections.hero.general.fontStat"),

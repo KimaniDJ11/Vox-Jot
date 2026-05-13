@@ -10,6 +10,7 @@ import { VoiceCloningSection } from "./listen/sections/VoiceCloningSection";
 import { AutoReadbackPanel } from "./listen/sections/AutoReadbackPanel";
 import { VoiceChangerSection } from "./listen/sections/VoiceChangerSection";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 
 export const MyVoicesSection: React.FC<{
   showGroupTitle?: boolean;
@@ -29,7 +30,7 @@ export const VoicesSection: React.FC<{
   );
   const speech = useListenSpeechState();
   const content = (
-    <div className="space-y-4">
+    <div className="space-y-7">
       <SegmentedControl<"profiles" | "voice-changer">
         value={view}
         onChange={setView}
@@ -88,12 +89,14 @@ export const EngineLibrarySection: React.FC<{
   titleActionTargetId?: string;
   showActiveModelBanner?: boolean;
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   hubFilterLabels?: boolean;
 }> = ({
   showGroupTitle = true,
   titleActionTargetId,
   showActiveModelBanner = true,
   hubSearchQuery,
+  modelHubControls,
   hubFilterLabels,
 }) => {
   const speech = useListenSpeechState();
@@ -104,6 +107,7 @@ export const EngineLibrarySection: React.FC<{
       titleActionTargetId={titleActionTargetId}
       showActiveModelBanner={showActiveModelBanner}
       hubSearchQuery={hubSearchQuery}
+      modelHubControls={modelHubControls}
       hubFilterLabels={hubFilterLabels}
     />
   );
@@ -112,6 +116,7 @@ export const EngineLibrarySection: React.FC<{
 export const SpeechPackManagerSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {
+  const { t } = useTranslation();
   const speech = useListenSpeechState();
   const content = <SpeechPackManagerCard speech={speech} />;
 
@@ -119,7 +124,11 @@ export const SpeechPackManagerSection: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="Speech Packs">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("listen.speechPacks.title")}>
+      {content}
+    </SettingsGroup>
+  );
 };
 
 export const ListenVoiceCloningSection: React.FC<{

@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -21,6 +22,13 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import {
+  buildModelIdentityChips,
+  inferArchitectureLabel,
+  inferParameterClass,
+  inferRuntimeFormat,
+  mergeSizeWithIdentityChips,
+} from "@/components/model-hub/modelIdentityChips";
 import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
 import {
   commands,
@@ -36,13 +44,27 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { resolveModelProviderId } from "@/components/ui/ProviderIcon";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import ModelListControls from "@/components/model-hub/ModelListControls";
+import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
+import { usePortalTarget } from "@/hooks/usePortalTarget";
+import {
+  DEFAULT_MODEL_SORT_OPTIONS,
+  orderModelList,
+  TEST_SCORE_MODEL_SORT_OPTION,
+  type ModelSortMode,
+} from "@/lib/modelListOrdering";
+import { getFileAsrEvaluationResult } from "@/lib/fileAsrEvaluationResults";
+import { getSpeakerIsolationEvaluationResult } from "@/lib/speakerIsolationEvaluationResults";
 
 interface SpeechAnalysisEnginesSectionProps {
+  titleActionTargetId?: string;
   hubSearchQuery?: string;
+  modelHubControls?: ModelHubControlState;
   onHeaderTitleChange?: (title: string | null) => void;
 }
 
 type AnalysisGroup = "asr" | "diarization";
+type AnalysisSourceFilter = "all" | "built_in" | "hugging_face";
 
 interface SpeechAnalysisDownloadProgress {
   model_id: string;
@@ -125,7 +147,12 @@ const modelMatchesQuery = (
 
 const SpeechAnalysisEnginesSection: React.FC<
   SpeechAnalysisEnginesSectionProps
-> = ({ hubSearchQuery = "", onHeaderTitleChange }) => {
+> = ({
+  titleActionTargetId,
+  hubSearchQuery = "",
+  modelHubControls,
+  onHeaderTitleChange,
+}) => {
   const { t } = useTranslation();
   const [catalog, setCatalog] = useState<SpeechAnalysisCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,8 +177,25 @@ const SpeechAnalysisEnginesSection: React.FC<
     string | null
   >(null);
   const [activeGroup, setActiveGroup] = useState<AnalysisGroup>("asr");
+  const [localSourceFilter, setLocalSourceFilter] =
+    useState<AnalysisSourceFilter>("all");
+  const [localSortMode, setLocalSortMode] =
+    useState<ModelSortMode>("best_match");
+  const sourceFilter = (
+    modelHubControls?.providerFilter ?? localSourceFilter
+  ) as AnalysisSourceFilter;
+  const sortMode = modelHubControls?.sortMode ?? localSortMode;
+  const setSourceFilter = useCallback((value: AnalysisSourceFilter) => {
+    if (modelHubControls) {
+      modelHubControls.setProviderFilter(value);
+      return;
+    }
+    setLocalSourceFilter(value);
+  }, [modelHubControls]);
+  const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const viewSwitcherRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<SpeechAnalysisCatalog | null>(null);
+  const headerActionPortal = usePortalTarget(titleActionTargetId ?? null);
 
   const loadCatalog = useCallback(async () => {
     const result = await commands.getSpeechAnalysisCatalog();
@@ -546,16 +590,75 @@ const SpeechAnalysisEnginesSection: React.FC<
     () =>
       catalog?.models
         .filter((model) => taskMatchesGroup(model.task, "asr"))
+        .filter(
+          (model) => sourceFilter === "all" || model.source_kind === sourceFilter,
+        )
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
-    [catalog, hubSearchQuery],
+    [catalog, hubSearchQuery, sourceFilter],
   );
 
   const diarizationModels = useMemo(
     () =>
       catalog?.models
         .filter((model) => taskMatchesGroup(model.task, "diarization"))
+        .filter(
+          (model) => sourceFilter === "all" || model.source_kind === sourceFilter,
+        )
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
-    [catalog, hubSearchQuery],
+    [catalog, hubSearchQuery, sourceFilter],
+  );
+  const sourceOptions = useMemo(
+    () => [
+      { value: "all", label: "Source" },
+      { value: "built_in", label: "Built-in" },
+      { value: "hugging_face", label: "Hugging Face" },
+    ],
+    [],
+  );
+  const selectedSourceLabel = useMemo(
+    () =>
+      sourceOptions.find((option) => option.value === sourceFilter)?.label ??
+      sourceFilter ??
+      "Source",
+    [sourceFilter, sourceOptions],
+  );
+
+  useEffect(() => {
+    if (modelHubControls) return;
+    if (
+      sourceFilter !== "all" &&
+      !sourceOptions.some((option) => option.value === sourceFilter)
+    ) {
+      setSourceFilter("all");
+    }
+  }, [modelHubControls, sourceFilter, sourceOptions, setSourceFilter]);
+
+  const sortOptions = useMemo(
+    () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
+    [],
+  );
+  const selectedSortLabel = useMemo(
+    () =>
+      sortOptions.find((option) => option.value === sortMode)?.label ??
+      "Best Match",
+    [sortMode, sortOptions],
+  );
+  const filterAction = (
+    <ModelListControls
+      provider={{
+        value: sourceFilter,
+        options: sourceOptions,
+        onChange: (value) => setSourceFilter(value as AnalysisSourceFilter),
+        label: selectedSourceLabel,
+        show: true,
+      }}
+      sort={{
+        value: sortMode,
+        options: sortOptions,
+        onChange: setSortMode,
+        label: selectedSortLabel,
+      }}
+    />
   );
   const analysisViews = useMemo(
     () => [
@@ -643,19 +746,23 @@ const SpeechAnalysisEnginesSection: React.FC<
 
   return (
     <div className="space-y-5">
+      {headerActionPortal ? createPortal(filterAction, headerActionPortal) : null}
       <div ref={viewSwitcherRef}>
-        <SegmentedControl<AnalysisGroup>
-          value={activeGroup}
-          onChange={setActiveGroup}
-          layoutId="speech-analysis-view-toggle"
-          ariaLabel={t("modelHub.analysis.viewSwitcherLabel", {
-            defaultValue: "Speech analysis view",
-          })}
-          items={analysisViews.map((view) => ({
-            value: view.group,
-            label: view.label,
-          }))}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SegmentedControl<AnalysisGroup>
+            value={activeGroup}
+            onChange={setActiveGroup}
+            layoutId="speech-analysis-view-toggle"
+            ariaLabel={t("modelHub.analysis.viewSwitcherLabel", {
+              defaultValue: "Speech analysis view",
+            })}
+            items={analysisViews.map((view) => ({
+              value: view.group,
+              label: view.label,
+            }))}
+          />
+          {!headerActionPortal ? filterAction : null}
+        </div>
       </div>
 
       {error ? (
@@ -670,6 +777,7 @@ const SpeechAnalysisEnginesSection: React.FC<
         group={activeView.group}
         models={activeView.models}
         selectedModelId={activeView.selectedModelId}
+        sortMode={sortMode}
         showIntro={false}
         busyModelId={busyModelId}
         activeDownloads={activeDownloads}
@@ -717,6 +825,7 @@ interface EngineGroupProps {
   group: AnalysisGroup;
   models: SpeechAnalysisModelDescriptor[];
   selectedModelId: string;
+  sortMode: ModelSortMode;
   showIntro?: boolean;
   busyModelId: string | null;
   activeDownloads: Set<string>;
@@ -737,6 +846,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
   group,
   models,
   selectedModelId,
+  sortMode,
   showIntro = true,
   busyModelId,
   activeDownloads,
@@ -751,15 +861,66 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
-  const orderedModels = useMemo(() => {
-    const activeIndex = models.findIndex(
-      (model) => model.id === selectedModelId,
-    );
-    if (activeIndex <= 0) return models;
-    const next = [...models];
-    const [activeModel] = next.splice(activeIndex, 1);
-    return [activeModel, ...next];
-  }, [models, selectedModelId]);
+  const accessors = useMemo(
+    () => ({
+      label: (model: SpeechAnalysisModelDescriptor) => model.label,
+      active: (model: SpeechAnalysisModelDescriptor) =>
+        model.id === selectedModelId,
+      installed: (model: SpeechAnalysisModelDescriptor) => model.installed,
+      runnable: (model: SpeechAnalysisModelDescriptor) =>
+        model.installed &&
+        (model.readiness === "ready" || model.readiness === "built_in"),
+      inProgress: (model: SpeechAnalysisModelDescriptor) =>
+        activeDownloads.has(model.id),
+      gated: (model: SpeechAnalysisModelDescriptor) => model.gated,
+      blocked: () => false,
+      rank: (model: SpeechAnalysisModelDescriptor) =>
+        group === "asr"
+          ? getFileAsrEvaluationResult(model.id)?.rank
+          : getSpeakerIsolationEvaluationResult(model.id)?.rank,
+      latencyMs: (model: SpeechAnalysisModelDescriptor) =>
+        group === "asr"
+          ? getFileAsrEvaluationResult(model.id)?.latencyMs
+          : getSpeakerIsolationEvaluationResult(model.id)?.latencyMs,
+      providerRank: (model: SpeechAnalysisModelDescriptor) =>
+        model.source_kind === "built_in" ? 0 : 1,
+    }),
+    [activeDownloads, group, selectedModelId],
+  );
+  const orderedDownloadedModels = useMemo(
+    () =>
+      orderModelList(
+        models.filter((model) => model.installed || activeDownloads.has(model.id)),
+        "downloaded",
+        sortMode,
+        accessors,
+      ),
+    [accessors, activeDownloads, models, sortMode],
+  );
+  const orderedAvailableModels = useMemo(
+    () =>
+      orderModelList(
+        models.filter(
+          (model) => !model.installed && !activeDownloads.has(model.id),
+        ),
+        "available",
+        sortMode,
+        accessors,
+      ),
+    [accessors, activeDownloads, models, sortMode],
+  );
+  const modelSections = [
+    {
+      title: "Downloaded Models",
+      models: orderedDownloadedModels,
+      showHeader: false,
+    },
+    {
+      title: "Available to Download",
+      models: orderedAvailableModels,
+      showHeader: true,
+    },
+  ].filter((section) => section.models.length > 0);
 
   return (
     <section className="space-y-3">
@@ -774,9 +935,17 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
         </div>
       ) : null}
 
-      {orderedModels.length > 0 ? (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {orderedModels.map((model) => {
+      {modelSections.length > 0 ? (
+        <div className="space-y-5">
+          {modelSections.map((section) => (
+            <div key={section.title} className="space-y-3">
+              {section.showHeader ? (
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text)]">
+                  {section.title}
+                </h3>
+              ) : null}
+              <div className="grid gap-3 lg:grid-cols-2">
+                {section.models.map((model) => {
             const selected = model.id === selectedModelId;
             const isBusy = busyModelId === model.id;
             const isDownloading = activeDownloads.has(model.id);
@@ -897,41 +1066,40 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                 : null,
             ].filter(Boolean) as CompactBadgeItem[];
 
+            const identityChips = buildModelIdentityChips({
+              params: inferParameterClass([
+                model.label,
+                model.id,
+                model.provider,
+                model.repo_id,
+              ]),
+              arch: inferArchitectureLabel(
+                [model.label, model.id, model.provider, model.repo_id],
+                model.provider,
+              ),
+              format: inferRuntimeFormat(
+                [
+                  runtimeLabel(model),
+                  engineLabel(model),
+                  model.source_kind,
+                  model.repo_id,
+                ],
+                runtimeLabel(model),
+              ),
+            });
+            const sizeChip: CompactBadgeItem | null = model.size_hint_label
+              ? {
+                  id: "capability-size",
+                  label: model.size_hint_label,
+                  variant: "secondary",
+                  icon: <HardDrive className="h-3 w-3" aria-hidden />,
+                  detail: t("modelSelector.sizeDetail", {
+                    defaultValue: "Approximate disk size after download.",
+                  }),
+                }
+              : null;
             const capabilityChips: CompactBadgeItem[] = [
-              model.downloadable && !model.installed
-                ? {
-                    id: "capability-downloadable",
-                    label: t("modelHub.analysis.meta.downloadable", {
-                      defaultValue: "Downloadable",
-                    }),
-                    variant: "secondary",
-                    icon: <Download className="h-3 w-3" aria-hidden />,
-                    detail: t("modelHub.analysis.meta.downloadableDetail", {
-                      defaultValue:
-                        "Engine adapter is installed; model weights download into Vox Jot's local store.",
-                    }),
-                  }
-                : {
-                    id: "capability-local",
-                    label: t("modelHub.chips.local", { defaultValue: "Local" }),
-                    variant: "secondary",
-                    icon: <HardDrive className="h-3 w-3" aria-hidden />,
-                    detail: t("modelHub.chips.localDetail", {
-                      defaultValue:
-                        "Runs on this Mac or through a local runtime.",
-                    }),
-                  },
-              model.size_hint_label
-                ? {
-                    id: "capability-size",
-                    label: model.size_hint_label,
-                    variant: "secondary",
-                    icon: <HardDrive className="h-3 w-3" aria-hidden />,
-                    detail: t("modelSelector.sizeDetail", {
-                      defaultValue: "Approximate disk size after download.",
-                    }),
-                  }
-                : null,
+              ...mergeSizeWithIdentityChips(identityChips, sizeChip),
               model.gated
                 ? {
                     id: "capability-gated",
@@ -1134,7 +1302,10 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                 onClick={handleClick}
               />
             );
-          })}
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <EmptyState

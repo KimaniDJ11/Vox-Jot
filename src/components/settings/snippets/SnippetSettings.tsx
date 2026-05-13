@@ -668,7 +668,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   );
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-7">
       {addDialog}
       {showEnabledToggle && (
         <SettingsGroup title={t("settings.snippets.toggle.title")}>
@@ -681,6 +681,8 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
           noCard
           title={t("settings.snippets.toggle.title")}
           description={t("settings.snippets.toggle.description")}
+          showTitle={false}
+          descriptionOnlyGap="controls"
         >
           {actionButtons}
         </SettingsGroup>

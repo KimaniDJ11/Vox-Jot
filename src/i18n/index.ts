@@ -1,5 +1,6 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { locale } from "@tauri-apps/plugin-os";
 import { LANGUAGE_METADATA } from "./languages";
 import enTranslation from "./locales/en/translation.json";
@@ -118,6 +119,22 @@ export const syncLanguageFromSettings = async () => {
 
 // Run language sync on init
 syncLanguageFromSettings();
+
+let settingsChangedLanguageSyncDebounce: ReturnType<typeof setTimeout> | null =
+  null;
+
+listen("settings-changed", () => {
+  if (settingsChangedLanguageSyncDebounce) {
+    clearTimeout(settingsChangedLanguageSyncDebounce);
+  }
+
+  settingsChangedLanguageSyncDebounce = setTimeout(() => {
+    settingsChangedLanguageSyncDebounce = null;
+    void syncLanguageFromSettings();
+  }, 150);
+}).catch(() => {
+  /* listener setup may fail in test / non-Tauri environments */
+});
 
 // Listen for language changes to update HTML dir and lang attributes
 i18n.on("languageChanged", (lng) => {

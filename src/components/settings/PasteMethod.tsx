@@ -17,9 +17,6 @@ interface PasteMethodProps {
   grouped?: boolean;
 }
 
-const platformMethodsLabel = "Platform methods";
-const activeLabel = "Active";
-
 export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
   ({ descriptionMode = "tooltip", grouped = false }) => {
     const { t } = useTranslation();
@@ -110,7 +107,7 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
             <PasteMethodCard
               icon={<Zap className="h-4 w-4" aria-hidden />}
               title={t("settings.advanced.pasteMethod.options.direct")}
-              description="Types the final text into the focused field without using the clipboard."
+              description={t("settings.advanced.pasteMethod.directDescription")}
               sample="Hello world"
               selected={selectedMethod === "direct"}
               disabled={isUpdating("paste_method")}
@@ -121,7 +118,9 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
               title={t("settings.advanced.pasteMethod.options.clipboard", {
                 modifier: osType === "macos" ? "Cmd" : "Ctrl",
               })}
-              description="Copies the text, sends the system paste shortcut, then restores the clipboard."
+              description={t(
+                "settings.advanced.pasteMethod.clipboardDescription",
+              )}
               sample="Cmd/Ctrl + V"
               selected={selectedMethod === "ctrl_v"}
               disabled={isUpdating("paste_method")}
@@ -129,8 +128,10 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
             />
             <PasteMethodCard
               icon={<Clipboard className="h-4 w-4" aria-hidden />}
-              title="Clipboard only"
-              description="Copies the text and skips the automatic paste action."
+              title={t("settings.advanced.pasteMethod.clipboardOnly")}
+              description={t(
+                "settings.advanced.pasteMethod.clipboardOnlyDescription",
+              )}
               sample="Text -> Clipboard"
               selected={
                 selectedMethod === "none" &&
@@ -148,11 +149,11 @@ export const PasteMethodSetting: React.FC<PasteMethodProps> = React.memo(
             <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle,var(--muted))]">
-                  {platformMethodsLabel}
+                  {t("settings.advanced.pasteMethod.platformMethods")}
                 </p>
                 {advancedMethodSelected ? (
                   <span className="text-xs font-medium text-[var(--accent)]">
-                    {activeLabel}
+                    {t("common.active")}
                   </span>
                 ) : null}
               </div>

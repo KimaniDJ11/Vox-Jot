@@ -340,7 +340,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <Command
-              label="Command menu"
+              label={t("commandMenu.label")}
               value={value}
               onValueChange={setValue}
               className="card-linear--elevated overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--surface-elevated,var(--card))]/90 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-xl"

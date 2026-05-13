@@ -1,38 +1,40 @@
 {
   "tray": {
-    "startRecording": "Start Recording",
+    "startRecording": "ابدأ التسجيل",
     "settings": "الإعدادات",
-    "copyLastTranscript": "نسخ آخر نص تم تفريغه",
-    "quit": "إنهاء",
+    "copyLastTranscript": "نسخ النص الأخير",
+    "quit": "استقال",
     "cancel": "إلغاء",
     "jotPad": "Jot Pad",
-    "speakSelected": "Speak Selected",
-    "dictateMode": "Dictate",
-    "refineMode": "Refine",
-    "listenMode": "Listen"
+    "speakSelected": "التحدث المحدد",
+    "dictateMode": "إملاء",
+    "refineMode": "صقل",
+    "listenMode": "استمع"
   },
   "sidebar": {
     "collapsePanel": "إخفاء الشريط الجانبي للإعدادات",
     "expandPanel": "إظهار الشريط الجانبي للإعدادات",
     "system": "النظام",
-    "models": "النماذج",
+    "models": "نماذج",
     "dataPrivacy": "الخصوصية والبيانات",
-    "experimental": "المختبر",
-    "ollama": "LLM Models",
-    "corrections": "Corrections",
+    "experimental": "مختبرات",
+    "ollama": "نماذج LLM",
+    "corrections": "قاموس",
     "snippets": "مفاتيح العبارات",
-    "styles": "ملفات الكتابة",
-    "history": "السجل",
-    "debug": "تصحيح الأخطاء",
+    "styles": "اكتب الملفات الشخصية",
+    "history": "التاريخ",
+    "debug": "تصحيح",
     "about": "حول",
-    "settingsLabel": "Settings"
+    "settingsLabel": "الإعدادات",
+    "settingsButton": "الإعدادات",
+    "sectionNavigation": "الملاحة القسم"
   },
   "onboarding": {
-    "subtitle": "للبدء، اختر نموذج التفريغ الصوتي",
+    "subtitle": "للبدء، اختر نموذج النسخ",
     "recommended": "موصى به",
-    "download": "تنزيل",
-    "downloading": "...جاري التنزيل",
-    "customModelDescription": "غير مدعوم رسميًا",
+    "download": "تحميل",
+    "downloading": "جارٍ التنزيل...",
+    "customModelDescription": "غير معتمد رسميًا",
     "downloadFailed": "فشل التنزيل. يرجى المحاولة مرة أخرى.",
     "modelCard": {
       "accuracy": "الدقة",
@@ -41,35 +43,35 @@
     "models": {
       "small": {
         "name": "Whisper Small",
-        "description": ".سريع ودقيق إلى حد ما"
+        "description": "سريع ودقيق إلى حد ما."
       },
       "medium": {
         "name": "Whisper Medium",
-        "description": ".دقة جيدة، سرعة متوسطة"
+        "description": "دقة جيدة وسرعة متوسطة"
       },
       "turbo": {
         "name": "Whisper Turbo",
-        "description": ".توازن بين الدقة والسرعة"
+        "description": "الدقة والسرعة المتوازنة."
       },
       "large": {
         "name": "Whisper Large",
-        "description": ".دقة جيدة، لكنه بطيء"
+        "description": "دقة جيدة، ولكنها بطيئة."
       },
       "parakeet-tdt-0.6b-v2": {
         "name": "Parakeet V2",
-        "description": ".الإنجليزية فقط. أفضل نموذج للمتحدثين بالإنجليزية"
+        "description": "الإنجليزية فقط. أفضل نموذج لمتحدثي اللغة الإنجليزية."
       },
       "parakeet-tdt-0.6b-v3": {
         "name": "Parakeet V3",
-        "description": ".سريع ودقيق"
+        "description": "سريع ودقيق"
       },
       "moonshine-base": {
         "name": "Moonshine Base",
-        "description": ".سريع جداً، الإنجليزية فقط. يتعامل جيداً مع اللهجات"
+        "description": "سريع جدًا، باللغة الإنجليزية فقط. يتعامل مع اللهجات بشكل جيد."
       },
       "moonshine-tiny-streaming-en": {
         "name": "Moonshine V2 Tiny",
-        "description": "سريع للغاية، الإنجليزية فقط"
+        "description": "فائق السرعة، باللغة الإنجليزية فقط"
       },
       "moonshine-small-streaming-en": {
         "name": "Moonshine V2 Small",
@@ -80,337 +82,355 @@
         "description": "الإنجليزية فقط. جودة عالية."
       },
       "breeze-asr": {
-        "name": "Breeze ASR",
-        "description": "محسّن للماندرين التايوانية. دعم التبديل بين اللغات."
+        "name": "بريز ASR",
+        "description": "الأمثل للماندرين التايواني. دعم تبديل التعليمات البرمجية."
       },
       "sense-voice-int8": {
-        "name": "SenseVoice",
-        "description": "سريع جداً. الصينية، الإنجليزية، اليابانية، الكورية، الكانتونية."
+        "name": "سينسفويس",
+        "description": "سريع جدًا. الصينية، الإنجليزية، اليابانية، الكورية، الكانتونية."
       },
       "gigaam-v3-e2e-ctc": {
-        "name": "GigaAM v3",
+        "name": "جيجا ايه ام v3",
         "description": "التعرف على الكلام الروسي. سريع ودقيق."
       }
     },
     "errors": {
-      "loadModels": "فشل تحميل النماذج المتاحة",
+      "loadModels": "فشل في تحميل النماذج المتاحة",
       "downloadModel": "فشل تنزيل النموذج: {{error}}"
     },
     "permissions": {
       "title": "الأذونات المطلوبة",
-      "description": ".يحتاج Vox Jot إلى بعض الأذونات ليعمل بشكل صحيح",
+      "description": "منح الأذونات المطلوبة للمتابعة. يعد تسجيل الشاشة اختياريًا للسياق المرئي المحلي.",
       "microphone": {
         "title": "الوصول إلى الميكروفون",
-        "description": ".مطلوب لسماع صوتك من أجل التفريغ الصوتي",
+        "description": "مطلوب لسماع صوتك للنسخ.",
         "cardTitle": "Allow Vox Jot to use your microphone",
-        "cardDescription": "Vox Jot only needs the microphone while you are dictating.",
-        "eyebrow": "Voice capture",
-        "storyTitle": "Microphone Access",
-        "storyDescription": "Powers local dictation so Vox Jot can hear you only when you choose to record.",
+        "cardDescription": "Vox Jot يحتاج فقط إلى الميكروفون أثناء الإملاء.",
+        "eyebrow": "التقاط الصوت",
+        "storyTitle": "الوصول إلى الميكروفون",
+        "storyDescription": "يدعم الإملاء المحلي حتى يتمكن Vox Jot من سماعك فقط عندما تختار التسجيل.",
         "bullets": [
-          "Capture your voice for speech-to-text.",
-          "Run transcription locally on your Mac.",
-          "Use your selected microphone during dictation."
+          "التقط صوتك لتحويل الكلام إلى نص.",
+          "قم بتشغيل النسخ محليًا على Mac.",
+          "استخدم الميكروفون الذي اخترته أثناء الإملاء."
         ],
-        "privacy": "Only listens while you are actively dictating.",
-        "cta": "Enable Microphone"
+        "privacy": "يستمع فقط أثناء الإملاء بنشاط.",
+        "cta": "تمكين الميكروفون"
       },
       "accessibility": {
         "title": "إمكانية الوصول",
-        "description": ".مطلوب لكتابة النص المفرغ في تطبيقاتك",
+        "description": "مطلوب لكتابة النص المكتوب في التطبيقات الخاصة بك.",
         "cardTitle": "Allow Vox Jot to insert spoken words",
-        "cardDescription": "This lets Vox Jot place transcribed text into the field you are actively using.",
-        "eyebrow": "Text output",
-        "storyTitle": "Accessibility",
-        "storyDescription": "Lets Vox Jot paste or type your transcript into the app and field you are already using.",
+        "cardDescription": "يتيح ذلك لـ Vox Jot وضع النص المكتوب في الحقل الذي تستخدمه بشكل نشط.",
+        "eyebrow": "إخراج النص",
+        "storyTitle": "إمكانية الوصول",
+        "storyDescription": "يتيح لـ Vox Jot لصق النص الخاص بك أو كتابته في التطبيق والحقل الذي تستخدمه بالفعل.",
         "bullets": [
-          "Place transcribed text where your cursor is focused.",
-          "Trigger dictation from anywhere with the global shortcut.",
-          "Keep the normal paste flow fast after transcription."
+          "ضع النص المكتوب حيث يركز المؤشر.",
+          "قم بتشغيل الإملاء من أي مكان باستخدام الاختصار العام.",
+          "حافظ على تدفق المعجون الطبيعي بسرعة بعد النسخ."
         ],
-        "privacy": "Only controls text insertion for Vox Jot actions; it does not read document contents.",
-        "cta": "Enable Accessibility"
+        "privacy": "يتحكم فقط في إدراج النص لإجراءات Vox Jot؛ ولا يقرأ محتويات المستند.",
+        "cta": "تمكين إمكانية الوصول"
       },
-      "grant": "منح الإذن",
-      "granted": "تم المنح",
-      "waiting": "...في الانتظار",
+      "grant": "إذن المنح",
+      "granted": "منح",
+      "waiting": "في انتظار...",
       "allGranted": "كل شيء جاهز!",
       "errors": {
-        "checkFailed": "فشل التحقق من الأذونات. يرجير المحاولة مرة أخرى.",
+        "checkFailed": "فشل في التحقق من الأذونات. يرجى المحاولة مرة أخرى.",
         "requestFailed": "فشل طلب الإذن. يرجى المحاولة مرة أخرى."
       },
-      "heading": "Give Vox Jot the permissions it needs to listen and type for you",
-      "continue": "Continue",
-      "moreInfo": "More info",
-      "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone and typing permissions so Vox Jot can capture your voice and place the transcript in the right app.",
+      "heading": "قم بتمكين مجموعة أدوات الإملاء الخاصة بك",
+      "continue": "متابعة الإعداد",
+      "moreInfo": "مزيد من المعلومات",
+      "visualPath": "إعدادات النظام -> الخصوصية والأمان",
+      "visualDescription": "امنح الميكروفون وإمكانية الوصول ومراقبة الإدخال حتى تتمكن Vox Jot من التقاط صوتك ووضع النص في التطبيق الصحيح وفهم تغييرات الإرسال مقابل الحذف السريعة. يضيف تسجيل الشاشة الاختياري سياق OCR المحلي من الشاشة النشطة.",
       "inputMonitoring": {
-        "title": "Input Monitoring",
-        "description": "Required so Vox Jot can better tell the difference between sending a message and manually clearing text.",
+        "title": "مراقبة المدخلات",
+        "description": "مطلوب حتى يتمكن Vox Jot من معرفة الفرق بين إرسال رسالة ومسح النص يدويًا بشكل أفضل.",
         "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
-        "cardDescription": "This helps Vox Jot notice quick edits, Enter-to-send actions, and delete-driven clears without sending that data anywhere.",
-        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app.",
-        "eyebrow": "Keyboard state",
-        "storyTitle": "Input Monitoring",
-        "storyDescription": "Helps Vox Jot understand shortcut and key state locally so dictation behaves correctly across apps.",
+        "cardDescription": "يساعد هذا Vox Jot على ملاحظة التعديلات السريعة وإجراءات الإدخال للإرسال وعمليات المسح المستندة إلى الحذف. ولا يسجل ما تكتبه.",
+        "manualCleanupHint": "إذا كان macOS يعرض إدخال Vox Jot أقدم هنا، فقم بإزالته وتمكين /Applications/Vox Jot.app.",
+        "eyebrow": "حالة لوحة المفاتيح",
+        "storyTitle": "مراقبة المدخلات",
+        "storyDescription": "يساعد Vox Jot على فهم الاختصار وحالة المفتاح محليًا حتى يتصرف الإملاء بشكل صحيح عبر التطبيقات.",
         "bullets": [
-          "Detect start and stop shortcut state reliably.",
-          "Understand quick send-versus-delete changes.",
-          "Keep correction tracking local to this device."
+          "كشف بداية وإيقاف حالة الاختصار بشكل موثوق.",
+          "فهم التغييرات السريعة بين الإرسال مقابل الحذف.",
+          "استمر في تتبع التصحيح محليًا على هذا الجهاز."
         ],
-        "privacy": "Does not log what you type or store your keystrokes.",
-        "cta": "Enable Input Monitoring"
+        "privacy": "لا يقوم بتسجيل ما تكتبه أو تخزين ضغطات المفاتيح الخاصة بك.",
+        "cta": "تمكين مراقبة المدخلات"
       },
       "screenRecording": {
-        "title": "Screen Recording",
-        "description": "Required so Vox Jot can build a rolling OCR cache from the active display and use it as local dictation context.",
+        "title": "تسجيل الشاشة",
+        "description": "مطلوب حتى يتمكن Vox Jot من إنشاء ذاكرة تخزين مؤقت OCR من الشاشة النشطة واستخدامها كسياق إملاء محلي.",
         "cardTitle": "Allow Vox Jot to read active-screen context locally",
-        "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating.",
-        "eyebrow": "Visual context",
-        "storyTitle": "Screen Recording",
-        "storyDescription": "Optionally powers local OCR context so Vox Jot can better handle names, jargon, and phrase keys.",
+        "cardDescription": "يتيح ذلك لـ Vox Jot عرض العرض النشط بشكل دوري بحيث تكون الأسماء والمصطلحات ومفاتيح العبارات أكثر دقة عند بدء الإملاء.",
+        "eyebrow": "السياق البصري",
+        "storyTitle": "تسجيل الشاشة",
+        "storyDescription": "يعمل بشكل اختياري على تشغيل سياق OCR المحلي حتى يتمكن Vox Jot من التعامل بشكل أفضل مع الأسماء والمصطلحات ومفاتيح العبارات.",
         "bullets": [
-          "Read active-screen context for better dictation accuracy.",
-          "Recognize visible terms without cloud processing.",
-          "Improve phrase keys and app-aware writing."
+          "اقرأ سياق الشاشة النشطة لتحسين دقة الإملاء.",
+          "التعرف على المصطلحات المرئية دون المعالجة السحابية.",
+          "تحسين مفاتيح العبارات والكتابة المدركة للتطبيق."
         ],
-        "privacy": "Only used for local context features; you can skip this and enable it later.",
-        "cta": "Enable Screen Recording"
+        "privacy": "يُستخدم فقط لميزات السياق المحلي؛ يمكنك تخطي هذا وتمكينه لاحقًا.",
+        "cta": "تمكين تسجيل الشاشة"
       },
-      "privacyBadge": "Vox Jot runs dictation on your device. We never upload your voice, keystrokes, or screen context.",
-      "checking": "Checking permissions...",
-      "required": "Required",
-      "optional": "Optional",
-      "skip": "Skip",
-      "stepProgress": "{{current}} of {{total}}",
-      "completeTitle": "Permissions are ready",
-      "completeDescription": "Vox Jot has the access it needs for the first dictation flow."
+      "privacyBadge": "يقوم Vox Jot بتشغيل الإملاء على جهازك. لا نقوم مطلقًا بتحميل صوتك أو ضغطات المفاتيح أو سياق الشاشة.",
+      "checking": "جارٍ التحقق من الأذونات...",
+      "required": "مطلوب",
+      "optional": "اختياري",
+      "skip": "تخطي",
+      "stepProgress": "{{current}} من {{total}}",
+      "completeTitle": "الأذونات جاهزة",
+      "completeDescription": "يتمتع Vox Jot بإمكانية الوصول التي يحتاجها لتدفق الإملاء الأول."
     },
     "steps": {
-      "welcome": "Overview",
-      "permissions": "Permissions",
-      "setup": "Model",
-      "refine": "Refine",
-      "learn": "First Dictation"
+      "welcome": "نظرة عامة",
+      "permissions": "الأذونات",
+      "setup": "نموذج",
+      "refine": "صقل",
+      "learn": "الإملاء الأول"
     },
     "refine": {
-      "title": "Want a local Refine engine?",
-      "description": "Refine polishes dictated text after transcription — cleanup, formatting, or rewriting. For fully local Refine, Vox Jot can install Ollama and a small model now. You can skip this and set it up later.",
+      "title": "هل تريد محرك Refine محلي؟",
+      "description": "يعمل التحسين على تلميع النص الذي تم إملاؤه بعد النسخ - التنظيف أو التنسيق أو إعادة الكتابة. للتحسين المحلي بالكامل، يمكن لـ Vox Jot تثبيت Ollama ونموذج صغير الآن. يمكنك تخطي هذا وإعداده لاحقًا.",
       "bullets": {
-        "local": "Runs entirely on this device once installed — no cloud calls.",
-        "tiny": "Installs Ollama plus a small ~0.4 GB Qwen 2.5 0.5B model.",
-        "optional": "Optional. You can skip now and configure any Refine provider later."
+        "local": "يعمل بالكامل على هذا الجهاز بمجرد تثبيته - لا توجد مكالمات سحابية.",
+        "tiny": "تثبيت Ollama بالإضافة إلى طراز GB Qwen 2.5 0.5B صغير ~0.4.",
+        "optional": "اختياري. يمكنك التخطي الآن وتكوين أي موفر Refine لاحقًا."
       },
-      "installCta": "Install local Refine engine",
-      "skipCta": "Skip for now",
-      "footnote": "If you skip, Refine still works once you connect a cloud provider in Settings > Models & AI.",
-      "cardTitle": "Polish dictated text, privately",
-      "cardDescription": "Refine runs after transcription to clean up filler words, fix punctuation, or rewrite in a tone.",
+      "installCta": "تثبيت محرك الصقل المحلي",
+      "skipCta": "تخطي الآن",
+      "footnote": "إذا قمت بالتخطي، فسيظل التحسين يعمل بمجرد توصيل موفر السحابة في الإعدادات > النماذج وAI.",
+      "cardTitle": "النص البولندي الذي تمليه، على انفراد",
+      "cardDescription": "يتم تشغيل التحسين بعد النسخ لتنظيف كلمات الحشو أو إصلاح علامات الترقيم أو إعادة الكتابة بنبرة.",
       "checking": "Checking for Ollama…",
-      "checkingDescription": "Looking for an existing local Refine engine on this device.",
+      "checkingDescription": "البحث عن محرك Refine محلي موجود على هذا الجهاز.",
       "installing": {
         "title": "Installing Ollama",
-        "description": "This installs the local Refine engine. Network activity is normal here."
+        "description": "يؤدي هذا إلى تثبيت محرك التحسين المحلي. نشاط الشبكة طبيعي هنا."
       },
       "pulling": {
-        "title": "Downloading the default Refine model",
-        "description": "Pulling {{model}}. This usually takes a minute or two on a fast connection."
+        "title": "تنزيل نموذج التحسين الافتراضي",
+        "description": "سحب {{model}}. يستغرق هذا عادةً دقيقة أو دقيقتين عند الاتصال السريع."
       },
       "ready": {
-        "title": "Local Refine is ready",
-        "description": "Ollama is installed and the default model is available. Continuing to the next step."
+        "title": "التحسين المحلي جاهز",
+        "description": "تم تثبيت Ollama والنموذج الافتراضي متاح. الاستمرار في الخطوة التالية."
       },
       "errors": {
-        "installFailed": "Could not install Ollama automatically. You can skip this step and install it later from Settings > Models & AI.",
-        "startFailed": "Ollama was installed but could not be started. You can skip and try again from settings.",
-        "pullFailed": "Could not download the default Refine model. You can skip and download it later."
+        "installFailed": "تعذر تثبيت Ollama تلقائيًا. يمكنك تخطي هذه الخطوة وتثبيتها لاحقًا من الإعدادات > النماذج وAI.",
+        "startFailed": "تم تثبيت Ollama ولكن تعذر بدء تشغيله. يمكنك التخطي والمحاولة مرة أخرى من الإعدادات.",
+        "pullFailed": "تعذر تنزيل نموذج التحسين الافتراضي. ويمكنك تخطيه وتنزيله لاحقًا."
       }
     },
     "welcome": {
-      "title": "Set up private voice dictation that actually fits your workflow",
-      "description": "Vox Jot lets you speak into any app, keeps transcription local on your device, and can optionally polish the final text before it is pasted.",
+      "title": "قم بإعداد الإملاء الصوتي الخاص الذي يناسب سير عملك بالفعل",
+      "description": "يتيح لك Vox Jot التحدث إلى أي تطبيق، والحفاظ على النسخ محليًا على جهازك، ويمكن اختياريًا تلميع النص النهائي قبل لصقه.",
       "cta": "Set Up Vox Jot",
-      "cardTitle": "Built for everyday dictation",
-      "cardDescription": "Get the core flow working first, then tailor the output once you know how you want Vox Jot to behave.",
+      "cardTitle": "بنيت للإملاء اليومي",
+      "cardDescription": "اجعل التدفق الأساسي يعمل أولاً، ثم قم بتخصيص الإخراج بمجرد أن تعرف كيف تريد أن يتصرف Vox Jot.",
       "features": [
-        "Download a local speech model that matches your speed and accuracy needs.",
-        "Grant the permissions Vox Jot needs to listen and type into other apps.",
-        "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
+        "قم بتنزيل نموذج الكلام المحلي الذي يتوافق مع احتياجاتك من السرعة والدقة.",
+        "امنح الأذونات التي يحتاجها Vox Jot للاستماع والكتابة في التطبيقات الأخرى.",
+        "تعرف على اختصار الإملاء العادي الآن وقم بتكوين الإملاء المصقول لاحقًا إذا كنت تريد ذلك."
       ],
       "highlights": {
         "local": {
-          "title": "Local transcription",
-          "description": "Your speech model runs on your own machine."
+          "title": "النسخ المحلي",
+          "description": "يعمل نموذج الكلام الخاص بك على جهازك الخاص."
         },
         "anywhere": {
-          "title": "Works across apps",
-          "description": "Dictate into messages, docs, notes, and forms."
+          "title": "يعمل عبر التطبيقات",
+          "description": "الإملاء في الرسائل والمستندات والملاحظات والنماذج."
         },
         "polish": {
-          "title": "Optional cleanup",
-          "description": "Use Post Process later when you want smarter formatting or rewrite help."
+          "title": "تنظيف اختياري",
+          "description": "استخدم عملية النشر لاحقًا عندما تريد تنسيقًا أكثر ذكاءً أو إعادة كتابة التعليمات."
         }
       }
     },
     "setup": {
-      "title": "Choose the transcription model you want to start with",
-      "description": "The model handles speech recognition locally. Recommended options cover most people, and you can always change models later from Settings > Models.",
-      "footnote": "You can switch models later if you want a different balance of speed, language support, or accuracy.",
-      "cardTitle": "Everything stays on your device",
-      "cardDescription": "The speech model is downloaded once, then Vox Jot can transcribe without sending your audio away.",
+      "title": "اختر نموذج النسخ الذي تريد البدء به",
+      "description": "يعالج النموذج التعرف على الكلام محليًا. تشمل الخيارات الموصى بها معظم الأشخاص، ويمكنك دائمًا تغيير النماذج لاحقًا من الإعدادات > النماذج.",
+      "footnote": "يمكنك تبديل النماذج لاحقًا إذا كنت تريد توازنًا مختلفًا للسرعة أو دعم اللغة أو الدقة.",
+      "cardTitle": "كل شيء يبقى على جهازك",
+      "cardDescription": "يتم تنزيل نموذج الكلام مرة واحدة، وبعد ذلك يمكن لـ Vox Jot النسخ دون إرسال الصوت بعيدًا.",
       "downloading": {
-        "title": "Downloading your speech model",
-        "description": "This only happens during setup. Once it finishes, Vox Jot is ready to transcribe locally."
+        "title": "تنزيل نموذج الكلام الخاص بك",
+        "description": "يحدث هذا فقط أثناء الإعداد. بمجرد الانتهاء، يصبح Vox Jot جاهزًا للنسخ محليًا."
       },
       "advanced": {
-        "show": "Show more model options",
-        "hide": "Hide extra model options"
+        "show": "عرض المزيد من خيارات النموذج",
+        "hide": "إخفاء خيارات النموذج الإضافية"
       }
     },
     "firstDictation": {
-      "title": "You are ready for your first dictation",
-      "description": "Start with the normal dictation shortcut, speak naturally, and let Vox Jot paste the result where your cursor is focused.",
+      "title": "أنت جاهز لإملاءك الأول",
+      "description": "ابدأ باستخدام اختصار الإملاء العادي، وتحدث بشكل طبيعي، ودع Vox Jot يلصق النتيجة حيث يركز المؤشر.",
       "cta": "Open Vox Jot",
       "steps": [
-        "Place your cursor in any text field where you want the transcript to go.",
-        "Use your dictation shortcut to start recording, then stop when you are done speaking.",
-        "Adjust output, paste behavior, or polished dictation later from Settings."
+        "ضع المؤشر في أي حقل نصي تريد نقل النص إليه.",
+        "استخدم اختصار الإملاء لبدء التسجيل، ثم توقف عند الانتهاء من التحدث.",
+        "اضبط الإخراج أو سلوك اللصق أو الإملاء المصقول لاحقًا من الإعدادات."
       ],
       "shortcuts": {
         "dictation": {
-          "label": "Regular dictation",
-          "description": "Use this for fast speech-to-text in any app."
+          "label": "الإملاء المنتظم",
+          "description": "استخدم هذا لتحويل الكلام إلى نص سريعًا في أي تطبيق."
         },
         "postProcess": {
-          "label": "Polished dictation",
-          "descriptionEnabled": "This shortcut is ready now and will run your Post Process setup before pasting.",
-          "descriptionDisabled": "Set this up later in Post Process when you want smarter cleanup or rewrite behavior."
+          "label": "الإملاء المصقول",
+          "descriptionEnabled": "هذا الاختصار جاهز الآن وسيعمل على تشغيل إعداد عملية النشر قبل اللصق.",
+          "descriptionDisabled": "قم بإعداد هذا لاحقًا في مرحلة ما بعد المعالجة عندما تريد تنظيفًا أكثر ذكاءً أو إعادة كتابة السلوك."
         }
       },
       "postProcessReady": {
-        "title": "Post Process is already available",
-        "description": "You can keep using regular dictation, or use the polished shortcut whenever you want cleanup, formatting, or provider-powered rewriting."
+        "title": "عملية النشر متاحة بالفعل",
+        "description": "يمكنك الاستمرار في استخدام الإملاء العادي، أو استخدام الاختصار المصقول عندما تريد التنظيف، أو التنسيق، أو إعادة الكتابة بدعم من الموفر."
       },
       "postProcessLater": {
-        "title": "Post Process is easy to add later",
-        "description": "The Post Process page stays visible in the sidebar, so you can come back anytime to enable it, pick a provider, and test the result before paste."
+        "title": "من السهل إضافة عملية النشر لاحقًا",
+        "description": "تظل صفحة \"معالجة النشر\" مرئية في الشريط الجانبي، بحيث يمكنك العودة في أي وقت لتمكينها واختيار موفر الخدمة واختبار النتيجة قبل اللصق."
       },
       "tip": {
-        "title": "Start simple, tune later",
-        "description": "The fastest path is to get raw dictation working first. Once that feels good, refine paste settings and polished dictation from the main app."
+        "title": "ابدأ بسيطًا، ثم اضبطه لاحقًا",
+        "description": "أسرع مسار هو تشغيل الإملاء الأولي أولاً. بمجرد أن يصبح ذلك جيدًا، قم بتحسين إعدادات اللصق والإملاء المصقول من التطبيق الرئيسي."
       }
     },
     "common": {
-      "back": "Back"
+      "back": "العودة"
     }
   },
   "modelSelector": {
     "custom": "مخصص",
     "active": "نشط",
     "noModelsAvailable": "لا توجد نماذج متاحة",
-    "extracting": "...جاري استخراج {{modelName}}",
-    "extractingMultiple": "...جاري استخراج {{count}} من النماذج",
-    "extractingGeneric": "...جاري الاستخراج",
-    "downloading": "جاري التنزيل {{percentage}}%",
-    "downloadingMultiple": "جاري تنزيل {{count}} من النماذج...",
+    "extracting": "استخراج {{modelName}}...",
+    "extractingMultiple": "استخراج نماذج {{count}}...",
+    "extractingGeneric": "استخراج...",
+    "downloading": "جارٍ التنزيل {{percentage}}%",
+    "downloadingMultiple": "جارٍ تنزيل نماذج {{count}}...",
     "modelReady": "النموذج جاهز",
-    "loading": "...جاري تحميل {{modelName}}",
-    "loadingGeneric": "...جاري التحميل",
+    "loading": "جارٍ التحميل {{modelName}}...",
+    "loadingGeneric": "جار التحميل...",
     "modelError": "خطأ في النموذج",
-    "modelUnloaded": "تم إلغاء تحميل النموذج",
+    "modelUnloaded": "تم تفريغ النموذج",
     "noModelDownloadRequired": "لا يوجد نموذج - التنزيل مطلوب",
     "deleteModel": "حذف {{modelName}}",
-    "switching": "جارٍ التبديل...",
-    "downloadSpeed": "{{speed}} ميجابايت/ث",
+    "switching": "التبديل...",
+    "downloadSpeed": "{{speed}} MB/s",
     "cancel": "إلغاء",
     "cancelDownload": "إلغاء التنزيل",
     "capabilities": {
-      "languageSelection": "يدعم اختيار اللغة",
+      "languageSelection": "يدعم لغات الإدخال المتعددة",
       "singleLanguage": "يدعم هذه اللغة فقط",
       "multiLanguage": "متعدد اللغات",
       "languageOnly": "{{language}} فقط",
-      "translation": "يدعم الترجمة",
-      "translate": "ترجمة"
+      "translation": "يمكن أن تترجم إلى اللغة الإنجليزية",
+      "translate": "ترجمة إلى اللغة الإنجليزية"
     },
-    "deleteConfirm": "Delete {{modelName}}? Files will be removed from disk.",
-    "deleteActiveConfirm": "Delete {{modelName}}? It is the active model — you'll need to pick another to dictate.",
-    "confirmDelete": "Delete"
+    "deleteConfirm": "هل تريد حذف {{modelName}}؟ ستتم إزالة الملفات من القرص.",
+    "deleteActiveConfirm": "هل تريد حذف {{modelName}}؟ إنه النموذج النشط — ستحتاج إلى اختيار نموذج آخر لإملائه.",
+    "confirmDelete": "حذف"
   },
   "settings": {
     "general": {
       "title": "عام",
       "shortcut": {
         "title": "اختصارات Vox Jot",
-        "description": "إعداد اختصارات لوحة المفاتيح لبدء تسجيل التفريغ الصوتي",
-        "loading": "...جاري تحميل الاختصارات",
-        "none": "لا توجد اختصارات مجهزة",
-        "notFound": "الاختصار غير موجود",
-        "pressKeys": "...اضغط على المفاتيح",
+        "description": "قم بتكوين اختصارات لوحة المفاتيح لتشغيل تسجيل تحويل الكلام إلى نص",
+        "loading": "جارٍ تحميل الاختصارات...",
+        "none": "لم يتم تكوين أي اختصارات",
+        "notFound": "لم يتم العثور على الاختصار",
+        "pressKeys": "اضغط على المفاتيح...",
         "bindings": {
           "transcribe": {
-            "name": "اختصار التفريغ الصوتي",
-            "description": ".اختصار لوحة المفاتيح لتسجيل وتفريغ صوتك"
+            "name": "نسخ الاختصار",
+            "description": "اختصار لوحة المفاتيح لتسجيل ونسخ صوتك."
           },
           "cancel": {
-            "name": "اختصار الإلغاء",
-            "description": ".اختصار لوحة المفاتيح لإلغاء التسجيل الحالي"
+            "name": "إلغاء الاختصار",
+            "description": "اختصار لوحة المفاتيح لإلغاء التسجيل الحالي."
           },
           "transcribe_with_post_process": {
-            "name": "مفتاح المعالجة اللاحقة",
-            "description": "اختياري: مفتاح اختصار مخصص يطبق دائماً المعالجة اللاحقة بالذكاء الاصطناعي على التفريغ الصوتي."
+            "name": "مفتاح التشغيل السريع بعد المعالجة",
+            "description": "اختياري: مفتاح تشغيل سريع مخصص يطبق دائمًا المعالجة اللاحقة لـ AI على النسخ الخاص بك."
           },
           "toggle_command_menu": {
-            "name": "Command Menu",
-            "description": "Open the command palette from anywhere."
+            "name": "قائمة الأوامر",
+            "description": "افتح لوحة الأوامر من أي مكان."
           }
         },
         "errors": {
-          "restore": "فشل استعادة الاختصار الأصلي",
+          "restore": "فشل في استعادة الاختصار الأصلي",
           "set": "فشل تعيين الاختصار: {{error}}",
-          "reset": "فشل إعادة تعيين الاختصار إلى قيمته الأصلية"
+          "reset": "فشل في إعادة تعيين الاختصار إلى القيمة الأصلية"
         }
       },
       "language": {
         "title": "اللغة",
-        "description": ".اختر لغة التعرف على الكلام. سيحدد 'تلقائي' اللغة تلقائياً، بينما يؤدي اختيار لغة معينة إلى تحسين الدقة لتلك اللغة",
-        "descriptionUnsupported": ".يكتشف نموذج Parakeet اللغة تلقائياً. لا يلزم الاختيار اليدوي",
-        "searchPlaceholder": "البحث عن اللغات...",
+        "description": "حدد اللغة للتعرف على الكلام. سيحدد تلقائي اللغة تلقائيًا، بينما يمكن أن يؤدي تحديد لغة معينة إلى تحسين الدقة لتلك اللغة.",
+        "descriptionUnsupported": "يكتشف الطراز Parakeet اللغة تلقائيًا. ليست هناك حاجة للاختيار اليدوي.",
+        "searchPlaceholder": "بحث في اللغات...",
         "noResults": "لم يتم العثور على لغات",
         "auto": "تلقائي"
       },
       "pushToTalk": {
         "label": "اضغط للتحدث",
-        "description": "استمر في الضغط للتسجيل، واترك للتوقف"
+        "description": "اضغط للتسجيل، ثم حرر للتوقف",
+        "modes": {
+          "toggle": {
+            "title": "تبديل",
+            "description": "اضغط مرة واحدة للبدء، اضغط مرة أخرى للتوقف."
+          },
+          "hold": {
+            "title": "Push-to-talk",
+            "description": "اضغط على الاختصار أثناء التحدث."
+          }
+        },
+        "states": {
+          "keyPress": "اضغط على المفتاح",
+          "nextPress": "الصحافة التالية",
+          "holdKey": "اضغط على المفتاح",
+          "release": "الافراج",
+          "micOn": "تشغيل الميكروفون",
+          "micOff": "تم إيقاف الميكروفون"
+        }
       },
       "fileTranscription": {
-        "movedHint": "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it."
+        "movedHint": "تم نقل نسخ الملف إلى الإملاء → نسخ الملف. اسحب ملف صوت أو فيديو لنسخه."
       }
     },
     "sound": {
       "title": "الصوت",
       "microphone": {
-        "title": "الميكروفون",
-        "description": "اختر جهاز الميكروفون المفضل لديك",
-        "placeholder": "...اختر الميكروفون",
-        "loading": "...جاري التحميل"
+        "title": "ميكروفون",
+        "description": "حدد جهاز الميكروفون المفضل لديك",
+        "placeholder": "حدد الميكروفون...",
+        "loading": "جار التحميل..."
       },
       "audioFeedback": {
-        "label": "تنبيهات صوتية",
-        "description": "تشغيل صوت عند بدء التسجيل وتوقفه"
+        "label": "ردود الفعل الصوتية",
+        "description": "تشغيل الصوت عند بدء التسجيل وتوقفه"
       },
       "outputDevice": {
         "title": "جهاز الإخراج",
-        "description": "اختر جهاز إخراج الصوت المفضل لتنبيهات الصوت",
-        "placeholder": "...اختر جهاز الإخراج",
-        "loading": "...جاري التحميل"
+        "description": "حدد جهاز إخراج الصوت المفضل لديك للحصول على أصوات التعليقات",
+        "placeholder": "تحديد جهاز الإخراج...",
+        "loading": "جار التحميل..."
       },
       "volume": {
-        "title": "مستوى الصوت",
-        "description": "ضبط مستوى صوت تنبيهات الصوت"
+        "title": "الحجم",
+        "description": "ضبط مستوى أصوات ردود الفعل الصوتية"
       },
       "audioEnhancement": {
-        "label": "Noise Reduction (RNNoise)",
-        "description": "Denoise microphone audio before speech detection and transcription."
+        "label": "الحد من الضوضاء",
+        "description": "قم بإزالة الضوضاء من صوت الميكروفون قبل اكتشاف الكلام والنسخ."
       }
     },
     "advanced": {
@@ -418,408 +438,413 @@
       "groups": {
         "app": "التطبيق",
         "output": "الإخراج",
-        "transcription": "التفريغ الصوتي",
-        "history": "السجل",
-        "experimental": "المختبر"
+        "transcription": "النسخ",
+        "history": "التاريخ",
+        "experimental": "مختبرات"
       },
       "experimentalToggle": {
-        "label": "ميزات المختبر",
-        "description": "تفعيل الخيارات قيد التطوير. استخدم بحذر."
+        "label": "ميزات المختبرات",
+        "description": "الميزات قيد التطوير (يتم تشغيلها بشكل افتراضي - يتم إيقاف تشغيلها في أي وقت)."
       },
       "startHidden": {
-        "label": "بدء مخفي",
-        "description": ".التشغيل في صينية النظام دون فتح النافذة"
+        "label": "ابدأ مخفيًا",
+        "description": "قم بالتشغيل إلى علبة النظام دون فتح النافذة."
       },
       "autostart": {
-        "label": "التشغيل عند بدء التشغيل",
-        "description": ".بدء تشغيل Vox Jot تلقائياً عند تسجيل الدخول إلى جهاز الكمبيوتر الخاص بك"
+        "label": "إطلاق عند بدء التشغيل",
+        "description": "قم بتشغيل Vox Jot تلقائيًا عند تسجيل الدخول إلى جهاز الكمبيوتر الخاص بك."
       },
       "showTrayIcon": {
-        "label": "إظهار أيقونة شريط النظام",
-        "description": ".عرض أيقونة Vox Jot في شريط النظام"
+        "label": "إظهار أيقونة الدرج",
+        "description": "اعرض رمز Vox Jot في علبة النظام."
       },
       "overlay": {
-        "title": "موقع التراكب",
-        "description": "عرض تراكب الملاحظات المرئية أثناء التسجيل والتفريغ. على نظام Linux يوصى بـ 'بلا'.",
+        "title": "موقف التراكب",
+        "description": "عرض تراكب التعليقات المرئية أثناء التسجيل والنسخ. في Linux يوصى بـ \"لا شيء\".",
         "options": {
-          "none": "بلا",
+          "none": "لا شيء",
           "bottom": "أسفل",
           "top": "أعلى"
         },
         "style": {
-          "title": "Overlay Style",
-          "description": "Minimal shows only a small pill with level bars. Detailed adds full level meters and live partial text.",
-          "compact": "Minimal",
-          "detailed": "Detailed",
-          "minimal": "Minimal",
-          "minimalDescription": "Single dot — the smallest possible recording cue.",
-          "notch": "Notch",
-          "notchDescription": "Hugs the camera notch on M-series MacBooks (top center).",
-          "compactDescription": "Small pill with live level bars.",
-          "detailedDescription": "Wider overlay with mic status and partial text."
+          "title": "نمط التراكب",
+          "description": "يظهر الاتفاق حبة صغيرة ذات أشرطة مستوية. يضيف التفصيل شريط نص جزئي. يظهر الحد الأدنى مجرد نقطة. يحتضن الشق فتحة الكاميرا في أجهزة MacBooks من السلسلة M.",
+          "compact": "مدمج",
+          "detailed": "مفصلة",
+          "minimal": "الحد الأدنى",
+          "minimalDescription": "نقطة واحدة — أصغر إشارة تسجيل ممكنة.",
+          "notch": "الشق",
+          "notchDescription": "يحتضن فتحة الكاميرا في أجهزة MacBooks من السلسلة M (أعلى المنتصف).",
+          "compactDescription": "حبة صغيرة مع أشرطة ذات مستوى مباشر.",
+          "detailedDescription": "تراكب أوسع مع حالة الميكروفون والنص الجزئي."
         }
       },
       "pasteMethod": {
         "title": "طريقة اللصق",
-        "description": ".اختر كيفية إدراج النص. مباشر: يحاكي الكتابة عبر إدخال النظام. بلا: يتخطى اللصق، ويحدث السجل/الحافظة فقط",
+        "description": "اختر كيفية إدراج النص. أنواع النص المباشر مباشرة. لا شيء يحفظ النتائج دون لصق.",
         "options": {
           "clipboard": "الحافظة ({{modifier}}+V)",
           "clipboardCtrlShiftV": "الحافظة (Ctrl+Shift+V)",
-          "clipboardShiftInsert": "الحافظة (Shift+Insert)",
+          "clipboardShiftInsert": "الحافظة (إزاحة+إدراج)",
           "direct": "مباشر",
-          "none": "بلا",
-          "externalScript": "نص برمجي خارجي"
+          "none": "لا شيء",
+          "externalScript": "البرنامج النصي الخارجي"
         },
-        "externalScriptPlaceholder": "/path/to/your/script.sh"
+        "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "directDescription": "يكتب النص النهائي في الحقل الذي تم التركيز عليه دون استخدام الحافظة.",
+        "clipboardDescription": "ينسخ النص، ويرسل اختصار اللصق إلى النظام، ثم يستعيد الحافظة.",
+        "clipboardOnly": "الحافظة فقط",
+        "clipboardOnlyDescription": "نسخ النص وتخطي إجراء اللصق التلقائي.",
+        "platformMethods": "أساليب المنصة"
       },
       "typingTool": {
         "title": "أداة الكتابة",
-        "description": ".اختر أداة الكتابة في Linux لاستخدامها مع طريقة اللصق المباشر. سيكتشف \"تلقائي\" تلقائياً أفضل أداة متاحة لنظامك ويستخدمها",
+        "description": "اختر أداة الكتابة في Linux التي تريد استخدامها لطريقة اللصق المباشر. سيكتشف Auto تلقائيًا أفضل أداة متاحة لنظامك ويستخدمها.",
         "options": {
-          "auto": "تلقائي (موصى به)"
+          "auto": "تلقائي (مستحسن)"
         }
       },
       "clipboardHandling": {
         "title": "التعامل مع الحافظة",
-        "description": ".'عدم تعديل الحافظة' يحافظ على محتويات حافظتك الحالية بعد التفريغ. 'نسخ إلى الحافظة' يترك نتيجة التفريغ في حافظتك بعد اللصق",
+        "description": "لا تقوم \"تعديل الحافظة\" بالحفاظ على محتويات الحافظة الحالية بعد النسخ. يؤدي النسخ إلى الحافظة إلى ترك نتيجة النسخ في الحافظة الخاصة بك بعد اللصق.",
         "options": {
-          "dontModify": "عدم تعديل الحافظة",
+          "dontModify": "لا تقم بتعديل الحافظة",
           "copyToClipboard": "نسخ إلى الحافظة"
         }
       },
       "autoSubmit": {
         "title": "إرسال تلقائي",
-        "description": "إرسال مجموعة المفاتيح المحددة تلقائياً بعد إدراج النص. Cmd+Enter ينطبق على macOS، بينما يستخدم Windows/Linux مفتاح Super+Enter.",
+        "description": "إرسال مجموعة المفاتيح المحددة تلقائيًا بعد إدراج النص. ينطبق Cmd+Enter على macOS، بينما يستخدم Windows/Linux Super+Enter.",
         "options": {
           "off": "إيقاف",
-          "enter": "Enter",
+          "enter": "أدخل",
           "cmdEnter": "Cmd+Enter",
           "superEnter": "Super+Enter",
           "ctrlEnter": "Ctrl+Enter"
         }
       },
       "translateToEnglish": {
-        "label": "الترجمة إلى الإنجليزية",
-        "description": ".ترجمة الكلام من اللغات الأخرى تلقائياً إلى الإنجليزية أثناء التفريغ",
-        "descriptionUnsupported": ".الترجمة غير مدعومة من قبل نموذج {{model}}"
+        "label": "ترجمة إلى اللغة الإنجليزية",
+        "description": "ترجمة الكلام تلقائيًا من اللغات الأخرى إلى الإنجليزية أثناء النسخ.",
+        "descriptionUnsupported": "الترجمة غير مدعومة في الطراز {{model}}."
       },
       "modelUnload": {
-        "title": "إلغاء تحميل النموذج",
-        "description": "تحرير ذاكرة GPU/CPU تلقائياً عندما لا يتم استخدام النموذج للوقت المحدد",
+        "title": "تحرير الذاكرة النموذجية",
+        "description": "تحرير الذاكرة تلقائيًا عندما تكون نماذج الكلام خاملة لفترة من الوقت.",
         "options": {
-          "never": "أبداً",
-          "immediately": "فوراً",
-          "min2": "بعد دقيقتين",
-          "min5": "بعد 5 دقائق",
-          "min10": "بعد 10 دقائق",
-          "min15": "بعد 15 دقيقة",
-          "hour1": "بعد ساعة واحدة",
-          "sec5": "بعد 5 ثوانٍ (تصحيح أخطاء)"
+          "never": "أبدًا (أسرع الإملاء التالي)",
+          "immediately": "على الفور (أقل استخدام للذاكرة)",
+          "min2": "بعد دقيقتين (يحفظ الذاكرة بسرعة)",
+          "min5": "بعد 5 دقائق (متوازن)",
+          "min10": "بعد 10 دقائق (يحافظ على الدفء لفترة أطول)",
+          "min15": "بعد 15 دقيقة (عمليات إعادة تحميل أقل)",
+          "hour1": "بعد ساعة واحدة (الأفضل للاستخدام المتكرر)",
+          "sec5": "بعد 5 ثواني (التصحيح)"
         }
       },
       "customWords": {
         "title": "كلمات مخصصة",
-        "description": ".أضف الكلمات التي غالباً ما يتم فهمها بشكل خاطئ أو كتابتها بشكل خاطئ أثناء التفريغ. سيقوم النظام تلقائياً بتصحيح الكلمات ذات الصوت المماثل لتطابق قائمتك",
+        "description": "أضف الكلمات التي غالبًا ما يتم سماعها بشكل خاطئ أو بها أخطاء إملائية أثناء النسخ. سيقوم النظام تلقائيًا بتصحيح الكلمات ذات النطق المتشابه لتتناسب مع قائمتك.",
         "placeholder": "أضف كلمة",
-        "add": "إضافة",
+        "add": "أضف",
         "remove": "إزالة {{word}}",
         "duplicate": "\"{{word}}\" موجود بالفعل"
       },
       "theme": {
-        "title": "Theme",
-        "description": "Choose the app appearance.",
+        "title": "الموضوع",
+        "description": "اختر مظهر التطبيق.",
         "options": {
-          "light": "Light",
-          "dark": "Dark",
-          "system": "System",
-          "sepia": "Sepia",
-          "ocean": "Ocean",
-          "forest": "Forest",
-          "rose": "Rose",
-          "slate": "Slate",
-          "solarized": "Solarized",
-          "graphite": "Graphite"
+          "light": "ضوء",
+          "dark": "الظلام",
+          "system": "النظام",
+          "sepia": "بني داكن",
+          "ocean": "المحيط",
+          "forest": "غابة",
+          "rose": "روز",
+          "slate": "لائحة",
+          "solarized": "مشمس",
+          "graphite": "الجرافيت"
         }
       },
       "fontScale": {
-        "title": "Text Size",
-        "description": "Increase or decrease readable text across Vox Jot."
+        "title": "حجم النص",
+        "description": "زيادة أو تقليل النص المقروء عبر Vox Jot."
       }
     },
     "postProcessing": {
-      "title": "معالجة لاحقة",
+      "title": "عملية ما بعد",
       "hotkey": {
         "title": "مفتاح الاختصار"
       },
       "api": {
         "title": "API (متوافق مع OpenAI)",
         "provider": {
-          "title": "المزود",
-          "description": "اختر مزوداً متوافقاً مع OpenAI."
+          "title": "مزود",
+          "description": "حدد موفرًا متوافقًا مع OpenAI."
         },
         "appleIntelligence": {
           "title": "Apple Intelligence",
-          "description": "يعمل بالكامل على الجهاز. لا يلزم وجود مفتاح API أو وصول إلى الشبكة.",
-          "requirements": "يتطلب جهاز Mac بمعالج Apple Silicon يعمل بنظام macOS Tahoe (26.0) أو أحدث. يجب تمكين Apple Intelligence في إعدادات النظام.",
-          "unavailable": "Apple Intelligence غير متاح على هذا الجهاز. يتطلب جهاز Mac بمعالج Apple Silicon يعمل بنظام macOS Tahoe (26.0) أو أحدث مع تمكين Apple Intelligence في إعدادات النظام."
+          "description": "يعمل بشكل كامل على الجهاز. لا يلزم وجود مفتاح API أو الوصول إلى الشبكة.",
+          "requirements": "يتطلب Apple Silicon Mac يعمل بنظام macOS 26 أو أحدث. يجب تمكين Apple Intelligence في إعدادات النظام.",
+          "unavailable": "Apple Intelligence غير متوفر على هذا الجهاز. يتطلب Apple Silicon Mac يعمل بنظام macOS 26 أو إصدار أحدث مع تمكين Apple Intelligence في إعدادات النظام."
         },
         "baseUrl": {
-          "title": "URL الأساسي",
-          "description": "URL الأساسي لـ API للمزود المختار. يمكن تعديل المزود المخصص فقط.",
+          "title": "قاعدة URL",
+          "description": "API قاعدة URL للموفر المحدد. يمكن تحرير الموفر المخصص فقط.",
           "placeholder": "https://api.openai.com/v1"
         },
         "apiKey": {
           "title": "مفتاح API",
-          "description": "مفتاح API للمزود المختار.",
-          "placeholder": "sk-..."
+          "description": "مفتاح API للموفر المحدد.",
+          "placeholder": "كورونا-..."
         },
         "model": {
-          "title": "النموذج",
-          "descriptionApple": "قدم حداً اختيارياً للرموز الرقمية أو احتفظ بالإعداد المسبق الافتراضي على الجهاز.",
-          "descriptionCustom": "قدم معرف النموذج المتوقع من قبل نقطة النهاية المخصصة الخاصة بك.",
-          "descriptionDefault": "اختر نموذجاً يعرضه المزود المختار.",
+          "title": "نموذج",
+          "descriptionApple": "يستخدم Apple Intelligence النموذج المدمج على الجهاز. لا يلزم اختيار نموذج إضافي.",
+          "descriptionCustom": "قم بتوفير معرف النموذج المتوقع بواسطة نقطة النهاية المخصصة الخاصة بك.",
+          "descriptionDefault": "اختر نموذجًا يعرضه الموفر المحدد.",
           "placeholderApple": "Apple Intelligence",
-          "placeholderWithOptions": "ابحث عن نموذج أو اختره",
+          "placeholderWithOptions": "ابحث أو حدد نموذجًا",
           "placeholderNoOptions": "اكتب اسم النموذج",
           "refreshModels": "تحديث النماذج"
         }
       },
       "prompts": {
-        "title": "المطالبة",
+        "title": "موجه",
         "selectedPrompt": {
-          "title": "المطالبة المختارة",
-          "description": ".اختر قالباً لتحسين التفريغ الصوتي أو أنشئ قالباً جديداً. استخدم ${output} داخل نص المطالبة للإشارة إلى النص الملتقط"
+          "title": "المطالبة المحددة",
+          "description": "حدد قالبًا لتحسين النسخ أو قم بإنشاء قالب جديد. استخدم ${output} داخل نص المطالبة للإشارة إلى النص الذي تم التقاطه. تفضل التعديلات المحافظة ما لم يكن هناك تصحيح واضح أو إشارات هيكلية."
         },
         "noPrompts": "لا توجد مطالبات متاحة",
-        "selectPrompt": "اختر مطالبة",
-        "createNew": "إنشاء مطالبة جديدة",
-        "promptLabel": "تسمية المطالبة",
+        "selectPrompt": "حدد مطالبة",
+        "createNew": "إنشاء موجه جديد",
+        "promptLabel": "التسمية السريعة",
         "promptLabelPlaceholder": "أدخل اسم المطالبة",
-        "promptInstructions": "تعليمات المطالبة",
-        "promptInstructionsPlaceholder": ".اكتب التعليمات المراد تشغيلها بعد التفريغ الصوتي. مثال: قم بتحسين القواعد والوضوح للنص التالي: ${output}",
-        "promptTip": "تلميح: استخدم <code>${output}</code> لإدراج النص المفرغ في مطالبتك.",
+        "promptInstructions": "تعليمات سريعة",
+        "promptInstructionsPlaceholder": "اكتب التعليمات للتشغيل بعد النسخ. مثال: احتفظ بالمعنى الدقيق، واحتفظ بالرموز الفنية المميزة، وقم بتطبيق التنسيق الأثقل فقط عند وجود تصحيح واضح أو إشارات القائمة. النص: ${output}",
+        "promptTip": "نصيحة: استخدم <code>${output}</code> لإدراج النص المكتوب في الموجه الخاص بك. أضف قواعد واضحة للألفاظ غير المكتملة بحيث تظل الأجزاء القصيرة قريبة من النص.",
         "updatePrompt": "تحديث المطالبة",
         "deletePrompt": "حذف المطالبة",
-        "createPrompt": "إنشاء مطالبة",
+        "createPrompt": "إنشاء موجه",
         "cancel": "إلغاء",
-        "selectToEdit": ".اختر مطالبة أعلاه لعرض وتعديل تفاصيلها",
-        "createFirst": ".انقر على 'إنشاء مطالبة جديدة' أعلاه لإنشاء أول مطالبة معالجة لاحقة لك"
+        "selectToEdit": "حدد المطالبة أعلاه لعرض تفاصيلها وتعديلها.",
+        "createFirst": "انقر فوق \"إنشاء مطالبة جديدة\" أعلاه لإنشاء أول مطالبة بعد المعالجة."
       },
       "apple": {
         "title": "Apple Cleanup",
-        "description": "Use Apple Intelligence to polish transcriptions locally after speech recognition completes.",
+        "description": "استخدم Apple Intelligence لتحسين النسخ محليًا بعد اكتمال التعرف على الكلام.",
         "mode": {
-          "title": "Mode",
-          "description": "Literal preserves wording as much as possible. Intent can remove false starts and format obvious lists or paragraphs.",
-          "literal": "Literal: preserve wording",
-          "intent": "Intent: clean false starts and formatting"
+          "title": "الوضع",
+          "description": "يحافظ الحرفي على الصياغة قدر الإمكان. يمكن للقصد إزالة البدايات الخاطئة وتنسيق القوائم أو الفقرات الواضحة.",
+          "literal": "حرفيا: حفظ اللفظ",
+          "intent": "النية: تنظيف البدايات والتنسيقات الخاطئة"
         },
         "rewriteStrength": {
-          "title": "Rewrite Strength",
-          "description": "Controls how aggressively Apple Intelligence can rewrite phrasing in intent mode.",
-          "conservative": "Conservative",
-          "balanced": "Balanced",
-          "aggressive": "Aggressive"
+          "title": "إعادة كتابة القوة",
+          "description": "يتحكم في مدى قدرة Apple Intelligence على إعادة كتابة الصياغة في وضع الهدف.",
+          "conservative": "محافظ",
+          "balanced": "متوازن",
+          "aggressive": "عدوانية"
         },
         "preview": {
-          "label": "Show preview before paste",
-          "description": "Open a review window so you can approve or edit the final text before it is pasted."
+          "label": "إظهار المعاينة قبل اللصق",
+          "description": "افتح نافذة المراجعة حتى تتمكن من الموافقة على النص النهائي أو تحريره قبل لصقه."
         },
         "fallback": {
-          "label": "Fallback to normalized text on failure",
-          "description": "If Apple Intelligence fails or is unavailable, use the dictionary-normalized transcript instead of the raw result."
+          "label": "الرجوع إلى النص الطبيعي عند الفشل",
+          "description": "إذا فشل Apple Intelligence أو كان غير متاح، فاستخدم النص الذي تمت تسويته بواسطة القاموس بدلاً من النتيجة الأولية."
         }
       },
       "appAware": {
-        "title": "App-Aware Tone",
-        "description": "Optionally match Apple Intelligence rewrite tone to the app you are dictating into. Live dictation uses the current frontmost app, while the preview tester uses the app you choose below.",
+        "title": "نغمة علم التطبيق",
+        "description": "يمكنك اختياريًا مطابقة نغمة إعادة الكتابة Apple Intelligence مع التطبيق الذي تملي عليه. يستخدم الإملاء المباشر التطبيق الحالي الحالي، بينما يستخدم اختبار المعاينة التطبيق الذي تختاره أدناه.",
         "toggle": {
-          "label": "Enable app-aware tone",
-          "description": "Match apps like Slack or Mail to different Apple Intelligence tone instructions."
+          "label": "تمكين نغمة علم التطبيق",
+          "description": "قم بمطابقة التطبيقات مثل Slack أو Mail مع تعليمات نغمة Apple Intelligence المختلفة."
         },
         "tones": {
-          "title": "Tone definitions",
-          "description": "Define reusable tone presets. Each tone adds bounded rewrite guidance to the Apple Intelligence prompt.",
+          "title": "تعريفات النغمات",
+          "description": "تحديد إعدادات النغمات المسبقة القابلة لإعادة الاستخدام. تضيف كل نغمة إرشادات إعادة الكتابة المحددة إلى موجه Apple Intelligence.",
           "columns": {
             "id": "Tone ID",
-            "label": "Display name",
-            "instruction": "Instruction"
+            "label": "اسم العرض",
+            "instruction": "تعليمات"
           },
           "placeholders": {
             "id": "casual",
-            "label": "Casual",
-            "instruction": "Use a casual, conversational tone suitable for chat messages."
+            "label": "عادية",
+            "instruction": "استخدم نغمة محادثة غير رسمية مناسبة لرسائل الدردشة."
           },
-          "add": "Add tone"
+          "add": "أضف نغمة"
         },
         "mappings": {
-          "title": "App mappings",
-          "description": "Map app bundle IDs to tone presets. Bundle IDs are used for matching because they are more stable than localized app names.",
+          "title": "تعيينات التطبيق",
+          "description": "تعيين معرفات حزمة التطبيق للإعدادات المسبقة للنغمة. يتم استخدام معرفات الحزمة للمطابقة لأنها أكثر استقرارًا من أسماء التطبيقات المترجمة.",
           "columns": {
-            "appName": "App name",
-            "bundleId": "Bundle ID",
-            "tone": "Tone"
+            "appName": "اسم التطبيق",
+            "bundleId": "حزمة ID",
+            "tone": "نغمة"
           },
           "placeholders": {
-            "appName": "Slack",
+            "appName": "سلاك",
             "bundleId": "com.tinyspeck.slackmacgap"
           },
-          "add": "Add app mapping"
+          "add": "إضافة تعيين التطبيق"
         },
-        "remove": "Remove",
-        "disabledMessage": "Enable app-aware tone to customize cleanup instructions for different apps."
+        "remove": "إزالة",
+        "disabledMessage": "قم بتمكين نغمة التعرف على التطبيق لتخصيص تعليمات التنظيف لتطبيقات مختلفة."
       },
       "dictionary": {
-        "title": "Dictionary",
+        "title": "قاموس",
         "editor": {
-          "description": "Define spoken phrases and their preferred written forms. Vox Jot applies these replacements before Apple Intelligence runs.",
-          "title": "التهجيات المفضلة"
+          "description": "تحديد العبارات المنطوقة وأشكالها المكتوبة المفضلة. يقوم Vox Jot بتطبيق هذه البدائل قبل عملية التنظيف أو اللصق النهائية.",
+          "title": "الهجاء المفضل"
         },
-        "duplicateWarning": "Duplicate spoken phrases detected. The longest or highest-priority match will win.",
-        "empty": "No personal dictionary entries yet.",
+        "duplicateWarning": "تم اكتشاف عبارات منطوقة مكررة. المباراة الأطول أو ذات الأولوية القصوى ستفوز.",
+        "empty": "لا توجد إدخالات القاموس الشخصي حتى الآن.",
         "columns": {
-          "spoken": "Spoken",
-          "written": "Written",
-          "exactOnly": "Exact only"
+          "spoken": "المنطوقة",
+          "written": "مكتوب",
+          "exactOnly": "بالضبط فقط"
         },
         "placeholders": {
-          "spoken": "swift ui",
+          "spoken": "واجهة المستخدم السريعة",
           "written": "SwiftUI"
         },
-        "add": "Add entry",
-        "remove": "Remove",
-        "duplicateBadge": "Duplicate spoken phrase"
+        "add": "إضافة إدخال",
+        "remove": "إزالة",
+        "duplicateBadge": "عبارة منطوقة مكررة"
       },
       "preview": {
-        "title": "Preview Tester",
+        "title": "اختبار المعاينة",
         "testInput": {
-          "title": "Try sample text",
-          "description": "Run the current Apple Intelligence configuration against sample text without starting a recording.",
-          "placeholder": "Paste or type sample transcript text here"
+          "title": "حاول نموذج النص",
+          "description": "قم بتشغيل تكوين Apple Intelligence الحالي مقابل نموذج النص دون بدء التسجيل.",
+          "placeholder": "الصق أو اكتب نموذج نص النص هنا"
         },
         "previewApp": {
-          "label": "Preview as app",
-          "none": "No app override"
+          "label": "معاينة كتطبيق",
+          "none": "لا يوجد تجاوز التطبيق"
         },
-        "run": "Preview output",
-        "runLoading": "Previewing...",
-        "outputLabel": "Preview result",
-        "dictionaryHits": "Dictionary hits: {{hits}}",
-        "appContext": "App context: {{app}}. Applied tone: {{tone}}.",
-        "editSummary": "Bullets added: {{bullets}}. Paragraphs added: {{paragraphs}}.",
+        "run": "معاينة الإخراج",
+        "runLoading": "جارٍ المعاينة...",
+        "outputLabel": "نتيجة المعاينة",
+        "dictionaryHits": "عدد مرات دخول القاموس: {{hits}}",
+        "appContext": "سياق التطبيق: {{app}}. النغمة المطبقة: {{tone}}.",
+        "editSummary": "تمت إضافة التعداد النقطي: {{bullets}}. تمت إضافة الفقرات: {{paragraphs}}.",
         "errors": {
-          "generic": "Unable to preview post-processing right now."
+          "generic": "غير قادر على معاينة مرحلة ما بعد المعالجة الآن."
         },
         "modal": {
-          "title": "Review polished text",
-          "description": "Apple Intelligence changed this transcription before pasting.",
-          "originalLabel": "Normalized transcript",
-          "editedLabel": "Text to paste",
-          "cancel": "Cancel paste",
-          "apply": "Paste text"
+          "title": "مراجعة النص المصقول",
+          "description": "قام Apple Intelligence بتغيير هذا النسخ قبل اللصق.",
+          "originalLabel": "نسخة طبيعية",
+          "editedLabel": "النص المراد لصقه",
+          "cancel": "إلغاء اللصق",
+          "apply": "لصق النص"
         },
-        "disabledMessage": "Turn on Post Process to try previewing polished output."
+        "disabledMessage": "قم بتشغيل \"عملية النشر\" لمحاولة معاينة المخرجات المصقولة."
       },
-      "description": "Control how Vox Jot polishes dictation after transcription, from simple provider setup to review-before-paste and Apple-specific cleanup options.",
+      "description": "تحكم في كيفية تحسين Vox Jot للإملاء بعد النسخ، بدءًا من إعداد الموفر البسيط وحتى خيارات التنظيف الخاصة بالمراجعة قبل اللصق وApple.",
       "sections": {
         "setup": {
-          "title": "Setup",
-          "description": "Turn post-processing on, choose how it runs, and finish provider configuration."
+          "title": "الإعداد",
+          "description": "قم بتشغيل المعالجة اللاحقة، واختر كيفية تشغيلها، وقم بإنهاء تكوين الموفر."
         },
         "review": {
-          "title": "Paste Review",
-          "description": "Decide whether polished text should be pasted immediately or reviewed first."
+          "title": "مراجعة اللصق",
+          "description": "قرر ما إذا كان يجب لصق النص المصقول على الفور أو مراجعته أولاً."
         },
         "appleCleanup": {
           "title": "Apple Cleanup",
-          "description": "Tune how Apple Intelligence rewrites phrasing and handles failure cases."
+          "description": "اضبط كيفية قيام Apple Intelligence بإعادة كتابة الصياغة ومعالجة حالات الفشل."
         },
         "applePersonalization": {
           "title": "Apple Personalization",
-          "description": "Match tone by app and keep preferred spellings consistent before cleanup runs."
+          "description": "قم بمطابقة النغمة حسب التطبيق وحافظ على اتساق التهجئة المفضلة قبل تشغيل عملية التنظيف."
         },
         "prompting": {
-          "title": "Prompting",
-          "description": "Choose or edit the prompt template used by network providers."
+          "title": "مطالبة",
+          "description": "اختر أو قم بتحرير قالب المطالبة الذي يستخدمه موفرو الشبكة."
         },
         "preview": {
-          "title": "Try It",
-          "description": "Preview the current configuration against sample text without recording live audio."
+          "title": "جربه",
+          "description": "قم بمعاينة التكوين الحالي مقابل نموذج النص دون تسجيل الصوت المباشر."
         }
       },
       "review": {
         "toggle": {
-          "label": "Review polished text before paste",
-          "description": "Show the final post-processed text in a review window so you can edit or cancel it before pasting."
+          "label": "قم بمراجعة النص المصقول قبل اللصق",
+          "description": "اعرض النص النهائي الذي تمت معالجته في نافذة المراجعة حتى تتمكن من تعديله أو إلغائه قبل لصقه."
         },
         "status": {
-          "disabled": "Turn on Post Process first to enable review-before-paste.",
-          "enabled": "Vox Jot will pause before paste and let you confirm or edit the final polished text.",
-          "off": "Polished text will be pasted immediately after processing finishes."
+          "disabled": "قم بتشغيل عملية النشر أولاً لتمكين المراجعة قبل اللصق.",
+          "enabled": "سيتوقف Vox Jot مؤقتًا قبل اللصق ويتيح لك تأكيد النص المصقول النهائي أو تحريره.",
+          "off": "سيتم لصق النص المصقول مباشرة بعد انتهاء المعالجة."
         }
       },
       "status": {
-        "disabled": "Post Process is off. You can still finish provider setup now, then turn it on whenever you are ready.",
-        "noProvider": "Choose a provider before Vox Jot can run polished dictation.",
-        "appleUnavailable": "Apple Intelligence is selected, but it is not available on this device right now.",
-        "missingBaseUrl": "Set a base URL for your custom provider.",
-        "missingApiKey": "Add an API key for the selected provider.",
-        "missingModel": "Choose or enter a model for the selected provider.",
-        "missingPrompt": "Pick a prompt so Vox Jot knows how to refine the transcript.",
-        "finishSetup": "Post Process is on, but a few setup steps are still missing:",
-        "ready": "Post Process is configured and ready to use."
+        "disabled": "عملية ما بعد معطلة. لا يزال بإمكانك إنهاء إعداد الموفر الآن، ثم تشغيله عندما تكون مستعدًا.",
+        "noProvider": "اختر موفرًا قبل أن يتمكن Vox Jot من تشغيل الإملاء المصقول.",
+        "appleUnavailable": "تم تحديد Apple Intelligence، ولكنه غير متوفر على هذا الجهاز في الوقت الحالي.",
+        "missingBaseUrl": "قم بتعيين URL الأساسي لمزودك المخصص.",
+        "missingApiKey": "أضف مفتاح API للموفر المحدد.",
+        "missingModel": "اختر أو أدخل نموذجًا للموفر المحدد.",
+        "missingPrompt": "اختر مطالبة حتى يعرف Vox Jot كيفية تحسين النص.",
+        "finishSetup": "عملية النشر قيد التشغيل، ولكن لا تزال بعض خطوات الإعداد مفقودة:",
+        "ready": "تم تكوين عملية النشر وجاهزة للاستخدام."
       },
       "localPrivacy": {
-        "label": "Local Privacy Mode",
-        "description": "Force all post-processing to run on-device only. Cloud providers will be disabled while this is on.",
-        "cloudDisabled": "Cloud post-processing providers are disabled while Local Privacy Mode is enabled."
+        "label": "وضع الخصوصية المحلي",
+        "description": "فرض جميع عمليات المعالجة اللاحقة للتشغيل على الجهاز فقط. سيتم تعطيل موفري الخدمات السحابية أثناء تشغيل ذلك.",
+        "cloudDisabled": "يتم تعطيل موفري خدمات ما بعد المعالجة السحابية أثناء تمكين وضع الخصوصية المحلي."
       }
     },
     "history": {
-      "title": "السجل",
-      "openFolder": "فتح مجلد التسجيلات",
-      "loading": "...جاري تحميل السجل",
-      "empty": "!لا يوجد تفريغ صوتي بعد. ابدأ التسجيل لبناء سجلك",
-      "copyToClipboard": "نسخ التفريغ إلى الحافظة",
-      "save": "حفظ التفريغ",
-      "unsave": "إزالة من المحفوظات",
+      "title": "التاريخ",
+      "openFolder": "افتح مجلد التسجيلات",
+      "loading": "جارٍ تحميل السجل...",
+      "empty": "لا إملاءات بعد. ابدأ بالتحدث لبناء تاريخك الحديث.",
+      "copyToClipboard": "نسخ النسخ إلى الحافظة",
+      "save": "حفظ النسخ",
+      "unsave": "إزالة من المحفوظة",
       "delete": "حذف الإدخال",
-      "deleteError": ".فشل حذف الإدخال. يرجى المحاولة مرة أخرى",
-      "promptUsed": "Prompt used",
+      "deleteError": "فشل في حذف الإدخال. يرجى المحاولة مرة أخرى.",
+      "promptUsed": "موجه المستخدمة",
       "fieldObservation": {
-        "title": "Field observation",
-        "copyPair": "Copy pair",
-        "copied": "Copied correction pair",
-        "timestamp": "Observed at {{time}}",
-        "failed": "Could not read field text for observation: {{error}}"
+        "title": "تلميح على الشاشة",
+        "copyPair": "تصحيح النسخ",
+        "copied": "زوج التصحيح المنسوخ",
+        "timestamp": "تم الالتقاط في {{time}}",
+        "failed": "تعذر التقاط النص الذي يظهر على الشاشة: {{error}}"
       },
-      "correctionsApplied": "Corrections applied",
-      "deleteConfirm": "Are you sure you want to delete this entry?",
-      "loadError": "Failed to load history: {{error}}",
-      "saveError": "Failed to save recording to history: {{error}}",
-      "saveToggleError": "Failed to update saved status: {{error}}",
+      "correctionsApplied": "تم تطبيق التصحيحات",
+      "deleteConfirm": "هل أنت متأكد أنك تريد حذف هذا الإدخال؟",
+      "loadError": "فشل تحميل السجل: {{error}}",
+      "saveError": "فشل حفظ التسجيل في السجل: {{error}}",
+      "saveToggleError": "فشل تحديث الحالة المحفوظة: {{error}}",
       "badges": {
-        "appA11y": "Application: {{appName}}"
+        "appA11y": "التطبيق: {{appName}}"
       },
       "showRecordingInFolder": "إظهار التسجيل في المجلد",
-      "revealError": "تعذر عرض التسجيل: {{error}}"
+      "revealError": "تعذر إظهار التسجيل: {{error}}"
     },
     "debug": {
-      "title": "تصحيح الأخطاء",
+      "title": "تصحيح",
       "logDirectory": {
-        "title": "مجلد السجلات",
+        "title": "دليل السجل",
         "description": "الموقع الذي يتم فيه تخزين ملفات السجل",
-        "loadError": "Failed to load log directory"
+        "loadError": "فشل تحميل دليل السجل"
       },
       "logLevel": {
         "title": "مستوى السجل",
-        "description": "ضبط درجة تفصيل السجلات",
+        "description": "ضبط إسهاب التسجيل",
         "options": {
-          "error": "Error",
-          "warn": "Warn",
-          "info": "Info",
-          "debug": "Debug",
-          "trace": "Trace"
+          "error": "خطأ",
+          "warn": "تحذير",
+          "info": "معلومات",
+          "debug": "تصحيح",
+          "trace": "تتبع"
         }
       },
       "updateChecks": {
@@ -827,57 +852,57 @@
         "description": "التحقق تلقائياً من وجود إصدارات جديدة من Vox Jot"
       },
       "soundTheme": {
-        "label": "سمة الصوت",
-        "description": "اختر سمة صوت لتنبيهات بدء وتوقف التسجيل"
+        "label": "موضوع الصوت",
+        "description": "اختر سمة صوتية لبدء التسجيل وإيقاف التعليقات"
       },
       "wordCorrectionThreshold": {
-        "title": "عتبة تصحيح الكلمات",
-        "description": "حساسية تصحيح الكلمات المخصصة"
+        "title": "عتبة تصحيح الكلمة",
+        "description": "حساسية لتصحيحات الكلمات المخصصة"
       },
       "historyLimit": {
-        "title": "حد السجل",
-        "description": "الحد الأقصى لعدد إدخالات السجل المراد الاحتفاظ بها",
+        "title": "حد التاريخ",
+        "description": "الحد الأقصى لعدد إدخالات التاريخ للاحتفاظ بها",
         "entries": "إدخالات"
       },
       "recordingRetention": {
-        "title": "حذف التسجيلات تلقائياً",
-        "description": "حذف التسجيلات القديمة تلقائياً لتوفير المساحة",
-        "never": "أبداً",
-        "preserveLimit": "الاحتفاظ بآخر {{count}}",
+        "title": "الحذف التلقائي للتسجيلات",
+        "description": "حذف التسجيلات القديمة تلقائيًا لتوفير المساحة",
+        "never": "أبدا",
+        "preserveLimit": "احتفظ بأحدث {{count}}",
         "days3": "بعد 3 أيام",
-        "weeks2": "بعد أسبوعين",
+        "weeks2": "بعد 2 أسابيع",
         "months3": "بعد 3 أشهر",
-        "placeholder": "اختر فترة الاحتفاظ..."
+        "placeholder": "حدد فترة الاحتفاظ..."
       },
       "alwaysOnMicrophone": {
-        "label": "ميكروفون يعمل دائماً",
-        "description": "إبقاء الميكروفون نشطاً لاستجابة أسرع"
+        "label": "ميكروفون يعمل دائمًا",
+        "description": "أبقِ الميكروفون نشطًا للحصول على استجابة أسرع"
       },
       "clamshellMicrophone": {
-        "title": "ميكروفون وضع الإغلاق",
-        "description": "الميكروفون المراد استخدامه عندما يكون غطاء المحمول مغلقاً"
+        "title": "ميكروفون صدفي",
+        "description": "ميكروفون للاستخدام عند إغلاق غطاء الكمبيوتر المحمول"
       },
       "postProcessingToggle": {
-        "label": "معالجة لاحقة",
-        "description": "تمكين تحسين النص المدعوم بالذكاء الاصطناعي بعد التفريغ الصوتي"
+        "label": "معالجة ما بعد",
+        "description": "تمكين تحسين النص الذي يعمل بنظام AI بعد النسخ"
       },
       "muteWhileRecording": {
         "label": "كتم الصوت أثناء التسجيل",
         "description": "كتم صوت النظام أثناء التسجيل"
       },
       "appendTrailingSpace": {
-        "label": "إضافة مسافة تابعة",
-        "description": "إضافة مسافة بعد التفريغ الملصق"
+        "label": "إلحاق مسافة زائدة",
+        "description": "أضف مسافة بعد لصق النسخ"
       },
       "keyboardImplementation": {
         "title": "تنفيذ لوحة المفاتيح",
-        "description": ".اختر الواجهة الخلفية لاختصارات لوحة المفاتيح",
-        "bindingsReset": "كانت اختصارات لوحة المفاتيح غير متوافقة وتمت إعادة تعيينها إلى القيم الافتراضية",
+        "description": "اختر الواجهة الخلفية لاختصار لوحة المفاتيح.",
+        "bindingsReset": "كانت اختصارات لوحة المفاتيح غير متوافقة وتم إعادة ضبطها على الإعدادات الافتراضية",
         "options": {
           "tauri": "Tauri Global Shortcut",
-          "handy_keys": "Handy Keys"
+          "handy_keys": "مفاتيح يدوية"
         },
-        "changeConfirm": "Change keyboard backend? Shortcuts that are incompatible with the new backend may be reset to defaults."
+        "changeConfirm": "هل تريد تغيير الواجهة الخلفية للوحة المفاتيح؟ قد تتم إعادة تعيين الاختصارات غير المتوافقة مع الواجهة الخلفية الجديدة إلى الإعدادات الافتراضية."
       },
       "paths": {
         "appData": "بيانات التطبيق:",
@@ -886,13 +911,17 @@
       },
       "pasteDelay": {
         "title": "تأخير اللصق",
-        "description": "التأخير قبل إرسال ضغطة مفتاح اللصق (بالمللي ثانية). قم بزيادتها إذا تم لصق نص خاطئ."
+        "description": "التأخير قبل إرسال ضغطة المفتاح اللصق (بالمللي ثانية). تزيد إذا تم لصق نص خاطئ."
       },
       "audioDucking": {
-        "label": "Audio Ducking",
-        "description": "Lower other apps' volume while recording, then restore it when recording stops."
+        "label": "التغاضي عن الصوت",
+        "description": "قم بخفض مستوى صوت التطبيقات الأخرى أثناء التسجيل، ثم استعادته عند توقف التسجيل.",
+        "system": "النظام",
+        "input": "الإدخال",
+        "enabledStatus": "انخفاض الصوت في الخلفية أثناء التسجيل",
+        "disabledStatus": "يبقى صوت الخلفية دون تغيير"
       },
-      "routeInputPlaceholder": "Paste some dictated text to inspect the cleanup route."
+      "routeInputPlaceholder": "قم بلصق بعض النص الذي تم إملاؤه لفحص مسار التنظيف."
     },
     "about": {
       "title": "حول",
@@ -901,16 +930,16 @@
         "description": "الإصدار الحالي من Vox Jot"
       },
       "appDataDirectory": {
-        "title": "مجلد بيانات التطبيق",
+        "title": "دليل بيانات التطبيق",
         "description": "الموقع الذي يخزن فيه Vox Jot بياناته"
       },
       "sourceCode": {
         "title": "كود المصدر",
         "description": "عرض كود المصدر والمساهمة",
-        "button": "عرض على GitHub"
+        "button": "عرض على جيثب"
       },
       "supportDevelopment": {
-        "title": "دعم التطوير",
+        "title": "دعم التنمية",
         "description": "ساعدنا في مواصلة بناء Vox Jot",
         "button": "تبرع"
       },
@@ -918,373 +947,442 @@
         "title": "شكر وتقدير",
         "whisper": {
           "title": "Whisper.cpp",
-          "description": "استنتاج عالي الأداء لنموذج التعرف التلقائي على الكلام Whisper من OpenAI",
-          "details": ".يستخدم Vox Jot برنامج Whisper.cpp لمعالجة سريعة ومحلية لتحويل الكلام إلى نص. شكراً للعمل الرائع الذي قام به Georgi Gerganov والمساهمون"
+          "description": "الاستدلال عالي الأداء لنموذج التعرف التلقائي على الكلام OpenAI الخاص بـ Whisper",
+          "details": "يستخدم Vox Jot Whisper.cpp لمعالجة تحويل الكلام إلى نص محليًا وسريعًا. بفضل العمل الرائع الذي قام به جورجي جيرجانوف والمساهمين."
         }
       }
     },
     "snippets": {
       "toggle": {
-        "title": "Phrase keys",
-        "label": "Enable phrase keys",
-        "description": "Expand short spoken triggers into full text while you dictate. Say your trigger and Vox Jot inserts the saved text."
+        "title": "مفاتيح العبارات",
+        "label": "تمكين مفاتيح العبارة",
+        "description": "قم بتوسيع المشغلات المنطوقة القصيرة إلى نص كامل أثناء الإملاء. قل المشغل الخاص بك وسيقوم Vox Jot بإدراج النص المحفوظ."
       },
       "list": {
-        "title": "Trigger Phrases",
-        "empty": "No phrase keys yet. Add a trigger and the text it should expand to.",
-        "add": "Add phrase key",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
-        "trigger": "Spoken trigger",
-        "expansion": "Expands to",
-        "triggerPlaceholder": "What you say (e.g. my email)",
-        "expansionPlaceholder": "What gets typed (e.g. user@example.com)",
-        "emptyDescription": "Phrase keys expand short spoken triggers into saved text while you dictate.",
-        "emptyExample": "For example, say “my email” to insert “hello@example.com.”",
-        "myKeys": "My keys",
-        "importedKeys": "Imported keys",
-        "viewLabel": "Phrase keys view",
-        "importDropHint": "Drag & drop a phrase keys JSON file here",
-        "pickImportFile": "Pick JSON file",
-        "importSuccess": "Phrase keys imported.",
-        "importFailed": "Failed to import phrase keys.",
-        "importJsonOnly": "Choose a JSON phrase keys file.",
-        "importTooLarge": "That file is too large to import.",
-        "duplicateTrigger": "A phrase key already uses that spoken trigger."
+        "title": "عبارات الزناد",
+        "empty": "لا توجد مفاتيح العبارة حتى الآن.",
+        "add": "إضافة مفتاح العبارة",
+        "import": "استيراد",
+        "export": "تصدير",
+        "clearAll": "مسح الكل",
+        "trigger": "الزناد المنطوق",
+        "expansion": "يتسع ل",
+        "triggerPlaceholder": "ما تقوله (على سبيل المثال، بريدي الإلكتروني)",
+        "expansionPlaceholder": "ما يتم كتابته (على سبيل المثال، user@example.com)",
+        "emptyDescription": "تقوم مفاتيح العبارات بتوسيع المشغلات المنطوقة القصيرة إلى نص محفوظ أثناء الإملاء.",
+        "emptyExample": "على سبيل المثال، قل \"بريدي الإلكتروني\" لإدراج \"hello@example.com\".",
+        "myKeys": "مفاتيحي",
+        "importedKeys": "المفاتيح المستوردة",
+        "viewLabel": "عرض مفاتيح العبارة",
+        "importDropHint": "قم بسحب وإسقاط ملف مفاتيح العبارة JSON هنا",
+        "pickImportFile": "اختر ملف JSON",
+        "importSuccess": "تم استيراد مفاتيح العبارات.",
+        "importFailed": "فشل استيراد مفاتيح العبارة.",
+        "importJsonOnly": "اختر ملف مفاتيح العبارة JSON.",
+        "importTooLarge": "هذا الملف كبير جدًا بحيث لا يمكن استيراده.",
+        "duplicateTrigger": "يستخدم مفتاح العبارة هذا المشغل المنطوق بالفعل."
       }
     },
     "styles": {
-      "title": "Write profiles",
-      "description": "Write profiles tune post-processing to the app you're in. Slack can stay casual while Mail and Word get a cleaner, more professional pass.",
-      "disabledMessage": "Enable write profiles to automatically match tone to the app you are dictating into.",
+      "title": "اكتب الملفات الشخصية",
+      "description": "لا تبدو كالروبوت في Slack أو تبدو عاديًا جدًا في رسائل البريد الإلكتروني. يمكن لـ Vox Jot تبديل النغمة والنموذج وسلوك الإخراج بناءً على التطبيق أو موقع الويب الذي تملي عليه.",
+      "disabledMessage": "قم بتمكين ملفات تعريف الكتابة لمطابقة النغمة تلقائيًا مع التطبيق الذي تقوم بالإملاء عليه.",
       "toggle": {
-        "label": "Enable app-aware write profiles",
-        "description": "Apply a different writing profile for chat, email, notes, and other apps based on where you dictate."
+        "label": "مطابقة تلقائية لأسلوب الكتابة حسب التطبيق",
+        "description": "استخدم سلوكيات كتابة مختلفة للدردشة والبريد الإلكتروني والملاحظات والتطبيقات الأخرى بناءً على المكان الذي تملي عليه."
       },
       "tones": {
-        "title": "Starter profiles",
-        "description": "Start with built-in presets, adjust their instructions as needed, and add custom profiles only when you want something extra.",
-        "helper": "The default presets cover most workflows: casual for chat, professional for email and docs, neutral for everything else.",
+        "title": "ملفات تعريف المبتدئين",
+        "description": "ابدأ بالإعدادات المسبقة المضمنة، واضبط تعليماتها حسب الحاجة، وأضف ملفات تعريف مخصصة فقط عندما تريد شيئًا إضافيًا.",
+        "helper": "تغطي الإعدادات المسبقة الافتراضية معظم عمليات سير العمل: عادية للدردشة، احترافية للبريد الإلكتروني والمستندات، ومحايدة لكل شيء آخر.",
         "columns": {
           "id": "Profile ID",
-          "label": "Display name",
-          "instruction": "Instruction"
+          "label": "اسم العرض",
+          "instruction": "تعليمات"
         },
         "placeholders": {
           "id": "casual",
-          "label": "Casual",
-          "instruction": "Use a casual, conversational tone suitable for chat messages."
+          "label": "عادية",
+          "instruction": "استخدم نغمة محادثة غير رسمية مناسبة لرسائل الدردشة."
         },
-        "add": "Add custom profile",
-        "restore": "Restore starter profiles",
-        "starterBadge": "Starter",
-        "customBadge": "Custom",
-        "unused": "No apps mapped yet",
-        "editId": "Edit profile ID"
+        "add": "إضافة ملف تعريف مخصص",
+        "restore": "استعادة ملفات التعريف المبدئية",
+        "starterBadge": "كاتب",
+        "customBadge": "مخصص",
+        "unused": "لم يتم تعيين أي تطبيقات حتى الآن",
+        "editId": "تحرير مفتاح الملف الشخصي"
       },
       "mappings": {
-        "title": "App mappings",
-        "description": "Assign apps to a profile. Bundle IDs are the most reliable match key.",
+        "title": "تعيينات التطبيق",
+        "description": "قم بتعيين التطبيقات إلى ملف تعريف بحيث تتغير النغمة تلقائيًا أثناء الإملاء.",
         "columns": {
-          "appName": "App",
-          "bundleId": "Bundle ID",
-          "tone": "Profile"
+          "appName": "التطبيق",
+          "bundleId": "معرف التطبيق",
+          "tone": "الملف الشخصي"
         },
         "placeholders": {
-          "appName": "Slack",
+          "appName": "سلاك",
           "bundleId": "com.tinyspeck.slackmacgap"
         },
-        "selectTone": "Select profile…",
-        "add": "Add app",
-        "empty": "No app mappings yet. Add one below to tailor tone per app."
+        "selectTone": "حدد الملف الشخصي...",
+        "add": "إضافة التطبيق",
+        "empty": "لا توجد تعيينات للتطبيق حتى الآن. أضف واحدًا أدناه لتخصيص النغمة لكل تطبيق."
       },
-      "empty": "No write profiles yet.",
-      "emptyDescription": "Create a profile to switch tone, engine, or output behavior automatically based on the app or website you're dictating into.",
-      "emptyExample": "For example, keep Slack casual while Mail and docs use a cleaner professional style.",
-      "createFirstProfile": "Create your first profile"
+      "empty": "لا توجد ملفات شخصية للكتابة حتى الآن.",
+      "emptyDescription": "قم بإنشاء ملف تعريف لتبديل النغمة أو المحرك أو سلوك الإخراج تلقائيًا بناءً على التطبيق أو موقع الويب الذي تملي عليه.",
+      "emptyExample": "على سبيل المثال، اجعل Slack غير رسمي بينما يستخدم البريد والمستندات أسلوبًا احترافيًا أكثر وضوحًا.",
+      "createFirstProfile": "أنشئ ملفك الشخصي الأول"
     },
     "modelSettings": {
-      "title": "إعدادات النموذج",
-      "noSettingsNeeded": "لا توجد إعدادات مطلوبة لهذا النموذج"
+      "title": "إعدادات {{model}}",
+      "noSettingsNeeded": "يعمل هذا النموذج تلقائيًا دون الحاجة إلى تكوين."
     },
     "models": {
       "title": "نماذج النسخ",
-      "description": "اختر نموذج نسخ أو قم بتنزيل نماذج إضافية. تقدم النماذج المختلفة مستويات متفاوتة من الدقة والسرعة.",
-      "yourModels": "النماذج المحمّلة",
+      "description": "حدد نموذج النسخ أو قم بتنزيل نماذج إضافية. تقدم النماذج المختلفة مستويات مختلفة من الدقة والسرعة.",
+      "yourModels": "النماذج التي تم تنزيلها",
       "availableModels": "متاح للتنزيل",
       "downloaded": "تم التنزيل",
       "available": "متاح للتنزيل",
-      "deleteConfirm": "هل أنت متأكد أنك تريد حذف {{modelName}}؟ ستحتاج إلى تنزيله مرة أخرى لاستخدامه.",
-      "deleteActiveConfirm": "{{modelName}} هو النموذج النشط حاليًا. حذفه سيوقف النسخ حتى تختار نموذجًا جديدًا. هل أنت متأكد؟",
+      "deleteConfirm": "هل أنت متأكد من أنك تريد حذف {{modelName}}؟ ستحتاج إلى تنزيله مرة أخرى لاستخدامه.",
+      "deleteActiveConfirm": "{{modelName}} هو النموذج النشط الخاص بك. سيؤدي حذفه إلى إيقاف النسخ حتى تقوم بتحديد نموذج جديد. هل أنت متأكد؟",
       "deleteTitle": "حذف النموذج",
       "filters": {
         "all": "الكل",
         "multiLanguage": "متعدد اللغات",
-        "translation": "ترجمة",
+        "translation": "الترجمة",
         "allLanguages": "جميع اللغات"
       },
-      "noModelsMatch": "لا توجد نماذج مطابقة لهذا الفلتر.",
-      "activeSpeechModel": "Active Speech Model",
-      "clearFilterHint": "Clear the language filter to browse the full model list again."
+      "noModelsMatch": "لا توجد نماذج تتطابق مع هذا الفلتر.",
+      "activeSpeechModel": "نموذج الكلام النشط",
+      "clearFilterHint": "امسح مرشح اللغة لتصفح قائمة الطرازات الكاملة مرة أخرى.",
+      "evaluation": {
+        "activeModel": "نموذج نشط",
+        "wer": "WER",
+        "match": "مباراة",
+        "tested": "تم اختباره",
+        "blocked": "محظور",
+        "pending": "في انتظار"
+      }
     },
     "corrections": {
-      "title": "Auto-Corrections",
-      "description": "Learn from your edits after transcription paste to automatically correct recurring mistakes.",
+      "title": "قاموس",
+      "description": "قم بإدارة الكلمات والتهجئة والتصحيحات التي تم تعلمها والتي تشكل كيفية كتابة Vox Jot لك.",
       "fileTranscriptionDictionary": {
-        "sectionTitle": "File transcription",
-        "label": "Apply dictionary & learned corrections",
-        "description": "Use your personal dictionary and correction store on file transcripts, same as live dictation. Turn off to keep raw speech-to-text output."
+        "sectionTitle": "نسخ الملف",
+        "label": "تطبيق القاموس والتصحيحات المستفادة",
+        "description": "استخدم قاموسك الشخصي ومخزن التصحيح في نصوص الملفات، مثل الإملاء المباشر. قم بإيقاف تشغيله للاحتفاظ بإخراج الكلام الخام إلى نص."
       },
       "tracking": {
-        "label": "Correction Tracking",
-        "description": "Monitor text fields after paste to learn from your corrections."
+        "label": "تتبع التصحيح",
+        "description": "راقب حقول النص بعد اللصق لتتعلم من تصحيحاتك. يتكيف تلقائيًا مع تطبيقات الدردشة مقابل تطبيقات الملاحظات."
       },
       "dictionary": {
-        "title": "Learned Corrections",
-        "empty": "No learned corrections yet. Start dictating and editing to build your correction dictionary.",
-        "import": "Import",
-        "export": "Export",
-        "clearAll": "Clear All",
+        "title": "التصحيحات المستفادة",
+        "empty": "لا توجد تصحيحات المستفادة حتى الآن.",
+        "import": "استيراد",
+        "export": "تصدير",
+        "clearAll": "مسح الكل",
         "search": {
-          "placeholder": "Search corrections",
-          "ariaLabel": "Search learned corrections",
-          "clear": "Clear search",
-          "empty": "No corrections match your search for '{{query}}'.",
-          "dictionaryPlaceholder": "Search dictionary",
-          "dictionaryAriaLabel": "Search dictionary",
-          "dictionaryEmpty": "No dictionary entries match your search for '{{query}}'."
+          "placeholder": "تصحيحات البحث",
+          "ariaLabel": "البحث عن التصحيحات المستفادة",
+          "clear": "مسح البحث",
+          "empty": "لا توجد تصحيحات تطابق بحثك عن '{{query}}'.",
+          "dictionaryPlaceholder": "بحث في القاموس",
+          "dictionaryAriaLabel": "بحث في القاموس",
+          "dictionaryEmpty": "لا توجد إدخالات في القاموس تطابق بحثك عن \"{{query}}\"."
         },
         "columns": {
-          "original": "Original",
-          "corrected": "Corrected",
-          "frequency": "Freq",
-          "confidence": "Conf",
-          "source": "Source App",
-          "active": "Active"
+          "original": "أصلي",
+          "corrected": "تصحيح",
+          "frequency": "تم تصحيح الأوقات",
+          "confidence": "الثقة",
+          "source": "التطبيق المصدر",
+          "active": "نشط"
         },
-        "emptyDescription": "Vox Jot will learn from edits you make after dictation and use them to avoid the same mistake later.",
-        "emptyExample": "For example, if you change “type whisper” to “Typewhisper,” Vox Jot can remember that spelling.",
-        "emptyDictionary": "No dictionary entries yet.",
-        "emptyDictionaryDescription": "Add or import correction entries to make Vox Jot prefer those spellings.",
-        "emptyDictionaryExample": "For example, map “swift ui” to “SwiftUI.”",
-        "importSuccess": "Imported {{count}} corrections.",
-        "importFailed": "Failed to import corrections.",
+        "emptyDescription": "سوف يتعلم Vox Jot من التعديلات التي تجريها بعد الإملاء ويستخدمها لتجنب نفس الخطأ لاحقًا.",
+        "emptyExample": "على سبيل المثال، إذا قمت بتغيير \"type whisper\" إلى \"Typewhisper\"، فيمكن لـ Vox Jot أن يتذكر هذا التهجئة.",
+        "emptyDictionary": "لا توجد إدخالات القاموس حتى الآن.",
+        "emptyDictionaryDescription": "قم بإضافة أو استيراد إدخالات التصحيح لجعل Vox Jot يفضل تلك التهجئة.",
+        "emptyDictionaryExample": "على سبيل المثال، قم بتعيين \"swift ui\" إلى \"SwiftUI\".",
+        "importSuccess": "تصحيحات {{count}} المستوردة.",
+        "importFailed": "فشل استيراد التصحيحات.",
         "views": {
-          "ariaLabel": "Corrections view",
-          "corrections": "Corrections",
-          "dictionary": "Dictionary"
+          "ariaLabel": "عرض القاموس",
+          "corrections": "التصحيحات",
+          "dictionary": "قاموس"
+        },
+        "approveCorrectionAria": "الموافقة على التصحيح {{original}} إلى {{corrected}}",
+        "approveAlways": "الموافقة وتطبيق دائما",
+        "deleteOriginalPhrase": "حذف العبارة الأصلية",
+        "groupStatus": {
+          "off": "إيقاف",
+          "offTitle": "تم تعطيل كافة التصحيحات في هذه المجموعة.",
+          "manual": "دليل",
+          "manualTitle": "تمت الموافقة على كافة التصحيحات في هذه المجموعة يدويًا.",
+          "applying": "التقديم",
+          "applyingTitle": "كل تصحيح ممكّن في هذه المجموعة مؤهل للتقديم.",
+          "review": "مراجعة",
+          "reviewTitle": "تم منع تطبيق تصحيح واحد على الأقل في هذه المجموعة تلقائيًا حتى تتم الموافقة عليه.",
+          "lowConfidence": "منخفض التكوين",
+          "lowConfidenceTitle": "هناك تصحيح واحد على الأقل يحتوي على ما يكفي من الملاحظات ولكن الثقة منخفضة.",
+          "learning": "التعلم",
+          "learningTitle": "في انتظار المزيد من التأكيدات قبل التقديم التلقائي."
         }
       }
     },
     "dataPrivacy": {
       "introTitle": "How Vox Jot handles your data",
-      "introBody": "Speech is transcribed on your device using the models you install. Optional AI post-processing may run on-device (for example Apple Intelligence) or through a provider you configure. Transcript history and retention limits apply only to data stored locally on this computer—nothing is sent to Vox Jot’s servers because there is no cloud account.",
+      "introBody": "يتم نسخ الكلام على جهازك باستخدام النماذج التي تقوم بتثبيتها. يمكن تشغيل المعالجة اللاحقة الاختيارية لـ AI على الجهاز (على سبيل المثال Apple Intelligence) أو من خلال موفر قمت بتكوينه. تنطبق حدود سجل النسخ والاحتفاظ فقط على البيانات المخزنة محليًا على هذا الكمبيوتر - ولا يتم إرسال أي شيء إلى خوادم Vox Jot نظرًا لعدم وجود حساب سحابي.",
       "groups": {
-        "storage": "Storage & history",
-        "postProcessing": "AI post-processing"
+        "storage": "التخزين والتاريخ",
+        "postProcessing": "AI مرحلة ما بعد المعالجة"
       }
     },
     "experimental": {
-      "title": "المختبر"
+      "title": "مختبرات"
     },
     "globalLanguageSync": {
-      "syncAutomatically": "Sync future app-language changes automatically"
+      "title": "مزامنة اللغة العالمية",
+      "description": "حافظ على محاذاة لغة الواجهة ولغة التعرف على الكلام واختيار مخرجات الكلام من مكان واحد.",
+      "syncAutomatically": "مزامنة تغييرات لغة التطبيق المستقبلية تلقائيًا",
+      "syncing": "جارٍ المزامنة...",
+      "syncNow": "مزامنة الآن",
+      "enabledStatus": "ستعمل تغييرات لغة التطبيق أيضًا على محاذاة إعدادات الكلام.",
+      "disabledStatus": "ستظل تغييرات لغة التطبيق منفصلة عن إعدادات الكلام.",
+      "defaultStatus": "استخدم هذا عندما تريد إعادة محاذاة التطبيق بالكامل مع لغة التطبيق الحالية.",
+      "done": "انتهت مزامنة اللغة.",
+      "failed": "فشلت مزامنة اللغة."
     },
     "refineModels": {
-      "title": "Refine Models",
-      "description": "Pick one cleanup model list without thinking about where it comes from first. Vox Jot handles the right runtime action behind each button.",
-      "refresh": "Refresh",
+      "title": "صقل النماذج",
+      "description": "اختر قائمة نماذج تنظيف واحدة دون التفكير في مصدرها أولاً. يتعامل Vox Jot مع إجراء وقت التشغيل الصحيح خلف كل زر.",
+      "refresh": "تحديث",
       "search": {
-        "title": "Search refine models",
-        "description": "Filter by model name, source, runtime, or repo.",
-        "placeholder": "Try: qwen, nemotron, ollama, lm studio"
+        "title": "بحث تحسين النماذج",
+        "description": "قم بالتصفية حسب اسم الطراز أو المصدر أو وقت التشغيل أو الريبو.",
+        "placeholder": "جرب: كوين، نيموترون، أولاما، إل إم ستوديو"
       },
       "sections": {
-        "readyNow": "Ready Now",
-        "readyNowDescription": "These models are already available on this Mac and can be activated immediately.",
-        "readyNowEmpty": "No ready refine models yet.",
-        "readyNowEmptyDescription": "Download one below, start a local provider, or import a GGUF from Hugging Face.",
-        "availableToAdd": "Available To Add",
-        "availableToAddDescription": "These entries can be downloaded into Ollama and selected automatically when the install finishes.",
-        "availableToAddEmpty": "No downloadable refine models match this search.",
-        "availableToAddEmptyDescription": "Try a different search term or import a custom Hugging Face GGUF below."
+        "readyNow": "جاهز الآن",
+        "readyNowDescription": "هذه النماذج متاحة بالفعل على Mac ويمكن تفعيلها على الفور.",
+        "readyNowEmpty": "لا توجد نماذج صقل جاهزة بعد.",
+        "readyNowEmptyDescription": "قم بتنزيل واحد أدناه، أو ابدأ موفرًا محليًا، أو قم باستيراد GGUF من Hugging Face.",
+        "availableToAdd": "متاح للإضافة",
+        "availableToAddDescription": "يمكن تنزيل هذه الإدخالات إلى Ollama وتحديدها تلقائيًا عند انتهاء التثبيت.",
+        "availableToAddEmpty": "لا توجد نماذج تحسين قابلة للتنزيل تتطابق مع هذا البحث.",
+        "availableToAddEmptyDescription": "جرب مصطلح بحث مختلف أو قم باستيراد Hugging Face GGUF المخصص أدناه."
       },
       "badges": {
-        "ready": "Ready",
-        "active": "Active",
-        "needsDownload": "Needs download",
-        "needsSetup": "Needs setup"
+        "ready": "جاهز",
+        "active": "نشط",
+        "needsDownload": "يحتاج تحميل",
+        "needsSetup": "يحتاج إلى إعداد",
+        "apiKeyNeeded": "مفتاح API",
+        "apiKeyNeededDetail": "أضف مفتاح API الخاص بهذا الموفر قبل الاستخدام.",
+        "activeDetail": "يستخدم حاليا لتحسين النص الذي تمليه.",
+        "readyDetail": "تم التثبيت محليًا - انقر فوق البطاقة للاستخدام.",
+        "needsDownloadDetail": "انقر فوق أيقونة التنزيل لجلب هذا النموذج."
       },
       "actions": {
-        "active": "Active",
-        "use": "Use",
-        "switching": "Switching...",
-        "downloadAndUse": "Download & Use",
+        "active": "نشط",
+        "use": "استخدم",
+        "switching": "التبديل...",
+        "downloadAndUse": "التنزيل والاستخدام",
         "installOllama": "Install Ollama",
         "startOllama": "Start Ollama",
-        "unavailable": "Unavailable",
-        "preparing": "Preparing...",
-        "downloading": "Downloading {{percent}}%",
-        "importing": "Importing...",
-        "installingIntoOllama": "Installing into Ollama...",
-        "removeFromOllama": "Remove {{title}}",
-        "confirmRemoveModel": "Remove {{title}} from Ollama and delete local import files? If this model is selected for Refine, Vox Jot will fall back to the default Ollama model entry."
+        "unavailable": "غير متاح",
+        "preparing": "جارٍ التحضير...",
+        "downloading": "جارٍ التنزيل {{percent}}%",
+        "importing": "جارٍ الاستيراد...",
+        "installingIntoOllama": "التثبيت في Ollama...",
+        "removeFromOllama": "إزالة {{title}}",
+        "confirmRemoveModel": "هل تريد إزالة {{title}} من Ollama وحذف ملفات الاستيراد المحلية؟ إذا تم تحديد هذا النموذج للتصفية، فسيعود Vox Jot إلى إدخال النموذج الافتراضي Ollama.",
+        "apiKeyRequired": "مطلوب مفتاح API"
       },
       "customImport": {
-        "title": "Custom Import",
-        "description": "Bring in any Hugging Face GGUF repo, install it into Ollama, and switch Vox Jot to it in one flow.",
+        "title": "استيراد مخصص",
+        "description": "أحضر أي ريبو Hugging Face GGUF، وقم بتثبيته في Ollama، وقم بتبديل Vox Jot إليه في تدفق واحد.",
         "importDescription": "Import a GGUF without leaving settings",
-        "importHint": "Paste a Hugging Face repo like <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Leave the file blank to let Vox Jot pick a sensible GGUF automatically.",
+        "importHint": "الصق الريبو Hugging Face مثل <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. اترك الملف فارغًا للسماح لـ Vox Jot باختيار GGUF المعقول تلقائيًا.",
         "repoLabel": "Hugging Face repo",
         "repoPlaceholder": "org/model-GGUF",
         "modelNameLabel": "Ollama model name",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
         "fileLabel": "GGUF file",
-        "filePlaceholder": "Optional .gguf file name",
-        "runtimeTarget": "Runtime target",
-        "runtimeDescription": "Imports are installed into Ollama, then selected as the active refine model.",
-        "importAndUse": "Import & Use",
-        "importingCustom": "Importing..."
+        "filePlaceholder": "اسم ملف .gguf اختياري",
+        "runtimeTarget": "هدف وقت التشغيل",
+        "runtimeDescription": "يتم تثبيت الواردات في Ollama، ثم يتم تحديدها كنموذج التحسين النشط.",
+        "importAndUse": "الاستيراد والاستخدام",
+        "importingCustom": "جارٍ الاستيراد..."
       },
-      "source": "Source: {{repoId}}",
-      "loading": "Loading refine models...",
+      "source": "المصدر: {{repoId}}",
+      "loading": "جارٍ تحميل نماذج التحسين...",
       "toast": {
-        "activated": "{{title}} is now the active refine model.",
-        "installed": "{{title}} was downloaded and selected.",
-        "activateError": "Failed to activate refine model.",
-        "installError": "Failed to install refine model.",
-        "importError": "Failed to import Hugging Face GGUF.",
-        "importSuccess": "{{modelId}} was imported into Ollama and selected.",
-        "enterRepo": "Enter a Hugging Face repo ID first.",
-        "removed": "{{title}} was removed from Ollama."
+        "activated": "{{title}} هو الآن نموذج التحسين النشط.",
+        "installed": "تم تنزيل {{title}} واختياره.",
+        "activateError": "فشل في تنشيط نموذج التحسين.",
+        "installError": "فشل تثبيت نموذج التحسين.",
+        "importError": "فشل استيراد Hugging Face GGUF.",
+        "importSuccess": "تم استيراد {{modelId}} إلى Ollama وتم تحديده.",
+        "enterRepo": "أدخل Hugging Face repo ID أولاً.",
+        "removed": "تمت إزالة {{title}} من Ollama."
+      },
+      "evaluation": {
+        "tested": "تم اختباره",
+        "bestPass": "أفضل تمريرة",
+        "activeModel": "نموذج نشط",
+        "pass": "تمرير",
+        "similarityShort": "سيم"
       }
     },
     "screenContext": {
-      "title": "Screen Context",
-      "intro": "When you dictate, Vox Jot can glance at what's on screen and run on-device OCR so the refine pass understands names, tabs, and field labels you were looking at. Captures stay on your Mac.",
-      "enableLabel": "Screen context",
-      "enableDescription": "Take periodic on-device screenshots and feed the OCR text into refine passes.",
-      "permissionCtaLabel": "Screen Recording permission required",
-      "permissionCtaDescription": "macOS hasn't granted Vox Jot permission to capture the screen. Open System Settings to allow it.",
-      "permissionCtaButton": "Open Screen Recording Settings",
-      "captureCadenceTitle": "Capture cadence",
-      "contextBudgetTitle": "Context budget",
-      "pauseOnIdleLabel": "Pause when idle",
-      "pauseOnIdleDescription": "Stop capturing after you haven't dictated for a while; resumes automatically on your next dictation.",
-      "idleThresholdLabel": "Idle threshold",
-      "idleThresholdDescription": "How long without dictation before Vox Jot pauses screen captures.",
+      "title": "سياق الشاشة",
+      "intro": "عند الإملاء، يمكن لـ Vox Jot قراءة نص الشاشة المرئي لتحسين الأسماء والتسميات والسياق. تبقى اللقطات على Mac.",
+      "enableLabel": "سياق الشاشة",
+      "enableDescription": "التقط نص الشاشة في الخلفية لتحسين عملية تنظيف الإملاء.",
+      "permissionCtaLabel": "مطلوب إذن تسجيل الشاشة",
+      "permissionCtaDescription": "macOS لم يمنح Vox Jot إذنًا لالتقاط الشاشة. افتح إعدادات النظام للسماح بذلك.",
+      "permissionCtaButton": "افتح إعدادات تسجيل الشاشة",
+      "captureCadenceTitle": "تردد التحديث",
+      "contextBudgetTitle": "مقدار السياق",
+      "pauseOnIdleLabel": "توقف مؤقتًا عند الخمول",
+      "pauseOnIdleDescription": "توقف عن الالتقاط بعد عدم الإملاء لفترة من الوقت؛ يستأنف تلقائيا على الاملاء الخاص بك المقبل.",
+      "idleThresholdLabel": "وقفة بعد",
+      "idleThresholdDescription": "كم من الوقت بدون إملاء قبل أن يقوم Vox Jot بإيقاف لقطات الشاشة مؤقتًا.",
       "idleThresholdValue": "{{seconds}}s",
-      "exclusionsTitle": "Excluded apps",
-      "exclusionsDescription": "Vox Jot will never capture the screen while one of these apps is frontmost. Great for password managers, banking, or any app you want kept private.",
-      "exclusionsEmpty": "No excluded apps yet.",
-      "addCurrentAppLabel": "Add current app",
-      "addCurrentAppResolving": "Detecting frontmost app...",
-      "addCurrentAppFailed": "Couldn't detect a frontmost app to exclude.",
-      "addCurrentAppAlreadyExcluded": "{{name}} is already excluded.",
-      "removeExclusionLabel": "Remove",
+      "exclusionsTitle": "التطبيقات المستبعدة",
+      "exclusionsDescription": "لن يقوم Vox Jot بالتقاط الشاشة أبدًا عندما يكون أحد هذه التطبيقات في المقدمة. رائع لمديري كلمات المرور أو الخدمات المصرفية أو أي تطبيق تريد الحفاظ على خصوصيته.",
+      "exclusionsEmpty": "لا توجد تطبيقات مستبعدة حتى الآن.",
+      "addCurrentAppLabel": "إضافة التطبيق الحالي",
+      "addCurrentAppResolving": "جارٍ اكتشاف التطبيق الأمامي...",
+      "addCurrentAppFailed": "تعذر اكتشاف التطبيق الأول لاستبعاده.",
+      "addCurrentAppAlreadyExcluded": "تم استبعاد {{name}} بالفعل.",
+      "removeExclusionLabel": "إزالة",
       "statusLabel": "Status:",
-      "statusUnknown": "unknown",
-      "statusDisabled": "Disabled",
-      "statusExcluded": "Paused — excluded app",
-      "statusPausedIdle": "Paused — idle",
-      "screenRecordingLabel": "Screen Recording permission:",
-      "screenRecordingGranted": "Granted",
-      "screenRecordingMissing": "Missing",
-      "cacheSizeLabel": "Cache size:",
-      "latestContextAgeLabel": "Latest context age:",
-      "latestContextAgeValue": "{{ms}} ms",
-      "latestContextAgeUnavailable": "Unavailable",
-      "debugPreviewTitle": "Latest OCR preview (debug)",
-      "debugPreviewEmpty": "No cached OCR snippet yet.",
-      "ocrEngineLabel": "OCR engine",
-      "ocrEngineDescription": "Pick which engine reads text from screen captures. The default uses your operating system's built-in OCR and falls back to the cross-platform engine if it fails.",
-      "ocrEngineNativeThenBackup": "Native, fall back to cross-platform",
-      "ocrEngineNativeOnly": "Native only",
-      "ocrEngineBackupOnly": "Cross-platform only (Tesseract)",
-      "ocrEngineAuto": "Auto",
-      "ocrEngineHelpLinux": "Linux always uses the cross-platform engine — install `tesseract` and `grim` (Wayland) or `import`/`gnome-screenshot` (X11).",
-      "ocrEngineHelpWindows": "Windows uses Windows.Media.Ocr by default and falls back to Tesseract when the system OCR fails or returns empty results.",
-      "ocrEngineHelpMacos": "Apple silicon Macs always use Apple Vision; the cross-platform engine is reserved for QA and Intel-Mac experiments."
+      "statusUnknown": "غير معروف",
+      "statusDisabled": "معطل",
+      "statusExcluded": "متوقف مؤقتًا — تطبيق مستبعد",
+      "statusPausedIdle": "متوقف - خاملاً",
+      "screenRecordingLabel": "إذن تسجيل الشاشة:",
+      "screenRecordingGranted": "منح",
+      "screenRecordingMissing": "مفقود",
+      "cacheSizeLabel": "اللقطات المخزنة:",
+      "latestContextAgeLabel": "التحديث الأخير:",
+      "latestContextAgeValue": "{{ms}} مللي",
+      "latestContextAgeUnavailable": "غير متاح",
+      "debugPreviewTitle": "أحدث معاينة لنص الشاشة (تصحيح الأخطاء)",
+      "debugPreviewEmpty": "لا يوجد نص معاينة تم التقاطه حتى الآن.",
+      "ocrEngineLabel": "محرك OCR",
+      "ocrEngineDescription": "اختر المحرك الذي يقرأ النص من لقطات الشاشة. يستخدم الإعداد الافتراضي OCR المدمج في نظام التشغيل الخاص بك ويعود إلى المحرك متعدد الأنظمة الأساسية في حالة فشله.",
+      "ocrEngineNativeThenBackup": "أصلي، ارجع إلى النظام الأساسي المشترك",
+      "ocrEngineNativeOnly": "مواطن فقط",
+      "ocrEngineBackupOnly": "عبر الأنظمة الأساسية فقط (Tesseract)",
+      "ocrEngineAuto": "تلقائي",
+      "ocrEngineHelpLinux": "يستخدم Linux دائمًا محركًا مشتركًا بين الأنظمة الأساسية — قم بتثبيت tesseract وgrim (Wayland) أو Import/gnome-screenshot (X11).",
+      "ocrEngineHelpWindows": "يستخدم Windows Windows.Media.Ocr افتراضيًا ويعود إلى Tesseract عندما يفشل النظام OCR أو يُرجع نتائج فارغة.",
+      "ocrEngineHelpMacos": "تستخدم أجهزة Mac المصنوعة من السيليكون Apple دائمًا Apple Vision؛ المحرك متعدد المنصات محجوز لتجارب QA و Intel-Mac.",
+      "captureMode": {
+        "alwaysFrequent": "تحديثات حية",
+        "adaptiveCache": "متوازن",
+        "mostlyOnDemand": "حسب الطلب أولا"
+      },
+      "ocrQuality": {
+        "fast": "سريع",
+        "balanced": "متوازن",
+        "accurate": "دقيق"
+      }
     },
     "diagnostics": {
       "localApi": {
-        "label": "Enable local API",
-        "description": "Lets the vox-jot CLI and other local tools drive Vox Jot over HTTP. Loopback only — never reachable from the network.",
-        "copyUrl": "Copy URL",
-        "port": "Port",
-        "portHint": "Restart applies on blur.",
-        "errorPrefix": "API error:",
-        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt",
-        "portRangeError": "Port must be between 1024 and 65535.",
-        "enableConfirm": "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private."
+        "label": "تمكين API المحلي",
+        "description": "يتيح لـ vox-jot CLI والأدوات المحلية الأخرى تشغيل Vox Jot عبر HTTP. الاسترجاع فقط - لا يمكن الوصول إليه مطلقًا من الشبكة.",
+        "copyUrl": "انسخ URL",
+        "port": "ميناء",
+        "portHint": "تنطبق إعادة التشغيل على التمويه.",
+        "errorPrefix": "خطأ API:",
+        "cliHint": "جربه: مسار النسخ vox-jot/to/file.wav --format srt",
+        "portRangeError": "يجب أن يكون المنفذ بين 1024 و65535.",
+        "enableConfirm": "تمكين HTTP API المحلي؟ يمكن للأدوات المحلية الموجودة على Mac التحكم في Vox Jot باستخدام الرمز المميز المعروض. حافظ على خصوصية الرمز المميز."
       }
     },
     "speechCleanup": {
-      "fillerWordsPlaceholder": "um\nuh\nlike"
+      "fillerWordsPlaceholder": "أم\nاه\nمثل"
     },
     "translation": {
-      "providerPlaceholder": "Choose a provider",
-      "modelPlaceholder": "Choose or type a model",
-      "customModelPlaceholder": "Type a custom translation model id"
+      "providerPlaceholder": "اختر مزودًا",
+      "modelPlaceholder": "اختر نموذجًا أو اكتبه",
+      "customModelPlaceholder": "اكتب معرف نموذج الترجمة المخصص"
+    },
+    "soundPicker": {
+      "preview": "معاينة موضوع الصوت (يبدأ التشغيل ثم يتوقف)"
     }
   },
   "footer": {
-    "downloadingModel": "...جاري تنزيل {{model}}",
-    "checkingUpdates": "...جاري التحقق من وجود تحديثات",
-    "updateAvailable": "تحديث متاح: {{version}}",
-    "updateAvailableShort": "تحديث متاح",
-    "upToDate": "محدث",
+    "downloadingModel": "جارٍ التحميل {{model}}...",
+    "checkingUpdates": "جارٍ التحقق من وجود تحديثات...",
+    "updateAvailable": "التحديث متاح: {{version}}",
+    "updateAvailableShort": "التحديث متاح",
+    "upToDate": "حتى الآن",
     "downloadUpdate": "تنزيل التحديث",
-    "restart": "إعادة تشغيل",
+    "restart": "إعادة التشغيل",
     "updateCheckingDisabled": "تم تعطيل التحقق من التحديث",
-    "downloading": "...جاري التنزيل {{progress}}%",
-    "installing": "...جاري التثبيت",
-    "preparing": "...جاري التحضير",
+    "downloading": "جاري التحميل...{{progress}}%",
+    "installing": "جارٍ التثبيت...",
+    "preparing": "جارٍ التحضير...",
     "checkForUpdates": "التحقق من وجود تحديثات",
-    "modelNotSet": "Model not set",
-    "llmNotSet": "LLM not set",
+    "modelNotSet": "لم يتم ضبط النموذج",
+    "llmNotSet": "لم يتم ضبط LLM",
     "llmPrefix": "LLM: {{name}}",
-    "noModelsAvailable": "No models available"
+    "noModelsAvailable": "لا توجد نماذج متاحة"
   },
   "common": {
-    "loading": "...جاري التحميل",
+    "loading": "جار التحميل...",
     "save": "حفظ",
     "cancel": "إلغاء",
     "reset": "إعادة تعيين",
-    "add": "إضافة",
+    "add": "أضف",
     "remove": "إزالة",
     "delete": "حذف",
-    "edit": "تعديل",
+    "edit": "تحرير",
     "create": "إنشاء",
     "update": "تحديث",
     "close": "إغلاق",
-    "open": "فتح",
-    "default": "افتراضي",
-    "enabled": "ممكن",
+    "open": "مفتوح",
+    "default": "الافتراضي",
+    "enabled": "ممكّن",
     "disabled": "معطل",
-    "on": "تشغيل",
+    "on": "على",
     "off": "إيقاف",
     "yes": "نعم",
     "no": "لا",
     "noOptionsFound": "لم يتم العثور على خيارات",
-    "active": "Active",
-    "downloaded": "Downloaded",
-    "dismiss": "Dismiss",
-    "done": "Done"
+    "active": "نشط",
+    "downloaded": "تم التنزيل",
+    "dismiss": "استبعاد",
+    "done": "تم",
+    "custom": "مخصص",
+    "moreInformation": "مزيد من المعلومات",
+    "copy": "نسخ",
+    "copyToClipboard": "نسخ إلى الحافظة",
+    "downloading": "جارٍ التنزيل...",
+    "notAvailable": "غير متوفر",
+    "pause": "وقفة",
+    "play": "العب",
+    "refresh": "تحديث"
   },
   "accessibility": {
-    "permissionsRequired": "أذونات إمكانية الوصول مطلوبة",
-    "permissionsDescription": ".يحتاج Vox Jot إلى أذونات إمكانية الوصول لكتابة النص المفرغ",
-    "openSettings": "فتح إعدادات النظام",
-    "dismiss": "تجاهل",
+    "permissionsRequired": "أذونات الوصول مطلوبة",
+    "permissionsDescription": "يحتاج Vox Jot إلى إمكانية الوصول لكتابة النص، ومراقبة الإدخال لفهم سلوك الإرسال مقابل الحذف بشكل أفضل، وتسجيل الشاشة لسياق OCR المستند إلى لقطات الشاشة أثناء الإملاء.",
+    "openSettings": "افتح إعدادات النظام",
+    "dismiss": "استبعاد",
     "permissionsTitle": "macOS permissions need attention",
-    "permissionNeeded": "Permission Needed"
+    "permissionNeeded": "الإذن مطلوب"
   },
   "errors": {
-    "loadDirectory": "خطأ في تحميل المجلد: {{error}}",
-    "recordingFailed": "فشل في بدء التسجيل: {{error}}",
-    "modelLoadFailed": "فشل في تحميل النموذج: {{model}}",
+    "loadDirectory": "خطأ في تحميل الدليل: {{error}}",
+    "recordingFailed": "فشل بدء التسجيل: {{error}}",
+    "modelLoadFailed": "فشل تحميل النموذج: {{model}}",
     "modelLoadFailedUnknown": "نموذج غير معروف"
   },
   "appLanguage": {
@@ -1292,370 +1390,558 @@
     "description": "تغيير لغة واجهة Vox Jot"
   },
   "overlay": {
-    "transcribing": "...جاري التفريغ",
-    "processing": "...جاري المعالجة",
-    "recording": "Recording"
+    "transcribing": "جارٍ النسخ...",
+    "processing": "جارٍ المعالجة...",
+    "recording": "التسجيل"
   },
   "titleBar": {
-    "streak": "{{count}}d streak",
-    "totalWords": "{{count}} words",
-    "todayWords": "{{count}} today",
+    "streak": "خط {{count}}d",
+    "totalWords": "كلمات {{count}}",
+    "todayWords": "{{count}} اليوم",
     "accuracy": "{{value}}%",
-    "noStats": "No dictations yet"
+    "noStats": "لا إملاءات بعد",
+    "streakLabel": "خط",
+    "totalWordsLabel": "كلمات",
+    "todayLabel": "اليوم",
+    "appsLabel": "تطبيقات",
+    "appsUsed": "تطبيقات {{count}} المستخدمة"
   },
   "ollama": {
     "title": "Ollama — Local LLM Engine",
-    "description": "Ollama runs tiny AI models locally on your device for post-processing transcripts. No internet required after setup.",
-    "notInstalled": "Ollama is not installed. Click below to install it automatically.",
+    "description": "يقوم Ollama بتشغيل نماذج AI الصغيرة محليًا على جهازك لنصوص ما بعد المعالجة. لا يلزم الإنترنت بعد الإعداد.",
+    "notInstalled": "لم يتم تثبيت Ollama. انقر أدناه لتثبيته تلقائيا.",
     "install": "Install Ollama",
-    "installing": "Installing...",
-    "notRunning": "Ollama is installed but not running.",
+    "installing": "جارٍ التثبيت...",
+    "notRunning": "تم تثبيت Ollama ولكنه لا يعمل.",
     "start": "Start Ollama",
-    "checking": "Checking...",
-    "titleBarStatusCheckFailed": "Unable to verify Ollama. It may be unreachable.",
+    "checking": "جارٍ التحقق...",
+    "titleBarStatusCheckFailed": "غير قادر على التحقق من Ollama. قد يكون غير قابل للوصول.",
     "ready": "Ollama is installed and ready",
-    "downloadedModels": "Downloaded LLM Models",
-    "noDownloaded": "No local LLM models downloaded yet.",
-    "availableModels": "Available to Download",
+    "downloadedModels": "نماذج LLM التي تم تنزيلها",
+    "noDownloaded": "لم يتم تنزيل نماذج LLM المحلية حتى الآن.",
+    "availableModels": "متاح للتنزيل",
     "localModel": "Local Ollama model",
-    "setActive": "Set Active",
-    "download": "Download",
-    "pulling": "Pulling {{progress}}%",
-    "qualityEst": "quality est",
-    "speedEst": "speed est",
-    "pullError": "Could not start model download. Ensure Ollama is running and try again.",
-    "activateError": "Could not activate this model. Please try again.",
-    "activeRefineModel": "Active Refine Model",
+    "setActive": "تعيين نشط",
+    "download": "تحميل",
+    "pulling": "سحب {{progress}}%",
+    "qualityEst": "مؤسسة الجودة",
+    "speedEst": "مؤسسة السرعة",
+    "pullError": "تعذر بدء تنزيل النموذج. تأكد من تشغيل Ollama وحاول مرة أخرى.",
+    "activateError": "لا يمكن تفعيل هذا النموذج. يرجى المحاولة مرة أخرى.",
+    "activeRefineModel": "نموذج الصقل النشط",
     "ollamaBadge": "Ollama",
     "localOllamaModel": "Local Ollama Model",
-    "quality": "Quality",
-    "speed": "Speed"
+    "quality": "الجودة",
+    "speed": "السرعة"
   },
   "jotPad": {
-    "newNote": "New note",
-    "empty": "No notes yet. Click + to create one.",
-    "untitled": "Untitled",
-    "titlePlaceholder": "Note title",
-    "contentPlaceholder": "Start typing…",
-    "noNoteSelected": "Select a note or create a new one",
-    "createFirst": "Create a note",
-    "pin": "Pin",
-    "unpin": "Unpin",
-    "emptyDescription": "Create a note to keep dictated thoughts, drafts, and snippets handy.",
-    "emptyExample": "For example, dictate meeting notes here, then ask Convo to turn them into a clean summary.",
+    "newNote": "ملاحظة جديدة",
+    "empty": "لا توجد ملاحظات حتى الآن.",
+    "untitled": "بدون عنوان",
+    "titlePlaceholder": "ملاحظة العنوان",
+    "contentPlaceholder": "ابدأ بالكتابة…",
+    "noNoteSelected": "حدد ملاحظة أو قم بإنشاء ملاحظة جديدة",
+    "createFirst": "قم بإنشاء ملاحظة",
+    "pin": "دبوس",
+    "unpin": "إزالة التثبيت",
+    "emptyDescription": "قم بإنشاء ملاحظة لإبقاء الأفكار والمسودات والمقتطفات في متناول يديك.",
+    "emptyExample": "على سبيل المثال، قم بإملاء ملاحظات الاجتماع هنا، ثم اطلب من Convo تحويلها إلى ملخص واضح.",
     "title": "Jot Pad",
-    "untitledNote": "Untitled note",
-    "speak": "Read aloud",
-    "stopSpeaking": "Stop reading",
-    "saveHint": "Save",
-    "lastEdited": "Last edited",
-    "charCount_one": "{{count}} char",
-    "charCount_other": "{{count}} chars",
-    "deleteConfirm": "Delete note \"{{noteTitle}}\"?",
-    "notes": "Notes",
-    "search": "Search notes",
-    "pinned": "Pinned"
+    "untitledNote": "مذكرة بلا عنوان",
+    "speak": "اقرأ بصوت عالٍ",
+    "stopSpeaking": "توقف عن القراءة",
+    "saveHint": "حفظ",
+    "lastEdited": "تم التعديل الأخير",
+    "charCount_one": "{{count}} شار",
+    "charCount_other": "{{count}} الأحرف",
+    "deleteConfirm": "هل تريد حذف الملاحظة \"{{noteTitle}}\"؟",
+    "notes": "ملاحظات",
+    "search": "ملاحظات البحث",
+    "pinned": "مثبت"
   },
   "convo": {
-    "title": "Convo",
+    "title": "محادثة",
     "selection": {
-      "label": "Selection",
-      "title": "Selection",
-      "emptyState": "Highlight text in any app, then start a conversation about it.",
-      "pastePrompt": "Or paste text below to discuss:",
-      "refreshSelection": "Refresh Selection",
-      "copyLastReply": "Copy Last Reply",
-      "refreshFailed": "Couldn't capture a selection or clipboard snippet right now.",
-      "copiedReply": "Copied the last reply.",
+      "label": "التحديد",
+      "title": "التحديد",
+      "emptyState": "قم بتمييز النص في أي تطبيق، ثم ابدأ محادثة حول هذا الموضوع.",
+      "pastePrompt": "أو الصق النص أدناه للمناقشة:",
+      "refreshSelection": "تحديث التحديد",
+      "copyLastReply": "انسخ الرد الأخير",
+      "refreshFailed": "تعذر التقاط تحديد أو مقتطف من الحافظة الآن.",
+      "copiedReply": "نسخت الرد الأخير .",
       "starterPrompts": [
-        "Summarize the selected text",
-        "Rewrite it more clearly",
-        "Pull out action items"
+        "تلخيص النص المحدد",
+        "أعد كتابتها بشكل أكثر وضوحا",
+        "سحب عناصر العمل"
       ]
     },
     "jotpad": {
       "label": "Jot Pad",
       "title": "Jot Pad",
-      "emptyState": "Start a conversation about your current note.",
-      "replaceNote": "Replace Note",
-      "appendToNote": "Append to Note",
-      "copyDraft": "Copy Draft",
-      "noteReplaced": "Replaced the current note.",
-      "noteReplaceFailed": "Couldn't replace the note.",
-      "noteAppended": "Appended the draft to the note.",
-      "noteAppendFailed": "Couldn't append to the note.",
-      "draftCopied": "Copied the draft.",
+      "emptyState": "ابدأ محادثة حول ملاحظتك الحالية.",
+      "replaceNote": "استبدال الملاحظة",
+      "appendToNote": "إلحاق بالملاحظة",
+      "copyDraft": "نسخ المسودة",
+      "noteReplaced": "تم استبدال الملاحظة الحالية.",
+      "noteReplaceFailed": "لا يمكن استبدال الملاحظة.",
+      "noteAppended": "تم إلحاق المسودة بالمذكرة.",
+      "noteAppendFailed": "تعذر الإلحاق بالملاحظة.",
+      "draftCopied": "نسخ المسودة.",
       "starterPrompts": [
-        "Turn this note into a clean draft",
-        "Find the main points",
-        "Suggest next steps"
+        "تحويل هذه المذكرة إلى مسودة نظيفة",
+        "العثور على النقاط الرئيسية",
+        "اقترح الخطوات التالية"
       ]
     },
     "settingsCoach": {
-      "label": "Settings Coach",
-      "title": "Settings Coach",
-      "emptyState": "Ask me anything about Vox Jot's features and settings.",
-      "openFailed": "Couldn't open that settings section.",
+      "label": "مدرب الإعدادات",
+      "title": "مدرب الإعدادات",
+      "emptyState": "اسألني عن أي شيء حول ميزات وإعدادات Vox Jot.",
+      "openFailed": "تعذر فتح قسم الإعدادات هذا.",
       "starterPrompts": [
-        "Help me reduce dictation latency",
-        "Explain post-processing setup",
-        "Show privacy-related settings"
+        "ساعدني في تقليل زمن انتقال الإملاء",
+        "شرح إعداد ما بعد المعالجة",
+        "إظهار الإعدادات المتعلقة بالخصوصية"
       ]
     },
     "filesContext": {
-      "label": "Files & Context",
-      "title": "Files & Context",
-      "emptyState": "Paste text, attach files, or select a folder to discuss.",
-      "attachFiles": "Attach Files",
-      "attachFolder": "Attach Folder",
-      "pasteText": "Paste Text",
-      "cancel": "Cancel",
+      "label": "الملفات والسياق",
+      "title": "الملفات والسياق",
+      "emptyState": "الصق نصًا أو أرفق ملفات أو حدد مجلدًا لمناقشته.",
+      "attachFiles": "إرفاق الملفات",
+      "attachFolder": "إرفاق المجلد",
+      "pasteText": "لصق النص",
+      "cancel": "إلغاء",
       "charCount": "({{count}}k)",
       "starterPrompts": [
-        "Summarize the attached context",
-        "Compare the key details",
-        "Draft a response from this context"
+        "تلخيص السياق المرفق",
+        "قارن التفاصيل الرئيسية",
+        "قم بصياغة رد من هذا السياق"
       ]
     },
     "common": {
-      "speakReplies": "Speak Replies",
-      "resetConversation": "Reset Conversation",
-      "typeMessage": "Type a message...",
-      "send": "Send",
-      "holdToSpeak": "Hold to speak",
-      "recording": "Recording...",
-      "thinking": "Thinking...",
-      "unavailable": "PersonaPlex conversation requires Apple Silicon (M1 or later).",
-      "helperNotRunning": "PersonaPlex helper is not running. Start the audio-server on port 8765.",
-      "helperStarting": "Starting PersonaPlex helper...",
-      "helperStartFailed": "Couldn't start the PersonaPlex audio helper.",
-      "sendFailed": "The assistant couldn't respond to that message.",
-      "audioCaptureFailed": "Couldn't start audio capture. Check microphone permissions.",
-      "audioTurnFailed": "The audio turn failed. Try again or type instead."
+      "speakReplies": "نطق الردود",
+      "resetConversation": "إعادة ضبط المحادثة",
+      "typeMessage": "اكتب رسالة...",
+      "send": "أرسل",
+      "holdToSpeak": "عقد للتحدث",
+      "recording": "تسجيل...",
+      "thinking": "أفكر...",
+      "unavailable": "تتطلب محادثة PersonaPlex Apple Silicon (M1 أو أحدث).",
+      "helperNotRunning": "المساعد PersonaPlex لا يعمل. ابدأ تشغيل خادم الصوت على المنفذ 8765.",
+      "helperStarting": "بدء تشغيل المساعد PersonaPlex...",
+      "helperStartFailed": "تعذر تشغيل المساعد الصوتي PersonaPlex.",
+      "sendFailed": "لم يتمكن المساعد من الرد على تلك الرسالة.",
+      "audioCaptureFailed": "تعذر بدء التقاط الصوت. تحقق من أذونات الميكروفون.",
+      "audioTurnFailed": "فشل تحويل الصوت. حاول مرة أخرى أو اكتب بدلاً من ذلك."
     }
   },
   "listen": {
     "tuning": {
-      "styleInstructions": "Style Instructions",
-      "appliedTo": "Tuning applies to {{model}}",
-      "resetAll": "Reset all",
-      "resetAllHint": "Reset every parameter to its default value",
-      "noExtraControls": "No verified generation controls are available for this model in Vox Jot yet.",
+      "styleInstructions": "ملاحظات النمط",
+      "appliedTo": "ينطبق الضبط على {{model}}",
+      "resetAll": "إعادة ضبط الكل",
+      "resetAllHint": "إعادة تعيين كل معلمة إلى قيمتها الافتراضية",
+      "noExtraControls": "لا تتوفر عناصر تحكم في الإنشاء تم التحقق منها لهذا الطراز في Vox Jot حتى الآن.",
       "groups": {
-        "delivery": "Delivery",
-        "style": "Style",
-        "sampler": "Sampler",
-        "guidance": "Guidance",
-        "advanced": "Advanced"
+        "delivery": "التسليم",
+        "style": "النمط",
+        "sampler": "أخذ العينات",
+        "guidance": "التوجيه",
+        "advanced": "متقدم"
       }
     },
     "myVoices": {
-      "active": "Active",
-      "activePreset": "Active preset: <bold>{{name}}</bold>",
-      "saveAs": "Save As",
-      "previewText": "Preview Text",
-      "preview": "Preview",
-      "stop": "Stop",
-      "draftModeHint": "Provider and model changes stay in draft mode until you save them as a new voice profile.",
-      "savedProfiles": "Profiles",
-      "saveCurrent": "Save Current",
-      "new": "New",
-      "refresh": "Refresh",
-      "clone": "Clone",
-      "useThisVoice": "Use This Voice",
-      "generating": "Generating…"
+      "active": "نشط",
+      "activePreset": "الإعداد المسبق النشط: <bold>{{name}}</bold>",
+      "saveAs": "حفظ باسم",
+      "previewText": "معاينة النص",
+      "preview": "معاينة",
+      "stop": "توقف",
+      "draftModeHint": "تظل التغييرات كمسودة حتى تقوم بحفظها كملف تعريف صوتي جديد.",
+      "savedProfiles": "الملفات الشخصية",
+      "saveCurrent": "حفظ الحالي",
+      "new": "جديد",
+      "refresh": "تحديث",
+      "clone": "استنساخ",
+      "useThisVoice": "استخدم",
+      "generating": "جارٍ الإنشاء…"
     },
     "soundTuning": {
-      "tuneTitle": "Tune the active profile and listen immediately",
-      "activeProfileIs": "The active profile is",
-      "previewFromHere": ". Preview from here while you adjust the delivery sliders below.",
-      "preview": "Preview",
-      "stop": "Stop",
-      "previewText": "Preview Text"
+      "tuneTitle": "اضبط هذا الصوت واسمع التغييرات على الفور",
+      "activeProfileIs": "الملف الشخصي النشط هو",
+      "previewFromHere": ". قم بالمعاينة من هنا بينما تقوم بضبط أشرطة تمرير التسليم أدناه.",
+      "preview": "معاينة",
+      "stop": "توقف",
+      "previewText": "معاينة النص"
     },
     "packManager": {
-      "title": "Pack Manager",
-      "description": "Download or remove offline speech packs without leaving Settings.",
-      "remove": "Remove",
-      "download": "Download"
+      "title": "مدير الحزمة",
+      "description": "قم بتنزيل حزم الكلام غير المتصلة بالإنترنت أو إزالتها دون مغادرة الإعدادات.",
+      "remove": "إزالة",
+      "download": "تحميل"
     },
     "engineLibrary": {
-      "allLanguages": "All Languages",
-      "activeListenModel": "Active Listen Model",
-      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+      "allLanguages": "جميع اللغات",
+      "activeListenModel": "النموذج الصوتي الحالي",
+      "chooseProviderModel": "اختر مصدر صوت ونموذجًا لملف التعريف هذا.",
+      "title": "مكتبة المحرك",
+      "downloadedModels": "النماذج التي تم تنزيلها",
+      "availableToDownload": "متاح للتنزيل",
+      "noDownloadedMatches": "لا توجد نماذج كلام تم تنزيلها تتطابق مع عوامل التصفية الحالية.",
+      "noDownloadedModels": "لم يتم تنزيل أي طرازات TTS متوافقة لهذا Mac حتى الآن.",
+      "noAvailableMatches": "لا توجد نماذج كلام متاحة تتطابق مع عوامل التصفية الحالية.",
+      "allModelsReady": "تم بالفعل تنزيل كل نموذج كلام متوافق أو تنشيطه.",
+      "badges": {
+        "active": "نشط",
+        "activeDetail": "حاليا صوت TTS النشط.",
+        "selected": "مختارة",
+        "selectedDetail": "تم اختياره في الإعدادات - انقر فوق البطاقة للتنشيط.",
+        "downloaded": "تم التنزيل",
+        "downloadedDetail": "يتم تثبيت حزمة الصوت محليًا."
+      }
     },
     "voiceCloning": {
-      "cloneProfiles": "Clone Profiles",
-      "cloneProfilesDescription": "Create reusable voice-clone source profiles, then turn any ready profile into a saved voice preset.",
-      "refresh": "Refresh",
-      "createPreset": "Create preset",
-      "importWav": "Import WAV",
-      "deleteProfile": "Delete profile",
-      "transcriptHint": "Transcript: Optional, but helpful for clone quality.",
-      "improveFromDictations": "Improve from my dictations",
-      "improveFromDictationsDescription": "Uses your speech-to-text dictations to refine this clone locally.",
-      "clearCollectedData": "Clear collected data",
-      "cloningInactiveHint": "Voice cloning becomes active when a preset or model uses `Qwen3 0.6B Base`.",
-      "createProfile": "Create Profile",
-      "createProfileDescription": "Start with a profile name, then import one clear WAV reference clip.",
-      "createProfileButton": "Create profile",
-      "importWavIntoLatest": "Import WAV into latest",
-      "cloneTarget": "Clone Target",
-      "nextStep": "Next Step",
-      "fullyOptimized": "Fully optimized",
-      "readyForCloning": "Ready for cloning",
-      "needsReferenceAudio": "Needs reference audio",
-      "audioFile": "Audio file",
-      "transcript": "Transcript",
-      "referenceAudioActions": "Reference audio",
-      "replaceReferenceActions": "Replace reference audio",
-      "recordingActions": "While recording"
+      "cloneProfiles": "ملفات تعريف الاستنساخ",
+      "cloneProfilesDescription": "قم بإنشاء ملفات تعريف مصدر استنساخ الصوت قابلة لإعادة الاستخدام، ثم قم بتحويل أي ملف تعريف جاهز إلى إعداد صوتي محفوظ مسبقًا.",
+      "refresh": "تحديث",
+      "createPreset": "إنشاء إعداد مسبق",
+      "importWav": "استيراد WAV",
+      "deleteProfile": "حذف الملف الشخصي",
+      "transcriptHint": "النص: اختياري، ولكنه مفيد لجودة الاستنساخ.",
+      "improveFromDictations": "تعلم من إملاءاتي",
+      "improveFromDictationsDescription": "استخدم إملاءاتك السابقة لتحسين هذا الصوت المستنسخ على هذا الجهاز.",
+      "clearCollectedData": "مسح البيانات المجمعة",
+      "cloningInactiveHint": "يتوفر استنساخ الصوت فقط للنماذج الصوتية المدعومة.",
+      "createProfile": "إنشاء الملف الشخصي",
+      "createProfileDescription": "قم بتسمية ملف التعريف، ثم قم باستيراد مقطع مرجعي واضح واحد.",
+      "createProfileButton": "إنشاء الملف الشخصي",
+      "importWavIntoLatest": "استيراد WAV إلى الأحدث",
+      "cloneTarget": "هدف استنساخ",
+      "nextStep": "الخطوة التالية",
+      "fullyOptimized": "الأمثل بالكامل",
+      "readyForCloning": "جاهز للاستنساخ",
+      "needsReferenceAudio": "يحتاج الصوت المرجعي",
+      "audioFile": "ملف صوتي",
+      "transcript": "نسخة",
+      "referenceAudioActions": "الصوت المرجعي",
+      "replaceReferenceActions": "استبدال الصوت المرجعي",
+      "recordingActions": "أثناء التسجيل",
+      "recordingAudio": "تسجيل الصوت"
     },
     "placeholders": {
-      "styleInstructions": "Warm, calm, confident, closer to a product demo than a podcast host.",
-      "savedVoiceName": "Name this saved voice",
-      "manualVoiceId": "Speaker / voice ID",
-      "searchLanguages": "Search languages",
-      "voiceProfileName": "New voice profile name",
-      "voiceProfileNote": "Optional note about this speaker",
-      "voiceProfileTranscript": "Use the exact words spoken when you have them."
+      "styleInstructions": "دافئ وهادئ وواثق وأقرب إلى العرض التجريبي للمنتج من مضيف البودكاست.",
+      "savedVoiceName": "قم بتسمية هذا الصوت المحفوظ",
+      "manualVoiceId": "مكبر الصوت / الصوت ID",
+      "searchLanguages": "لغات البحث",
+      "voiceProfileName": "اسم ملف التعريف الصوتي الجديد",
+      "voiceProfileNote": "ملاحظة اختيارية حول هذا المتحدث",
+      "voiceProfileTranscript": "استخدم الكلمات المنطوقة بالضبط عندما تكون لديك."
     },
     "voices": {
-      "viewAriaLabel": "Voices view",
-      "profiles": "Profiles"
+      "viewAriaLabel": "عرض الأصوات",
+      "profiles": "الملفات الشخصية"
     },
     "voiceChanger": {
-      "title": "Voice Changer",
-      "downloadingOpenVoice": "Preparing OpenVoice for offline voice changing.",
-      "preparing": "Preparing offline voice changer.",
-      "converting": "Converting voice.",
-      "convertedWith": "Converted with {{profileLabel}}.",
-      "failed": "Voice conversion failed.",
-      "source": "Source",
-      "noAudioSelected": "No audio selected",
-      "noReadyProfiles": "No ready profiles",
-      "toneBlend": "Tone blend",
-      "convert": "Convert",
-      "output": "Output",
-      "chooseWav": "Choose WAV",
-      "targetProfile": "Target profile",
-      "noConvertedAudio": "No converted audio yet",
-      "outputTitle": "Voice Changer output",
-      "outputPlaceholder": "Converted audio appears here.",
-      "panelAriaLabel": "Voice Changer controls",
-      "listening": "Listening. Tap stop when you are done speaking.",
-      "recordingFailed": "Could not start microphone recording.",
-      "finalizingRecording": "Finalizing microphone recording.",
-      "noMicAudio": "No microphone audio was captured.",
-      "stopAndConvert": "Stop & Convert",
-      "recordMic": "Record Mic",
-      "recordShortcutHint": "Focus this panel and press R to start or stop mic capture.",
-      "loadingOutput": "Loading converted audio.",
+      "title": "مغير الصوت",
+      "downloadingOpenVoice": "إعداد OpenVoice لتغيير الصوت دون الاتصال بالإنترنت.",
+      "preparing": "إعداد مغير الصوت دون اتصال.",
+      "converting": "تحويل الصوت.",
+      "convertedWith": "تم التحويل باستخدام {{profileLabel}}.",
+      "failed": "فشل تحويل الصوت.",
+      "source": "المصدر",
+      "noAudioSelected": "لم يتم تحديد أي صوت",
+      "noReadyProfiles": "لا توجد ملفات تعريف جاهزة",
+      "toneBlend": "مزيج لهجة",
+      "convert": "تحويل",
+      "output": "الإخراج",
+      "chooseWav": "اختر WAV",
+      "targetProfile": "الملف الشخصي المستهدف",
+      "noConvertedAudio": "لا يوجد صوت محول حتى الآن",
+      "outputTitle": "إخراج مغير الصوت",
+      "outputPlaceholder": "يظهر الصوت المحول هنا.",
+      "panelAriaLabel": "ضوابط مغير الصوت",
+      "listening": "الاستماع. اضغط على \"إيقاف\" عند الانتهاء من التحدث.",
+      "recordingFailed": "تعذر بدء تسجيل الميكروفون.",
+      "finalizingRecording": "الانتهاء من تسجيل الميكروفون.",
+      "noMicAudio": "لم يتم التقاط صوت الميكروفون.",
+      "stopAndConvert": "توقف وتحويل",
+      "recordMic": "سجل الميكروفون",
+      "recordShortcutHint": "ركز على هذه اللوحة واضغط على R لبدء التقاط الميكروفون أو إيقافه.",
+      "loadingOutput": "تحميل الصوت المحول.",
       "wait": {
-        "downloadStarting": "Checking the local speech pack and installing any missing runtime pieces.",
-        "downloadStillWorking": "Still preparing OpenVoice. First setup can take a while.",
-        "prepare": "Starting the offline speech runtime and checking the selected target voice.",
-        "finalize": "Saving your microphone take as a clean WAV source.",
-        "loadOutput": "Reading the converted WAV and preparing playback.",
-        "convertWarmup": "Loading OpenVoice and warming up the converter.",
-        "convertExtracting": "Extracting tone color from your source and target profile.",
-        "convertMapping": "Mapping your delivery into the selected voice.",
-        "convertStillWorking": "Still working. Longer clips and first runs can take extra time.",
+        "downloadStarting": "التحقق من حزمة الكلام المحلية وتثبيت أي أجزاء مفقودة في وقت التشغيل.",
+        "downloadStillWorking": "لا يزال يجري إعداد OpenVoice. قد يستغرق الإعداد الأول بعض الوقت.",
+        "prepare": "بدء وقت تشغيل الكلام دون اتصال بالإنترنت والتحقق من الصوت المستهدف المحدد.",
+        "finalize": "حفظ الميكروفون الخاص بك كمصدر WAV نظيف.",
+        "loadOutput": "قراءة WAV المحولة وإعداد التشغيل.",
+        "convertWarmup": "تحميل OpenVoice وتسخين المحول.",
+        "convertExtracting": "استخراج لون النغمة من ملفك الشخصي المصدر والهدف.",
+        "convertMapping": "تعيين التسليم الخاص بك إلى الصوت المحدد.",
+        "convertStillWorking": "لا تزال تعمل. يمكن أن تستغرق المقاطع الأطول وعمليات التشغيل الأولى وقتًا إضافيًا.",
         "elapsed": "{{seconds}}s"
+      }
+    },
+    "speechOutput": {
+      "title": "تمكين إخراج الكلام",
+      "description": "قم بقراءة إخراج Vox Jot النهائي بعد تدفقات الإملاء أو الترجمة أو التحديد."
+    },
+    "speechPacks": {
+      "title": "حزم الكلام"
+    },
+    "autoReadback": {
+      "title": "القراءة التلقائية",
+      "groupTitle": "Auto-Readback",
+      "description": "اختر متى ينطق Vox Jot الإخراج النهائي تلقائيًا.",
+      "modes": {
+        "afterOutput": "بعد الإخراج",
+        "afterPreviewConfirm": "بعد تأكيد المعاينة"
+      },
+      "scopeTitle": "نطاق القراءة",
+      "scopeDescription": "التحكم فيما إذا كانت القراءة التلقائية تنطبق فقط على الإملاء أم على إجراءات التحديد أيضًا.",
+      "scopes": {
+        "dictationOnly": "الإملاء فقط",
+        "dictationAndSelection": "الإملاء والاختيار"
+      },
+      "textTitle": "نص إعادة القراءة",
+      "textDescription": "اختر ما إذا كان الإخراج ثنائي اللغة يقرأ الكتلة المترجمة أو الإخراج النهائي الكامل.",
+      "textModes": {
+        "finalOutput": "الناتج النهائي",
+        "translatedBlock": "كتلة مترجمة"
+      },
+      "stopOnRecord": "إيقاف الكلام في السجل",
+      "stopOnRecordDescription": "قم بإلغاء إخراج الكلام الحالي بمجرد بدء التسجيل."
+    },
+    "createVoices": {
+      "workflow": {
+        "voice": "صوت",
+        "cloneProfile": "استنساخ الملف الشخصي",
+        "manualVoiceId": "صوت يدوي ID"
       }
     }
   },
   "refine": {
     "writeRules": {
-      "title": "Write Profiles",
-      "description": "Pick the right tone, engine, and shortcuts based on which app or website you're dictating into.",
-      "newRule": "New profile",
-      "edit": "Edit",
-      "delete": "Delete",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "priority": "Priority",
-      "urlCaptureLabel": "Capture browser URL for website rules",
+      "title": "كتابة الملفات الشخصية",
+      "description": "اختر النغمة والمحرك والاختصارات المناسبة بناءً على التطبيق أو موقع الويب الذي تملي عليه.",
+      "newRule": "ملف تعريف جديد",
+      "edit": "تحرير",
+      "delete": "حذف",
+      "enabled": "ممكّن",
+      "disabled": "معطل",
+      "priority": "الأولوية",
+      "urlCaptureLabel": "التقط المتصفح URL لقواعد موقع الويب",
       "view": {
-        "individual": "Individual",
-        "grouped": "Grouped"
+        "individual": "فردي",
+        "grouped": "مجمعة"
       },
       "matchers": {
-        "appsLabel": "Apps",
-        "urlsLabel": "URLs",
-        "addUrlPattern": "Add URL pattern (e.g. *.gmail.com)",
-        "searchAppsPlaceholder": "Search apps…"
+        "appsLabel": "تطبيقات",
+        "urlsLabel": "عناوين URL",
+        "addUrlPattern": "إضافة نمط URL (على سبيل المثال *.gmail.com)",
+        "searchAppsPlaceholder": "تطبيقات البحث..."
       },
       "overrides": {
-        "speech": "Speech",
-        "refine": "Refine",
-        "output": "Output",
-        "noOverride": "Use global setting"
+        "speech": "خطاب",
+        "refine": "صقل",
+        "output": "الإخراج",
+        "noOverride": "استخدم الإعداد العالمي",
+        "stt_model_id": {
+          "label": "موديل STT",
+          "description": "استخدم محركًا مختلفًا لتحويل الكلام إلى نص هنا."
+        },
+        "stt_language": {
+          "label": "اللغة",
+          "description": "فرض لغة إدخال محددة لملف التعريف هذا."
+        },
+        "translate_to_english": {
+          "label": "ترجمة إلى اللغة الإنجليزية",
+          "description": "تجاوز سلوك الترجمة Whisper."
+        },
+        "tone_id": {
+          "label": "نغمة",
+          "description": ""
+        },
+        "post_process_prompt_id": {
+          "label": "موجه ما بعد العملية",
+          "description": ""
+        },
+        "force_post_process": {
+          "label": "Post-processing",
+          "description": "فرض تشغيل أو إيقاف المعالجة اللاحقة لـ AI عند تطابق ملف التعريف هذا."
+        },
+        "auto_submit": {
+          "label": "Auto-submit",
+          "description": "اضغط على Enter تلقائيًا بعد الإملاء."
+        },
+        "paste_method": {
+          "label": "طريقة اللصق",
+          "description": ""
+        },
+        "append_trailing_space": {
+          "label": "مساحة زائدة",
+          "description": "أضف مسافة بعد النص الذي تم إملاءه."
+        },
+        "mute_while_recording": {
+          "label": "كتم الصوت أثناء التسجيل",
+          "description": "كتم صوت التطبيقات الأخرى أثناء تسجيل ملف التعريف هذا."
+        }
       },
       "test": {
-        "button": "Test against current app",
-        "result": "Matched: {{rule}}",
-        "noMatch": "No rule matches."
+        "button": "اختبار ضد التطبيق الحالي",
+        "result": "متطابق: {{rule}}",
+        "noMatch": "لا توجد قواعد متطابقة."
       },
-      "overlayBadgeOpen": "Open profile in settings",
+      "overlayBadgeOpen": "افتح الملف الشخصي في الإعدادات",
       "editor": {
-        "namePlaceholder": "e.g. Slack & Discord chats"
+        "namePlaceholder": "على سبيل المثال محادثات سلاك وديسكورد"
+      },
+      "row": {
+        "disabled": "معطل",
+        "activeNow": "نشط الآن",
+        "anyApp": "أي تطبيق",
+        "multipleApps": "تطبيقات {{count}}",
+        "moreApps": "+{{count}}",
+        "inheritsGlobal": "يرث الإعدادات العامة",
+        "editProfile": "تحرير الملف الشخصي",
+        "deleteProfile": "حذف الملف الشخصي",
+        "overrideTone": "نغمة",
+        "overrideEngine": "المحرك",
+        "overrideLanguage": "لانج",
+        "translateToEnglish": "ترجمة -> EN",
+        "overridePrompt": "موجه",
+        "autoSubmit": "Auto-submit",
+        "noAutoSubmit": "لا يوجد إرسال تلقائي",
+        "alwaysPostProcess": "دائما بعد العملية",
+        "skipPostProcess": "تخطي ما بعد العملية",
+        "trailingSpace": "مساحة زائدة",
+        "noTrailingSpace": "لا توجد مساحة زائدة",
+        "muteWhileRecording": "كتم الصوت أثناء التسجيل"
+      },
+      "templates": {
+        "heading": "ابدأ من القالب",
+        "blank": {
+          "label": "فارغ",
+          "description": "ابدأ من الصفر."
+        },
+        "email": {
+          "label": "البريد الإلكتروني",
+          "description": "علامات الترقيم المصقولة، لا يوجد إرسال تلقائي."
+        },
+        "coding": {
+          "label": "الترميز",
+          "description": "الإنجليزية، لصق، لا يوجد إرسال تلقائي."
+        },
+        "chat": {
+          "label": "الدردشة",
+          "description": "سريع وغير رسمي، يتم تشغيل الإرسال التلقائي."
+        },
+        "notes": {
+          "label": "ملاحظات",
+          "description": "قم بالتلميع دائمًا، مع وجود مسافة زائدة."
+        }
+      },
+      "overrideGroups": {
+        "speech": "خطاب",
+        "refine": "صقل",
+        "output": "الإخراج"
+      },
+      "overridesEditor": {
+        "emptyHint": "يستخدم ملف التعريف هذا الإعدادات العامة الخاصة بك. قم بإضافة تجاوز أدناه لتغيير السلوك هنا.",
+        "addOverride": "إضافة تجاوز",
+        "noneRemaining": "يتم تعيين كل تجاوز متاح.",
+        "resetAll": "إعادة ضبط الكل",
+        "removeOverride": "إزالة التجاوز",
+        "removeOverrideAria": "إزالة تجاوز {{label}}",
+        "notAvailableShort": "n/a",
+        "notAvailable": "لا توجد خيارات متاحة — قم بإعداد القيمة العالمية أولاً."
+      },
+      "overrideOptions": {
+        "translate_to_english": {
+          "on": "ترجمة إلى اللغة الإنجليزية",
+          "off": "احتفظ باللغة الأصلية"
+        },
+        "force_post_process": {
+          "on": "قم دائمًا بتشغيل مرحلة ما بعد المعالجة",
+          "off": "تخطي مرحلة ما بعد المعالجة"
+        },
+        "auto_submit": {
+          "on": "Auto-submit",
+          "off": "لا تقم بالتقديم التلقائي"
+        },
+        "paste_method": {
+          "ctrl_v": "Ctrl+V",
+          "direct": "الكتابة المباشرة",
+          "none": "لا تلصق",
+          "ctrl_shift_v": "Ctrl+Shift+V",
+          "shift_insert": "Shift+Insert",
+          "external_script": "السيناريو الخارجي"
+        },
+        "append_trailing_space": {
+          "on": "أضف مسافة زائدة",
+          "off": "لا توجد مساحة زائدة"
+        },
+        "mute_while_recording": {
+          "on": "كتم الصوت أثناء التسجيل",
+          "off": "استمر في تشغيل الصوت"
+        }
       }
     }
   },
   "dictate": {
     "fileTranscription": {
-      "title": "File Transcription",
-      "dropHint": "Drag & drop an audio or video file here",
-      "orLabel": "or",
-      "pickFile": "Pick File",
-      "transcribing": "Transcribing…",
-      "copy": "Copy",
-      "placeholder": "Transcript appears here after processing.",
+      "title": "نسخ الملف",
+      "dropHint": "قم بسحب وإسقاط ملف صوتي أو فيديو هنا",
+      "orLabel": "أو",
+      "pickFile": "اختر ملف",
+      "transcribing": "جارٍ النسخ…",
+      "copy": "نسخ",
+      "placeholder": "يظهر النص هنا بعد المعالجة.",
       "selectedLabel": "Selected:",
-      "outputLabel": "Transcript",
-      "fileDialogLabel": "Audio / Video",
+      "outputLabel": "نسخة",
+      "fileDialogLabel": "الصوت / الفيديو",
       "errors": {
-        "heading": "Transcription failed",
-        "failed": "Failed to transcribe file. Try a .wav file or install FFmpeg.",
-        "copyFailed": "Failed to copy transcription.",
-        "exportFailed": "Failed to export subtitles."
+        "heading": "فشل النسخ",
+        "failed": "فشل في نسخ الملف. جرب ملف wav أو قم بتثبيت FFmpeg.",
+        "copyFailed": "فشل نسخ النص.",
+        "exportFailed": "فشل تصدير الترجمات."
       },
-      "exportSrt": "Save .srt",
-      "exportVtt": "Save .vtt",
-      "exportSrtUnavailable": "This engine does not provide timestamps. Switch to Whisper or Parakeet for SRT/VTT export.",
-      "description": "Transcribe one audio or video file, or watch folders and save transcripts automatically."
+      "exportSrt": "حفظ .srt",
+      "exportVtt": "حفظ .vtt",
+      "exportSrtUnavailable": "لا يوفر هذا المحرك الطوابع الزمنية. قم بالتبديل إلى Whisper أو Parakeet لتصدير SRT/VTT.",
+      "description": "قم بنسخ ملف صوتي أو فيديو واحد، أو شاهد المجلدات واحفظ النصوص تلقائيًا."
     },
     "watchFolders": {
-      "title": "Watched folders",
-      "description": "Drop an audio file into one of these folders and Vox Jot transcribes it automatically.",
-      "add": "Add folder",
-      "empty": "No folders yet. Add one to get started.",
-      "remove": "Remove folder",
-      "toggleAria": "Enable or disable this watched folder",
-      "formatText": "Text",
+      "title": "المجلدات التي تمت مشاهدتها",
+      "description": "قم بإسقاط ملف صوتي في أحد هذه المجلدات وسيقوم Vox Jot بنسخه تلقائيًا.",
+      "add": "إضافة مجلد",
+      "empty": "لا توجد مجلدات تمت مشاهدتها حتى الآن.",
+      "remove": "إزالة المجلد",
+      "toggleAria": "تمكين أو تعطيل هذا المجلد المراقب",
+      "formatText": "نص",
       "formatSrt": "SRT",
       "formatVtt": "VTT",
-      "formatAria": "Output format",
-      "recentActivity": "Recent activity",
-      "emptyDescription": "Add a folder to transcribe audio files automatically when you drop them in.",
-      "emptyExample": "For example, watch an Interviews folder and save each new recording as text, SRT, or VTT."
+      "formatAria": "تنسيق الإخراج",
+      "recentActivity": "النشاط الأخير",
+      "emptyDescription": "أضف مجلدًا لنسخ الملفات الصوتية تلقائيًا عندما تقوم بإسقاطها.",
+      "emptyExample": "على سبيل المثال، شاهد مجلد المقابلات واحفظ كل تسجيل جديد كنص أو SRT أو VTT."
     }
   },
   "modelHub": {
     "ocr": {
       "filters": {
-        "providerIdle": "Provider",
-        "languageIdle": "Language",
-        "allProviders": "All providers",
-        "osNative": "OS native OCR",
-        "hybrid": "Smart (native + fallback)",
-        "tesseract": "Tesseract",
-        "autoRouting": "Auto routing",
-        "providerAria": "Filter OCR engines by provider",
-        "languageAria": "Filter OCR engines by language",
-        "system": "System OCR",
-        "neural": "Neural OCR"
+        "providerIdle": "مزود",
+        "languageIdle": "اللغة",
+        "allProviders": "جميع مقدمي الخدمة",
+        "osNative": "OS OCR الأصلي",
+        "hybrid": "ذكي (أصلي + احتياطي)",
+        "tesseract": "تسراكت",
+        "autoRouting": "التوجيه التلقائي",
+        "providerAria": "تصفية محركات OCR حسب الموفر",
+        "languageAria": "تصفية محركات OCR حسب اللغة",
+        "system": "نظام OCR",
+        "neural": "العصبية OCR"
       },
       "vendor": {
         "hybrid": "Apple / Microsoft + Tesseract",
@@ -1666,582 +1952,812 @@
         "linuxSystem": "System OCR utilities"
       },
       "languages": {
-        "hybrid": "System languages plus Tesseract-trained languages when fallback runs.",
-        "nativeOnly": "Follows your OS language and regional text recognition settings.",
-        "tesseract": "Depends on installed tessdata packs (often English-first unless you add more).",
-        "auto": "Matches app and dictation language coverage where the OS allows."
+        "hybrid": "لغات النظام بالإضافة إلى اللغات التي تم تدريبها بواسطة Tesseract عند تشغيل الإجراء الاحتياطي.",
+        "nativeOnly": "يتبع لغة OS وإعدادات التعرف على النص الإقليمية.",
+        "tesseract": "يعتمد على حزم tessdata المثبتة (غالبًا ما تكون باللغة الإنجليزية أولاً ما لم تقم بإضافة المزيد).",
+        "auto": "يطابق تغطية لغة التطبيق والإملاء حيث يسمح OS."
       },
       "badges": {
-        "active": "Active",
-        "activeDetail": "Currently selected screen OCR engine.",
-        "vendorDetail": "Screen OCR runtime used for this mode."
+        "active": "نشط",
+        "activeDetail": "محرك شاشة OCR المحدد حاليًا.",
+        "vendorDetail": "شاشة وقت تشغيل OCR المستخدمة لهذا الوضع."
       },
       "options": {
         "nativeThenBackup": {
-          "title": "Smart (default)",
-          "description": "Use the OS-native OCR first, fall back to Tesseract on failure or empty results."
+          "title": "ذكي (افتراضي)",
+          "description": "استخدم OS الأصلي OCR أولاً، ثم ارجع إلى Tesseract عند الفشل أو النتائج الفارغة."
         },
         "nativeOnly": {
-          "title": "System OCR only",
-          "description": "Use the operating system's built-in OCR only — Apple Vision on macOS, Windows.Media.Ocr on Windows."
+          "title": "النظام OCR فقط",
+          "description": "استخدم OCR المدمج في نظام التشغيل فقط — Apple Vision على macOS، وWindows.Media.Ocr على Windows."
         },
         "backupOnly": {
-          "title": "Tesseract only",
-          "description": "Always use the bundled Tesseract engine. Useful for parity testing or when system OCR underperforms."
+          "title": "تسراكت فقط",
+          "description": "استخدم دائمًا محرك Tesseract المرفق. مفيد لاختبار التكافؤ أو عندما يكون أداء النظام OCR ضعيفًا."
         },
         "auto": {
-          "title": "Auto",
-          "description": "Let Vox Jot pick the best engine for your platform and current language coverage."
+          "title": "تلقائي",
+          "description": "اسمح لـ Vox Jot باختيار أفضل محرك لمنصتك وتغطية اللغة الحالية."
         }
       },
       "meta": {
-        "balanced": "Balanced",
-        "recommended": "Recommended",
-        "fastest": "Fastest path",
-        "osBuiltIn": "OS built-in",
+        "balanced": "متوازن",
+        "recommended": "موصى به",
+        "fastest": "أسرع طريق",
+        "osBuiltIn": "OS مدمج",
         "crossPlatform": "Cross-platform",
-        "requiresTesseract": "Requires Tesseract",
-        "adaptive": "Adaptive"
+        "requiresTesseract": "يتطلب تسراكت",
+        "adaptive": "التكيف"
       },
       "systemCard": {
-        "title": "System OCR",
-        "description": "Built-in routing across Apple Vision / Windows.Media.Ocr and the bundled Tesseract fallback.",
-        "routingLabel": "Routing"
+        "title": "نظام OCR",
+        "description": "التوجيه المدمج عبر Apple Vision / Windows.Media.Ocr والاحتياطي Tesseract المجمع.",
+        "routingLabel": "التوجيه"
       },
       "actions": {
-        "import": "Import {{modelName}} from disk",
-        "remove": "Remove {{modelName}}",
-        "pickFolderTitle": "Pick the folder that contains {{modelName}}",
+        "import": "استيراد {{modelName}} من القرص",
+        "remove": "إزالة {{modelName}}",
+        "pickFolderTitle": "اختر المجلد الذي يحتوي على {{modelName}}",
         "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
-        "importFromDisk": "Import from folder"
+        "importFromDisk": "استيراد من المجلد"
       },
-      "confirmRemove": "Remove {{modelName}}? Files will be deleted from the app's OCR cache.",
-      "empty": "No OCR engines match the current filters.",
+      "confirmRemove": "إزالة {{modelName}}؟ سيتم حذف الملفات من ذاكرة التخزين المؤقت OCR للتطبيق.",
+      "empty": "لا توجد محركات OCR تتطابق مع المرشحات الحالية.",
       "download": {
-        "preparing": "Preparing download…",
+        "preparing": "جارٍ التحضير للتنزيل…",
         "percent": "{{value}}%"
       }
     },
     "tts": {
-      "remove": "Remove {{modelName}}",
-      "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
+      "remove": "إزالة {{modelName}}",
+      "confirmRemove": "إزالة {{modelName}}؟ سيتم حذف الملفات الصوتية التي تم تنزيلها من Mac."
+    },
+    "actionConfirmation": "تأكيد الإجراء النموذجي",
+    "search": {
+      "globalPlaceholder": "نماذج البحث حسب الاسم أو اللغة أو المزود...",
+      "ariaLabel": "نماذج البحث"
+    },
+    "tabs": {
+      "stt": "الكلام (STT)",
+      "analysis": "تحليل الكلام",
+      "llm": "صقل (LLM)",
+      "tts": "الأصوات (TTS)",
+      "ocr": "شاشة OCR"
     }
   },
   "commandMenu": {
-    "searchPlaceholder": "Type a command or search...",
-    "esc": "esc",
-    "noResults": "No results.",
+    "searchPlaceholder": "اكتب أمرًا أو ابحث...",
+    "esc": "إيسك",
+    "noResults": "لا توجد نتائج.",
     "groups": {
-      "navigate": "Navigate",
-      "actions": "Actions",
-      "open": "Open",
-      "theme": "Theme",
-      "jumpTo": "Jump to"
+      "navigate": "انتقل",
+      "actions": "الإجراءات",
+      "open": "مفتوح",
+      "theme": "الموضوع",
+      "jumpTo": "اذهب الى"
     },
     "actions": {
-      "startDictation": "Start dictation",
-      "startDictationSubtitle": "Open the Dictate workspace",
-      "goToRefine": "Go to Refine",
-      "goToListen": "Go to Listen",
-      "openSettings": "Open Settings",
+      "startDictation": "بدء الإملاء",
+      "startDictationSubtitle": "افتح مساحة عمل الإملاء",
+      "goToRefine": "انتقل إلى التحسين",
+      "goToListen": "اذهب إلى الاستماع",
+      "openSettings": "افتح الإعدادات",
       "openJotPad": "Open Jot Pad",
-      "disablePostProcess": "Disable post-process",
-      "enablePostProcess": "Enable post-process",
-      "postProcessOn": "AI cleanup is on",
-      "postProcessOff": "AI cleanup is off",
-      "openLastTranscription": "Open last transcription",
-      "openLastTranscriptionSubtitle": "Jump to recent history",
-      "copyLastTranscription": "Copy last transcription",
-      "copyLastTranscriptionSubtitle": "Copy the most recent transcript",
-      "cancelOperation": "Cancel current operation",
-      "openRecordings": "Open recordings folder",
-      "openLogs": "Open logs folder",
-      "openAppData": "Open app data folder",
-      "switchTheme": "Switch theme → {{name}}",
-      "applyWriteProfile": "Apply write profile → Write profiles",
-      "applyWriteProfileSubtitle": "Jump to write profiles",
-      "insertPhraseKey": "Insert phrase key → Phrase keys",
-      "insertPhraseKeySubtitle": "Jump to phrase key settings",
-      "jumpTo": "Jump to {{label}}"
+      "disablePostProcess": "تعطيل ما بعد العملية",
+      "enablePostProcess": "تمكين ما بعد العملية",
+      "postProcessOn": "تنظيف AI قيد التشغيل",
+      "postProcessOff": "تم إيقاف تنظيف AI",
+      "openLastTranscription": "فتح النسخ الأخير",
+      "openLastTranscriptionSubtitle": "انتقل إلى التاريخ الحديث",
+      "copyLastTranscription": "نسخ النسخ الأخير",
+      "copyLastTranscriptionSubtitle": "انسخ أحدث نسخة",
+      "cancelOperation": "إلغاء العملية الحالية",
+      "openRecordings": "افتح مجلد التسجيلات",
+      "openLogs": "افتح مجلد السجلات",
+      "openAppData": "افتح مجلد بيانات التطبيق",
+      "switchTheme": "تبديل الموضوع → {{name}}",
+      "applyWriteProfile": "تطبيق كتابة الملف الشخصي → كتابة الملفات الشخصية",
+      "applyWriteProfileSubtitle": "انتقل لكتابة الملفات الشخصية",
+      "insertPhraseKey": "أدخل مفتاح العبارة → مفاتيح العبارة",
+      "insertPhraseKeySubtitle": "انتقل إلى إعدادات مفتاح العبارة",
+      "jumpTo": "انتقل إلى {{label}}"
     },
     "themes": {
-      "system": "System",
-      "light": "Light",
-      "dark": "Dark",
-      "graphite": "Graphite",
-      "slate": "Slate",
-      "sepia": "Sepia",
-      "ocean": "Ocean",
-      "rose": "Rose",
-      "forest": "Forest",
-      "solarized": "Solarized"
-    }
+      "system": "النظام",
+      "light": "ضوء",
+      "dark": "الظلام",
+      "graphite": "الجرافيت",
+      "slate": "لائحة",
+      "sepia": "بني داكن",
+      "ocean": "المحيط",
+      "rose": "روز",
+      "forest": "غابة",
+      "solarized": "مشمس"
+    },
+    "label": "قائمة الأوامر"
   },
   "storyStudio": {
     "cast": {
-      "characterPlaceholder": "Narrator"
+      "characterPlaceholder": "الراوي",
+      "title": "يلقي",
+      "description": "تعيين أصوات الاستماع المحفوظة لأحرف البرنامج النصي.",
+      "addCharacter": "أضف شخصية",
+      "character": "الشخصية",
+      "voicePreset": "الإعداد المسبق للصوت",
+      "action": "العمل",
+      "chooseVoice": "اختر الصوت",
+      "removeConfirm": "هل تريد إزالة الحرف \"{{name}}\"؟",
+      "removeCharacter": "إزالة الحرف"
     },
     "script": {
-      "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
-    }
+      "placeholder": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه."
+    },
+    "defaultTitle": "قصة بلا عنوان",
+    "defaultScript": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه.",
+    "emptyVoicesTitle": "احفظ صوتًا قبل بناء القصة",
+    "emptyVoicesDescription": "يستخدم Story Studio إعدادات الاستماع/أصواتي المسبقة كممثلين. أنشئ أو احفظ إعدادًا مسبقًا صوتيًا واحدًا على الأقل، ثم عد إلى هنا لتعيين الأحرف.",
+    "openMyVoices": "افتح صوتي",
+    "storyTitle": "عنوان القصة",
+    "fixBeforeRendering": "إصلاح قبل التقديم",
+    "generate": "إنشاء",
+    "queued": "في قائمة الانتظار",
+    "toolAriaLabel": "أدوات الاستوديو",
+    "tools": {
+      "script": "البرنامج النصي",
+      "cast": "يلقي"
+    },
+    "expressionTags": "علامات التعبير",
+    "clearExpressionSearch": "مسح البحث عن علامة التعبير",
+    "expressionControlsTitle": "ضوابط التعبير",
+    "noExpressionTagMatches": "لا توجد علامات تعبير تطابق هذا البحث.",
+    "customTagPlaceholder": "علامة مخصصة",
+    "lineInstruction": "تعليمات الخط",
+    "lineInstructionPlaceholder": "وصف كيفية تنفيذ هذا الخط.",
+    "closeExpressionControls": "إغلاق عناصر التحكم في التعبير",
+    "pauseBetweenLines": "وقفة بين السطور"
   },
   "appSections": {
     "common": {
-      "save": "Save",
-      "useDefaults": "Use defaults",
-      "saveModel": "Save model",
-      "analyzeRoute": "Analyze route",
-      "analyzing": "Analyzing...",
-      "createNote": "Create note",
-      "loadingNotes": "Loading notes...",
-      "untitled": "Untitled",
-      "emptyNote": "Empty note"
+      "save": "حفظ",
+      "useDefaults": "استخدم الإعدادات الافتراضية",
+      "saveModel": "حفظ النموذج",
+      "analyzeRoute": "تحليل الطريق",
+      "analyzing": "جارٍ التحليل...",
+      "createNote": "إنشاء ملاحظة",
+      "loadingNotes": "جارٍ تحميل الملاحظات...",
+      "untitled": "بدون عنوان",
+      "emptyNote": "ملاحظة فارغة",
+      "loadingSection": "جارٍ تحميل القسم..."
     },
     "corrections": {
-      "demoTitle": "Smart corrections demo",
-      "demoDescription": "Shows how learned fixes become visible without relying on color alone.",
-      "appliedPill": "Correction applied",
-      "rawLabel": "Raw",
-      "fixedLabel": "Fixed",
-      "demoPrefix": "I am going",
-      "demoWrongWord": "two",
-      "demoFixedWord": "to",
-      "demoSuffix": "the store",
+      "demoTitle": "عرض التصحيحات الذكية",
+      "demoDescription": "يوضح كيف تصبح الإصلاحات التي تم تعلمها مرئية دون الاعتماد على اللون وحده.",
+      "appliedPill": "تم تطبيق التصحيح",
+      "rawLabel": "الخام",
+      "fixedLabel": "ثابت",
+      "demoPrefix": "انا ذاهب",
+      "demoWrongWord": "اثنان",
+      "demoFixedWord": "ل",
+      "demoSuffix": "المتجر",
       "summaryTitle": "How Vox Jot learns",
-      "summaryDescription": "Save corrections once and they automatically apply to future dictations. Use the dictionary view to inspect or remove entries.",
-      "openDictionary": "Open dictionary",
-      "automaticTitle": "Automatic learning",
-      "automaticDetail": "Edits you make near new text become candidate rules.",
-      "manualTitle": "Manual entries",
-      "manualDetail": "Add names, acronyms, or brand spellings directly."
+      "summaryDescription": "احفظ التصحيحات مرة واحدة وسيتم تطبيقها تلقائيًا على الإملاءات المستقبلية. استخدم عرض القاموس لفحص الإدخالات أو إزالتها.",
+      "openDictionary": "افتح القاموس",
+      "automaticTitle": "التعلم التلقائي",
+      "automaticDetail": "التعديلات التي تجريها بالقرب من النص الجديد تصبح قواعد مرشحة.",
+      "manualTitle": "الإدخالات اليدوية",
+      "manualDetail": "أضف الأسماء أو الاختصارات أو تهجئة العلامة التجارية مباشرة."
     },
     "routePreview": {
-      "title": "Processing route preview",
-      "description": "Dictation starts on-device; optional cleanup follows the selected refine provider.",
-      "localRoute": "Local route",
-      "cloudRoute": "Cloud route",
-      "localAi": "Local AI",
-      "cloudAi": "Cloud AI",
-      "localDetail": "Mic → device model → paste",
-      "cloudDetail": "Mic → network → provider",
-      "offlineCapable": "Offline capable",
-      "usesInternet": "Uses internet"
+      "title": "معالجة معاينة الطريق",
+      "description": "يبدأ الإملاء على الجهاز؛ يتبع التنظيف الاختياري موفر التحسين المحدد.",
+      "localRoute": "الطريق المحلي",
+      "cloudRoute": "الطريق السحابي",
+      "localAi": "AI المحلي",
+      "cloudAi": "السحابة AI",
+      "localDetail": "الميكروفون → طراز الجهاز → لصق",
+      "cloudDetail": "هيئة التصنيع العسكري → الشبكة → مزود",
+      "offlineCapable": "غير متصل قادر",
+      "usesInternet": "يستخدم الانترنت"
     },
     "retention": {
-      "title": "Recording retention",
-      "day1": "Day 1",
-      "day7": "Day 7",
-      "day30": "Day 30",
+      "title": "تسجيل الاحتفاظ",
+      "day1": "اليوم الأول",
+      "day7": "اليوم السابع",
+      "day30": "اليوم 30",
       "autoDelete": "Auto-delete",
-      "never": "Keep until removed",
-      "preserveLimit": "Keep saved history limit",
-      "days3": "Delete after 3 days",
-      "weeks2": "Delete after 2 weeks",
-      "months3": "Delete after 3 months"
+      "never": "احتفظ بها حتى تتم إزالتها",
+      "preserveLimit": "احتفظ بحد التاريخ المحفوظ",
+      "days3": "حذف بعد 3 أيام",
+      "weeks2": "حذف بعد 2 أسابيع",
+      "months3": "حذف بعد 3 أشهر"
     },
     "routeMonitor": {
-      "label": "Route monitor",
-      "error": "Error",
-      "analyzed": "Analyzed",
-      "waiting": "Waiting",
-      "inputStaged": "Input staged for route analysis",
-      "waitingForInput": "Waiting for dictation input...",
-      "analyzing": "Analyzing route...",
-      "complete": "Route analysis complete",
-      "ready": "Analyze route ready",
-      "errorEmpty": "Enter some text to inspect.",
-      "errorAnalysisFailed": "Analysis failed.",
-      "groupTitle": "Route debugger"
+      "label": "مراقب الطريق",
+      "error": "خطأ",
+      "analyzed": "تم تحليلها",
+      "waiting": "في انتظار",
+      "inputStaged": "تم تنظيم الإدخال لتحليل المسار",
+      "waitingForInput": "في انتظار إدخال الإملاء...",
+      "analyzing": "جارٍ تحليل المسار...",
+      "complete": "اكتمل تحليل الطريق",
+      "ready": "تحليل الطريق جاهز",
+      "errorEmpty": "أدخل بعض النص لفحصه.",
+      "errorAnalysisFailed": "فشل التحليل.",
+      "groupTitle": "مصحح أخطاء الطريق"
     },
     "sections": {
-      "recentHistoryTitle": "Recent history",
-      "recentHistoryDescription": "Review transcripts, playback recordings, and reuse or save past dictations.",
-      "translationTitle": "Translation",
-      "translationDescription": "Set the target language and choose how translated dictation should be processed.",
-      "myVoicesTitle": "My voices",
-      "myVoicesDescription": "Manage saved voice profiles and choose which one Vox Jot uses for spoken output.",
-      "voiceCloningTitle": "Voice cloning",
-      "voiceCloningDescription": "Create clone profiles from reference audio, then turn them into saved Listen voices.",
+      "recentHistoryTitle": "التاريخ الحديث",
+      "recentHistoryDescription": "قم بمراجعة النصوص وتشغيل التسجيلات وإعادة استخدام الإملاءات السابقة أو حفظها.",
+      "translationTitle": "الترجمة",
+      "translationDescription": "قم بتعيين اللغة الهدف واختر كيفية معالجة الإملاء المترجم.",
+      "myVoicesTitle": "أصوات",
+      "myVoicesDescription": "إدارة ملفات التعريف الصوتية وتحويل الصوت المسجل باستخدام Voice Changer غير المتصل بالإنترنت.",
+      "voiceCloningTitle": "استنساخ الصوت",
+      "voiceCloningDescription": "أنشئ ملفات تعريف مستنسخة من الصوت المرجعي، ثم قم بتحويلها إلى أصوات استماع محفوظة.",
       "jotPadTitle": "Jot Pad",
-      "jotPadDescription": "Capture quick notes in the floating pad and reopen them when you need to keep working.",
-      "studioTitle": "Studio",
-      "studioDescription": "Assign saved voices to characters, edit a script, and render story audio.",
-      "generatedAudioTitle": "Generated audio",
-      "generatedAudioDescription": "Replay, reveal, copy, star, or remove audio rendered from Studio.",
-      "dictionaryTitle": "Dictionary"
+      "jotPadDescription": "قم بتسجيل ملاحظات سريعة في اللوحة العائمة وأعد فتحها عندما تحتاج إلى مواصلة العمل.",
+      "studioTitle": "استوديو",
+      "studioDescription": "قم بتعيين الأصوات المحفوظة للشخصيات، وتحرير البرنامج النصي، وتقديم صوت القصة.",
+      "generatedAudioTitle": "الصوت المولد",
+      "generatedAudioDescription": "إعادة تشغيل الصوت الصادر من الاستوديو أو كشفه أو نسخه أو تمييزه بنجمة أو إزالته.",
+      "dictionaryTitle": "قاموس"
     },
     "groups": {
-      "dictation": "Dictation",
-      "app": "App",
-      "writeProfiles": "Write profiles",
-      "featureToggles": "Feature toggles",
-      "dictationShortcuts": "Dictation shortcuts",
-      "textActionShortcuts": "Text action shortcuts",
-      "speechOutputDevice": "Speech output device",
-      "speechCleanup": "Speech cleanup",
-      "translationProviderOverrides": "Translation provider overrides",
-      "labs": "Labs",
-      "localApi": "Local API",
-      "acknowledgments": "Acknowledgments",
-      "dictationLanguage": "Dictation language",
-      "appearance": "Appearance",
-      "appBehavior": "App behavior",
-      "manageFromViewsTitle": "Manage from these views",
-      "manageFromViewsDescription": "Each main view has full controls — Settings only carries the global on/off toggles.",
-      "microphoneInput": "Microphone input",
-      "cueSoundsOverlay": "Cue sounds & overlay",
-      "insertionBehavior": "Insertion behavior",
-      "textShaping": "Text shaping",
-      "translationProviderOverride": "Translation provider override",
-      "privacyControls": "Privacy",
-      "captureMode": "Capture mode",
-      "captureModeDescription": "Choose how often Vox Jot updates screen text while the app is open.",
-      "textRecognitionQuality": "Text recognition quality",
-      "textRecognitionQualityDescription": "Choose faster capture or more accurate text recognition.",
-      "recognitionEngine": "Recognition engine",
-      "recognitionTimeout": "Recognition timeout",
-      "recognitionTimeoutDescription": "How long Vox Jot waits when reading text from one screen capture.",
-      "recencyWindow": "Recency window",
-      "recencyWindowDescription": "How recent captured screen text must be before Vox Jot refreshes it.",
-      "contextAmount": "Context amount",
-      "contextAmountDescription": "How much recent screen text Vox Jot can use during dictation cleanup.",
-      "activeLabel": "Active"
+      "dictation": "الإملاء",
+      "app": "التطبيق",
+      "writeProfiles": "اكتب الملفات الشخصية",
+      "featureToggles": "تبديل الميزة",
+      "dictationShortcuts": "اختصارات الإملاء",
+      "textActionShortcuts": "اختصارات الإجراءات النصية",
+      "speechOutputDevice": "جهاز إخراج الكلام",
+      "speechCleanup": "تنظيف الكلام",
+      "translationProviderOverrides": "يتجاوز مزود الترجمة",
+      "labs": "مختبرات",
+      "localApi": "API المحلي",
+      "acknowledgments": "شكر وتقدير",
+      "dictationLanguage": "لغة الإملاء",
+      "appearance": "المظهر",
+      "appBehavior": "سلوك التطبيق",
+      "manageFromViewsTitle": "إدارة من هذه وجهات النظر",
+      "manageFromViewsDescription": "يحتوي كل عرض رئيسي على عناصر تحكم كاملة - تحتوي الإعدادات فقط على مفاتيح التشغيل/الإيقاف العامة.",
+      "microphoneInput": "إدخال الميكروفون",
+      "cueSoundsOverlay": "أصوات جديلة وتراكب",
+      "insertionBehavior": "سلوك الإدراج",
+      "textShaping": "تشكيل النص",
+      "translationProviderOverride": "تجاوز مزود الترجمة",
+      "privacyControls": "الخصوصية",
+      "captureMode": "وضع الالتقاط",
+      "captureModeDescription": "اختر عدد مرات تحديث Vox Jot لنص الشاشة أثناء فتح التطبيق.",
+      "textRecognitionQuality": "جودة التعرف على النص",
+      "textRecognitionQualityDescription": "اختر التقاط أسرع أو التعرف على النص بشكل أكثر دقة.",
+      "recognitionEngine": "محرك الاعتراف",
+      "recognitionTimeout": "مهلة الاعتراف",
+      "recognitionTimeoutDescription": "كم من الوقت ينتظر Vox Jot عند قراءة النص من لقطة شاشة واحدة.",
+      "recencyWindow": "نافذة الحداثة",
+      "recencyWindowDescription": "ما مدى حداثة نص الشاشة الذي تم التقاطه قبل أن يقوم Vox Jot بتحديثه.",
+      "contextAmount": "مقدار السياق",
+      "contextAmountDescription": "مقدار نص الشاشة الأخير الذي يمكن أن يستخدمه Vox Jot أثناء تنظيف الإملاء.",
+      "activeLabel": "نشط"
     },
     "soundPicker": {
-      "label": "Sound theme",
-      "description": "Choose the start and stop cue sounds Vox Jot plays around recording."
+      "label": "موضوع الصوت",
+      "description": "اختر أصوات إشارة البدء والإيقاف التي يتم تشغيلها بواسطة Vox Jot أثناء التسجيل."
     },
     "speechVolume": {
-      "label": "Speech volume",
-      "description": "Global playback volume for spoken output on the selected output device."
+      "label": "حجم الكلام",
+      "description": "حجم التشغيل العالمي للإخراج المنطوق على جهاز الإخراج المحدد."
     },
     "fillerWords": {
-      "title": "Custom filler words",
-      "description": "Add one filler word per line to override the default speech cleanup list. Leave this blank to use Vox Jot's defaults."
+      "title": "كلمات حشو مخصصة",
+      "description": "أضف كلمة حشو واحدة في كل سطر لتجاوز قائمة تنظيف الكلام الافتراضية. اترك هذا فارغًا لاستخدام إعدادات Vox Jot الافتراضية."
     },
     "translationProvider": {
-      "title": "Translation provider",
-      "description": "Choose which provider handles translation when Vox Jot uses AI-assisted translation routes.",
-      "modelTitle": "Translation model",
-      "modelDescription": "Pick a provider-specific translation model. This uses the same provider catalog as cleanup and rewrite setup.",
-      "appleNotice": "Apple Intelligence does not need a separate model override here.",
-      "translatePhraseKeysLabel": "Translate phrase keys",
-      "translatePhraseKeysDescription": "Apply translation rules to phrase-key expansions when they are inserted into translated output."
+      "title": "مزود الترجمة",
+      "description": "اختر الموفر الذي يتعامل مع الترجمة عندما يستخدم Vox Jot مسارات الترجمة بمساعدة AI.",
+      "modelTitle": "نموذج الترجمة",
+      "modelDescription": "اختر نموذج ترجمة خاصًا بالمزود. يستخدم هذا نفس كتالوج الموفر مثل إعداد التنظيف وإعادة الكتابة.",
+      "appleNotice": "لا يحتاج Apple Intelligence إلى تجاوز نموذج منفصل هنا.",
+      "translatePhraseKeysLabel": "ترجمة مفاتيح العبارة",
+      "translatePhraseKeysDescription": "قم بتطبيق قواعد الترجمة على توسعات مفاتيح العبارة عند إدراجها في المخرجات المترجمة."
     },
     "privacy": {
-      "localPrivacyModeLabel": "Local privacy mode",
-      "localPrivacyModeDescription": "Keep cleanup and translation on local routes when possible and disable cloud-only behavior when no local route is available.",
-      "localPrivacyNotice": "Local Privacy Mode is active. Vox Jot will prefer local cleanup and translation providers.",
-      "heroOnTitle": "Local privacy on",
-      "heroOnDetail": "Cleanup and translation prefer on-device providers. Cloud routes are skipped when a local route exists.",
-      "heroOffTitle": "Cloud routes allowed",
-      "heroOffDetail": "Faster cleanup using configured cloud providers. Switch on local privacy to keep everything offline.",
-      "storageGroupTitle": "Storage",
-      "historyGroupTitle": "History",
-      "filesGroupTitle": "Files",
+      "localPrivacyModeLabel": "وضع الخصوصية المحلي",
+      "localPrivacyModeDescription": "استمر في التنظيف والترجمة على المسارات المحلية عندما يكون ذلك ممكنًا وقم بتعطيل سلوك السحابة فقط في حالة عدم توفر مسار محلي.",
+      "localPrivacyNotice": "وضع الخصوصية المحلي نشط. سيفضل Vox Jot موفري التنظيف والترجمة المحليين.",
+      "heroOnTitle": "تفعيل الخصوصية المحلية",
+      "heroOnDetail": "يفضل التنظيف والترجمة موفري الخدمات الموجودين على الجهاز. يتم تخطي المسارات السحابية عند وجود مسار محلي.",
+      "heroOffTitle": "الطرق السحابية مسموح بها",
+      "heroOffDetail": "تنظيف أسرع باستخدام موفري الخدمات السحابية الذين تم تكوينهم. قم بتشغيل الخصوصية المحلية لإبقاء كل شيء في وضع عدم الاتصال.",
+      "storageGroupTitle": "التخزين",
+      "historyGroupTitle": "التاريخ",
+      "filesGroupTitle": "ملفات",
       "previewLocalFirst": "Local-first",
-      "previewEnforced": "Enforced",
-      "previewAllowed": "Allowed",
-      "previewAudioCapture": "Audio capture",
-      "previewCleanup": "Cleanup",
-      "previewProvider": "Provider"
+      "previewEnforced": "القسري",
+      "previewAllowed": "مسموح",
+      "previewAudioCapture": "التقاط الصوت",
+      "previewCleanup": "تنظيف",
+      "previewProvider": "مزود"
     },
     "diagnostics": {
-      "debugRevealNotice": "Press Cmd/Ctrl + Shift + D to reveal the deeper debug tools when you need them.",
-      "labsTitle": "Experimental Labs",
-      "labsDescription": "Try in-progress features. They may change or disappear between updates.",
-      "localApiTitle": "Local API",
-      "localApiDescription": "Expose Vox Jot to local scripts and shortcuts on this machine.",
-      "developerTitle": "Developer tools",
-      "developerDescription": "Inspect log files, route analysis, and lower-level debugging when debug mode is on.",
-      "terminalCommand": "vox-jot --diagnostics",
-      "terminalServicesOnline": "services online",
-      "terminalInputReady": "input ready",
-      "terminalDebugEnabled": "debug ENABLED",
-      "terminalDebugOff": "debug off",
-      "statOn": "On",
-      "statOff": "Off",
-      "statLabs": "Labs",
-      "statDebug": "Debug",
-      "debugToggleLabel": "Debug mode",
-      "debugToggleDescription": "Reveals developer tools, the route debugger, and log level controls. Also bumps file logs to Debug verbosity. Shortcut: ⌘/Ctrl + Shift + D."
+      "debugRevealNotice": "اضغط على Cmd/Ctrl + Shift + D للكشف عن أدوات التصحيح الأعمق عندما تحتاج إليها.",
+      "labsTitle": "المعامل التجريبية",
+      "labsDescription": "جرب الميزات قيد التقدم. وقد تتغير أو تختفي بين التحديثات.",
+      "localApiTitle": "API المحلي",
+      "localApiDescription": "قم بتعريض Vox Jot للنصوص والاختصارات المحلية الموجودة على هذا الجهاز.",
+      "developerTitle": "أدوات المطور",
+      "developerDescription": "افحص ملفات السجل، وتحليل المسار، وتصحيح الأخطاء على المستوى الأدنى عند تشغيل وضع التصحيح.",
+      "terminalCommand": "vox-jot --التشخيص",
+      "terminalServicesOnline": "الخدمات عبر الإنترنت",
+      "terminalInputReady": "الإدخال جاهز",
+      "terminalDebugEnabled": "تصحيح ENABLED",
+      "terminalDebugOff": "تصحيح قبالة",
+      "statOn": "على",
+      "statOff": "إيقاف",
+      "statLabs": "مختبرات",
+      "statDebug": "تصحيح",
+      "debugToggleLabel": "وضع التصحيح",
+      "debugToggleDescription": "يكشف عن أدوات المطورين ومصحح أخطاء المسار وعناصر التحكم في مستوى السجل. يعمل أيضًا على رفع سجلات الملفات إلى إسهاب التصحيح. الاختصار: ⌘/Ctrl + Shift + D."
     },
     "about": {
-      "version": "Version {{version}}",
-      "versionUnknown": "unknown",
-      "summaryPrimary": "Vox Jot is built around local speech recognition, translation, and playback tooling including Whisper-family models, TTS engines, and system typing integrations.",
-      "summarySecondary": "The app combines local audio capture, AI cleanup, history, and Jot Pad into one desktop workflow.",
-      "highlightsTitle": "What's inside",
-      "highlightLocalTitle": "Local speech",
-      "highlightLocalDetail": "Whisper / Parakeet inference with optional Silero VAD.",
-      "highlightRefineTitle": "Refine providers",
-      "highlightRefineDetail": "Plug in OpenAI, Anthropic, Ollama, Apple Intelligence, and more.",
-      "highlightListenTitle": "Listen voices",
-      "highlightListenDetail": "Custom TTS packs, voice cloning, and Story Studio.",
-      "stackTitle": "Built with",
+      "version": "الإصدار {{version}}",
+      "versionUnknown": "غير معروف",
+      "summaryPrimary": "تم تصميم Vox Jot حول أدوات التعرف على الكلام والترجمة والتشغيل المحلية بما في ذلك نماذج عائلة Whisper ومحركات TTS وتكامل كتابة النظام.",
+      "summarySecondary": "يجمع التطبيق بين التقاط الصوت المحلي وتنظيف AI والتاريخ وJot Pad في سير عمل سطح مكتب واحد.",
+      "highlightsTitle": "ماذا يوجد بالداخل",
+      "highlightLocalTitle": "خطاب محلي",
+      "highlightLocalDetail": "Whisper / Parakeet الاستدلال مع Silero VAD الاختياري.",
+      "highlightRefineTitle": "تحسين مقدمي الخدمة",
+      "highlightRefineDetail": "قم بتوصيل OpenAI، وAnthropic، وOllama، وApple Intelligence، والمزيد.",
+      "highlightListenTitle": "استمع للأصوات",
+      "highlightListenDetail": "حزم TTS المخصصة واستنساخ الصوت واستوديو القصة.",
+      "stackTitle": "بنيت مع",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust audio pipeline"
     },
     "jotPad": {
-      "empty": "Start your first note",
-      "emptyDescription": "Dictate or type into the Jot Pad to keep thoughts handy.",
-      "emptyExample": "For example, dictate meeting notes here, then refine them into a clean summary."
+      "empty": "ابدأ ملاحظتك الأولى",
+      "emptyDescription": "قم بالإملاء أو الكتابة في Jot Pad لإبقاء الأفكار في متناول يدك.",
+      "emptyExample": "على سبيل المثال، قم بإملاء ملاحظات الاجتماع هنا، ثم قم بتنقيحها وتحويلها إلى ملخص واضح."
     },
     "hero": {
       "general": {
-        "eyebrow": "Settings",
-        "title": "App & Dictation",
-        "description": "Choose how Vox Jot looks, which language it listens for, and how the app behaves on this Mac.",
-        "themeStat": "Theme",
-        "fontStat": "Text size",
-        "languageStat": "Listening",
-        "previewLabel": "App preview",
-        "autoLabel": "Auto"
+        "eyebrow": "الإعدادات",
+        "title": "التطبيق والإملاء",
+        "description": "اختر كيف يبدو Vox Jot، واللغة التي يستمع إليها، وكيف يتصرف التطبيق على Mac.",
+        "themeStat": "الموضوع",
+        "fontStat": "حجم النص",
+        "languageStat": "الاستماع",
+        "previewLabel": "معاينة التطبيق",
+        "autoLabel": "تلقائي"
       },
       "shortcuts": {
-        "eyebrow": "Keyboard",
-        "title": "Shortcuts",
-        "description": "Trigger dictation, refine selected text, and play back speech without leaving your keyboard.",
-        "primary": "Primary",
-        "textActions": "Text actions"
+        "eyebrow": "لوحة المفاتيح",
+        "title": "الاختصارات",
+        "description": "يمكنك تشغيل الإملاء وتحسين النص المحدد وتشغيل الكلام دون مغادرة لوحة المفاتيح.",
+        "primary": "الابتدائية",
+        "textActions": "إجراءات النص"
       },
       "recording": {
-        "eyebrow": "Audio",
-        "title": "Recording & Devices",
-        "description": "Pick the microphone Vox Jot listens to, tune feedback cues, and shape how your speech is cleaned up.",
-        "input": "Input",
-        "output": "Output",
-        "monitoring": "Monitoring"
+        "eyebrow": "الصوت",
+        "title": "التسجيل والأجهزة",
+        "description": "اختر الميكروفون الذي يستمع إليه Vox Jot، وقم بضبط إشارات التعليقات، وشكل كيفية تنظيم كلامك.",
+        "input": "الإدخال",
+        "output": "الإخراج",
+        "monitoring": "المراقبة"
       },
       "outputPaste": {
-        "eyebrow": "Delivery",
-        "title": "Output & Paste",
-        "description": "Control how transcribed text lands in the focused app — instant paste, simulated typing, or clipboard.",
-        "previewSource": "Spoken",
-        "previewTarget": "Pasted into focused app"
+        "eyebrow": "التسليم",
+        "title": "الإخراج واللصق",
+        "description": "التحكم في كيفية وصول النص المكتوب إلى التطبيق الذي يتم التركيز عليه - اللصق الفوري، أو محاكاة الكتابة، أو الحافظة.",
+        "previewSource": "المنطوقة",
+        "previewTarget": "تم لصقه في التطبيق المركز"
       },
       "corrections": {
-        "eyebrow": "Learning",
-        "title": "Corrections",
-        "description": "Teach Vox Jot how to spell names, brands, and recurring phrases so dictation looks right the first time."
+        "eyebrow": "التعلم",
+        "title": "التصحيحات",
+        "description": "قم بتعليم Vox Jot كيفية تهجئة الأسماء والعلامات التجارية والعبارات المتكررة حتى يبدو الإملاء صحيحًا من المرة الأولى."
       },
       "models": {
-        "eyebrow": "Intelligence",
-        "title": "Models & AI",
-        "description": "Choose providers, route requests, and decide what runs on this device versus in the cloud."
+        "eyebrow": "الذكاء",
+        "title": "النماذج وAI",
+        "description": "اختر مقدمي الخدمة، وقم بتوجيه الطلبات، وحدد ما يتم تشغيله على هذا الجهاز مقابل ما يتم تشغيله في السحابة."
       },
       "screenContext": {
-        "eyebrow": "Context",
-        "title": "Screen Context",
-        "description": "Let Vox Jot glance at visible text near the focused app so cleanup and rewrites stay on topic."
+        "eyebrow": "السياق",
+        "title": "سياق الشاشة",
+        "description": "اسمح لـ Vox Jot بإلقاء نظرة على النص المرئي بالقرب من التطبيق الذي يتم التركيز عليه حتى تظل عملية التنظيف وإعادة الكتابة في الموضوع."
       },
       "privacy": {
-        "eyebrow": "Your data",
-        "title": "Privacy & Storage",
-        "description": "Decide what stays on-device, how long recordings linger, and where files live on disk."
+        "eyebrow": "البيانات الخاصة بك",
+        "title": "الخصوصية والتخزين",
+        "description": "حدد ما يبقى على الجهاز، ومدة استمرار التسجيلات، ومكان وجود الملفات على القرص."
       },
       "diagnostics": {
-        "eyebrow": "Advanced",
+        "eyebrow": "متقدم",
         "title": "Labs & Diagnostics",
-        "description": "Try experimental features, expose the local API, and inspect what Vox Jot is doing under the hood."
+        "description": "جرب الميزات التجريبية، واكشف عن API المحلي، وافحص ما يفعله Vox Jot تحت الغطاء."
       },
       "about": {
-        "eyebrow": "About",
+        "eyebrow": "حول",
         "title": "Vox Jot",
-        "description": "Local-first dictation, refine, and listen — built around Whisper-family models, custom TTS engines, and system-level typing integrations."
+        "description": "الإملاء المحلي الأول والتحسين والاستماع - تم تصميمه حول نماذج عائلة Whisper ومحركات TTS المخصصة وعمليات تكامل الكتابة على مستوى النظام."
       }
     },
     "cross": {
       "writeProfiles": {
-        "title": "Manage write profiles",
-        "description": "App-aware tone, rewrites, and Phrase Keys",
-        "destination": "Refine"
+        "title": "إدارة ملفات تعريف الكتابة",
+        "description": "النغمة المدركة للتطبيق، وإعادة الكتابة، ومفاتيح العبارات",
+        "destination": "صقل"
       },
       "speechModels": {
-        "title": "Browse speech models",
+        "title": "تصفح نماذج الكلام",
         "description": "Download, swap, and manage Whisper/Parakeet builds",
-        "destination": "Dictate"
+        "destination": "إملاء"
       },
       "refineModels": {
-        "title": "Browse refine models",
-        "description": "Cleanup, translate, and rewrite providers",
-        "destination": "Refine"
+        "title": "تصفح نماذج الصقل",
+        "description": "تنظيف وترجمة وإعادة كتابة مقدمي الخدمات",
+        "destination": "صقل"
       },
       "voices": {
-        "title": "Manage voices",
-        "description": "Voice packs, cloning, and playback",
-        "destination": "Listen"
+        "title": "إدارة الأصوات",
+        "description": "حزم الصوت والاستنساخ والتشغيل",
+        "destination": "استمع"
       },
       "translation": {
-        "title": "Translation",
-        "description": "Set target language and rules",
-        "destination": "Refine"
+        "title": "الترجمة",
+        "description": "قم بتعيين اللغة والقواعد المستهدفة",
+        "destination": "صقل"
       },
       "dictionary": {
-        "title": "Open dictionary",
+        "title": "افتح القاموس",
         "description": "Review every correction Vox Jot has learned",
-        "destination": "Dictate"
+        "destination": "إملاء"
       }
     },
     "shortcuts": {
       "groups": {
         "dictate": {
-          "title": "Dictate",
-          "description": "Start or stop dictation, cancel, and open the command menu."
+          "title": "إملاء",
+          "description": "بدء الإملاء أو إيقافه، والإلغاء، وفتح قائمة الأوامر."
         },
         "refine": {
-          "title": "Refine selected text",
-          "description": "Rewrite or translate whatever is currently selected."
+          "title": "تحسين النص المحدد",
+          "description": "أعد كتابة أو ترجمة كل ما تم تحديده حاليًا."
         },
         "listen": {
-          "title": "Listen",
-          "description": "Speak selected text aloud and control playback."
+          "title": "استمع",
+          "description": "نطق النص المحدد بصوت عالٍ والتحكم في التشغيل."
         }
       },
       "preview": {
-        "title": "Quick keys",
-        "subtitle": "Tap a chord to record dictation, refine, or listen.",
-        "hold": "Hold to record"
+        "title": "مفاتيح سريعة",
+        "subtitle": "اضغط على وتر لتسجيل الإملاء أو التنقيح أو الاستماع.",
+        "hold": "اضغط للتسجيل"
       }
     },
     "device": {
-      "input": "Microphone",
-      "output": "Speaker",
-      "feedback": "Audio feedback",
-      "previewTitle": "Audio pipeline preview",
-      "previewDescription": "Vox Jot listens, optionally enhances voice, and plays cues during the dictation loop.",
-      "stepMic": "Mic input",
-      "stepEnhance": "Voice clarity",
-      "stepFeedback": "Cue sounds",
-      "stepOutput": "TTS playback",
-      "noDevice": "No device selected"
+      "input": "ميكروفون",
+      "output": "المتحدث",
+      "feedback": "ردود الفعل الصوتية",
+      "previewTitle": "معاينة خط أنابيب الصوت",
+      "previewDescription": "يستمع Vox Jot إلى الصوت ويحسنه بشكل اختياري ويشغل الإشارات أثناء حلقة الإملاء.",
+      "stepMic": "إدخال الميكروفون",
+      "stepEnhance": "وضوح الصوت",
+      "stepFeedback": "أصوات جديلة",
+      "stepOutput": "تشغيل TTS",
+      "noDevice": "لم يتم تحديد أي جهاز"
     },
     "output": {
-      "previewTitle": "Output preview",
-      "previewDescription": "See how Vox Jot delivers transcribed text into the focused app.",
-      "sourceLabel": "Spoken",
-      "targetLabel": "Inserted",
-      "sampleSource": "Send that report when you get a minute",
-      "sampleTarget": "Send that report when you get a minute.",
-      "methodTitle": "Insertion methods",
-      "methodPaste": "Clipboard paste",
-      "methodPasteDetail": "Fastest. Replaces your clipboard temporarily.",
-      "methodType": "Simulated typing",
-      "methodTypeDetail": "Works in apps that block paste — slower but reliable.",
-      "methodNone": "Copy only",
-      "methodNoneDetail": "Just puts the text on your clipboard."
+      "previewTitle": "معاينة الإخراج",
+      "previewDescription": "تعرف على كيفية قيام Vox Jot بتوصيل النص المكتوب إلى التطبيق الذي يتم التركيز عليه.",
+      "sourceLabel": "المنطوقة",
+      "targetLabel": "تم إدراجه",
+      "sampleSource": "أرسل هذا التقرير عندما تحصل على دقيقة",
+      "sampleTarget": "أرسل هذا التقرير عندما تحصل على دقيقة.",
+      "methodTitle": "طرق الإدراج",
+      "methodPaste": "لصق الحافظة",
+      "methodPasteDetail": "الأسرع. يستبدل الحافظة الخاصة بك مؤقتا.",
+      "methodType": "الكتابة المحاكية",
+      "methodTypeDetail": "يعمل في التطبيقات التي تحظر اللصق، وهو أبطأ ولكن يمكن الاعتماد عليه.",
+      "methodNone": "نسخ فقط",
+      "methodNoneDetail": "فقط يضع النص في الحافظة الخاصة بك."
     },
     "models": {
-      "routeTitle": "Provider routing",
-      "routeDescription": "Vox Jot picks a route per request. Local stays offline; cloud uses your selected providers.",
+      "routeTitle": "توجيه الموفر",
+      "routeDescription": "يختار Vox Jot طريقًا لكل طلب. يبقى المحلي دون اتصال؛ تستخدم السحابة مقدمي الخدمات الذين اخترتهم.",
       "localRouteHeading": "Local-first",
-      "cloudRouteHeading": "Cloud assist",
-      "advancedEvaluationTitle": "Refine model evaluation (advanced)",
-      "fileTranscriptionTitle": "File transcription",
-      "fileTranscriptionDetail": "Drop in audio or video to transcribe",
-      "managementTitle": "Manage models from these views",
-      "managementSubtitle": "Settings only carries provider routing. Browse, download, and swap individual models in the dedicated catalogs.",
-      "cleanupLabel": "Cleanup",
-      "routeLabel": "Route",
-      "routeLocal": "Local",
-      "routeCloud": "Cloud"
+      "cloudRouteHeading": "مساعدة السحابة",
+      "advancedEvaluationTitle": "تحسين تقييم النموذج (متقدم)",
+      "fileTranscriptionTitle": "نسخ الملف",
+      "fileTranscriptionDetail": "قم بإسقاط الصوت أو الفيديو للنسخ",
+      "managementTitle": "إدارة النماذج من طرق العرض هذه",
+      "managementSubtitle": "الإعدادات تحمل فقط توجيه الموفر. تصفح النماذج الفردية وتنزيلها وتبادلها في الكتالوجات المخصصة.",
+      "cleanupLabel": "تنظيف",
+      "routeLabel": "الطريق",
+      "routeLocal": "محلي",
+      "routeCloud": "سحابة"
     },
     "screenContext": {
-      "previewBadgeOn": "Capture enabled",
-      "previewBadgeOff": "Capture paused",
-      "permissionTitle": "Screen Recording permission",
-      "permissionDetail": "Required so Vox Jot can read the visible text near the active app.",
-      "permissionGranted": "Granted",
-      "permissionMissing": "Action required",
-      "advancedToggle": "Advanced capture tuning",
-      "previewLabel": "Visible text → context window",
-      "previewLive": "Live",
-      "previewPaused": "Paused",
-      "previewActiveApp": "Active app",
-      "previewContextText": "Context text",
-      "captureStatusLabel": "Capture status",
-      "permissionStatLabel": "Screen permission",
-      "cacheStatLabel": "Cache size",
-      "debugPreviewHeader": "Debug preview"
+      "previewBadgeOn": "تم تمكين الالتقاط",
+      "previewBadgeOff": "تم إيقاف الالتقاط مؤقتًا",
+      "permissionTitle": "إذن تسجيل الشاشة",
+      "permissionDetail": "مطلوب حتى يتمكن Vox Jot من قراءة النص المرئي بالقرب من التطبيق النشط.",
+      "permissionGranted": "منح",
+      "permissionMissing": "الإجراء مطلوب",
+      "advancedToggle": "ضبط الالتقاط المتقدم",
+      "previewLabel": "نص مرئي → نافذة السياق",
+      "previewLive": "مباشر",
+      "previewPaused": "متوقف مؤقتًا",
+      "previewActiveApp": "التطبيق النشط",
+      "previewContextText": "نص السياق",
+      "captureStatusLabel": "التقاط الحالة",
+      "permissionStatLabel": "إذن الشاشة",
+      "cacheStatLabel": "حجم ذاكرة التخزين المؤقت",
+      "debugPreviewHeader": "معاينة التصحيح"
     },
     "nav": {
       "dictate": {
-        "history": "Recent History",
-        "corrections": "Dictionary",
+        "history": "التاريخ الحديث",
+        "corrections": "قاموس",
         "jotPad": "Jot Pad",
-        "fileTranscription": "File Transcription"
+        "fileTranscription": "نسخ الملف"
       },
       "refine": {
-        "writeProfiles": "Write Profiles",
-        "phraseKeys": "Phrase Keys",
-        "translation": "Translation"
+        "writeProfiles": "كتابة الملفات الشخصية",
+        "phraseKeys": "مفاتيح العبارات",
+        "translation": "الترجمة"
       },
       "listen": {
-        "createVoices": "Create Voices",
-        "myVoices": "Voices",
-        "voiceCloning": "Voice Cloning",
-        "studio": "Studio",
-        "generatedAudio": "Generated Audio"
+        "createVoices": "إنشاء أصوات",
+        "myVoices": "أصوات",
+        "voiceCloning": "استنساخ الصوت",
+        "studio": "استوديو",
+        "generatedAudio": "الصوت المولد"
       },
       "settings": {
-        "general": "App & Dictation",
-        "shortcuts": "Shortcuts",
-        "recordingDevices": "Recording & Devices",
-        "outputPaste": "Output & Paste",
-        "correctionsSettings": "Corrections",
-        "aiSetup": "Models & AI",
-        "modelTesting": "Testing",
-        "screenContext": "Screen Context",
-        "privacy": "Privacy & Storage",
-        "diagnostics": "Diagnostics",
-        "about": "About Vox Jot"
+        "general": "التطبيق والإملاء",
+        "shortcuts": "الاختصارات",
+        "recordingDevices": "التسجيل والأجهزة",
+        "outputPaste": "الإخراج واللصق",
+        "correctionsSettings": "التصحيحات",
+        "aiSetup": "النماذج وAI",
+        "modelTesting": "اختبار",
+        "screenContext": "سياق الشاشة",
+        "privacy": "الخصوصية والتخزين",
+        "diagnostics": "التشخيص",
+        "about": "حول Vox Jot"
       }
     }
   },
   "testing": {
     "tabs": {
-      "fileAsr": "File ASR",
+      "fileAsr": "ملف ASR",
       "llm": "LLM",
-      "stt": "Live STT",
-      "screenOcr": "Screen OCR"
+      "stt": "يعيش STT",
+      "screenOcr": "شاشة OCR"
     },
     "notRanked": {
-      "title": "Not yet ranked",
-      "description": "Models awaiting benchmark, blocked, or pending download."
+      "title": "لم يتم تصنيفها بعد",
+      "description": "النماذج التي تنتظر المعيار أو المحظورة أو في انتظار التنزيل."
     },
     "empty": {
-      "title": "No ranked results",
-      "description": "Run the benchmark to populate this leaderboard."
+      "title": "لا توجد نتائج مرتبة",
+      "description": "قم بتشغيل المعيار لملء لوحة المتصدرين هذه."
     },
     "metrics": {
-      "device": "Device",
-      "promptProfile": "Profile",
-      "score": "Score",
-      "pass": "Pass",
-      "phrases": "Phrases",
-      "latency": "Latency",
-      "confidence": "Confidence"
+      "device": "الجهاز",
+      "promptProfile": "الملف الشخصي",
+      "score": "النتيجة",
+      "pass": "تمرير",
+      "phrases": "عبارات",
+      "latency": "الكمون",
+      "confidence": "الثقة"
     },
     "categories": {
-      "strongest": "Strongest",
-      "weakest": "Weakest"
+      "strongest": "الأقوى",
+      "weakest": "الأضعف"
     },
     "counts": {
-      "tested": "{{count}} tested",
-      "pending": "{{count}} pending",
-      "blocked": "{{count}} blocked"
+      "tested": "تم اختبار {{count}}",
+      "pending": "{{count}} معلق",
+      "blocked": "تم حظر {{count}}"
     }
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Select an option..."
+      "placeholder": "حدد خيارًا..."
     },
     "pathDisplay": {
-      "pathLabel": "Filesystem path"
+      "pathLabel": "مسار نظام الملفات"
     },
     "resetButton": {
-      "label": "Reset"
+      "label": "إعادة تعيين"
     }
+  },
+  "translationSettings": {
+    "sections": {
+      "selection": {
+        "title": "ترجمة الاختيار",
+        "description": "اختر كيفية تسليم ترجمة النص المميز."
+      },
+      "output": {
+        "title": "مخرجات الترجمة",
+        "description": "اختر ما إذا كان الإملاء سيبقى في اللغة المصدر، أو تتم ترجمته، أو يعرض كلاً من المصدر والترجمة."
+      },
+      "targetLanguage": {
+        "title": "اللغة المستهدفة",
+        "description": "اختر اللغة التي يجب أن تترجم إليها Vox Jot."
+      },
+      "method": {
+        "title": "طريقة الترجمة",
+        "description": "يعمل تلقائياً بالنسبة لمعظم الناس. اختر طريقة محددة فقط إذا كنت بحاجة إليها."
+      },
+      "bilingualLayout": {
+        "title": "تخطيط ثنائي اللغة",
+        "description": "اختر الكتلة التي تظهر أولاً عند عرض المصدر والترجمة."
+      },
+      "dictationDestination": {
+        "title": "وجهة الإملاء",
+        "description": "اختر ما إذا كان سيتم لصق الإملاء المترجم مباشرةً، أو فتح المعاينة أولاً، أو الانتقال إلى Jot Pad."
+      }
+    },
+    "labels": {
+      "detectedSource": "المصدر المكتشف",
+      "targetOutput": "الإخراج المستهدف"
+    },
+    "output": {
+      "source": {
+        "title": "المصدر فقط",
+        "description": "احتفظ بالنص الذي تم إملاءه باللغة المكتشفة."
+      },
+      "translated": {
+        "title": "مترجمة فقط",
+        "description": "الصق النتيجة المترجمة فقط."
+      },
+      "bilingual": {
+        "title": "ثنائي اللغة",
+        "description": "إظهار الترجمة والأصل معًا."
+      }
+    },
+    "route": {
+      "auto": {
+        "title": "تلقائي",
+        "description": "اختر أفضل طريق متاح لهذه اللغة."
+      },
+      "whisperEnglish": {
+        "title": "سريع على الجهاز",
+        "description": "استخدم مسار الترجمة الإنجليزية المحلي الخاص بـ Whisper."
+      },
+      "localAi": {
+        "title": "AI المحلي",
+        "description": "استخدم نموذجًا على الجهاز عند تكوينه."
+      },
+      "remoteAi": {
+        "title": "على الانترنت AI",
+        "description": "استخدم موفر السحابة المحدد."
+      },
+      "offlinePack": {
+        "title": "حزمة غير متصل",
+        "description": "استخدم حزمة اللغة المثبتة."
+      }
+    },
+    "bilingual": {
+      "translationFirst": {
+        "title": "الترجمة أولا",
+        "description": "الرصاص مع الكتلة المترجمة."
+      },
+      "sourceFirst": {
+        "title": "المصدر أولا",
+        "description": "قم بالقيادة بالكتلة الأصلية التي تمليها."
+      }
+    },
+    "destination": {
+      "pasteInPlace": {
+        "title": "لصق في مكانه",
+        "description": "إرسال الإملاء المترجم إلى التطبيق المركز."
+      },
+      "previewThenPaste": {
+        "title": "المعاينة أولا",
+        "description": "قم بتأكيد الترجمة قبل اللصق."
+      },
+      "openInJotPad": {
+        "title": "فتح في Jot Pad",
+        "description": "قم بتوجيه النص المترجم إلى لوحة المسودة."
+      }
+    },
+    "selection": {
+      "replaceSelection": {
+        "title": "استبدال التحديد",
+        "description": "مبادلة النص المميز مع الترجمة."
+      },
+      "previewThenReplace": {
+        "title": "المعاينة أولا",
+        "description": "قم بالمراجعة قبل استبدال النص المحدد."
+      },
+      "openInJotPad": {
+        "title": "فتح في Jot Pad",
+        "description": "أرسل التحديد المترجم إلى لوحة المسودة."
+      }
+    }
+  },
+  "appModes": {
+    "dictate": "إملاء",
+    "refine": "صقل",
+    "listen": "استمع"
+  },
+  "storyAudio": {
+    "generatedAudioAriaLabel": "تم إنشاء قصة صوتية",
+    "viewAriaLabel": "عرض الصوت الذي تم إنشاؤه",
+    "tabs": {
+      "timeline": "الجدول الزمني",
+      "player": "لاعب"
+    },
+    "position": "{{current}} من {{total}}",
+    "loading": "جارٍ تحميل القصة الصوتية...",
+    "emptyTitle": "لم يتم إنشاء الصوت حتى الآن",
+    "emptyDescription": "ستظهر القصص التي تم إنشاؤها هنا بعد العرض الأول.",
+    "noSelectionTitle": "لم يتم تحديد الصوت الذي تم إنشاؤه",
+    "noSelectionDescription": "قم بعرض الصوت في الاستوديو أو قم بالتبديل مرة أخرى إلى الجدول الزمني.",
+    "unknownDate": "تاريخ غير معروف",
+    "today": "اليوم",
+    "timelineAriaLabel": "الجدول الزمني الصوتي",
+    "controls": {
+      "speed": "السرعة",
+      "saveAs": "حفظ باسم",
+      "saveCopy": "حفظ نسخة",
+      "saveProcessedCopy": "حفظ النسخة المعالجة"
+    },
+    "starred": "المميزة بنجمة",
+    "noScriptSaved": "لم يتم حفظ أي برنامج نصي مع هذا الملف الصوتي.",
+    "untitledStory": "قصة بلا عنوان",
+    "titleAriaLabel": "عنوان القصة الصوتية",
+    "errors": {
+      "load": "تعذر تحميل القصة الصوتية.",
+      "copyScript": "لا يمكن نسخ نص القصة."
+    },
+    "actions": {
+      "copyScript": "نسخ البرنامج النصي",
+      "showInFolder": "إظهار الملف الصوتي في المجلد",
+      "star": "قصة ستار الصوتية",
+      "unstar": "Unstar قصة الصوت",
+      "delete": "حذف صوت القصة",
+      "cancelDelete": "إلغاء الحذف",
+      "openInPlayer": "فتح في المشغل",
+      "rename": "إعادة تسمية القصة الصوتية",
+      "renameWithTitle": "إعادة تسمية الصوت للقصة: {{title}}",
+      "previous": "الصوت الذي تم إنشاؤه سابقًا",
+      "next": "الصوت الذي تم إنشاؤه التالي",
+      "cancelRender": "إلغاء عرض القصة"
+    },
+    "meta": {
+      "lines": "خط {{count}}",
+      "lines_plural": "خطوط {{count}}",
+      "audioFile": "ملف صوتي",
+      "cast": "{{count}} عضو فريق التمثيل",
+      "cast_plural": "فريق التمثيل {{count}}",
+      "generatedIn": "ولدت في",
+      "scriptSaved": "تم حفظ البرنامج النصي",
+      "audioOnly": "الصوت فقط",
+      "expressionTags": "علامات التعبير",
+      "inlinePrompt": "موجه مضمنة",
+      "lineProgress": "خطوط {{current}}/{{total}}"
+    },
+    "status": {
+      "rendering": "التقديم",
+      "preparing": "تحضير",
+      "queued": "في قائمة الانتظار",
+      "queuedAtPosition": "في قائمة الانتظار في الموضع {{position}}",
+      "assembling": "تجميع الصوت النهائي",
+      "failed": "فشل الجيل",
+      "cancelled": "تم الإلغاء",
+      "generatingLine": "خط التوليد {{current}} من {{total}}",
+      "generating": "توليد",
+      "queuePosition": "قائمة الانتظار #{{position}}"
+    }
+  },
+  "detail": {
+    "unknownSection": "قسم غير معروف: {{section}}"
   }
 }

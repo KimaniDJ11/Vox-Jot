@@ -209,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <LayoutGroup id="sidebar-rows">
           <nav
-            aria-label={t("sidebar.settingsLabel", {
+            aria-label={t("sidebar.sectionNavigation", {
               defaultValue: "Section navigation",
             })}
             className="sidebar__nav min-h-0 flex-1 overflow-y-auto"

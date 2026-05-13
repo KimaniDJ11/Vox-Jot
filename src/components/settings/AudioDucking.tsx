@@ -30,7 +30,7 @@ export const AudioDucking: React.FC<AudioDuckingToggleProps> = ({
         <div className="space-y-3">
           <DuckingMeter
             icon={<Volume2 className="h-4 w-4" aria-hidden />}
-            label="System"
+            label={t("settings.debug.audioDucking.system")}
             values={
               enabled
                 ? [84, 72, 42, 30, 34, 56, 74]
@@ -40,15 +40,15 @@ export const AudioDucking: React.FC<AudioDuckingToggleProps> = ({
           />
           <DuckingMeter
             icon={<Mic className="h-4 w-4" aria-hidden />}
-            label="Input"
+            label={t("settings.debug.audioDucking.input")}
             values={[18, 24, 52, 76, 82, 58, 28]}
           />
         </div>
         <div className="mt-3 flex min-h-[44px] items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
           <p className="text-sm font-semibold text-[var(--text)]">
             {enabled
-              ? "Background audio dips while recording"
-              : "Background audio stays unchanged"}
+              ? t("settings.debug.audioDucking.enabledStatus")
+              : t("settings.debug.audioDucking.disabledStatus")}
           </p>
           <SwitchControl
             checked={enabled}

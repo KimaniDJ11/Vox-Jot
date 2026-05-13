@@ -40,6 +40,8 @@ export const ListenCreateVoicesSection: React.FC = () => {
           defaultValue:
             "Preview models, tune delivery, and save a new voice profile without changing the active voice.",
         })}
+        showTitle={false}
+        descriptionOnlyGap="controls"
       >
         <CreateVoicesPanel showGroupTitle={false} />
       </SettingsGroup>

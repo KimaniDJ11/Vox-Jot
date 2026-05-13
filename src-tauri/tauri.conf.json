@@ -23,7 +23,12 @@
     "active": true,
     "createUpdaterArtifacts": false,
     "targets": "all",
-    "resources": ["resources/**/*", "../ocr-runtime/**/*"],
+    "resources": [
+      "resources/**/*",
+      "../ocr-runtime/README.md",
+      "../ocr-runtime/pyproject.toml",
+      "../ocr-runtime/ocr_runtime/**/*"
+    ],
     "license": "MIT",
     "icon": [
       "icons/32x32.png",

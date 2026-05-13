@@ -22,7 +22,7 @@ export const MODEL_HUB_TAB_DEFS: Array<{
   {
     id: "llm",
     labelKey: "modelHub.tabs.llm",
-    defaultLabel: "Post-process (LLM)",
+    defaultLabel: "Refine (LLM)",
   },
   { id: "tts", labelKey: "modelHub.tabs.tts", defaultLabel: "Voices (TTS)" },
   { id: "ocr", labelKey: "modelHub.tabs.ocr", defaultLabel: "Screen OCR" },

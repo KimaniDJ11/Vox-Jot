@@ -25,7 +25,9 @@
     "history": "历史记录",
     "debug": "调试",
     "about": "关于",
-    "settingsLabel": "Settings"
+    "settingsLabel": "设置",
+    "settingsButton": "设置",
+    "sectionNavigation": "分区导航"
   },
   "onboarding": {
     "subtitle": "请选择一个转录模型以开始使用",
@@ -440,7 +442,15 @@
       "yourModels": "已下载的模型",
       "availableModels": "可供下载",
       "activeSpeechModel": "Active Speech Model",
-      "clearFilterHint": "Clear the language filter to browse the full model list again."
+      "clearFilterHint": "Clear the language filter to browse the full model list again.",
+      "evaluation": {
+        "activeModel": "Active model",
+        "wer": "WER",
+        "match": "Match",
+        "tested": "Tested",
+        "blocked": "Blocked",
+        "pending": "Pending"
+      }
     },
     "general": {
       "title": "通用",
@@ -485,7 +495,25 @@
       },
       "pushToTalk": {
         "label": "按住说话",
-        "description": "按住录制，松开停止"
+        "description": "按住录制，松开停止",
+        "modes": {
+          "toggle": {
+            "title": "Toggle",
+            "description": "Press once to start, press again to stop."
+          },
+          "hold": {
+            "title": "Push-to-talk",
+            "description": "Hold the shortcut while speaking."
+          }
+        },
+        "states": {
+          "keyPress": "Key press",
+          "nextPress": "Next press",
+          "holdKey": "Hold key",
+          "release": "Release",
+          "micOn": "Mic on",
+          "micOff": "Mic off"
+        }
       },
       "fileTranscription": {
         "movedHint": "File transcription moved to Dictate → File Transcription. Drag in an audio or video file to transcribe it."
@@ -575,7 +603,12 @@
           "none": "无",
           "externalScript": "外部脚本"
         },
-        "externalScriptPlaceholder": "/path/to/your/script.sh"
+        "externalScriptPlaceholder": "/path/to/your/script.sh",
+        "directDescription": "Types the final text into the focused field without using the clipboard.",
+        "clipboardDescription": "Copies the text, sends the system paste shortcut, then restores the clipboard.",
+        "clipboardOnly": "Clipboard only",
+        "clipboardOnlyDescription": "Copies the text and skips the automatic paste action.",
+        "platformMethods": "Platform methods"
       },
       "typingTool": {
         "title": "输入工具",
@@ -995,7 +1028,11 @@
       },
       "audioDucking": {
         "label": "Audio Ducking",
-        "description": "Lower other apps' volume while recording, then restore it when recording stops."
+        "description": "Lower other apps' volume while recording, then restore it when recording stops.",
+        "system": "System",
+        "input": "Input",
+        "enabledStatus": "Background audio dips while recording",
+        "disabledStatus": "Background audio stays unchanged"
       },
       "routeInputPlaceholder": "Paste some dictated text to inspect the cleanup route."
     },
@@ -1074,6 +1111,23 @@
           "ariaLabel": "Corrections view",
           "corrections": "Corrections",
           "dictionary": "Dictionary"
+        },
+        "approveCorrectionAria": "Approve correction {{original}} to {{corrected}}",
+        "approveAlways": "Approve and always apply",
+        "deleteOriginalPhrase": "Delete original phrase",
+        "groupStatus": {
+          "off": "Off",
+          "offTitle": "All corrections in this group are disabled.",
+          "manual": "Manual",
+          "manualTitle": "All corrections in this group are manually approved.",
+          "applying": "Applying",
+          "applyingTitle": "Every enabled correction in this group is eligible to apply.",
+          "review": "Review",
+          "reviewTitle": "At least one correction in this group is blocked from auto-apply until approved.",
+          "lowConfidence": "Low conf",
+          "lowConfidenceTitle": "At least one correction has enough observations but low confidence.",
+          "learning": "Learning",
+          "learningTitle": "Waiting for more confirmations before auto-applying."
         }
       }
     },
@@ -1089,7 +1143,16 @@
       "title": "实验室"
     },
     "globalLanguageSync": {
-      "syncAutomatically": "Sync future app-language changes automatically"
+      "title": "全局语言同步",
+      "description": "在一个位置同步界面语言、语音识别语言和语音输出选择。",
+      "syncAutomatically": "自动同步以后的应用语言更改",
+      "syncing": "正在同步...",
+      "syncNow": "立即同步",
+      "enabledStatus": "应用语言更改也会同步语音设置。",
+      "disabledStatus": "应用语言更改将与语音设置分开。",
+      "defaultStatus": "当你想让整个应用重新匹配当前应用语言时使用。",
+      "done": "语言同步完成。",
+      "failed": "语言同步失败。"
     },
     "refineModels": {
       "title": "Refine Models",
@@ -1114,7 +1177,12 @@
         "ready": "Ready",
         "active": "Active",
         "needsDownload": "Needs download",
-        "needsSetup": "Needs setup"
+        "needsSetup": "Needs setup",
+        "apiKeyNeeded": "API 密钥",
+        "apiKeyNeededDetail": "使用前添加此提供商的 API 密钥。",
+        "activeDetail": "Currently used to refine dictated text.",
+        "readyDetail": "Installed locally — click card to use.",
+        "needsDownloadDetail": "Click the download icon to fetch this model."
       },
       "actions": {
         "active": "Active",
@@ -1129,7 +1197,8 @@
         "importing": "Importing...",
         "installingIntoOllama": "Installing into Ollama...",
         "removeFromOllama": "Remove {{title}}",
-        "confirmRemoveModel": "Remove {{title}} from Ollama and delete local import files? If this model is selected for Refine, Vox Jot will fall back to the default Ollama model entry."
+        "confirmRemoveModel": "Remove {{title}} from Ollama and delete local import files? If this model is selected for Refine, Vox Jot will fall back to the default Ollama model entry.",
+        "apiKeyRequired": "需要 API 密钥"
       },
       "customImport": {
         "title": "Custom Import",
@@ -1158,6 +1227,13 @@
         "importSuccess": "{{modelId}} was imported into Ollama and selected.",
         "enterRepo": "Enter a Hugging Face repo ID first.",
         "removed": "{{title}} was removed from Ollama."
+      },
+      "evaluation": {
+        "tested": "Tested",
+        "bestPass": "Best pass",
+        "activeModel": "Active model",
+        "pass": "Pass",
+        "similarityShort": "Sim"
       }
     },
     "screenContext": {
@@ -1205,7 +1281,17 @@
       "ocrEngineAuto": "Auto",
       "ocrEngineHelpLinux": "Linux always uses the cross-platform engine — install `tesseract` and `grim` (Wayland) or `import`/`gnome-screenshot` (X11).",
       "ocrEngineHelpWindows": "Windows uses Windows.Media.Ocr by default and falls back to Tesseract when the system OCR fails or returns empty results.",
-      "ocrEngineHelpMacos": "Apple silicon Macs always use Apple Vision; the cross-platform engine is reserved for QA and Intel-Mac experiments."
+      "ocrEngineHelpMacos": "Apple silicon Macs always use Apple Vision; the cross-platform engine is reserved for QA and Intel-Mac experiments.",
+      "captureMode": {
+        "alwaysFrequent": "Live updates",
+        "adaptiveCache": "Balanced",
+        "mostlyOnDemand": "On-demand first"
+      },
+      "ocrQuality": {
+        "fast": "Fast",
+        "balanced": "Balanced",
+        "accurate": "Accurate"
+      }
     },
     "diagnostics": {
       "localApi": {
@@ -1227,6 +1313,9 @@
       "providerPlaceholder": "Choose a provider",
       "modelPlaceholder": "Choose or type a model",
       "customModelPlaceholder": "Type a custom translation model id"
+    },
+    "soundPicker": {
+      "preview": "Preview sound theme (plays start then stop)"
     }
   },
   "footer": {
@@ -1252,7 +1341,7 @@
     "save": "保存",
     "cancel": "取消",
     "reset": "重置",
-    "add": "添加",
+    "add": "Add",
     "remove": "移除",
     "delete": "删除",
     "edit": "编辑",
@@ -1271,7 +1360,16 @@
     "active": "Active",
     "downloaded": "Downloaded",
     "dismiss": "Dismiss",
-    "done": "Done"
+    "done": "Done",
+    "custom": "Custom",
+    "moreInformation": "More information",
+    "copy": "Copy",
+    "copyToClipboard": "Copy to clipboard",
+    "downloading": "Downloading...",
+    "notAvailable": "Not available",
+    "pause": "Pause",
+    "play": "Play",
+    "refresh": "Refresh"
   },
   "accessibility": {
     "permissionsRequired": "需要辅助功能权限",
@@ -1301,7 +1399,12 @@
     "totalWords": "{{count}} words",
     "todayWords": "{{count}} today",
     "accuracy": "{{value}}%",
-    "noStats": "No dictations yet"
+    "noStats": "No dictations yet",
+    "streakLabel": "Streak",
+    "totalWordsLabel": "Words",
+    "todayLabel": "Today",
+    "appsLabel": "Apps",
+    "appsUsed": "{{count}} apps used"
   },
   "ollama": {
     "title": "Ollama — Local LLM Engine",
@@ -1482,7 +1585,22 @@
     "engineLibrary": {
       "allLanguages": "All Languages",
       "activeListenModel": "Active Listen Model",
-      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered."
+      "chooseProviderModel": "Choose a provider and model to define how the active preset is rendered.",
+      "title": "Engine Library",
+      "downloadedModels": "Downloaded Models",
+      "availableToDownload": "Available to Download",
+      "noDownloadedMatches": "No downloaded speech models match the current filters.",
+      "noDownloadedModels": "No compatible TTS models have been downloaded for this Mac yet.",
+      "noAvailableMatches": "No available speech models match the current filters.",
+      "allModelsReady": "Every compatible speech model is already downloaded or active.",
+      "badges": {
+        "active": "Active",
+        "activeDetail": "Currently the active TTS voice.",
+        "selected": "Selected",
+        "selectedDetail": "Chosen in settings — click card to activate.",
+        "downloaded": "Downloaded",
+        "downloadedDetail": "Voice pack is installed locally."
+      }
     },
     "voiceCloning": {
       "cloneProfiles": "Clone Profiles",
@@ -1509,7 +1627,8 @@
       "transcript": "Transcript",
       "referenceAudioActions": "Reference audio",
       "replaceReferenceActions": "Replace reference audio",
-      "recordingActions": "While recording"
+      "recordingActions": "While recording",
+      "recordingAudio": "Recording audio"
     },
     "placeholders": {
       "styleInstructions": "Warm, calm, confident, closer to a product demo than a podcast host.",
@@ -1563,6 +1682,43 @@
         "convertStillWorking": "Still working. Longer clips and first runs can take extra time.",
         "elapsed": "{{seconds}}s"
       }
+    },
+    "speechOutput": {
+      "title": "Enable Speech Output",
+      "description": "Read back final Vox Jot output after dictation, translation, or selection flows."
+    },
+    "speechPacks": {
+      "title": "Speech Packs"
+    },
+    "autoReadback": {
+      "title": "Auto Readback",
+      "groupTitle": "Auto-Readback",
+      "description": "Choose when Vox Jot automatically speaks the final output.",
+      "modes": {
+        "afterOutput": "After output",
+        "afterPreviewConfirm": "After preview confirm"
+      },
+      "scopeTitle": "Readback Scope",
+      "scopeDescription": "Control whether automatic readback applies only to dictation or also to selection actions.",
+      "scopes": {
+        "dictationOnly": "Dictation only",
+        "dictationAndSelection": "Dictation and selection"
+      },
+      "textTitle": "Readback Text",
+      "textDescription": "Choose whether bilingual output reads the translated block or the full final output.",
+      "textModes": {
+        "finalOutput": "Final output",
+        "translatedBlock": "Translated block"
+      },
+      "stopOnRecord": "Stop Speech On Record",
+      "stopOnRecordDescription": "Cancel current speech output as soon as recording starts."
+    },
+    "createVoices": {
+      "workflow": {
+        "voice": "Voice",
+        "cloneProfile": "Clone Profile",
+        "manualVoiceId": "Manual Voice ID"
+      }
     }
   },
   "refine": {
@@ -1590,7 +1746,47 @@
         "speech": "Speech",
         "refine": "Refine",
         "output": "Output",
-        "noOverride": "Use global setting"
+        "noOverride": "Use global setting",
+        "stt_model_id": {
+          "label": "STT model",
+          "description": "Use a different speech-to-text engine here."
+        },
+        "stt_language": {
+          "label": "Language",
+          "description": "Force a specific input language for this profile."
+        },
+        "translate_to_english": {
+          "label": "Translate to English",
+          "description": "Override Whisper translation behavior."
+        },
+        "tone_id": {
+          "label": "Tone",
+          "description": ""
+        },
+        "post_process_prompt_id": {
+          "label": "Post-process prompt",
+          "description": ""
+        },
+        "force_post_process": {
+          "label": "Post-processing",
+          "description": "Force AI post-processing on or off when this profile matches."
+        },
+        "auto_submit": {
+          "label": "Auto-submit",
+          "description": "Press Enter automatically after dictating."
+        },
+        "paste_method": {
+          "label": "Paste method",
+          "description": ""
+        },
+        "append_trailing_space": {
+          "label": "Trailing space",
+          "description": "Add a space after dictated text."
+        },
+        "mute_while_recording": {
+          "label": "Mute while recording",
+          "description": "Silence other apps' audio while this profile records."
+        }
       },
       "test": {
         "button": "Test against current app",
@@ -1600,6 +1796,96 @@
       "overlayBadgeOpen": "Open profile in settings",
       "editor": {
         "namePlaceholder": "e.g. Slack & Discord chats"
+      },
+      "row": {
+        "disabled": "Disabled",
+        "activeNow": "Active now",
+        "anyApp": "Any app",
+        "multipleApps": "{{count}} apps",
+        "moreApps": "+{{count}}",
+        "inheritsGlobal": "Inherits global settings",
+        "editProfile": "Edit profile",
+        "deleteProfile": "Delete profile",
+        "overrideTone": "Tone",
+        "overrideEngine": "Engine",
+        "overrideLanguage": "Lang",
+        "translateToEnglish": "Translate -> EN",
+        "overridePrompt": "Prompt",
+        "autoSubmit": "Auto-submit",
+        "noAutoSubmit": "No auto-submit",
+        "alwaysPostProcess": "Always post-process",
+        "skipPostProcess": "Skip post-process",
+        "trailingSpace": "Trailing space",
+        "noTrailingSpace": "No trailing space",
+        "muteWhileRecording": "Mute while recording"
+      },
+      "templates": {
+        "heading": "Start from a template",
+        "blank": {
+          "label": "Blank",
+          "description": "Start from scratch."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Polished punctuation, no auto-submit."
+        },
+        "coding": {
+          "label": "Coding",
+          "description": "English, paste, no auto-submit."
+        },
+        "chat": {
+          "label": "Chat",
+          "description": "Quick, casual, auto-submit on."
+        },
+        "notes": {
+          "label": "Notes",
+          "description": "Always polish, with trailing space."
+        }
+      },
+      "overrideGroups": {
+        "speech": "Speech",
+        "refine": "Refine",
+        "output": "Output"
+      },
+      "overridesEditor": {
+        "emptyHint": "This profile uses your global settings. Add an override below to change behavior here.",
+        "addOverride": "Add override",
+        "noneRemaining": "Every available override is set.",
+        "resetAll": "Reset all",
+        "removeOverride": "Remove override",
+        "removeOverrideAria": "Remove {{label}} override",
+        "notAvailableShort": "n/a",
+        "notAvailable": "No options available — set up the global value first."
+      },
+      "overrideOptions": {
+        "translate_to_english": {
+          "on": "Translate to English",
+          "off": "Keep original language"
+        },
+        "force_post_process": {
+          "on": "Always run post-processing",
+          "off": "Skip post-processing"
+        },
+        "auto_submit": {
+          "on": "Auto-submit",
+          "off": "Don't auto-submit"
+        },
+        "paste_method": {
+          "ctrl_v": "Ctrl+V",
+          "direct": "Direct typing",
+          "none": "Do not paste",
+          "ctrl_shift_v": "Ctrl+Shift+V",
+          "shift_insert": "Shift+Insert",
+          "external_script": "External script"
+        },
+        "append_trailing_space": {
+          "on": "Add trailing space",
+          "off": "No trailing space"
+        },
+        "mute_while_recording": {
+          "on": "Mute while recording",
+          "off": "Keep audio playing"
+        }
       }
     }
   },
@@ -1725,6 +2011,18 @@
     "tts": {
       "remove": "Remove {{modelName}}",
       "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
+    },
+    "actionConfirmation": "Model action confirmation",
+    "search": {
+      "globalPlaceholder": "Search models by name, language, or provider...",
+      "ariaLabel": "Search models"
+    },
+    "tabs": {
+      "stt": "Speech (STT)",
+      "analysis": "Speech Analysis",
+      "llm": "Refine (LLM)",
+      "tts": "Voices (TTS)",
+      "ocr": "Screen OCR"
     }
   },
   "commandMenu": {
@@ -1775,15 +2073,48 @@
       "rose": "Rose",
       "forest": "Forest",
       "solarized": "Solarized"
-    }
+    },
+    "label": "Command menu"
   },
   "storyStudio": {
     "cast": {
-      "characterPlaceholder": "Narrator"
+      "characterPlaceholder": "Narrator",
+      "title": "Cast",
+      "description": "Assign saved Listen voices to script characters.",
+      "addCharacter": "Add Character",
+      "character": "Character",
+      "voicePreset": "Voice Preset",
+      "action": "Action",
+      "chooseVoice": "Choose voice",
+      "removeConfirm": "Remove character \"{{name}}\"?",
+      "removeCharacter": "Remove character"
     },
     "script": {
       "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."
-    }
+    },
+    "defaultTitle": "Untitled Story",
+    "defaultScript": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it.",
+    "emptyVoicesTitle": "Save a voice before building a story",
+    "emptyVoicesDescription": "Story Studio uses Listen/My Voices presets as the cast. Create or save at least one voice preset, then come back here to assign characters.",
+    "openMyVoices": "Open My Voices",
+    "storyTitle": "Story title",
+    "fixBeforeRendering": "Fix before rendering",
+    "generate": "Generate",
+    "queued": "Queued",
+    "toolAriaLabel": "Studio tools",
+    "tools": {
+      "script": "Script",
+      "cast": "Cast"
+    },
+    "expressionTags": "Expression tags",
+    "clearExpressionSearch": "Clear expression tag search",
+    "expressionControlsTitle": "Expression controls",
+    "noExpressionTagMatches": "No expression tags match this search.",
+    "customTagPlaceholder": "Custom tag",
+    "lineInstruction": "Line instruction",
+    "lineInstructionPlaceholder": "Describe how this line should be performed.",
+    "closeExpressionControls": "Close expression controls",
+    "pauseBetweenLines": "Pause between lines"
   },
   "appSections": {
     "common": {
@@ -1795,7 +2126,8 @@
       "createNote": "Create note",
       "loadingNotes": "Loading notes...",
       "untitled": "Untitled",
-      "emptyNote": "Empty note"
+      "emptyNote": "Empty note",
+      "loadingSection": "Loading section..."
     },
     "corrections": {
       "demoTitle": "Smart corrections demo",
@@ -2167,35 +2499,35 @@
     },
     "nav": {
       "dictate": {
-        "history": "Recent History",
-        "corrections": "Dictionary",
+        "history": "最近历史",
+        "corrections": "词典",
         "jotPad": "Jot Pad",
-        "fileTranscription": "File Transcription"
+        "fileTranscription": "文件转录"
       },
       "refine": {
-        "writeProfiles": "Write Profiles",
-        "phraseKeys": "Phrase Keys",
-        "translation": "Translation"
+        "writeProfiles": "写作配置",
+        "phraseKeys": "短语快捷键",
+        "translation": "翻译"
       },
       "listen": {
-        "createVoices": "Create Voices",
-        "myVoices": "Voices",
-        "voiceCloning": "Voice Cloning",
-        "studio": "Studio",
-        "generatedAudio": "Generated Audio"
+        "createVoices": "创建声音",
+        "myVoices": "声音",
+        "voiceCloning": "声音克隆",
+        "studio": "工作室",
+        "generatedAudio": "生成音频"
       },
       "settings": {
-        "general": "App & Dictation",
-        "shortcuts": "Shortcuts",
-        "recordingDevices": "Recording & Devices",
-        "outputPaste": "Output & Paste",
-        "correctionsSettings": "Corrections",
-        "aiSetup": "Models & AI",
-        "modelTesting": "Testing",
-        "screenContext": "Screen Context",
-        "privacy": "Privacy & Storage",
-        "diagnostics": "Diagnostics",
-        "about": "About Vox Jot"
+        "general": "应用与听写",
+        "shortcuts": "快捷键",
+        "recordingDevices": "录音与设备",
+        "outputPaste": "输出与粘贴",
+        "correctionsSettings": "修正",
+        "aiSetup": "模型与 AI",
+        "modelTesting": "测试",
+        "screenContext": "屏幕上下文",
+        "privacy": "隐私与存储",
+        "diagnostics": "诊断",
+        "about": "关于 Vox Jot"
       }
     }
   },
@@ -2243,5 +2575,189 @@
     "resetButton": {
       "label": "Reset"
     }
+  },
+  "translationSettings": {
+    "sections": {
+      "selection": {
+        "title": "选中文本翻译",
+        "description": "选择高亮文本翻译的输出方式。"
+      },
+      "output": {
+        "title": "翻译输出",
+        "description": "选择听写保留源语言、翻译，或同时显示源文和译文。"
+      },
+      "targetLanguage": {
+        "title": "目标语言",
+        "description": "选择 Vox Jot 要翻译成的语言。"
+      },
+      "method": {
+        "title": "翻译方法",
+        "description": "自动适合大多数情况。只有需要时才选择特定方法。"
+      },
+      "bilingualLayout": {
+        "title": "双语布局",
+        "description": "同时显示源文和译文时，选择哪个区块先显示。"
+      },
+      "dictationDestination": {
+        "title": "听写目标",
+        "description": "选择翻译后的听写是直接粘贴、先预览，还是发送到 Jot Pad。"
+      }
+    },
+    "labels": {
+      "detectedSource": "检测到的源语言",
+      "targetOutput": "目标输出"
+    },
+    "output": {
+      "source": {
+        "title": "仅源文",
+        "description": "保留检测到语言的听写文本。"
+      },
+      "translated": {
+        "title": "仅译文",
+        "description": "只粘贴翻译结果。"
+      },
+      "bilingual": {
+        "title": "双语",
+        "description": "同时显示译文和原文。"
+      }
+    },
+    "route": {
+      "auto": {
+        "title": "自动",
+        "description": "为此语言选择最佳可用路线。"
+      },
+      "whisperEnglish": {
+        "title": "设备端快速",
+        "description": "使用 Whisper 本地英语翻译路径。"
+      },
+      "localAi": {
+        "title": "本地 AI",
+        "description": "配置后使用设备端模型。"
+      },
+      "remoteAi": {
+        "title": "在线 AI",
+        "description": "使用选定的云提供商。"
+      },
+      "offlinePack": {
+        "title": "离线包",
+        "description": "使用已安装的语言包。"
+      }
+    },
+    "bilingual": {
+      "translationFirst": {
+        "title": "译文优先",
+        "description": "先显示翻译区块。"
+      },
+      "sourceFirst": {
+        "title": "源文优先",
+        "description": "先显示原始听写区块。"
+      }
+    },
+    "destination": {
+      "pasteInPlace": {
+        "title": "原位粘贴",
+        "description": "将翻译后的听写发送到当前应用。"
+      },
+      "previewThenPaste": {
+        "title": "先预览",
+        "description": "粘贴前确认翻译。"
+      },
+      "openInJotPad": {
+        "title": "在 Jot Pad 中打开",
+        "description": "将翻译文本发送到记事板。"
+      }
+    },
+    "selection": {
+      "replaceSelection": {
+        "title": "替换选区",
+        "description": "用译文替换高亮文本。"
+      },
+      "previewThenReplace": {
+        "title": "先预览",
+        "description": "替换所选文本前先检查。"
+      },
+      "openInJotPad": {
+        "title": "在 Jot Pad 中打开",
+        "description": "将翻译后的选区发送到记事板。"
+      }
+    }
+  },
+  "appModes": {
+    "dictate": "听写",
+    "refine": "润色",
+    "listen": "聆听"
+  },
+  "storyAudio": {
+    "generatedAudioAriaLabel": "Generated story audio",
+    "viewAriaLabel": "Generated audio view",
+    "tabs": {
+      "timeline": "Timeline",
+      "player": "Player"
+    },
+    "position": "{{current}} of {{total}}",
+    "loading": "Loading story audio...",
+    "emptyTitle": "No generated audio yet",
+    "emptyDescription": "Generated stories will appear here after the first render.",
+    "noSelectionTitle": "No generated audio selected",
+    "noSelectionDescription": "Render audio in Studio or switch back to Timeline.",
+    "unknownDate": "Unknown date",
+    "today": "Today",
+    "timelineAriaLabel": "Audio timeline",
+    "controls": {
+      "speed": "Speed",
+      "saveAs": "Save as",
+      "saveCopy": "Save copy",
+      "saveProcessedCopy": "Save processed copy"
+    },
+    "starred": "Starred",
+    "noScriptSaved": "No script was saved with this audio file.",
+    "untitledStory": "Untitled Story",
+    "titleAriaLabel": "Story audio title",
+    "errors": {
+      "load": "Could not load story audio.",
+      "copyScript": "Could not copy story script."
+    },
+    "actions": {
+      "copyScript": "Copy script",
+      "showInFolder": "Show audio file in folder",
+      "star": "Star story audio",
+      "unstar": "Unstar story audio",
+      "delete": "Delete story audio",
+      "cancelDelete": "Cancel delete",
+      "openInPlayer": "Open in player",
+      "rename": "Rename story audio",
+      "renameWithTitle": "Rename story audio: {{title}}",
+      "previous": "Previous generated audio",
+      "next": "Next generated audio",
+      "cancelRender": "Cancel story render"
+    },
+    "meta": {
+      "lines": "{{count}} line",
+      "lines_plural": "{{count}} lines",
+      "audioFile": "Audio file",
+      "cast": "{{count}} cast member",
+      "cast_plural": "{{count}} cast",
+      "generatedIn": "generated in",
+      "scriptSaved": "Script saved",
+      "audioOnly": "Audio only",
+      "expressionTags": "expression tags",
+      "inlinePrompt": "inline prompt",
+      "lineProgress": "{{current}}/{{total}} lines"
+    },
+    "status": {
+      "rendering": "Rendering",
+      "preparing": "Preparing",
+      "queued": "Queued",
+      "queuedAtPosition": "Queued at position {{position}}",
+      "assembling": "Assembling final audio",
+      "failed": "Generation failed",
+      "cancelled": "Cancelled",
+      "generatingLine": "Generating line {{current}} of {{total}}",
+      "generating": "Generating",
+      "queuePosition": "Queue #{{position}}"
+    }
+  },
+  "detail": {
+    "unknownSection": "Unknown section: {{section}}"
   }
 }

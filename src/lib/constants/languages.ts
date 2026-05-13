@@ -3,6 +3,58 @@ export interface Language {
   label: string;
 }
 
+const LANGUAGE_DISPLAY_CODE_OVERRIDES: Record<string, string> = {
+  "zh-Hans": "zh-Hans",
+  "zh-Hant": "zh-Hant",
+  jw: "jv",
+  no: "nb",
+};
+
+function languageDisplayCode(value: string) {
+  return LANGUAGE_DISPLAY_CODE_OVERRIDES[value] ?? value;
+}
+
+function getDisplayNames(displayLocale: string) {
+  try {
+    return new Intl.DisplayNames([displayLocale], { type: "language" });
+  } catch {
+    return new Intl.DisplayNames(["en"], { type: "language" });
+  }
+}
+
+export function getLocalizedLanguageLabel(
+  language: Language,
+  displayLocale: string,
+) {
+  if (language.value === "auto") {
+    return language.label;
+  }
+
+  try {
+    const localized = getDisplayNames(displayLocale).of(
+      languageDisplayCode(language.value),
+    );
+    return localized && localized !== language.value
+      ? localized
+      : language.label;
+  } catch {
+    return language.label;
+  }
+}
+
+export function getLanguageSearchText(
+  language: Language,
+  displayLocale: string,
+) {
+  return [
+    getLocalizedLanguageLabel(language, displayLocale),
+    language.label,
+    language.value,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 export const LANGUAGES: Language[] = [
   { value: "auto", label: "Auto Detect" },
   { value: "en", label: "English" },

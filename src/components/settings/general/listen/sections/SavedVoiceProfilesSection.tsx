@@ -139,5 +139,9 @@ export const SavedVoiceProfilesSection: React.FC<{
     return content;
   }
 
-  return <SettingsGroup title="My Voices">{content}</SettingsGroup>;
+  return (
+    <SettingsGroup title={t("appSections.sections.myVoicesTitle")}>
+      {content}
+    </SettingsGroup>
+  );
 };

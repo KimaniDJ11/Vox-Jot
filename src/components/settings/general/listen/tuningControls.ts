@@ -149,7 +149,16 @@ function fallbackTuningControlsForModel(
 
   const providerId = model.provider_id.toLowerCase();
   const modelId = model.id.toLowerCase();
-  const familyKey = `${providerId} ${modelId}`;
+  const familyKey = [
+    providerId,
+    modelId,
+    model.label,
+    model.description,
+    model.source_label,
+    model.runtime.engine_family,
+  ]
+    .join(" ")
+    .toLowerCase();
 
   if (providerId === "system_builtin") {
     return [
@@ -161,15 +170,6 @@ function fallbackTuningControlsForModel(
     return [
       tempoTuningControl(
         "Adjusts Sherpa VITS length scale for faster or slower delivery.",
-      ),
-    ];
-  }
-
-  if (providerId === "local_sidecar_api") {
-    return [
-      tempoTuningControl("Sends a speed hint to compatible local speech APIs."),
-      styleInstructionsControl(
-        "Optional sidecar-specific instructions passed through with speech generation.",
       ),
     ];
   }
@@ -287,6 +287,32 @@ function fallbackTuningControlsForModel(
     ];
   }
 
+  if (providerId === "supertonic" || familyKey.includes("supertonic")) {
+    return [
+      sliderTuningControl(
+        "tempo_rate",
+        "tempo",
+        "Tempo",
+        "Adjusts Supertonic speech speed.",
+        0.7,
+        2,
+        0.05,
+        1.05,
+        "x",
+      ),
+      sliderTuningControl(
+        "quality_steps",
+        "sampler",
+        "Quality Steps",
+        "Sets Supertonic denoising steps; higher can improve quality at the cost of latency.",
+        1,
+        12,
+        1,
+        5,
+      ),
+    ];
+  }
+
   if (familyKey.includes("openvoice")) {
     return [
       tempoTuningControl(
@@ -383,6 +409,15 @@ function fallbackTuningControlsForModel(
         5,
         0.1,
         2,
+      ),
+    ];
+  }
+
+  if (providerId === "local_sidecar_api") {
+    return [
+      tempoTuningControl("Sends a speed hint to compatible local speech APIs."),
+      styleInstructionsControl(
+        "Optional sidecar-specific instructions passed through with speech generation.",
       ),
     ];
   }
@@ -567,6 +602,9 @@ export function tuningFormatValue(control: TtsAdvancedControlDescriptor) {
   if (control.id.includes("top_k") || control.id.includes("tokens")) {
     return (value: number) => `${Math.round(value)}`;
   }
+  if (control.id.includes("steps")) {
+    return (value: number) => `${Math.round(value)}`;
+  }
   return (value: number) => value.toFixed(2);
 }
 
@@ -593,6 +631,8 @@ export function tuningRangeHint(control: TtsAdvancedControlDescriptor) {
       return { left: "Focused", right: "Open" };
     case "top_k":
       return { left: "Narrow", right: "Wide" };
+    case "quality_steps":
+      return { left: "Faster", right: "Higher quality" };
     default:
       return undefined;
   }

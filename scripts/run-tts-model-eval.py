@@ -336,6 +336,7 @@ MODELS: tuple[ModelSpec, ...] = (
     ),
     ModelSpec("kokoro-82m-v1.0", "Kokoro 82M", "managed", "kokoro", ("Kokoro", "kokoro"), voice="af_heart"),
     ModelSpec("xtts-v2", "XTTS v2", "managed", "xtts", ("Coqui/XTTS", "coqui-tts", "XTTS"), hf_repo="coqui/XTTS-v2", supports_voice_cloning=True),
+    ModelSpec("supertonic-3", "Supertonic 3", "managed", "supertonic", ("supertonic-3", "Supertone/supertonic-3"), hf_repo="Supertone/supertonic-3", voice="M1"),
     ModelSpec("tts-sherpa-en-us-lessac-medium", "Sherpa Lessac Medium", "sherpa", "sherpa", ("tts-sherpa-en-us-lessac-medium",)),
     ModelSpec("tts-sherpa-zh-cn-melo", "Sherpa Melo Chinese/English", "sherpa", "sherpa", ("tts-sherpa-zh-cn-melo",)),
     ModelSpec("qwen3-0.6b-base", "Qwen3 Native 0.6B Base", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-base", "qwen3-0.6b-base"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-Base", supports_voice_cloning=True),

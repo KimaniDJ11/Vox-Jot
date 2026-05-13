@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import { ActiveBadgeIcon } from "@/components/ui/CompactOverflow";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import {
   ProviderIcon,
@@ -64,7 +65,7 @@ export const SavedVoiceProfilesSection: React.FC<{
                         variant="primary"
                         className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
                       >
-                        <Check className="h-3.5 w-3.5" />
+                        <ActiveBadgeIcon />
                         {t("listen.myVoices.active")}
                       </Badge>
                     ) : null}

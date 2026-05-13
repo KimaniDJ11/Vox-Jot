@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Info } from "lucide-react";
+import { Check, Info } from "lucide-react";
 
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
@@ -15,6 +15,17 @@ export interface CompactBadgeItem {
   icon?: React.ReactNode;
   /** Plain-language description shown on hover / keyboard focus (tooltip + overflow popover lines). */
   detail?: string;
+}
+
+export const ActiveBadgeIcon: React.FC<{ className?: string }> = ({
+  className = "h-3.5 w-3.5",
+}) => <Check className={className} aria-hidden />;
+
+function badgeIconForItem(item: CompactBadgeItem) {
+  if (item.id === "active") {
+    return <ActiveBadgeIcon />;
+  }
+  return item.icon;
 }
 
 interface OverflowInfoButtonProps {
@@ -89,6 +100,7 @@ export const CompactBadgeRow: React.FC<{
         const tooltip = item.detail
           ? `${item.label} — ${item.detail}`
           : item.label;
+        const icon = badgeIconForItem(item);
         return (
           <Badge
             key={item.id}
@@ -96,8 +108,8 @@ export const CompactBadgeRow: React.FC<{
             className="min-w-0 max-w-[9.5rem] shrink truncate"
           >
             <span className="inline-flex min-w-0 items-center" title={tooltip}>
-              {item.icon ? (
-                <span className="mr-1 shrink-0">{item.icon}</span>
+              {icon ? (
+                <span className="mr-1 shrink-0">{icon}</span>
               ) : null}
               <span className="truncate">{item.label}</span>
             </span>

@@ -36,6 +36,9 @@ XTTS_RUNTIME_DEPENDENCIES = (
     XTTS_TRANSFORMERS_PIN,
     "torchcodec",
 )
+SUPERTONIC_RUNTIME_DEPENDENCIES = (
+    "supertonic==1.2.1",
+)
 WORKER_RESPONSE_TIMEOUT_SECS = 120
 PROCESS_SHUTDOWN_TIMEOUT_SECS = 5
 
@@ -108,6 +111,8 @@ class WorkerHost:
             return self._env_has_module(env_python, "chatterbox")
         if spec.provider_id == "xtts":
             return self._env_has_module(env_python, "TTS")
+        if spec.provider_id == "supertonic":
+            return self._env_has_module(env_python, "supertonic")
         return True
 
     def _pip_install(self, env_python: Path, *args: str) -> None:
@@ -176,6 +181,10 @@ except Exception:
         if spec.provider_id == "xtts":
             self._pip_install(env_python, "-e", str(model_dir))
             self._pip_install(env_python, *XTTS_RUNTIME_DEPENDENCIES)
+            return
+
+        if spec.provider_id == "supertonic":
+            self._pip_install(env_python, *SUPERTONIC_RUNTIME_DEPENDENCIES)
             return
 
         self._pip_install(env_python, "-e", str(model_dir))

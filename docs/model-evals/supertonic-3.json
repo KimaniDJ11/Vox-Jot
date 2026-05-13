@@ -1,0 +1,124 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-05-12",
+  "evaluator": "codex",
+
+  "source": {
+    "url": "https://huggingface.co/Supertone/supertonic-3",
+    "repo_url": "https://github.com/supertone-inc/supertonic",
+    "paper_url": "https://arxiv.org/abs/2503.23108",
+    "license": "OpenRAIL-M model weights; MIT sample code",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "supertonic-3",
+    "label": "Supertonic 3",
+    "description": "Compact multilingual on-device TTS system with public ONNX assets, fixed voice styles, expression tags, and examples for Python, JavaScript, Swift, Rust, C++, Go, Java, C#, browser, Flutter, and iOS.",
+    "domain": "tts",
+    "parameter_count": "~99M public ONNX parameters",
+    "model_format": "onnx",
+    "dtype": "float32"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": false,
+    "mlx_community_repo": "",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": true,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": null,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": [
+      "https://github.com/supertone-inc/supertonic",
+      "https://huggingface.co/Supertone/supertonic-3"
+    ]
+  },
+
+  "runtime_fit": {
+    "lane": "sidecar",
+    "can_run_as_local_process": true,
+    "api_surface": ["synthesize", "save_audio", "onnx runtime examples"],
+    "output_format": "wav",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": null,
+    "vram_estimate_gb": 1,
+    "disk_size_mb": 404
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": true,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": false,
+    "supports_inline_tags": true,
+    "coming_soon": false
+  },
+
+  "languages": [
+    "en",
+    "ko",
+    "ja",
+    "ar",
+    "bg",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "it",
+    "lt",
+    "lv",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "tr",
+    "uk",
+    "vi"
+  ],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 404,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "Apple Silicon macOS local Vox Jot managed Speech runtime",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": 0.143,
+    "output_quality_notes": "Full Vox Jot hard TTS suite passed on 2026-05-12: score 98.6, 5/5 cases, average ASR round-trip WER 0.032, median WER 0.0, p50 latency 1588 ms, p50 RTF 0.143. Full style suite also passed: score 90.3, 6/6 cases, style proxy 0.9109, average ASR round-trip WER 0.0, p50 latency 1066 ms, p50 RTF 0.185. Supertonic does not support voice cloning, so no voice-clone row was added."
+  },
+
+  "verdict": {
+    "score": 47,
+    "decision": "ship",
+    "blockers": [
+      "No streaming API exposed in upstream examples, so long readback is chunked rather than streamed",
+      "Model weights use OpenRAIL-M rather than Apache/MIT; product policy should preserve license notices and use restrictions"
+    ],
+    "notes": "Implemented as a Vox Jot managed Speech runtime provider with provider id 'supertonic' and model id 'supertonic-3'. The worker installs supertonic==1.2.1, loads the HF snapshot with auto_download=False, exposes M1-M5/F1-F5 preset voices, maps tempo_rate to Supertonic speed, maps quality_steps to denoising steps, and falls back unsupported locales to Supertonic's 'na' language token."
+  }
+}

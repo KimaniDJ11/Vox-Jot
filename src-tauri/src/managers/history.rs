@@ -206,6 +206,22 @@ fn row_to_history_entry(row: &rusqlite::Row) -> HistoryEntry {
     }
 }
 
+fn read_wav_duration_ms(path: &Path) -> Option<i64> {
+    let reader = hound::WavReader::open(path).ok()?;
+    let spec = reader.spec();
+    if spec.sample_rate == 0 {
+        return None;
+    }
+
+    let channels = u32::from(spec.channels).max(1);
+    let frame_count = reader.duration() / channels;
+    let duration_ms = (u64::from(frame_count) * 1000) / u64::from(spec.sample_rate);
+
+    i64::try_from(duration_ms)
+        .ok()
+        .filter(|duration| *duration > 0)
+}
+
 pub struct HistoryManager {
     app_handle: AppHandle,
     recordings_dir: PathBuf,
@@ -766,7 +782,9 @@ impl HistoryManager {
     ) -> Result<HistoryEntriesPage> {
         let conn = self.get_connection()?;
         self.remove_missing_recording_entries_with_conn(&conn)?;
-        Self::get_history_entries_page_with_conn(&conn, offset, limit)
+        let mut page = Self::get_history_entries_page_with_conn(&conn, offset, limit)?;
+        self.hydrate_missing_durations_with_conn(&conn, &mut page.entries)?;
+        Ok(page)
     }
 
     fn remove_missing_recording_entries_with_conn(&self, conn: &Connection) -> Result<usize> {
@@ -820,7 +838,7 @@ impl HistoryManager {
                 row.get(0)
             })?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms FROM transcription_history ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2"
         )?;
 
         let rows = stmt.query_map(params![limit as i64, offset as i64], |row| {
@@ -845,12 +863,16 @@ impl HistoryManager {
     pub fn get_latest_entry(&self) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
         self.remove_missing_recording_entries_with_conn(&conn)?;
-        Self::get_latest_entry_with_conn(&conn)
+        let mut entry = Self::get_latest_entry_with_conn(&conn)?;
+        if let Some(entry) = entry.as_mut() {
+            self.hydrate_missing_duration_with_conn(&conn, entry)?;
+        }
+        Ok(entry)
     }
 
     fn get_latest_entry_with_conn(conn: &Connection) -> Result<Option<HistoryEntry>> {
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms
              FROM transcription_history
              ORDER BY timestamp DESC
              LIMIT 1",
@@ -897,15 +919,55 @@ impl HistoryManager {
     pub async fn get_entry_by_id(&self, id: i64) -> Result<Option<HistoryEntry>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata
+            "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, dictionary_hits, pasted_text, field_snapshot_text, field_snapshot_at, field_snapshot_status, field_snapshot_error, source_language_detected, translation_target_language, translated_text, translation_route, translation_provider_id, translation_model_id, translation_origin, translation_destination, tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status, screen_context_metadata, duration_ms
              FROM transcription_history WHERE id = ?1",
         )?;
 
-        let entry = stmt
+        let mut entry = stmt
             .query_row([id], |row| Ok(row_to_history_entry(row)))
             .optional()?;
+        drop(stmt);
+
+        if let Some(entry) = entry.as_mut() {
+            self.hydrate_missing_duration_with_conn(&conn, entry)?;
+        }
 
         Ok(entry)
+    }
+
+    fn hydrate_missing_durations_with_conn(
+        &self,
+        conn: &Connection,
+        entries: &mut [HistoryEntry],
+    ) -> Result<()> {
+        for entry in entries {
+            self.hydrate_missing_duration_with_conn(conn, entry)?;
+        }
+
+        Ok(())
+    }
+
+    fn hydrate_missing_duration_with_conn(
+        &self,
+        conn: &Connection,
+        entry: &mut HistoryEntry,
+    ) -> Result<()> {
+        if entry.duration_ms.is_some() {
+            return Ok(());
+        }
+
+        let Some(duration_ms) = read_wav_duration_ms(&self.recordings_dir.join(&entry.file_name))
+        else {
+            return Ok(());
+        };
+
+        conn.execute(
+            "UPDATE transcription_history SET duration_ms = ?1 WHERE id = ?2 AND duration_ms IS NULL",
+            params![duration_ms, entry.id],
+        )?;
+        entry.duration_ms = Some(duration_ms);
+
+        Ok(())
     }
 
     pub async fn delete_entry(&self, id: i64) -> Result<()> {
@@ -987,7 +1049,8 @@ mod tests {
                 tts_locale TEXT,
                 tts_trigger TEXT,
                 tts_status TEXT,
-                screen_context_metadata TEXT
+                screen_context_metadata TEXT,
+                duration_ms INTEGER
             );",
         )
         .expect("create transcription_history table");
@@ -1048,8 +1111,9 @@ mod tests {
             "INSERT INTO transcription_history (
                 file_name, timestamp, saved, title, transcription_text, post_processed_text,
                 post_process_prompt, dictionary_hits, pasted_text,
-                tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                tts_requested, tts_engine, tts_voice_id, tts_locale, tts_trigger, tts_status,
+                duration_ms
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             params![
                 "tts.wav",
                 300,
@@ -1065,7 +1129,8 @@ mod tests {
                 Some("Samantha".to_string()),
                 Some("en-US".to_string()),
                 Some("auto_readback_dictation".to_string()),
-                Some("pending".to_string())
+                Some("pending".to_string()),
+                Some(1_250_i64)
             ],
         )
         .expect("insert history entry with tts metadata");
@@ -1083,6 +1148,7 @@ mod tests {
             Some("auto_readback_dictation")
         );
         assert_eq!(entry.tts_status.as_deref(), Some("pending"));
+        assert_eq!(entry.duration_ms, Some(1_250));
     }
 
     #[test]
@@ -1128,5 +1194,24 @@ mod tests {
         assert_eq!(removed, 1);
         assert_eq!(page.total, 1);
         assert_eq!(page.entries[0].timestamp, 200);
+    }
+
+    #[test]
+    fn read_wav_duration_ms_reads_recording_header() {
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let wav_path = temp_dir.path().join("recording.wav");
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 16_000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = hound::WavWriter::create(&wav_path, spec).expect("create wav");
+        for _ in 0..8_000 {
+            writer.write_sample(0_i16).expect("write sample");
+        }
+        writer.finalize().expect("finalize wav");
+
+        assert_eq!(read_wav_duration_ms(&wav_path), Some(500));
     }
 }

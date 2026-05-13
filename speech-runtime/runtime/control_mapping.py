@@ -34,6 +34,7 @@ def normalize_controls(extra_controls: dict[str, Any] | None) -> dict[str, Any]:
         "top_k": int(float(controls["top_k"])) if controls.get("top_k") is not None else None,
         "min_p": float(controls.get("min_p", 0.0)) if controls.get("min_p") is not None else None,
         "max_tokens": int(float(controls["max_tokens"])) if controls.get("max_tokens") is not None else None,
+        "quality_steps": int(float(controls["quality_steps"])) if controls.get("quality_steps") is not None else None,
         "style_instructions": (
             str(controls["style_instructions"]).strip()
             if controls.get("style_instructions")
@@ -104,5 +105,10 @@ def map_controls_for_engine(
             if controls.get("top_k") is not None
             else int(round(20 + (randomness * 80)))
         )
+
+    if provider_id == "supertonic":
+        mapped["speed"] = float(controls.get("tempo_rate", 1.05))
+        if controls.get("quality_steps") is not None:
+            mapped["quality_steps"] = int(controls["quality_steps"])
 
     return mapped

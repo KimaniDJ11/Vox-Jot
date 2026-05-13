@@ -54,6 +54,7 @@ Agents that download, benchmark, clean up, or expose models must follow `docs/mo
 - Downloads belong in the app support model stores unless a script explicitly documents a temporary cache. Use resumable Hugging Face downloads where possible, record status/log paths, and keep pending downloads moving.
 - If testing proves a catalog model cannot run, mark it blocked/failed in the Testing view and disable it in the app catalog until the runtime bridge is fixed.
 - For TTS downloads, prefer `scripts/download-untested-tts-models.zsh` over ad hoc shell queues so other agents inherit the same paths, duplicate policy, and status logging.
+- For TTS models, benchmark success is not enough. Always validate the app path the user actually uses: select the model through Vox Jot's catalog, load the available voice list, create or preview a voice preset, and confirm preview synthesis succeeds with the canonical app provider/model IDs rather than a raw Hugging Face repo alias.
 
 ## Text color visibility (contrast)
 

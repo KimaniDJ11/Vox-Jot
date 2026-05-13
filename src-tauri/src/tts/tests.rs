@@ -5,12 +5,14 @@ use crate::settings::{
     TTS_PROVIDER_MLX_LONGCAT_AUDIODIT_ID, TTS_PROVIDER_MLX_MELOTTS_ID,
     TTS_PROVIDER_MLX_MOSS_TTS_ID, TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_OUTE_ID,
     TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
+    TTS_PROVIDER_SUPERTONIC_ID,
 };
 use crate::translation::TranslationOrigin;
 
 use super::catalog::{
     mlx_audio_definition_available, mlx_audio_model_supports_inline_tags,
-    mlx_audio_tts_model_definition, MANAGED_RUNTIME_MODEL_DEFINITIONS, QWEN3_PACK_DEFINITIONS,
+    mlx_audio_tts_model_definition, tts_model_id_for_hf_repo, MANAGED_RUNTIME_MODEL_DEFINITIONS,
+    QWEN3_PACK_DEFINITIONS,
 };
 use super::chunking::chunk_text;
 use super::readback::build_auto_speak_plan;
@@ -116,6 +118,40 @@ fn managed_catalog_includes_chatterbox_multilingual() {
     assert!(multilingual.supported_languages.contains(&"zh"));
     assert!(multilingual.supports_voice_cloning);
     assert!(!multilingual.supports_inline_tags);
+}
+
+#[test]
+fn managed_catalog_includes_supertonic_3() {
+    let supertonic = MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| definition.model_id == "supertonic-3")
+        .expect("Supertonic 3 should stay in the managed TTS catalog");
+
+    assert_eq!(supertonic.provider_id, TTS_PROVIDER_SUPERTONIC_ID);
+    assert_eq!(supertonic.hf_repo_id, Some("Supertone/supertonic-3"));
+    assert_eq!(supertonic.engine_family, "supertonic");
+    assert_eq!(supertonic.license_label, Some("OpenRAIL-M"));
+    assert_eq!(supertonic.source_repo_dir, Some("supertonic-3"));
+    assert!(supertonic.supported_languages.contains(&"en"));
+    assert!(supertonic.supported_languages.contains(&"ko"));
+    assert!(supertonic.supported_languages.contains(&"vi"));
+    assert!(!supertonic.supported_languages.contains(&"zh"));
+    assert!(!supertonic.supports_voice_cloning);
+    assert!(!supertonic.supports_instruction_prompt);
+    assert!(supertonic.supports_inline_tags);
+}
+
+#[test]
+fn hf_repo_lookup_prefers_native_tts_catalog_entries() {
+    assert_eq!(
+        tts_model_id_for_hf_repo("Supertone/supertonic-3"),
+        Some("supertonic-3")
+    );
+    assert_eq!(
+        tts_model_id_for_hf_repo("mlx-community/Llama-OuteTTS-1.0-1B-4bit"),
+        Some("outetts-1b-4bit")
+    );
+    assert_eq!(tts_model_id_for_hf_repo("unknown/model"), None);
 }
 
 #[test]

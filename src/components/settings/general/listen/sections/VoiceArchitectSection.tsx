@@ -29,6 +29,7 @@ import {
   defaultVoiceTuning,
   emptyVoiceInventoryLabel,
   getTtsVoicesForSelection,
+  isDraftVoiceModelAvailable,
   isVoiceFixedToModel,
   localeLabel,
   profileSupportsModel,
@@ -92,6 +93,10 @@ export const VoiceArchitectSection: React.FC<{
     initialUiDraft.createVoiceTool,
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
+  const availableDraftModels = useMemo(
+    () => speech.visibleModels.filter(isDraftVoiceModelAvailable),
+    [speech.visibleModels],
+  );
 
   useEffect(() => {
     writeVoiceArchitectUiDraft({
@@ -149,7 +154,7 @@ export const VoiceArchitectSection: React.FC<{
     if (!speech.settings || !speech.activePreset) return;
 
     const selectedModel = resolveVoiceModelSelection(
-      speech.visibleModels,
+      availableDraftModels,
       draftProviderId,
       draftModelId,
     );
@@ -175,14 +180,14 @@ export const VoiceArchitectSection: React.FC<{
     draftProviderId,
     speech.activePreset,
     speech.settings,
-    speech.visibleModels,
+    availableDraftModels,
   ]);
 
   useEffect(() => {
     if (!speech.settings || !speech.activePreset) return;
 
     const selectedModel = resolveVoiceModelSelection(
-      speech.visibleModels,
+      availableDraftModels,
       draftProviderId,
       draftModelId,
     );
@@ -247,27 +252,27 @@ export const VoiceArchitectSection: React.FC<{
     speech.loadingVoices,
     speech.settings,
     speech.setStatusMessage,
-    speech.visibleModels,
+    availableDraftModels,
     speech.voices,
   ]);
 
   const saveProfileName = saveProfileNameDraft.trim();
   const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
   const draftSelectedModelForControls = resolveVoiceModelSelection(
-    speech.visibleModels,
+    availableDraftModels,
     draftProviderId,
     draftModelId,
   );
   const draftProviderIdForControls =
     draftSelectedModelForControls?.provider_id ??
-    speech.providerOptions[0]?.value ??
+    availableDraftModels[0]?.provider_id ??
     "";
   const supportsDraftManualVoiceId =
     draftProviderIdForControls === "local_sidecar_api";
   const draftModelIdForControls =
-    draftSelectedModelForControls?.id ?? speech.visibleModels[0]?.id ?? "";
+    draftSelectedModelForControls?.id ?? availableDraftModels[0]?.id ?? "";
   const draftSelectedModel =
-    speech.allModels.find(
+    availableDraftModels.find(
       (model) =>
         model.provider_id === draftProviderIdForControls &&
         model.id === draftModelIdForControls,
@@ -354,7 +359,7 @@ export const VoiceArchitectSection: React.FC<{
     })),
   ];
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
-  const filteredDraftModels = speech.visibleModels.filter((model) => {
+  const filteredDraftModels = availableDraftModels.filter((model) => {
     if (!normalizedModelSearch) return true;
 
     const providerLabel =
@@ -548,7 +553,9 @@ export const VoiceArchitectSection: React.FC<{
                   aria-hidden
                 />
                 <Input
-                  type="search"
+                  type="text"
+                  role="searchbox"
+                  autoComplete="off"
                   value={modelSearchQuery}
                   onChange={(event) => setModelSearchQuery(event.target.value)}
                   onKeyDown={(event) => {
@@ -603,10 +610,12 @@ export const VoiceArchitectSection: React.FC<{
                   <p className="text-sm leading-6 text-[var(--muted)]">
                     {modelSearchQuery
                       ? t("listen.createVoices.noModelSearchResults", {
-                          defaultValue: "No TTS models match that search.",
+                          defaultValue:
+                            "No downloaded, runnable TTS models match that search.",
                         })
                       : t("listen.createVoices.noModels", {
-                          defaultValue: "No TTS models are available.",
+                          defaultValue:
+                            "No downloaded, runnable TTS models are available.",
                         })}
                   </p>
                 </div>
@@ -820,7 +829,11 @@ export const VoiceArchitectSection: React.FC<{
                 previewTextDraft,
               );
             }}
-            disabled={!speech.ttsEnabled}
+            disabled={
+              !speech.ttsEnabled ||
+              !draftProviderIdForControls ||
+              !draftModelIdForControls
+            }
           >
             {isPreviewingDraft ? (
               <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />

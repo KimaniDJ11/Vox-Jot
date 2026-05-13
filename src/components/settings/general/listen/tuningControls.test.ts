@@ -97,4 +97,47 @@ describe("resolvedTuningControlsForModel", () => {
       controls.filter((control) => control.id === "style_instructions"),
     ).toHaveLength(1);
   });
+
+  it("exposes Supertonic controls from fallback metadata", () => {
+    const supertonicModel = model("supertonic", "supertonic-3");
+    supertonicModel.capabilities.supports_instruction_prompt = false;
+    const controls = resolvedTuningControlsForModel(supertonicModel);
+
+    expect(controls.map((control) => control.id)).toEqual([
+      "tempo_rate",
+      "quality_steps",
+    ]);
+    expect(controls.find((control) => control.id === "tempo_rate")).toMatchObject(
+      {
+        min: 0.7,
+        max: 2,
+        default_value: { kind: "number", value: 1.05 },
+      },
+    );
+    expect(
+      controls.find((control) => control.id === "quality_steps"),
+    ).toMatchObject({
+      min: 1,
+      max: 12,
+      step: 1,
+      default_value: { kind: "number", value: 5 },
+    });
+  });
+
+  it("uses Supertonic controls for an imported HF alias row", () => {
+    const supertonicAlias = model(
+      "local_sidecar_api",
+      "hf_tts_collection_145",
+    );
+    supertonicAlias.label = "supertonic-3";
+    supertonicAlias.description =
+      "Verified TTS model from Hugging Face collection (Supertone/supertonic-3).";
+    supertonicAlias.capabilities.supports_instruction_prompt = false;
+    const controls = resolvedTuningControlsForModel(supertonicAlias);
+
+    expect(controls.map((control) => control.id)).toEqual([
+      "tempo_rate",
+      "quality_steps",
+    ]);
+  });
 });

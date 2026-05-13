@@ -19,8 +19,8 @@ use crate::settings::{
     TTS_PROVIDER_MLX_OMNIVOICE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
     TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
     TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID,
-    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
-    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
 };
 use crate::sidecar::SidecarBackend;
 use crate::tts_profiles;
@@ -46,7 +46,7 @@ mod voices;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use catalog::supported_voice_profile_compatibility;
+pub(crate) use catalog::{supported_voice_profile_compatibility, tts_model_id_for_hf_repo};
 pub use chunking::{chunk_text, normalize_locale};
 pub use readback::{build_auto_speak_plan, choose_readback_locale, default_preview_request};
 
@@ -1252,7 +1252,7 @@ impl TtsManager {
         model: &RuntimeListenModelCatalogEntry,
     ) -> Vec<TtsAdvancedControlDescriptor> {
         let mut controls = if model.style_controls.is_empty() {
-            self.runtime_fallback_advanced_controls(&model.provider_id)
+            self.runtime_fallback_advanced_controls_for_target(&model.provider_id, Some(&model.id))
         } else {
             model
                 .style_controls
@@ -1437,11 +1437,15 @@ impl TtsManager {
         )
     }
 
-    fn runtime_fallback_advanced_controls(
+    fn runtime_fallback_advanced_controls_for_target(
         &self,
         provider_id: &str,
+        model_id: Option<&str>,
     ) -> Vec<TtsAdvancedControlDescriptor> {
         let provider_id = provider_id.to_ascii_lowercase();
+        let target_key = model_id
+            .map(|model_id| format!("{} {}", provider_id, model_id.to_ascii_lowercase()))
+            .unwrap_or_else(|| provider_id.clone());
 
         if provider_id == TTS_PROVIDER_MLX_KOKORO_ID {
             return vec![Self::tempo_advanced_control(
@@ -1553,13 +1557,63 @@ impl TtsManager {
             )];
         }
 
-        if provider_id.contains("kokoro") {
+        if target_key.contains("kokoro") {
             return vec![Self::tempo_advanced_control(
                 "Adjusts Kokoro delivery speed for this preset.",
             )];
         }
 
-        if provider_id.contains("chatterbox") {
+        if target_key.contains("chatterbox-turbo") {
+            return vec![
+                Self::randomness_advanced_control(0.8),
+                Self::repetition_penalty_advanced_control(1.2),
+                Self::top_p_advanced_control(0.95),
+                Self::slider_advanced_control(
+                    "top_k",
+                    TtsControlGroup::Sampler,
+                    "Top K",
+                    "Caps how many candidate speech tokens can be sampled.",
+                    1.0,
+                    1000.0,
+                    1.0,
+                    1000.0,
+                    None,
+                ),
+            ];
+        }
+
+        if target_key.contains("chatterbox-multilingual") {
+            return vec![
+                Self::slider_advanced_control(
+                    "guidance",
+                    TtsControlGroup::Guidance,
+                    "Guidance",
+                    "Controls how strongly Chatterbox follows its conditioning signal.",
+                    0.0,
+                    1.0,
+                    0.05,
+                    0.5,
+                    None,
+                ),
+                Self::randomness_advanced_control(0.8),
+                Self::slider_advanced_control(
+                    "exaggeration",
+                    TtsControlGroup::Style,
+                    "Exaggeration",
+                    "Pushes Chatterbox toward a more pronounced style.",
+                    0.25,
+                    2.0,
+                    0.05,
+                    0.5,
+                    None,
+                ),
+                Self::repetition_penalty_advanced_control(2.0),
+                Self::top_p_advanced_control(1.0),
+                Self::min_p_advanced_control(0.05),
+            ];
+        }
+
+        if target_key.contains("chatterbox") {
             return vec![
                 Self::slider_advanced_control(
                     "guidance",
@@ -1590,7 +1644,7 @@ impl TtsManager {
             ];
         }
 
-        if provider_id.contains("xtts") || provider_id.contains("coqui") {
+        if target_key.contains("xtts") || target_key.contains("coqui") {
             return vec![
                 Self::tempo_advanced_control("Adjusts XTTS delivery speed."),
                 Self::randomness_advanced_control(0.65),
@@ -1600,7 +1654,34 @@ impl TtsManager {
             ];
         }
 
-        if provider_id.contains("openvoice") {
+        if provider_id == TTS_PROVIDER_SUPERTONIC_ID || target_key.contains("supertonic") {
+            return vec![
+                Self::slider_advanced_control(
+                    "tempo_rate",
+                    TtsControlGroup::Tempo,
+                    "Tempo",
+                    "Adjusts Supertonic speech speed.",
+                    0.7,
+                    2.0,
+                    0.05,
+                    1.05,
+                    Some("x"),
+                ),
+                Self::slider_advanced_control(
+                    "quality_steps",
+                    TtsControlGroup::Sampler,
+                    "Quality Steps",
+                    "Sets Supertonic denoising steps; higher can improve quality at the cost of latency.",
+                    1.0,
+                    12.0,
+                    1.0,
+                    5.0,
+                    None,
+                ),
+            ];
+        }
+
+        if target_key.contains("openvoice") {
             return vec![
                 Self::tempo_advanced_control(
                     "Speeds OpenVoice up or down for a tighter delivery fit.",
@@ -1739,6 +1820,37 @@ impl TtsManager {
         model: &RuntimeListenModelCatalogEntry,
     ) -> TtsDeliverySupport {
         let controls = self.runtime_advanced_controls(model);
+        TtsDeliverySupport {
+            expressiveness_mode: if controls
+                .iter()
+                .any(|control| control.id == "expressiveness")
+            {
+                TtsExpressivenessMode::Native
+            } else {
+                TtsExpressivenessMode::Unsupported
+            },
+            advanced_controls: controls,
+        }
+    }
+
+    fn managed_runtime_definition_delivery_support(
+        &self,
+        definition: &ManagedRuntimeModelDefinition,
+    ) -> TtsDeliverySupport {
+        let mut controls = self.runtime_fallback_advanced_controls_for_target(
+            definition.provider_id,
+            Some(definition.model_id),
+        );
+        if definition.supports_instruction_prompt
+            && !controls
+                .iter()
+                .any(|control| control.id == "style_instructions")
+        {
+            controls.push(Self::instruction_prompt_control(
+                "Optional provider-specific speaking instructions passed through to the runtime.",
+            ));
+        }
+
         TtsDeliverySupport {
             expressiveness_mode: if controls
                 .iter()
@@ -1970,7 +2082,7 @@ impl TtsManager {
                         supports_inline_tags: definition.supports_inline_tags,
                         coming_soon: false,
                     },
-                    delivery_support: self.builtin_delivery_support(definition.provider_id),
+                    delivery_support: self.managed_runtime_definition_delivery_support(definition),
                 }
             })
             .collect()
@@ -3647,6 +3759,7 @@ impl TtsManager {
             TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_SUPERTONIC_ID
             | TTS_PROVIDER_XTTS_ID => return self.ensure_sidecar_supported(settings),
             other if !other.is_empty() => {
                 // Unknown provider IDs are assumed to be runtime-managed providers

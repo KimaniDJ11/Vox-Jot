@@ -306,6 +306,72 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         )
         self.assertTrue(output.exists())
 
+    def test_supertonic_voice_inventory_uses_installed_style_files(self):
+        worker = self.make_worker("supertonic", "supertonic-3")
+        styles = worker.model_dir / "voice_styles"
+        styles.mkdir(parents=True, exist_ok=True)
+        for voice_id in ("F2", "M1", "M5"):
+            (styles / f"{voice_id}.json").write_text("{}", encoding="utf-8")
+
+        voices = worker.list_voices()
+
+        self.assertEqual([voice["id"] for voice in voices], ["M1", "M5", "F2"])
+        self.assertEqual(voices[0]["label"], "Male 1")
+        self.assertTrue(all(voice["installed"] for voice in voices))
+
+    def test_supertonic_locale_and_voice_fallbacks_match_model_support(self):
+        worker = self.make_worker("supertonic", "supertonic-3")
+
+        self.assertEqual(worker._supertonic_lang("en-US"), "en")
+        self.assertEqual(worker._supertonic_lang("ko-KR"), "ko")
+        self.assertEqual(worker._supertonic_lang("zh-CN"), "na")
+        self.assertEqual(worker._supertonic_lang("unknown"), "na")
+        self.assertEqual(worker._supertonic_voice("F4"), "F4")
+        self.assertEqual(worker._supertonic_voice("missing"), "M1")
+
+    def test_supertonic_synthesis_clamps_steps_speed_and_language(self):
+        worker = self.make_worker("supertonic", "supertonic-3")
+
+        class DummyEngine:
+            def __init__(self):
+                self.kwargs = None
+
+            def get_voice_style(self, voice_id):
+                return {"voice": voice_id}
+
+            def synthesize(self, text, **kwargs):
+                self.kwargs = {"text": text, **kwargs}
+                return [0.0, 0.0], 0.1
+
+            def save_audio(self, wav, output_path):
+                Path(output_path).write_bytes(b"wav")
+
+        engine = DummyEngine()
+        worker.engine = engine
+        output = worker.model_dir / "out.wav"
+
+        worker._synthesize_supertonic(
+            {
+                "text": "hello",
+                "voice": "F4",
+                "locale": "zh-CN",
+                "controls": {"speed": 9.0, "quality_steps": 20},
+            },
+            output,
+        )
+
+        self.assertEqual(
+            engine.kwargs,
+            {
+                "text": "hello",
+                "voice_style": {"voice": "F4"},
+                "total_steps": 12,
+                "speed": 2.0,
+                "lang": "na",
+            },
+        )
+        self.assertEqual(output.read_bytes(), b"wav")
+
 
 if __name__ == "__main__":
     unittest.main()

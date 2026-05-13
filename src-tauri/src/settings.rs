@@ -23,6 +23,7 @@ pub const TTS_PROVIDER_OPENVOICE_ID: &str = "openvoice";
 pub const TTS_PROVIDER_CHATTERBOX_ID: &str = "chatterbox";
 pub const TTS_PROVIDER_KOKORO_ID: &str = "kokoro";
 pub const TTS_PROVIDER_XTTS_ID: &str = "xtts";
+pub const TTS_PROVIDER_SUPERTONIC_ID: &str = "supertonic";
 pub const TTS_PROVIDER_MLX_KOKORO_ID: &str = "mlx_kokoro";
 pub const TTS_PROVIDER_MLX_CHATTERBOX_ID: &str = "mlx_chatterbox";
 pub const TTS_PROVIDER_MLX_QWEN3TTS_ID: &str = "mlx_qwen3tts";

@@ -9,8 +9,8 @@ use crate::settings::{
     TTS_PROVIDER_MLX_OUTE_ID, TTS_PROVIDER_MLX_POCKET_TTS_ID, TTS_PROVIDER_MLX_QWEN3TTS_ID,
     TTS_PROVIDER_MLX_SOPRANO_ID, TTS_PROVIDER_MLX_SPARK_ID, TTS_PROVIDER_MLX_VIBEVOICE_ID,
     TTS_PROVIDER_MLX_VOXCPM_ID, TTS_PROVIDER_MLX_VOXTRAL_TTS_ID, TTS_PROVIDER_OPENVOICE_ID,
-    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
-    TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_QWEN3_NATIVE_ID, TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID,
+    TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_VIBEVOICE_ID, TTS_PROVIDER_XTTS_ID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -350,6 +350,28 @@ pub const MANAGED_RUNTIME_MODEL_DEFINITIONS: &[ManagedRuntimeModelDefinition] = 
         supports_instruction_prompt: false,
         supports_inline_tags: false,
         hf_repo_id: Some("coqui/XTTS-v2"),
+    },
+    ManagedRuntimeModelDefinition {
+        provider_id: TTS_PROVIDER_SUPERTONIC_ID,
+        model_id: "supertonic-3",
+        label: "Supertonic 3",
+        description:
+            "Ultra-fast multilingual ONNX TTS with fixed voice styles and inline expression tags.",
+        archive_name: "tts-supertonic-3.tar.gz",
+        install_subdir: "supertonic-3",
+        source_repo_dir: Some("supertonic-3"),
+        engine_family: "supertonic",
+        license_label: Some("OpenRAIL-M"),
+        locale: Some("mul"),
+        supported_languages: &[
+            "en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi",
+            "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv",
+            "tr", "uk", "vi",
+        ],
+        supports_voice_cloning: false,
+        supports_instruction_prompt: false,
+        supports_inline_tags: true,
+        hf_repo_id: Some("Supertone/supertonic-3"),
     },
 ];
 
@@ -987,6 +1009,7 @@ pub fn provider_uses_managed_speech_runtime(provider_id: &str) -> bool {
         TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_SUPERTONIC_ID
             | TTS_PROVIDER_XTTS_ID
     )
 }
@@ -1040,10 +1063,25 @@ pub fn mlx_audio_tts_model_definition(
         .find(|definition| definition.model_id == model_id)
 }
 
-pub fn mlx_audio_model_unavailable_reason(model_id: &str) -> Option<&'static str> {
-    match model_id {
-        _ => None,
-    }
+pub fn tts_model_id_for_hf_repo(repo_id: &str) -> Option<&'static str> {
+    MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .find(|definition| {
+            definition
+                .hf_repo_id
+                .is_some_and(|hf_repo_id| hf_repo_id.eq_ignore_ascii_case(repo_id))
+        })
+        .map(|definition| definition.model_id)
+        .or_else(|| {
+            MLX_AUDIO_TTS_MODEL_DEFINITIONS
+                .iter()
+                .find(|definition| definition.hf_model_id.eq_ignore_ascii_case(repo_id))
+                .map(|definition| definition.model_id)
+        })
+}
+
+pub fn mlx_audio_model_unavailable_reason(_model_id: &str) -> Option<&'static str> {
+    None
 }
 
 pub fn mlx_audio_definition_available(definition: &MlxAudioTtsModelDefinition) -> bool {
@@ -1124,6 +1162,7 @@ pub fn is_known_tts_provider_id(id: &str) -> bool {
             | TTS_PROVIDER_OPENVOICE_ID
             | TTS_PROVIDER_CHATTERBOX_ID
             | TTS_PROVIDER_KOKORO_ID
+            | TTS_PROVIDER_SUPERTONIC_ID
             | TTS_PROVIDER_XTTS_ID
             | TTS_PROVIDER_MLX_KOKORO_ID
             | TTS_PROVIDER_MLX_CHATTERBOX_ID

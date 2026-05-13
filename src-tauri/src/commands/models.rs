@@ -8,9 +8,10 @@ use crate::model_platform::{
 use crate::settings::{
     get_settings, write_settings, AppSettings, TTS_PROVIDER_CHATTERBOX_ID, TTS_PROVIDER_KOKORO_ID,
     TTS_PROVIDER_LOCAL_SIDECAR_API_ID, TTS_PROVIDER_OPENVOICE_ID, TTS_PROVIDER_QWEN3_NATIVE_ID,
-    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID, TTS_PROVIDER_XTTS_ID,
+    TTS_PROVIDER_SHERPA_PACK_ID, TTS_PROVIDER_SUPERTONIC_ID, TTS_PROVIDER_SYSTEM_BUILTIN_ID,
+    TTS_PROVIDER_XTTS_ID,
 };
-use crate::tts::TtsManager;
+use crate::tts::{tts_model_id_for_hf_repo, TtsManager};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -631,6 +632,29 @@ fn augment_tts_catalog_with_hf_verified(
     tts_catalog: &mut DomainCatalog,
     repo_ids: Vec<String>,
 ) {
+    let native_tts_model_ids = tts_catalog
+        .models
+        .iter()
+        .filter(|model| model.provider_id != TTS_PROVIDER_LOCAL_SIDECAR_API_ID)
+        .map(|model| model.id.to_ascii_lowercase())
+        .collect::<std::collections::HashSet<_>>();
+    let repo_ids = repo_ids
+        .into_iter()
+        .filter(|repo_id| {
+            if tts_model_id_for_hf_repo(repo_id).is_some() {
+                return false;
+            }
+
+            let repo_id_key = repo_id.to_ascii_lowercase();
+            let repo_title_key = hf_repo_title(repo_id).to_ascii_lowercase();
+            let sanitized_repo_key = sanitize_hf_repo_id(repo_id).to_ascii_lowercase();
+
+            !native_tts_model_ids.contains(&repo_id_key)
+                && !native_tts_model_ids.contains(&repo_title_key)
+                && !native_tts_model_ids.contains(&sanitized_repo_key)
+        })
+        .collect::<Vec<_>>();
+
     if repo_ids.is_empty() {
         return;
     }
@@ -1375,6 +1399,35 @@ pub async fn set_tts_platform_selection(
     );
     augment_tts_catalog_with_hf_verified(&app_handle, &mut catalog, tts_collection_ids);
 
+    let mut provider_id = provider_id;
+    let mut model_id = model_id;
+    if provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
+        if let Some(requested_model_id) = model_id.as_deref() {
+            let canonical_model_id = tts_model_id_for_hf_repo(requested_model_id)
+                .map(str::to_string)
+                .or_else(|| {
+                    catalog
+                        .models
+                        .iter()
+                        .find(|model| {
+                            model.provider_id != TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+                                && model.id.eq_ignore_ascii_case(requested_model_id)
+                        })
+                        .map(|model| model.id.clone())
+                });
+
+            if let Some(canonical_model_id) = canonical_model_id {
+                if let Some(native_model) = catalog.models.iter().find(|model| {
+                    model.provider_id != TTS_PROVIDER_LOCAL_SIDECAR_API_ID
+                        && model.id == canonical_model_id
+                }) {
+                    provider_id = native_model.provider_id.clone();
+                    model_id = Some(native_model.id.clone());
+                }
+            }
+        }
+    }
+
     let provider = catalog
         .providers
         .iter()
@@ -1431,6 +1484,7 @@ pub async fn set_tts_platform_selection(
         | TTS_PROVIDER_OPENVOICE_ID
         | TTS_PROVIDER_CHATTERBOX_ID
         | TTS_PROVIDER_KOKORO_ID
+        | TTS_PROVIDER_SUPERTONIC_ID
         | TTS_PROVIDER_XTTS_ID => crate::settings::TtsEnginePreference::Sidecar,
         _ => {
             if model.source_kind == CatalogSourceKind::Runtime {

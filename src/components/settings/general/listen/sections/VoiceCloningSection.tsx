@@ -47,6 +47,7 @@ import {
   basename,
   cloneModelSelectionValue,
   getModelLanguageItems,
+  isDraftVoiceModelAvailable,
   profileSupportsModel,
 } from "../utils";
 import { readVoiceCloningDraft, writeVoiceCloningDraft } from "../draftStorage";
@@ -82,8 +83,12 @@ export const VoiceCloningSection: React.FC<{
   );
   const [isReferenceAudioDragOver, setIsReferenceAudioDragOver] =
     useState(false);
+  const availableCloneModels = useMemo(
+    () => speech.cloneCapableModels.filter(isDraftVoiceModelAvailable),
+    [speech.cloneCapableModels],
+  );
   const selectedCloneModel =
-    speech.cloneCapableModels.find(
+    availableCloneModels.find(
       (model) => cloneModelSelectionValue(model) === selectedCloneModelValue,
     ) ?? null;
   const visibleProfiles = selectedCloneModel
@@ -124,17 +129,17 @@ export const VoiceCloningSection: React.FC<{
   ]);
 
   useEffect(() => {
-    const activeCloneModel = speech.activeModel?.capabilities
-      .supports_voice_cloning
+    const activeCloneModel =
+      speech.activeModel?.capabilities.supports_voice_cloning &&
+      isDraftVoiceModelAvailable(speech.activeModel)
       ? speech.activeModel
       : null;
-    const fallbackCloneModel =
-      activeCloneModel ?? speech.cloneCapableModels[0] ?? null;
+    const fallbackCloneModel = activeCloneModel ?? availableCloneModels[0] ?? null;
 
     setSelectedCloneModelValue((current) => {
       if (
         current !== "__none__" &&
-        speech.cloneCapableModels.some(
+        availableCloneModels.some(
           (model) => cloneModelSelectionValue(model) === current,
         )
       ) {
@@ -142,7 +147,7 @@ export const VoiceCloningSection: React.FC<{
       }
       return cloneModelSelectionValue(fallbackCloneModel);
     });
-  }, [speech.activeModel, speech.cloneCapableModels]);
+  }, [availableCloneModels, speech.activeModel]);
 
   useEffect(() => {
     setSelectedProfileId((current) => {
@@ -337,7 +342,7 @@ export const VoiceCloningSection: React.FC<{
           ? "Name the new voice on the Profile tab to enable Generate."
           : null;
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
-  const filteredCloneModels = speech.cloneCapableModels.filter((model) => {
+  const filteredCloneModels = availableCloneModels.filter((model) => {
     if (!normalizedModelSearch) return true;
     const providerLabel =
       speech.allProviders.find((provider) => provider.id === model.provider_id)
@@ -524,7 +529,9 @@ export const VoiceCloningSection: React.FC<{
                   aria-hidden
                 />
                 <Input
-                  type="search"
+                  type="text"
+                  role="searchbox"
+                  autoComplete="off"
                   value={modelSearchQuery}
                   onChange={(event) => setModelSearchQuery(event.target.value)}
                   onKeyDown={(event) => {
@@ -580,11 +587,11 @@ export const VoiceCloningSection: React.FC<{
                     {modelSearchQuery
                       ? t("listen.voiceCloning.noModelSearchResults", {
                           defaultValue:
-                            "No clone-capable models match that search.",
+                            "No downloaded, runnable clone-capable models match that search.",
                         })
                       : t("listen.voiceCloning.noCloneModels", {
                           defaultValue:
-                            "No clone-capable models are available.",
+                            "No downloaded, runnable clone-capable models are available.",
                         })}
                   </p>
                 </div>

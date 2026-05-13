@@ -68,6 +68,14 @@ const formatHistoryGroupLabel = (
   return formatDate(String(timestamp), locale);
 };
 
+const formatHistoryDuration = (durationMs: number): string => {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
+
 const HISTORY_PAGE_SIZE = 50;
 
 export const HistorySettings: React.FC = () => {
@@ -821,6 +829,14 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   const metaParts: React.ReactNode[] = [
     <span key="time">{formattedTime}</span>,
   ];
+
+  if (typeof entry.duration_ms === "number" && entry.duration_ms > 0) {
+    metaParts.push(
+      <span key="duration" className="tabular-nums">
+        {formatHistoryDuration(entry.duration_ms)}
+      </span>,
+    );
+  }
 
   if (postProcessApplied) {
     metaParts.push(

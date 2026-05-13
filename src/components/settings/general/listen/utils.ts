@@ -103,6 +103,10 @@ export function resolveVoiceModelSelection(
   );
 }
 
+export function isDraftVoiceModelAvailable(model: CatalogModelDescriptor) {
+  return model.runnable && (!model.downloadable || model.installed);
+}
+
 export function emptyVoiceInventoryLabel(_providerId: string) {
   return "No preset voices";
 }

@@ -50,13 +50,63 @@ XTTS_SAMPLE_VOICES = (
     ("sample:tr", "Turkish Sample", "tr", "tr_sample.wav"),
 )
 
+SUPERTONIC_VOICES = (
+    ("M1", "Male 1"),
+    ("M2", "Male 2"),
+    ("M3", "Male 3"),
+    ("M4", "Male 4"),
+    ("M5", "Male 5"),
+    ("F1", "Female 1"),
+    ("F2", "Female 2"),
+    ("F3", "Female 3"),
+    ("F4", "Female 4"),
+    ("F5", "Female 5"),
+)
+
+SUPERTONIC_LANGUAGES = {
+    "en",
+    "ko",
+    "ja",
+    "ar",
+    "bg",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "it",
+    "lt",
+    "lv",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "tr",
+    "uk",
+    "vi",
+}
+
 
 def write_response(ok: bool, **payload: Any) -> None:
     print(json.dumps({"ok": ok, **payload}), flush=True)
 
 
 def detect_device():
-    import torch
+    try:
+        import torch
+    except ImportError:
+        return "cpu"
 
     if torch.cuda.is_available():
         return "cuda"
@@ -121,6 +171,8 @@ class EngineWorker:
             self._synthesize_xtts(payload, output_path)
         elif self.provider_id == "openvoice":
             self._synthesize_openvoice(payload, output_path)
+        elif self.provider_id == "supertonic":
+            self._synthesize_supertonic(payload, output_path)
         else:
             raise RuntimeError(f"Unsupported provider '{self.provider_id}'.")
         return output_path
@@ -142,6 +194,8 @@ class EngineWorker:
             return self._list_openvoice_voices()
         if self.provider_id == "xtts":
             return self._list_xtts_voices()
+        if self.provider_id == "supertonic":
+            return self._list_supertonic_voices()
         return []
 
     def _ensure_engine(self):
@@ -214,6 +268,18 @@ class EngineWorker:
                 "melo_models": {},
                 "torch": torch,
             }
+            return
+
+        if self.provider_id == "supertonic":
+            from supertonic import TTS
+
+            # Supertonic is pure ONNX Runtime. Keep it on CPU and avoid
+            # implicit Hub downloads; Vox Jot owns model snapshot placement.
+            self.engine = TTS(
+                model="supertonic-3",
+                model_dir=self.model_dir,
+                auto_download=False,
+            )
             return
 
     def _kokoro_pipeline(self, locale: str | None):
@@ -631,6 +697,50 @@ class EngineWorker:
                 )
             else:
                 output_path.write_bytes(raw_path.read_bytes())
+
+    def _supertonic_lang(self, locale: str | None) -> str:
+        language = (locale or "en").strip().lower().replace("_", "-")
+        if not language:
+            return "en"
+        if language in ("zh", "zh-cn", "zh-hans", "zh-hant", "zh-tw", "zh-hk"):
+            return "na"
+        base = language.split("-")[0]
+        return base if base in SUPERTONIC_LANGUAGES else "na"
+
+    def _supertonic_voice(self, voice: str | None) -> str:
+        available = {voice_id for voice_id, _label in SUPERTONIC_VOICES}
+        if voice and voice in available:
+            return voice
+        return "M1"
+
+    def _list_supertonic_voices(self) -> list[dict[str, Any]]:
+        voice_styles_dir = self.model_dir / "voice_styles"
+        voices = []
+        for voice_id, label in SUPERTONIC_VOICES:
+            if (voice_styles_dir / f"{voice_id}.json").exists():
+                voices.append(self._voice_entry(voice_id, label, None))
+        return voices
+
+    def _synthesize_supertonic(self, payload: dict[str, Any], output_path: Path) -> None:
+        controls = payload.get("controls", {})
+        normalized_controls = payload.get("normalized_controls", {})
+        voice_id = self._supertonic_voice(payload.get("voice"))
+        style = self.engine.get_voice_style(voice_id)
+        speed = float(
+            controls.get(
+                "speed",
+                normalized_controls.get("tempo_rate", payload.get("speed", 1.05)),
+            )
+        )
+        total_steps = int(float(controls.get("total_steps", controls.get("quality_steps", 5))))
+        wav, _duration = self.engine.synthesize(
+            payload["text"],
+            voice_style=style,
+            total_steps=max(1, min(12, total_steps)),
+            speed=max(0.7, min(2.0, speed)),
+            lang=self._supertonic_lang(payload.get("locale")),
+        )
+        self.engine.save_audio(wav, str(output_path))
 
     def _convert_openvoice(self, payload: dict[str, Any], output_path: Path) -> None:
         import inspect

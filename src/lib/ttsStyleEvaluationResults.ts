@@ -21,7 +21,7 @@ export interface TtsStyleEvaluationResult {
 }
 
 export const TTS_STYLE_EVALUATION_RUN = {
-  generatedAt: "2026-05-12T03:29:32Z",
+  generatedAt: "2026-05-12T23:07:19Z",
   suite: "TTS style and emotion proxy benchmark",
   corpus:
     "Six style-specific readback prompts covering neutral, warm, excited, calm, urgent, and empathetic delivery. The automatic score is a proxy until blind listener ratings are collected.",
@@ -35,7 +35,7 @@ export const TTS_STYLE_EVALUATION_RUN = {
     "Control shows how directly the model accepts style instructions.",
   ],
   reportPath:
-    "output/tts-style-eval/full-new-mlx-2026-05-11/tts-style-eval-summary.json",
+    "output/tts-supertonic-3-style-full-2026-05-12/tts-style-eval-summary.json",
 };
 
 export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
@@ -88,10 +88,26 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
       "Strong six-style full-suite result with low ASR WER and direct instruction prompts.",
   },
   {
+    modelId: "supertonic-3",
+    label: "Supertonic 3",
+    status: "tested",
+    rank: 4,
+    sampleCount: 6,
+    passedCases: 6,
+    score: 90.3,
+    styleProxy: 0.9109,
+    asrAverageWer: 0,
+    latencyP50Ms: 1066,
+    realTimeFactorP50: 0.185,
+    styleCapability: "text_only",
+    notes:
+      "Very fast six-style pass with perfect ASR round-trip WER; style is inferred from text and inline cues rather than a natural-language instruction prompt.",
+  },
+  {
     modelId: "moss-tts-nano-100m",
     label: "MLX MOSS-TTS Nano 100M",
     status: "tested",
-    rank: 4,
+    rank: 5,
     sampleCount: 6,
     passedCases: 6,
     score: 88.6,
@@ -107,7 +123,7 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
     modelId: "tts-sherpa-en-us-lessac-medium",
     label: "Sherpa Lessac Medium",
     status: "tested",
-    rank: 5,
+    rank: 6,
     sampleCount: 6,
     passedCases: 6,
     score: 87.9,
@@ -123,7 +139,7 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
     modelId: "chatterbox",
     label: "Chatterbox",
     status: "tested",
-    rank: 6,
+    rank: 7,
     sampleCount: 6,
     passedCases: 6,
     score: 84.1,
@@ -139,7 +155,7 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
     modelId: "irodori-tts-500m-v2-4bit",
     label: "MLX Irodori TTS 500M v2 4-bit",
     status: "tested",
-    rank: 7,
+    rank: 8,
     sampleCount: 6,
     passedCases: 6,
     score: 71.2,
@@ -155,7 +171,7 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
     modelId: "vibevoice-realtime-0-5b-4bit-mlx",
     label: "MLX VibeVoice Realtime 0.5B 4-bit",
     status: "tested",
-    rank: 8,
+    rank: 9,
     sampleCount: 6,
     passedCases: 6,
     score: 67.7,
@@ -171,7 +187,7 @@ export const TTS_STYLE_EVALUATION_RESULTS: TtsStyleEvaluationResult[] = [
     modelId: "ming-omni-0.5b",
     label: "MLX Ming-omni TTS 0.5B",
     status: "tested",
-    rank: 9,
+    rank: 10,
     sampleCount: 6,
     passedCases: 6,
     score: 65,

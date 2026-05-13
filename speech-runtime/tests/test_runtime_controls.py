@@ -72,6 +72,33 @@ class RuntimeControlsTest(unittest.TestCase):
             {"guidance", "randomness", "exaggeration", "repetition_penalty", "top_p", "min_p"},
         )
 
+    def test_supertonic_is_cataloged_with_fixed_voices_and_steps(self):
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "supertonic-3")
+
+        self.assertEqual(spec.provider_id, "supertonic")
+        self.assertEqual(spec.license_label, "OpenRAIL-M")
+        self.assertEqual(spec.default_voice, "M1")
+        self.assertFalse(spec.supports_voice_cloning)
+        self.assertFalse(spec.supports_instruction_prompt)
+        self.assertTrue(spec.supports_inline_tags)
+        self.assertIn("ko", spec.supported_languages)
+        self.assertIn("vi", spec.supported_languages)
+        self.assertNotIn("zh", spec.supported_languages)
+        control_ids = {control["id"] for control in spec.style_controls}
+        self.assertEqual(control_ids, {"tempo_rate", "quality_steps"})
+
+    def test_supertonic_mapping_uses_speed_and_quality_steps(self):
+        mapped = map_controls_for_engine(
+            "supertonic",
+            {
+                "tempo_rate": 1.25,
+                "quality_steps": 7,
+                "randomness": 0.1,
+            },
+        )
+
+        self.assertEqual(mapped, {"speed": 1.25, "quality_steps": 7})
+
     def test_unsupported_fields_are_ignored_for_openvoice(self):
         mapped = map_controls_for_engine(
             "openvoice",

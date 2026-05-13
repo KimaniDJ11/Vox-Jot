@@ -14,6 +14,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Audit distribution readiness
+        run: bun scripts/audit-distribution-readiness.ts
+
       - name: Get version from tauri.conf.json
         id: get-version
         shell: bash

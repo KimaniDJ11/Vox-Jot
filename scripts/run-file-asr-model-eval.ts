@@ -7,7 +7,13 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -218,7 +224,10 @@ function safeSegment(value: string): string {
 function ensure16kSample(samplePath: string, outputRoot: string): string {
   const samplesDir = resolve(outputRoot, "samples-16k");
   mkdirSync(samplesDir, { recursive: true });
-  const wav16k = resolve(samplesDir, `${safeSegment(basename(samplePath))}.wav`);
+  const wav16k = resolve(
+    samplesDir,
+    `${safeSegment(basename(samplePath))}.wav`,
+  );
   execFileSync(
     "ffmpeg",
     [
@@ -269,7 +278,9 @@ function modelDownloaded(modelId: string): boolean {
     "mlx-vibevoice-asr-bf16": "MLX/mlx-community/VibeVoice-ASR-bf16",
   };
   const sttPath = sttMlxPaths[modelId];
-  return sttPath ? modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true) : false;
+  return sttPath
+    ? modelSnapshotReady(resolve(STT_MODEL_ROOT, sttPath), true)
+    : false;
 }
 
 function modelSnapshotReady(path: string, requireWeights = false): boolean {
@@ -435,7 +446,9 @@ function evaluateModel(
   }
 
   const tested = sampleResults.filter(
-    (sample): sample is SampleResult & {
+    (
+      sample,
+    ): sample is SampleResult & {
       wer: number;
       exact_match: boolean;
       latency_ms: number;
@@ -458,9 +471,14 @@ function evaluateModel(
     );
   }
 
-  const latency = tested.map((sample) => sample.latency_ms).sort((a, b) => a - b);
-  const rtf = tested.map((sample) => sample.real_time_factor).sort((a, b) => a - b);
-  const wer = tested.reduce((sum, sample) => sum + sample.wer, 0) / tested.length;
+  const latency = tested
+    .map((sample) => sample.latency_ms)
+    .sort((a, b) => a - b);
+  const rtf = tested
+    .map((sample) => sample.real_time_factor)
+    .sort((a, b) => a - b);
+  const wer =
+    tested.reduce((sum, sample) => sum + sample.wer, 0) / tested.length;
   return {
     model_id: model.id,
     label: model.label,
@@ -468,7 +486,9 @@ function evaluateModel(
     attempts: sampleResults.reduce((sum, sample) => sum + sample.attempts, 0),
     sample_count: tested.length,
     exact_matches: tested.filter((sample) => sample.exact_match).length,
-    text: tested.map((sample) => `${sample.sample_id}: ${sample.text}`).join("\n"),
+    text: tested
+      .map((sample) => `${sample.sample_id}: ${sample.text}`)
+      .join("\n"),
     wer,
     exact_match: tested.every((sample) => sample.exact_match),
     latency_ms: percentile(latency, 0.5),
@@ -501,10 +521,10 @@ function buildMarkdown(results: ModelResult[]): string {
         result.exact_matches !== undefined && result.sample_count !== undefined
           ? `${result.exact_matches}/${result.sample_count}`
           : result.exact_match === undefined
-          ? "n/a"
-          : result.exact_match
-            ? "yes"
-            : "no",
+            ? "n/a"
+            : result.exact_match
+              ? "yes"
+              : "no",
         result.wer === undefined ? "n/a" : result.wer.toFixed(3),
         result.latency_ms === undefined ? "n/a" : `${result.latency_ms} ms`,
         result.real_time_factor === undefined

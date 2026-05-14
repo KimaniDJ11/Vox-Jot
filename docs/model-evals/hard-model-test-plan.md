@@ -17,13 +17,13 @@ where the product has unique risk.
 
 Computer Use confirmed the installed app is running with these active models:
 
-| Surface            | Active model                            |
-| ------------------ | --------------------------------------- |
-| Speech (STT)       | Whisper Turbo                           |
+| Surface            | Active model                                        |
+| ------------------ | --------------------------------------------------- |
+| Speech (STT)       | Whisper Turbo                                       |
 | Speech Analysis    | Sortformer 4spk v1 (MLX) + current dictation engine |
-| Post-process (LLM) | `nemotron-3-nano-4b-q4_k_m:latest`      |
-| Voices (TTS)       | `chatterbox-turbo`                      |
-| Screen OCR         | Nemotron OCR v2                         |
+| Post-process (LLM) | `nemotron-3-nano-4b-q4_k_m:latest`                  |
+| Voices (TTS)       | `chatterbox-turbo`                                  |
+| Screen OCR         | Nemotron OCR v2                                     |
 
 ## Evaluation Principles
 
@@ -139,14 +139,14 @@ and diarization alignment.
 
 ### Required hard cases
 
-| Tier                | Dataset / source                                              | Why it matters                                                                                        | Metric                               |
-| ------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Tier                | Dataset / source                                              | Why it matters                                                                                                   | Metric                               |
+| ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | Readiness           | `.venv/bin/python scripts/validate_speech_analysis_models.py` | Verifies user-facing MLX speech-analysis adapters and downloads using the dedicated speech-analysis environment. | ready/download_required/blocked      |
-| Meeting speech      | AMI                                                           | Standard meeting-style diarization and ASR stress.                                                    | DER, JER, speaker count error        |
-| Wild video          | VoxConverse                                                   | Overlap, varied speakers, broadcast conditions.                                                       | DER, JER                             |
-| Noisy dinner-party  | CHiME-6                                                       | Distant microphones, natural overlap, domestic noise.                                                 | DER, WER, cpWER                      |
-| Robustness          | DIHARD-style subsets                                          | Designed to stress domain variability.                                                                | DER with no collar, overlap included |
-| Synthetic isolation | two/three-speaker mixtures                                    | Repeatable local checks for overlap and similar voices.                                               | leakage, missed speech, confusion    |
+| Meeting speech      | AMI                                                           | Standard meeting-style diarization and ASR stress.                                                               | DER, JER, speaker count error        |
+| Wild video          | VoxConverse                                                   | Overlap, varied speakers, broadcast conditions.                                                                  | DER, JER                             |
+| Noisy dinner-party  | CHiME-6                                                       | Distant microphones, natural overlap, domestic noise.                                                            | DER, WER, cpWER                      |
+| Robustness          | DIHARD-style subsets                                          | Designed to stress domain variability.                                                                           | DER with no collar, overlap included |
+| Synthetic isolation | two/three-speaker mixtures                                    | Repeatable local checks for overlap and similar voices.                                                          | leakage, missed speech, confusion    |
 
 ### Promotion gate
 

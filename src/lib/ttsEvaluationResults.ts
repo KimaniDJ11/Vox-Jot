@@ -34,8 +34,7 @@ export const TTS_EVALUATION_RUN = {
     "p50 latency: lower is faster.",
     "RTF: lower is faster; below 1.00 is faster than real time.",
   ],
-  reportPath:
-    "output/tts-supertonic-3-full-2026-05-12/tts-eval-summary.json",
+  reportPath: "output/tts-supertonic-3-full-2026-05-12/tts-eval-summary.json",
 };
 
 export const TTS_EVALUATION_RESULTS: TtsEvaluationResult[] = [

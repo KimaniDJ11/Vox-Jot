@@ -9,7 +9,7 @@
     # node_modules directory (that hash would break on bun version changes).
     # See: https://github.com/nix-community/bun2nix
     bun2nix = {
-      url = "github:nix-community/bun2nix/2.0.8";
+      url = "github:nix-community/bun2nix/2.1.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

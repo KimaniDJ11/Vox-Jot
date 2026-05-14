@@ -41,6 +41,20 @@ const GH_REPO = process.env.GITHUB_REPOSITORY?.trim() || "KimaniDJ11/Vox-Jot";
 const HF_REPO = process.env.HF_REPO?.trim() || "IrieDinamik/vox-jot-releases";
 const HF_URL_BASE = `https://huggingface.co/${HF_REPO}/resolve/main`;
 
+type GitHubAsset = {
+  id: number;
+  name: string;
+  size: number;
+  url: string;
+};
+
+type GitHubRelease = {
+  id: number;
+  draft: boolean;
+  tag_name: string;
+  assets: GitHubAsset[];
+};
+
 function detectPlatform(filename: string): PlatformKey | null {
   const lower = filename.toLowerCase();
   if (lower.endsWith(".app.tar.gz") || lower.endsWith(".app.tar.gz.sig")) {
@@ -89,6 +103,53 @@ function isInstaller(name: string): boolean {
   );
 }
 
+function githubHeaders(accept = "application/vnd.github+json"): HeadersInit {
+  return {
+    Accept: accept,
+    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+async function githubRequest<T>(url: string): Promise<T> {
+  const response = await fetch(url, { headers: githubHeaders() });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`GitHub API ${response.status} for ${url}: ${body}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function downloadReleaseAssets(tag: string, workDir: string): Promise<void> {
+  const [owner, repo] = GH_REPO.split("/");
+  if (!owner || !repo) {
+    throw new Error(`GITHUB_REPOSITORY must be owner/repo, got: ${GH_REPO}`);
+  }
+
+  const release = await githubRequest<GitHubRelease>(
+    `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`,
+  );
+  if (release.assets.length === 0) {
+    throw new Error(`Release ${tag} has no assets.`);
+  }
+
+  for (const asset of release.assets) {
+    const destination = path.join(workDir, asset.name);
+    const response = await fetch(asset.url, {
+      headers: githubHeaders("application/octet-stream"),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `Failed to download ${asset.name} (${response.status}): ${body}`,
+      );
+    }
+
+    console.log(`  ${asset.name} (${asset.size} bytes)`);
+    await Bun.write(destination, response);
+  }
+}
+
 async function main(): Promise<void> {
   const version = process.argv[2];
   if (!version) {
@@ -110,12 +171,7 @@ async function main(): Promise<void> {
   await mkdir(workDir, { recursive: true });
 
   console.log(`Downloading ${tag} assets from ${GH_REPO} into ${workDir}…`);
-  await $`gh release download ${tag} --repo ${GH_REPO} --dir ${workDir} --clobber`.env(
-    {
-      ...process.env,
-      GH_TOKEN: process.env.GITHUB_TOKEN,
-    },
-  );
+  await downloadReleaseAssets(tag, workDir);
 
   const downloaded = await readdir(workDir);
   console.log(`Downloaded ${downloaded.length} asset(s):`);

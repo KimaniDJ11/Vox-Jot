@@ -164,6 +164,25 @@ jobs:
         if: contains(inputs.platform, 'windows') && inputs.sign-binaries
         run: cargo install trusted-signing-cli
 
+      - name: Validate Windows Trusted Signing secrets
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        shell: pwsh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $missing = @()
+          foreach ($name in @("AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID")) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              $missing += $name
+            }
+          }
+          if ($missing.Count -gt 0) {
+            throw "Windows Trusted Signing is enabled, but these GitHub Actions secrets are missing: $($missing -join ', ')"
+          }
+
       - name: Prepare Vulkan SDK for Ubuntu 24.04
         if: contains(inputs.platform, 'ubuntu-24.04') && !contains(inputs.platform, 'arm')
         run: |
@@ -316,6 +335,42 @@ jobs:
           releaseId: ${{ inputs.release-id }}
           assetNamePattern: ${{ steps.patch-release-name.outputs.platform }}
           args: ${{ inputs.build-args }}
+
+      - name: Verify Windows Authenticode signatures
+        if: contains(inputs.platform, 'windows') && inputs.sign-binaries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $profile = "${{ steps.build-profile.outputs.profile }}"
+          $target = "${{ inputs.target }}"
+          if ($target -and $target -ne "x86_64-pc-windows-msvc") {
+            $bundleRoot = Join-Path "src-tauri/target" (Join-Path $target (Join-Path $profile "bundle"))
+          } else {
+            $bundleRoot = Join-Path "src-tauri/target" (Join-Path $profile "bundle")
+          }
+
+          $artifacts = @()
+          foreach ($bundleType in @("msi", "nsis")) {
+            $dir = Join-Path $bundleRoot $bundleType
+            if (Test-Path $dir) {
+              $artifacts += Get-ChildItem -Path $dir -File -Include *.msi,*.exe -Recurse
+            }
+          }
+
+          if ($artifacts.Count -eq 0) {
+            throw "No Windows MSI/EXE artifacts found under $bundleRoot"
+          }
+
+          foreach ($artifact in $artifacts) {
+            $signature = Get-AuthenticodeSignature -FilePath $artifact.FullName
+            Write-Host "$($artifact.Name): $($signature.Status) / $($signature.SignerCertificate.Subject)"
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid Authenticode signature for $($artifact.FullName): $($signature.Status) $($signature.StatusMessage)"
+            }
+            if ($signature.SignerCertificate.Subject -notmatch "Kimani James|Irie|CJ|cjpais") {
+              throw "Unexpected Windows signing certificate subject for $($artifact.FullName): $($signature.SignerCertificate.Subject)"
+            }
+          }
 
       - name: Upload artifacts (macOS)
         if: inputs.upload-artifacts && contains(inputs.platform, 'macos')

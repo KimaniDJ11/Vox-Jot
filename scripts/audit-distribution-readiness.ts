@@ -91,6 +91,15 @@ function formatBytes(bytes: number): string {
 const tauriConfigPath = join(repoRoot, "src-tauri", "tauri.conf.json");
 const tauriConfig = readJson<TauriConfig>(tauriConfigPath);
 const resources = flattenResources(tauriConfig.bundle?.resources);
+const releaseWorkflowPath = join(
+  repoRoot,
+  ".github",
+  "workflows",
+  "release.yml",
+);
+const releaseWorkflow = existsSync(releaseWorkflowPath)
+  ? readFileSync(releaseWorkflowPath, "utf8")
+  : "";
 
 if (!tauriConfig.productName) {
   add("fail", "Tauri productName is missing.");
@@ -130,7 +139,24 @@ if (!tauriConfig.bundle?.macOS?.entitlements) {
 if (
   !tauriConfig.bundle?.windows?.signCommand?.includes("trusted-signing-cli")
 ) {
-  add("warn", "Windows Trusted Signing command is not configured.");
+  add("fail", "Windows Trusted Signing command is not configured.");
+}
+
+if (!releaseWorkflow) {
+  add(
+    "warn",
+    "Release workflow is missing; Windows release signing cannot be checked.",
+  );
+} else if (
+  /platform:\s*["']windows-latest["'][\s\S]*?sign-binaries:\s*false/.test(
+    releaseWorkflow,
+  )
+) {
+  add(
+    "fail",
+    "Windows release builds are configured to ship unsigned.",
+    "Set the windows-latest release matrix entry to sign-binaries: true before broad distribution.",
+  );
 }
 
 if (tauriConfig.bundle?.createUpdaterArtifacts !== true) {

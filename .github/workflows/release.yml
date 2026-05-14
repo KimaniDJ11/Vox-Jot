@@ -80,14 +80,10 @@ jobs:
             args: "--bundles appimage,deb,rpm"
             target: "aarch64-unknown-linux-gnu"
             sign-binaries: true
-          # Windows ships unsigned for 1.0: Azure Trusted Signing isn't wired
-          # up yet. The updater artifacts are still signed with the Tauri key,
-          # so auto-updates work; users see a SmartScreen warning on first
-          # install. Flip back to true after AZURE_* secrets land.
           - platform: "windows-latest"
             args: ""
             target: "x86_64-pc-windows-msvc"
-            sign-binaries: false
+            sign-binaries: true
 
     uses: ./.github/workflows/build.yml
     with:

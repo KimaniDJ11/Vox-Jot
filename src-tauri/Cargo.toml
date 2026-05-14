@@ -94,7 +94,7 @@ keyring-core = "1"
 notify = "6"
 notify-debouncer-full = "0.3"
 axum = { version = "0.7", default-features = false, features = ["http1", "json", "tokio", "multipart"] }
-sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls"] }
+sentry = { version = "0.48.2", default-features = false, features = ["backtrace", "contexts", "native-tls", "panic", "reqwest"] }
 
 [target.'cfg(unix)'.dependencies]
 signal-hook = "0.3"

@@ -120,7 +120,10 @@ async function githubRequest<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function downloadReleaseAssets(tag: string, workDir: string): Promise<void> {
+async function downloadReleaseAssets(
+  tag: string,
+  workDir: string,
+): Promise<void> {
   const [owner, repo] = GH_REPO.split("/");
   if (!owner || !repo) {
     throw new Error(`GITHUB_REPOSITORY must be owner/repo, got: ${GH_REPO}`);

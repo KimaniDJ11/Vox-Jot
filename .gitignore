@@ -31,6 +31,7 @@ dist-ssr
 .local-targets/
 recording_*
 .crush/
+.wrangler/
 
 # Playwright
 playwright-report/

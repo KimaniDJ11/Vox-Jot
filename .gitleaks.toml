@@ -1,0 +1,5 @@
+[allowlist]
+description = "Project-specific false positives"
+regexes = [
+  '''hf_tts_collection_[0-9]+''',
+]

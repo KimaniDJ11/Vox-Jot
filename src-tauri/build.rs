@@ -1,4 +1,6 @@
 fn main() {
+    println!("cargo:rerun-if-env-changed=SENTRY_DSN");
+
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     build_apple_intelligence_bridge();
 

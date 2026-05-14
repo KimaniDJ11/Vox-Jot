@@ -30,7 +30,7 @@ jobs:
 
       - name: Create Draft Release
         id: create-release
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const tagName = `v${{ steps.get-version.outputs.version }}`

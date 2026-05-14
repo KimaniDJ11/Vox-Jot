@@ -4,10 +4,12 @@ set -euo pipefail
 
 APP_NAME="Vox Jot"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CARGO_MANIFEST="${REPO_ROOT}/src-tauri/Cargo.toml"
+CARGO_MANIFEST_BACKUP=""
 TARGET_ROOT="${CARGO_TARGET_DIR:-${REPO_ROOT}/.local-targets/vox-jot-app-store}"
 TARGET="${APP_STORE_TARGET:-aarch64-apple-darwin}"
 PROFILE_PATH="${APP_STORE_PROVISION_PROFILE_PATH:-${REPO_ROOT}/src-tauri/profiles/VoxJot-AppStore.provisionprofile}"
-APP_SIGNING_IDENTITY="${APPLE_APP_STORE_SIGNING_IDENTITY:-Apple Distribution: Kimani James (NS5M2UJLKP)}"
+APP_SIGNING_IDENTITY="${APPLE_APP_STORE_SIGNING_IDENTITY:-3rd Party Mac Developer Application: Kimani James (NS5M2UJLKP)}"
 INSTALLER_SIGNING_IDENTITY="${APPLE_INSTALLER_SIGNING_IDENTITY:-}"
 API_KEY_ID="${APPLE_API_KEY_ID:-${APPLE_API_KEY:-}}"
 API_ISSUER="${APPLE_API_ISSUER:-}"
@@ -38,13 +40,36 @@ require_file() {
   fi
 }
 
+restore_cargo_manifest() {
+  if [[ -n "${CARGO_MANIFEST_BACKUP}" && -f "${CARGO_MANIFEST_BACKUP}" ]]; then
+    /bin/mv "${CARGO_MANIFEST_BACKUP}" "${CARGO_MANIFEST}"
+  fi
+}
+
+prepare_app_store_cargo_manifest() {
+  if /usr/bin/grep -q '"macos-private-api"' "${CARGO_MANIFEST}"; then
+    CARGO_MANIFEST_BACKUP="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/vox-jot-cargo.XXXXXX.toml")"
+    /bin/cp "${CARGO_MANIFEST}" "${CARGO_MANIFEST_BACKUP}"
+    trap restore_cargo_manifest EXIT
+    /usr/bin/perl -0pi -e 's/^\s*"macos-private-api",\n//m' "${CARGO_MANIFEST}"
+  fi
+}
+
 auto_detect_installer_identity() {
-  /usr/bin/security find-identity -v -p codesigning |
-    /usr/bin/awk -F'"' '
-      /3rd Party Mac Developer Installer:/ { print $2; found=1; exit }
-      /Mac Installer Distribution:/ { print $2; found=1; exit }
-      END { if (!found) exit 1 }
-    '
+  local identities=(
+    "3rd Party Mac Developer Installer: Kimani James (NS5M2UJLKP)"
+    "Mac Installer Distribution: Kimani James (NS5M2UJLKP)"
+  )
+
+  local identity
+  for identity in "${identities[@]}"; do
+    if /usr/bin/security find-certificate -c "${identity}" -a -Z >/dev/null 2>&1; then
+      echo "${identity}"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 require_codesigning_identity() {
@@ -80,6 +105,8 @@ export CARGO_TARGET_DIR="${TARGET_ROOT}"
 export VOX_JOT_DISTRIBUTION="app-store"
 export VITE_VOX_JOT_DISTRIBUTION="app-store"
 export APPLE_SIGNING_IDENTITY="${APP_SIGNING_IDENTITY}"
+
+prepare_app_store_cargo_manifest
 
 echo "Building App Store binary for ${TARGET}..."
 bun run tauri build --no-bundle --target "${TARGET}" --config src-tauri/tauri.appstore.conf.json

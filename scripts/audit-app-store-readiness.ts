@@ -168,17 +168,41 @@ const identities = spawnSync(
   { encoding: "utf8" },
 );
 const identityOutput = `${identities.stdout}\n${identities.stderr}`;
-if (!identityOutput.includes("Apple Distribution: Kimani James (NS5M2UJLKP)")) {
+if (
+  !identityOutput.includes("Apple Distribution: Kimani James (NS5M2UJLKP)") &&
+  !identityOutput.includes(
+    "3rd Party Mac Developer Application: Kimani James (NS5M2UJLKP)",
+  )
+) {
   add(
     "warn",
-    "Apple Distribution signing identity is not installed locally.",
-    "Install the Apple Distribution certificate with private key before building the App Store app.",
+    "Mac App Store application signing identity is not installed locally.",
+    "Install the Apple Distribution / 3rd Party Mac Developer Application certificate with private key before building the App Store app.",
   );
 }
-if (
-  !identityOutput.includes("3rd Party Mac Developer Installer:") &&
-  !identityOutput.includes("Mac Installer Distribution:")
-) {
+
+const installerCerts = spawnSync(
+  "/usr/bin/security",
+  [
+    "find-certificate",
+    "-a",
+    "-c",
+    "3rd Party Mac Developer Installer: Kimani James (NS5M2UJLKP)",
+  ],
+  { encoding: "utf8" },
+);
+const modernInstallerCerts = spawnSync(
+  "/usr/bin/security",
+  [
+    "find-certificate",
+    "-a",
+    "-c",
+    "Mac Installer Distribution: Kimani James (NS5M2UJLKP)",
+  ],
+  { encoding: "utf8" },
+);
+
+if (installerCerts.status !== 0 && modernInstallerCerts.status !== 0) {
   add(
     "warn",
     "Mac App Store installer signing identity is not installed locally.",

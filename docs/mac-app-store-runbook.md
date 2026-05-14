@@ -42,10 +42,10 @@ Create these in Apple Developer / App Store Connect:
 2. Mac App Store Connect provisioning profile
    - Type: Mac App Store Connect
    - App ID: `com.iriedinamik.voxjot`
-   - Signing certificate: Apple Distribution certificate
+   - Signing certificate: Apple Distribution / 3rd Party Mac Developer Application certificate
    - Save as `src-tauri/profiles/VoxJot-AppStore.provisionprofile`
 3. Certificates
-   - Apple Distribution: `Kimani James (NS5M2UJLKP)`
+   - Apple Distribution / 3rd Party Mac Developer Application: `Kimani James (NS5M2UJLKP)`
    - Mac Installer Distribution / 3rd Party Mac Developer Installer
 4. App Store Connect app record
    - Platform: macOS
@@ -76,7 +76,7 @@ APPLE_API_KEY_ID="..." APPLE_API_ISSUER="..." bun run mac:app-store:upload
 If certificate names differ locally:
 
 ```bash
-APPLE_APP_STORE_SIGNING_IDENTITY="Apple Distribution: Kimani James (NS5M2UJLKP)" \
+APPLE_APP_STORE_SIGNING_IDENTITY="3rd Party Mac Developer Application: Kimani James (NS5M2UJLKP)" \
 APPLE_INSTALLER_SIGNING_IDENTITY="3rd Party Mac Developer Installer: Kimani James (NS5M2UJLKP)" \
 bun run mac:app-store:build
 ```

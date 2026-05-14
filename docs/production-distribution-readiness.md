@@ -50,24 +50,33 @@ feature.
   `IrieDinamik/vox-jot-ocr-runtime`, verify its SHA-256 checksum, extract it
   under app support, and prefer that managed runtime before marking neural OCR
   rows runnable.
+- Added `.github/workflows/ocr-runtime.yml` to build and verify native Linux x64
+  and Windows x64 OCR runtime archives on their own runners, then upload the
+  archives and checksums to `IrieDinamik/vox-jot-ocr-runtime`.
 - Added `bun run audit:distribution` to catch release-readiness regressions such
   as heavyweight OCR resource globs, missing hardened runtime, missing
   entitlements, missing Windows signing, and disabled updater artifacts.
+- Enabled Tauri updater artifact generation in `src-tauri/tauri.conf.json`.
+  Release builds still require `TAURI_SIGNING_PRIVATE_KEY` and
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; local unsigned builds keep using the
+  existing wrapper override that disables updater artifacts when no signing key
+  is present.
 
 ## Distribution Gates
 
 Before a broad beta:
 
-- Enable signed Tauri updater artifacts and publish `latest.json` for stable and
-  beta channels.
+- Keep signed Tauri updater artifacts enabled and confirm each GitHub Release
+  contains `latest.json` plus signed updater archives before promoting it beyond
+  beta.
 - Do not treat bundle/download size as the deciding factor. Bundle required
   runtimes when that gives the most reliable first-run experience; otherwise
   download heavy OCR, TTS, speech-analysis, and optional STT assets through
   managed app paths before marking their features runnable.
-- Publish the first `IrieDinamik/vox-jot-ocr-runtime` platform archive before
-  exposing neural OCR as production-ready. Until then, neural OCR will remain
-  unavailable or fail install instead of pretending the developer `.venv` is a
-  production runtime.
+- Publish each `IrieDinamik/vox-jot-ocr-runtime` platform archive before
+  exposing that platform's neural OCR as production-ready. Missing platform
+  archives will keep neural OCR unavailable or fail install instead of pretending
+  the developer `.venv` is a production runtime.
 - Keep notarized macOS DMGs as the primary release artifact. The App Store can
   come later because global shortcuts, paste automation, permissions, and
   sidecars are direct-distribution friendly and store-review sensitive.

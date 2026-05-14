@@ -8,11 +8,34 @@ Use self-hosted distribution first: a direct checkout link, a signed and notariz
 
 - Price: `2.00 USD`
 - Website CTA: `Buy Vox Jot for $2`
-- Checkout provider: Stripe Payment Link, Lemon Squeezy, Gumroad, or Paddle
+- Checkout provider: Lemon Squeezy first; Stripe Payment Links only if tax handling is being managed separately
 - File host: Cloudflare R2 through `https://downloads.iriedinamik.org`
 - Delivery target: latest signed and notarized Apple Silicon DMG
 
 For a $2 desktop beta, do not add license enforcement first. It adds support burden, activation edge cases, offline failure modes, and latency-risking startup checks. Treat the first paid build as paid access to the download, then add signed license receipts later if abuse becomes real.
+
+## Checkout provider decision
+
+Default to Lemon Squeezy for the self-hosted beta.
+
+Why:
+
+- It is a merchant of record style flow, so tax handling is simpler than raw Stripe checkout.
+- It supports software license keys if we later add a paste-in unlock flow.
+- Its fixed fee is still meaningful at `$2`, but the operational overhead is lower than building tax, receipts, license fulfillment, and customer download delivery ourselves.
+- It keeps the app free from payment SDKs and private payment secrets.
+
+Provider tradeoffs:
+
+| Provider             | Best use                                                                     | Vox Jot fit                                                               |
+| -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Lemon Squeezy        | Self-hosted software with tax handling, downloads, and optional license keys | Best default for the website beta                                         |
+| Stripe Payment Links | Lowest-friction checkout when taxes/compliance are handled separately        | Good fallback, especially if a Stripe account is already ready            |
+| Gumroad              | Fast creator-style digital downloads                                         | Simple, but expensive at a `$2` price                                     |
+| Paddle               | More mature merchant-of-record SaaS billing                                  | Strong later, but not ideal for a tiny under-`$10` one-time beta purchase |
+| Apple StoreKit       | App Store unlocks and trials                                                 | Best only for a Mac App Store build                                       |
+
+Do not wire more than one provider into the first beta. Pick one checkout path, one receipt email path, one support path, and one download page.
 
 ## Distribution tracks
 

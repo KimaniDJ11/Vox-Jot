@@ -346,7 +346,7 @@ export const HistorySettings: React.FC = () => {
     }, []);
 
     return (
-      <div className="space-y-5 py-4" data-testid="history-entries">
+      <div className="space-y-5 px-1 py-4" data-testid="history-entries">
         {groupedEntries.map((group) => (
           <section key={group.key} className="space-y-2.5">
             <div className="sticky top-0 z-10 -mx-1 px-1 py-1 backdrop-blur-md">

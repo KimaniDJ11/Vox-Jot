@@ -323,7 +323,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
   const hasTranscript = segments.length > 0;
 
   return (
-    <article className="flex flex-col gap-4 py-4">
+    <article className="flex flex-col gap-4 px-1 py-4">
       <div className="max-h-[52vh] min-h-[14rem] flex-1 overflow-y-auto rounded-2xl border border-mid-gray/20 bg-[var(--panel-bg)] px-4 py-4">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
           {t("settings.history.transcript.hint")}

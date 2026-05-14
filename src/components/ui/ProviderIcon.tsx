@@ -315,10 +315,7 @@ function Ai2Mark({ size }: { size: number; color: string }) {
         d="M4.5 19 10.5 5h3L19.5 19h-3.2l-1-2.7H8.7l-1 2.7H4.5Z"
         fill="#FFFFFF"
       />
-      <path
-        d="M9.7 13.4h4.6L12 7.5l-2.3 5.9Z"
-        fill="#0F766E"
-      />
+      <path d="M9.7 13.4h4.6L12 7.5l-2.3 5.9Z" fill="#0F766E" />
       <path
         d="M18.2 6.2h1.7v7.5"
         fill="none"
@@ -928,10 +925,7 @@ function RevaiMark({ size }: { size: number; color: string }) {
         d="M5.5 5h6.2a4.1 4.1 0 0 1 0 8.2H9V19H5.5V5Zm3.5 5.6h2.4a1.5 1.5 0 0 0 0-3H9v3Z"
         fill="#FFFFFF"
       />
-      <path
-        d="m13.4 12.8 4.7 6.2h-3.8l-3.6-4.8"
-        fill="#FFFFFF"
-      />
+      <path d="m13.4 12.8 4.7 6.2h-3.8l-3.6-4.8" fill="#FFFFFF" />
       <circle cx={18.5} cy={6.5} r={1.6} fill="#22D3EE" />
     </svg>
   );
@@ -1076,10 +1070,7 @@ function PaddlePaddleMark({ size }: { size: number; color: string }) {
   const s = size * 0.7;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M12 3.5 19 8v8l-7 4.5L5 16V8l7-4.5Z"
-        fill="#FFFFFF"
-      />
+      <path d="M12 3.5 19 8v8l-7 4.5L5 16V8l7-4.5Z" fill="#FFFFFF" />
       <path
         d="M9.5 9.5h3.6a2.4 2.4 0 0 1 0 4.8H9.5V9.5Zm0 4.8V18"
         fill="none"
@@ -1096,10 +1087,7 @@ function TesseractMark({ size }: { size: number; color: string }) {
   const s = size * 0.72;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M6 4h12v3.5h-4.2V20h-3.6V7.5H6V4Z"
-        fill="#FFFFFF"
-      />
+      <path d="M6 4h12v3.5h-4.2V20h-3.6V7.5H6V4Z" fill="#FFFFFF" />
       <path
         d="M7.5 9.5h2M14.5 9.5h2M7.5 15h2M14.5 15h2"
         stroke="#F59E0B"
@@ -1223,10 +1211,7 @@ function F5TtsMark({ size }: { size: number; color: string }) {
   const s = size * 0.7;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M7 5h9v3.2H10v3h5v3.1h-5V19H7V5Z"
-        fill="#FFFFFF"
-      />
+      <path d="M7 5h9v3.2H10v3h5v3.1h-5V19H7V5Z" fill="#FFFFFF" />
       <path
         d="M14.5 13.5c1.4 0 2.5 1 2.5 2.4s-1.1 2.5-2.5 2.5"
         fill="none"

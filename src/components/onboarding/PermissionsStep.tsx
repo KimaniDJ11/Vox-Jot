@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { platform } from "@tauri-apps/plugin-os";
 import {
@@ -263,12 +269,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         }
       }
     }, 1000);
-  }, [
-    hasWindowsMicrophoneAccess,
-    permissionPlatform,
-    stopPolling,
-    t,
-  ]);
+  }, [hasWindowsMicrophoneAccess, permissionPlatform, stopPolling, t]);
 
   useEffect(() => {
     const currentPlatform = platform();
@@ -493,9 +494,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
             <Eye size={18} aria-hidden />
             <span>{t("onboarding.permissions.privacyBadge")}</span>
           </div>
-          <h1 className="ob-heading">
-            {t("onboarding.permissions.heading")}
-          </h1>
+          <h1 className="ob-heading">{t("onboarding.permissions.heading")}</h1>
           <p className="ob-subtext">
             {t("onboarding.permissions.visualDescription")}
           </p>

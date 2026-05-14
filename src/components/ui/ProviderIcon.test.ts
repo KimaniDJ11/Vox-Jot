@@ -378,32 +378,38 @@ describe("resolveModelProviderId", () => {
 
       // File ASR / Speech Analysis / Speaker Isolation
       {
-        title: "IBM Granite Granite Speech 4.1 2B ibm-granite/granite-speech-4.1-2b",
+        title:
+          "IBM Granite Granite Speech 4.1 2B ibm-granite/granite-speech-4.1-2b",
         runtimeProviderId: "huggingface",
         expected: "ibm",
       },
       {
-        title: "CohereLabs Cohere Transcribe 03-2026 CohereLabs/cohere-transcribe-03-2026",
+        title:
+          "CohereLabs Cohere Transcribe 03-2026 CohereLabs/cohere-transcribe-03-2026",
         runtimeProviderId: "huggingface",
         expected: "cohere",
       },
       {
-        title: "Alibaba Qwen Qwen3 ASR 0.6B (MLX) mlx-community/Qwen3-ASR-0.6B-8bit",
+        title:
+          "Alibaba Qwen Qwen3 ASR 0.6B (MLX) mlx-community/Qwen3-ASR-0.6B-8bit",
         runtimeProviderId: "huggingface",
         expected: "stt_qwen",
       },
       {
-        title: "Xiaohongshu FireRedASR2 AED (MLX) mlx-community/FireRedASR2-AED-mlx",
+        title:
+          "Xiaohongshu FireRedASR2 AED (MLX) mlx-community/FireRedASR2-AED-mlx",
         runtimeProviderId: "huggingface",
         expected: "firered",
       },
       {
-        title: "Microsoft VibeVoice ASR 9B (MLX) mlx-community/VibeVoice-ASR-bf16",
+        title:
+          "Microsoft VibeVoice ASR 9B (MLX) mlx-community/VibeVoice-ASR-bf16",
         runtimeProviderId: "huggingface",
         expected: "microsoft",
       },
       {
-        title: "pyannote PyAnnote Community-1 pyannote/speaker-diarization-community-1",
+        title:
+          "pyannote PyAnnote Community-1 pyannote/speaker-diarization-community-1",
         runtimeProviderId: "huggingface",
         expected: "pyannote",
       },
@@ -418,12 +424,14 @@ describe("resolveModelProviderId", () => {
         expected: "nvidia",
       },
       {
-        title: "NVIDIA Sortformer 4spk v1 (MLX) mlx-community/diar_sortformer_4spk-v1-fp16",
+        title:
+          "NVIDIA Sortformer 4spk v1 (MLX) mlx-community/diar_sortformer_4spk-v1-fp16",
         runtimeProviderId: "huggingface",
         expected: "nvidia",
       },
       {
-        title: "NVIDIA Sortformer 4spk v2.1 (MLX) mlx-community/diar_streaming_sortformer_4spk-v2.1-fp16",
+        title:
+          "NVIDIA Sortformer 4spk v2.1 (MLX) mlx-community/diar_streaming_sortformer_4spk-v2.1-fp16",
         runtimeProviderId: "huggingface",
         expected: "nvidia",
       },
@@ -438,7 +446,8 @@ describe("resolveModelProviderId", () => {
         expected: "whisperx",
       },
       {
-        title: "polyvoice Polyvoice ONNX Diarization Wespeaker/wespeaker-voxceleb-resnet34",
+        title:
+          "polyvoice Polyvoice ONNX Diarization Wespeaker/wespeaker-voxceleb-resnet34",
         runtimeProviderId: "generic",
         expected: "polyvoice",
       },

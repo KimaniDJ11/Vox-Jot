@@ -49,9 +49,7 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
           aria-label={title}
         >
           {hasHeader && (
-            <div
-              className={useControlsGap ? "px-1 mb-7" : "px-1 mb-2"}
-            >
+            <div className={useControlsGap ? "px-1 mb-7" : "px-1 mb-2"}>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {showTitle && title ? (

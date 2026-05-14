@@ -9,12 +9,7 @@ import ModelStep from "./ModelStep";
 import RefineStep from "./RefineStep";
 import TutorialStep from "./TutorialStep";
 
-type WizardStep =
-  | "welcome"
-  | "permissions"
-  | "model"
-  | "refine"
-  | "tutorial";
+type WizardStep = "welcome" | "permissions" | "model" | "refine" | "tutorial";
 
 interface OnboardingWizardProps {
   /** Called when the user finishes the entire onboarding flow. */

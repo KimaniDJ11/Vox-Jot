@@ -41,10 +41,14 @@ describe("ModelListControls", () => {
     });
 
     expect(
-      container.querySelector('[aria-label="Filter models by provider: Provider"]'),
+      container.querySelector(
+        '[aria-label="Filter models by provider: Provider"]',
+      ),
     ).toBeNull();
     expect(
-      container.querySelector('[aria-label="Filter models by language: Language"]'),
+      container.querySelector(
+        '[aria-label="Filter models by language: Language"]',
+      ),
     ).not.toBeNull();
     expect(
       container.querySelector('[aria-label="Sort models: Best Match"]'),

@@ -97,7 +97,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const isClickable =
     !confirmingDelete &&
     !deleting &&
-    (status === "available" || status === "active" || status === "downloadable");
+    (status === "available" ||
+      status === "active" ||
+      status === "downloadable");
 
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
@@ -110,13 +112,12 @@ const ModelCard: React.FC<ModelCardProps> = ({
     .includes("qwen");
   const providerLabelIsRuntime =
     providerLabel?.toLowerCase().includes("runtime") ?? false;
-  const displayProviderLabel =
-    isQwenFamily
-      ? providerDisplayName("stt_qwen")
-      : resolvedProviderId !== "generic" &&
-          (!providerLabel || providerLabelIsRuntime)
-        ? providerDisplayName(resolvedProviderId)
-        : providerLabel;
+  const displayProviderLabel = isQwenFamily
+    ? providerDisplayName("stt_qwen")
+    : resolvedProviderId !== "generic" &&
+        (!providerLabel || providerLabelIsRuntime)
+      ? providerDisplayName(resolvedProviderId)
+      : providerLabel;
 
   // Top-right reserved for status only — provider identity now lives in the
   // 40px logo + subline, so the provider chip badge is dropped.
@@ -238,7 +239,8 @@ const ModelCard: React.FC<ModelCardProps> = ({
           variant: "secondary" as const,
           icon: <Clock className="h-3 w-3" />,
           detail: t("modelHub.chips.realtimeDetail", {
-            defaultValue: "Optimized for lower-latency partial or streaming results.",
+            defaultValue:
+              "Optimized for lower-latency partial or streaming results.",
           }),
         }
       : null,

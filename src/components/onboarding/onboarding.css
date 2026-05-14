@@ -28,8 +28,7 @@
 
 .ob-root-story {
   background:
-    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 36%),
-    var(--bg);
+    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 36%), var(--bg);
 }
 
 /* ── Progress bar ────────────────────────────────────────── */
@@ -1081,8 +1080,7 @@
   min-height: 0;
   padding: 88px 32px 28px;
   background:
-    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 34%),
-    var(--bg);
+    linear-gradient(180deg, rgba(9, 32, 38, 0.08), transparent 34%), var(--bg);
   overflow: hidden;
 }
 

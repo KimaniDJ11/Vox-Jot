@@ -90,13 +90,11 @@ describe("ttsStorageSizeLabel", () => {
       resolve(process.cwd(), "src-tauri/src/tts/catalog.rs"),
       "utf8",
     );
-    const modelIds = [
-      ...catalog.matchAll(/^\s*model_id:\s*"([^"]+)",/gm),
-    ].map((match) => match[1]);
+    const modelIds = [...catalog.matchAll(/^\s*model_id:\s*"([^"]+)",/gm)].map(
+      (match) => match[1],
+    );
     const hfAliases = [
-      ...catalog.matchAll(
-        /^\s*hf_(?:model|repo)_id:\s*(?:Some\()?"([^"]+)"/gm,
-      ),
+      ...catalog.matchAll(/^\s*hf_(?:model|repo)_id:\s*(?:Some\()?"([^"]+)"/gm),
     ].map((match) => match[1].toLowerCase());
     const missing = [...new Set([...modelIds, ...hfAliases])].filter(
       (id) => !TTS_MODEL_SIZE_HINTS[id],

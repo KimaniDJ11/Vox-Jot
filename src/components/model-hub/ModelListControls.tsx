@@ -100,7 +100,9 @@ export const ModelListControls: React.FC<ModelListControlsProps> = ({
     ((language?.options.length ?? 0) > 1 || language?.value !== "all");
 
   return (
-    <div className={`flex flex-wrap items-center justify-end gap-2 ${className}`}>
+    <div
+      className={`flex flex-wrap items-center justify-end gap-2 ${className}`}
+    >
       {showProvider && provider ? (
         <SelectControl
           value={provider.value}

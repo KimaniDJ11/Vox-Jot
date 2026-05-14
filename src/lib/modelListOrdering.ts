@@ -94,7 +94,8 @@ const compareBySortMode = <T>(
 
   if (sortMode === "test_score") {
     const rankDelta =
-      numberOrMax(accessors.rank?.(left)) - numberOrMax(accessors.rank?.(right));
+      numberOrMax(accessors.rank?.(left)) -
+      numberOrMax(accessors.rank?.(right));
     if (rankDelta !== 0) return rankDelta;
     return leftLabel.localeCompare(rightLabel);
   }
@@ -122,7 +123,8 @@ const compareBySortMode = <T>(
   if (latencyDelta !== 0) return latencyDelta;
 
   const sizeDelta =
-    numberOrMax(accessors.sizeMb?.(left)) - numberOrMax(accessors.sizeMb?.(right));
+    numberOrMax(accessors.sizeMb?.(left)) -
+    numberOrMax(accessors.sizeMb?.(right));
   if (sizeDelta !== 0) return sizeDelta;
 
   const providerDelta =

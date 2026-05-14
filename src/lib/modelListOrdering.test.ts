@@ -46,7 +46,9 @@ describe("modelListOrdering", () => {
       { id: "missing", label: "Missing" },
     ];
 
-    expect(splitInstalledModels(models, (model) => Boolean(model.installed))).toEqual({
+    expect(
+      splitInstalledModels(models, (model) => Boolean(model.installed)),
+    ).toEqual({
       downloadedModels: [models[0]],
       availableModels: [models[1]],
     });

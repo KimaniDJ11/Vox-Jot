@@ -108,9 +108,7 @@ export const CompactBadgeRow: React.FC<{
             className="min-w-0 max-w-[9.5rem] shrink truncate"
           >
             <span className="inline-flex min-w-0 items-center" title={tooltip}>
-              {icon ? (
-                <span className="mr-1 shrink-0">{icon}</span>
-              ) : null}
+              {icon ? <span className="mr-1 shrink-0">{icon}</span> : null}
               <span className="truncate">{item.label}</span>
             </span>
           </Badge>

@@ -250,8 +250,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
                 model: DEFAULT_REFINE_MODEL_ID,
               })
             : phase === "installing"
-              ? installProgress ||
-                t("onboarding.refine.installing.description")
+              ? installProgress || t("onboarding.refine.installing.description")
               : t("onboarding.refine.checkingDescription")}
         </p>
       </div>
@@ -275,9 +274,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
           <Sparkles size={28} color="var(--ob-primary)" />
         </div>
         <h3 className="ob-card-title">{t("onboarding.refine.cardTitle")}</h3>
-        <p className="ob-card-copy">
-          {t("onboarding.refine.cardDescription")}
-        </p>
+        <p className="ob-card-copy">{t("onboarding.refine.cardDescription")}</p>
       </div>
     );
   }

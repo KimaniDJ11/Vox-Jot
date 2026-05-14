@@ -143,7 +143,9 @@ describe("HubModelCard", () => {
     );
 
     expect(
-      view.container.querySelector('[aria-label="modelHub.actionConfirmation"]'),
+      view.container.querySelector(
+        '[aria-label="modelHub.actionConfirmation"]',
+      ),
     ).toBeNull();
     expect(view.container.textContent).toContain("Runtime");
     expect(view.container.textContent).toContain(routingControlsLabel);

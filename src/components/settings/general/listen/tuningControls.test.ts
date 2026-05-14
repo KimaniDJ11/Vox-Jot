@@ -107,13 +107,13 @@ describe("resolvedTuningControlsForModel", () => {
       "tempo_rate",
       "quality_steps",
     ]);
-    expect(controls.find((control) => control.id === "tempo_rate")).toMatchObject(
-      {
-        min: 0.7,
-        max: 2,
-        default_value: { kind: "number", value: 1.05 },
-      },
-    );
+    expect(
+      controls.find((control) => control.id === "tempo_rate"),
+    ).toMatchObject({
+      min: 0.7,
+      max: 2,
+      default_value: { kind: "number", value: 1.05 },
+    });
     expect(
       controls.find((control) => control.id === "quality_steps"),
     ).toMatchObject({
@@ -125,10 +125,7 @@ describe("resolvedTuningControlsForModel", () => {
   });
 
   it("uses Supertonic controls for an imported HF alias row", () => {
-    const supertonicAlias = model(
-      "local_sidecar_api",
-      "hf_tts_collection_145",
-    );
+    const supertonicAlias = model("local_sidecar_api", "hf_tts_collection_145");
     supertonicAlias.label = "supertonic-3";
     supertonicAlias.description =
       "Verified TTS model from Hugging Face collection (Supertone/supertonic-3).";

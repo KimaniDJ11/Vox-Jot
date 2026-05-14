@@ -181,17 +181,19 @@ const SpeechAnalysisEnginesSection: React.FC<
     useState<AnalysisSourceFilter>("all");
   const [localSortMode, setLocalSortMode] =
     useState<ModelSortMode>("best_match");
-  const sourceFilter = (
-    modelHubControls?.providerFilter ?? localSourceFilter
-  ) as AnalysisSourceFilter;
+  const sourceFilter = (modelHubControls?.providerFilter ??
+    localSourceFilter) as AnalysisSourceFilter;
   const sortMode = modelHubControls?.sortMode ?? localSortMode;
-  const setSourceFilter = useCallback((value: AnalysisSourceFilter) => {
-    if (modelHubControls) {
-      modelHubControls.setProviderFilter(value);
-      return;
-    }
-    setLocalSourceFilter(value);
-  }, [modelHubControls]);
+  const setSourceFilter = useCallback(
+    (value: AnalysisSourceFilter) => {
+      if (modelHubControls) {
+        modelHubControls.setProviderFilter(value);
+        return;
+      }
+      setLocalSourceFilter(value);
+    },
+    [modelHubControls],
+  );
   const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const viewSwitcherRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<SpeechAnalysisCatalog | null>(null);
@@ -591,7 +593,8 @@ const SpeechAnalysisEnginesSection: React.FC<
       catalog?.models
         .filter((model) => taskMatchesGroup(model.task, "asr"))
         .filter(
-          (model) => sourceFilter === "all" || model.source_kind === sourceFilter,
+          (model) =>
+            sourceFilter === "all" || model.source_kind === sourceFilter,
         )
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
     [catalog, hubSearchQuery, sourceFilter],
@@ -602,7 +605,8 @@ const SpeechAnalysisEnginesSection: React.FC<
       catalog?.models
         .filter((model) => taskMatchesGroup(model.task, "diarization"))
         .filter(
-          (model) => sourceFilter === "all" || model.source_kind === sourceFilter,
+          (model) =>
+            sourceFilter === "all" || model.source_kind === sourceFilter,
         )
         .filter((model) => modelMatchesQuery(model, hubSearchQuery)) ?? [],
     [catalog, hubSearchQuery, sourceFilter],
@@ -746,7 +750,9 @@ const SpeechAnalysisEnginesSection: React.FC<
 
   return (
     <div className="space-y-5">
-      {headerActionPortal ? createPortal(filterAction, headerActionPortal) : null}
+      {headerActionPortal
+        ? createPortal(filterAction, headerActionPortal)
+        : null}
       <div ref={viewSwitcherRef}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SegmentedControl<AnalysisGroup>
@@ -890,7 +896,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
   const orderedDownloadedModels = useMemo(
     () =>
       orderModelList(
-        models.filter((model) => model.installed || activeDownloads.has(model.id)),
+        models.filter(
+          (model) => model.installed || activeDownloads.has(model.id),
+        ),
         "downloaded",
         sortMode,
         accessors,
@@ -946,362 +954,394 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
               ) : null}
               <div className="grid gap-3 lg:grid-cols-2">
                 {section.models.map((model) => {
-            const selected = model.id === selectedModelId;
-            const isBusy = busyModelId === model.id;
-            const isDownloading = activeDownloads.has(model.id);
-            const isCancelling = cancellingDownloads.has(model.id);
-            const deleteConfirmOpen = deleteConfirmModelId === model.id;
-            const progress = downloadProgress[model.id];
-            const isFailed = progress?.phase === "failed";
-            const hasKnownTotal = Boolean(progress && progress.total_bytes > 0);
-            const progressPct =
-              progress && hasKnownTotal
-                ? Math.min(
-                    100,
-                    Math.round(
-                      (progress.downloaded_bytes / progress.total_bytes) * 100,
+                  const selected = model.id === selectedModelId;
+                  const isBusy = busyModelId === model.id;
+                  const isDownloading = activeDownloads.has(model.id);
+                  const isCancelling = cancellingDownloads.has(model.id);
+                  const deleteConfirmOpen = deleteConfirmModelId === model.id;
+                  const progress = downloadProgress[model.id];
+                  const isFailed = progress?.phase === "failed";
+                  const hasKnownTotal = Boolean(
+                    progress && progress.total_bytes > 0,
+                  );
+                  const progressPct =
+                    progress && hasKnownTotal
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (progress.downloaded_bytes / progress.total_bytes) *
+                              100,
+                          ),
+                        )
+                      : null;
+                  const progressFileName = progress?.file
+                    ? progress.file.includes("/")
+                      ? progress.file.slice(progress.file.lastIndexOf("/") + 1)
+                      : progress.file
+                    : null;
+                  const progressLabel = (() => {
+                    if (isFailed) {
+                      return t("modelHub.analysis.downloadProgress.failed", {
+                        defaultValue: "Setup failed",
+                      });
+                    }
+                    if (isCancelling) {
+                      return t(
+                        "modelHub.analysis.downloadProgress.cancelling",
+                        {
+                          defaultValue: "Cancelling download...",
+                        },
+                      );
+                    }
+                    if (progress?.phase === "preparing") {
+                      return t("modelHub.analysis.downloadProgress.preparing", {
+                        defaultValue: "Checking model files...",
+                      });
+                    }
+                    if (progress?.phase === "recovering") {
+                      return t(
+                        "modelHub.analysis.downloadProgress.recovering",
+                        {
+                          defaultValue: "Resuming model download...",
+                        },
+                      );
+                    }
+                    if (progress?.phase === "downloading-related-assets") {
+                      return t(
+                        "modelHub.analysis.downloadProgress.relatedAssets",
+                        {
+                          defaultValue: "Downloading required extra files...",
+                        },
+                      );
+                    }
+                    if (progress?.phase === "installing-model") {
+                      return t(
+                        "modelHub.analysis.downloadProgress.installingModel",
+                        {
+                          defaultValue: "Installing model files...",
+                        },
+                      );
+                    }
+                    if (progress?.phase === "installing-runtime") {
+                      return t(
+                        "modelHub.analysis.downloadProgress.installingRuntime",
+                        {
+                          defaultValue: "Installing required runtime...",
+                        },
+                      );
+                    }
+                    if (progress?.phase === "complete") {
+                      return t("modelHub.analysis.downloadProgress.ready", {
+                        defaultValue: "Ready to use",
+                      });
+                    }
+                    if (progressPct !== null) {
+                      return t("modelHub.analysis.downloadProgress.percent", {
+                        defaultValue: "Downloading model files {{percent}}%",
+                        percent: progressPct,
+                      });
+                    }
+                    return t("modelHub.analysis.downloadProgress.downloading", {
+                      defaultValue: "Downloading model files...",
+                    });
+                  })();
+
+                  const downloadState: HubDownloadState | undefined =
+                    isDownloading || isFailed
+                      ? {
+                          label: progressLabel,
+                          detail: progressFileName ?? model.repo_id ?? null,
+                          error: progress?.error ?? null,
+                          progress:
+                            progress?.phase === "installing-model"
+                              ? 100
+                              : progressPct,
+                          indeterminate:
+                            progressPct === null &&
+                            progress?.phase !== "installing-model",
+                          cancelling: isCancelling,
+                          onCancel:
+                            isFailed ||
+                            !speechAnalysisProgressCanCancel(progress?.phase)
+                              ? undefined
+                              : () => onCancelDownload(model),
+                          cancelLabel: t(
+                            "modelHub.analysis.actions.cancelDownload",
+                            {
+                              defaultValue: "Cancel {{modelName}} download",
+                              modelName: model.label,
+                            },
+                          ),
+                        }
+                      : undefined;
+
+                  const headerBadges: CompactBadgeItem[] = [
+                    selected
+                      ? {
+                          id: "active",
+                          label: t("common.active", { defaultValue: "Active" }),
+                          variant: "primary",
+                          icon: (
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                          ),
+                          detail: t("modelHub.analysis.badges.activeDetail", {
+                            defaultValue:
+                              group === "asr"
+                                ? "Currently selected for file transcription ASR."
+                                : "Currently selected for speaker isolation.",
+                          }),
+                        }
+                      : null,
+                  ].filter(Boolean) as CompactBadgeItem[];
+
+                  const identityChips = buildModelIdentityChips({
+                    params: inferParameterClass([
+                      model.label,
+                      model.id,
+                      model.provider,
+                      model.repo_id,
+                    ]),
+                    arch: inferArchitectureLabel(
+                      [model.label, model.id, model.provider, model.repo_id],
+                      model.provider,
                     ),
-                  )
-                : null;
-            const progressFileName = progress?.file
-              ? progress.file.includes("/")
-                ? progress.file.slice(progress.file.lastIndexOf("/") + 1)
-                : progress.file
-              : null;
-            const progressLabel = (() => {
-              if (isFailed) {
-                return t("modelHub.analysis.downloadProgress.failed", {
-                  defaultValue: "Setup failed",
-                });
-              }
-              if (isCancelling) {
-                return t("modelHub.analysis.downloadProgress.cancelling", {
-                  defaultValue: "Cancelling download...",
-                });
-              }
-              if (progress?.phase === "preparing") {
-                return t("modelHub.analysis.downloadProgress.preparing", {
-                  defaultValue: "Checking model files...",
-                });
-              }
-              if (progress?.phase === "recovering") {
-                return t("modelHub.analysis.downloadProgress.recovering", {
-                  defaultValue: "Resuming model download...",
-                });
-              }
-              if (progress?.phase === "downloading-related-assets") {
-                return t(
-                  "modelHub.analysis.downloadProgress.relatedAssets",
-                  {
-                    defaultValue: "Downloading required extra files...",
-                  },
-                );
-              }
-              if (progress?.phase === "installing-model") {
-                return t("modelHub.analysis.downloadProgress.installingModel", {
-                  defaultValue: "Installing model files...",
-                });
-              }
-              if (progress?.phase === "installing-runtime") {
-                return t(
-                  "modelHub.analysis.downloadProgress.installingRuntime",
-                  {
-                    defaultValue: "Installing required runtime...",
-                  },
-                );
-              }
-              if (progress?.phase === "complete") {
-                return t("modelHub.analysis.downloadProgress.ready", {
-                  defaultValue: "Ready to use",
-                });
-              }
-              if (progressPct !== null) {
-                return t("modelHub.analysis.downloadProgress.percent", {
-                  defaultValue: "Downloading model files {{percent}}%",
-                  percent: progressPct,
-                });
-              }
-              return t("modelHub.analysis.downloadProgress.downloading", {
-                defaultValue: "Downloading model files...",
-              });
-            })();
+                    format: inferRuntimeFormat(
+                      [
+                        runtimeLabel(model),
+                        engineLabel(model),
+                        model.source_kind,
+                        model.repo_id,
+                      ],
+                      runtimeLabel(model),
+                    ),
+                  });
+                  const sizeChip: CompactBadgeItem | null =
+                    model.size_hint_label
+                      ? {
+                          id: "capability-size",
+                          label: model.size_hint_label,
+                          variant: "secondary",
+                          icon: <HardDrive className="h-3 w-3" aria-hidden />,
+                          detail: t("modelSelector.sizeDetail", {
+                            defaultValue:
+                              "Approximate disk size after download.",
+                          }),
+                        }
+                      : null;
+                  const capabilityChips: CompactBadgeItem[] = [
+                    ...mergeSizeWithIdentityChips(identityChips, sizeChip),
+                    model.gated
+                      ? {
+                          id: "capability-gated",
+                          label: t("modelHub.analysis.meta.gated", {
+                            defaultValue: "HF token",
+                          }),
+                          variant: "secondary",
+                          icon: <KeyRound className="h-3 w-3" aria-hidden />,
+                          detail: t("modelHub.analysis.meta.gatedDetail", {
+                            defaultValue:
+                              "Requires accepted Hugging Face terms and a local HF token.",
+                          }),
+                        }
+                      : null,
+                    {
+                      id: "capability-engine",
+                      label: engineLabel(model),
+                      variant: "secondary",
+                      icon: <Cpu className="h-3 w-3" aria-hidden />,
+                      detail: t("modelHub.analysis.meta.engineDetail", {
+                        defaultValue: "Runtime family used by this engine.",
+                      }),
+                    },
+                    model.installed
+                      ? {
+                          id: "capability-installed",
+                          label: t("modelHub.analysis.meta.installed", {
+                            defaultValue: "Downloaded",
+                          }),
+                          variant: "success",
+                          icon: <HardDrive className="h-3 w-3" aria-hidden />,
+                          detail: t("modelHub.analysis.meta.installedDetail", {
+                            defaultValue:
+                              "Model files are present in Vox Jot's local model store.",
+                          }),
+                        }
+                      : null,
+                  ].filter(Boolean) as CompactBadgeItem[];
 
-            const downloadState: HubDownloadState | undefined =
-              isDownloading || isFailed
-                ? {
-                    label: progressLabel,
-                    detail: progressFileName ?? model.repo_id ?? null,
-                    error: progress?.error ?? null,
-                    progress:
-                      progress?.phase === "installing-model" ? 100 : progressPct,
-                    indeterminate:
-                      progressPct === null &&
-                      progress?.phase !== "installing-model",
-                    cancelling: isCancelling,
-                    onCancel:
-                      isFailed || !speechAnalysisProgressCanCancel(progress?.phase)
-                      ? undefined
-                      : () => onCancelDownload(model),
-                    cancelLabel: t("modelHub.analysis.actions.cancelDownload", {
-                      defaultValue: "Cancel {{modelName}} download",
-                      modelName: model.label,
-                    }),
-                  }
-                : undefined;
+                  const footerMetaItems = [
+                    model.provider,
+                    runtimeLabel(model),
+                    sourceKindLabel(model),
+                    model.downloadable && !model.installed
+                      ? t("modelHub.analysis.meta.weightsNeeded", {
+                          defaultValue: "weights not downloaded",
+                        })
+                      : readinessLabel(model),
+                    model.license_label,
+                    model.repo_id,
+                  ].filter(Boolean) as string[];
+                  let trailing: HubTrailing = null;
+                  const actionDisabled = Boolean(busyModelId) || isDownloading;
+                  trailing = {
+                    kind: "custom",
+                    node: (
+                      <div
+                        className="flex shrink-0 items-center gap-1"
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {model.downloadable &&
+                        !model.installed &&
+                        !isDownloading ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={actionDisabled}
+                            aria-label={t(
+                              "modelHub.analysis.actions.download",
+                              {
+                                defaultValue: "Download {{modelName}}",
+                                modelName: model.label,
+                              },
+                            )}
+                            title={t("modelHub.analysis.actions.download", {
+                              defaultValue: "Download {{modelName}}",
+                              modelName: model.label,
+                            })}
+                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                            onClick={() => onDownload(model)}
+                          >
+                            {isDownloading ? (
+                              <Loader2
+                                className="h-3.5 w-3.5 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" aria-hidden />
+                            )}
+                          </Button>
+                        ) : null}
+                        {model.downloadable && model.installed ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={Boolean(busyModelId) && !isBusy}
+                            onClick={() => onRequestDelete(model.id)}
+                            aria-label={t("modelHub.analysis.actions.delete", {
+                              defaultValue: "Delete {{modelName}}",
+                              modelName: model.label,
+                            })}
+                            title={t("modelHub.analysis.actions.delete", {
+                              defaultValue: "Delete {{modelName}}",
+                              modelName: model.label,
+                            })}
+                            className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+                          >
+                            {isBusy ? (
+                              <Loader2
+                                className="h-3.5 w-3.5 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                            )}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ),
+                  };
 
-            const headerBadges: CompactBadgeItem[] = [
-              selected
-                ? {
-                    id: "active",
-                    label: t("common.active", { defaultValue: "Active" }),
-                    variant: "primary",
-                    icon: <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />,
-                    detail: t("modelHub.analysis.badges.activeDetail", {
-                      defaultValue:
-                        group === "asr"
-                          ? "Currently selected for file transcription ASR."
-                          : "Currently selected for speaker isolation.",
-                    }),
-                  }
-                : null,
-            ].filter(Boolean) as CompactBadgeItem[];
-
-            const identityChips = buildModelIdentityChips({
-              params: inferParameterClass([
-                model.label,
-                model.id,
-                model.provider,
-                model.repo_id,
-              ]),
-              arch: inferArchitectureLabel(
-                [model.label, model.id, model.provider, model.repo_id],
-                model.provider,
-              ),
-              format: inferRuntimeFormat(
-                [
-                  runtimeLabel(model),
-                  engineLabel(model),
-                  model.source_kind,
-                  model.repo_id,
-                ],
-                runtimeLabel(model),
-              ),
-            });
-            const sizeChip: CompactBadgeItem | null = model.size_hint_label
-              ? {
-                  id: "capability-size",
-                  label: model.size_hint_label,
-                  variant: "secondary",
-                  icon: <HardDrive className="h-3 w-3" aria-hidden />,
-                  detail: t("modelSelector.sizeDetail", {
-                    defaultValue: "Approximate disk size after download.",
-                  }),
-                }
-              : null;
-            const capabilityChips: CompactBadgeItem[] = [
-              ...mergeSizeWithIdentityChips(identityChips, sizeChip),
-              model.gated
-                ? {
-                    id: "capability-gated",
-                    label: t("modelHub.analysis.meta.gated", {
-                      defaultValue: "HF token",
-                    }),
-                    variant: "secondary",
-                    icon: <KeyRound className="h-3 w-3" aria-hidden />,
-                    detail: t("modelHub.analysis.meta.gatedDetail", {
-                      defaultValue:
-                        "Requires accepted Hugging Face terms and a local HF token.",
-                    }),
-                  }
-                : null,
-              {
-                id: "capability-engine",
-                label: engineLabel(model),
-                variant: "secondary",
-                icon: <Cpu className="h-3 w-3" aria-hidden />,
-                detail: t("modelHub.analysis.meta.engineDetail", {
-                  defaultValue: "Runtime family used by this engine.",
-                }),
-              },
-              model.installed
-                ? {
-                    id: "capability-installed",
-                    label: t("modelHub.analysis.meta.installed", {
-                      defaultValue: "Downloaded",
-                    }),
-                    variant: "success",
-                    icon: <HardDrive className="h-3 w-3" aria-hidden />,
-                    detail: t("modelHub.analysis.meta.installedDetail", {
-                      defaultValue:
-                        "Model files are present in Vox Jot's local model store.",
-                    }),
-                  }
-                : null,
-            ].filter(Boolean) as CompactBadgeItem[];
-
-            const footerMetaItems = [
-              model.provider,
-              runtimeLabel(model),
-              sourceKindLabel(model),
-              model.downloadable && !model.installed
-                ? t("modelHub.analysis.meta.weightsNeeded", {
-                    defaultValue: "weights not downloaded",
-                  })
-                : readinessLabel(model),
-              model.license_label,
-              model.repo_id,
-            ].filter(Boolean) as string[];
-            let trailing: HubTrailing = null;
-            const actionDisabled = Boolean(busyModelId) || isDownloading;
-            trailing = {
-              kind: "custom",
-              node: (
-                <div
-                  className="flex shrink-0 items-center gap-1"
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
-                  {model.downloadable && !model.installed && !isDownloading ? (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      disabled={actionDisabled}
-                      aria-label={t("modelHub.analysis.actions.download", {
-                        defaultValue: "Download {{modelName}}",
-                        modelName: model.label,
-                      })}
-                      title={t("modelHub.analysis.actions.download", {
-                        defaultValue: "Download {{modelName}}",
-                        modelName: model.label,
-                      })}
-                      className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
-                      onClick={() => onDownload(model)}
+                  const footerExtra = deleteConfirmOpen ? (
+                    <div
+                      className="w-full rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] p-3"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
                     >
-                      {isDownloading ? (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                    </Button>
-                  ) : null}
-                  {model.downloadable && model.installed ? (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      disabled={Boolean(busyModelId) && !isBusy}
-                      onClick={() => onRequestDelete(model.id)}
-                      aria-label={t("modelHub.analysis.actions.delete", {
-                        defaultValue: "Delete {{modelName}}",
-                        modelName: model.label,
-                      })}
-                      title={t("modelHub.analysis.actions.delete", {
-                        defaultValue: "Delete {{modelName}}",
-                        modelName: model.label,
-                      })}
-                      className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
-                    >
-                      {isBusy ? (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                    </Button>
-                  ) : null}
-                </div>
-              ),
-            };
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[var(--text)]">
+                            {t("modelHub.analysis.actions.deleteConfirmTitle", {
+                              defaultValue: "Delete downloaded weights?",
+                            })}
+                          </p>
+                          <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+                            {t(
+                              "modelHub.analysis.actions.deleteConfirmDetail",
+                              {
+                                defaultValue:
+                                  "{{modelName}} will be removed from Vox Jot's local model store. You can download it again later.",
+                                modelName: model.label,
+                              },
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={Boolean(busyModelId)}
+                            onClick={onCancelDelete}
+                          >
+                            {t("common.cancel", { defaultValue: "Cancel" })}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="danger"
+                            disabled={Boolean(busyModelId)}
+                            onClick={() => onDelete(model)}
+                          >
+                            {isBusy ? (
+                              <Loader2
+                                className="h-3.5 w-3.5 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                            )}
+                            {t("modelHub.analysis.actions.confirmDelete", {
+                              defaultValue: "Delete",
+                            })}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null;
 
-            const footerExtra = deleteConfirmOpen ? (
-              <div
-                className="w-full rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)] p-3"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text)]">
-                      {t("modelHub.analysis.actions.deleteConfirmTitle", {
-                        defaultValue: "Delete downloaded weights?",
-                      })}
-                    </p>
-                    <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-                      {t("modelHub.analysis.actions.deleteConfirmDetail", {
-                        defaultValue:
-                          "{{modelName}} will be removed from Vox Jot's local model store. You can download it again later.",
-                        modelName: model.label,
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={Boolean(busyModelId)}
-                      onClick={onCancelDelete}
-                    >
-                      {t("common.cancel", { defaultValue: "Cancel" })}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="danger"
-                      disabled={Boolean(busyModelId)}
-                      onClick={() => onDelete(model)}
-                    >
-                      {isBusy ? (
-                        <Loader2
-                          className="h-3.5 w-3.5 animate-spin"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      )}
-                      {t("modelHub.analysis.actions.confirmDelete", {
-                        defaultValue: "Delete",
-                      })}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : null;
+                  const handleClick = () => {
+                    if (actionDisabled) return;
+                    if (deleteConfirmOpen) return;
+                    if (model.downloadable && !model.installed) {
+                      onDownload(model);
+                      return;
+                    }
+                    onSelect(group, model.id);
+                  };
 
-            const handleClick = () => {
-              if (actionDisabled) return;
-              if (deleteConfirmOpen) return;
-              if (model.downloadable && !model.installed) {
-                onDownload(model);
-                return;
-              }
-              onSelect(group, model.id);
-            };
-
-            return (
-              <HubModelCard
-                key={`${group}-${model.id}`}
-                title={model.label}
-                providerId={providerIconId(model)}
-                subline={model.provider}
-                headerBadges={headerBadges}
-                description={model.description}
-                capabilityChips={capabilityChips}
-                footerMetaItems={footerMetaItems}
-                footerMetaIcon={<Server className="h-3.5 w-3.5" aria-hidden />}
-                footerMetaMaxVisible={4}
-                footerOverflowLabel={`${model.label} details`}
-                active={selected}
-                trailing={trailing}
-                downloadState={downloadState}
-                footerExtra={footerExtra}
-                onClick={handleClick}
-              />
-            );
+                  return (
+                    <HubModelCard
+                      key={`${group}-${model.id}`}
+                      title={model.label}
+                      providerId={providerIconId(model)}
+                      subline={model.provider}
+                      headerBadges={headerBadges}
+                      description={model.description}
+                      capabilityChips={capabilityChips}
+                      footerMetaItems={footerMetaItems}
+                      footerMetaIcon={
+                        <Server className="h-3.5 w-3.5" aria-hidden />
+                      }
+                      footerMetaMaxVisible={4}
+                      footerOverflowLabel={`${model.label} details`}
+                      active={selected}
+                      trailing={trailing}
+                      downloadState={downloadState}
+                      footerExtra={footerExtra}
+                      onClick={handleClick}
+                    />
+                  );
                 })}
               </div>
             </div>

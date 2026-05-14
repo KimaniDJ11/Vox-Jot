@@ -11,7 +11,9 @@ unused-ignored-advisory = "warn"
 #   app-level upgrade path after moving to Tauri 2.11 / wry 0.55 and removing
 #   Vox Jot's direct gtk-layer-shell/gtk dependency.
 # Revisit these exceptions when Tauri's Linux runtime moves off GTK3/WebKitGTK
-# GTK3 bindings or when tauri-utils replaces urlpattern/rust-unic.
+# GTK3 bindings or when tauri-utils replaces urlpattern/rust-unic. GitHub
+# Dependabot GHSA mirrors for these same blocked transitive advisories should be
+# dismissed only with the matching rationale below.
 ignore = [
   { id = "RUSTSEC-2024-0411", reason = "Transitive Tauri/tao Linux GTK3 binding; no app-level GTK4 migration path while shipping Tauri Linux." },
   { id = "RUSTSEC-2024-0412", reason = "Transitive Tauri/wry Linux GTK3 binding; no app-level GTK4 migration path while shipping Tauri Linux." },
@@ -23,7 +25,7 @@ ignore = [
   { id = "RUSTSEC-2024-0418", reason = "Transitive Tauri/wry Linux GTK3 binding; no app-level GTK4 migration path while shipping Tauri Linux." },
   { id = "RUSTSEC-2024-0419", reason = "Transitive Tauri/wry Linux GTK3 binding; no app-level GTK4 migration path while shipping Tauri Linux." },
   { id = "RUSTSEC-2024-0420", reason = "Transitive Tauri/wry Linux GTK3 binding; no app-level GTK4 migration path while shipping Tauri Linux." },
-  { id = "RUSTSEC-2024-0429", reason = "Transitive Tauri/wry Linux glib 0.18; patched glib 0.20 is blocked by the GTK3 Tauri Linux stack." },
+  { id = "RUSTSEC-2024-0429", reason = "Transitive Tauri/wry Linux glib 0.18 (GHSA-wrw7-89jp-8q8g); patched glib 0.20 is blocked by the GTK3 Tauri Linux stack." },
   { id = "RUSTSEC-2024-0370", reason = "Transitive proc-macro helper; not used by Vox Jot runtime code and no direct dependency remains to upgrade." },
   { id = "RUSTSEC-2024-0436", reason = "Transitive proc-macro helper; not used by Vox Jot runtime code and no direct dependency remains to upgrade." },
   { id = "RUSTSEC-2025-0075", reason = "Transitive tauri-utils urlpattern dependency; no app-level replacement path." },

@@ -135,9 +135,13 @@ mkdir -p "$BUILD_DIR/.python-extract"
 tar -C "$BUILD_DIR/.python-extract" -xzf "$PYTHON_ARCHIVE"
 
 if [[ "$PLATFORM" == "windows" ]]; then
-  RUNTIME_PYTHON="$(
-    find "$BUILD_DIR/.python-extract" -type f -name 'python.exe' | head -n 1
-  )"
+  if [[ -f "$BUILD_DIR/.python-extract/python/python.exe" ]]; then
+    RUNTIME_PYTHON="$BUILD_DIR/.python-extract/python/python.exe"
+  else
+    RUNTIME_PYTHON="$(
+      find "$BUILD_DIR/.python-extract" -type f -name 'python.exe' ! -path '*/Lib/venv/*' | head -n 1
+    )"
+  fi
 else
   RUNTIME_PYTHON="$(
     find "$BUILD_DIR/.python-extract" -type f -path '*/bin/python3*' ! -name '*-config' | head -n 1
@@ -147,7 +151,11 @@ if [[ -z "$RUNTIME_PYTHON" || ! -f "$RUNTIME_PYTHON" ]]; then
   echo "Could not locate standalone OCR runtime python" >&2
   exit 1
 fi
-PYTHON_ROOT="$(cd "$(dirname "$RUNTIME_PYTHON")/.." && pwd)"
+if [[ "$PLATFORM" == "windows" ]]; then
+  PYTHON_ROOT="$(cd "$(dirname "$RUNTIME_PYTHON")" && pwd)"
+else
+  PYTHON_ROOT="$(cd "$(dirname "$RUNTIME_PYTHON")/.." && pwd)"
+fi
 rm -rf "$BUILD_DIR/.python"
 mv "$PYTHON_ROOT" "$BUILD_DIR/.python"
 rm -rf "$BUILD_DIR/.python-extract"

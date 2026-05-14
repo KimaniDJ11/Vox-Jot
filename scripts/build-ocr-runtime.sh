@@ -173,6 +173,9 @@ fi
 
 "$RUNTIME_PYTHON" -m ensurepip --upgrade || true
 "$RUNTIME_PYTHON" -m pip install --upgrade pip setuptools wheel
+if [[ "$PLATFORM" == "linux" ]]; then
+  "$RUNTIME_PYTHON" -m pip install --no-compile --index-url https://download.pytorch.org/whl/cpu torch torchvision
+fi
 (cd "$BUILD_DIR" && "$RUNTIME_PYTHON" -m pip install --no-compile ".[$EXTRAS]")
 
 find "$BUILD_DIR" \

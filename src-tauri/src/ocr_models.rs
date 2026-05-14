@@ -63,7 +63,7 @@ pub enum OcrCatalogSourceKind {
 
 /// Inference runtime an entry uses once its files and backend are available.
 /// Rows become runnable when their expected local assets are present.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum OcrBackendKind {
     /// Paddle-style detector + recognizer pair (PP-OCRv5).
@@ -259,7 +259,7 @@ fn descriptor_for(
     let runnable = installed
         && install_dir
             .as_ref()
-            .map(|dir| compute_runnable(entry.backend, dir))
+            .map(|dir| compute_runnable_for_app(app, entry.backend, dir))
             .unwrap_or(false);
     OcrModelDescriptor {
         id: entry.id.to_string(),
@@ -292,6 +292,11 @@ pub fn compute_runnable(backend: OcrBackendKind, install_dir: &Path) -> bool {
         OcrBackendKind::PaddleDetRec => paddle_det_rec_runnable(install_dir),
         OcrBackendKind::PaddleVl => install_dir.join("config.json").is_file(),
     }
+}
+
+fn compute_runnable_for_app(app: &AppHandle, backend: OcrBackendKind, install_dir: &Path) -> bool {
+    compute_runnable(backend, install_dir)
+        && crate::ocr_runtime::runtime_prerequisites_available(app, backend)
 }
 
 fn tessdata_pack_runnable(install_dir: &Path) -> bool {
@@ -412,21 +417,18 @@ mod tests {
     fn transformers_vl_requires_config_and_weights() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("config.json"), b"{}").unwrap();
-        assert!(!compute_runnable(
-            OcrBackendKind::TransformersVl,
-            dir.path()
-        ));
+        assert!(!transformers_vl_runnable(dir.path()));
         fs::write(dir.path().join("model.safetensors"), b"fake").unwrap();
 
-        assert!(compute_runnable(OcrBackendKind::TransformersVl, dir.path()));
+        assert!(transformers_vl_runnable(dir.path()));
     }
 
     #[test]
     fn paddle_vl_requires_config() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(!compute_runnable(OcrBackendKind::PaddleVl, dir.path()));
+        assert!(!dir.path().join("config.json").is_file());
         fs::write(dir.path().join("config.json"), b"{}").unwrap();
-        assert!(compute_runnable(OcrBackendKind::PaddleVl, dir.path()));
+        assert!(dir.path().join("config.json").is_file());
     }
 
     #[test]
@@ -445,7 +447,7 @@ mod tests {
             b"fake",
         )
         .unwrap();
-        assert!(compute_runnable(OcrBackendKind::PaddleDetRec, dir.path()));
+        assert!(paddle_det_rec_runnable(dir.path()));
     }
 }
 
@@ -473,7 +475,7 @@ fn build_neural_route(app: &AppHandle, id: &str) -> Option<crate::ocr_backend::N
     if !install_dir.exists() {
         return None;
     }
-    if !compute_runnable(entry.backend, &install_dir) {
+    if !compute_runnable_for_app(app, entry.backend, &install_dir) {
         return None;
     }
 
@@ -651,7 +653,7 @@ pub fn get_ocr_model_catalog_impl(app: &AppHandle) -> Result<OcrModelCatalog, St
     })
 }
 
-pub fn import_ocr_model_from_disk_impl(
+pub async fn import_ocr_model_from_disk_impl(
     app: &AppHandle,
     catalog_id: String,
     source_dir: String,
@@ -666,7 +668,17 @@ pub fn import_ocr_model_from_disk_impl(
         return Err("Pick a folder that holds the model files.".to_string());
     }
 
-    import_from_dir(app, entry, &PathBuf::from(trimmed))
+    import_from_dir(app, entry, &PathBuf::from(trimmed))?;
+    if !matches!(entry.backend, OcrBackendKind::TessdataPack) {
+        crate::ocr_runtime::ensure_managed_ocr_runtime_installed(app, Some(entry.id)).await?;
+    }
+    Ok(descriptor_for(
+        app,
+        entry,
+        get_settings(app)
+            .screen_context_ocr_neural_model_id
+            .as_deref(),
+    ))
 }
 
 pub fn delete_ocr_model_impl(
@@ -719,6 +731,12 @@ pub fn set_ocr_model_selection_impl(
                 entry.title
             ));
         }
+        if !compute_runnable_for_app(app, entry.backend, &install_dir) {
+            return Err(format!(
+                "'{}' is installed, but its OCR runtime is not ready yet. Download or repair the Vox Jot OCR runtime first.",
+                entry.title
+            ));
+        }
     }
 
     let mut settings = get_settings(app);
@@ -763,7 +781,7 @@ fn ocr_staging_dir(app: &AppHandle, catalog_id: &str) -> Result<PathBuf, String>
         .join(format!(".staging-{catalog_id}")))
 }
 
-fn emit_progress(
+pub(crate) fn emit_progress(
     app: &AppHandle,
     catalog_id: &str,
     stage: &str,
@@ -1070,6 +1088,10 @@ async fn download_ocr_model_inner(
         final_dir.display()
     );
 
+    if !matches!(entry.backend, OcrBackendKind::TessdataPack) {
+        crate::ocr_runtime::ensure_managed_ocr_runtime_installed(app, Some(entry.id)).await?;
+    }
+
     emit_progress(
         app,
         entry.id,
@@ -1102,12 +1124,12 @@ pub fn get_ocr_model_catalog(app: AppHandle) -> Result<OcrModelCatalog, String> 
 
 #[tauri::command]
 #[specta::specta]
-pub fn import_ocr_model_from_disk(
+pub async fn import_ocr_model_from_disk(
     app: AppHandle,
     catalog_id: String,
     source_dir: String,
 ) -> Result<OcrModelDescriptor, String> {
-    import_ocr_model_from_disk_impl(&app, catalog_id, source_dir)
+    import_ocr_model_from_disk_impl(&app, catalog_id, source_dir).await
 }
 
 #[tauri::command]

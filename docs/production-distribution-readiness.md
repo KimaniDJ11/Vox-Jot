@@ -6,14 +6,50 @@ Last updated: 2026-05-13
 
 Ship direct-download macOS first, with Windows next and Linux as a community
 channel. The app already has a strong macOS signing/notarization path; the next
-production work is making releases small, updateable, trustworthy, and easy to
-recover if a runtime/model asset breaks.
+production work is making releases complete, updateable, trustworthy, and easy
+to recover if a runtime/model asset breaks.
+
+## Production Feature Rule
+
+If a feature is visible as usable, every required binary, model, runtime, and
+credential flow must be either:
+
+- bundled in the app,
+- created/bootstrapped by the app,
+- downloaded and installed through an app-managed flow, or
+- explicitly marked unavailable until the user completes the app-managed setup.
+
+Large app-managed downloads are acceptable. A large footprint is preferable to
+shipping a visible feature that only works on the developer's machine. The
+requirements are that downloads are explicit, resumable where practical,
+cancellable, stored under app support model/runtime directories, and reflected in
+the UI with size/status/error information.
+
+Developer-only paths such as repo-local virtualenvs, `~/Apps/...` staging
+folders, local shell tools, or manually installed Python packages can help
+development, but they must not be the only way an end user can run a visible
+feature.
 
 ## Implemented In This Pass
 
 - Narrowed packaged OCR resources in `src-tauri/tauri.conf.json` so production
   bundles include the OCR runtime source package, not the local development
   virtualenv under `ocr-runtime/.venv`.
+- Gated neural OCR rows so downloaded model weights are not marked runnable
+  unless the app can also find the OCR runtime source, Python, and the required
+  Python modules for that OCR backend.
+- Added OCR runtime packaging/upload scripts:
+  `bun run ocr:build-runtime` creates a versioned platform archive from
+  `ocr-runtime/`, a standalone platform Python runtime, OCR Python
+  dependencies, plus a `.sha256` checksum. `bun run ocr:upload-runtime:hf`
+  uploads both files to the public Hugging Face repo configured by
+  `HF_OCR_RUNTIME_REPO`
+  (`IrieDinamik/vox-jot-ocr-runtime` by default).
+- Added an app-side OCR runtime installer. Neural OCR model downloads now also
+  install `ocr-runtime-<platform>-<arch>-all.tar.gz` from
+  `IrieDinamik/vox-jot-ocr-runtime`, verify its SHA-256 checksum, extract it
+  under app support, and prefer that managed runtime before marking neural OCR
+  rows runnable.
 - Added `bun run audit:distribution` to catch release-readiness regressions such
   as heavyweight OCR resource globs, missing hardened runtime, missing
   entitlements, missing Windows signing, and disabled updater artifacts.
@@ -24,9 +60,14 @@ Before a broad beta:
 
 - Enable signed Tauri updater artifacts and publish `latest.json` for stable and
   beta channels.
-- Keep the installer thin. Bundle only core app assets and small required
-  runtimes; download heavy OCR, TTS, speech-analysis, and optional STT assets
-  through managed app paths.
+- Do not treat bundle/download size as the deciding factor. Bundle required
+  runtimes when that gives the most reliable first-run experience; otherwise
+  download heavy OCR, TTS, speech-analysis, and optional STT assets through
+  managed app paths before marking their features runnable.
+- Publish the first `IrieDinamik/vox-jot-ocr-runtime` platform archive before
+  exposing neural OCR as production-ready. Until then, neural OCR will remain
+  unavailable or fail install instead of pretending the developer `.venv` is a
+  production runtime.
 - Keep notarized macOS DMGs as the primary release artifact. The App Store can
   come later because global shortcuts, paste automation, permissions, and
   sidecars are direct-distribution friendly and store-review sensitive.
@@ -77,6 +118,16 @@ or moved into this repository. Connect the GitHub repo to Pages for automatic
 deploys, keep preview deployments enabled for branches, and use `_redirects` for
 canonical download URLs. Put large release assets on GitHub Releases or R2 with
 custom-domain caching only after the app update/download flow is stable.
+
+Use Hugging Face this way:
+
+- OCR model weights stay in their existing public mirror repos, and those repos
+  can be grouped in a public Hugging Face Collection for browsing.
+- OCR runtime dependencies should live in a separate public repo, recommended:
+  `IrieDinamik/vox-jot-ocr-runtime`.
+- The app should download from concrete repo IDs and asset filenames, not from
+  the Collection itself. Collections are discovery/organization; repo IDs are
+  the stable install contract.
 
 Recommended URL shape:
 

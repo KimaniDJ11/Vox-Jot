@@ -20,6 +20,7 @@ const LFM_AUDIO_GGUF_DIR: &str = "lfm-audio-gguf";
 const VIBEVOICE_DIR: &str = "vibevoice";
 const LFM2_TOOL_DIR: &str = "lfm2-tool";
 const OCR_MODELS_DIR: &str = "ocr";
+const OCR_RUNTIME_DIR: &str = "ocr-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
 
 // LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
@@ -137,6 +138,12 @@ pub fn lfm_audio_gguf_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 /// directory at runtime.
 pub fn ocr_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(OCR_MODELS_DIR))
+}
+
+/// Root for OCR runtime dependency bundles managed by the app.
+/// Platform-specific archives install to `<this>/<platform_id>/`.
+pub fn ocr_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(OCR_RUNTIME_DIR))
 }
 
 /// Root for file-ASR and speaker-isolation assets managed by the app.

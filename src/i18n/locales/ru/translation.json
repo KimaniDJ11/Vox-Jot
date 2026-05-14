@@ -104,7 +104,7 @@
       "microphone": {
         "title": "Доступ к микрофону",
         "description": "Требуется услышать ваш голос для транскрипции.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "Разрешите Vox Jot использовать ваш микрофон",
         "cardDescription": "Vox Jot микрофон нужен только во время диктовки.",
         "eyebrow": "Захват голоса",
         "storyTitle": "Доступ к микрофону",
@@ -120,7 +120,7 @@
       "accessibility": {
         "title": "Доступность Доступ",
         "description": "Требуется для ввода расшифрованного текста в ваши приложения.",
-        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardTitle": "Разрешить Vox Jot вставлять произнесенные слова",
         "cardDescription": "Это позволяет Vox Jot помещать транскрибированный текст в поле, которое вы активно используете.",
         "eyebrow": "Вывод текста",
         "storyTitle": "Доступность",
@@ -149,7 +149,7 @@
       "inputMonitoring": {
         "title": "Входной мониторинг",
         "description": "Требуется, чтобы Vox Jot мог лучше определить разницу между отправкой сообщения и очисткой текста вручную.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "Разрешить Vox Jot локально наблюдать за активностью клавиатуры",
         "cardDescription": "Это помогает Vox Jot замечать быстрые изменения, действия Enter-send и очистки при удалении. Он не записывает то, что вы вводите.",
         "manualCleanupHint": "Если macOS показывает здесь более старую запись Vox Jot, удалите ее и включите /Applications/Vox Jot.app.",
         "eyebrow": "Состояние клавиатуры",
@@ -166,7 +166,7 @@
       "screenRecording": {
         "title": "Запись экрана",
         "description": "Требуется, чтобы Vox Jot мог создать скользящий кэш OCR из активного дисплея и использовать его в качестве локального контекста диктовки.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "Разрешить Vox Jot локально читать контекст активного экрана",
         "cardDescription": "Это позволяет Vox Jot периодически OCR активировать дисплей, поэтому имена, жаргонизмы и фразовые ключи будут более точными, когда вы начнете диктовать.",
         "eyebrow": "Визуальный контекст",
         "storyTitle": "Запись экрана",
@@ -208,10 +208,10 @@
       "footnote": "Если вы пропустите этот шаг, Refine по-прежнему будет работать после подключения облачного провайдера в меню «Настройки» > «Модели и AI».",
       "cardTitle": "Текст, продиктованный на польском языке, конфиденциально",
       "cardDescription": "Уточните прогоны после транскрипции, чтобы очистить слова-вставки, исправить пунктуацию или переписать тоном.",
-      "checking": "Checking for Ollama…",
+      "checking": "Проверка Ollama…",
       "checkingDescription": "Ищем существующий локальный механизм Refine на этом устройстве.",
       "installing": {
-        "title": "Installing Ollama",
+        "title": "Установка Ollama",
         "description": "При этом будет установлен локальный движок Refine. Сетевая активность здесь нормальная."
       },
       "pulling": {
@@ -231,7 +231,7 @@
     "welcome": {
       "title": "Настройте приватную голосовую диктовку, которая действительно соответствует вашему рабочему процессу.",
       "description": "Vox Jot позволяет вам говорить в любом приложении, сохраняет транскрипцию локально на вашем устройстве и может при необходимости дорабатывать окончательный текст перед его вставкой.",
-      "cta": "Set Up Vox Jot",
+      "cta": "Настройка Vox Jot",
       "cardTitle": "Создан для повседневной диктовки",
       "cardDescription": "Сначала запустите основной поток, а затем адаптируйте выходные данные, как только вы узнаете, как вы хотите, чтобы Vox Jot вел себя.",
       "features": [
@@ -272,7 +272,7 @@
     "firstDictation": {
       "title": "Вы готовы к первому диктанту",
       "description": "Начните с обычного ярлыка диктовки, говорите естественно и позвольте Vox Jot вставить результат в то место, где находится курсор.",
-      "cta": "Open Vox Jot",
+      "cta": "Открыть Vox Jot",
       "steps": [
         "Поместите курсор в любое текстовое поле, куда вы хотите поместить расшифровку.",
         "Используйте ярлык диктовки, чтобы начать запись, а затем остановите ее, когда закончите говорить.",
@@ -502,7 +502,7 @@
             "description": "Нажмите один раз, чтобы начать, нажмите еще раз, чтобы остановить."
           },
           "hold": {
-            "title": "Push-to-talk",
+            "title": "Нажми и говори",
             "description": "Удерживайте ярлык во время разговора."
           }
         },
@@ -744,7 +744,7 @@
         "createFirst": "Нажмите «Создать новое приглашение» выше, чтобы создать первое приглашение для постобработки."
       },
       "apple": {
-        "title": "Apple Cleanup",
+        "title": "Очистка Apple",
         "description": "Используйте Apple Intelligence для локальной полировки транскрипции после завершения распознавания речи.",
         "mode": {
           "title": "Режим",
@@ -779,7 +779,7 @@
           "title": "Определения тонов",
           "description": "Определите многократно используемые пресеты тембра. Каждый звуковой сигнал добавляет указание по ограниченной перезаписи к приглашению Apple Intelligence.",
           "columns": {
-            "id": "Tone ID",
+            "id": "Тон ID",
             "label": "Отображаемое имя",
             "instruction": "Инструкция"
           },
@@ -869,11 +869,11 @@
           "description": "Решите, следует ли вставить доработанный текст немедленно или сначала просмотреть его."
         },
         "appleCleanup": {
-          "title": "Apple Cleanup",
+          "title": "Apple Очистка",
           "description": "Настройте, как Apple Intelligence переписывает фразы и обрабатывает случаи сбоев."
         },
         "applePersonalization": {
-          "title": "Apple Personalization",
+          "title": "Apple Персонализация",
           "description": "Подбирайте тон для каждого приложения и сохраняйте единообразие предпочтительного написания перед запуском очистки."
         },
         "prompting": {
@@ -1012,7 +1012,7 @@
         "description": "Выберите серверную часть сочетания клавиш.",
         "bindingsReset": "Сочетания клавиш были несовместимы и сброшены до значений по умолчанию.",
         "options": {
-          "tauri": "Tauri Global Shortcut",
+          "tauri": "Tauri Глобальный ярлык",
           "handy_keys": "Удобные ключи"
         },
         "changeConfirm": "Изменить серверную часть клавиатуры? Ярлыки, несовместимые с новым серверным интерфейсом, могут быть сброшены до значений по умолчанию."
@@ -1132,7 +1132,7 @@
       }
     },
     "dataPrivacy": {
-      "introTitle": "How Vox Jot handles your data",
+      "introTitle": "Как Vox Jot обрабатывает ваши данные",
       "introBody": "Речь расшифровывается на вашем устройстве с использованием установленных вами моделей. Дополнительная постобработка AI может выполняться на устройстве (например, Apple Intelligence) или через настроенного вами поставщика. История стенограмм и ограничения на хранение применяются только к данным, хранящимся локально на этом компьютере — на серверы Vox Jot ничего не отправляется, поскольку облачной учетной записи нет.",
       "groups": {
         "storage": "Хранение и история",
@@ -1189,8 +1189,8 @@
         "use": "Использование",
         "switching": "Переключение...",
         "downloadAndUse": "Скачать и использовать",
-        "installOllama": "Install Ollama",
-        "startOllama": "Start Ollama",
+        "installOllama": "Установить Ollama",
+        "startOllama": "Запустить Ollama",
         "unavailable": "Недоступно",
         "preparing": "Подготовка...",
         "downloading": "Загрузка {{percent}}%",
@@ -1203,13 +1203,13 @@
       "customImport": {
         "title": "Пользовательский импорт",
         "description": "Добавьте любой репозиторий Hugging Face GGUF, установите его в Ollama и переключите на него Vox Jot в один поток.",
-        "importDescription": "Import a GGUF without leaving settings",
+        "importDescription": "Импортируйте GGUF, не выходя из настроек.",
         "importHint": "Вставьте репозиторий Hugging Face, например <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Оставьте файл пустым, чтобы Vox Jot автоматически выбрал подходящий GGUF.",
-        "repoLabel": "Hugging Face repo",
+        "repoLabel": "Репозиторий Hugging Face",
         "repoPlaceholder": "org/model-GGUF",
-        "modelNameLabel": "Ollama model name",
+        "modelNameLabel": "Название модели Ollama",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
-        "fileLabel": "GGUF file",
+        "fileLabel": "GGUF-файл",
         "filePlaceholder": "Необязательное имя файла .gguf",
         "runtimeTarget": "Цель времени выполнения",
         "runtimeDescription": "Импорт устанавливается в Ollama, а затем выбирается в качестве активной модели уточнения.",
@@ -1259,7 +1259,7 @@
       "addCurrentAppFailed": "Не удалось обнаружить самое переднее приложение, которое можно исключить.",
       "addCurrentAppAlreadyExcluded": "{{name}} уже исключен.",
       "removeExclusionLabel": "Удалить",
-      "statusLabel": "Status:",
+      "statusLabel": "Статус:",
       "statusUnknown": "неизвестно",
       "statusDisabled": "Отключено",
       "statusExcluded": "Приостановлено — исключенное приложение",
@@ -1376,7 +1376,7 @@
     "permissionsDescription": "Vox Jot требуется доступность для ввода текста, мониторинг ввода для лучшего понимания поведения отправки и удаления, а также запись экрана для контекста OCR на основе снимков экрана во время диктовки.",
     "openSettings": "Открыть настройки системы",
     "dismiss": "Уволить",
-    "permissionsTitle": "macOS permissions need attention",
+    "permissionsTitle": "Разрешения macOS требуют внимания",
     "permissionNeeded": "Требуется разрешение"
   },
   "errors": {
@@ -1407,20 +1407,20 @@
     "appsUsed": "{{count}} используемые приложения"
   },
   "ollama": {
-    "title": "Ollama — Local LLM Engine",
+    "title": "Ollama — Локальный движок LLM",
     "description": "Ollama запускает крошечные модели AI локально на вашем устройстве для последующей обработки расшифровок. После установки Интернет не требуется.",
     "notInstalled": "Ollama не установлен. Нажмите ниже, чтобы установить его автоматически.",
-    "install": "Install Ollama",
+    "install": "Установить Ollama",
     "installing": "Установка...",
     "notRunning": "Ollama установлен, но не работает.",
-    "start": "Start Ollama",
+    "start": "Запустить Ollama",
     "checking": "Проверка...",
     "titleBarStatusCheckFailed": "Не удалось проверить Ollama. Это может быть недостижимо.",
-    "ready": "Ollama is installed and ready",
+    "ready": "Ollama установлен и готов.",
     "downloadedModels": "Скачанные модели LLM",
     "noDownloaded": "Локальные модели LLM еще не загружены.",
     "availableModels": "Доступно для скачивания",
-    "localModel": "Local Ollama model",
+    "localModel": "Локальная модель Ollama",
     "setActive": "Установить активным",
     "download": "Скачать",
     "pulling": "Вытягивание {{progress}}%",
@@ -1430,7 +1430,7 @@
     "activateError": "Не удалось активировать эту модель. Пожалуйста, попробуйте еще раз.",
     "activeRefineModel": "Активное уточнение модели",
     "ollamaBadge": "Ollama",
-    "localOllamaModel": "Local Ollama Model",
+    "localOllamaModel": "Локальная модель Ollama",
     "quality": "Качество",
     "speed": "Скорость"
   },
@@ -1692,7 +1692,7 @@
     },
     "autoReadback": {
       "title": "Автоматическое считывание",
-      "groupTitle": "Auto-Readback",
+      "groupTitle": "Автоматическое считывание",
       "description": "Выберите, когда Vox Jot автоматически произносит окончательный вывод.",
       "modes": {
         "afterOutput": "После вывода",
@@ -1768,11 +1768,11 @@
           "description": ""
         },
         "force_post_process": {
-          "label": "Post-processing",
+          "label": "Постобработка",
           "description": "Принудительно включать или выключать постобработку AI, когда этот профиль соответствует."
         },
         "auto_submit": {
-          "label": "Auto-submit",
+          "label": "Автоматическая отправка",
           "description": "Нажмите Enter автоматически после диктовки."
         },
         "paste_method": {
@@ -1811,7 +1811,7 @@
         "overrideLanguage": "Ланг",
         "translateToEnglish": "Перевести -> EN",
         "overridePrompt": "Подскажите",
-        "autoSubmit": "Auto-submit",
+        "autoSubmit": "Автоматическая отправка",
         "noAutoSubmit": "Нет автоматической отправки",
         "alwaysPostProcess": "Всегда постобработка",
         "skipPostProcess": "Пропустить постобработку",
@@ -1867,7 +1867,7 @@
           "off": "Пропустить постобработку"
         },
         "auto_submit": {
-          "on": "Auto-submit",
+          "on": "Автоматическая отправка",
           "off": "Не отправлять автоматически"
         },
         "paste_method": {
@@ -1898,7 +1898,7 @@
       "transcribing": "Расшифровка…",
       "copy": "Копировать",
       "placeholder": "Стенограмма появляется здесь после обработки.",
-      "selectedLabel": "Selected:",
+      "selectedLabel": "Выбрано:",
       "outputLabel": "Стенограмма",
       "fileDialogLabel": "Аудио/Видео",
       "errors": {
@@ -1985,7 +1985,7 @@
         "recommended": "Рекомендуется",
         "fastest": "Самый быстрый путь",
         "osBuiltIn": "OS встроенный",
-        "crossPlatform": "Cross-platform",
+        "crossPlatform": "Кросс-платформенный",
         "requiresTesseract": "Требуется Тессеракт",
         "adaptive": "Адаптивный"
       },
@@ -1998,7 +1998,7 @@
         "import": "Импортировать {{modelName}} с диска.",
         "remove": "Удалить {{modelName}}",
         "pickFolderTitle": "Выберите папку, содержащую {{modelName}}.",
-        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "downloadFromHub": "Скачать {{modelName}} с Hugging Face ({{repoId}})",
         "importFromDisk": "Импортировать из папки"
       },
       "confirmRemove": "Удалить {{modelName}}? Файлы будут удалены из кэша OCR приложения.",
@@ -2042,7 +2042,7 @@
       "goToRefine": "Перейти к уточнению",
       "goToListen": "Перейти к прослушиванию",
       "openSettings": "Открыть настройки",
-      "openJotPad": "Open Jot Pad",
+      "openJotPad": "Открыть Jot Pad",
       "disablePostProcess": "Отключить постобработку",
       "enablePostProcess": "Включить постобработку",
       "postProcessOn": "Очистка AI включена.",
@@ -2139,7 +2139,7 @@
       "demoWrongWord": "два",
       "demoFixedWord": "чтобы",
       "demoSuffix": "магазин",
-      "summaryTitle": "How Vox Jot learns",
+      "summaryTitle": "Как учится Vox Jot",
       "summaryDescription": "Сохраните исправления один раз, и они автоматически будут применяться к будущим диктантам. Используйте представление словаря для проверки или удаления записей.",
       "openDictionary": "Открыть словарь",
       "automaticTitle": "Автоматическое обучение",
@@ -2164,7 +2164,7 @@
       "day1": "День 1",
       "day7": "День 7",
       "day30": "День 30",
-      "autoDelete": "Auto-delete",
+      "autoDelete": "Автоудаление",
       "never": "Хранить до удаления",
       "preserveLimit": "Сохранить лимит сохраненной истории",
       "days3": "Удалить через 3 дня",
@@ -2271,7 +2271,7 @@
       "storageGroupTitle": "Хранение",
       "historyGroupTitle": "История",
       "filesGroupTitle": "Файлы",
-      "previewLocalFirst": "Local-first",
+      "previewLocalFirst": "Местный приоритет",
       "previewEnforced": "Принудительный",
       "previewAllowed": "Разрешено",
       "previewAudioCapture": "Захват звука",
@@ -2313,7 +2313,7 @@
       "stackTitle": "Построен с",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
-      "stackRust": "Rust audio pipeline"
+      "stackRust": "Аудиоконвейер Rust"
     },
     "jotPad": {
       "empty": "Начните свою первую заметку",
@@ -2375,7 +2375,7 @@
       },
       "diagnostics": {
         "eyebrow": "Расширенный",
-        "title": "Labs & Diagnostics",
+        "title": "Лаборатории и диагностика",
         "description": "Попробуйте экспериментальные функции, откройте локальный API и проверьте, что Vox Jot делает под капотом."
       },
       "about": {
@@ -2392,7 +2392,7 @@
       },
       "speechModels": {
         "title": "Просмотр речевых моделей",
-        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "description": "Загружайте, меняйте и управляйте сборками Whisper/Parakeet.",
         "destination": "Диктовать"
       },
       "refineModels": {
@@ -2412,7 +2412,7 @@
       },
       "dictionary": {
         "title": "Открыть словарь",
-        "description": "Review every correction Vox Jot has learned",
+        "description": "Просмотрите все исправления, полученные Vox Jot.",
         "destination": "Диктовать"
       }
     },
@@ -2467,7 +2467,7 @@
     "models": {
       "routeTitle": "Маршрутизация провайдера",
       "routeDescription": "Vox Jot выбирает маршрут для каждого запроса. Local остается в автономном режиме; облако использует выбранных вами поставщиков.",
-      "localRouteHeading": "Local-first",
+      "localRouteHeading": "Местный приоритет",
       "cloudRouteHeading": "Облачный помощник",
       "advancedEvaluationTitle": "Уточнение оценки модели (дополнительно)",
       "fileTranscriptionTitle": "Транскрипция файлов",
@@ -2526,8 +2526,8 @@
         "modelTesting": "Тестирование",
         "screenContext": "Контекст экрана",
         "privacy": "Конфиденциальность и хранение",
-        "diagnostics": "Diagnostics",
-        "about": "About Vox Jot"
+        "diagnostics": "Диагностика",
+        "about": "О Vox Jot"
       }
     }
   },

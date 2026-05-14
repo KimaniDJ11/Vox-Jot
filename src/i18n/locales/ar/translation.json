@@ -104,7 +104,7 @@
       "microphone": {
         "title": "الوصول إلى الميكروفون",
         "description": "مطلوب لسماع صوتك للنسخ.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "اسمح لـ Vox Jot باستخدام الميكروفون الخاص بك",
         "cardDescription": "Vox Jot يحتاج فقط إلى الميكروفون أثناء الإملاء.",
         "eyebrow": "التقاط الصوت",
         "storyTitle": "الوصول إلى الميكروفون",
@@ -120,7 +120,7 @@
       "accessibility": {
         "title": "إمكانية الوصول",
         "description": "مطلوب لكتابة النص المكتوب في التطبيقات الخاصة بك.",
-        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardTitle": "السماح لـ Vox Jot بإدراج الكلمات المنطوقة",
         "cardDescription": "يتيح ذلك لـ Vox Jot وضع النص المكتوب في الحقل الذي تستخدمه بشكل نشط.",
         "eyebrow": "إخراج النص",
         "storyTitle": "إمكانية الوصول",
@@ -149,7 +149,7 @@
       "inputMonitoring": {
         "title": "مراقبة المدخلات",
         "description": "مطلوب حتى يتمكن Vox Jot من معرفة الفرق بين إرسال رسالة ومسح النص يدويًا بشكل أفضل.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "اسمح لـ Vox Jot بمشاهدة نشاط لوحة المفاتيح محليًا",
         "cardDescription": "يساعد هذا Vox Jot على ملاحظة التعديلات السريعة وإجراءات الإدخال للإرسال وعمليات المسح المستندة إلى الحذف. ولا يسجل ما تكتبه.",
         "manualCleanupHint": "إذا كان macOS يعرض إدخال Vox Jot أقدم هنا، فقم بإزالته وتمكين /Applications/Vox Jot.app.",
         "eyebrow": "حالة لوحة المفاتيح",
@@ -166,7 +166,7 @@
       "screenRecording": {
         "title": "تسجيل الشاشة",
         "description": "مطلوب حتى يتمكن Vox Jot من إنشاء ذاكرة تخزين مؤقت OCR من الشاشة النشطة واستخدامها كسياق إملاء محلي.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "السماح لـ Vox Jot بقراءة سياق الشاشة النشطة محليًا",
         "cardDescription": "يتيح ذلك لـ Vox Jot عرض العرض النشط بشكل دوري بحيث تكون الأسماء والمصطلحات ومفاتيح العبارات أكثر دقة عند بدء الإملاء.",
         "eyebrow": "السياق البصري",
         "storyTitle": "تسجيل الشاشة",
@@ -208,10 +208,10 @@
       "footnote": "إذا قمت بالتخطي، فسيظل التحسين يعمل بمجرد توصيل موفر السحابة في الإعدادات > النماذج وAI.",
       "cardTitle": "النص البولندي الذي تمليه، على انفراد",
       "cardDescription": "يتم تشغيل التحسين بعد النسخ لتنظيف كلمات الحشو أو إصلاح علامات الترقيم أو إعادة الكتابة بنبرة.",
-      "checking": "Checking for Ollama…",
+      "checking": "جارٍ التحقق من Ollama...",
       "checkingDescription": "البحث عن محرك Refine محلي موجود على هذا الجهاز.",
       "installing": {
-        "title": "Installing Ollama",
+        "title": "تثبيت Ollama",
         "description": "يؤدي هذا إلى تثبيت محرك التحسين المحلي. نشاط الشبكة طبيعي هنا."
       },
       "pulling": {
@@ -231,7 +231,7 @@
     "welcome": {
       "title": "قم بإعداد الإملاء الصوتي الخاص الذي يناسب سير عملك بالفعل",
       "description": "يتيح لك Vox Jot التحدث إلى أي تطبيق، والحفاظ على النسخ محليًا على جهازك، ويمكن اختياريًا تلميع النص النهائي قبل لصقه.",
-      "cta": "Set Up Vox Jot",
+      "cta": "قم بإعداد Vox Jot",
       "cardTitle": "بنيت للإملاء اليومي",
       "cardDescription": "اجعل التدفق الأساسي يعمل أولاً، ثم قم بتخصيص الإخراج بمجرد أن تعرف كيف تريد أن يتصرف Vox Jot.",
       "features": [
@@ -272,7 +272,7 @@
     "firstDictation": {
       "title": "أنت جاهز لإملاءك الأول",
       "description": "ابدأ باستخدام اختصار الإملاء العادي، وتحدث بشكل طبيعي، ودع Vox Jot يلصق النتيجة حيث يركز المؤشر.",
-      "cta": "Open Vox Jot",
+      "cta": "افتح Vox Jot",
       "steps": [
         "ضع المؤشر في أي حقل نصي تريد نقل النص إليه.",
         "استخدم اختصار الإملاء لبدء التسجيل، ثم توقف عند الانتهاء من التحدث.",
@@ -389,7 +389,7 @@
             "description": "اضغط مرة واحدة للبدء، اضغط مرة أخرى للتوقف."
           },
           "hold": {
-            "title": "Push-to-talk",
+            "title": "اضغط للتحدث",
             "description": "اضغط على الاختصار أثناء التحدث."
           }
         },
@@ -631,7 +631,7 @@
         "createFirst": "انقر فوق \"إنشاء مطالبة جديدة\" أعلاه لإنشاء أول مطالبة بعد المعالجة."
       },
       "apple": {
-        "title": "Apple Cleanup",
+        "title": "تنظيف Apple",
         "description": "استخدم Apple Intelligence لتحسين النسخ محليًا بعد اكتمال التعرف على الكلام.",
         "mode": {
           "title": "الوضع",
@@ -666,7 +666,7 @@
           "title": "تعريفات النغمات",
           "description": "تحديد إعدادات النغمات المسبقة القابلة لإعادة الاستخدام. تضيف كل نغمة إرشادات إعادة الكتابة المحددة إلى موجه Apple Intelligence.",
           "columns": {
-            "id": "Tone ID",
+            "id": "نغمة ID",
             "label": "اسم العرض",
             "instruction": "تعليمات"
           },
@@ -756,11 +756,11 @@
           "description": "قرر ما إذا كان يجب لصق النص المصقول على الفور أو مراجعته أولاً."
         },
         "appleCleanup": {
-          "title": "Apple Cleanup",
+          "title": "تنظيف Apple",
           "description": "اضبط كيفية قيام Apple Intelligence بإعادة كتابة الصياغة ومعالجة حالات الفشل."
         },
         "applePersonalization": {
-          "title": "Apple Personalization",
+          "title": "تخصيص Apple",
           "description": "قم بمطابقة النغمة حسب التطبيق وحافظ على اتساق التهجئة المفضلة قبل تشغيل عملية التنظيف."
         },
         "prompting": {
@@ -899,7 +899,7 @@
         "description": "اختر الواجهة الخلفية لاختصار لوحة المفاتيح.",
         "bindingsReset": "كانت اختصارات لوحة المفاتيح غير متوافقة وتم إعادة ضبطها على الإعدادات الافتراضية",
         "options": {
-          "tauri": "Tauri Global Shortcut",
+          "tauri": "Tauri الاختصار العالمي",
           "handy_keys": "مفاتيح يدوية"
         },
         "changeConfirm": "هل تريد تغيير الواجهة الخلفية للوحة المفاتيح؟ قد تتم إعادة تعيين الاختصارات غير المتوافقة مع الواجهة الخلفية الجديدة إلى الإعدادات الافتراضية."
@@ -1132,7 +1132,7 @@
       }
     },
     "dataPrivacy": {
-      "introTitle": "How Vox Jot handles your data",
+      "introTitle": "كيف يتعامل Vox Jot مع بياناتك",
       "introBody": "يتم نسخ الكلام على جهازك باستخدام النماذج التي تقوم بتثبيتها. يمكن تشغيل المعالجة اللاحقة الاختيارية لـ AI على الجهاز (على سبيل المثال Apple Intelligence) أو من خلال موفر قمت بتكوينه. تنطبق حدود سجل النسخ والاحتفاظ فقط على البيانات المخزنة محليًا على هذا الكمبيوتر - ولا يتم إرسال أي شيء إلى خوادم Vox Jot نظرًا لعدم وجود حساب سحابي.",
       "groups": {
         "storage": "التخزين والتاريخ",
@@ -1189,8 +1189,8 @@
         "use": "استخدم",
         "switching": "التبديل...",
         "downloadAndUse": "التنزيل والاستخدام",
-        "installOllama": "Install Ollama",
-        "startOllama": "Start Ollama",
+        "installOllama": "قم بتثبيت Ollama",
+        "startOllama": "ابدأ تشغيل Ollama",
         "unavailable": "غير متاح",
         "preparing": "جارٍ التحضير...",
         "downloading": "جارٍ التنزيل {{percent}}%",
@@ -1203,13 +1203,13 @@
       "customImport": {
         "title": "استيراد مخصص",
         "description": "أحضر أي ريبو Hugging Face GGUF، وقم بتثبيته في Ollama، وقم بتبديل Vox Jot إليه في تدفق واحد.",
-        "importDescription": "Import a GGUF without leaving settings",
+        "importDescription": "قم باستيراد GGUF دون مغادرة الإعدادات",
         "importHint": "الصق الريبو Hugging Face مثل <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. اترك الملف فارغًا للسماح لـ Vox Jot باختيار GGUF المعقول تلقائيًا.",
-        "repoLabel": "Hugging Face repo",
+        "repoLabel": "الريبو Hugging Face",
         "repoPlaceholder": "org/model-GGUF",
-        "modelNameLabel": "Ollama model name",
+        "modelNameLabel": "اسم الموديل Ollama",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
-        "fileLabel": "GGUF file",
+        "fileLabel": "ملف GGUF",
         "filePlaceholder": "اسم ملف .gguf اختياري",
         "runtimeTarget": "هدف وقت التشغيل",
         "runtimeDescription": "يتم تثبيت الواردات في Ollama، ثم يتم تحديدها كنموذج التحسين النشط.",
@@ -1259,7 +1259,7 @@
       "addCurrentAppFailed": "تعذر اكتشاف التطبيق الأول لاستبعاده.",
       "addCurrentAppAlreadyExcluded": "تم استبعاد {{name}} بالفعل.",
       "removeExclusionLabel": "إزالة",
-      "statusLabel": "Status:",
+      "statusLabel": "الحالة:",
       "statusUnknown": "غير معروف",
       "statusDisabled": "معطل",
       "statusExcluded": "متوقف مؤقتًا — تطبيق مستبعد",
@@ -1376,7 +1376,7 @@
     "permissionsDescription": "يحتاج Vox Jot إلى إمكانية الوصول لكتابة النص، ومراقبة الإدخال لفهم سلوك الإرسال مقابل الحذف بشكل أفضل، وتسجيل الشاشة لسياق OCR المستند إلى لقطات الشاشة أثناء الإملاء.",
     "openSettings": "افتح إعدادات النظام",
     "dismiss": "استبعاد",
-    "permissionsTitle": "macOS permissions need attention",
+    "permissionsTitle": "أذونات macOS تحتاج إلى الاهتمام",
     "permissionNeeded": "الإذن مطلوب"
   },
   "errors": {
@@ -1407,20 +1407,20 @@
     "appsUsed": "تطبيقات {{count}} المستخدمة"
   },
   "ollama": {
-    "title": "Ollama — Local LLM Engine",
+    "title": "Ollama - محرك LLM المحلي",
     "description": "يقوم Ollama بتشغيل نماذج AI الصغيرة محليًا على جهازك لنصوص ما بعد المعالجة. لا يلزم الإنترنت بعد الإعداد.",
     "notInstalled": "لم يتم تثبيت Ollama. انقر أدناه لتثبيته تلقائيا.",
-    "install": "Install Ollama",
+    "install": "قم بتثبيت Ollama",
     "installing": "جارٍ التثبيت...",
     "notRunning": "تم تثبيت Ollama ولكنه لا يعمل.",
-    "start": "Start Ollama",
+    "start": "ابدأ تشغيل Ollama",
     "checking": "جارٍ التحقق...",
     "titleBarStatusCheckFailed": "غير قادر على التحقق من Ollama. قد يكون غير قابل للوصول.",
-    "ready": "Ollama is installed and ready",
+    "ready": "تم تثبيت Ollama وجاهز",
     "downloadedModels": "نماذج LLM التي تم تنزيلها",
     "noDownloaded": "لم يتم تنزيل نماذج LLM المحلية حتى الآن.",
     "availableModels": "متاح للتنزيل",
-    "localModel": "Local Ollama model",
+    "localModel": "طراز Ollama المحلي",
     "setActive": "تعيين نشط",
     "download": "تحميل",
     "pulling": "سحب {{progress}}%",
@@ -1430,7 +1430,7 @@
     "activateError": "لا يمكن تفعيل هذا النموذج. يرجى المحاولة مرة أخرى.",
     "activeRefineModel": "نموذج الصقل النشط",
     "ollamaBadge": "Ollama",
-    "localOllamaModel": "Local Ollama Model",
+    "localOllamaModel": "نموذج Ollama المحلي",
     "quality": "الجودة",
     "speed": "السرعة"
   },
@@ -1692,7 +1692,7 @@
     },
     "autoReadback": {
       "title": "القراءة التلقائية",
-      "groupTitle": "Auto-Readback",
+      "groupTitle": "القراءة التلقائية",
       "description": "اختر متى ينطق Vox Jot الإخراج النهائي تلقائيًا.",
       "modes": {
         "afterOutput": "بعد الإخراج",
@@ -1768,11 +1768,11 @@
           "description": ""
         },
         "force_post_process": {
-          "label": "Post-processing",
+          "label": "مرحلة ما بعد المعالجة",
           "description": "فرض تشغيل أو إيقاف المعالجة اللاحقة لـ AI عند تطابق ملف التعريف هذا."
         },
         "auto_submit": {
-          "label": "Auto-submit",
+          "label": "الإرسال التلقائي",
           "description": "اضغط على Enter تلقائيًا بعد الإملاء."
         },
         "paste_method": {
@@ -1811,7 +1811,7 @@
         "overrideLanguage": "لانج",
         "translateToEnglish": "ترجمة -> EN",
         "overridePrompt": "موجه",
-        "autoSubmit": "Auto-submit",
+        "autoSubmit": "الإرسال التلقائي",
         "noAutoSubmit": "لا يوجد إرسال تلقائي",
         "alwaysPostProcess": "دائما بعد العملية",
         "skipPostProcess": "تخطي ما بعد العملية",
@@ -1867,7 +1867,7 @@
           "off": "تخطي مرحلة ما بعد المعالجة"
         },
         "auto_submit": {
-          "on": "Auto-submit",
+          "on": "الإرسال التلقائي",
           "off": "لا تقم بالتقديم التلقائي"
         },
         "paste_method": {
@@ -1898,7 +1898,7 @@
       "transcribing": "جارٍ النسخ…",
       "copy": "نسخ",
       "placeholder": "يظهر النص هنا بعد المعالجة.",
-      "selectedLabel": "Selected:",
+      "selectedLabel": "المحدد:",
       "outputLabel": "نسخة",
       "fileDialogLabel": "الصوت / الفيديو",
       "errors": {
@@ -1985,7 +1985,7 @@
         "recommended": "موصى به",
         "fastest": "أسرع طريق",
         "osBuiltIn": "OS مدمج",
-        "crossPlatform": "Cross-platform",
+        "crossPlatform": "عبر منصة",
         "requiresTesseract": "يتطلب تسراكت",
         "adaptive": "التكيف"
       },
@@ -1998,7 +1998,7 @@
         "import": "استيراد {{modelName}} من القرص",
         "remove": "إزالة {{modelName}}",
         "pickFolderTitle": "اختر المجلد الذي يحتوي على {{modelName}}",
-        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "downloadFromHub": "تنزيل {{modelName}} من Hugging Face ({{repoId}})",
         "importFromDisk": "استيراد من المجلد"
       },
       "confirmRemove": "إزالة {{modelName}}؟ سيتم حذف الملفات من ذاكرة التخزين المؤقت OCR للتطبيق.",
@@ -2042,7 +2042,7 @@
       "goToRefine": "انتقل إلى التحسين",
       "goToListen": "اذهب إلى الاستماع",
       "openSettings": "افتح الإعدادات",
-      "openJotPad": "Open Jot Pad",
+      "openJotPad": "افتح Jot Pad",
       "disablePostProcess": "تعطيل ما بعد العملية",
       "enablePostProcess": "تمكين ما بعد العملية",
       "postProcessOn": "تنظيف AI قيد التشغيل",
@@ -2139,7 +2139,7 @@
       "demoWrongWord": "اثنان",
       "demoFixedWord": "ل",
       "demoSuffix": "المتجر",
-      "summaryTitle": "How Vox Jot learns",
+      "summaryTitle": "كيف يتعلم Vox Jot",
       "summaryDescription": "احفظ التصحيحات مرة واحدة وسيتم تطبيقها تلقائيًا على الإملاءات المستقبلية. استخدم عرض القاموس لفحص الإدخالات أو إزالتها.",
       "openDictionary": "افتح القاموس",
       "automaticTitle": "التعلم التلقائي",
@@ -2164,7 +2164,7 @@
       "day1": "اليوم الأول",
       "day7": "اليوم السابع",
       "day30": "اليوم 30",
-      "autoDelete": "Auto-delete",
+      "autoDelete": "الحذف التلقائي",
       "never": "احتفظ بها حتى تتم إزالتها",
       "preserveLimit": "احتفظ بحد التاريخ المحفوظ",
       "days3": "حذف بعد 3 أيام",
@@ -2271,7 +2271,7 @@
       "storageGroupTitle": "التخزين",
       "historyGroupTitle": "التاريخ",
       "filesGroupTitle": "ملفات",
-      "previewLocalFirst": "Local-first",
+      "previewLocalFirst": "محلي أولاً",
       "previewEnforced": "القسري",
       "previewAllowed": "مسموح",
       "previewAudioCapture": "التقاط الصوت",
@@ -2313,7 +2313,7 @@
       "stackTitle": "بنيت مع",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
-      "stackRust": "Rust audio pipeline"
+      "stackRust": "خط أنابيب الصوت Rust"
     },
     "jotPad": {
       "empty": "ابدأ ملاحظتك الأولى",
@@ -2375,7 +2375,7 @@
       },
       "diagnostics": {
         "eyebrow": "متقدم",
-        "title": "Labs & Diagnostics",
+        "title": "المختبرات والتشخيص",
         "description": "جرب الميزات التجريبية، واكشف عن API المحلي، وافحص ما يفعله Vox Jot تحت الغطاء."
       },
       "about": {
@@ -2392,7 +2392,7 @@
       },
       "speechModels": {
         "title": "تصفح نماذج الكلام",
-        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "description": "قم بتنزيل إصدارات Whisper/Parakeet وتبديلها وإدارتها",
         "destination": "إملاء"
       },
       "refineModels": {
@@ -2412,7 +2412,7 @@
       },
       "dictionary": {
         "title": "افتح القاموس",
-        "description": "Review every correction Vox Jot has learned",
+        "description": "قم بمراجعة كل تصحيح تعلمته Vox Jot",
         "destination": "إملاء"
       }
     },
@@ -2467,7 +2467,7 @@
     "models": {
       "routeTitle": "توجيه الموفر",
       "routeDescription": "يختار Vox Jot طريقًا لكل طلب. يبقى المحلي دون اتصال؛ تستخدم السحابة مقدمي الخدمات الذين اخترتهم.",
-      "localRouteHeading": "Local-first",
+      "localRouteHeading": "محلي أولاً",
       "cloudRouteHeading": "مساعدة السحابة",
       "advancedEvaluationTitle": "تحسين تقييم النموذج (متقدم)",
       "fileTranscriptionTitle": "نسخ الملف",

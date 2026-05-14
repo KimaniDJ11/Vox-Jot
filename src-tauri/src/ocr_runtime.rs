@@ -18,19 +18,23 @@
 
 use std::collections::HashMap;
 use std::ffi::OsString;
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use log::{debug, info, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use tauri::AppHandle;
+use uuid::Uuid;
 
 use crate::ocr_models::OcrBackendKind;
 use crate::screen_context::NativeScreenContextSnippet;
@@ -39,9 +43,465 @@ use crate::screen_context_ocr_backup::{OcrFrame, PixelFormat};
 /// Shared singleton — the screen-context worker is the only caller and it
 /// runs on a dedicated thread, so a single global handle is fine.
 static MANAGER: Lazy<OcrRuntimeManager> = Lazy::new(OcrRuntimeManager::new);
+static PREREQUISITE_CACHE: Lazy<Mutex<HashMap<OcrBackendKind, bool>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub fn shared() -> &'static OcrRuntimeManager {
     &MANAGER
+}
+
+#[derive(Debug, Clone)]
+pub struct ManagedOcrRuntimeDefinition {
+    pub platform_id: &'static str,
+    pub archive_name: &'static str,
+    pub checksum_name: &'static str,
+    pub hf_repo_id: &'static str,
+}
+
+pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
+    const HF_REPO_ID: &str = "IrieDinamik/vox-jot-ocr-runtime";
+
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        return Some(ManagedOcrRuntimeDefinition {
+            platform_id: "macos-aarch64",
+            archive_name: "ocr-runtime-macos-aarch64-all.tar.gz",
+            checksum_name: "ocr-runtime-macos-aarch64-all.tar.gz.sha256",
+            hf_repo_id: HF_REPO_ID,
+        });
+    }
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+    {
+        return Some(ManagedOcrRuntimeDefinition {
+            platform_id: "macos-x64",
+            archive_name: "ocr-runtime-macos-x64-all.tar.gz",
+            checksum_name: "ocr-runtime-macos-x64-all.tar.gz.sha256",
+            hf_repo_id: HF_REPO_ID,
+        });
+    }
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        return Some(ManagedOcrRuntimeDefinition {
+            platform_id: "linux-x64",
+            archive_name: "ocr-runtime-linux-x64-all.tar.gz",
+            checksum_name: "ocr-runtime-linux-x64-all.tar.gz.sha256",
+            hf_repo_id: HF_REPO_ID,
+        });
+    }
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        return Some(ManagedOcrRuntimeDefinition {
+            platform_id: "windows-x64",
+            archive_name: "ocr-runtime-windows-x64-all.tar.gz",
+            checksum_name: "ocr-runtime-windows-x64-all.tar.gz.sha256",
+            hf_repo_id: HF_REPO_ID,
+        });
+    }
+    #[allow(unreachable_code)]
+    None
+}
+
+pub fn runtime_prerequisites_available(app: &AppHandle, backend: OcrBackendKind) -> bool {
+    if matches!(backend, OcrBackendKind::TessdataPack) {
+        return true;
+    }
+
+    let mut cache = PREREQUISITE_CACHE
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    if let Some(available) = cache.get(&backend) {
+        return *available;
+    }
+
+    let available = check_runtime_prerequisites(app, backend).is_ok();
+    cache.insert(backend, available);
+    available
+}
+
+pub async fn ensure_managed_ocr_runtime_installed(
+    app: &AppHandle,
+    progress_catalog_id: Option<&str>,
+) -> Result<PathBuf, String> {
+    let definition = managed_ocr_runtime_definition().ok_or_else(|| {
+        "The managed OCR runtime is not available on this platform yet.".to_string()
+    })?;
+    let install_dir = managed_ocr_runtime_install_dir(app, definition.platform_id)?;
+
+    if let Some(root) = resolve_extracted_root(&install_dir) {
+        if managed_ocr_runtime_entrypoint(&root).is_some()
+            && managed_ocr_runtime_python(&root).is_some()
+        {
+            clear_prerequisite_cache();
+            return Ok(root);
+        }
+    }
+
+    let archive_url = format!(
+        "https://huggingface.co/{}/resolve/main/{}",
+        definition.hf_repo_id, definition.archive_name
+    );
+    let checksum_url = format!(
+        "https://huggingface.co/{}/resolve/main/{}",
+        definition.hf_repo_id, definition.checksum_name
+    );
+    download_and_extract_runtime_archive(
+        app,
+        progress_catalog_id,
+        &archive_url,
+        &checksum_url,
+        definition.archive_name,
+        &install_dir,
+    )
+    .await?;
+
+    let root = resolve_extracted_root(&install_dir)
+        .ok_or_else(|| "OCR runtime extraction did not produce any files.".to_string())?;
+    if managed_ocr_runtime_entrypoint(&root).is_none() {
+        return Err(
+            "OCR runtime download completed, but the runtime entrypoint is missing.".into(),
+        );
+    }
+    if managed_ocr_runtime_python(&root).is_none() {
+        return Err(
+            "OCR runtime download completed, but its Python environment is missing.".into(),
+        );
+    }
+
+    clear_prerequisite_cache();
+    Ok(root)
+}
+
+fn clear_prerequisite_cache() {
+    PREREQUISITE_CACHE
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner())
+        .clear();
+}
+
+fn check_runtime_prerequisites(_app: &AppHandle, backend: OcrBackendKind) -> Result<(), String> {
+    let python = locate_python().ok_or_else(|| {
+        "Could not locate a Python 3 interpreter for the OCR runtime. Set OCR_RUNTIME_PYTHON or install python3.".to_string()
+    })?;
+    let runtime_root = locate_runtime_root().ok_or_else(|| {
+        "Could not locate the ocr-runtime package. Install the packaged app resources or set OCR_RUNTIME_ROOT.".to_string()
+    })?;
+
+    let modules = match backend {
+        OcrBackendKind::TransformersVl | OcrBackendKind::PaddleVl => "PIL,torch,transformers",
+        OcrBackendKind::PaddleDetRec => "PIL,paddleocr",
+        OcrBackendKind::TessdataPack => return Ok(()),
+    };
+
+    let script = r#"
+import importlib.util
+import os
+import sys
+
+missing = [
+    name
+    for name in os.environ["VOX_JOT_OCR_REQUIRED_MODULES"].split(",")
+    if importlib.util.find_spec(name) is None
+]
+sys.exit(1 if missing else 0)
+"#;
+
+    let status = Command::new(&python)
+        .current_dir(runtime_root)
+        .env("VOX_JOT_OCR_REQUIRED_MODULES", modules)
+        .arg("-c")
+        .arg(script)
+        .status()
+        .map_err(|err| format!("Failed to check OCR runtime dependencies: {err}"))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "OCR runtime dependency check failed for backend {:?}.",
+            backend
+        ))
+    }
+}
+
+fn managed_ocr_runtime_install_dir(app: &AppHandle, platform_id: &str) -> Result<PathBuf, String> {
+    Ok(crate::storage_paths::ocr_runtime_dir(app)
+        .map_err(|err| format!("Failed to resolve OCR runtime dir: {err}"))?
+        .join(platform_id))
+}
+
+fn managed_ocr_runtime_python(runtime_root: &Path) -> Option<PathBuf> {
+    [
+        runtime_root.join(".python").join("bin").join("python3"),
+        runtime_root.join(".python").join("bin").join("python3.11"),
+        runtime_root.join(".python").join("bin").join("python"),
+        runtime_root.join(".python").join("python.exe"),
+        runtime_root.join(".venv").join("bin").join("python"),
+        runtime_root
+            .join(".venv")
+            .join("Scripts")
+            .join("python.exe"),
+    ]
+    .into_iter()
+    .find(|candidate| candidate.is_file())
+}
+
+fn managed_ocr_runtime_entrypoint(runtime_root: &Path) -> Option<PathBuf> {
+    [
+        runtime_root.join("ocr_runtime").join("__main__.py"),
+        runtime_root
+            .join("ocr-runtime")
+            .join("ocr_runtime")
+            .join("__main__.py"),
+    ]
+    .into_iter()
+    .find(|candidate| candidate.is_file())
+}
+
+fn resolve_extracted_root(base_dir: &Path) -> Option<PathBuf> {
+    if !base_dir.exists() {
+        return None;
+    }
+
+    let mut current = base_dir.to_path_buf();
+    loop {
+        let entries = fs::read_dir(&current).ok()?;
+        let mut child_dirs = Vec::new();
+        let mut saw_file = false;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.starts_with('.'))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+
+            if entry.file_type().ok()?.is_dir() {
+                child_dirs.push(path);
+            } else {
+                saw_file = true;
+            }
+        }
+
+        if !saw_file && child_dirs.len() == 1 {
+            current = child_dirs.pop().unwrap();
+            continue;
+        }
+
+        return Some(current);
+    }
+}
+
+async fn download_and_extract_runtime_archive(
+    app: &AppHandle,
+    progress_catalog_id: Option<&str>,
+    url: &str,
+    checksum_url: &str,
+    archive_name: &str,
+    install_dir: &Path,
+) -> Result<(), String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(1800))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+    let download_dir = crate::storage_paths::ocr_runtime_dir(app)
+        .map_err(|err| format!("Failed to resolve OCR runtime dir: {err}"))?
+        .join("downloads");
+    fs::create_dir_all(&download_dir)
+        .map_err(|err| format!("Failed to create OCR runtime download dir: {err}"))?;
+
+    let expected_sha256 = fetch_runtime_sha256(&client, checksum_url).await?;
+    if let Some(catalog_id) = progress_catalog_id {
+        crate::ocr_models::emit_progress(
+            app,
+            catalog_id,
+            "runtime-downloading",
+            0,
+            0,
+            Some(archive_name),
+            None,
+            None,
+            None,
+        );
+    }
+
+    let mut response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|err| format!("Failed to download OCR runtime: {err}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to download OCR runtime: HTTP {} ({url})",
+            response.status()
+        ));
+    }
+
+    let total = response.content_length().unwrap_or(0);
+    let archive_path = download_dir.join(format!("{}-{archive_name}", Uuid::new_v4()));
+    let mut archive_file = File::create(&archive_path)
+        .map_err(|err| format!("Failed to create OCR runtime archive: {err}"))?;
+    let mut hasher = Sha256::new();
+    let mut downloaded = 0u64;
+    let mut last_emit = Instant::now();
+    let throttle = Duration::from_millis(200);
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|err| format!("Failed to read OCR runtime bytes: {err}"))?
+    {
+        hasher.update(&chunk);
+        downloaded += chunk.len() as u64;
+        archive_file
+            .write_all(&chunk)
+            .map_err(|err| format!("Failed to save OCR runtime archive: {err}"))?;
+        if let Some(catalog_id) = progress_catalog_id {
+            if last_emit.elapsed() >= throttle {
+                crate::ocr_models::emit_progress(
+                    app,
+                    catalog_id,
+                    "runtime-downloading",
+                    downloaded,
+                    total,
+                    Some(archive_name),
+                    None,
+                    None,
+                    None,
+                );
+                last_emit = Instant::now();
+            }
+        }
+    }
+    archive_file
+        .flush()
+        .map_err(|err| format!("Failed to flush OCR runtime archive: {err}"))?;
+
+    let actual_sha256 = format!("{:x}", hasher.finalize());
+    if actual_sha256 != expected_sha256 {
+        let _ = fs::remove_file(&archive_path);
+        return Err(format!(
+            "OCR runtime checksum mismatch for {archive_name}: expected {expected_sha256}, got {actual_sha256}."
+        ));
+    }
+    if let Some(catalog_id) = progress_catalog_id {
+        crate::ocr_models::emit_progress(
+            app,
+            catalog_id,
+            "runtime-installing",
+            downloaded,
+            total,
+            Some(archive_name),
+            None,
+            None,
+            None,
+        );
+    }
+
+    let extract_result = extract_archive(&archive_path, install_dir);
+    let _ = fs::remove_file(&archive_path);
+    extract_result
+}
+
+async fn fetch_runtime_sha256(
+    client: &reqwest::Client,
+    checksum_url: &str,
+) -> Result<String, String> {
+    let response = client
+        .get(checksum_url)
+        .send()
+        .await
+        .map_err(|err| format!("Failed to download OCR runtime checksum: {err}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to download OCR runtime checksum: HTTP {} ({checksum_url})",
+            response.status()
+        ));
+    }
+    let body = response
+        .text()
+        .await
+        .map_err(|err| format!("Failed to read OCR runtime checksum: {err}"))?;
+    let checksum = body
+        .split_whitespace()
+        .next()
+        .map(str::trim)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if checksum.len() == 64 && checksum.chars().all(|ch| ch.is_ascii_hexdigit()) {
+        Ok(checksum)
+    } else {
+        Err("OCR runtime checksum file did not contain a valid SHA-256 digest.".to_string())
+    }
+}
+
+fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String> {
+    if install_dir.exists() {
+        fs::remove_dir_all(install_dir)
+            .map_err(|err| format!("Failed to clear OCR runtime destination: {err}"))?;
+    }
+    fs::create_dir_all(install_dir)
+        .map_err(|err| format!("Failed to create OCR runtime destination: {err}"))?;
+
+    let file = File::open(archive_path)
+        .map_err(|err| format!("Failed to open OCR runtime archive: {err}"))?;
+    let archive_name = archive_path.to_string_lossy();
+    if archive_name.ends_with(".tar.gz") {
+        let decoder = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(decoder);
+        for entry in archive
+            .entries()
+            .map_err(|err| format!("Failed to read OCR runtime archive: {err}"))?
+        {
+            let mut entry =
+                entry.map_err(|err| format!("Failed to read OCR runtime archive entry: {err}"))?;
+            let entry_type = entry.header().entry_type();
+            if entry_type.is_symlink() || entry_type.is_hard_link() {
+                return Err("OCR runtime archive contains unsupported links.".into());
+            }
+            let relative_path =
+                sanitize_archive_path(entry.path().map_err(|err| {
+                    format!("Failed to read OCR runtime archive entry path: {err}")
+                })?)?;
+            if relative_path.as_os_str().is_empty() {
+                continue;
+            }
+            let destination = install_dir.join(relative_path);
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent).map_err(|err| {
+                    format!("Failed to create OCR runtime extraction directory: {err}")
+                })?;
+            }
+            entry
+                .unpack(&destination)
+                .map_err(|err| format!("Failed to extract OCR runtime archive: {err}"))?;
+        }
+        Ok(())
+    } else {
+        Err(format!(
+            "Unsupported OCR runtime archive format: {}",
+            archive_path.display()
+        ))
+    }
+}
+
+fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, String> {
+    let mut sanitized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => sanitized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(format!(
+                    "OCR runtime archive contains unsafe path: {}",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Ok(sanitized)
 }
 
 #[derive(Debug, Clone)]
@@ -406,8 +866,15 @@ fn locate_python() -> Option<PathBuf> {
         }
     }
 
-    // Reuse the speech-runtime venv if the user has bootstrapped it — it
-    // already has torch + transformers ready for VL loaders.
+    // Managed or repo-local ocr-runtime venv.
+    if let Some(root) = locate_runtime_root() {
+        if let Some(venv_python) = managed_ocr_runtime_python(&root) {
+            return Some(venv_python);
+        }
+    }
+
+    // Reuse the speech-runtime venv if the user has bootstrapped it. This is
+    // a development fallback only; managed OCR runtimes win above.
     if let Some(home) = dirs::home_dir() {
         let candidates = [
             home.join("Apps/speech-runtime/.venv/bin/python"),
@@ -417,14 +884,6 @@ fn locate_python() -> Option<PathBuf> {
             if c.is_file() {
                 return Some(c);
             }
-        }
-    }
-
-    // Repo-local ocr-runtime venv (for devs running from a checkout).
-    if let Some(root) = locate_runtime_root() {
-        let venv_python = root.join(".venv/bin/python");
-        if venv_python.is_file() {
-            return Some(venv_python);
         }
     }
 
@@ -454,6 +913,17 @@ fn locate_runtime_root() -> Option<PathBuf> {
         let p = PathBuf::from(custom);
         if is_runtime_root(&p) {
             return Some(p);
+        }
+    }
+
+    for candidate in managed_runtime_candidate_roots() {
+        if is_runtime_root(&candidate) && managed_ocr_runtime_python(&candidate).is_some() {
+            return Some(candidate);
+        }
+        if let Some(root) = resolve_extracted_root(&candidate) {
+            if is_runtime_root(&root) && managed_ocr_runtime_python(&root).is_some() {
+                return Some(root);
+            }
         }
     }
 
@@ -491,6 +961,50 @@ fn locate_runtime_root() -> Option<PathBuf> {
     }
 
     None
+}
+
+fn managed_runtime_candidate_roots() -> Vec<PathBuf> {
+    let Some(definition) = managed_ocr_runtime_definition() else {
+        return Vec::new();
+    };
+
+    let relative = PathBuf::from("models")
+        .join("ocr-runtime")
+        .join(definition.platform_id);
+    let mut candidates = Vec::new();
+
+    if let Some(portable_dir) = crate::portable::data_dir() {
+        candidates.push(portable_dir.join(&relative));
+    }
+
+    if let Some(data_dir) = dirs::data_dir() {
+        candidates.push(data_dir.join("com.iriedinamik.voxjot").join(&relative));
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        #[cfg(target_os = "linux")]
+        candidates.push(
+            home.join(".config")
+                .join("com.iriedinamik.voxjot")
+                .join(&relative),
+        );
+        #[cfg(target_os = "macos")]
+        candidates.push(
+            home.join("Library")
+                .join("Application Support")
+                .join("com.iriedinamik.voxjot")
+                .join(&relative),
+        );
+        #[cfg(target_os = "windows")]
+        candidates.push(
+            home.join("AppData")
+                .join("Roaming")
+                .join("com.iriedinamik.voxjot")
+                .join(&relative),
+        );
+    }
+
+    candidates
 }
 
 fn is_runtime_root(path: &Path) -> bool {

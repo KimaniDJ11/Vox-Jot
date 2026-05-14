@@ -104,7 +104,7 @@
       "microphone": {
         "title": "Přístup k mikrofonu",
         "description": "K přepisu je vyžadováno slyšet váš hlas.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "Povolte Vox Jot používat váš mikrofon",
         "cardDescription": "Vox Jot potřebuje mikrofon pouze při diktování.",
         "eyebrow": "Snímání hlasu",
         "storyTitle": "Přístup k mikrofonu",
@@ -120,7 +120,7 @@
       "accessibility": {
         "title": "Přístupnost Přístup",
         "description": "Vyžadováno k zadání přepsaného textu do vašich aplikací.",
-        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardTitle": "Povolit Vox Jot vkládat mluvená slova",
         "cardDescription": "To umožňuje Vox Jot umístit přepsaný text do pole, které aktivně používáte.",
         "eyebrow": "Textový výstup",
         "storyTitle": "Přístupnost",
@@ -149,7 +149,7 @@
       "inputMonitoring": {
         "title": "Sledování vstupu",
         "description": "Požadováno, aby Vox Jot lépe poznal rozdíl mezi odesláním zprávy a ručním vymazáním textu.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "Povolit Vox Jot místně sledovat aktivitu klávesnice",
         "cardDescription": "To pomáhá Vox Jot zaznamenat rychlé úpravy, akce Enter-to-send a vymazání řízené mazáním. Nezaznamenává, co píšete.",
         "manualCleanupHint": "Pokud zde macOS zobrazuje starší položku Vox Jot, odeberte ji a povolte /Applications/Vox Jot.app.",
         "eyebrow": "Stav klávesnice",
@@ -166,7 +166,7 @@
       "screenRecording": {
         "title": "Nahrávání obrazovky",
         "description": "Požadováno, aby Vox Jot mohl vytvořit pohyblivou mezipaměť OCR z aktivního displeje a použít ji jako kontext místního diktování.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "Povolit Vox Jot lokálně číst kontext aktivní obrazovky",
         "cardDescription": "To umožňuje Vox Jot pravidelně OCR aktivní zobrazení, takže jména, žargon a frázové klávesy jsou přesnější, když začnete diktovat.",
         "eyebrow": "Vizuální kontext",
         "storyTitle": "Nahrávání obrazovky",
@@ -208,10 +208,10 @@
       "footnote": "Pokud to přeskočíte, funkce Upřesnit bude fungovat i po připojení poskytovatele cloudu v části Nastavení > Modely a AI.",
       "cardTitle": "Polsky diktovaný text, soukromě",
       "cardDescription": "Upřesněte běhy po přepisu, abyste vyčistili výplňová slova, opravili interpunkci nebo přepsali tón.",
-      "checking": "Checking for Ollama…",
+      "checking": "Kontrola Ollama…",
       "checkingDescription": "Hledá se stávající místní modul Refine na tomto zařízení.",
       "installing": {
-        "title": "Installing Ollama",
+        "title": "Instalace Ollama",
         "description": "Tím se nainstaluje místní modul Refine. Aktivita sítě je zde normální."
       },
       "pulling": {
@@ -231,7 +231,7 @@
     "welcome": {
       "title": "Nastavte si soukromé hlasové diktování, které skutečně vyhovuje vašemu pracovnímu postupu",
       "description": "Vox Jot vám umožňuje mluvit do jakékoli aplikace, zachovává místní přepis na vašem zařízení a může volitelně vylepšit konečný text před jeho vložením.",
-      "cta": "Set Up Vox Jot",
+      "cta": "Nastavte Vox Jot",
       "cardTitle": "Stvořeno pro každodenní diktování",
       "cardDescription": "Nejprve zprovozněte základní tok a poté upravte výstup, jakmile budete vědět, jak se má Vox Jot chovat.",
       "features": [
@@ -272,7 +272,7 @@
     "firstDictation": {
       "title": "Jste připraveni na svůj první diktát",
       "description": "Začněte běžnou zkratkou diktování, mluvte přirozeně a nechte Vox Jot vložit výsledek tam, kde je zaostřený kurzor.",
-      "cta": "Open Vox Jot",
+      "cta": "Otevřete Vox Jot",
       "steps": [
         "Umístěte kurzor do libovolného textového pole, kam chcete přepis umístit.",
         "Pomocí zkratky pro diktování začněte nahrávat a poté, až budete mluvit, zastavte.",
@@ -744,7 +744,7 @@
         "createFirst": "Kliknutím na 'Vytvořit novou výzvu' výše vytvoříte první výzvu po zpracování."
       },
       "apple": {
-        "title": "Apple Cleanup",
+        "title": "Vyčištění Apple",
         "description": "Po dokončení rozpoznávání řeči použijte Apple Intelligence k místnímu vyleštění přepisů.",
         "mode": {
           "title": "Režim",
@@ -779,7 +779,7 @@
           "title": "Definice tónů",
           "description": "Definujte opakovaně použitelné předvolby tónů. Každý tón přidává do výzvy Apple Intelligence ohraničené navádění přepisu.",
           "columns": {
-            "id": "Tone ID",
+            "id": "Tón ID",
             "label": "Zobrazovaný název",
             "instruction": "Instrukce"
           },
@@ -869,11 +869,11 @@
           "description": "Rozhodněte se, zda se má vyleštěný text vložit okamžitě, nebo zda má být nejprve zkontrolován."
         },
         "appleCleanup": {
-          "title": "Apple Cleanup",
+          "title": "Vyčištění Apple",
           "description": "Vylaďte, jak Apple Intelligence přepisuje frázování a zpracovává případy selhání."
         },
         "applePersonalization": {
-          "title": "Apple Personalization",
+          "title": "Personalizace Apple",
           "description": "Přizpůsobte tón podle aplikace a udržujte konzistentní preferovaný pravopis před spuštěním čištění."
         },
         "prompting": {
@@ -1012,7 +1012,7 @@
         "description": "Vyberte backend klávesové zkratky.",
         "bindingsReset": "Klávesové zkratky byly nekompatibilní a byly obnoveny na výchozí hodnoty",
         "options": {
-          "tauri": "Tauri Global Shortcut",
+          "tauri": "Globální zkratka Tauri",
           "handy_keys": "Praktické klíče"
         },
         "changeConfirm": "Změnit backend klávesnice? Zástupci, kteří nejsou kompatibilní s novým backendem, mohou být resetováni na výchozí hodnoty."
@@ -1132,7 +1132,7 @@
       }
     },
     "dataPrivacy": {
-      "introTitle": "How Vox Jot handles your data",
+      "introTitle": "Jak Vox Jot nakládá s vašimi daty",
       "introBody": "Řeč se do vašeho zařízení přepisuje pomocí modelů, které nainstalujete. Volitelné následné zpracování AI může běžet na zařízení (například Apple Intelligence) nebo prostřednictvím poskytovatele, kterého nakonfigurujete. Historie přepisů a limity uchovávání se vztahují pouze na data uložená lokálně na tomto počítači – na servery Vox Jot se nic neodesílá, protože neexistuje žádný cloudový účet.",
       "groups": {
         "storage": "Úložiště a historie",
@@ -1189,8 +1189,8 @@
         "use": "Použijte",
         "switching": "Přepínání...",
         "downloadAndUse": "Stáhnout a používat",
-        "installOllama": "Install Ollama",
-        "startOllama": "Start Ollama",
+        "installOllama": "Nainstalujte Ollama",
+        "startOllama": "Spusťte Ollama",
         "unavailable": "Není k dispozici",
         "preparing": "Příprava...",
         "downloading": "Stahování {{percent}}%",
@@ -1203,13 +1203,13 @@
       "customImport": {
         "title": "Vlastní import",
         "description": "Přineste libovolné úložiště Hugging Face GGUF, nainstalujte jej do Ollama a přepněte na něj Vox Jot jedním postupem.",
-        "importDescription": "Import a GGUF without leaving settings",
+        "importDescription": "Importujte GGUF bez opuštění nastavení",
         "importHint": "Vložte repo Hugging Face jako <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Ponechte soubor prázdný, aby Vox Jot automaticky vybral rozumné GGUF.",
         "repoLabel": "Hugging Face repo",
         "repoPlaceholder": "org/model-GGUF",
-        "modelNameLabel": "Ollama model name",
+        "modelNameLabel": "Název modelu Ollama",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
-        "fileLabel": "GGUF file",
+        "fileLabel": "Soubor GGUF",
         "filePlaceholder": "Volitelný název souboru .gguf",
         "runtimeTarget": "Cíl za běhu",
         "runtimeDescription": "Importy se nainstalují do Ollama a poté se vyberou jako aktivní model zpřesnění.",
@@ -1259,7 +1259,7 @@
       "addCurrentAppFailed": "Nepodařilo se zjistit přední aplikaci k vyloučení.",
       "addCurrentAppAlreadyExcluded": "{{name}} je již vyloučeno.",
       "removeExclusionLabel": "Odebrat",
-      "statusLabel": "Status:",
+      "statusLabel": "Stav:",
       "statusUnknown": "neznámý",
       "statusDisabled": "Zakázáno",
       "statusExcluded": "Pozastaveno – vyloučená aplikace",
@@ -1376,7 +1376,7 @@
     "permissionsDescription": "Vox Jot potřebuje přístupnost pro psaní textu, monitorování vstupu, aby lépe porozumělo chování odesílání versus mazání, a nahrávání obrazovky pro kontext OCR založený na snímku obrazovky během diktování.",
     "openSettings": "Otevřete Nastavení systému",
     "dismiss": "Odmítnout",
-    "permissionsTitle": "macOS permissions need attention",
+    "permissionsTitle": "Oprávnění macOS vyžadují pozornost",
     "permissionNeeded": "Je vyžadováno povolení"
   },
   "errors": {
@@ -1407,20 +1407,20 @@
     "appsUsed": "Použité aplikace {{count}}"
   },
   "ollama": {
-    "title": "Ollama — Local LLM Engine",
+    "title": "Ollama — Místní motor LLM",
     "description": "Ollama spouští malé modely AI lokálně na vašem zařízení pro následné zpracování přepisů. Po nastavení není vyžadován internet.",
     "notInstalled": "Ollama není nainstalováno. Kliknutím níže jej nainstalujete automaticky.",
-    "install": "Install Ollama",
+    "install": "Nainstalujte Ollama",
     "installing": "Instalace...",
     "notRunning": "Ollama je nainstalován, ale neběží.",
-    "start": "Start Ollama",
+    "start": "Spusťte Ollama",
     "checking": "Kontrola...",
     "titleBarStatusCheckFailed": "Nelze ověřit Ollama. Může být nedosažitelné.",
-    "ready": "Ollama is installed and ready",
+    "ready": "Ollama je nainstalován a připraven",
     "downloadedModels": "Stažené modely LLM",
     "noDownloaded": "Dosud nebyly staženy žádné místní modely LLM.",
     "availableModels": "K dispozici ke stažení",
-    "localModel": "Local Ollama model",
+    "localModel": "Lokální model Ollama",
     "setActive": "Nastavte Aktivní",
     "download": "Stáhnout",
     "pulling": "Tahání {{progress}}%",
@@ -1430,7 +1430,7 @@
     "activateError": "Tento model nelze aktivovat. Zkuste to prosím znovu.",
     "activeRefineModel": "Aktivní model zpřesnění",
     "ollamaBadge": "Ollama",
-    "localOllamaModel": "Local Ollama Model",
+    "localOllamaModel": "Místní model Ollama",
     "quality": "Kvalita",
     "speed": "Rychlost"
   },
@@ -1692,7 +1692,7 @@
     },
     "autoReadback": {
       "title": "Auto Readback",
-      "groupTitle": "Auto-Readback",
+      "groupTitle": "Automatické zpětné čtení",
       "description": "Vyberte, kdy Vox Jot automaticky vysloví konečný výstup.",
       "modes": {
         "afterOutput": "Po výstupu",
@@ -1768,11 +1768,11 @@
           "description": ""
         },
         "force_post_process": {
-          "label": "Post-processing",
+          "label": "Následné zpracování",
           "description": "Vynutí zapnutí nebo vypnutí následného zpracování AI, když se tento profil shoduje."
         },
         "auto_submit": {
-          "label": "Auto-submit",
+          "label": "Automatické odeslání",
           "description": "Po nadiktování stiskněte automaticky Enter."
         },
         "paste_method": {
@@ -1811,7 +1811,7 @@
         "overrideLanguage": "Lang",
         "translateToEnglish": "Přeložit -> EN",
         "overridePrompt": "Výzva",
-        "autoSubmit": "Auto-submit",
+        "autoSubmit": "Automatické odeslání",
         "noAutoSubmit": "Žádné automatické odeslání",
         "alwaysPostProcess": "Vždy po zpracování",
         "skipPostProcess": "Přeskočit post-process",
@@ -1867,7 +1867,7 @@
           "off": "Přeskočit následné zpracování"
         },
         "auto_submit": {
-          "on": "Auto-submit",
+          "on": "Automatické odeslání",
           "off": "Neodesílejte automaticky"
         },
         "paste_method": {
@@ -1898,7 +1898,7 @@
       "transcribing": "Přepis…",
       "copy": "Kopírovat",
       "placeholder": "Zde se po zpracování objeví přepis.",
-      "selectedLabel": "Selected:",
+      "selectedLabel": "Vybráno:",
       "outputLabel": "Přepis",
       "fileDialogLabel": "Audio / Video",
       "errors": {
@@ -1985,7 +1985,7 @@
         "recommended": "Doporučeno",
         "fastest": "Nejrychlejší cesta",
         "osBuiltIn": "Vestavěný OS",
-        "crossPlatform": "Cross-platform",
+        "crossPlatform": "Víceplatformní",
         "requiresTesseract": "Vyžaduje Tesseract",
         "adaptive": "Adaptivní"
       },
@@ -1998,7 +1998,7 @@
         "import": "Importujte {{modelName}} z disku",
         "remove": "Odebrat {{modelName}}",
         "pickFolderTitle": "Vyberte složku, která obsahuje {{modelName}}",
-        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "downloadFromHub": "Stáhnout {{modelName}} z Hugging Face ({{repoId}})",
         "importFromDisk": "Importovat ze složky"
       },
       "confirmRemove": "Odebrat {{modelName}}? Soubory budou smazány z mezipaměti aplikace OCR.",
@@ -2042,7 +2042,7 @@
       "goToRefine": "Přejděte na Upřesnit",
       "goToListen": "Přejděte na Poslouchat",
       "openSettings": "Otevřete Nastavení",
-      "openJotPad": "Open Jot Pad",
+      "openJotPad": "Otevřete Jot Pad",
       "disablePostProcess": "Zakázat následné zpracování",
       "enablePostProcess": "Povolit následné zpracování",
       "postProcessOn": "Vyčištění AI je zapnuto",
@@ -2139,7 +2139,7 @@
       "demoWrongWord": "dvě",
       "demoFixedWord": "do",
       "demoSuffix": "obchod",
-      "summaryTitle": "How Vox Jot learns",
+      "summaryTitle": "Jak se Vox Jot učí",
       "summaryDescription": "Uložte opravy jednou a automaticky se použijí na budoucí diktáty. Ke kontrole nebo odstranění položek použijte zobrazení slovníku.",
       "openDictionary": "Otevřete slovník",
       "automaticTitle": "Automatické učení",
@@ -2164,7 +2164,7 @@
       "day1": "1. den",
       "day7": "Den 7",
       "day30": "Den 30",
-      "autoDelete": "Auto-delete",
+      "autoDelete": "Automatické mazání",
       "never": "Uchovávejte až do odstranění",
       "preserveLimit": "Udržujte limit uložené historie",
       "days3": "Smazat po 3 dnech",
@@ -2271,7 +2271,7 @@
       "storageGroupTitle": "Skladování",
       "historyGroupTitle": "Historie",
       "filesGroupTitle": "Soubory",
-      "previewLocalFirst": "Local-first",
+      "previewLocalFirst": "Místní-první",
       "previewEnforced": "Vynuceno",
       "previewAllowed": "Povoleno",
       "previewAudioCapture": "Zachycení zvuku",
@@ -2313,7 +2313,7 @@
       "stackTitle": "Postaveno s",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
-      "stackRust": "Rust audio pipeline"
+      "stackRust": "Zvukový kanál Rust"
     },
     "jotPad": {
       "empty": "Začněte svou první poznámku",
@@ -2375,7 +2375,7 @@
       },
       "diagnostics": {
         "eyebrow": "Pokročilé",
-        "title": "Labs & Diagnostics",
+        "title": "Laboratoře a diagnostika",
         "description": "Vyzkoušejte experimentální funkce, odhalte místní API a podívejte se, co Vox Jot dělá pod kapotou."
       },
       "about": {
@@ -2392,7 +2392,7 @@
       },
       "speechModels": {
         "title": "Procházet modely řeči",
-        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "description": "Stahujte, vyměňujte a spravujte sestavení Whisper/Parakeet",
         "destination": "diktovat"
       },
       "refineModels": {
@@ -2412,7 +2412,7 @@
       },
       "dictionary": {
         "title": "Otevřete slovník",
-        "description": "Review every correction Vox Jot has learned",
+        "description": "Zkontrolujte každou opravu, kterou se Vox Jot naučil",
         "destination": "diktovat"
       }
     },
@@ -2467,7 +2467,7 @@
     "models": {
       "routeTitle": "Směrování poskytovatele",
       "routeDescription": "Vox Jot vybere trasu podle požadavku. Místní zůstane offline; cloud využívá vámi vybrané poskytovatele.",
-      "localRouteHeading": "Local-first",
+      "localRouteHeading": "Místní-první",
       "cloudRouteHeading": "Cloudová asistence",
       "advancedEvaluationTitle": "Upřesnit hodnocení modelu (pokročilé)",
       "fileTranscriptionTitle": "Přepis souboru",

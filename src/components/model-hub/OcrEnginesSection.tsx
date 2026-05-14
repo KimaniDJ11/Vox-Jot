@@ -189,17 +189,19 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     useState<OcrProviderFilterValue>("all");
   const [localSortMode, setLocalSortMode] =
     useState<ModelSortMode>("best_match");
-  const providerFilter = (
-    modelHubControls?.providerFilter ?? localProviderFilter
-  ) as OcrProviderFilterValue;
+  const providerFilter = (modelHubControls?.providerFilter ??
+    localProviderFilter) as OcrProviderFilterValue;
   const sortMode = modelHubControls?.sortMode ?? localSortMode;
-  const setProviderFilter = useCallback((value: OcrProviderFilterValue) => {
-    if (modelHubControls) {
-      modelHubControls.setProviderFilter(value);
-      return;
-    }
-    setLocalProviderFilter(value);
-  }, [modelHubControls]);
+  const setProviderFilter = useCallback(
+    (value: OcrProviderFilterValue) => {
+      if (modelHubControls) {
+        modelHubControls.setProviderFilter(value);
+        return;
+      }
+      setLocalProviderFilter(value);
+    },
+    [modelHubControls],
+  );
   const setSortMode = modelHubControls?.setSortMode ?? setLocalSortMode;
   const [catalog, setCatalog] = useState<OcrModelCatalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -267,7 +269,11 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
   const onSelectSystemPolicy = async (engine: ScreenContextOcrEngine) => {
     if (currentNeural) {
-      await updateSetting("screen_context_ocr_neural_model_id", null as never);
+      const res = await commands.setOcrModelSelection(null);
+      if (res.status === "error") {
+        setCatalogError(res.error);
+        return;
+      }
       await refreshCatalog();
     }
     if (engine !== currentEngine) {
@@ -279,10 +285,12 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     if (!model.installed) return;
     setBusyId(model.id);
     try {
-      await updateSetting(
-        "screen_context_ocr_neural_model_id",
-        model.id as never,
-      );
+      const res = await commands.setOcrModelSelection(model.id);
+      if (res.status === "error") {
+        setCatalogError(res.error);
+        await refreshCatalog();
+        return;
+      }
       setCatalogError(null);
       await refreshCatalog();
     } finally {
@@ -425,7 +433,12 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     ) {
       setProviderFilter("all");
     }
-  }, [modelHubControls, providerFilter, providerSelectOptions, setProviderFilter]);
+  }, [
+    modelHubControls,
+    providerFilter,
+    providerSelectOptions,
+    setProviderFilter,
+  ]);
 
   const sortOptions = useMemo(
     () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
@@ -597,7 +610,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       capabilityChips={[
         ...buildModelIdentityChips({
           params: inferParameterClass(["System OCR", systemVendor]),
-          arch: inferArchitectureLabel(["System OCR", systemVendor], systemVendor),
+          arch: inferArchitectureLabel(
+            ["System OCR", systemVendor],
+            systemVendor,
+          ),
           format: inferRuntimeFormat(
             [systemVendor, currentEngine],
             t("modelHub.ocr.meta.osBuiltIn", { defaultValue: "OS built-in" }),
@@ -691,6 +707,20 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
             }),
           }
         : null,
+      model.installed && !model.runnable
+        ? {
+            id: "runtime-needed",
+            label: t("modelHub.ocr.badges.runtimeNeeded", {
+              defaultValue: "Runtime needed",
+            }),
+            variant: "secondary",
+            icon: <AlertTriangle className="h-3.5 w-3.5" aria-hidden />,
+            detail: t("modelHub.ocr.badges.runtimeNeededDetail", {
+              defaultValue:
+                "The model files are present, but the managed OCR runtime is not installed or verified yet.",
+            }),
+          }
+        : null,
     ].filter(Boolean) as CompactBadgeItem[];
 
     const backendLabel = ocrBackendLabel(model, t);
@@ -740,7 +770,21 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           defaultValue: "Screen OCR runtime used for this mode.",
         }),
       },
-    ];
+      model.backend !== "tessdata_pack"
+        ? {
+            id: "capability-runtime",
+            label: t("modelHub.ocr.meta.managedRuntime", {
+              defaultValue: "Managed runtime",
+            }),
+            variant: "secondary",
+            icon: <Download className="h-3 w-3" />,
+            detail: t("modelHub.ocr.meta.managedRuntimeDetail", {
+              defaultValue:
+                "Download installs the model and the Vox Jot OCR runtime when needed.",
+            }),
+          }
+        : null,
+    ].filter(Boolean) as CompactBadgeItem[];
     const footerMetaItems = [backendLabel];
 
     let trailing: HubTrailing = null;
@@ -762,13 +806,13 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
                 modelName: model.title,
                 repoId: model.hf_repo_id,
                 defaultValue:
-                  "Download {{modelName}} from Hugging Face ({{repoId}})",
+                  "Download {{modelName}} from Hugging Face ({{repoId}}). Neural OCR downloads also install the Vox Jot OCR runtime when needed.",
               })}
               aria-label={t("modelHub.ocr.actions.downloadFromHub", {
                 modelName: model.title,
                 repoId: model.hf_repo_id,
                 defaultValue:
-                  "Download {{modelName}} from Hugging Face ({{repoId}})",
+                  "Download {{modelName}} from Hugging Face ({{repoId}}). Neural OCR downloads also install the Vox Jot OCR runtime when needed.",
               })}
               disabled={isBusy && busyId === model.id}
               onClick={(event) => {
@@ -834,14 +878,26 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
                 ? t("modelHub.ocr.download.preparing", {
                     defaultValue: "Preparing download...",
                   })
-                : t("modelHub.ocr.download.percent", {
-                    value: dlPercentage ?? 0,
-                    defaultValue: "Downloading {{value}}%",
-                  }),
+                : dl.stage === "runtime-downloading"
+                  ? t("modelHub.ocr.download.runtimeDownloading", {
+                      value: dlPercentage ?? 0,
+                      defaultValue: "Downloading OCR runtime {{value}}%",
+                    })
+                  : dl.stage === "runtime-installing"
+                    ? t("modelHub.ocr.download.runtimeInstalling", {
+                        defaultValue: "Installing OCR runtime...",
+                      })
+                    : t("modelHub.ocr.download.percent", {
+                        value: dlPercentage ?? 0,
+                        defaultValue: "Downloading {{value}}%",
+                      }),
             detail: dlFileName ?? model.hf_repo_id ?? backendLabel,
             error: dl.error ?? null,
             progress: dlPercentage,
-            indeterminate: dlPercentage === null || dl.stage === "preparing",
+            indeterminate:
+              dlPercentage === null ||
+              dl.stage === "preparing" ||
+              dl.stage === "runtime-installing",
           }
         : undefined;
 

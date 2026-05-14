@@ -104,7 +104,7 @@
       "microphone": {
         "title": "Acceso al micrófono",
         "description": "Se requiere escuchar su voz para la transcripción.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "Permita que Vox Jot use su micrófono",
         "cardDescription": "Vox Jot sólo necesita el micrófono mientras dictas.",
         "eyebrow": "Captura de voz",
         "storyTitle": "Acceso al micrófono",
@@ -120,7 +120,7 @@
       "accessibility": {
         "title": "Accesibilidad Acceso",
         "description": "Necesario para escribir texto transcrito en sus aplicaciones.",
-        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardTitle": "Permitir que Vox Jot inserte palabras habladas",
         "cardDescription": "Esto permite a Vox Jot colocar texto transcrito en el campo que está utilizando activamente.",
         "eyebrow": "Salida de texto",
         "storyTitle": "Accesibilidad",
@@ -149,7 +149,7 @@
       "inputMonitoring": {
         "title": "Monitoreo de entrada",
         "description": "Se requiere para que Vox Jot pueda diferenciar mejor entre enviar un mensaje y borrar texto manualmente.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "Permitir que Vox Jot observe la actividad del teclado localmente",
         "cardDescription": "Esto ayuda a Vox Jot a notar ediciones rápidas, acciones de ingresar para enviar y borrados impulsados por eliminación. No registra lo que escribes.",
         "manualCleanupHint": "Si macOS muestra una entrada Vox Jot anterior aquí, elimínela y habilite /Applications/Vox Jot.app.",
         "eyebrow": "Estado del teclado",
@@ -166,7 +166,7 @@
       "screenRecording": {
         "title": "Grabación de pantalla",
         "description": "Se requiere para que Vox Jot pueda crear un caché OCR continuo desde la pantalla activa y usarlo como contexto de dictado local.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "Permitir que Vox Jot lea el contexto de la pantalla activa localmente",
         "cardDescription": "Esto permite que Vox Jot Vox Jot muestre periódicamente la pantalla activa para que los nombres, la jerga y las claves de frases sean más precisos cuando comience a dictar.",
         "eyebrow": "Contexto visual",
         "storyTitle": "Grabación de pantalla",
@@ -208,10 +208,10 @@
       "footnote": "Si omite, Refinar aún funciona una vez que conecta un proveedor de nube en Configuración > Modelos y AI.",
       "cardTitle": "Texto dictado en polaco, en privado",
       "cardDescription": "Refine las ejecuciones después de la transcripción para limpiar las palabras de relleno, corregir la puntuación o reescribir un tono.",
-      "checking": "Checking for Ollama…",
+      "checking": "Comprobando Ollama…",
       "checkingDescription": "Buscando un motor Refine local existente en este dispositivo.",
       "installing": {
-        "title": "Installing Ollama",
+        "title": "Instalación de Ollama",
         "description": "Esto instala el motor Refine local. La actividad de la red es normal aquí."
       },
       "pulling": {
@@ -231,7 +231,7 @@
     "welcome": {
       "title": "Configure un dictado de voz privado que realmente se adapte a su flujo de trabajo",
       "description": "Vox Jot le permite hablar en cualquier aplicación, mantiene la transcripción local en su dispositivo y, opcionalmente, puede pulir el texto final antes de pegarlo.",
-      "cta": "Set Up Vox Jot",
+      "cta": "Configurar Vox Jot",
       "cardTitle": "Creado para el dictado diario",
       "cardDescription": "Primero haga funcionar el flujo central y luego adapte la salida una vez que sepa cómo desea que se comporte Vox Jot.",
       "features": [
@@ -272,7 +272,7 @@
     "firstDictation": {
       "title": "Estás listo para tu primer dictado.",
       "description": "Comience con el atajo de dictado normal, hable con naturalidad y deje que Vox Jot pegue el resultado donde está enfocado el cursor.",
-      "cta": "Open Vox Jot",
+      "cta": "Abrir Vox Jot",
       "steps": [
         "Coloque el cursor en cualquier campo de texto donde desee que vaya la transcripción.",
         "Utilice su método abreviado de dictado para comenzar a grabar y luego deténgase cuando haya terminado de hablar.",
@@ -502,7 +502,7 @@
             "description": "Presione una vez para comenzar, presione nuevamente para detener."
           },
           "hold": {
-            "title": "Push-to-talk",
+            "title": "Pulsar para hablar",
             "description": "Mantenga presionado el atajo mientras habla."
           }
         },
@@ -869,11 +869,11 @@
           "description": "Decida si el texto pulido debe pegarse inmediatamente o revisarse primero."
         },
         "appleCleanup": {
-          "title": "Apple Cleanup",
+          "title": "Limpieza Apple",
           "description": "Ajuste cómo Apple Intelligence reescribe frases y maneja casos de falla."
         },
         "applePersonalization": {
-          "title": "Apple Personalization",
+          "title": "Personalización",
           "description": "Haga coincidir el tono por aplicación y mantenga la ortografía preferida constante antes de ejecutar la limpieza."
         },
         "prompting": {
@@ -1012,7 +1012,7 @@
         "description": "Elija el backend del método abreviado de teclado.",
         "bindingsReset": "Los atajos de teclado eran incompatibles y se restablecieron los valores predeterminados",
         "options": {
-          "tauri": "Tauri Global Shortcut",
+          "tauri": "Tauri Acceso directo global",
           "handy_keys": "Teclas prácticas"
         },
         "changeConfirm": "¿Cambiar el backend del teclado? Los accesos directos que sean incompatibles con el nuevo backend se pueden restablecer a sus valores predeterminados."
@@ -1132,7 +1132,7 @@
       }
     },
     "dataPrivacy": {
-      "introTitle": "How Vox Jot handles your data",
+      "introTitle": "Cómo maneja Vox Jot sus datos",
       "introBody": "La voz se transcribe en su dispositivo utilizando los modelos que instala. El posprocesamiento opcional AI puede ejecutarse en el dispositivo (por ejemplo, Apple Intelligence) o a través de un proveedor que usted configure. El historial de transcripciones y los límites de retención se aplican solo a los datos almacenados localmente en esta computadora; no se envía nada a los servidores de Vox Jot porque no hay una cuenta en la nube.",
       "groups": {
         "storage": "Almacenamiento e historial",
@@ -1189,8 +1189,8 @@
         "use": "uso",
         "switching": "Cambiando...",
         "downloadAndUse": "Descargar y usar",
-        "installOllama": "Install Ollama",
-        "startOllama": "Start Ollama",
+        "installOllama": "Instalar Ollama",
+        "startOllama": "Inicio Ollama",
         "unavailable": "No disponible",
         "preparing": "Preparando...",
         "downloading": "Descargando {{percent}}%",
@@ -1203,13 +1203,13 @@
       "customImport": {
         "title": "Importación personalizada",
         "description": "Incorpore cualquier repositorio Hugging Face GGUF, instálelo en Ollama y cambie Vox Jot a él en un solo flujo.",
-        "importDescription": "Import a GGUF without leaving settings",
+        "importDescription": "Importar un GGUF sin salir de la configuración",
         "importHint": "Pegue un repositorio Hugging Face como <mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>. Deje el archivo en blanco para permitir que Vox Jot elija un GGUF sensible automáticamente.",
-        "repoLabel": "Hugging Face repo",
+        "repoLabel": "Repositorio Hugging Face",
         "repoPlaceholder": "org/model-GGUF",
-        "modelNameLabel": "Ollama model name",
+        "modelNameLabel": "Nombre del modelo Ollama",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
-        "fileLabel": "GGUF file",
+        "fileLabel": "Archivo GGUF",
         "filePlaceholder": "Nombre de archivo .gguf opcional",
         "runtimeTarget": "Objetivo de tiempo de ejecución",
         "runtimeDescription": "Las importaciones se instalan en Ollama y luego se seleccionan como modelo de refinamiento activo.",
@@ -1259,7 +1259,7 @@
       "addCurrentAppFailed": "No se pudo detectar una aplicación principal para excluir.",
       "addCurrentAppAlreadyExcluded": "{{name}} ya está excluido.",
       "removeExclusionLabel": "Quitar",
-      "statusLabel": "Status:",
+      "statusLabel": "Estado:",
       "statusUnknown": "desconocido",
       "statusDisabled": "Discapacitado",
       "statusExcluded": "En pausa: aplicación excluida",
@@ -1376,7 +1376,7 @@
     "permissionsDescription": "Vox Jot necesita Accesibilidad para escribir texto, Monitoreo de entrada para comprender mejor el comportamiento de envío versus eliminación y Grabación de pantalla para el contexto OCR basado en capturas de pantalla durante el dictado.",
     "openSettings": "Abrir configuración del sistema",
     "dismiss": "Descartar",
-    "permissionsTitle": "macOS permissions need attention",
+    "permissionsTitle": "Los permisos macOS necesitan atención",
     "permissionNeeded": "Permiso necesario"
   },
   "errors": {
@@ -1407,20 +1407,20 @@
     "appsUsed": "Aplicaciones {{count}} utilizadas"
   },
   "ollama": {
-    "title": "Ollama — Local LLM Engine",
+    "title": "Ollama: motor local LLM",
     "description": "Ollama ejecuta pequeños modelos AI localmente en su dispositivo para el posprocesamiento de transcripciones. No se requiere Internet después de la configuración.",
     "notInstalled": "Ollama no está instalado. Haga clic a continuación para instalarlo automáticamente.",
-    "install": "Install Ollama",
+    "install": "Instalar Ollama",
     "installing": "Instalando...",
     "notRunning": "Ollama está instalado pero no se está ejecutando.",
-    "start": "Start Ollama",
+    "start": "Inicio Ollama",
     "checking": "Comprobando...",
     "titleBarStatusCheckFailed": "No se puede verificar Ollama. Puede que sea inalcanzable.",
-    "ready": "Ollama is installed and ready",
+    "ready": "Ollama está instalado y listo.",
     "downloadedModels": "Modelos LLM descargados",
     "noDownloaded": "Aún no se han descargado modelos locales LLM.",
     "availableModels": "Disponible para descargar",
-    "localModel": "Local Ollama model",
+    "localModel": "Modelo local Ollama",
     "setActive": "Establecer activo",
     "download": "Descargar",
     "pulling": "Tirando de {{progress}}%",
@@ -1430,7 +1430,7 @@
     "activateError": "No se pudo activar este modelo. Por favor inténtalo de nuevo.",
     "activeRefineModel": "Modelo de refinamiento activo",
     "ollamaBadge": "Ollama",
-    "localOllamaModel": "Local Ollama Model",
+    "localOllamaModel": "Modelo local Ollama",
     "quality": "Calidad",
     "speed": "Velocidad"
   },
@@ -1692,7 +1692,7 @@
     },
     "autoReadback": {
       "title": "Lectura automática",
-      "groupTitle": "Auto-Readback",
+      "groupTitle": "Lectura automática",
       "description": "Elija cuándo Vox Jot pronuncia automáticamente el resultado final.",
       "modes": {
         "afterOutput": "Después de la salida",
@@ -1898,7 +1898,7 @@
       "transcribing": "Transcribiendo…",
       "copy": "Copiar",
       "placeholder": "La transcripción aparece aquí después del procesamiento.",
-      "selectedLabel": "Selected:",
+      "selectedLabel": "Seleccionado:",
       "outputLabel": "Transcripción",
       "fileDialogLabel": "Audio/vídeo",
       "errors": {
@@ -1985,7 +1985,7 @@
         "recommended": "Recomendado",
         "fastest": "camino más rápido",
         "osBuiltIn": "OS incorporado",
-        "crossPlatform": "Cross-platform",
+        "crossPlatform": "Multiplataforma",
         "requiresTesseract": "Requiere Teseracto",
         "adaptive": "Adaptativo"
       },
@@ -1998,7 +1998,7 @@
         "import": "Importar {{modelName}} desde el disco",
         "remove": "Quitar {{modelName}}",
         "pickFolderTitle": "Elija la carpeta que contiene {{modelName}}",
-        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "downloadFromHub": "Descargar {{modelName}} de Hugging Face ({{repoId}})",
         "importFromDisk": "Importar desde carpeta"
       },
       "confirmRemove": "¿Quitar {{modelName}}? Los archivos se eliminarán del caché OCR de la aplicación.",
@@ -2042,7 +2042,7 @@
       "goToRefine": "Ir a refinar",
       "goToListen": "Ir a escuchar",
       "openSettings": "Abrir configuración",
-      "openJotPad": "Open Jot Pad",
+      "openJotPad": "Abrir Jot Pad",
       "disablePostProcess": "Deshabilitar el posproceso",
       "enablePostProcess": "Habilitar posproceso",
       "postProcessOn": "La limpieza AI está activada",
@@ -2139,7 +2139,7 @@
       "demoWrongWord": "dos",
       "demoFixedWord": "a",
       "demoSuffix": "la tienda",
-      "summaryTitle": "How Vox Jot learns",
+      "summaryTitle": "Cómo aprende Vox Jot",
       "summaryDescription": "Guarde las correcciones una vez y se aplicarán automáticamente a futuros dictados. Utilice la vista del diccionario para inspeccionar o eliminar entradas.",
       "openDictionary": "Diccionario abierto",
       "automaticTitle": "Aprendizaje automático",
@@ -2164,7 +2164,7 @@
       "day1": "Día 1",
       "day7": "Día 7",
       "day30": "Día 30",
-      "autoDelete": "Auto-delete",
+      "autoDelete": "Eliminar automáticamente",
       "never": "Mantener hasta que se retire",
       "preserveLimit": "Mantener límite de historial guardado",
       "days3": "Eliminar después de 3 días",
@@ -2271,7 +2271,7 @@
       "storageGroupTitle": "Almacenamiento",
       "historyGroupTitle": "Historia",
       "filesGroupTitle": "Archivos",
-      "previewLocalFirst": "Local-first",
+      "previewLocalFirst": "Primero local",
       "previewEnforced": "aplicado",
       "previewAllowed": "Permitido",
       "previewAudioCapture": "captura de audio",
@@ -2375,7 +2375,7 @@
       },
       "diagnostics": {
         "eyebrow": "Avanzado",
-        "title": "Labs & Diagnostics",
+        "title": "Laboratorios y diagnóstico",
         "description": "Pruebe funciones experimentales, exponga el API local e inspeccione qué está haciendo Vox Jot bajo el capó."
       },
       "about": {
@@ -2392,7 +2392,7 @@
       },
       "speechModels": {
         "title": "Explorar modelos de voz",
-        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "description": "Descargue, intercambie y administre compilaciones Whisper/Parakeet",
         "destination": "Dictar"
       },
       "refineModels": {
@@ -2412,7 +2412,7 @@
       },
       "dictionary": {
         "title": "Diccionario abierto",
-        "description": "Review every correction Vox Jot has learned",
+        "description": "Revise todas las correcciones que Vox Jot ha aprendido",
         "destination": "Dictar"
       }
     },
@@ -2467,7 +2467,7 @@
     "models": {
       "routeTitle": "Enrutamiento del proveedor",
       "routeDescription": "Vox Jot elige una ruta por solicitud. El local permanece desconectado; La nube utiliza los proveedores seleccionados.",
-      "localRouteHeading": "Local-first",
+      "localRouteHeading": "Primero local",
       "cloudRouteHeading": "Asistencia en la nube",
       "advancedEvaluationTitle": "Refinar la evaluación del modelo (avanzado)",
       "fileTranscriptionTitle": "Transcripción de archivos",

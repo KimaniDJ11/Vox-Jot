@@ -104,7 +104,7 @@
       "microphone": {
         "title": "마이크 액세스",
         "description": "전사를 위해 음성을 듣는 데 필요합니다.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "Vox Jot가 마이크를 사용하도록 허용",
         "cardDescription": "Vox Jot는 받아쓰기하는 동안에만 마이크가 필요합니다.",
         "eyebrow": "음성 캡처",
         "storyTitle": "마이크 액세스",
@@ -120,7 +120,7 @@
       "accessibility": {
         "title": "접근성 접근",
         "description": "응용 프로그램에 복사된 텍스트를 입력하는 데 필요합니다.",
-        "cardTitle": "Allow Vox Jot to insert spoken words",
+        "cardTitle": "Vox Jot가 음성 단어를 삽입하도록 허용",
         "cardDescription": "이를 통해 Vox Jot는 현재 사용 중인 필드에 복사된 텍스트를 배치할 수 있습니다.",
         "eyebrow": "텍스트 출력",
         "storyTitle": "접근성",
@@ -149,7 +149,7 @@
       "inputMonitoring": {
         "title": "입력 모니터링",
         "description": "Vox Jot가 메시지 보내기와 수동으로 텍스트 지우기 간의 차이를 더 잘 구분할 수 있도록 필요합니다.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "Vox Jot가 키보드 활동을 로컬에서 감시하도록 허용",
         "cardDescription": "이를 통해 Vox Jot는 빠른 편집, Enter-to-send 작업 및 삭제 기반 지우기를 확인할 수 있습니다. 입력한 내용은 기록되지 않습니다.",
         "manualCleanupHint": "macOS에 여기에 이전 Vox Jot 항목이 표시되면 해당 항목을 제거하고 /Applications/Vox Jot.app을 활성화하세요.",
         "eyebrow": "키보드 상태",
@@ -166,7 +166,7 @@
       "screenRecording": {
         "title": "화면 녹화",
         "description": "Vox Jot가 활성 디스플레이에서 롤링 OCR 캐시를 구축하고 이를 로컬 받아쓰기 컨텍스트로 사용할 수 있도록 필요합니다.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "Vox Jot가 활성 화면 컨텍스트를 로컬에서 읽을 수 있도록 허용",
         "cardDescription": "이를 통해 Vox Jot가 주기적으로 활성 디스플레이를 OCR할 수 있으므로 받아쓰기를 시작할 때 이름, 전문 용어 및 구문 키가 더 정확해집니다.",
         "eyebrow": "시각적 맥락",
         "storyTitle": "화면 녹화",
@@ -208,10 +208,10 @@
       "footnote": "건너뛰는 경우 설정 > 모델 및 AI에서 클라우드 공급자를 연결하면 Refine이 계속 작동합니다.",
       "cardTitle": "폴란드어 받아쓰기 텍스트(비공개)",
       "cardDescription": "텍스트 변환 후 다듬기 실행을 통해 필러 단어를 정리하고 구두점을 수정하거나 어조를 다시 작성합니다.",
-      "checking": "Checking for Ollama…",
+      "checking": "Ollama 확인 중…",
       "checkingDescription": "이 장치에서 기존 로컬 Refine 엔진을 찾고 있습니다.",
       "installing": {
-        "title": "Installing Ollama",
+        "title": "Ollama 설치",
         "description": "그러면 로컬 Refine 엔진이 설치됩니다. 여기서는 네트워크 활동이 정상입니다."
       },
       "pulling": {
@@ -231,7 +231,7 @@
     "welcome": {
       "title": "귀하의 작업 흐름에 실제로 맞는 개인 음성 받아쓰기를 설정하세요",
       "description": "Vox Jot를 사용하면 모든 앱에 말할 수 있고, 장치에서 전사를 로컬로 유지하며, 붙여넣기 전에 선택적으로 최종 텍스트를 다듬을 수 있습니다.",
-      "cta": "Set Up Vox Jot",
+      "cta": "Vox Jot 설정",
       "cardTitle": "일상적인 받아쓰기용으로 제작됨",
       "cardDescription": "먼저 핵심 흐름을 작동시킨 다음, Vox Jot의 작동 방식을 알고 나면 출력을 조정하세요.",
       "features": [
@@ -272,7 +272,7 @@
     "firstDictation": {
       "title": "첫 번째 받아쓰기를 할 준비가 되었습니다.",
       "description": "일반 받아쓰기 단축키로 시작하여 자연스럽게 말하고 Vox Jot가 커서가 초점이 맞춰진 곳에 결과를 붙여넣도록 합니다.",
-      "cta": "Open Vox Jot",
+      "cta": "Vox Jot 열기",
       "steps": [
         "스크립트를 넣을 텍스트 필드에 커서를 놓습니다.",
         "받아쓰기 단축키를 사용하여 녹음을 시작한 다음 말하기가 끝나면 중지하세요.",
@@ -474,7 +474,7 @@
             "description": "한 번 누르면 시작되고 다시 누르면 중지됩니다."
           },
           "hold": {
-            "title": "Push-to-talk",
+            "title": "푸쉬투톡",
             "description": "말하는 동안 단축키를 누르세요."
           }
         },
@@ -744,7 +744,7 @@
         "createFirst": "첫 번째 후처리 프롬프트를 생성하려면 위의 '새 프롬프트 생성'을 클릭하세요."
       },
       "apple": {
-        "title": "Apple Cleanup",
+        "title": "Apple 정리",
         "description": "음성 인식이 완료된 후 Apple Intelligence를 사용하여 로컬에서 전사본을 다듬습니다.",
         "mode": {
           "title": "모드",
@@ -779,7 +779,7 @@
           "title": "톤 정의",
           "description": "재사용 가능한 톤 사전 설정을 정의합니다. 각 신호음은 Apple Intelligence 프롬프트에 제한된 재작성 지침을 추가합니다.",
           "columns": {
-            "id": "Tone ID",
+            "id": "톤 ID",
             "label": "표시 이름",
             "instruction": "지시사항"
           },
@@ -869,11 +869,11 @@
           "description": "세련된 텍스트를 즉시 붙여넣어야 할지 아니면 먼저 검토해야 할지 결정하세요."
         },
         "appleCleanup": {
-          "title": "Apple Cleanup",
+          "title": "Apple 정리",
           "description": "Apple Intelligence가 구문을 다시 작성하고 실패 사례를 처리하는 방법을 조정합니다."
         },
         "applePersonalization": {
-          "title": "Apple Personalization",
+          "title": "Apple 개인화",
           "description": "정리가 실행되기 전에 앱별로 톤을 일치시키고 선호하는 철자를 일관되게 유지하세요."
         },
         "prompting": {
@@ -1012,7 +1012,7 @@
         "description": "키보드 단축키 백엔드를 선택하세요.",
         "bindingsReset": "키보드 단축키가 호환되지 않으며 기본값으로 재설정되었습니다.",
         "options": {
-          "tauri": "Tauri Global Shortcut",
+          "tauri": "Tauri 글로벌 바로가기",
           "handy_keys": "편리한 열쇠"
         },
         "changeConfirm": "키보드 백엔드를 변경하시겠습니까? 새 백엔드와 호환되지 않는 바로가기는 기본값으로 재설정될 수 있습니다."
@@ -1132,7 +1132,7 @@
       }
     },
     "dataPrivacy": {
-      "introTitle": "How Vox Jot handles your data",
+      "introTitle": "Vox Jot가 데이터를 처리하는 방법",
       "introBody": "음성은 설치한 모델을 사용하여 장치에서 기록됩니다. 선택적 AI 사후 처리는 장치(예: Apple Intelligence)에서 실행되거나 사용자가 구성한 공급자를 통해 실행될 수 있습니다. 성적 기록 및 보존 제한은 이 컴퓨터에 로컬로 저장된 데이터에만 적용됩니다. 클라우드 계정이 없기 때문에 Vox Jot의 서버로 아무 것도 전송되지 않습니다.",
       "groups": {
         "storage": "저장 및 기록",
@@ -1189,8 +1189,8 @@
         "use": "사용",
         "switching": "전환 중...",
         "downloadAndUse": "다운로드 및 사용",
-        "installOllama": "Install Ollama",
-        "startOllama": "Start Ollama",
+        "installOllama": "Ollama 설치",
+        "startOllama": "Ollama 시작",
         "unavailable": "이용 불가",
         "preparing": "준비 중...",
         "downloading": "{{percent}}% 다운로드 중",
@@ -1203,13 +1203,13 @@
       "customImport": {
         "title": "맞춤 가져오기",
         "description": "Hugging Face GGUF 저장소를 가져와서 Ollama에 설치하고 Vox Jot를 한 흐름으로 전환하세요.",
-        "importDescription": "Import a GGUF without leaving settings",
+        "importDescription": "설정을 종료하지 않고 GGUF 가져오기",
         "importHint": "<mono>nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF</mono>와 같은 Hugging Face 저장소를 붙여넣습니다. Vox Jot가 적절한 GGUF를 자동으로 선택하도록 하려면 파일을 비워 두세요.",
-        "repoLabel": "Hugging Face repo",
+        "repoLabel": "Hugging Face 저장소",
         "repoPlaceholder": "org/model-GGUF",
-        "modelNameLabel": "Ollama model name",
+        "modelNameLabel": "Ollama 모델명",
         "modelNamePlaceholder": "qwen3.5-9b-q4_k_m",
-        "fileLabel": "GGUF file",
+        "fileLabel": "GGUF 파일",
         "filePlaceholder": "선택적 .gguf 파일 이름",
         "runtimeTarget": "런타임 타겟",
         "runtimeDescription": "가져오기는 Ollama에 설치된 다음 활성 구체화 모델로 선택됩니다.",
@@ -1259,7 +1259,7 @@
       "addCurrentAppFailed": "제외할 맨 앞의 앱을 감지할 수 없습니다.",
       "addCurrentAppAlreadyExcluded": "{{name}}는 이미 제외되었습니다.",
       "removeExclusionLabel": "제거",
-      "statusLabel": "Status:",
+      "statusLabel": "상태:",
       "statusUnknown": "알 수 없음",
       "statusDisabled": "장애인",
       "statusExcluded": "일시중지됨 - 제외된 앱",
@@ -1376,7 +1376,7 @@
     "permissionsDescription": "Vox Jot에는 텍스트를 입력하기 위한 접근성, 전송 및 삭제 동작을 더 잘 이해하기 위한 입력 모니터링, 받아쓰기 중 스크린샷 기반 OCR 컨텍스트를 위한 화면 녹화가 필요합니다.",
     "openSettings": "시스템 설정 열기",
     "dismiss": "닫기",
-    "permissionsTitle": "macOS permissions need attention",
+    "permissionsTitle": "macOS 권한에 주의가 필요합니다.",
     "permissionNeeded": "허가가 필요함"
   },
   "errors": {
@@ -1407,20 +1407,20 @@
     "appsUsed": "사용된 {{count}} 앱"
   },
   "ollama": {
-    "title": "Ollama — Local LLM Engine",
+    "title": "Ollama — 로컬 LLM 엔진",
     "description": "Ollama는 사후 처리 기록을 위해 장치에서 로컬로 작은 AI 모델을 실행합니다. 설정 후에는 인터넷이 필요하지 않습니다.",
     "notInstalled": "Ollama가 설치되지 않았습니다. 아래를 클릭하시면 자동으로 설치됩니다.",
-    "install": "Install Ollama",
+    "install": "Ollama 설치",
     "installing": "설치 중...",
     "notRunning": "Ollama가 설치되었지만 실행되고 있지 않습니다.",
-    "start": "Start Ollama",
+    "start": "Ollama 시작",
     "checking": "확인 중...",
     "titleBarStatusCheckFailed": "Ollama를 확인할 수 없습니다. 도달하지 못할 수도 있습니다.",
-    "ready": "Ollama is installed and ready",
+    "ready": "Ollama가 설치되어 준비되었습니다.",
     "downloadedModels": "다운로드된 LLM 모델",
     "noDownloaded": "아직 다운로드된 로컬 LLM 모델이 없습니다.",
     "availableModels": "다운로드 가능",
-    "localModel": "Local Ollama model",
+    "localModel": "로컬 Ollama 모델",
     "setActive": "활성으로 설정",
     "download": "다운로드",
     "pulling": "{{progress}}% 당기기",
@@ -1430,7 +1430,7 @@
     "activateError": "이 모델을 활성화할 수 없습니다. 다시 시도해 주세요.",
     "activeRefineModel": "활성 개선 모델",
     "ollamaBadge": "Ollama",
-    "localOllamaModel": "Local Ollama Model",
+    "localOllamaModel": "로컬 Ollama 모델",
     "quality": "품질",
     "speed": "속도"
   },
@@ -1692,7 +1692,7 @@
     },
     "autoReadback": {
       "title": "자동 다시 읽어오기",
-      "groupTitle": "Auto-Readback",
+      "groupTitle": "자동 다시 읽기",
       "description": "Vox Jot가 자동으로 최종 출력을 말하는 시기를 선택합니다.",
       "modes": {
         "afterOutput": "출력 후",
@@ -1768,11 +1768,11 @@
           "description": ""
         },
         "force_post_process": {
-          "label": "Post-processing",
+          "label": "후처리",
           "description": "이 프로필이 일치하면 AI 사후 처리를 강제로 켜거나 끕니다."
         },
         "auto_submit": {
-          "label": "Auto-submit",
+          "label": "자동 제출",
           "description": "받아쓰기 후 자동으로 Enter를 누르세요."
         },
         "paste_method": {
@@ -1811,7 +1811,7 @@
         "overrideLanguage": "랑",
         "translateToEnglish": "번역 -> EN",
         "overridePrompt": "프롬프트",
-        "autoSubmit": "Auto-submit",
+        "autoSubmit": "자동 제출",
         "noAutoSubmit": "자동 제출 없음",
         "alwaysPostProcess": "항상 후처리",
         "skipPostProcess": "후처리 건너뛰기",
@@ -1867,7 +1867,7 @@
           "off": "후처리 건너뛰기"
         },
         "auto_submit": {
-          "on": "Auto-submit",
+          "on": "자동 제출",
           "off": "자동 제출 안 함"
         },
         "paste_method": {
@@ -1898,7 +1898,7 @@
       "transcribing": "스크립트 작성 중…",
       "copy": "복사",
       "placeholder": "처리 후 여기에 성적표가 표시됩니다.",
-      "selectedLabel": "Selected:",
+      "selectedLabel": "선택됨:",
       "outputLabel": "성적 증명서",
       "fileDialogLabel": "오디오/비디오",
       "errors": {
@@ -1985,7 +1985,7 @@
         "recommended": "추천",
         "fastest": "가장 빠른 경로",
         "osBuiltIn": "OS 내장",
-        "crossPlatform": "Cross-platform",
+        "crossPlatform": "크로스 플랫폼",
         "requiresTesseract": "테서랙트 필요",
         "adaptive": "적응형"
       },
@@ -1998,7 +1998,7 @@
         "import": "디스크에서 {{modelName}} 가져오기",
         "remove": "{{modelName}} 제거",
         "pickFolderTitle": "{{modelName}}가 포함된 폴더를 선택하세요.",
-        "downloadFromHub": "Download {{modelName}} from Hugging Face ({{repoId}})",
+        "downloadFromHub": "Hugging Face({{repoId}})에서 {{modelName}} 다운로드",
         "importFromDisk": "폴더에서 가져오기"
       },
       "confirmRemove": "{{modelName}}를 제거하시겠습니까? 파일은 앱의 OCR 캐시에서 삭제됩니다.",
@@ -2042,7 +2042,7 @@
       "goToRefine": "구체화로 이동",
       "goToListen": "듣기로 이동",
       "openSettings": "설정 열기",
-      "openJotPad": "Open Jot Pad",
+      "openJotPad": "Jot Pad 열기",
       "disablePostProcess": "사후 처리 비활성화",
       "enablePostProcess": "후처리 활성화",
       "postProcessOn": "AI 정리가 켜져 있습니다.",
@@ -2139,7 +2139,7 @@
       "demoWrongWord": "두",
       "demoFixedWord": "에",
       "demoSuffix": "가게",
-      "summaryTitle": "How Vox Jot learns",
+      "summaryTitle": "Vox Jot가 학습하는 방법",
       "summaryDescription": "수정 사항을 한 번 저장하면 향후 받아쓰기에 자동으로 적용됩니다. 항목을 검사하거나 제거하려면 사전 보기를 사용하세요.",
       "openDictionary": "사전 열기",
       "automaticTitle": "자동 학습",
@@ -2164,7 +2164,7 @@
       "day1": "1일차",
       "day7": "7일차",
       "day30": "30일차",
-      "autoDelete": "Auto-delete",
+      "autoDelete": "자동 삭제",
       "never": "제거될 때까지 보관",
       "preserveLimit": "저장 내역 한도 유지",
       "days3": "3일 후 삭제",
@@ -2271,7 +2271,7 @@
       "storageGroupTitle": "저장",
       "historyGroupTitle": "역사",
       "filesGroupTitle": "파일",
-      "previewLocalFirst": "Local-first",
+      "previewLocalFirst": "로컬 우선",
       "previewEnforced": "시행",
       "previewAllowed": "허용됨",
       "previewAudioCapture": "오디오 캡처",
@@ -2313,7 +2313,7 @@
       "stackTitle": "다음으로 제작됨",
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
-      "stackRust": "Rust audio pipeline"
+      "stackRust": "Rust 오디오 파이프라인"
     },
     "jotPad": {
       "empty": "첫 번째 메모 시작하기",
@@ -2375,7 +2375,7 @@
       },
       "diagnostics": {
         "eyebrow": "고급",
-        "title": "Labs & Diagnostics",
+        "title": "실험실 및 진단",
         "description": "실험적인 기능을 사용해 보고, 로컬 API를 노출하고, Vox Jot가 내부적으로 수행하는 작업을 검사하세요."
       },
       "about": {
@@ -2392,7 +2392,7 @@
       },
       "speechModels": {
         "title": "음성 모델 찾아보기",
-        "description": "Download, swap, and manage Whisper/Parakeet builds",
+        "description": "Whisper/Parakeet 빌드 다운로드, 교환 및 관리",
         "destination": "받아쓰기"
       },
       "refineModels": {
@@ -2412,7 +2412,7 @@
       },
       "dictionary": {
         "title": "사전 열기",
-        "description": "Review every correction Vox Jot has learned",
+        "description": "Vox Jot가 학습한 모든 수정 사항을 검토합니다.",
         "destination": "받아쓰기"
       }
     },
@@ -2467,7 +2467,7 @@
     "models": {
       "routeTitle": "제공업체 라우팅",
       "routeDescription": "Vox Jot는 요청별로 경로를 선택합니다. 로컬은 오프라인 상태로 유지됩니다. 클라우드는 귀하가 선택한 공급자를 사용합니다.",
-      "localRouteHeading": "Local-first",
+      "localRouteHeading": "로컬 우선",
       "cloudRouteHeading": "클라우드 지원",
       "advancedEvaluationTitle": "모델 평가 구체화(고급)",
       "fileTranscriptionTitle": "파일 전사",

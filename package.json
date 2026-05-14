@@ -24,6 +24,8 @@
     "mac:open-dev-app": "bash scripts/open-installed-macos-app.sh",
     "speech:build-runtime": "bash scripts/build-speech-runtime.sh",
     "speech:upload-runtime": "bash scripts/upload-speech-runtime-asset.sh",
+    "ocr:build-runtime": "bash scripts/build-ocr-runtime.sh",
+    "ocr:upload-runtime:hf": "bash scripts/upload-ocr-runtime-to-hf.sh",
     "lint": "node ./node_modules/eslint/bin/eslint.js src",
     "lint:fix": "node ./node_modules/eslint/bin/eslint.js src --fix",
     "format": "prettier --write . && cd src-tauri && cargo fmt",

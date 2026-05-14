@@ -1,108 +1,110 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { openUrlMock } = vi.hoisted(() => ({
+const { checkMock, openUrlMock, relaunchMock } = vi.hoisted(() => ({
+  checkMock: vi.fn(),
   openUrlMock: vi.fn(),
+  relaunchMock: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/plugin-updater", () => ({
+  check: checkMock,
 }));
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: openUrlMock,
 }));
 
-import {
-  checkForCustomUpdate,
-  openUpdateDownloadUrl,
-} from "@/lib/utils/customUpdateChecker";
+vi.mock("@tauri-apps/plugin-process", () => ({
+  relaunch: relaunchMock,
+}));
 
-describe("custom update checker", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
-    openUrlMock.mockReset();
+const FALLBACK_RELEASES_URL =
+  "https://huggingface.co/IrieDinamik/vox-jot-releases";
+
+let module: typeof import("@/lib/utils/customUpdateChecker");
+
+beforeEach(async () => {
+  vi.resetModules();
+  module = await import("@/lib/utils/customUpdateChecker");
+});
+
+afterEach(() => {
+  checkMock.mockReset();
+  openUrlMock.mockReset();
+  relaunchMock.mockReset();
+});
+
+describe("update checker (plugin-backed)", () => {
+  it("returns 'not available' when the updater reports no update", async () => {
+    checkMock.mockResolvedValue(null);
+
+    const result = await module.checkForCustomUpdate("1.0.0");
+
+    expect(checkMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ available: false, currentVersion: "1.0.0" });
   });
 
-  it("checks a custom feed url and returns update details", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        version: "v1.2.0",
-        body: "Bug fixes",
-        html_url: "https://example.com/releases/1.2.0",
-      }),
-    });
-    vi.stubEnv("VITE_UPDATE_FEED_URL", "https://example.com/latest.json");
-    vi.stubGlobal("fetch", fetchMock);
+  it("surfaces available update details from the plugin", async () => {
+    const fakeUpdate = {
+      version: "1.2.0",
+      body: "Bug fixes",
+      downloadAndInstall: vi.fn().mockResolvedValue(undefined),
+    };
+    checkMock.mockResolvedValue(fakeUpdate);
 
-    const result = await checkForCustomUpdate("1.1.0");
+    const result = await module.checkForCustomUpdate("1.1.0");
 
-    expect(fetchMock).toHaveBeenCalledWith("https://example.com/latest.json", {
-      method: "GET",
-      cache: "no-store",
-    });
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       available: true,
       currentVersion: "1.1.0",
-      latestVersion: "v1.2.0",
+      latestVersion: "1.2.0",
       notes: "Bug fixes",
-      downloadUrl: "https://example.com/releases/1.2.0",
+      downloadUrl: FALLBACK_RELEASES_URL,
     });
+    expect(result.update).toBe(fakeUpdate);
   });
 
-  it("uses the default feed and reports when no update is available", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        version: "1.2.0",
-        notes: "Current release",
-      }),
+  it("downloads, installs, and relaunches when openUpdateDownloadUrl is called with a pending update", async () => {
+    const downloadAndInstall = vi.fn().mockResolvedValue(undefined);
+    checkMock.mockResolvedValue({
+      version: "1.2.0",
+      body: "Fixes",
+      downloadAndInstall,
     });
-    vi.stubGlobal("fetch", fetchMock);
 
-    const result = await checkForCustomUpdate("1.2.0");
+    await module.checkForCustomUpdate("1.1.0");
+    await module.openUpdateDownloadUrl();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest/download/latest.json",
-      {
-        method: "GET",
-        cache: "no-store",
-      },
-    );
-    expect(result.available).toBe(false);
-    expect(result.downloadUrl).toBe(
-      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest",
-    );
+    expect(downloadAndInstall).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).toHaveBeenCalledTimes(1);
+    expect(openUrlMock).not.toHaveBeenCalled();
   });
 
-  it("throws when the feed request fails or omits the version", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce({ ok: false, status: 503 })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ notes: "Missing version" }),
-        }),
-    );
+  it("falls back to the browser when the in-app install fails", async () => {
+    const downloadAndInstall = vi
+      .fn()
+      .mockRejectedValue(new Error("disk full"));
+    checkMock.mockResolvedValue({
+      version: "1.2.0",
+      body: "Fixes",
+      downloadAndInstall,
+    });
 
-    await expect(checkForCustomUpdate("1.0.0")).rejects.toThrow(
-      "Update feed request failed: 503",
-    );
-    await expect(checkForCustomUpdate("1.0.0")).rejects.toThrow(
-      "Update feed is missing a version field",
-    );
+    await module.checkForCustomUpdate("1.1.0");
+    await module.openUpdateDownloadUrl();
+
+    expect(downloadAndInstall).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).not.toHaveBeenCalled();
+    expect(openUrlMock).toHaveBeenCalledWith(FALLBACK_RELEASES_URL);
   });
 
-  it("opens either a provided download url or the default releases page", async () => {
-    await openUpdateDownloadUrl("https://example.com/download");
-    await openUpdateDownloadUrl();
+  it("opens the releases page when called without a pending update", async () => {
+    await module.openUpdateDownloadUrl();
+    expect(openUrlMock).toHaveBeenCalledWith(FALLBACK_RELEASES_URL);
+  });
 
-    expect(openUrlMock).toHaveBeenNthCalledWith(
-      1,
-      "https://example.com/download",
-    );
-    expect(openUrlMock).toHaveBeenNthCalledWith(
-      2,
-      "https://github.com/KimaniDJ11/Vox-Jot/releases/latest",
-    );
+  it("opens a custom URL when one is provided and there is no pending update", async () => {
+    await module.openUpdateDownloadUrl("https://example.com/download");
+    expect(openUrlMock).toHaveBeenCalledWith("https://example.com/download");
   });
 });

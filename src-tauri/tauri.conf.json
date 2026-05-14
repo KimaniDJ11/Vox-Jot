@@ -13,9 +13,20 @@
     "macOSPrivateApi": true,
     "windows": [],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://huggingface.co https://*.hf.co",
       "assetProtocol": {
         "enable": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://huggingface.co/IrieDinamik/vox-jot-releases/resolve/main/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ3NUVDQUUxMEIwRDdBOEMKUldTTWVnMEw0Y3BlMXlmSzVvcWwxR2VqaFc0VmZpOEs4Tld5Ujk0MUhQSG5kZUN2aW5RdjdBY1kK",
+      "windows": {
+        "installMode": "passive"
       }
     }
   },

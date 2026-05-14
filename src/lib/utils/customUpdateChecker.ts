@@ -1,17 +1,9 @@
+import { check, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-const DEFAULT_UPDATE_FEED_URL =
-  "https://github.com/KimaniDJ11/Vox-Jot/releases/latest/download/latest.json";
-const DEFAULT_RELEASES_URL =
-  "https://github.com/KimaniDJ11/Vox-Jot/releases/latest";
-
-type UpdateFeedShape = {
-  version?: string;
-  notes?: string;
-  body?: string;
-  url?: string;
-  html_url?: string;
-};
+const FALLBACK_RELEASES_URL =
+  "https://huggingface.co/IrieDinamik/vox-jot-releases";
 
 export type CustomUpdateResult = {
   available: boolean;
@@ -19,67 +11,48 @@ export type CustomUpdateResult = {
   latestVersion?: string;
   notes?: string;
   downloadUrl?: string;
+  update?: Update;
 };
 
-const normalizeVersion = (version: string): string => {
-  return version.trim().replace(/^v/i, "");
-};
-
-const compareSemver = (left: string, right: string): number => {
-  const lhs = normalizeVersion(left)
-    .split(".")
-    .map((part) => Number(part));
-  const rhs = normalizeVersion(right)
-    .split(".")
-    .map((part) => Number(part));
-  const max = Math.max(lhs.length, rhs.length);
-
-  for (let i = 0; i < max; i += 1) {
-    const a = Number.isFinite(lhs[i]) ? lhs[i] : 0;
-    const b = Number.isFinite(rhs[i]) ? rhs[i] : 0;
-    if (a > b) return 1;
-    if (a < b) return -1;
-  }
-
-  return 0;
-};
-
-const resolveFeedUrl = (): string => {
-  return (
-    (import.meta.env.VITE_UPDATE_FEED_URL as string | undefined)?.trim() ||
-    DEFAULT_UPDATE_FEED_URL
-  );
-};
+let pendingUpdate: Update | null = null;
 
 export const checkForCustomUpdate = async (
   currentVersion: string,
 ): Promise<CustomUpdateResult> => {
-  const updateFeedUrl = resolveFeedUrl();
+  const update = await check();
 
-  const response = await fetch(updateFeedUrl, {
-    method: "GET",
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error(`Update feed request failed: ${response.status}`);
+  if (!update) {
+    pendingUpdate = null;
+    return { available: false, currentVersion };
   }
 
-  const payload = (await response.json()) as UpdateFeedShape;
-  const latestVersion = payload.version?.trim();
-  if (!latestVersion) {
-    throw new Error("Update feed is missing a version field");
-  }
-
-  const available = compareSemver(latestVersion, currentVersion) > 0;
+  pendingUpdate = update;
   return {
-    available,
+    available: true,
     currentVersion,
-    latestVersion,
-    notes: payload.notes || payload.body,
-    downloadUrl: payload.url || payload.html_url || DEFAULT_RELEASES_URL,
+    latestVersion: update.version,
+    notes: update.body ?? undefined,
+    downloadUrl: FALLBACK_RELEASES_URL,
+    update,
   };
 };
 
+export const installPendingUpdate = async (): Promise<void> => {
+  if (!pendingUpdate) {
+    throw new Error("No pending update to install");
+  }
+  await pendingUpdate.downloadAndInstall();
+  await relaunch();
+};
+
 export const openUpdateDownloadUrl = async (url?: string): Promise<void> => {
-  await openUrl(url || DEFAULT_RELEASES_URL);
+  if (pendingUpdate) {
+    try {
+      await installPendingUpdate();
+      return;
+    } catch (error) {
+      console.error("In-app install failed, falling back to browser:", error);
+    }
+  }
+  await openUrl(url || FALLBACK_RELEASES_URL);
 };

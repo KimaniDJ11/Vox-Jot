@@ -1019,6 +1019,7 @@ pub fn run(cli_args: CliArgs) {
             MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(cli_args.clone());
 
     builder

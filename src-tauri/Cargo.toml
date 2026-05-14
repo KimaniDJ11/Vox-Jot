@@ -102,6 +102,7 @@ signal-hook = "0.3"
 tauri-plugin-autostart = "2.5.1"
 tauri-plugin-global-shortcut = "2.3.1"
 tauri-plugin-single-instance = "2.4.0"
+tauri-plugin-updater = "2.10.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-native-keyring-store = "1"

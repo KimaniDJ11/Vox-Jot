@@ -75,3 +75,32 @@ jobs:
       upload-artifacts: false
       release-id: ${{ needs.create-release.outputs.release-id }}
     secrets: inherit
+
+  publish-hf-mirror:
+    name: Mirror signed artifacts to Hugging Face
+    needs: [create-release, publish-tauri]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Hugging Face CLI
+        run: pip install --quiet "huggingface_hub[cli]>=0.24"
+
+      - name: Publish release to Hugging Face
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          HF_REPO: IrieDinamik/vox-jot-releases
+        run: bun scripts/publish-release-to-hf.ts ${{ needs.create-release.outputs.version }}

@@ -71,6 +71,8 @@
     "@tauri-apps/plugin-fs": "~2.5.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tauri-apps/plugin-os": "~2.3.2",
+    "@tauri-apps/plugin-process": "~2.3.1",
+    "@tauri-apps/plugin-updater": "~2.10.0",
     "browserslist": "^4.28.2",
     "caniuse-lite": "^1.0.30001792",
     "cmdk": "^1.1.1",

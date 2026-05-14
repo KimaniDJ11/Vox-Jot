@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.0.0] - 2026-05-13
+
+First production release as **Vox Jot**, the rebranded continuation of the
+project formerly known as Handy.
+
+### Added
+
+- **Vox Jot product surface**: rebrand, marketing site at
+  `https://www.iriedinamik.org/voxjot/`, dedicated support and privacy pages,
+  Hugging Face binary releases repo `IrieDinamik/vox-jot-releases`.
+- **Signed auto-updater**: `tauri-plugin-updater` wired to a public Hugging Face
+  manifest. Signed update archives are verified with a minisign public key
+  baked into the bundle; clients download and install in place and relaunch.
+- **OCR runtime distribution**: managed CPU-only Python runtime archives
+  published to Hugging Face for macOS, Windows, and Linux. Builds fixed for
+  Windows Python target / pip path parsing, Linux CUDA exclusion, and UTF-8
+  upload handling.
+- **Cross-platform release matrix**: macOS arm64, Linux x86_64 and arm64
+  (AppImage/deb/rpm), Windows x86_64 (NSIS/MSI) — all signed.
+- **Listen surface**: voice cloning, my-voices library, sound and tuning panel,
+  engine library, auto-readback, output routing, Supertonic 3 TTS, OmniVoice,
+  OuteTTS, and refreshed MLX benchmark catalog.
+- **Refine surface**: Phrase Keys, Write Profiles (app-aware tone),
+  Translation, Refine Models, local refine onboarding.
+- **Dictate surface**: Recent History, Corrections, Jot Pad, Speech Models.
+- **Localization**: 16 locales at 100% key coverage with translation audits.
+- **Distribution audit** (`bun run audit:distribution`) wired into the release
+  workflow.
+- **CLI parameters** for window-manager and autostart integration
+  (`--toggle-transcription`, `--toggle-post-process`, `--cancel`,
+  `--start-hidden`, `--no-tray`, `--debug`).
+
+### Changed
+
+- Single source of truth for tray menu labels via `translation.json` →
+  `src-tauri/build.rs`.
+- Migrated `keyring` 3 to `keyring-core` 1 with per-OS store crates.
+- Public model assets used for STT to remove auth gating on fresh installs.
+- Tap-to-download for TTS models works without GitHub auth.
+
+### Fixed
+
+- Mac speech runtime archive signing.
+- Apple Intelligence module caches sandboxed in `OUT_DIR`.
+- Duplicate LLM import rows; provider icon and storage labels.
+- Security scan findings hardened across the audit suite.
+
 ## [0.3.0] - 2025-07-11
 
 ### Added

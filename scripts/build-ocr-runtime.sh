@@ -173,7 +173,7 @@ fi
 
 "$RUNTIME_PYTHON" -m ensurepip --upgrade || true
 "$RUNTIME_PYTHON" -m pip install --upgrade pip setuptools wheel
-"$RUNTIME_PYTHON" -m pip install --no-compile "$BUILD_DIR[$EXTRAS]"
+(cd "$BUILD_DIR" && "$RUNTIME_PYTHON" -m pip install --no-compile ".[$EXTRAS]")
 
 find "$BUILD_DIR" \
   \( -name '*.pyc' -o -name '__pycache__' -o -name '.DS_Store' \) \

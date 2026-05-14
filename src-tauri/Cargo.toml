@@ -127,7 +127,7 @@ windows = { version = "0.61.3", features = [
   "Media_Ocr",
   "Storage_Streams",
 ] }
-winreg = "0.55"
+winreg = "0.56"
 uiautomation = "0.10"
 window-vibrancy = "0.5"
 

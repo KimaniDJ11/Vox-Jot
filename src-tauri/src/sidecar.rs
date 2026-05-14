@@ -13,15 +13,14 @@ const DEFAULT_SPEECH_RUNTIME_PATHS: &[&str] = &[
     "Library/Mobile Documents/com~apple~CloudDocs/Apps/Speech",
     "Apps/Speech",
 ];
-const SIDECAR_PORT: u16 = 8008;
+const SPEECH_RUNTIME_PORT: u16 = 8008;
+const MLX_AUDIO_PORT: u16 = 8018;
 const HEALTH_CHECK_TIMEOUT_MS: u64 = 350;
-const HEALTH_CACHE_TTL_MS: u64 = 1_500;
 
 const HEALTH_UNKNOWN: u8 = 0;
 const HEALTH_NONE: u8 = 1;
 const HEALTH_LEGACY: u8 = 2;
 const HEALTH_MLX: u8 = 3;
-const HEALTH_OTHER: u8 = 4;
 
 fn health_client() -> &'static reqwest::blocking::Client {
     // Reuse a single blocking client: builds TLS/connection pool once so
@@ -40,7 +39,7 @@ fn health_client() -> &'static reqwest::blocking::Client {
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
-    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|patches=voxtral_eos_v1";
+    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|patches=voxtral_eos_v1,parakeet_stt_remap_v1";
 const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.3", "torch==2.11.0", "g2p_en==2.1.0"];
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
@@ -92,67 +91,6 @@ impl SidecarManager {
     fn clear_cached_health(&self) {
         self.cached_health.store(HEALTH_UNKNOWN, Ordering::Relaxed);
         self.cached_health_checked_at_ms.store(0, Ordering::Relaxed);
-    }
-
-    fn cached_health_if_fresh(&self) -> Option<u8> {
-        let checked_at = self.cached_health_checked_at_ms.load(Ordering::Relaxed);
-        if checked_at == 0 {
-            return None;
-        }
-
-        let age_ms = Self::now_ms().saturating_sub(checked_at);
-        if age_ms > HEALTH_CACHE_TTL_MS {
-            return None;
-        }
-
-        Some(self.cached_health.load(Ordering::Relaxed))
-    }
-
-    fn probe_health(&self, force_refresh: bool) -> u8 {
-        if !force_refresh {
-            if let Some(cached) = self.cached_health_if_fresh() {
-                return cached;
-            }
-        }
-
-        let client = health_client();
-
-        let legacy_running = client
-            .post(format!("http://127.0.0.1:{SIDECAR_PORT}/listen/prepare"))
-            .header("content-type", "application/json")
-            .body("{}")
-            .send()
-            // Any non-404 response (even 400/422) means the endpoint exists,
-            // so the speech-runtime is the active server.
-            .map(|resp| resp.status().as_u16() != 404)
-            .unwrap_or(false);
-        if legacy_running {
-            self.set_cached_health(HEALTH_LEGACY);
-            return HEALTH_LEGACY;
-        }
-
-        let mlx_running = client
-            .get(format!("http://127.0.0.1:{SIDECAR_PORT}/v1/models"))
-            .send()
-            .map(|resp| resp.status().is_success())
-            .unwrap_or(false);
-        if mlx_running {
-            self.set_cached_health(HEALTH_MLX);
-            return HEALTH_MLX;
-        }
-
-        let any_running = client
-            .get(format!("http://127.0.0.1:{SIDECAR_PORT}/health"))
-            .send()
-            .map(|resp| resp.status().is_success())
-            .unwrap_or(false);
-        let state = if any_running {
-            HEALTH_OTHER
-        } else {
-            HEALTH_NONE
-        };
-        self.set_cached_health(state);
-        state
     }
 
     fn supports_mlx_audio_backend() -> bool {
@@ -335,18 +273,33 @@ impl SidecarManager {
     }
 
     pub fn is_running(&self) -> bool {
-        !matches!(self.probe_health(false), HEALTH_NONE | HEALTH_UNKNOWN)
+        match self.backend {
+            SidecarBackend::LegacyPythonRuntime => self.is_speech_runtime_running(),
+            SidecarBackend::MlxAudio => self.is_mlx_audio_running(),
+        }
     }
 
     pub fn is_mlx_audio_running(&self) -> bool {
-        self.probe_health(false) == HEALTH_MLX
+        health_client()
+            .get(format!("http://127.0.0.1:{MLX_AUDIO_PORT}/v1/models"))
+            .send()
+            .map(|resp| resp.status().is_success())
+            .unwrap_or(false)
     }
 
     /// Check whether the **speech-runtime** (legacy Python runtime) is the
     /// server currently listening on the sidecar port.  The speech-runtime
     /// exposes `/listen/prepare` which `mlx_audio.server` does not.
     pub fn is_speech_runtime_running(&self) -> bool {
-        self.probe_health(false) == HEALTH_LEGACY
+        health_client()
+            .post(format!(
+                "http://127.0.0.1:{SPEECH_RUNTIME_PORT}/listen/prepare"
+            ))
+            .header("content-type", "application/json")
+            .body("{}")
+            .send()
+            .map(|resp| resp.status().as_u16() != 404)
+            .unwrap_or(false)
     }
 
     /// Ensure the speech-runtime (legacy Python runtime) is running on the
@@ -357,35 +310,34 @@ impl SidecarManager {
             return Ok(());
         }
 
-        // If *something* is listening but it's not the speech-runtime (e.g.
-        // mlx_audio.server), stop it so we can reclaim the port.
-        if self.is_running() {
-            info!("Stopping non-speech-runtime sidecar to make room for the speech-runtime");
-            self.reclaim_sidecar_port()?;
+        if !self.listener_pids(SPEECH_RUNTIME_PORT).is_empty() {
+            info!("Stopping non-speech-runtime listener to make room for the speech-runtime");
+            self.reclaim_sidecar_port(SPEECH_RUNTIME_PORT)?;
         }
 
         self.ensure_legacy_runtime_running()
     }
 
     pub fn restart_speech_runtime(&self) -> Result<(), String> {
-        if self.is_running() {
-            self.reclaim_sidecar_port()?;
+        if !self.listener_pids(SPEECH_RUNTIME_PORT).is_empty() {
+            self.reclaim_sidecar_port(SPEECH_RUNTIME_PORT)?;
         }
 
         self.ensure_legacy_runtime_running()
     }
 
     pub fn ensure_running(&self) -> Result<(), String> {
-        let already_running = match self.backend {
-            SidecarBackend::LegacyPythonRuntime => self.probe_health(false) == HEALTH_LEGACY,
-            SidecarBackend::MlxAudio => self.probe_health(false) == HEALTH_MLX,
-        };
+        let already_running = self.is_running();
         if already_running {
             return Ok(());
         }
 
-        if self.is_running() {
-            self.reclaim_sidecar_port()?;
+        let port = match self.backend {
+            SidecarBackend::LegacyPythonRuntime => SPEECH_RUNTIME_PORT,
+            SidecarBackend::MlxAudio => MLX_AUDIO_PORT,
+        };
+        if !self.listener_pids(port).is_empty() {
+            self.reclaim_sidecar_port(port)?;
         }
 
         match self.backend {
@@ -440,7 +392,7 @@ impl SidecarManager {
         command
             .args(["-m", "runtime.app"])
             .current_dir(&runtime_path)
-            .env("SPEECH_RUNTIME_PORT", SIDECAR_PORT.to_string())
+            .env("SPEECH_RUNTIME_PORT", SPEECH_RUNTIME_PORT.to_string())
             .env("SPEECH_MODEL_STORE", model_store_path)
             .env("SPEECH_RUNTIME_STATE_DIR", runtime_state_dir)
             .env("SPEECH_VOICE_PROFILES_DIR", voice_profiles_dir);
@@ -478,7 +430,7 @@ impl SidecarManager {
                 "-m",
                 "mlx_audio.server",
                 "--port",
-                &SIDECAR_PORT.to_string(),
+                &MLX_AUDIO_PORT.to_string(),
             ])
             .current_dir(venv_dir)
             .env("PYTHONUNBUFFERED", "1")
@@ -546,23 +498,23 @@ impl SidecarManager {
         ))
     }
 
-    fn reclaim_sidecar_port(&self) -> Result<(), String> {
+    fn reclaim_sidecar_port(&self, port: u16) -> Result<(), String> {
         self.stop();
-        self.terminate_external_listeners()?;
+        self.terminate_external_listeners(port)?;
 
         for _ in 0..10 {
-            if self.listener_pids().is_empty() {
+            if self.listener_pids(port).is_empty() {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(150));
         }
 
-        let remaining = self.listener_pids();
+        let remaining = self.listener_pids(port);
         if remaining.is_empty() {
             Ok(())
         } else {
             Err(format!(
-                "Port {SIDECAR_PORT} is still in use by process(es): {}",
+                "Port {port} is still in use by process(es): {}",
                 remaining
                     .iter()
                     .map(u32::to_string)
@@ -572,25 +524,25 @@ impl SidecarManager {
         }
     }
 
-    fn terminate_external_listeners(&self) -> Result<(), String> {
+    fn terminate_external_listeners(&self, port: u16) -> Result<(), String> {
         let tracked_pid = self
             .child
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .as_ref()
             .map(|child| child.id());
-        let listener_pids = self.listener_pids();
+        let listener_pids = self.listener_pids(port);
         for pid in listener_pids {
             if Some(pid) == tracked_pid {
                 continue;
             }
-            info!("Stopping external sidecar listener on port {SIDECAR_PORT} (pid {pid})");
+            info!("Stopping external sidecar listener on port {port} (pid {pid})");
             self.terminate_pid(pid)?;
         }
         Ok(())
     }
 
-    fn listener_pids(&self) -> Vec<u32> {
+    fn listener_pids(&self, port: u16) -> Vec<u32> {
         #[cfg(target_os = "windows")]
         {
             let output = Command::new("netstat").args(["-ano", "-p", "tcp"]).output();
@@ -598,7 +550,7 @@ impl SidecarManager {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 return stdout
                     .lines()
-                    .filter(|line| line.contains(&format!(":{SIDECAR_PORT}")))
+                    .filter(|line| line.contains(&format!(":{port}")))
                     .filter(|line| line.contains("LISTENING"))
                     .filter_map(|line| line.split_whitespace().last()?.parse::<u32>().ok())
                     .collect();
@@ -609,12 +561,7 @@ impl SidecarManager {
         #[cfg(not(target_os = "windows"))]
         {
             let output = Command::new("lsof")
-                .args([
-                    "-t",
-                    "-nP",
-                    &format!("-iTCP:{SIDECAR_PORT}"),
-                    "-sTCP:LISTEN",
-                ])
+                .args(["-t", "-nP", &format!("-iTCP:{port}"), "-sTCP:LISTEN"])
                 .output();
             if let Ok(output) = output {
                 let stdout = String::from_utf8_lossy(&output.stdout);
@@ -645,7 +592,9 @@ impl SidecarManager {
         }
 
         for _ in 0..10 {
-            if !self.listener_pids().contains(&pid) {
+            if !self.listener_pids(SPEECH_RUNTIME_PORT).contains(&pid)
+                && !self.listener_pids(MLX_AUDIO_PORT).contains(&pid)
+            {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(150));
@@ -1021,6 +970,27 @@ impl SidecarManager {
             );
             if kugel_patched != kugel_contents {
                 let _ = std::fs::write(&kugel_model_file, kugel_patched);
+            }
+        }
+
+        let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
+
+        if stt_utils_file.exists() {
+            let stt_utils_contents = std::fs::read_to_string(&stt_utils_file)
+                .map_err(|err| format!("Failed to read '{}': {err}", stt_utils_file.display()))?;
+            if !stt_utils_contents.contains("\"parakeet\": \"parakeet\"") {
+                let stt_utils_patched = stt_utils_contents.replace(
+                    "MODEL_REMAPPING = {\n",
+                    "MODEL_REMAPPING = {\n    \"parakeet\": \"parakeet\",\n",
+                );
+                if stt_utils_patched != stt_utils_contents {
+                    std::fs::write(&stt_utils_file, stt_utils_patched).map_err(|err| {
+                        format!(
+                            "Failed to write patched mlx-audio STT utils file '{}': {err}",
+                            stt_utils_file.display()
+                        )
+                    })?;
+                }
             }
         }
 

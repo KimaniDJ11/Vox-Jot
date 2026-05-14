@@ -80,6 +80,7 @@ Adjust tokens in **`src/App.css`** if a theme’s **`--muted`** / **`--text-subt
 
 On macOS, the standard validation path for any solid app change is to update the already-installed `/Applications/Vox Jot.app` in place instead of relying on a fresh `tauri dev` app instance.
 
+- App Store review branch note: if a new work branch changes App Store metadata, bundle IDs, signing, entitlements, version numbers, or release workflow files, keep those changes deliberate so they do not accidentally affect the reviewed `1.0` path.
 - Use `bun run mac:update-installed-app` (aliases: `bun run mac:build-install`, `bun run mac:dev-installed-app`) whenever a macOS change is ready for real app testing.
 - The installed-app workflow must be Developer ID signed, submitted to Apple notarization, stapled, and Gatekeeper-validated every time. It should fail instead of silently falling back to Apple Development signing, ad-hoc signing, or skipped notarization.
 - Use `bun run mac:open-installed-app` (alias: `bun run mac:open-dev-app`) to launch the already-installed dev app without rebuilding. This preserves the same `/Applications/Vox Jot.app` path, bundle identity, and macOS permissions.

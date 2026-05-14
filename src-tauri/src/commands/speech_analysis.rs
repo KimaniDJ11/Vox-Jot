@@ -109,7 +109,7 @@ pub async fn download_speech_analysis_model(
         None,
         None,
     );
-    if crate::shared_model_assets::shared_mlx_asr_repo_id(&descriptor.id).is_some() {
+    if crate::shared_model_assets::is_shared_model_asset(&descriptor.id) {
         let _ = app.emit("model-download-complete", &descriptor.id);
     }
     Ok(speech_analysis::get_model(&app, &descriptor.id).unwrap_or(descriptor))

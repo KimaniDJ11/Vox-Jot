@@ -8,6 +8,7 @@ use crate::settings::{get_settings, AppSettings, ModelUnloadTimeout};
 use anyhow::Result;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -104,38 +105,67 @@ impl MlxAudioSttEngine {
         sample_rate: u32,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = self.encode_wav(audio, sample_rate)?;
-        let file_part = reqwest::blocking::multipart::Part::bytes(wav_bytes)
+        let file_part = ureq::unversioned::multipart::Part::bytes(&wav_bytes)
             .file_name("vox-jot.wav")
             .mime_str("audio/wav")
             .map_err(|err| anyhow::anyhow!("Failed to prepare mlx-audio upload: {}", err))?;
-        let form = reqwest::blocking::multipart::Form::new()
-            .part("file", file_part)
-            .text("model", self.model_source.clone());
+        let form = ureq::unversioned::multipart::Form::new()
+            .text("model", &self.model_source)
+            .part("file", file_part);
 
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(300))
-            .build()
-            .map_err(|err| anyhow::anyhow!("Failed to create mlx-audio client: {}", err))?;
-        let response = client
-            .post(format!(
-                "{}/v1/audio/transcriptions",
-                self.base_url.trim_end_matches('/')
-            ))
-            .multipart(form)
-            .send()
-            .map_err(|err| anyhow::anyhow!("mlx-audio transcription request failed: {}", err))?;
-
-        let response = response
-            .error_for_status()
-            .map_err(|err| anyhow::anyhow!("mlx-audio transcription failed: {}", err))?;
-        let payload = response
-            .json::<MlxAudioTranscriptionResponse>()
-            .map_err(|err| anyhow::anyhow!("Failed to decode mlx-audio response: {}", err))?;
+        let mut response = ureq::post(&format!(
+            "{}/v1/audio/transcriptions",
+            self.base_url.trim_end_matches('/')
+        ))
+        .send(form)
+        .map_err(|err| anyhow::anyhow!("mlx-audio transcription request failed: {}", err))?;
+        let response_body = response
+            .body_mut()
+            .read_to_string()
+            .map_err(|err| anyhow::anyhow!("Failed to read mlx-audio response: {}", err))?;
+        let payload = Self::decode_transcription_response(&response_body)?;
 
         Ok(transcribe_rs::TranscriptionResult {
             text: payload.text,
             segments: None,
         })
+    }
+
+    fn decode_transcription_response(body: &str) -> Result<MlxAudioTranscriptionResponse> {
+        if let Ok(payload) = serde_json::from_str::<MlxAudioTranscriptionResponse>(body) {
+            return Ok(payload);
+        }
+
+        let mut final_text = String::new();
+        let mut accumulated_text = String::new();
+
+        for line in body.lines().map(str::trim).filter(|line| !line.is_empty()) {
+            let value: Value = serde_json::from_str(line).map_err(|err| {
+                anyhow::anyhow!("Failed to decode mlx-audio NDJSON response line: {}", err)
+            })?;
+
+            if let Some(accumulated) = value.get("accumulated").and_then(Value::as_str) {
+                accumulated_text = accumulated.to_string();
+                continue;
+            }
+
+            if let Some(text) = value.get("text").and_then(Value::as_str) {
+                final_text.push_str(text);
+                continue;
+            }
+
+            if let Some(text) = value.as_str() {
+                final_text.push_str(text);
+            }
+        }
+
+        let text = if accumulated_text.is_empty() {
+            final_text
+        } else {
+            accumulated_text
+        };
+
+        Ok(MlxAudioTranscriptionResponse { text })
     }
 
     fn encode_wav(&self, audio: Vec<f32>, sample_rate: u32) -> Result<Vec<u8>> {
@@ -164,7 +194,7 @@ impl MlxAudioSttEngine {
 }
 
 fn mlx_audio_stt_model_ref(model_id: &str) -> Option<&'static str> {
-    if let Some(repo_id) = crate::shared_model_assets::shared_mlx_asr_repo_id(model_id) {
+    if let Some(repo_id) = crate::shared_model_assets::shared_model_repo_id(model_id) {
         return Some(repo_id);
     }
 
@@ -179,7 +209,7 @@ fn mlx_audio_stt_model_ref(model_id: &str) -> Option<&'static str> {
 }
 
 fn mlx_audio_base_url() -> String {
-    "http://127.0.0.1:8008".to_string()
+    "http://127.0.0.1:8018".to_string()
 }
 
 fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {

@@ -601,7 +601,8 @@ pub struct SpeechAnalysisDownloadProgress {
 }
 
 fn install_dir(app: &AppHandle, model_id: &str) -> Result<PathBuf, String> {
-    if let Some(path) = crate::shared_model_assets::shared_mlx_asr_stt_install_dir(app, model_id)? {
+    if let Some(path) = crate::shared_model_assets::shared_model_primary_install_dir(app, model_id)?
+    {
         return Ok(path);
     }
 
@@ -678,8 +679,8 @@ fn descriptor_with_install_state(
     app: &AppHandle,
     mut model: SpeechAnalysisModelDescriptor,
 ) -> SpeechAnalysisModelDescriptor {
-    let installed_shared_mlx_asr_path =
-        crate::shared_model_assets::installed_shared_mlx_asr_dir(app, &model.id)
+    let installed_shared_model_path =
+        crate::shared_model_assets::installed_shared_model_dir(app, &model.id)
             .ok()
             .flatten();
 
@@ -691,9 +692,9 @@ fn descriptor_with_install_state(
                 .or_else(bundled_polyvoice_dir)
         }
         SpeechAnalysisSourceKind::HuggingFace
-            if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() =>
+            if crate::shared_model_assets::is_shared_model_asset(&model.id) =>
         {
-            installed_shared_mlx_asr_path
+            installed_shared_model_path
                 .clone()
                 .or_else(|| install_dir(app, &model.id).ok())
         }
@@ -718,8 +719,8 @@ fn descriptor_with_install_state(
 }
 
 fn hugging_face_model_has_required_files(model_id: &str, path: &Path) -> bool {
-    if crate::shared_model_assets::shared_mlx_asr_repo_id(model_id).is_some() {
-        return crate::shared_model_assets::shared_mlx_asr_has_required_files(path);
+    if crate::shared_model_assets::is_shared_model_asset(model_id) {
+        return crate::shared_model_assets::shared_model_has_required_files(model_id, path);
     }
 
     let required_files: &[&str] = match model_id {
@@ -907,7 +908,7 @@ fn emit_shared_stt_download_progress(
     downloaded_bytes: u64,
     total_bytes: u64,
 ) {
-    if crate::shared_model_assets::shared_mlx_asr_repo_id(model_id).is_none() {
+    if !crate::shared_model_assets::is_shared_model_asset(model_id) {
         return;
     }
 
@@ -1296,7 +1297,7 @@ pub async fn download_model(
         if err == DOWNLOAD_CANCELLED_MESSAGE {
             let _ = cleanup_staging_dir(app, &model_id).await;
             emit_download_progress(app, &model_id, "cancelled", 0, 0, None, None, None, None);
-            if crate::shared_model_assets::shared_mlx_asr_repo_id(&model_id).is_some() {
+            if crate::shared_model_assets::is_shared_model_asset(&model_id) {
                 let _ = app.emit("model-download-cancelled", &model_id);
             }
         } else {
@@ -1490,13 +1491,10 @@ pub fn delete_model(
         ));
     }
 
-    let delete_dirs = if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() {
-        crate::shared_model_assets::shared_mlx_asr_candidate_dirs(app, &model.id)?
+    let deleted = if crate::shared_model_assets::is_shared_model_asset(&model.id) {
+        crate::shared_model_assets::delete_shared_model_assets(app, &model.id)?
     } else {
-        vec![install_dir(app, &model.id)?]
-    };
-
-    for dir in delete_dirs {
+        let dir = install_dir(app, &model.id)?;
         if dir.exists() {
             fs::remove_dir_all(&dir).map_err(|err| {
                 format!(
@@ -1504,7 +1502,14 @@ pub fn delete_model(
                     dir.display()
                 )
             })?;
+            true
+        } else {
+            false
         }
+    };
+
+    if !deleted {
+        return Err(format!("No local files were found for {}.", model.label));
     }
 
     let mut settings = get_settings(app);
@@ -1521,7 +1526,7 @@ pub fn delete_model(
         write_settings(app, settings.clone());
         let _ = app.emit("settings-changed", settings);
     }
-    if crate::shared_model_assets::shared_mlx_asr_repo_id(&model.id).is_some() {
+    if crate::shared_model_assets::is_shared_model_asset(&model.id) {
         let _ = app.emit("model-deleted", &model.id);
     }
 

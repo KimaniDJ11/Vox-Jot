@@ -84,6 +84,14 @@ interface SttDownloadProgress {
   percentage: number;
 }
 
+const SHARED_MLX_ASR_MODEL_IDS = new Set([
+  "mlx-qwen3-asr-0.6b",
+  "mlx-qwen3-asr",
+  "mlx-qwen3-asr-1.7b",
+  "mlx-fireredasr2-aed",
+  "mlx-vibevoice-asr-bf16",
+]);
+
 const taskMatchesGroup = (
   task: SpeechAnalysisTask,
   group: AnalysisGroup,
@@ -233,6 +241,7 @@ const SpeechAnalysisEnginesSection: React.FC<
     });
 
     const isSpeechAnalysisModel = (modelId: string): boolean =>
+      SHARED_MLX_ASR_MODEL_IDS.has(modelId) ||
       Boolean(catalogRef.current?.models.some((model) => model.id === modelId));
 
     const unlisteners = Promise.all([

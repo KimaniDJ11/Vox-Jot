@@ -1373,7 +1373,7 @@ impl ModelManager {
                         model_path.is_file()
                     };
                     primary_path_exists
-                        || crate::shared_model_assets::installed_shared_mlx_asr_dir(
+                        || crate::shared_model_assets::installed_shared_model_dir(
                             &self.app_handle,
                             &model.id,
                         )
@@ -2330,26 +2330,21 @@ impl ModelManager {
         debug!("ModelManager: Partial path: {:?}", partial_path);
 
         let mut deleted_something = false;
+        let is_shared_model = crate::shared_model_assets::is_shared_model_asset(model_id);
 
         if model_info.is_directory {
-            // Delete complete model directory if it exists
-            if model_path.exists() && model_path.is_dir() {
-                info!("Deleting model directory at: {:?}", model_path);
-                fs::remove_dir_all(&model_path)?;
-                info!("Model directory deleted successfully");
-                deleted_something = true;
-            }
-            if let Ok(paths) = crate::shared_model_assets::shared_mlx_asr_candidate_dirs(
-                &self.app_handle,
-                model_id,
-            ) {
-                for shared_path in paths {
-                    if shared_path == model_path || !shared_path.exists() {
-                        continue;
-                    }
-                    info!("Deleting shared model directory at: {:?}", shared_path);
-                    fs::remove_dir_all(&shared_path)?;
-                    info!("Shared model directory deleted successfully");
+            if is_shared_model {
+                deleted_something |= crate::shared_model_assets::delete_shared_model_assets(
+                    &self.app_handle,
+                    model_id,
+                )
+                .map_err(anyhow::Error::msg)?;
+            } else {
+                // Delete complete model directory if it exists
+                if model_path.exists() && model_path.is_dir() {
+                    info!("Deleting model directory at: {:?}", model_path);
+                    fs::remove_dir_all(&model_path)?;
+                    info!("Model directory deleted successfully");
                     deleted_something = true;
                 }
             }
@@ -2364,7 +2359,7 @@ impl ModelManager {
         }
 
         // Delete partial file if it exists (same for both types)
-        if partial_path.exists() {
+        if !is_shared_model && partial_path.exists() {
             info!("Deleting partial file at: {:?}", partial_path);
             fs::remove_file(&partial_path)?;
             info!("Partial file deleted successfully");
@@ -2423,7 +2418,7 @@ impl ModelManager {
             if model_path.exists() && model_path.is_dir() && !partial_path.exists() {
                 Ok(model_path)
             } else if let Some(shared_path) =
-                crate::shared_model_assets::installed_shared_mlx_asr_dir(&self.app_handle, model_id)
+                crate::shared_model_assets::installed_shared_model_dir(&self.app_handle, model_id)
                     .map_err(|err| anyhow::anyhow!(err))?
             {
                 Ok(shared_path)

@@ -1339,8 +1339,11 @@ pub async fn set_stt_platform_selection(
         return Err(format!("Model not downloaded: {}", resolved_model_id));
     }
 
-    transcription_manager
-        .load_model(&resolved_model_id)
+    let load_model_id = resolved_model_id.clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    tokio::task::spawn_blocking(move || transcription_manager.load_model(&load_model_id))
+        .await
+        .map_err(|err| format!("Failed to join STT model load task: {err}"))?
         .map_err(|e| e.to_string())?;
 
     let mut settings = get_settings(&app_handle);
@@ -1369,8 +1372,11 @@ pub async fn set_active_model(
         return Err(format!("Model not downloaded: {}", model_id));
     }
 
-    transcription_manager
-        .load_model(&model_id)
+    let load_model_id = model_id.clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    tokio::task::spawn_blocking(move || transcription_manager.load_model(&load_model_id))
+        .await
+        .map_err(|err| format!("Failed to join STT model load task: {err}"))?
         .map_err(|e| e.to_string())?;
 
     let mut settings = get_settings(&app_handle);

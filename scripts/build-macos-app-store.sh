@@ -6,6 +6,8 @@ APP_NAME="Vox Jot"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CARGO_MANIFEST="${REPO_ROOT}/src-tauri/Cargo.toml"
 CARGO_MANIFEST_BACKUP=""
+APP_ENTITLEMENTS="${REPO_ROOT}/src-tauri/Entitlements.appstore.plist"
+SIDECAR_ENTITLEMENTS="${REPO_ROOT}/src-tauri/Entitlements.appstore.sidecar.plist"
 TARGET_ROOT="${CARGO_TARGET_DIR:-${REPO_ROOT}/.local-targets/vox-jot-app-store}"
 TARGET="${APP_STORE_TARGET:-aarch64-apple-darwin}"
 PROFILE_PATH="${APP_STORE_PROVISION_PROFILE_PATH:-${REPO_ROOT}/src-tauri/profiles/VoxJot-AppStore.provisionprofile}"
@@ -55,6 +57,35 @@ prepare_app_store_cargo_manifest() {
   fi
 }
 
+sign_nested_executables() {
+  local resources_dir="${APP_PATH}/Contents/Resources"
+
+  if [[ ! -d "${resources_dir}" ]]; then
+    return 0
+  fi
+
+  while IFS= read -r executable; do
+    if /usr/bin/file "${executable}" | /usr/bin/grep -q "Mach-O"; then
+      echo "Signing nested executable: ${executable#${APP_PATH}/}"
+      /usr/bin/codesign \
+        --force \
+        --sign "${APP_SIGNING_IDENTITY}" \
+        --entitlements "${SIDECAR_ENTITLEMENTS}" \
+        "${executable}"
+    fi
+  done < <(/usr/bin/find "${resources_dir}" -type f -perm -111)
+}
+
+normalize_app_store_bundle() {
+  /bin/chmod -R u+rwX,go+rX "${APP_PATH}"
+  sign_nested_executables
+  /usr/bin/codesign \
+    --force \
+    --sign "${APP_SIGNING_IDENTITY}" \
+    --entitlements "${APP_ENTITLEMENTS}" \
+    "${APP_PATH}"
+}
+
 auto_detect_installer_identity() {
   local identities=(
     "3rd Party Mac Developer Installer: Kimani James (NS5M2UJLKP)"
@@ -83,6 +114,8 @@ require_codesigning_identity() {
 }
 
 require_file "${PROFILE_PATH}" "Missing Mac App Store Connect provisioning profile: ${PROFILE_PATH}"
+require_file "${APP_ENTITLEMENTS}" "Missing App Store entitlements: ${APP_ENTITLEMENTS}"
+require_file "${SIDECAR_ENTITLEMENTS}" "Missing App Store sidecar entitlements: ${SIDECAR_ENTITLEMENTS}"
 require_codesigning_identity "${APP_SIGNING_IDENTITY}" "App Store app"
 
 if [[ -z "${INSTALLER_SIGNING_IDENTITY}" ]]; then
@@ -118,6 +151,8 @@ if [[ ! -d "${APP_PATH}" ]]; then
   echo "Expected App Store app bundle not found at ${APP_PATH}" >&2
   exit 1
 fi
+
+normalize_app_store_bundle
 
 /usr/bin/codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
 /usr/bin/codesign -d --entitlements :- "${APP_PATH}" >/tmp/vox-jot-app-store-entitlements.plist

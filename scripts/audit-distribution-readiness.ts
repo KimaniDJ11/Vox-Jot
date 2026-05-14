@@ -153,9 +153,9 @@ if (!releaseWorkflow) {
   )
 ) {
   add(
-    "fail",
+    "warn",
     "Windows release builds are configured to ship unsigned.",
-    "Set the windows-latest release matrix entry to sign-binaries: true before broad distribution.",
+    "This is acceptable only while Azure Trusted Signing secrets are unavailable; the updater archives still need Tauri updater signatures.",
   );
 }
 

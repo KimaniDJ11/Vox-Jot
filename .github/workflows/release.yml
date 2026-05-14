@@ -33,11 +33,27 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const tagName = `v${{ steps.get-version.outputs.version }}`
+            try {
+              const { data: existing } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tagName
+              })
+              if (!existing.draft) {
+                throw new Error(`Release ${tagName} already exists and is not a draft.`)
+              }
+              return existing.id
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error
+              }
+            }
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: `v${{ steps.get-version.outputs.version }}`,
-              name: `v${{ steps.get-version.outputs.version }}`,
+              tag_name: tagName,
+              name: tagName,
               draft: true,
               prerelease: false,
               generate_release_notes: true

@@ -255,6 +255,25 @@ jobs:
           }
           $config | ConvertTo-Json -Depth 100 | Set-Content $configPath -Encoding utf8
 
+      - name: Sign bundled macOS resource binaries
+        if: contains(inputs.platform, 'macos') && inputs.sign-binaries
+        shell: bash
+        run: |
+          signed_count=0
+          while IFS= read -r -d '' file_path; do
+            if /usr/bin/file "$file_path" | /usr/bin/grep -q "Mach-O"; then
+              /usr/bin/codesign \
+                --force \
+                --options runtime \
+                --timestamp \
+                --sign "${CERT_ID}" \
+                "$file_path"
+              /usr/bin/codesign --verify --strict "$file_path"
+              signed_count=$((signed_count + 1))
+            fi
+          done < <(/usr/bin/find src-tauri/resources -type f -print0)
+          echo "Signed bundled macOS resource binaries: ${signed_count}"
+
       - name: Build with Tauri (unsigned)
         if: ${{ !inputs.sign-binaries }}
         uses: tauri-apps/tauri-action@v0

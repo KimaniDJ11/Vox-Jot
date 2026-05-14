@@ -1,5 +1,14 @@
 fn main() {
     println!("cargo:rerun-if-env-changed=SENTRY_DSN");
+    println!("cargo:rerun-if-env-changed=VOX_JOT_DISTRIBUTION");
+    println!("cargo:rustc-check-cfg=cfg(vox_jot_app_store)");
+
+    if std::env::var("VOX_JOT_DISTRIBUTION")
+        .map(|value| value == "app-store")
+        .unwrap_or(false)
+    {
+        println!("cargo:rustc-cfg=vox_jot_app_store");
+    }
 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     build_apple_intelligence_bridge();

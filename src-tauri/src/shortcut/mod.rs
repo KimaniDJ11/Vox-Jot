@@ -18,6 +18,7 @@ use serde::Serialize;
 use specta::Type;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
+#[cfg(not(vox_jot_app_store))]
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::managers::audio::AudioRecordingManager;
@@ -1055,15 +1056,25 @@ pub fn change_start_hidden_setting(app: AppHandle, enabled: bool) -> Result<(), 
 #[specta::specta]
 pub fn change_autostart_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.autostart_enabled = enabled;
+    #[cfg(vox_jot_app_store)]
+    let _ = enabled;
+    #[cfg(vox_jot_app_store)]
+    let next_enabled = false;
+    #[cfg(not(vox_jot_app_store))]
+    let next_enabled = enabled;
+
+    settings.autostart_enabled = next_enabled;
     settings::write_settings(&app, settings);
 
-    // Apply the autostart setting immediately
-    let autostart_manager = app.autolaunch();
-    if enabled {
-        let _ = autostart_manager.enable();
-    } else {
-        let _ = autostart_manager.disable();
+    #[cfg(not(vox_jot_app_store))]
+    {
+        // Apply the autostart setting immediately
+        let autostart_manager = app.autolaunch();
+        if next_enabled {
+            let _ = autostart_manager.enable();
+        } else {
+            let _ = autostart_manager.disable();
+        }
     }
 
     // Notify frontend
@@ -1071,7 +1082,7 @@ pub fn change_autostart_setting(app: AppHandle, enabled: bool) -> Result<(), Str
         "settings-changed",
         serde_json::json!({
             "setting": "autostart_enabled",
-            "value": enabled
+            "value": next_enabled
         }),
     );
 
@@ -1082,14 +1093,21 @@ pub fn change_autostart_setting(app: AppHandle, enabled: bool) -> Result<(), Str
 #[specta::specta]
 pub fn change_update_checks_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    settings.update_checks_enabled = enabled;
+    #[cfg(vox_jot_app_store)]
+    let _ = enabled;
+    #[cfg(vox_jot_app_store)]
+    let next_enabled = false;
+    #[cfg(not(vox_jot_app_store))]
+    let next_enabled = enabled;
+
+    settings.update_checks_enabled = next_enabled;
     settings::write_settings(&app, settings);
 
     let _ = app.emit(
         "settings-changed",
         serde_json::json!({
             "setting": "update_checks_enabled",
-            "value": enabled
+            "value": next_enabled
         }),
     );
 

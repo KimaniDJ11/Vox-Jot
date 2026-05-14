@@ -1,0 +1,19 @@
+{
+  "app": {
+    "macOSPrivateApi": false
+  },
+  "bundle": {
+    "category": "Utility",
+    "createUpdaterArtifacts": false,
+    "targets": "app",
+    "macOS": {
+      "entitlements": "./Entitlements.appstore.plist",
+      "files": {
+        "embedded.provisionprofile": "./profiles/VoxJot-AppStore.provisionprofile"
+      },
+      "hardenedRuntime": false,
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "Apple Distribution: Kimani James (NS5M2UJLKP)"
+    }
+  }
+}

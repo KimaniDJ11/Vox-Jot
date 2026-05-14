@@ -934,6 +934,12 @@ fn default_autostart_enabled() -> bool {
 }
 
 fn default_update_checks_enabled() -> bool {
+    #[cfg(vox_jot_app_store)]
+    {
+        false
+    }
+
+    #[cfg(not(vox_jot_app_store))]
     true
 }
 

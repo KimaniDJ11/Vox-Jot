@@ -101,6 +101,7 @@ pub use transcription_coordinator::TranscriptionCoordinator;
 
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Listener, Manager};
+#[cfg(not(vox_jot_app_store))]
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::{Builder as LogBuilder, RotationStrategy, Target, TargetKind};
 
@@ -461,10 +462,18 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 navigate_main_window(app, "settings");
             }
             "check_updates" => {
-                let settings = settings::get_settings(app);
-                if settings.update_checks_enabled {
-                    show_main_window(app);
-                    let _ = app.emit("check-for-updates", ());
+                #[cfg(vox_jot_app_store)]
+                {
+                    return;
+                }
+
+                #[cfg(not(vox_jot_app_store))]
+                {
+                    let settings = settings::get_settings(app);
+                    if settings.update_checks_enabled {
+                        show_main_window(app);
+                        let _ = app.emit("check-for-updates", ());
+                    }
                 }
             }
             "copy_last_transcript" => {
@@ -529,16 +538,20 @@ fn initialize_core_logic(app_handle: &AppHandle) {
         tray::update_tray_menu(&app_handle_for_listener, &tray::TrayIconState::Idle, None);
     });
 
-    // Get the autostart manager and configure based on user setting
-    let autostart_manager = app_handle.autolaunch();
     let settings = settings::get_settings(app_handle);
 
-    if settings.autostart_enabled {
-        // Enable autostart if user has opted in
-        let _ = autostart_manager.enable();
-    } else {
-        // Disable autostart if user has opted out
-        let _ = autostart_manager.disable();
+    #[cfg(not(vox_jot_app_store))]
+    {
+        // Get the autostart manager and configure based on user setting
+        let autostart_manager = app_handle.autolaunch();
+
+        if settings.autostart_enabled {
+            // Enable autostart if user has opted in
+            let _ = autostart_manager.enable();
+        } else {
+            // Disable autostart if user has opted out
+            let _ = autostart_manager.disable();
+        }
     }
 
     // Create the recording overlay window (hidden by default)
@@ -582,13 +595,22 @@ fn shutdown_core_logic(app: &AppHandle) {
 #[tauri::command]
 #[specta::specta]
 fn trigger_update_check(app: AppHandle) -> Result<(), String> {
-    let settings = settings::get_settings(&app);
-    if !settings.update_checks_enabled {
+    #[cfg(vox_jot_app_store)]
+    {
+        let _ = app;
         return Ok(());
     }
-    app.emit("check-for-updates", ())
-        .map_err(|e| e.to_string())?;
-    Ok(())
+
+    #[cfg(not(vox_jot_app_store))]
+    {
+        let settings = settings::get_settings(&app);
+        if !settings.update_checks_enabled {
+            return Ok(());
+        }
+        app.emit("check-for-updates", ())
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -1021,13 +1043,19 @@ pub fn run(cli_args: CliArgs) {
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec![]),
-        ))
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(cli_args.clone());
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+
+    #[cfg(not(vox_jot_app_store))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                Some(vec![]),
+            ))
+            .plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder = builder.manage(cli_args.clone());
 
     builder
         .setup(move |app| {

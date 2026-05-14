@@ -14,3 +14,7 @@
 /resources/tesseract/linux-x64/tesseract
 /resources/tesseract/linux-x64/*.so*
 /resources/tesseract/tessdata/*.traineddata
+
+# App Store Connect provisioning profiles are account-specific signing material.
+/profiles/*.provisionprofile
+!/profiles/.gitkeep

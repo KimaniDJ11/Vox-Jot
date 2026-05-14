@@ -17,6 +17,9 @@
     "lint:rust": "cd src-tauri && cargo clippy -- -D warnings",
     "tauri": "node scripts/tauri-wrapper.mjs",
     "mac:release": "bash scripts/build-notarized-macos-release.sh",
+    "mac:app-store:audit": "bun scripts/audit-app-store-readiness.ts",
+    "mac:app-store:build": "bash scripts/build-macos-app-store.sh",
+    "mac:app-store:upload": "UPLOAD_APP_STORE_PKG=true bash scripts/build-macos-app-store.sh",
     "mac:update-installed-app": "bash scripts/build-and-install-macos-app.sh",
     "mac:build-install": "bash scripts/build-and-install-macos-app.sh",
     "mac:dev-installed-app": "bash scripts/build-and-install-macos-app.sh",
@@ -60,6 +63,7 @@
     "models:stt:download-all": "bun scripts/download-all-stt-models.ts",
     "models:validate-public": "bun scripts/validate-public-model-catalog.ts",
     "audit:distribution": "bun scripts/audit-distribution-readiness.ts",
+    "audit:app-store": "bun scripts/audit-app-store-readiness.ts",
     "check:translations": "bun scripts/check-translations.ts",
     "audit:translations": "bun scripts/audit-untranslated-locales.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"

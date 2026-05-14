@@ -38,6 +38,7 @@ import {
 
 import { commands } from "@/bindings";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
+import { isMacAppStoreBuild } from "@/lib/distribution";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -1606,9 +1607,11 @@ export const AboutSection: React.FC = () => {
           <p className="mx-auto mt-4 max-w-prose text-[13px] leading-6 text-[var(--muted)]">
             {t("appSections.hero.about.description")}
           </p>
-          <div className="mt-5 flex justify-center">
-            <UpdateChecker />
-          </div>
+          {!isMacAppStoreBuild && (
+            <div className="mt-5 flex justify-center">
+              <UpdateChecker />
+            </div>
+          )}
         </div>
       </div>
 

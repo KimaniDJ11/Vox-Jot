@@ -55,7 +55,7 @@ case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     PLATFORM="windows"
     case "$ARCH" in
-      x86_64|AMD64) ARCH_ID="x64"; PYTHON_TARGET="x86_64-pc-windows-msvc-shared" ;;
+      x86_64|AMD64) ARCH_ID="x64"; PYTHON_TARGET="x86_64-pc-windows-msvc" ;;
       *)
         echo "Unsupported architecture: $ARCH" >&2
         exit 1

@@ -7,6 +7,12 @@ project formerly known as Handy.
 
 ### Added
 
+- **Opt-in crash reporting**: `tauri-plugin-updater` is paired with a Rust-
+  side Sentry SDK integration. Off by default; user toggles it in
+  Settings → Privacy & Storage → "Send anonymous crash reports". No
+  transcripts, audio, or personal content is captured. Releases compile
+  the Sentry DSN at build time; the in-app `before_send` hook drops
+  events when the user has opted out.
 - **Vox Jot product surface**: rebrand, marketing site at
   `https://www.iriedinamik.org/voxjot/`, dedicated support and privacy pages,
   Hugging Face binary releases repo `IrieDinamik/vox-jot-releases`.

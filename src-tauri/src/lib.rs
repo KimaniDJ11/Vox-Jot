@@ -55,6 +55,7 @@ mod signal_handle;
 pub mod snippets;
 pub mod speech_analysis;
 mod storage_paths;
+mod telemetry;
 mod transcription_coordinator;
 mod translation;
 mod tray;
@@ -602,6 +603,11 @@ pub fn run(cli_args: CliArgs) {
     // Detect portable mode before anything else
     portable::init();
 
+    // Init Sentry as early as possible so any panic on the rest of `run()` is
+    // captured. Events stay buffered until the loaded settings flip the
+    // `enable_crash_reporting` gate inside `before_send`.
+    telemetry::init();
+
     if cli_args.regression_manifest.is_some() {
         #[cfg(feature = "ci-mock-transcription")]
         {
@@ -708,6 +714,7 @@ pub fn run(cli_args: CliArgs) {
         shortcut::change_app_language_setting,
         shortcut::change_global_language_sync_enabled_setting,
         shortcut::change_update_checks_setting,
+        shortcut::change_crash_reporting_setting,
         shortcut::change_keyboard_implementation_setting,
         shortcut::get_keyboard_implementation,
         shortcut::change_show_tray_icon_setting,
@@ -1024,6 +1031,11 @@ pub fn run(cli_args: CliArgs) {
 
     builder
         .setup(move |app| {
+            // Activate the crash-reporting gate now that settings are reachable.
+            telemetry::set_crash_reporting_enabled(
+                settings::get_settings(app.handle()).enable_crash_reporting,
+            );
+
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)
             // Min size matches former default so the two-column shell always fits.

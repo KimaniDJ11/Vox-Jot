@@ -2276,7 +2276,9 @@
       "previewAllowed": "Дозволено",
       "previewAudioCapture": "Захоплення звуку",
       "previewCleanup": "Очищення",
-      "previewProvider": "Провайдер"
+      "previewProvider": "Провайдер",
+      "crashReportingLabel": "Надсилати анонімні звіти про збої",
+      "crashReportingDescription": "Допоможіть покращити Vox Jot, надсилаючи анонімні звіти про збої та трасування стека до Sentry. Транскрипти, аудіо чи особистий контент ніколи не надсилаються. За замовчуванням вимкнено."
     },
     "diagnostics": {
       "debugRevealNotice": "Натисніть Cmd/Ctrl + Shift + D, щоб відкрити глибші інструменти налагодження, коли вони вам знадобляться.",

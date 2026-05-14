@@ -2276,7 +2276,9 @@
       "previewAllowed": "許可される",
       "previewAudioCapture": "オーディオキャプチャ",
       "previewCleanup": "クリーンアップ",
-      "previewProvider": "プロバイダー"
+      "previewProvider": "プロバイダー",
+      "crashReportingLabel": "匿名のクラッシュレポートを送信",
+      "crashReportingDescription": "Sentry に匿名のクラッシュレポートとスタックトレースを送信して Vox Jot の改善にご協力ください。文字起こし・音声・個人的なコンテンツは一切送信されません。デフォルトはオフです。"
     },
     "diagnostics": {
       "debugRevealNotice": "必要に応じて Cmd/Ctrl + Shift + D を押すと、より詳細なデバッグ ツールが表示されます。",

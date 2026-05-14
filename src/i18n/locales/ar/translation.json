@@ -2276,7 +2276,9 @@
       "previewAllowed": "مسموح",
       "previewAudioCapture": "التقاط الصوت",
       "previewCleanup": "تنظيف",
-      "previewProvider": "مزود"
+      "previewProvider": "مزود",
+      "crashReportingLabel": "إرسال تقارير الأعطال المجهولة",
+      "crashReportingDescription": "ساعد في تحسين Vox Jot من خلال إرسال تقارير الأعطال وآثار الاستدعاء المجهولة إلى Sentry. لا يتم إرسال نصوص أو صوت أو أي محتوى شخصي مطلقًا. معطّل افتراضيًا."
     },
     "diagnostics": {
       "debugRevealNotice": "اضغط على Cmd/Ctrl + Shift + D للكشف عن أدوات التصحيح الأعمق عندما تحتاج إليها.",

@@ -1267,6 +1267,17 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           descriptionMode="inline"
           grouped={true}
         />
+        <ToggleSwitch
+          checked={getSetting("enable_crash_reporting") ?? false}
+          onChange={(enabled) =>
+            void updateSetting("enable_crash_reporting", enabled)
+          }
+          isUpdating={isUpdating("enable_crash_reporting")}
+          label={t("appSections.privacy.crashReportingLabel")}
+          description={t("appSections.privacy.crashReportingDescription")}
+          descriptionMode="inline"
+          grouped={true}
+        />
       </SettingsGroup>
 
       <SettingsGroup title={t("appSections.privacy.historyGroupTitle")}>

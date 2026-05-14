@@ -2276,7 +2276,9 @@
       "previewAllowed": "Consentito",
       "previewAudioCapture": "Cattura dell'audio",
       "previewCleanup": "Pulizia",
-      "previewProvider": "Fornitore"
+      "previewProvider": "Fornitore",
+      "crashReportingLabel": "Invia segnalazioni di crash anonime",
+      "crashReportingDescription": "Aiuta a migliorare Vox Jot inviando segnalazioni di crash anonime e stack trace a Sentry. Trascrizioni, audio o contenuti personali non vengono mai inviati. Disattivato per impostazione predefinita."
     },
     "diagnostics": {
       "debugRevealNotice": "Premi Comando/Ctrl + Maiusc + D per rivelare gli strumenti di debug più approfonditi quando ne hai bisogno.",

@@ -2276,7 +2276,9 @@
       "previewAllowed": "Dozwolone",
       "previewAudioCapture": "Przechwytywanie dźwięku",
       "previewCleanup": "Oczyszczanie",
-      "previewProvider": "Dostawca"
+      "previewProvider": "Dostawca",
+      "crashReportingLabel": "Wysyłaj anonimowe raporty o awariach",
+      "crashReportingDescription": "Pomóż ulepszać Vox Jot, wysyłając anonimowe raporty o awariach i ślady stosu do Sentry. Transkrypcje, dźwięk ani treści osobiste nigdy nie są wysyłane. Domyślnie wyłączone."
     },
     "diagnostics": {
       "debugRevealNotice": "Naciśnij Cmd/Ctrl + Shift + D, aby wyświetlić głębsze narzędzia do debugowania, gdy ich potrzebujesz.",

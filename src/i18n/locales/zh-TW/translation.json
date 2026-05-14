@@ -1470,7 +1470,11 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
+      "starterPrompts": [
+        "總結所選文本",
+        "重寫一下更清楚",
+        "拉出行動項目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1484,7 +1488,11 @@
       "noteAppended": "將草稿附加到說明中。",
       "noteAppendFailed": "無法附加到註釋。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把這張紙條變成乾淨的草稿", "找到重點", "建議後續步驟"]
+      "starterPrompts": [
+        "把這張紙條變成乾淨的草稿",
+        "找到重點",
+        "建議後續步驟"
+      ]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2268,7 +2276,9 @@
       "previewAllowed": "允許",
       "previewAudioCapture": "音訊捕捉",
       "previewCleanup": "清理",
-      "previewProvider": "提供者"
+      "previewProvider": "提供者",
+      "crashReportingLabel": "傳送匿名當機回報",
+      "crashReportingDescription": "透過向 Sentry 傳送匿名當機回報與堆疊追蹤,協助改進 Vox Jot。我們絕不會傳送任何轉錄文字、音訊或個人內容。預設為關閉。"
     },
     "diagnostics": {
       "debugRevealNotice": "按 Cmd/Ctrl + Shift + D 可在需要時顯示更深入的偵錯工具。",

@@ -2276,7 +2276,9 @@
       "previewAllowed": "Autorisé",
       "previewAudioCapture": "Capture audio",
       "previewCleanup": "Nettoyage",
-      "previewProvider": "Fournisseur"
+      "previewProvider": "Fournisseur",
+      "crashReportingLabel": "Envoyer des rapports de plantage anonymes",
+      "crashReportingDescription": "Aidez à améliorer Vox Jot en envoyant des rapports de plantage anonymes et des stack traces à Sentry. Aucune transcription, audio ou contenu personnel n'est jamais envoyé. Désactivé par défaut."
     },
     "diagnostics": {
       "debugRevealNotice": "Appuyez sur Cmd/Ctrl + Shift + D pour révéler les outils de débogage plus approfondis lorsque vous en avez besoin.",

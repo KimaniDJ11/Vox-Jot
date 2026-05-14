@@ -615,6 +615,8 @@ pub struct AppSettings {
     pub autostart_enabled: bool,
     #[serde(default = "default_update_checks_enabled")]
     pub update_checks_enabled: bool,
+    #[serde(default = "default_enable_crash_reporting")]
+    pub enable_crash_reporting: bool,
     #[serde(default = "default_model")]
     pub selected_model: String,
     #[serde(default)]
@@ -933,6 +935,10 @@ fn default_autostart_enabled() -> bool {
 
 fn default_update_checks_enabled() -> bool {
     true
+}
+
+fn default_enable_crash_reporting() -> bool {
+    false
 }
 
 fn default_selected_language() -> String {
@@ -1922,6 +1928,7 @@ pub fn get_default_settings() -> AppSettings {
         start_hidden: default_start_hidden(),
         autostart_enabled: default_autostart_enabled(),
         update_checks_enabled: default_update_checks_enabled(),
+        enable_crash_reporting: default_enable_crash_reporting(),
         selected_model: "".to_string(),
         selected_stt_provider_id: String::new(),
         selected_stt_model_id: String::new(),

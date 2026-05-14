@@ -53,6 +53,7 @@ jobs:
       - name: Build OCR runtime archive
         shell: bash
         env:
+          OCR_RUNTIME_PYTHON: python
           OCR_RUNTIME_PROFILE: ${{ inputs.profile }}
         run: bash scripts/build-ocr-runtime.sh
 

@@ -940,7 +940,23 @@
         "appA11y": "應用：{{appName}}"
       },
       "showRecordingInFolder": "顯示資料夾中的錄音",
-      "revealError": "無法顯示錄音：{{error}}"
+      "revealError": "無法顯示錄音：{{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "歷史記錄檢視",
+        "list": "歷史記錄",
+        "transcript": "轉錄文字"
+      },
+      "transcript": {
+        "openLabel": "開啟轉錄文字",
+        "noSelection": "從歷史記錄中選擇一段聽寫，即可檢視並更正其轉錄文字。",
+        "empty": "此聽寫沒有轉錄文字。",
+        "hint": "選擇任何文字以進行更正。真實的更正會儲存到你的字典中。",
+        "editWordLabel": "編輯「{{word}}」",
+        "previous": "較新的聽寫",
+        "next": "較舊的聽寫",
+        "dictionaryAdded": "已將「{{original}}」→「{{corrected}}」儲存到你的字典",
+        "saveError": "無法儲存你的變更：{{error}}"
+      }
     },
     "debug": {
       "title": "偵錯",
@@ -1470,7 +1486,11 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
+      "starterPrompts": [
+        "總結所選文本",
+        "重寫一下更清楚",
+        "拉出行動項目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1484,7 +1504,11 @@
       "noteAppended": "將草稿附加到說明中。",
       "noteAppendFailed": "無法附加到註釋。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把這張紙條變成乾淨的草稿", "找到重點", "建議後續步驟"]
+      "starterPrompts": [
+        "把這張紙條變成乾淨的草稿",
+        "找到重點",
+        "建議後續步驟"
+      ]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2178,7 +2202,7 @@
       "groupTitle": "路由偵錯工具"
     },
     "sections": {
-      "recentHistoryTitle": "最近的歷史",
+      "recentHistoryTitle": "歷史記錄",
       "recentHistoryDescription": "查看文字記錄、回放錄音，並重複使用或儲存過去的聽寫內容。",
       "translationTitle": "翻譯",
       "translationDescription": "設定目標語言並選擇如何處理翻譯後的聽寫。",
@@ -2493,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "近代歷史",
+        "history": "歷史記錄",
         "corrections": "字典",
         "jotPad": "Jot Pad",
         "fileTranscription": "檔案轉錄"

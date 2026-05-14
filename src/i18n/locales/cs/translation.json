@@ -940,7 +940,23 @@
         "appA11y": "Aplikace: {{appName}}"
       },
       "showRecordingInFolder": "Zobrazit záznam ve složce",
-      "revealError": "Nelze zobrazit záznam: {{error}}"
+      "revealError": "Nelze zobrazit záznam: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Zobrazení historie",
+        "list": "Historie",
+        "transcript": "Přepis"
+      },
+      "transcript": {
+        "openLabel": "Otevřít přepis",
+        "noSelection": "Vyberte diktát z historie, abyste zobrazili a opravili jeho přepis.",
+        "empty": "Tento diktát nemá žádný text přepisu.",
+        "hint": "Vyberte libovolné slovo a opravte ho. Skutečné opravy se ukládají do vašeho slovníku.",
+        "editWordLabel": "Upravit „{{word}}“",
+        "previous": "Novější diktát",
+        "next": "Starší diktát",
+        "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ uloženo do vašeho slovníku",
+        "saveError": "Změnu se nepodařilo uložit: {{error}}"
+      }
     },
     "debug": {
       "title": "Ladit",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Debugger tras"
     },
     "sections": {
-      "recentHistoryTitle": "Nedávná historie",
+      "recentHistoryTitle": "Historie",
       "recentHistoryDescription": "Prohlédněte si přepisy, přehrávejte nahrávky a znovu použijte nebo uložte minulé diktáty.",
       "translationTitle": "Překlad",
       "translationDescription": "Nastavte cílový jazyk a zvolte, jak má být přeložený diktát zpracován.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Nedávná historie",
+        "history": "Historie",
         "corrections": "Slovník",
         "jotPad": "Jot Pad",
         "fileTranscription": "Přepis souboru"

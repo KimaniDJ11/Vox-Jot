@@ -431,6 +431,38 @@ impl CorrectionStore {
         Ok(())
     }
 
+    /// Add a user-approved correction, but only when the pair looks like a
+    /// genuine misrecognition fix rather than an ordinary word change.
+    ///
+    /// Used when the user edits a single word in a dictation transcript: we
+    /// want to learn "Tari" → "Tauri" but ignore semantic swaps like
+    /// "running" → "executing". The decision reuses [`auto_correction_score`],
+    /// the same heuristic that gates auto-learned corrections. Returns whether
+    /// an entry was added.
+    pub fn add_correction_if_plausible(
+        &self,
+        original: &str,
+        corrected: &str,
+        timestamp: i64,
+    ) -> Result<bool> {
+        let normalized_original = original.trim();
+        let normalized_corrected = corrected.trim();
+
+        if normalized_original.is_empty()
+            || normalized_corrected.is_empty()
+            || normalized_original == normalized_corrected
+        {
+            return Ok(false);
+        }
+
+        if auto_correction_score(normalized_original, normalized_corrected).is_none() {
+            return Ok(false);
+        }
+
+        self.add_manual_correction(normalized_original, normalized_corrected, false, timestamp)?;
+        Ok(true)
+    }
+
     /// Toggle the is_active flag for a correction.
     pub fn set_active(&self, id: i64, active: bool) -> Result<()> {
         let conn = self.get_connection()?;

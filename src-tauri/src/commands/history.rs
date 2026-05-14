@@ -156,3 +156,18 @@ pub async fn update_field_snapshot(
         .update_field_snapshot(id, snapshot_text)
         .map_err(|e| e.to_string())
 }
+
+/// Overwrite the stored transcription text for a history entry. Used by the
+/// Transcript view when the user edits a dictation transcript word-by-word.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_history_entry_transcription(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+    text: String,
+) -> Result<(), String> {
+    history_manager
+        .update_transcription_text(id, &text)
+        .map_err(|e| e.to_string())
+}

@@ -940,7 +940,23 @@
         "appA11y": "Application : {{appName}}"
       },
       "showRecordingInFolder": "Afficher l'enregistrement dans le dossier",
-      "revealError": "Impossible d'afficher l'enregistrement : {{error}}"
+      "revealError": "Impossible d'afficher l'enregistrement : {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Vues de l’historique",
+        "list": "Historique",
+        "transcript": "Transcription"
+      },
+      "transcript": {
+        "openLabel": "Ouvrir la transcription",
+        "noSelection": "Sélectionnez une dictée dans l’historique pour afficher et corriger sa transcription.",
+        "empty": "Cette dictée n’a pas de texte de transcription.",
+        "hint": "Sélectionnez un mot pour le corriger. Les véritables corrections sont enregistrées dans votre dictionnaire.",
+        "editWordLabel": "Modifier « {{word}} »",
+        "previous": "Dictée plus récente",
+        "next": "Dictée plus ancienne",
+        "dictionaryAdded": "« {{original}} » → « {{corrected}} » enregistré dans votre dictionnaire",
+        "saveError": "Impossible d’enregistrer la modification : {{error}}"
+      }
     },
     "debug": {
       "title": "Débogage",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Débogueur d'itinéraire"
     },
     "sections": {
-      "recentHistoryTitle": "Histoire récente",
+      "recentHistoryTitle": "Historique",
       "recentHistoryDescription": "Consultez les transcriptions, lisez les enregistrements et réutilisez ou enregistrez les dictées antérieures.",
       "translationTitle": "Traduction",
       "translationDescription": "Définissez la langue cible et choisissez la manière dont la dictée traduite doit être traitée.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Histoire récente",
+        "history": "Historique",
         "corrections": "Dictionnaire",
         "jotPad": "Jot Pad",
         "fileTranscription": "Transcription de fichiers"

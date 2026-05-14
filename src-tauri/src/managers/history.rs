@@ -641,6 +641,20 @@ impl HistoryManager {
         Ok(())
     }
 
+    /// Overwrite the stored transcription text for a history entry.
+    /// Used when the user edits a dictation transcript in the Transcript view.
+    /// Does not emit `history-updated`; the editing view keeps its own state in
+    /// sync to avoid reloading the whole list mid-edit.
+    pub fn update_transcription_text(&self, id: i64, text: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE transcription_history SET transcription_text = ?1 WHERE id = ?2",
+            params![text, id],
+        )?;
+        debug!("Updated transcription text for history entry {}", id);
+        Ok(())
+    }
+
     pub fn cleanup_old_entries(&self) -> Result<()> {
         let retention_period = crate::settings::get_recording_retention_period(&self.app_handle);
 

@@ -940,7 +940,23 @@
         "appA11y": "Anwendung: {{appName}}"
       },
       "showRecordingInFolder": "Aufnahme im Ordner anzeigen",
-      "revealError": "Aufnahme konnte nicht angezeigt werden: {{error}}"
+      "revealError": "Aufnahme konnte nicht angezeigt werden: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Verlaufsansichten",
+        "list": "Verlauf",
+        "transcript": "Transkript"
+      },
+      "transcript": {
+        "openLabel": "Transkript öffnen",
+        "noSelection": "Wähle ein Diktat aus dem Verlauf, um sein Transkript anzuzeigen und zu korrigieren.",
+        "empty": "Dieses Diktat hat keinen Transkripttext.",
+        "hint": "Wähle ein beliebiges Wort aus, um es zu korrigieren. Echte Korrekturen werden in deinem Wörterbuch gespeichert.",
+        "editWordLabel": "„{{word}}“ bearbeiten",
+        "previous": "Neueres Diktat",
+        "next": "Älteres Diktat",
+        "dictionaryAdded": "„{{original}}“ → „{{corrected}}“ in deinem Wörterbuch gespeichert",
+        "saveError": "Änderung konnte nicht gespeichert werden: {{error}}"
+      }
     },
     "debug": {
       "title": "Debuggen",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Routen-Debugger"
     },
     "sections": {
-      "recentHistoryTitle": "Jüngste Geschichte",
+      "recentHistoryTitle": "Verlauf",
       "recentHistoryDescription": "Überprüfen Sie Transkripte, spielen Sie Aufzeichnungen ab und verwenden Sie frühere Diktate wieder oder speichern Sie sie.",
       "translationTitle": "Übersetzung",
       "translationDescription": "Legen Sie die Zielsprache fest und wählen Sie aus, wie das übersetzte Diktat verarbeitet werden soll.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Jüngste Geschichte",
+        "history": "Verlauf",
         "corrections": "Wörterbuch",
         "jotPad": "Jot Pad",
         "fileTranscription": "Dateitranskription"

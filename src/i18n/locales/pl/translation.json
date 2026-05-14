@@ -940,7 +940,23 @@
         "appA11y": "Zastosowanie: {{appName}}"
       },
       "showRecordingInFolder": "Pokaż nagranie w folderze",
-      "revealError": "Nie można wyświetlić nagrania: {{error}}"
+      "revealError": "Nie można wyświetlić nagrania: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Widoki historii",
+        "list": "Historia",
+        "transcript": "Transkrypcja"
+      },
+      "transcript": {
+        "openLabel": "Otwórz transkrypcję",
+        "noSelection": "Wybierz dyktowanie z historii, aby wyświetlić i poprawić jego transkrypcję.",
+        "empty": "To dyktowanie nie ma tekstu transkrypcji.",
+        "hint": "Wybierz dowolne słowo, aby je poprawić. Prawdziwe poprawki są zapisywane w Twoim słowniku.",
+        "editWordLabel": "Edytuj „{{word}}”",
+        "previous": "Nowsze dyktowanie",
+        "next": "Starsze dyktowanie",
+        "dictionaryAdded": "Zapisano „{{original}}” → „{{corrected}}” w Twoim słowniku",
+        "saveError": "Nie udało się zapisać zmiany: {{error}}"
+      }
     },
     "debug": {
       "title": "Debuguj",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Debuger tras"
     },
     "sections": {
-      "recentHistoryTitle": "Najnowsza historia",
+      "recentHistoryTitle": "Historia",
       "recentHistoryDescription": "Przeglądaj transkrypcje, odtwarzaj nagrania i ponownie wykorzystuj lub zapisuj wcześniejsze nagrania.",
       "translationTitle": "Tłumaczenie",
       "translationDescription": "Ustaw język docelowy i wybierz sposób przetwarzania przetłumaczonego dyktowania.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Najnowsza historia",
+        "history": "Historia",
         "corrections": "Słownik",
         "jotPad": "Jot Pad",
         "fileTranscription": "Transkrypcja pliku"

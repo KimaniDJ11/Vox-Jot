@@ -2,6 +2,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   useLayoutEffect,
 } from "react";
@@ -11,11 +12,13 @@ import { toast } from "sonner";
 import { AudioPlayer } from "../../ui/AudioPlayer";
 import { Button } from "../../ui/Button";
 import { Skeleton } from "../../ui/Skeleton";
+import { SegmentedControl } from "../../ui/SegmentedControl";
 import {
   Copy,
   Star,
   Check,
   Trash2,
+  FileText,
   FolderOpen,
   X,
   ArrowRight,
@@ -26,6 +29,7 @@ import {
 import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { commands, type HistoryEntry } from "@/bindings";
+import { TranscriptView } from "./TranscriptView";
 import { humanizeBundleId } from "@/lib/installedApps";
 import { formatDate, formatTime } from "@/utils/dateFormat";
 import { AppMonogram } from "@/components/settings/write-rules/AppMonogram";
@@ -84,6 +88,8 @@ export const HistorySettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [view, setView] = useState<"list" | "transcript">("list");
+  const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
   const historyEntryCountRef = useRef(0);
 
   const loadHistoryEntries = useCallback(
@@ -265,6 +271,32 @@ export const HistorySettings: React.FC = () => {
     [t],
   );
 
+  const sortedEntries = useMemo(
+    () =>
+      [...historyEntries].sort(
+        (left, right) => right.timestamp - left.timestamp,
+      ),
+    [historyEntries],
+  );
+
+  const handleOpenTranscript = useCallback((id: number) => {
+    setSelectedEntryId(id);
+    setView("transcript");
+  }, []);
+
+  const handleTranscriptChange = useCallback(
+    (id: number, nextText: string) => {
+      setHistoryEntries((current) =>
+        current.map((entry) =>
+          entry.id === id
+            ? { ...entry, transcription_text: nextText }
+            : entry,
+        ),
+      );
+    },
+    [],
+  );
+
   const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {
       return (
@@ -284,9 +316,8 @@ export const HistorySettings: React.FC = () => {
       );
     }
 
-    const sortedEntries = [...entries].sort((left, right) => {
-      return right.timestamp - left.timestamp;
-    });
+    // `entries` is already sorted newest-first by the caller.
+    const sortedEntries = entries;
     const todayLabel = t("settings.history.today", {
       defaultValue: "Today",
     });
@@ -341,6 +372,7 @@ export const HistorySettings: React.FC = () => {
                     onRevealInFolder={() =>
                       void revealRecordingInFolder(entry.file_name)
                     }
+                    onOpenTranscript={() => handleOpenTranscript(entry.id)}
                     getAudioUrl={getAudioUrl}
                     deleteAudio={deleteAudioEntry}
                   />
@@ -385,24 +417,53 @@ export const HistorySettings: React.FC = () => {
 
   return (
     <div className="w-full">
-      {renderEntries(historyEntries, t("settings.history.empty"))}
-      {hasMore ? (
-        <div className="mt-5 flex justify-center">
-          <Button
-            variant="secondary"
-            onClick={() => void loadHistoryEntries(false)}
-            disabled={isLoadingMore}
-          >
-            {isLoadingMore
-              ? t("settings.history.loadingMore", {
-                  defaultValue: "Loading…",
-                })
-              : t("settings.history.loadMore", {
-                  defaultValue: "Load more",
-                })}
-          </Button>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <SegmentedControl
+          items={[
+            {
+              value: "list",
+              label: t("settings.history.viewSwitcher.list"),
+            },
+            {
+              value: "transcript",
+              label: t("settings.history.viewSwitcher.transcript"),
+            },
+          ]}
+          value={view}
+          onChange={setView}
+          ariaLabel={t("settings.history.viewSwitcher.ariaLabel")}
+        />
+      </div>
+      {view === "list" ? (
+        <>
+          {renderEntries(sortedEntries, t("settings.history.empty"))}
+          {hasMore ? (
+            <div className="mt-5 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => void loadHistoryEntries(false)}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore
+                  ? t("settings.history.loadingMore", {
+                      defaultValue: "Loading…",
+                    })
+                  : t("settings.history.loadMore", {
+                      defaultValue: "Load more",
+                    })}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <TranscriptView
+          entries={sortedEntries}
+          selectedId={selectedEntryId}
+          onSelectEntry={setSelectedEntryId}
+          getAudioUrl={getAudioUrl}
+          onTranscriptChange={handleTranscriptChange}
+        />
+      )}
     </div>
   );
 };
@@ -413,6 +474,7 @@ interface HistoryEntryProps {
   onToggleSaved: () => void;
   onCopyText: () => void;
   onRevealInFolder: () => void;
+  onOpenTranscript: () => void;
   getAudioUrl: (fileName: string) => Promise<string | null>;
   deleteAudio: (id: number) => Promise<void>;
 }
@@ -581,6 +643,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   onToggleSaved,
   onCopyText,
   onRevealInFolder,
+  onOpenTranscript,
   getAudioUrl,
   deleteAudio,
 }) => {
@@ -666,6 +729,15 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
 
   const actions = (
     <>
+      <button
+        type="button"
+        onClick={onOpenTranscript}
+        className={historyActionButtonClassName}
+        title={t("settings.history.transcript.openLabel")}
+        aria-label={t("settings.history.transcript.openLabel")}
+      >
+        <FileText width={14} height={14} aria-hidden />
+      </button>
       <button
         type="button"
         onClick={handleCopyText}
@@ -885,7 +957,17 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   }
 
   return (
-    <article className="card-linear group/history-row relative px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)]">
+    <article
+      className="card-linear group/history-row relative cursor-pointer px-4 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--text)_4%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--text)_4%,transparent)]"
+      onClick={(event) => {
+        // Let the embedded controls (play, scrubber, action buttons) handle
+        // their own clicks; clicking anywhere else opens the transcript.
+        if ((event.target as HTMLElement).closest("button, a, input")) {
+          return;
+        }
+        onOpenTranscript();
+      }}
+    >
       <div>
         <AudioPlayer
           onLoadRequest={handleLoadAudio}

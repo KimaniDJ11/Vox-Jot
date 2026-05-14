@@ -940,7 +940,23 @@
         "appA11y": "アプリケーション: {{appName}}"
       },
       "showRecordingInFolder": "フォルダー内の録画を表示",
-      "revealError": "録画を表示できませんでした: {{error}}"
+      "revealError": "録画を表示できませんでした: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "履歴の表示",
+        "list": "履歴",
+        "transcript": "文字起こし"
+      },
+      "transcript": {
+        "openLabel": "文字起こしを開く",
+        "noSelection": "履歴から音声入力を選択すると、文字起こしを表示して修正できます。",
+        "empty": "この音声入力には文字起こしテキストがありません。",
+        "hint": "修正したい単語を選択してください。本当の修正は辞書に保存されます。",
+        "editWordLabel": "「{{word}}」を編集",
+        "previous": "新しい音声入力",
+        "next": "古い音声入力",
+        "dictionaryAdded": "「{{original}}」→「{{corrected}}」を辞書に保存しました",
+        "saveError": "変更を保存できませんでした: {{error}}"
+      }
     },
     "debug": {
       "title": "デバッグ",
@@ -2186,7 +2202,7 @@
       "groupTitle": "ルートデバッガ"
     },
     "sections": {
-      "recentHistoryTitle": "最近の履歴",
+      "recentHistoryTitle": "履歴",
       "recentHistoryDescription": "トランスクリプトを確認し、録音を再生し、過去の口述を再利用または保存します。",
       "translationTitle": "翻訳",
       "translationDescription": "ターゲット言語を設定し、翻訳されたディクテーションの処理方法を選択します。",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "最近の履歴",
+        "history": "履歴",
         "corrections": "辞書",
         "jotPad": "Jot Pad",
         "fileTranscription": "ファイルの転写"

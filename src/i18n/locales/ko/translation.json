@@ -940,7 +940,23 @@
         "appA11y": "응용 프로그램: {{appName}}"
       },
       "showRecordingInFolder": "폴더에 녹음 표시",
-      "revealError": "녹음을 표시할 수 없습니다: {{error}}"
+      "revealError": "녹음을 표시할 수 없습니다: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "기록 보기",
+        "list": "기록",
+        "transcript": "전사"
+      },
+      "transcript": {
+        "openLabel": "전사 열기",
+        "noSelection": "기록에서 받아쓰기를 선택하면 전사를 보고 수정할 수 있습니다.",
+        "empty": "이 받아쓰기에는 전사 텍스트가 없습니다.",
+        "hint": "수정할 단어를 선택하세요. 실제 수정 사항은 사전에 저장됩니다.",
+        "editWordLabel": "“{{word}}” 편집",
+        "previous": "최신 받아쓰기",
+        "next": "이전 받아쓰기",
+        "dictionaryAdded": "“{{original}}” → “{{corrected}}”을(를) 사전에 저장했습니다",
+        "saveError": "변경 사항을 저장할 수 없습니다: {{error}}"
+      }
     },
     "debug": {
       "title": "디버그",
@@ -2186,7 +2202,7 @@
       "groupTitle": "경로 디버거"
     },
     "sections": {
-      "recentHistoryTitle": "최근 역사",
+      "recentHistoryTitle": "기록",
       "recentHistoryDescription": "대본을 검토하고, 녹음을 재생하고, 과거 받아쓰기를 재사용하거나 저장하세요.",
       "translationTitle": "번역",
       "translationDescription": "대상 언어를 설정하고 번역된 받아쓰기 처리 방법을 선택합니다.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "최근 역사",
+        "history": "기록",
         "corrections": "사전",
         "jotPad": "Jot Pad",
         "fileTranscription": "파일 전사"

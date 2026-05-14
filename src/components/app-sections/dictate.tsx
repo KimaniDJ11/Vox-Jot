@@ -47,6 +47,7 @@ export const DictateHistorySection: React.FC = () => {
       <SectionIntro
         title={t("appSections.sections.recentHistoryTitle")}
         description={t("appSections.sections.recentHistoryDescription")}
+        descriptionOnlyGap="controls"
       >
         <HistorySettings />
       </SectionIntro>

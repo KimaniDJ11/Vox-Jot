@@ -76,6 +76,27 @@ pub fn add_manual_correction(
         .map_err(|e| e.to_string())
 }
 
+/// Add a dictionary correction learned from a transcript word edit, but only
+/// when the edit looks like a genuine misrecognition fix. Returns whether an
+/// entry was added (`false` means the edit was treated as an ordinary word
+/// change and intentionally not stored).
+#[tauri::command]
+#[specta::specta]
+pub fn add_transcript_word_correction(
+    app: AppHandle,
+    original: String,
+    corrected: String,
+) -> Result<bool, String> {
+    let store = app.state::<Arc<CorrectionStore>>();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    store
+        .add_correction_if_plausible(&original, &corrected, now)
+        .map_err(|e| e.to_string())
+}
+
 /// Import corrections from a JSON string.
 #[tauri::command]
 #[specta::specta]

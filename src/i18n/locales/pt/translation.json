@@ -940,7 +940,23 @@
         "appA11y": "Aplicação: {{appName}}"
       },
       "showRecordingInFolder": "Mostrar gravação na pasta",
-      "revealError": "Não foi possível mostrar a gravação: {{error}}"
+      "revealError": "Não foi possível mostrar a gravação: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Visualizações do histórico",
+        "list": "Histórico",
+        "transcript": "Transcrição"
+      },
+      "transcript": {
+        "openLabel": "Abrir transcrição",
+        "noSelection": "Selecione um ditado no histórico para ver e corrigir a transcrição.",
+        "empty": "Este ditado não tem texto de transcrição.",
+        "hint": "Selecione qualquer palavra para corrigi-la. As correções reais são salvas no seu dicionário.",
+        "editWordLabel": "Editar “{{word}}”",
+        "previous": "Ditado mais recente",
+        "next": "Ditado mais antigo",
+        "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvo no seu dicionário",
+        "saveError": "Não foi possível salvar a alteração: {{error}}"
+      }
     },
     "debug": {
       "title": "Depurar",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Depurador de rota"
     },
     "sections": {
-      "recentHistoryTitle": "História recente",
+      "recentHistoryTitle": "Histórico",
       "recentHistoryDescription": "Revise transcrições, reproduza gravações e reutilize ou salve ditados anteriores.",
       "translationTitle": "Tradução",
       "translationDescription": "Defina o idioma de destino e escolha como o ditado traduzido deve ser processado.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "História recente",
+        "history": "Histórico",
         "corrections": "Dicionário",
         "jotPad": "Jot Pad",
         "fileTranscription": "Transcrição de arquivo"

@@ -940,7 +940,23 @@
         "appA11y": "Uygulama: {{appName}}"
       },
       "showRecordingInFolder": "Kaydı klasörde göster",
-      "revealError": "Kayıt gösterilemedi: {{error}}"
+      "revealError": "Kayıt gösterilemedi: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Geçmiş görünümleri",
+        "list": "Geçmiş",
+        "transcript": "Döküm"
+      },
+      "transcript": {
+        "openLabel": "Dökümü aç",
+        "noSelection": "Dökümünü görüntülemek ve düzeltmek için geçmişten bir dikte seçin.",
+        "empty": "Bu diktenin döküm metni yok.",
+        "hint": "Düzeltmek için herhangi bir kelimeyi seçin. Gerçek düzeltmeler sözlüğünüze kaydedilir.",
+        "editWordLabel": "“{{word}}” düzenle",
+        "previous": "Daha yeni dikte",
+        "next": "Daha eski dikte",
+        "dictionaryAdded": "“{{original}}” → “{{corrected}}” sözlüğünüze kaydedildi",
+        "saveError": "Değişiklik kaydedilemedi: {{error}}"
+      }
     },
     "debug": {
       "title": "Hata ayıklama",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Rota hata ayıklayıcısı"
     },
     "sections": {
-      "recentHistoryTitle": "Yakın tarih",
+      "recentHistoryTitle": "Geçmiş",
       "recentHistoryDescription": "Transkriptleri inceleyin, kayıtları oynatın ve geçmiş dikteleri yeniden kullanın veya kaydedin.",
       "translationTitle": "Çeviri",
       "translationDescription": "Hedef dili ayarlayın ve çevrilmiş diktenin nasıl işleneceğini seçin.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Yakın Tarih",
+        "history": "Geçmiş",
         "corrections": "Sözlük",
         "jotPad": "Jot Pad",
         "fileTranscription": "Dosya Transkripsiyonu"

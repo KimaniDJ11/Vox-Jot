@@ -940,7 +940,23 @@
         "appA11y": "Applicazione: {{appName}}"
       },
       "showRecordingInFolder": "Mostra la registrazione nella cartella",
-      "revealError": "Impossibile mostrare la registrazione: {{error}}"
+      "revealError": "Impossibile mostrare la registrazione: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Viste della cronologia",
+        "list": "Cronologia",
+        "transcript": "Trascrizione"
+      },
+      "transcript": {
+        "openLabel": "Apri trascrizione",
+        "noSelection": "Seleziona una dettatura dalla cronologia per visualizzare e correggere la sua trascrizione.",
+        "empty": "Questa dettatura non ha un testo di trascrizione.",
+        "hint": "Seleziona una parola qualsiasi per correggerla. Le correzioni reali vengono salvate nel tuo dizionario.",
+        "editWordLabel": "Modifica “{{word}}”",
+        "previous": "Dettatura più recente",
+        "next": "Dettatura meno recente",
+        "dictionaryAdded": "“{{original}}” → “{{corrected}}” salvato nel tuo dizionario",
+        "saveError": "Impossibile salvare la modifica: {{error}}"
+      }
     },
     "debug": {
       "title": "Debug",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Debug del percorso"
     },
     "sections": {
-      "recentHistoryTitle": "Storia recente",
+      "recentHistoryTitle": "Cronologia",
       "recentHistoryDescription": "Rivedi le trascrizioni, riproduci le registrazioni e riutilizza o salva le dettature precedenti.",
       "translationTitle": "Traduzione",
       "translationDescription": "Imposta la lingua di destinazione e scegli come elaborare il dettato tradotto.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Storia recente",
+        "history": "Cronologia",
         "corrections": "Dizionario",
         "jotPad": "Jot Pad",
         "fileTranscription": "Trascrizione del file"

@@ -1737,6 +1737,18 @@ async updateFieldSnapshot(id: number, snapshotText: string) : Promise<Result<nul
 }
 },
 /**
+ * Overwrite the stored transcription text for a history entry. Used by the
+ * Transcript view when the user edits a dictation transcript word-by-word.
+ */
+async updateHistoryEntryTranscription(id: number, text: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_history_entry_transcription", { id, text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Checks if the Mac is a laptop by detecting battery presence
  *
  * This uses pmset to check for battery information.
@@ -2064,6 +2076,20 @@ async importCorrections(json: string) : Promise<Result<number, string>> {
 async addManualCorrection(original: string, corrected: string, exactOnly: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_manual_correction", { original, corrected, exactOnly }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Add a dictionary correction learned from a transcript word edit, but only
+ * when the edit looks like a genuine misrecognition fix. Returns whether an
+ * entry was added (`false` means the edit was treated as an ordinary word
+ * change and intentionally not stored).
+ */
+async addTranscriptWordCorrection(original: string, corrected: string) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_transcript_word_correction", { original, corrected }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

@@ -7,13 +7,15 @@ export { subtleCardClassName } from "@/components/ui/subtleCard";
 export const SectionIntro: React.FC<{
   title: string;
   description: string;
+  descriptionOnlyGap?: "default" | "controls";
   children: React.ReactNode;
-}> = ({ title, description, children }) => (
+}> = ({ title, description, descriptionOnlyGap = "default", children }) => (
   <SettingsGroup
     noCard
     title={title}
     description={description}
     showTitle={false}
+    descriptionOnlyGap={descriptionOnlyGap}
   >
     {children}
   </SettingsGroup>

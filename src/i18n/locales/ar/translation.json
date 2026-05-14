@@ -827,7 +827,23 @@
         "appA11y": "التطبيق: {{appName}}"
       },
       "showRecordingInFolder": "إظهار التسجيل في المجلد",
-      "revealError": "تعذر إظهار التسجيل: {{error}}"
+      "revealError": "تعذر إظهار التسجيل: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "عروض السجل",
+        "list": "السجل",
+        "transcript": "النص"
+      },
+      "transcript": {
+        "openLabel": "فتح النص",
+        "noSelection": "اختر إملاءً من السجل لعرض نصه وتصحيحه.",
+        "empty": "لا يحتوي هذا الإملاء على نص.",
+        "hint": "اختر أي كلمة لتصحيحها. تُحفظ التصحيحات الحقيقية في قاموسك.",
+        "editWordLabel": "تعديل «{{word}}»",
+        "previous": "إملاء أحدث",
+        "next": "إملاء أقدم",
+        "dictionaryAdded": "تم حفظ «{{original}}» → «{{corrected}}» في قاموسك",
+        "saveError": "تعذّر حفظ التغيير: {{error}}"
+      }
     },
     "debug": {
       "title": "تصحيح",
@@ -2186,7 +2202,7 @@
       "groupTitle": "مصحح أخطاء الطريق"
     },
     "sections": {
-      "recentHistoryTitle": "التاريخ الحديث",
+      "recentHistoryTitle": "السجل",
       "recentHistoryDescription": "قم بمراجعة النصوص وتشغيل التسجيلات وإعادة استخدام الإملاءات السابقة أو حفظها.",
       "translationTitle": "الترجمة",
       "translationDescription": "قم بتعيين اللغة الهدف واختر كيفية معالجة الإملاء المترجم.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "التاريخ الحديث",
+        "history": "السجل",
         "corrections": "قاموس",
         "jotPad": "Jot Pad",
         "fileTranscription": "نسخ الملف"

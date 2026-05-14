@@ -940,7 +940,23 @@
         "appA11y": "Aplicación: {{appName}}"
       },
       "showRecordingInFolder": "Mostrar grabación en carpeta",
-      "revealError": "No se pudo mostrar la grabación: {{error}}"
+      "revealError": "No se pudo mostrar la grabación: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Vistas del historial",
+        "list": "Historial",
+        "transcript": "Transcripción"
+      },
+      "transcript": {
+        "openLabel": "Abrir transcripción",
+        "noSelection": "Selecciona un dictado del historial para ver y corregir su transcripción.",
+        "empty": "Este dictado no tiene texto de transcripción.",
+        "hint": "Selecciona cualquier palabra para corregirla. Las correcciones reales se guardan en tu diccionario.",
+        "editWordLabel": "Editar “{{word}}”",
+        "previous": "Dictado más reciente",
+        "next": "Dictado más antiguo",
+        "dictionaryAdded": "Se guardó “{{original}}” → “{{corrected}}” en tu diccionario",
+        "saveError": "No se pudo guardar el cambio: {{error}}"
+      }
     },
     "debug": {
       "title": "Depurar",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Depurador de rutas"
     },
     "sections": {
-      "recentHistoryTitle": "Historia reciente",
+      "recentHistoryTitle": "Historial",
       "recentHistoryDescription": "Revise transcripciones, reproduzca grabaciones y reutilice o guarde dictados anteriores.",
       "translationTitle": "Traducción",
       "translationDescription": "Establezca el idioma de destino y elija cómo se debe procesar el dictado traducido.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Historia reciente",
+        "history": "Historial",
         "corrections": "Diccionario",
         "jotPad": "Jot Pad",
         "fileTranscription": "Transcripción de archivos"

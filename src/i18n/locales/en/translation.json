@@ -1420,6 +1420,22 @@
       "saveToggleError": "Failed to update saved status: {{error}}",
       "badges": {
         "appA11y": "Application: {{appName}}"
+      },
+      "viewSwitcher": {
+        "ariaLabel": "History views",
+        "list": "History",
+        "transcript": "Transcript"
+      },
+      "transcript": {
+        "openLabel": "Open transcript",
+        "noSelection": "Select a dictation from History to view and correct its transcript.",
+        "empty": "This dictation has no transcript text.",
+        "hint": "Select any word to correct it. Genuine fixes are saved to your dictionary.",
+        "editWordLabel": "Edit “{{word}}”",
+        "previous": "Newer dictation",
+        "next": "Older dictation",
+        "dictionaryAdded": "Saved “{{original}}” → “{{corrected}}” to your dictionary",
+        "saveError": "Could not save your change: {{error}}"
       }
     },
     "debug": {
@@ -2179,7 +2195,7 @@
       "groupTitle": "Route debugger"
     },
     "sections": {
-      "recentHistoryTitle": "Recent history",
+      "recentHistoryTitle": "History",
       "recentHistoryDescription": "Review transcripts, playback recordings, and reuse or save past dictations.",
       "translationTitle": "Translation",
       "translationDescription": "Set the target language and choose how translated dictation should be processed.",
@@ -2324,7 +2340,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Recent History",
+        "history": "History",
         "corrections": "Dictionary",
         "jotPad": "Jot Pad",
         "fileTranscription": "File Transcription"

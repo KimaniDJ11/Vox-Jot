@@ -940,7 +940,23 @@
         "appA11y": "ứng dụng: {{appName}}"
       },
       "showRecordingInFolder": "Hiển thị bản ghi trong thư mục",
-      "revealError": "Không thể hiển thị bản ghi: {{error}}"
+      "revealError": "Không thể hiển thị bản ghi: {{error}}",
+      "viewSwitcher": {
+        "ariaLabel": "Chế độ xem lịch sử",
+        "list": "Lịch sử",
+        "transcript": "Bản chép"
+      },
+      "transcript": {
+        "openLabel": "Mở bản chép",
+        "noSelection": "Chọn một bản đọc từ Lịch sử để xem và sửa bản chép của nó.",
+        "empty": "Bản đọc này không có nội dung bản chép.",
+        "hint": "Chọn bất kỳ từ nào để sửa. Các sửa lỗi thực sự sẽ được lưu vào từ điển của bạn.",
+        "editWordLabel": "Sửa “{{word}}”",
+        "previous": "Bản đọc mới hơn",
+        "next": "Bản đọc cũ hơn",
+        "dictionaryAdded": "Đã lưu “{{original}}” → “{{corrected}}” vào từ điển của bạn",
+        "saveError": "Không thể lưu thay đổi của bạn: {{error}}"
+      }
     },
     "debug": {
       "title": "Gỡ lỗi",
@@ -2186,7 +2202,7 @@
       "groupTitle": "Trình gỡ lỗi tuyến đường"
     },
     "sections": {
-      "recentHistoryTitle": "Lịch sử gần đây",
+      "recentHistoryTitle": "Lịch sử",
       "recentHistoryDescription": "Xem lại bản ghi, phát lại bản ghi và sử dụng lại hoặc lưu các chính tả trước đây.",
       "translationTitle": "Dịch thuật",
       "translationDescription": "Đặt ngôn ngữ đích và chọn cách xử lý chính tả đã dịch.",
@@ -2501,7 +2517,7 @@
     },
     "nav": {
       "dictate": {
-        "history": "Lịch sử gần đây",
+        "history": "Lịch sử",
         "corrections": "từ điển",
         "jotPad": "Jot Pad",
         "fileTranscription": "Phiên âm tập tin"

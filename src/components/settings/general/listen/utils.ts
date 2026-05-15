@@ -206,9 +206,7 @@ export function formatLanguageAbbreviation(language: string) {
 
 export function getModelLanguageItems(model: CatalogModelDescriptor) {
   if (model.supported_languages.length === 0) {
-    return model.locale
-      ? [formatLanguageAbbreviation(model.locale)]
-      : ["Provider managed"];
+    return model.locale ? [formatLanguageAbbreviation(model.locale)] : [];
   }
   return model.supported_languages.map(formatLanguageAbbreviation);
 }

@@ -23,6 +23,7 @@ import {
   Search,
   Sparkles,
   Wrench,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { commands } from "@/bindings";
@@ -104,6 +105,12 @@ type RefineModelCatalog = {
   models: RefineModelDescriptor[];
 };
 
+type ApiKeyDialogState = {
+  providerId: string;
+  providerLabel: string;
+  modelTitle: string;
+} | null;
+
 const REFINE_MODEL_SIZE_HINTS: Record<string, string> = {
   "llama-3.2-3b-instruct-q4_k_m": "~2.0 GB",
   "llama-3.2-1b-instruct-q4_k_m": "~0.8 GB",
@@ -139,6 +146,11 @@ const extractSizeHint = (value: string | null | undefined): string | null => {
   const match = value?.match(/~?\d+(?:\.\d+)?\s*(?:GB|MB)\b/i);
   return match ? match[0].replace(/\s+/, " ").toUpperCase() : null;
 };
+
+const stripLeadingSizeHint = (value: string): string =>
+  value
+    .replace(/^\s*~?\d+(?:\.\d+)?\s*(?:GB|MB)\b\s*(?:[-—–:]\s*)?/i, "")
+    .trim();
 
 const formatApproximateSize = (gb: number): string => {
   if (gb < 1) return `~${Math.max(0.1, gb).toFixed(1)} GB`;
@@ -271,6 +283,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const [confirmingDeleteRuntimeId, setConfirmingDeleteRuntimeId] = useState<
     string | null
   >(null);
+  const [apiKeyDialog, setApiKeyDialog] = useState<ApiKeyDialogState>(null);
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [apiKeySaving, setApiKeySaving] = useState(false);
 
   const onProgressEvent = useCallback(
     (event: { payload: RefineDownloadProgress }) => {
@@ -784,6 +800,76 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
     }
   };
 
+  const openApiKeyDialog = useCallback((model: RefineModelDescriptor) => {
+    setApiKeyDialog({
+      providerId: model.runtime_provider_id,
+      providerLabel: model.runtime_label.replace(/\s+runtime$/i, ""),
+      modelTitle: model.title,
+    });
+    setApiKeyDraft("");
+    setApiKeyError(null);
+  }, []);
+
+  const closeApiKeyDialog = useCallback(() => {
+    if (apiKeySaving) return;
+    setApiKeyDialog(null);
+    setApiKeyDraft("");
+    setApiKeyError(null);
+  }, [apiKeySaving]);
+
+  const saveApiKeyDialog = useCallback(async () => {
+    if (!apiKeyDialog || apiKeySaving) return;
+    const trimmed = apiKeyDraft.trim();
+    if (!trimmed) {
+      setApiKeyError(
+        t("settings.refineModels.apiKeyDialog.required", {
+          defaultValue: "Paste an API key before saving.",
+        }),
+      );
+      return;
+    }
+
+    setApiKeySaving(true);
+    setApiKeyError(null);
+    try {
+      const result = await commands.changePostProcessApiKeySetting(
+        apiKeyDialog.providerId,
+        trimmed,
+      );
+      if (result.status === "error") {
+        setApiKeyError(result.error);
+        return;
+      }
+      await refreshSettings();
+      await loadCatalog({ silent: true });
+      toast.success(
+        t("settings.refineModels.apiKeyDialog.saved", {
+          defaultValue: "{{provider}} API key saved.",
+          provider: apiKeyDialog.providerLabel,
+        }),
+      );
+      setApiKeyDialog(null);
+      setApiKeyDraft("");
+    } catch (error) {
+      setApiKeyError(
+        error instanceof Error
+          ? error.message
+          : t("settings.refineModels.apiKeyDialog.saveFailed", {
+              defaultValue: "Failed to save API key.",
+            }),
+      );
+    } finally {
+      setApiKeySaving(false);
+    }
+  }, [
+    apiKeyDialog,
+    apiKeyDraft,
+    apiKeySaving,
+    loadCatalog,
+    refreshSettings,
+    t,
+  ]);
+
   const getTrailing = (model: RefineModelDescriptor): HubTrailing => {
     const isBusy = busyModelIds.has(model.runtime_model_id);
     const progress = progressMap[model.runtime_model_id];
@@ -807,10 +893,14 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            disabled
             title={label}
             aria-label={label}
-            className="h-8 shrink-0 gap-1 px-2 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              openApiKeyDialog(model);
+            }}
+            className="h-8 shrink-0 gap-1 px-2 text-[11px] font-bold uppercase tracking-wide text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
           >
             <KeyRound className="h-3.5 w-3.5" aria-hidden />
             API
@@ -881,6 +971,10 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
   const handleCardClick = (model: RefineModelDescriptor) => {
     if (busyModelIds.has(model.runtime_model_id)) return;
     if (confirmingDeleteRuntimeId === model.runtime_model_id) return;
+    if (model.requires_api_key) {
+      openApiKeyDialog(model);
+      return;
+    }
     if (model.active) return;
     if (model.installed && model.runnable) {
       void handleUse(model);
@@ -922,13 +1016,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         label: t("settings.refineModels.badges.ready"),
         variant: "success",
         detail: t("settings.refineModels.badges.readyDetail"),
-      });
-    } else {
-      items.push({
-        id: "needs-download",
-        label: t("settings.refineModels.badges.needsDownload"),
-        variant: "secondary",
-        detail: t("settings.refineModels.badges.needsDownloadDetail"),
       });
     }
     return items;
@@ -1277,10 +1364,11 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       ) : (
         <div className="flex flex-col gap-3">
           {models.map((model) => {
-            const description =
+            const rawDescription =
               model.note && model.note.trim().length > 0
                 ? `${model.description} — ${model.note}`
                 : model.description;
+            const description = stripLeadingSizeHint(rawDescription);
             const isBusy = busyModelIds.has(model.runtime_model_id);
             const downloadState = buildDownloadState(model);
             return (
@@ -1293,7 +1381,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 )}
                 subline={buildSubline(model) || undefined}
                 headerBadges={buildHeaderBadges(model)}
-                description={description}
+                description={description || undefined}
                 capabilityChips={buildCapabilityChips(model)}
                 footerMetaItems={buildMetaItems(model)}
                 footerMetaIcon={<Cpu className="h-3.5 w-3.5" />}
@@ -1309,7 +1397,6 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
                 onClick={
                   model.active ||
                   isBusy ||
-                  model.requires_api_key ||
                   confirmingDeleteRuntimeId === model.runtime_model_id
                     ? undefined
                     : () => handleCardClick(model)
@@ -1624,7 +1711,169 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
         ) : null}
       </div>
       {benchmarkPanel}
+      <RefineApiKeyDialog
+        open={Boolean(apiKeyDialog)}
+        providerLabel={apiKeyDialog?.providerLabel ?? ""}
+        modelTitle={apiKeyDialog?.modelTitle ?? ""}
+        value={apiKeyDraft}
+        error={apiKeyError}
+        busy={apiKeySaving}
+        onChange={setApiKeyDraft}
+        onCancel={closeApiKeyDialog}
+        onConfirm={saveApiKeyDialog}
+      />
     </div>
+  );
+};
+
+const RefineApiKeyDialog: React.FC<{
+  open: boolean;
+  providerLabel: string;
+  modelTitle: string;
+  value: string;
+  error: string | null;
+  busy: boolean;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}> = ({
+  open,
+  providerLabel,
+  modelTitle,
+  value,
+  error,
+  busy,
+  onChange,
+  onCancel,
+  onConfirm,
+}) => {
+  const { t } = useTranslation();
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+      role="presentation"
+      onClick={onCancel}
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        aria-hidden
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="refine-api-key-dialog-title"
+        className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2
+              id="refine-api-key-dialog-title"
+              className="text-base font-semibold text-[var(--text)]"
+            >
+              {t("settings.refineModels.apiKeyDialog.title", {
+                defaultValue: "Add {{provider}} API key",
+                provider: providerLabel,
+              })}
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+              {t("settings.refineModels.apiKeyDialog.description", {
+                defaultValue:
+                  "{{modelTitle}} needs a {{provider}} API key before Vox Jot can use this cloud model.",
+                modelTitle,
+                provider: providerLabel,
+              })}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onCancel}
+            disabled={busy}
+            aria-label={t("common.close", { defaultValue: "Close" })}
+            title={t("common.close", { defaultValue: "Close" })}
+          >
+            <X />
+          </Button>
+        </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {t("settings.postProcessing.api.apiKey.title", {
+              defaultValue: "API key",
+            })}
+          </span>
+          <Input
+            type="password"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && value.trim()) {
+                event.preventDefault();
+                onConfirm();
+              }
+            }}
+            placeholder={t("settings.postProcessing.api.apiKey.placeholder", {
+              defaultValue: "Paste API key",
+            })}
+            disabled={busy}
+            autoFocus
+            autoComplete="off"
+          />
+        </label>
+
+        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+          {t("settings.refineModels.apiKeyDialog.storageNote", {
+            defaultValue:
+              "The key is stored in the system credential store and is not shown again after saving.",
+          })}
+        </p>
+
+        {error ? (
+          <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_65%)] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            {t("common.cancel", { defaultValue: "Cancel" })}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            disabled={busy || !value.trim()}
+            onClick={onConfirm}
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {t("settings.refineModels.apiKeyDialog.save", {
+              defaultValue: "Save key",
+            })}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 };
 

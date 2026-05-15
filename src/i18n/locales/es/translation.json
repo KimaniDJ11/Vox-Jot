@@ -2400,6 +2400,11 @@
         "eyebrow": "Acerca de",
         "title": "Vox Jot",
         "description": "Dictado, perfeccionado y escuchado con prioridad local: creado en torno a modelos de la familia Whisper, motores TTS personalizados e integraciones de escritura a nivel de sistema."
+      },
+      "legal": {
+        "eyebrow": "Terms",
+        "title": "Legal & Model Terms",
+        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
       }
     },
     "cross": {
@@ -2545,8 +2550,74 @@
         "screenContext": "Contexto de pantalla",
         "privacy": "Privacidad y almacenamiento",
         "diagnostics": "Diagnósticos",
-        "about": "Acerca de Vox Jot"
+        "about": "Acerca de Vox Jot",
+        "legal": "Legal & Model Terms"
       }
+    },
+    "legal": {
+      "statusLabel": "Review",
+      "statusAcknowledged": "Acknowledged",
+      "statusReview": "Needs review",
+      "modelCountLabel": "Catalog coverage",
+      "modelCountValue": "Covered",
+      "previewLabel": "Legal checkpoints",
+      "previewRecording": "Get required recording consent",
+      "previewModels": "Follow each model license",
+      "previewVoice": "Use only permitted voice samples",
+      "principlesTitle": "What this protects",
+      "principles": {
+        "recording": {
+          "title": "Recording laws",
+          "value": "Consent first",
+          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+        },
+        "models": {
+          "title": "Third-party models",
+          "value": "License by model",
+          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+        },
+        "voice": {
+          "title": "Voice cloning",
+          "value": "Permission required",
+          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+        },
+        "privacy": {
+          "title": "Data routing",
+          "value": "Know what leaves",
+          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+        }
+      },
+      "termsTitle": "Use terms checklist",
+      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "terms": {
+        "recording": {
+          "title": "Recording and transcription consent",
+          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+        },
+        "modelLicenses": {
+          "title": "Model licenses and attribution",
+          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+        },
+        "restrictedModels": {
+          "title": "Restricted and non-commercial models",
+          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+        },
+        "voiceCloning": {
+          "title": "Voice likeness and reference audio",
+          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+        },
+        "accuracy": {
+          "title": "Transcript and AI output accuracy",
+          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+        }
+      },
+      "actionsTitle": "Related controls",
+      "openModelHub": "Open Model Hub",
+      "openPrivacy": "Privacy controls",
+      "openNotices": "Third-party notices",
+      "ackTitle": "Local acknowledgement",
+      "ackLabel": "I understand these model and recording responsibilities.",
+      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
     }
   },
   "testing": {

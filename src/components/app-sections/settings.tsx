@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
   AppWindow,
@@ -11,7 +12,9 @@ import {
   Cloud,
   Clipboard,
   Cpu,
+  ExternalLink,
   FileAudio,
+  FileText,
   FlaskConical,
   HardDrive,
   Headphones,
@@ -22,6 +25,7 @@ import {
   Mic,
   Palette,
   Settings as SettingsIcon,
+  Scale,
   Shield,
   ShieldCheck,
   SlidersHorizontal,
@@ -1300,6 +1304,269 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
           {t("appSections.privacy.localPrivacyNotice")}
         </Alert>
       )}
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Section: Legal & Model Terms
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+const LEGAL_ACKNOWLEDGEMENT_KEY = "voxjot.legalModelTermsAcknowledged.v1";
+
+const legalNoticeLink =
+  "https://www.iriedinamik.org/voxjot/#third-party-notices";
+
+const LegalHero: React.FC<{ acknowledged: boolean }> = ({ acknowledged }) => {
+  const { t } = useTranslation();
+
+  return (
+    <SectionHero
+      icon={<Scale className="h-5 w-5" aria-hidden />}
+      eyebrow={t("appSections.hero.legal.eyebrow")}
+      title={t("appSections.hero.legal.title")}
+      description={t("appSections.hero.legal.description")}
+      tone="warning"
+      stats={[
+        {
+          label: t("appSections.legal.statusLabel"),
+          value: acknowledged
+            ? t("appSections.legal.statusAcknowledged")
+            : t("appSections.legal.statusReview"),
+        },
+        {
+          label: t("appSections.legal.modelCountLabel"),
+          value: t("appSections.legal.modelCountValue"),
+        },
+      ]}
+      visual={
+        <PreviewSlate className="w-full">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              {t("appSections.legal.previewLabel")}
+            </div>
+            {[
+              t("appSections.legal.previewRecording"),
+              t("appSections.legal.previewModels"),
+              t("appSections.legal.previewVoice"),
+            ].map((label) => (
+              <div
+                key={label}
+                className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-2 text-[11.5px] font-semibold text-[var(--text)]"
+              >
+                <CheckCircle2
+                  className="h-3.5 w-3.5 shrink-0 text-[var(--success)]"
+                  aria-hidden
+                />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </PreviewSlate>
+      }
+    />
+  );
+};
+
+const LegalPrincipleGrid: React.FC = () => {
+  const { t } = useTranslation();
+  const items = [
+    {
+      icon: <Mic className="h-4 w-4" aria-hidden />,
+      label: t("appSections.legal.principles.recording.title"),
+      value: t("appSections.legal.principles.recording.value"),
+      hint: t("appSections.legal.principles.recording.detail"),
+      tone: "warning" as const,
+    },
+    {
+      icon: <FileText className="h-4 w-4" aria-hidden />,
+      label: t("appSections.legal.principles.models.title"),
+      value: t("appSections.legal.principles.models.value"),
+      hint: t("appSections.legal.principles.models.detail"),
+      tone: "accent" as const,
+    },
+    {
+      icon: <Headphones className="h-4 w-4" aria-hidden />,
+      label: t("appSections.legal.principles.voice.title"),
+      value: t("appSections.legal.principles.voice.value"),
+      hint: t("appSections.legal.principles.voice.detail"),
+      tone: "info" as const,
+    },
+    {
+      icon: <Shield className="h-4 w-4" aria-hidden />,
+      label: t("appSections.legal.principles.privacy.title"),
+      value: t("appSections.legal.principles.privacy.value"),
+      hint: t("appSections.legal.principles.privacy.detail"),
+      tone: "success" as const,
+    },
+  ];
+
+  return (
+    <BoardList title={t("appSections.legal.principlesTitle")}>
+      <div className="grid gap-3 md:grid-cols-2">
+        {items.map((item) => (
+          <MetricTile
+            key={item.label}
+            icon={item.icon}
+            tone={item.tone}
+            label={item.label}
+            value={item.value}
+            hint={item.hint}
+          />
+        ))}
+      </div>
+    </BoardList>
+  );
+};
+
+const LegalTermsList: React.FC = () => {
+  const { t } = useTranslation();
+  const items = [
+    {
+      title: t("appSections.legal.terms.recording.title"),
+      detail: t("appSections.legal.terms.recording.detail"),
+    },
+    {
+      title: t("appSections.legal.terms.modelLicenses.title"),
+      detail: t("appSections.legal.terms.modelLicenses.detail"),
+    },
+    {
+      title: t("appSections.legal.terms.restrictedModels.title"),
+      detail: t("appSections.legal.terms.restrictedModels.detail"),
+    },
+    {
+      title: t("appSections.legal.terms.voiceCloning.title"),
+      detail: t("appSections.legal.terms.voiceCloning.detail"),
+    },
+    {
+      title: t("appSections.legal.terms.accuracy.title"),
+      detail: t("appSections.legal.terms.accuracy.detail"),
+    },
+  ];
+
+  return (
+    <SettingsGroup
+      title={t("appSections.legal.termsTitle")}
+      description={t("appSections.legal.termsDescription")}
+    >
+      {items.map((item) => (
+        <div key={item.title} className="px-5 py-4">
+          <p className="text-sm font-semibold text-[var(--text)]">
+            {item.title}
+          </p>
+          <p className="mt-1 text-[12.5px] leading-5 text-[var(--muted)]">
+            {item.detail}
+          </p>
+        </div>
+      ))}
+    </SettingsGroup>
+  );
+};
+
+const LegalActions: React.FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <SettingsGroup title={t("appSections.legal.actionsTitle")}>
+      <div className="flex flex-wrap gap-2 px-5 py-4">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => void openModelHub("stt")}
+        >
+          <Cpu className="h-3.5 w-3.5" aria-hidden />
+          {t("appSections.legal.openModelHub")}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent("vox-jot:navigate", {
+                detail: { view: "settings", section: "privacy" },
+              }),
+            );
+          }}
+        >
+          <Shield className="h-3.5 w-3.5" aria-hidden />
+          {t("appSections.legal.openPrivacy")}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => void openUrl(legalNoticeLink)}
+        >
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          {t("appSections.legal.openNotices")}
+        </Button>
+      </div>
+    </SettingsGroup>
+  );
+};
+
+const LegalAcknowledgement: React.FC<{
+  acknowledged: boolean;
+  onChange: (acknowledged: boolean) => void;
+}> = ({ acknowledged, onChange }) => {
+  const { t } = useTranslation();
+
+  return (
+    <SettingsGroup title={t("appSections.legal.ackTitle")}>
+      <label className="flex cursor-pointer items-start gap-3 px-5 py-4">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+          checked={acknowledged}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-[var(--text)]">
+            {t("appSections.legal.ackLabel")}
+          </span>
+          <span className="mt-1 block text-[12.5px] leading-5 text-[var(--muted)]">
+            {t("appSections.legal.ackDescription")}
+          </span>
+        </span>
+      </label>
+    </SettingsGroup>
+  );
+};
+
+export const LegalModelTermsSection: React.FC = () => {
+  const [acknowledged, setAcknowledged] = useState(() => {
+    try {
+      return window.localStorage.getItem(LEGAL_ACKNOWLEDGEMENT_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const updateAcknowledgement = (nextValue: boolean) => {
+    setAcknowledged(nextValue);
+    try {
+      window.localStorage.setItem(
+        LEGAL_ACKNOWLEDGEMENT_KEY,
+        nextValue ? "true" : "false",
+      );
+    } catch {
+      // Local acknowledgement is informational and should not block settings.
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <LegalHero acknowledged={acknowledged} />
+      <LegalPrincipleGrid />
+      <LegalTermsList />
+      <LegalActions />
+      <LegalAcknowledgement
+        acknowledged={acknowledged}
+        onChange={updateAcknowledgement}
+      />
     </div>
   );
 };

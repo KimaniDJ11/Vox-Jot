@@ -28,6 +28,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Play,
+  Scale,
   Shield,
   SlidersHorizontal,
   SpellCheck,
@@ -229,6 +230,11 @@ const ModelTestingSection = lazy(() =>
 const PrivacyStorageSettingsSection = lazy(() =>
   import("@/components/app-sections/settings").then((module) => ({
     default: module.PrivacyStorageSettingsSection,
+  })),
+);
+const LegalModelTermsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.LegalModelTermsSection,
   })),
 );
 const DiagnosticsSettingsSection = lazy(() =>
@@ -578,6 +584,12 @@ function App() {
           "appSections.nav.settings.privacy",
           Shield,
           <PrivacyStorageSettingsSection />,
+        ),
+        makeSection(
+          "legal-model-terms",
+          "appSections.nav.settings.legal",
+          Scale,
+          <LegalModelTermsSection />,
         ),
         makeSection(
           "diagnostics",

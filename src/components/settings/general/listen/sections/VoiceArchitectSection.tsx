@@ -1,18 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Layers, Loader2, Play, Search, X } from "lucide-react";
+import { Layers, Loader2, Play } from "lucide-react";
 import { commands } from "@/bindings";
 import type { VoiceInfo } from "@/bindings";
-import ModelListControls from "@/components/model-hub/ModelListControls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import Badge from "@/components/ui/Badge";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
-import { modal } from "@/motion/springs";
 import {
   createTtsVoicePreset,
   type TtsVoicePresetInput,
@@ -28,7 +23,6 @@ import {
 import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import {
-  speechLibraryCardClassName,
   whiteWorkflowCardClassName,
   workflowFieldLabelClassName,
 } from "../styles";
@@ -54,13 +48,13 @@ import {
   writeVoiceArchitectUiDraft,
 } from "../draftStorage";
 import {
-  DraftVoiceModelLibraryCard,
   InlineCueHint,
   SelectField,
   VoiceTuningCard,
   WorkflowField,
 } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
+import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
 
 export const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
@@ -554,187 +548,40 @@ export const VoiceArchitectSection: React.FC<{
     speech.setStatusMessage(null);
   };
 
+  const handleSelectDraftVoice = ({
+    model,
+    voiceId,
+    voiceLabel,
+    locale,
+  }: {
+    model: CatalogModelDescriptor;
+    voiceId: string | null;
+    voiceLabel: string | null;
+    locale: string | null;
+  }) => {
+    const matchesActiveModel =
+      model.provider_id === (speech.activePreset?.provider_id ?? "") &&
+      model.id === (speech.activePreset?.model_id ?? "");
+    lastDraftSelectionKeyRef.current = null;
+    setDraftVoiceErrorMessage(null);
+    setDraftProviderId(model.provider_id);
+    setDraftModelId(model.id);
+    setDraftVoiceId(voiceId ?? "__auto__");
+    setModelWindowOpen(false);
+    speech.setStatusMessage(null);
+
+    if (matchesActiveModel) {
+      void speech.updateActivePreset({
+        voice_id: voiceId,
+        voice_label_snapshot: voiceLabel,
+        locale_snapshot: locale,
+      });
+    }
+  };
+
   const handleCreateVoiceToolChange = (value: "audio" | "tuning") => {
     setCreateVoiceTool(value);
   };
-
-  const modelWindow = createPortal(
-    <AnimatePresence>
-      {modelWindowOpen ? (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.12 }}
-          onClick={() => setModelWindowOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            aria-hidden="true"
-          />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-voice-model-title"
-            className="relative max-h-[min(88vh,920px)] w-full max-w-[980px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.99 }}
-            transition={modal}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h3
-                    id="create-voice-model-title"
-                    className="truncate text-sm font-semibold text-[var(--text)]"
-                  >
-                    {t("listen.createVoices.models", {
-                      defaultValue: "Models",
-                    })}
-                  </h3>
-                  <Badge variant="secondary">
-                    {t("listen.createVoices.ttsOnly", {
-                      defaultValue: "TTS only",
-                    })}
-                  </Badge>
-                </div>
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {t("listen.createVoices.draftModelPickerDetail", {
-                    defaultValue:
-                      "Choose a voice model for this draft without changing the active app voice.",
-                  })}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setModelWindowOpen(false)}
-                aria-label={t("common.close", { defaultValue: "Close" })}
-                title={t("common.close", { defaultValue: "Close" })}
-              >
-                <X aria-hidden />
-              </Button>
-            </div>
-
-            <div className="space-y-4 border-b border-[var(--border)] px-4 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <label
-                  className="relative flex h-10 min-w-[220px] flex-1 items-center"
-                  aria-label={t("listen.createVoices.searchModelsAriaLabel", {
-                    defaultValue: "Search voice models",
-                  })}
-                >
-                  <Search
-                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                    aria-hidden
-                  />
-                  <Input
-                    type="text"
-                    role="searchbox"
-                    autoComplete="off"
-                    value={modelSearchQuery}
-                    onChange={(event) =>
-                      setModelSearchQuery(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape" && modelSearchQuery) {
-                        setModelSearchQuery("");
-                        event.preventDefault();
-                      }
-                    }}
-                    placeholder={t("listen.createVoices.searchModels", {
-                      defaultValue: "Search TTS models",
-                    })}
-                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                  />
-                  {modelSearchQuery ? (
-                    <button
-                      type="button"
-                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                      onClick={() => setModelSearchQuery("")}
-                      aria-label={t("listen.createVoices.clearModelSearch", {
-                        defaultValue: "Clear model search",
-                      })}
-                    >
-                      <X className="h-3 w-3" aria-hidden />
-                    </button>
-                  ) : null}
-                </label>
-                <ModelListControls
-                  provider={{
-                    value: modelProviderFilter,
-                    options: modelProviderOptions,
-                    onChange: setModelProviderFilter,
-                    label: selectedModelProviderLabel,
-                    show: modelProviderOptions.length > 2,
-                  }}
-                  language={{
-                    value: modelLanguageFilter,
-                    options: modelLanguageOptions,
-                    onChange: setModelLanguageFilter,
-                    label: selectedModelLanguageLabel,
-                    show: true,
-                  }}
-                  sort={{
-                    value: modelSortMode,
-                    options: modelSortOptions,
-                    onChange: setModelSortMode,
-                    label: selectedModelSortLabel,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
-              {filteredDraftModels.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-3">
-                    {orderedDraftModels.map((model) => (
-                      <DraftVoiceModelLibraryCard
-                        key={`${model.provider_id}::${model.id}`}
-                        model={model}
-                        provider={
-                          speech.visibleProviders.find(
-                            (provider) => provider.id === model.provider_id,
-                          ) ?? null
-                        }
-                        selected={
-                          model.provider_id === draftProviderIdForControls &&
-                          model.id === draftModelIdForControls
-                        }
-                        disabled={!speech.ttsEnabled}
-                        onSelect={() => handleSelectDraftModel(model)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className={speechLibraryCardClassName}>
-                  <p className="text-sm leading-6 text-[var(--muted)]">
-                    {modelSearchQuery
-                      ? t("listen.createVoices.noModelSearchResults", {
-                          defaultValue:
-                            "No downloaded, runnable TTS models match that search.",
-                        })
-                      : t("listen.createVoices.noModels", {
-                          defaultValue:
-                            "No downloaded, runnable TTS models are available.",
-                        })}
-                  </p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>,
-    document.body,
-  );
 
   const tuningView = (
     <div className={whiteWorkflowCardClassName}>
@@ -919,7 +766,34 @@ export const VoiceArchitectSection: React.FC<{
 
   const content = (
     <>
-      {modelWindow}
+      <CreateVoiceModelHubPicker
+        open={modelWindowOpen}
+        speech={speech}
+        models={availableDraftModels}
+        providers={speech.visibleProviders}
+        selectedProviderId={draftProviderIdForControls}
+        selectedModelId={draftModelIdForControls}
+        selectedVoiceId={draftVoiceId}
+        searchQuery={modelSearchQuery}
+        onSearchQueryChange={setModelSearchQuery}
+        providerFilter={modelProviderFilter}
+        providerOptions={modelProviderOptions}
+        selectedProviderLabel={selectedModelProviderLabel}
+        onProviderFilterChange={setModelProviderFilter}
+        languageFilter={modelLanguageFilter}
+        languageOptions={modelLanguageOptions}
+        selectedLanguageLabel={selectedModelLanguageLabel}
+        onLanguageFilterChange={setModelLanguageFilter}
+        sortMode={modelSortMode}
+        sortOptions={modelSortOptions}
+        selectedSortLabel={selectedModelSortLabel}
+        onSortModeChange={setModelSortMode}
+        orderedModels={orderedDraftModels}
+        filteredModelCount={filteredDraftModels.length}
+        onSelectModel={handleSelectDraftModel}
+        onSelectVoice={handleSelectDraftVoice}
+        onClose={() => setModelWindowOpen(false)}
+      />
       <div
         className={`${contentSpacingClassName} ${
           !speech.ttsEnabled ? "pointer-events-none opacity-50" : ""

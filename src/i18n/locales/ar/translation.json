@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "سم هذه إعدادات الصوت المضبوطة حتى تتمكن من إعادة استخدامها.",
       "tunedVoiceName": "اسم الصوت المضبوط",
       "toolAriaLabel": "أدوات إنشاء الكلام",
-      "audioTab": "الصوت",
+      "audioTab": "الكلام",
       "draft": "مسودة",
       "draftModelDetail": "محدد لمسودة إنشاء الكلام فقط. صوت التطبيق النشط لم يتغير.",
       "modelDetails": "تفاصيل {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "تصفية الأصوات حسب الجنس: {{label}}",
       "filterVoicesByAccent": "تصفية الأصوات حسب اللهجة: {{label}}",
       "femaleVoice": "صوت أنثوي",
-      "maleVoice": "صوت ذكوري"
+      "maleVoice": "صوت ذكوري",
+      "automaticVoice": "الصوت التلقائي",
+      "selectedPreviewVoice": "الصوت المحدد: {{voice}}",
+      "textToSpeech": "تحويل النص إلى كلام",
+      "previewVoice": "معاينة {{voice}}",
+      "stopVoicePreview": "إيقاف معاينة {{voice}}",
+      "generateSuccess": "تم إنشاء الصوت الكلامي. افتح الصوت المُنشأ لتشغيله.",
+      "generateFailed": "فشل إنشاء الصوت الكلامي.",
+      "loadVoicesFailed": "تعذر تحميل الأصوات للنموذج المحدد",
+      "noCloneProfile": "لا يوجد ملف صوت مستنسخ",
+      "profileNeedsAudio": "{{profile}} (يحتاج إلى صوت)",
+      "providerFilter": "المزوّد",
+      "languageFilter": "اللغة",
+      "bestMatchSort": "أفضل تطابق",
+      "saveVoicePresetFailed": "فشل حفظ إعداد الصوت المسبق"
     }
   },
   "refine": {

@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "再利用できるように、調整した音声設定に名前を付けます。",
       "tunedVoiceName": "調整済み音声名",
       "toolAriaLabel": "音声作成ツール",
-      "audioTab": "オーディオ",
+      "audioTab": "音声",
       "draft": "下書き",
       "draftModelDetail": "音声作成の下書き専用に選択されています。アプリの現在の音声は変更されません。",
       "modelDetails": "{{modelName}}の詳細",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "性別で音声をフィルター: {{label}}",
       "filterVoicesByAccent": "アクセントで音声をフィルター: {{label}}",
       "femaleVoice": "女性の音声",
-      "maleVoice": "男性の音声"
+      "maleVoice": "男性の音声",
+      "automaticVoice": "自動音声",
+      "selectedPreviewVoice": "選択中の音声: {{voice}}",
+      "textToSpeech": "テキスト読み上げ",
+      "previewVoice": "{{voice}}をプレビュー",
+      "stopVoicePreview": "{{voice}}のプレビューを停止",
+      "generateSuccess": "音声を生成しました。「生成済みオーディオ」を開いて再生してください。",
+      "generateFailed": "音声を生成できませんでした。",
+      "loadVoicesFailed": "選択したモデルの音声を読み込めませんでした",
+      "noCloneProfile": "クローンプロファイルなし",
+      "profileNeedsAudio": "{{profile}}（音声が必要）",
+      "providerFilter": "プロバイダー",
+      "languageFilter": "言語",
+      "bestMatchSort": "最適な一致",
+      "saveVoicePresetFailed": "音声プリセットを保存できませんでした"
     }
   },
   "refine": {

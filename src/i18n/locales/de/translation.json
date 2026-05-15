@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Benenne diese abgestimmten Stimmeinstellungen, damit du sie wiederverwenden kannst.",
       "tunedVoiceName": "Name der abgestimmten Stimme",
       "toolAriaLabel": "Werkzeuge zum Erstellen von Sprache",
-      "audioTab": "Audio",
+      "audioTab": "Sprache",
       "draft": "Entwurf",
       "draftModelDetail": "Nur für den Entwurf Sprache erstellen ausgewählt. Die aktive App-Stimme bleibt unverändert.",
       "modelDetails": "Details zu {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Stimmen nach Geschlecht filtern: {{label}}",
       "filterVoicesByAccent": "Stimmen nach Akzent filtern: {{label}}",
       "femaleVoice": "Weibliche Stimme",
-      "maleVoice": "Männliche Stimme"
+      "maleVoice": "Männliche Stimme",
+      "automaticVoice": "Automatische Stimme",
+      "selectedPreviewVoice": "Ausgewählte Stimme: {{voice}}",
+      "textToSpeech": "Text zu Sprache",
+      "previewVoice": "{{voice}} vorhören",
+      "stopVoicePreview": "Vorschau von {{voice}} stoppen",
+      "generateSuccess": "Sprachaudio wurde generiert. Öffne Generiertes Audio, um es abzuspielen.",
+      "generateFailed": "Sprachaudio konnte nicht generiert werden.",
+      "loadVoicesFailed": "Stimmen für das ausgewählte Modell konnten nicht geladen werden",
+      "noCloneProfile": "Kein Klonprofil",
+      "profileNeedsAudio": "{{profile}} (benötigt Audio)",
+      "providerFilter": "Anbieter",
+      "languageFilter": "Sprache",
+      "bestMatchSort": "Beste Übereinstimmung",
+      "saveVoicePresetFailed": "Stimmenpreset konnte nicht gespeichert werden"
     }
   },
   "refine": {

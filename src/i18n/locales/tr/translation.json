@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Yeniden kullanabilmek için bu ayarlanmış ses ayarlarına ad verin.",
       "tunedVoiceName": "Ayarlanmış ses adı",
       "toolAriaLabel": "Konuşma oluşturma araçları",
-      "audioTab": "Ses",
+      "audioTab": "Konuşma",
       "draft": "Taslak",
       "draftModelDetail": "Yalnızca Konuşma Oluştur taslağı için seçildi. Etkin uygulama sesi değişmedi.",
       "modelDetails": "{{modelName}} ayrıntıları",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Sesleri cinsiyete göre filtrele: {{label}}",
       "filterVoicesByAccent": "Sesleri aksana göre filtrele: {{label}}",
       "femaleVoice": "Kadın sesi",
-      "maleVoice": "Erkek sesi"
+      "maleVoice": "Erkek sesi",
+      "automaticVoice": "Otomatik ses",
+      "selectedPreviewVoice": "Seçilen ses: {{voice}}",
+      "textToSpeech": "Metinden konuşmaya",
+      "previewVoice": "{{voice}} önizle",
+      "stopVoicePreview": "{{voice}} önizlemesini durdur",
+      "generateSuccess": "Konuşma sesi oluşturuldu. Oynatmak için Oluşturulan Ses’i açın.",
+      "generateFailed": "Konuşma sesi oluşturulamadı.",
+      "loadVoicesFailed": "Seçilen model için sesler yüklenemedi",
+      "noCloneProfile": "Klon profili yok",
+      "profileNeedsAudio": "{{profile}} (ses gerekiyor)",
+      "providerFilter": "Sağlayıcı",
+      "languageFilter": "Dil",
+      "bestMatchSort": "En iyi eşleşme",
+      "saveVoicePresetFailed": "Ses ön ayarı kaydedilemedi"
     }
   },
   "refine": {

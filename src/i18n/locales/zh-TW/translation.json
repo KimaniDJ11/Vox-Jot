@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "為這些已調校的語音設定命名，以便重複使用。",
       "tunedVoiceName": "已調校語音名稱",
       "toolAriaLabel": "建立語音工具",
-      "audioTab": "音訊",
+      "audioTab": "語音",
       "draft": "草稿",
       "draftModelDetail": "僅為「建立語音」草稿選取。App 目前啟用的語音未變更。",
       "modelDetails": "{{modelName}} 詳細資訊",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "依性別篩選語音：{{label}}",
       "filterVoicesByAccent": "依口音篩選語音：{{label}}",
       "femaleVoice": "女性語音",
-      "maleVoice": "男性語音"
+      "maleVoice": "男性語音",
+      "automaticVoice": "自動語音",
+      "selectedPreviewVoice": "已選語音：{{voice}}",
+      "textToSpeech": "文字轉語音",
+      "previewVoice": "預覽 {{voice}}",
+      "stopVoicePreview": "停止預覽 {{voice}}",
+      "generateSuccess": "語音音訊已生成。開啟「已生成音訊」即可播放。",
+      "generateFailed": "無法生成語音音訊。",
+      "loadVoicesFailed": "無法為所選模型載入語音",
+      "noCloneProfile": "無克隆設定檔",
+      "profileNeedsAudio": "{{profile}}（需要音訊）",
+      "providerFilter": "提供者",
+      "languageFilter": "語言",
+      "bestMatchSort": "最佳相符",
+      "saveVoicePresetFailed": "無法儲存語音預設"
     }
   },
   "refine": {

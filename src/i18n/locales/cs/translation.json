@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Pojmenujte tato vyladěná nastavení hlasu, abyste je mohli znovu použít.",
       "tunedVoiceName": "Název vyladěného hlasu",
       "toolAriaLabel": "Nástroje pro vytvoření řeči",
-      "audioTab": "Zvuk",
+      "audioTab": "Řeč",
       "draft": "Koncept",
       "draftModelDetail": "Vybráno pouze pro koncept Vytvořit řeč. Aktivní hlas aplikace se nezměnil.",
       "modelDetails": "Podrobnosti {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Filtrovat hlasy podle pohlaví: {{label}}",
       "filterVoicesByAccent": "Filtrovat hlasy podle přízvuku: {{label}}",
       "femaleVoice": "Ženský hlas",
-      "maleVoice": "Mužský hlas"
+      "maleVoice": "Mužský hlas",
+      "automaticVoice": "Automatický hlas",
+      "selectedPreviewVoice": "Vybraný hlas: {{voice}}",
+      "textToSpeech": "Text na řeč",
+      "previewVoice": "Přehrát ukázku {{voice}}",
+      "stopVoicePreview": "Zastavit ukázku {{voice}}",
+      "generateSuccess": "Zvuk řeči byl vygenerován. Otevřete Vygenerované audio a přehrajte ho.",
+      "generateFailed": "Nepodařilo se vygenerovat zvuk řeči.",
+      "loadVoicesFailed": "Nepodařilo se načíst hlasy pro vybraný model",
+      "noCloneProfile": "Žádný klonovací profil",
+      "profileNeedsAudio": "{{profile}} (potřebuje audio)",
+      "providerFilter": "Poskytovatel",
+      "languageFilter": "Jazyk",
+      "bestMatchSort": "Nejlepší shoda",
+      "saveVoicePresetFailed": "Nepodařilo se uložit předvolbu hlasu"
     }
   },
   "refine": {

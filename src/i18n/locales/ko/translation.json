@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "나중에 다시 사용할 수 있도록 조정한 음성 설정의 이름을 지정하세요.",
       "tunedVoiceName": "조정한 음성 이름",
       "toolAriaLabel": "음성 만들기 도구",
-      "audioTab": "오디오",
+      "audioTab": "음성",
       "draft": "초안",
       "draftModelDetail": "음성 만들기 초안에만 선택되었습니다. 앱의 활성 음성은 변경되지 않습니다.",
       "modelDetails": "{{modelName}} 세부 정보",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "성별별 음성 필터: {{label}}",
       "filterVoicesByAccent": "억양별 음성 필터: {{label}}",
       "femaleVoice": "여성 음성",
-      "maleVoice": "남성 음성"
+      "maleVoice": "남성 음성",
+      "automaticVoice": "자동 음성",
+      "selectedPreviewVoice": "선택한 음성: {{voice}}",
+      "textToSpeech": "텍스트 음성 변환",
+      "previewVoice": "{{voice}} 미리 듣기",
+      "stopVoicePreview": "{{voice}} 미리 듣기 중지",
+      "generateSuccess": "음성 오디오가 생성되었습니다. 생성된 오디오를 열어 재생하세요.",
+      "generateFailed": "음성 오디오를 생성하지 못했습니다.",
+      "loadVoicesFailed": "선택한 모델의 음성을 불러오지 못했습니다",
+      "noCloneProfile": "클론 프로필 없음",
+      "profileNeedsAudio": "{{profile}}(오디오 필요)",
+      "providerFilter": "제공자",
+      "languageFilter": "언어",
+      "bestMatchSort": "가장 잘 맞는 항목",
+      "saveVoicePresetFailed": "음성 프리셋을 저장하지 못했습니다"
     }
   },
   "refine": {

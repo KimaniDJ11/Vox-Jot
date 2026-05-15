@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Nommez ces réglages vocaux afin de pouvoir les réutiliser.",
       "tunedVoiceName": "Nom de la voix réglée",
       "toolAriaLabel": "Outils de création de voix",
-      "audioTab": "Audio",
+      "audioTab": "Parole",
       "draft": "Brouillon",
       "draftModelDetail": "Sélectionné uniquement pour le brouillon Créer une voix. La voix active de l’app reste inchangée.",
       "modelDetails": "Détails de {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Filtrer les voix par genre : {{label}}",
       "filterVoicesByAccent": "Filtrer les voix par accent : {{label}}",
       "femaleVoice": "Voix féminine",
-      "maleVoice": "Voix masculine"
+      "maleVoice": "Voix masculine",
+      "automaticVoice": "Voix automatique",
+      "selectedPreviewVoice": "Voix sélectionnée : {{voice}}",
+      "textToSpeech": "Texte en parole",
+      "previewVoice": "Prévisualiser {{voice}}",
+      "stopVoicePreview": "Arrêter l’aperçu de {{voice}}",
+      "generateSuccess": "Audio vocal généré. Ouvrez Audio généré pour l’écouter.",
+      "generateFailed": "Impossible de générer l’audio vocal.",
+      "loadVoicesFailed": "Impossible de charger les voix pour le modèle sélectionné",
+      "noCloneProfile": "Aucun profil de clonage",
+      "profileNeedsAudio": "{{profile}} (audio requis)",
+      "providerFilter": "Fournisseur",
+      "languageFilter": "Langue",
+      "bestMatchSort": "Meilleure correspondance",
+      "saveVoicePresetFailed": "Impossible d’enregistrer le préréglage vocal"
     }
   },
   "refine": {

@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "为这些已调校的语音设置命名，以便重复使用。",
       "tunedVoiceName": "已调校语音名称",
       "toolAriaLabel": "创建语音工具",
-      "audioTab": "音频",
+      "audioTab": "语音",
       "draft": "草稿",
       "draftModelDetail": "仅为“创建语音”草稿选择。应用当前启用的语音未更改。",
       "modelDetails": "{{modelName}} 详情",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "按性别筛选语音：{{label}}",
       "filterVoicesByAccent": "按口音筛选语音：{{label}}",
       "femaleVoice": "女性语音",
-      "maleVoice": "男性语音"
+      "maleVoice": "男性语音",
+      "automaticVoice": "自动语音",
+      "selectedPreviewVoice": "已选语音：{{voice}}",
+      "textToSpeech": "文本转语音",
+      "previewVoice": "预览 {{voice}}",
+      "stopVoicePreview": "停止预览 {{voice}}",
+      "generateSuccess": "语音音频已生成。打开“已生成音频”即可播放。",
+      "generateFailed": "语音音频生成失败。",
+      "loadVoicesFailed": "无法为所选模型加载语音",
+      "noCloneProfile": "无克隆档案",
+      "profileNeedsAudio": "{{profile}}（需要音频）",
+      "providerFilter": "提供商",
+      "languageFilter": "语言",
+      "bestMatchSort": "最佳匹配",
+      "saveVoicePresetFailed": "无法保存语音预设"
     }
   },
   "refine": {

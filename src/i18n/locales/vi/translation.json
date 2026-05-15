@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Đặt tên cho các thiết lập giọng đã tinh chỉnh này để bạn có thể dùng lại.",
       "tunedVoiceName": "Tên giọng đã tinh chỉnh",
       "toolAriaLabel": "Công cụ tạo giọng nói",
-      "audioTab": "Âm thanh",
+      "audioTab": "Lời nói",
       "draft": "Bản nháp",
       "draftModelDetail": "Chỉ được chọn cho bản nháp Tạo giọng nói. Giọng đang hoạt động của ứng dụng không thay đổi.",
       "modelDetails": "Chi tiết {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Lọc giọng theo giới tính: {{label}}",
       "filterVoicesByAccent": "Lọc giọng theo vùng miền: {{label}}",
       "femaleVoice": "Giọng nữ",
-      "maleVoice": "Giọng nam"
+      "maleVoice": "Giọng nam",
+      "automaticVoice": "Giọng tự động",
+      "selectedPreviewVoice": "Giọng đã chọn: {{voice}}",
+      "textToSpeech": "Văn bản thành giọng nói",
+      "previewVoice": "Nghe thử {{voice}}",
+      "stopVoicePreview": "Dừng nghe thử {{voice}}",
+      "generateSuccess": "Đã tạo âm thanh giọng nói. Mở Âm thanh đã tạo để phát.",
+      "generateFailed": "Không thể tạo âm thanh giọng nói.",
+      "loadVoicesFailed": "Không thể tải giọng cho mẫu đã chọn",
+      "noCloneProfile": "Không có hồ sơ nhân bản",
+      "profileNeedsAudio": "{{profile}} (cần âm thanh)",
+      "providerFilter": "Nhà cung cấp",
+      "languageFilter": "Ngôn ngữ",
+      "bestMatchSort": "Phù hợp nhất",
+      "saveVoicePresetFailed": "Không thể lưu cài đặt sẵn giọng nói"
     }
   },
   "refine": {

@@ -4,13 +4,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
   Mars,
+  Play,
   Plus,
   Search,
+  Square,
   UserRound,
   Venus,
   X,
 } from "lucide-react";
-import type { VoiceInfo } from "@/bindings";
+import { commands, type VoiceInfo } from "@/bindings";
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -29,7 +31,7 @@ import {
 } from "../createVoiceVoiceHub";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { speechLibraryCardClassName } from "../styles";
-import { getTtsVoicesForSelection } from "../utils";
+import { defaultVoiceTuning, getTtsVoicesForSelection } from "../utils";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
 
 type PickerView = "models" | "voices";
@@ -120,50 +122,91 @@ const VoiceFilterSelect: React.FC<{
 const VoiceRow: React.FC<{
   row: CreateVoiceHubVoiceRow;
   selected: boolean;
+  previewing: boolean;
   femaleVoiceLabel: string;
   maleVoiceLabel: string;
+  previewLabel: string;
+  stopPreviewLabel: string;
   onSelect: () => void;
-}> = ({ row, selected, femaleVoiceLabel, maleVoiceLabel, onSelect }) => (
-  <button
-    type="button"
-    onClick={onSelect}
+  onTogglePreview: () => void;
+}> = ({
+  row,
+  selected,
+  previewing,
+  femaleVoiceLabel,
+  maleVoiceLabel,
+  previewLabel,
+  stopPreviewLabel,
+  onSelect,
+  onTogglePreview,
+}) => (
+  <div
     className={[
-      "flex w-full min-w-0 items-center gap-4 rounded-2xl border px-4 py-3 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+      "group/voice-row flex w-full min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-start transition-colors",
       selected
         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
         : "border-transparent bg-[var(--card)] hover:border-[var(--border)] hover:bg-[var(--panel-bg)]",
     ].join(" ")}
   >
-    <span
-      className="h-12 w-12 shrink-0 rounded-full shadow-inner"
-      style={{ background: row.avatarGradient }}
-      aria-hidden
-    />
-    <span className="min-w-0 flex-1">
-      <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-sm font-semibold text-[var(--text)]">
-          {row.voiceLabel}
+    <span className="relative h-12 w-12 shrink-0">
+      <span
+        className="block h-12 w-12 rounded-full shadow-inner"
+        style={{ background: row.avatarGradient }}
+        aria-hidden
+      />
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onTogglePreview();
+        }}
+        aria-label={previewing ? stopPreviewLabel : previewLabel}
+        title={previewing ? stopPreviewLabel : previewLabel}
+        className={[
+          "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+          previewing
+            ? "opacity-100"
+            : "opacity-0 group-hover/voice-row:opacity-100 group-focus-within/voice-row:opacity-100",
+        ].join(" ")}
+      >
+        {previewing ? (
+          <Square className="h-5 w-5 fill-current" aria-hidden />
+        ) : (
+          <Play className="h-5 w-5 fill-current" aria-hidden />
+        )}
+      </button>
+    </span>
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-[var(--text)]">
+            {row.voiceLabel}
+          </span>
+          {row.gender === "female" ? (
+            <Venus
+              className="h-4 w-4 shrink-0 text-[var(--voice)]"
+              aria-label={femaleVoiceLabel}
+            />
+          ) : row.gender === "male" ? (
+            <Mars
+              className="h-4 w-4 shrink-0 text-[var(--accent)]"
+              aria-label={maleVoiceLabel}
+            />
+          ) : null}
         </span>
-        {row.gender === "female" ? (
-          <Venus
-            className="h-4 w-4 shrink-0 text-[var(--voice)]"
-            aria-label={femaleVoiceLabel}
-          />
-        ) : row.gender === "male" ? (
-          <Mars
-            className="h-4 w-4 shrink-0 text-[var(--accent)]"
-            aria-label={maleVoiceLabel}
-          />
-        ) : null}
+        <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
+          {row.description}
+        </span>
       </span>
-      <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
-        {row.description}
+      <span className="flex shrink-0 items-center gap-2 text-2xl" aria-hidden>
+        {row.countryFlag ?? null}
       </span>
-    </span>
-    <span className="flex shrink-0 items-center gap-2 text-2xl" aria-hidden>
-      {row.countryFlag ?? null}
-    </span>
-  </button>
+    </button>
+  </div>
 );
 
 export const CreateVoiceModelHubPicker: React.FC<
@@ -202,6 +245,9 @@ export const CreateVoiceModelHubPicker: React.FC<
   >(null);
   const [voiceGenderFilter, setVoiceGenderFilter] = useState("all");
   const [voiceAccentFilter, setVoiceAccentFilter] = useState("all");
+  const [previewingVoiceRowId, setPreviewingVoiceRowId] = useState<
+    string | null
+  >(null);
   const [voicesByModelKey, setVoicesByModelKey] = useState<
     Map<string, VoiceInfo[]>
   >(() => new Map());
@@ -216,6 +262,7 @@ export const CreateVoiceModelHubPicker: React.FC<
       setSelectedModelFilterKey(null);
       setVoiceGenderFilter("all");
       setVoiceAccentFilter("all");
+      setPreviewingVoiceRowId(null);
       loadingVoiceKeysRef.current.clear();
       setLoadingVoiceKeys(new Set());
     }
@@ -269,6 +316,42 @@ export const CreateVoiceModelHubPicker: React.FC<
         });
     }
   }, [models, open, view, voicesByModelKey]);
+
+  const handleToggleVoicePreview = async (
+    row: CreateVoiceHubVoiceRow,
+    model: CatalogModelDescriptor,
+  ) => {
+    if (previewingVoiceRowId === row.id) {
+      const result = await commands.ttsStop();
+      if (result.status === "error") {
+        speech.setStatusMessage(result.error);
+      }
+      setPreviewingVoiceRowId(null);
+      return;
+    }
+
+    setPreviewingVoiceRowId(row.id);
+    try {
+      await speech.previewPresetDraft(
+        {
+          provider_id: row.providerId,
+          model_id: row.modelId,
+          voice_id: row.voiceId,
+          voice_profile_id: null,
+          voice_label_snapshot: row.voiceId
+            ? row.voiceLabel
+            : (model.label ?? row.modelLabel),
+          locale_snapshot: row.locale,
+          tuning: defaultVoiceTuning(),
+        },
+        null,
+      );
+    } finally {
+      setPreviewingVoiceRowId((current) =>
+        current === row.id ? null : current,
+      );
+    }
+  };
 
   const voiceRows = useMemo(
     () => buildCreateVoiceHubRows(models, voicesByModelKey),
@@ -590,13 +673,10 @@ export const CreateVoiceModelHubPicker: React.FC<
                       options={voiceGenderOptions}
                       onChange={setVoiceGenderFilter}
                       label={selectedVoiceGenderLabel}
-                      ariaLabel={t(
-                        "listen.createVoices.filterVoicesByGender",
-                        {
-                          label: selectedVoiceGenderLabel,
-                          defaultValue: "Filter voices by gender: {{label}}",
-                        },
-                      )}
+                      ariaLabel={t("listen.createVoices.filterVoicesByGender", {
+                        label: selectedVoiceGenderLabel,
+                        defaultValue: "Filter voices by gender: {{label}}",
+                      })}
                       show={voiceGenderOptions.length > 1}
                     />
                     <VoiceFilterSelect
@@ -604,13 +684,10 @@ export const CreateVoiceModelHubPicker: React.FC<
                       options={voiceAccentOptions}
                       onChange={setVoiceAccentFilter}
                       label={selectedVoiceAccentLabel}
-                      ariaLabel={t(
-                        "listen.createVoices.filterVoicesByAccent",
-                        {
-                          label: selectedVoiceAccentLabel,
-                          defaultValue: "Filter voices by accent: {{label}}",
-                        },
-                      )}
+                      ariaLabel={t("listen.createVoices.filterVoicesByAccent", {
+                        label: selectedVoiceAccentLabel,
+                        defaultValue: "Filter voices by accent: {{label}}",
+                      })}
                       show={voiceAccentOptions.length > 1}
                     />
                   </div>
@@ -686,15 +763,24 @@ export const CreateVoiceModelHubPicker: React.FC<
                           row.modelId === selectedModelId &&
                           (row.voiceId ?? "__auto__") === selectedVoiceId
                         }
-                        femaleVoiceLabel={t(
-                          "listen.createVoices.femaleVoice",
-                          {
-                            defaultValue: "Female voice",
-                          },
-                        )}
+                        previewing={previewingVoiceRowId === row.id}
+                        femaleVoiceLabel={t("listen.createVoices.femaleVoice", {
+                          defaultValue: "Female voice",
+                        })}
                         maleVoiceLabel={t("listen.createVoices.maleVoice", {
                           defaultValue: "Male voice",
                         })}
+                        previewLabel={t("listen.createVoices.previewVoice", {
+                          voice: row.voiceLabel,
+                          defaultValue: "Preview {{voice}}",
+                        })}
+                        stopPreviewLabel={t(
+                          "listen.createVoices.stopVoicePreview",
+                          {
+                            voice: row.voiceLabel,
+                            defaultValue: "Stop {{voice}} preview",
+                          },
+                        )}
                         onSelect={() =>
                           onSelectVoice({
                             model,
@@ -702,6 +788,9 @@ export const CreateVoiceModelHubPicker: React.FC<
                             voiceLabel: row.voiceId ? row.voiceLabel : null,
                             locale: row.locale,
                           })
+                        }
+                        onTogglePreview={() =>
+                          void handleToggleVoicePreview(row, model)
                         }
                       />
                     );

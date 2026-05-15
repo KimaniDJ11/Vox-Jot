@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Назвіть ці налаштовані параметри голосу, щоб використати їх повторно.",
       "tunedVoiceName": "Назва налаштованого голосу",
       "toolAriaLabel": "Інструменти створення мовлення",
-      "audioTab": "Аудіо",
+      "audioTab": "Мовлення",
       "draft": "Чернетка",
       "draftModelDetail": "Вибрано лише для чернетки Створити мовлення. Активний голос застосунку не змінено.",
       "modelDetails": "Відомості про {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Фільтрувати голоси за статтю: {{label}}",
       "filterVoicesByAccent": "Фільтрувати голоси за акцентом: {{label}}",
       "femaleVoice": "Жіночий голос",
-      "maleVoice": "Чоловічий голос"
+      "maleVoice": "Чоловічий голос",
+      "automaticVoice": "Автоматичний голос",
+      "selectedPreviewVoice": "Вибраний голос: {{voice}}",
+      "textToSpeech": "Текст у мовлення",
+      "previewVoice": "Прослухати {{voice}}",
+      "stopVoicePreview": "Зупинити попередній прослух {{voice}}",
+      "generateSuccess": "Аудіо мовлення створено. Відкрийте Згенероване аудіо, щоб відтворити його.",
+      "generateFailed": "Не вдалося створити аудіо мовлення.",
+      "loadVoicesFailed": "Не вдалося завантажити голоси для вибраної моделі",
+      "noCloneProfile": "Немає профілю клонування",
+      "profileNeedsAudio": "{{profile}} (потрібне аудіо)",
+      "providerFilter": "Постачальник",
+      "languageFilter": "Мова",
+      "bestMatchSort": "Найкращий збіг",
+      "saveVoicePresetFailed": "Не вдалося зберегти пресет голосу"
     }
   },
   "refine": {

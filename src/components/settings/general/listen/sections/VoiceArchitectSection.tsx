@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Layers, Loader2, Play, X } from "lucide-react";
-import { commands } from "@/bindings";
-import type { VoiceInfo } from "@/bindings";
+import { Layers, Loader2, WandSparkles, X } from "lucide-react";
+import { toast } from "sonner";
+import { commands, type VoiceInfo } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -55,6 +55,7 @@ import {
   WorkflowField,
 } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
+import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
 
 function normalizeTuningForCompare(tuning: TtsVoicePresetInput["tuning"]) {
@@ -114,6 +115,7 @@ export const VoiceArchitectSection: React.FC<{
   const [previewTextDraft, setPreviewTextDraft] = useState(
     initialUiDraft.previewTextDraft,
   );
+  const [generatingSpeech, setGeneratingSpeech] = useState(false);
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
   const [saveTunedVoiceWindowOpen, setSaveTunedVoiceWindowOpen] =
     useState(false);
@@ -275,7 +277,9 @@ export const VoiceArchitectSection: React.FC<{
         setDraftVoiceErrorMessage(
           error instanceof Error
             ? error.message
-            : "Failed to load voices for the selected model",
+            : t("listen.createVoices.loadVoicesFailed", {
+                defaultValue: "Failed to load voices for the selected model",
+              }),
         );
       })
       .finally(() => {
@@ -294,6 +298,7 @@ export const VoiceArchitectSection: React.FC<{
     speech.setStatusMessage,
     availableDraftModels,
     speech.voices,
+    t,
   ]);
 
   const saveProfileName = saveProfileNameDraft.trim();
@@ -321,16 +326,24 @@ export const VoiceArchitectSection: React.FC<{
     draftSelectedModel?.capabilities.supports_voice_cloning ?? false;
   const draftSupportsInlineTags =
     draftSelectedModel?.capabilities.supports_inline_tags ?? false;
+  const noCloneProfileLabel = t("listen.createVoices.noCloneProfile", {
+    defaultValue: "No clone profile",
+  });
   const draftCompatibleProfiles = draftSelectedModel
     ? speech.profiles.filter((profile) =>
         profileSupportsModel(profile, draftSelectedModel),
       )
     : [];
   const draftProfileOptions = [
-    { value: "__none__", label: "No clone profile" },
+    { value: "__none__", label: noCloneProfileLabel },
     ...draftCompatibleProfiles.map((profile) => ({
       value: profile.id,
-      label: !profile.ready ? `${profile.label} (Needs audio)` : profile.label,
+      label: !profile.ready
+        ? t("listen.createVoices.profileNeedsAudio", {
+            profile: profile.label,
+            defaultValue: "{{profile}} (Needs audio)",
+          })
+        : profile.label,
     })),
   ];
   const selectedTuningModel = draftSelectedModel ?? speech.activeModel;
@@ -348,6 +361,47 @@ export const VoiceArchitectSection: React.FC<{
     draftCompatibleProfiles.find(
       (profile) => profile.id === draftVoiceProfileId,
     ) ?? null;
+  const draftVoiceFixedToModel = isVoiceFixedToModel(
+    draftProviderIdForControls,
+  );
+  const draftVoiceSelectionId =
+    draftVoiceFixedToModel || draftVoiceId === "__auto__" ? null : draftVoiceId;
+  const draftVoiceSelection =
+    draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ??
+    null;
+  const draftPreviewVoiceName =
+    draftSelectedProfile?.label ??
+    draftVoiceSelection?.label ??
+    (draftVoiceFixedToModel
+      ? (draftSelectedModel?.label ?? draftModelIdForControls)
+      : null) ??
+    speech.activePreset?.voice_label_snapshot ??
+    t("listen.createVoices.automaticVoice", {
+      defaultValue: "Automatic voice",
+    });
+  const draftPreviewVoiceAvatar = voiceAvatarGradient(
+    [
+      draftProviderIdForControls,
+      draftModelIdForControls,
+      draftVoiceSelectionId ?? draftVoiceProfileId ?? "auto",
+    ].join("::"),
+  );
+  const selectedVoiceChip = (
+    <span
+      className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]"
+      title={t("listen.createVoices.selectedPreviewVoice", {
+        voice: draftPreviewVoiceName,
+        defaultValue: "Selected voice: {{voice}}",
+      })}
+    >
+      <span
+        className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+        style={{ background: draftPreviewVoiceAvatar }}
+        aria-hidden="true"
+      />
+      <span className="truncate">{draftPreviewVoiceName}</span>
+    </span>
+  );
   useEffect(() => {
     if (!draftSupportsVoiceCloning) {
       if (draftVoiceProfileId !== "__none__") {
@@ -383,26 +437,35 @@ export const VoiceArchitectSection: React.FC<{
     speech.activePreset?.voice_profile_id,
   ]);
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
+  const providerFilterLabel = t("listen.createVoices.providerFilter", {
+    defaultValue: "Provider",
+  });
+  const languageFilterLabel = t("listen.createVoices.languageFilter", {
+    defaultValue: "Language",
+  });
+  const bestMatchLabel = t("listen.createVoices.bestMatchSort", {
+    defaultValue: "Best Match",
+  });
   const modelProviderOptions = useMemo(
     () => [
-      { value: "all", label: "Provider" },
+      { value: "all", label: providerFilterLabel },
       ...speech.visibleProviders.map((provider) => ({
         value: provider.id,
         label: provider.label,
       })),
     ],
-    [speech.visibleProviders],
+    [providerFilterLabel, speech.visibleProviders],
   );
   const selectedModelProviderLabel = useMemo(
     () =>
       modelProviderOptions.find(
         (option) => option.value === modelProviderFilter,
-      )?.label ?? "Provider",
-    [modelProviderFilter, modelProviderOptions],
+      )?.label ?? providerFilterLabel,
+    [modelProviderFilter, modelProviderOptions, providerFilterLabel],
   );
   const modelLanguageOptions = useMemo(
     () => [
-      { value: "all", label: "Language" },
+      { value: "all", label: languageFilterLabel },
       ...LANGUAGES.filter((language) => language.value !== "auto").map(
         (language) => ({
           value: language.value,
@@ -410,14 +473,14 @@ export const VoiceArchitectSection: React.FC<{
         }),
       ),
     ],
-    [],
+    [languageFilterLabel],
   );
   const selectedModelLanguageLabel = useMemo(
     () =>
       modelLanguageOptions.find(
         (option) => option.value === modelLanguageFilter,
-      )?.label ?? "Language",
-    [modelLanguageFilter, modelLanguageOptions],
+      )?.label ?? languageFilterLabel,
+    [modelLanguageFilter, modelLanguageOptions, languageFilterLabel],
   );
   const modelSortOptions = useMemo(
     () => [...DEFAULT_MODEL_SORT_OPTIONS, TEST_SCORE_MODEL_SORT_OPTION],
@@ -426,8 +489,8 @@ export const VoiceArchitectSection: React.FC<{
   const selectedModelSortLabel = useMemo(
     () =>
       modelSortOptions.find((option) => option.value === modelSortMode)
-        ?.label ?? "Best Match",
-    [modelSortMode, modelSortOptions],
+        ?.label ?? bestMatchLabel,
+    [bestMatchLabel, modelSortMode, modelSortOptions],
   );
   const modelProviderRankById = useMemo(
     () =>
@@ -485,18 +548,11 @@ export const VoiceArchitectSection: React.FC<{
     },
   );
   if (!speech.settings || !speech.activePreset) return null;
-  const isPreviewingDraft = speech.previewingPresetId === "__draft__";
   const buildDraftPresetInput = (): TtsVoicePresetInput => {
     const source = buildPresetInput(speech.activePreset);
     const providerOrModelChanged =
       source.provider_id !== draftProviderIdForControls ||
       source.model_id !== draftModelIdForControls;
-    const voiceIsFixedToModel = isVoiceFixedToModel(draftProviderIdForControls);
-    const draftVoiceSelectionId =
-      voiceIsFixedToModel || draftVoiceId === "__auto__" ? null : draftVoiceId;
-    const draftVoiceSelection =
-      draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ??
-      null;
     const draftProfileSelectionId =
       draftSupportsVoiceCloning && draftVoiceProfileId !== "__none__"
         ? draftVoiceProfileId
@@ -507,11 +563,11 @@ export const VoiceArchitectSection: React.FC<{
       provider_id: draftProviderIdForControls,
       model_id: draftModelIdForControls,
       tuning: { ...draftTuning },
-      voice_id: voiceIsFixedToModel
+      voice_id: draftVoiceFixedToModel
         ? draftModelIdForControls
         : (draftVoiceSelectionId ?? null),
       voice_profile_id: draftProfileSelectionId,
-      voice_label_snapshot: voiceIsFixedToModel
+      voice_label_snapshot: draftVoiceFixedToModel
         ? (draftSelectedModel?.label ?? draftModelIdForControls)
         : (draftSelectedProfile?.label ?? draftVoiceSelection?.label ?? null),
       locale_snapshot: draftVoiceSelection
@@ -532,6 +588,54 @@ export const VoiceArchitectSection: React.FC<{
       },
     }));
   };
+  const resetDraftTuning = () => {
+    setDraftTuning(defaultVoiceTuning());
+  };
+  const handleGenerateSpeech = async () => {
+    if (
+      generatingSpeech ||
+      !speech.ttsEnabled ||
+      !previewTextDraft.trim() ||
+      !draftProviderIdForControls ||
+      !draftModelIdForControls
+    ) {
+      return;
+    }
+
+    setGeneratingSpeech(true);
+    try {
+      const result = await commands.generateCreateSpeechAudio({
+        render_id: crypto.randomUUID(),
+        title: `Create Speech - ${draftPreviewVoiceName}`,
+        text: previewTextDraft,
+        preset: buildDraftPresetInput(),
+      });
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+      speech.setStatusMessage(null);
+      toast.success(
+        t("listen.createVoices.generateSuccess", {
+          defaultValue:
+            "Speech audio generated. Open Generated Audio to play it.",
+        }),
+      );
+    } catch (error) {
+      const fallbackMessage = t("listen.createVoices.generateFailed", {
+        defaultValue: "Failed to generate speech audio.",
+      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : fallbackMessage;
+      speech.setStatusMessage(message);
+      toast.error(message);
+    } finally {
+      setGeneratingSpeech(false);
+    }
+  };
   const handleSaveCurrent = async () => {
     if (
       !saveProfileName ||
@@ -550,7 +654,11 @@ export const VoiceArchitectSection: React.FC<{
       return true;
     } catch (error) {
       speech.setStatusMessage(
-        error instanceof Error ? error.message : "Failed to save voice preset",
+        error instanceof Error
+          ? error.message
+          : t("listen.createVoices.saveVoicePresetFailed", {
+              defaultValue: "Failed to save voice preset",
+            }),
       );
       return false;
     }
@@ -611,9 +719,7 @@ export const VoiceArchitectSection: React.FC<{
     <>
       {draftSupportsVoiceCloning ? (
         <div className={whiteWorkflowCardClassName}>
-          <WorkflowField
-            label={t("listen.createVoices.workflow.cloneProfile")}
-          >
+          <WorkflowField label={t("listen.createVoices.workflow.cloneProfile")}>
             <SelectField
               value={draftVoiceProfileId}
               onChange={handleDraftVoiceProfileChange}
@@ -634,9 +740,9 @@ export const VoiceArchitectSection: React.FC<{
           title={t("listen.createVoices.tuning", {
             defaultValue: "Tuning",
           })}
+          titleAccessory={selectedVoiceChip}
           embedded
-          modelLabel={draftSelectedModel?.label ?? speech.activeModel?.label}
-          onResetAll={() => updateDraftPreset({ tuning: defaultVoiceTuning() })}
+          onResetAll={resetDraftTuning}
         />
       </div>
     </>
@@ -682,17 +788,37 @@ export const VoiceArchitectSection: React.FC<{
         </div>
       ) : null}
 
-      <div className={whiteWorkflowCardClassName}>
-        <div className="min-w-0 space-y-2">
-          <p className={workflowFieldLabelClassName}>
-            {t("listen.myVoices.previewText")}
-          </p>
+      <div
+        className={`${whiteWorkflowCardClassName} flex min-h-[clamp(360px,62vh,780px)] flex-col`}
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-[var(--text)]">
+              {t("listen.createVoices.textToSpeech", {
+                defaultValue: "Text to Speech",
+              })}
+            </span>
+            <div
+              className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
+              aria-label={t("listen.createVoices.selectedPreviewVoice", {
+                voice: draftPreviewVoiceName,
+                defaultValue: "Selected voice: {{voice}}",
+              })}
+            >
+              <span
+                className="h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+                style={{ background: draftPreviewVoiceAvatar }}
+                aria-hidden="true"
+              />
+              <span className="truncate">{draftPreviewVoiceName}</span>
+            </div>
+          </div>
           <Textarea
             value={previewTextDraft}
             onChange={(event) => setPreviewTextDraft(event.target.value)}
             placeholder={DEFAULT_TTS_PREVIEW_TEXT}
             disabled={!speech.ttsEnabled}
-            className="w-full min-h-[120px] !rounded-2xl"
+            className="min-h-[320px] w-full flex-1 resize-y !rounded-2xl"
           />
           {draftSupportsInlineTags ? (
             <InlineCueHint modelLabel={draftSelectedModel?.label} />
@@ -870,31 +996,23 @@ export const VoiceArchitectSection: React.FC<{
             type="button"
             variant="primary-soft"
             size="sm"
-            onClick={() => {
-              if (isPreviewingDraft) {
-                void commands.ttsStop();
-                return;
-              }
-
-              void speech.previewPresetDraft(
-                buildDraftPresetInput(),
-                previewTextDraft,
-              );
-            }}
+            onClick={() => void handleGenerateSpeech()}
             disabled={
+              generatingSpeech ||
               !speech.ttsEnabled ||
+              !previewTextDraft.trim() ||
               !draftProviderIdForControls ||
               !draftModelIdForControls
             }
           >
-            {isPreviewingDraft ? (
+            {generatingSpeech ? (
               <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
             ) : (
-              <Play className="h-3.5 w-3.5" />
+              <WandSparkles className="h-3.5 w-3.5" />
             )}
-            {isPreviewingDraft
-              ? t("common.cancel", { defaultValue: "Cancel" })
-              : t("listen.myVoices.preview")}
+            {generatingSpeech
+              ? t("listen.myVoices.generating", { defaultValue: "Generating…" })
+              : t("storyStudio.generate", { defaultValue: "Generate" })}
           </Button>
 
           <SegmentedControl<"audio" | "tuning">
@@ -908,7 +1026,7 @@ export const VoiceArchitectSection: React.FC<{
               {
                 value: "audio",
                 label: t("listen.createVoices.audioTab", {
-                  defaultValue: "Audio",
+                  defaultValue: "Speech",
                 }),
               },
               {

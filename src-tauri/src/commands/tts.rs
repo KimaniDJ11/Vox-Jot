@@ -84,7 +84,7 @@ fn fallback_preset_label(input: &TtsVoicePresetInput) -> String {
     "Voice Preset".to_string()
 }
 
-fn preset_from_input(
+pub(crate) fn preset_from_input(
     input: TtsVoicePresetInput,
     preset_id: Option<String>,
 ) -> Result<TtsVoicePreset, String> {

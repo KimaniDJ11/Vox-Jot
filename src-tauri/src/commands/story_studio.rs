@@ -1,4 +1,5 @@
-use crate::settings::{get_settings, TtsVoicePreset};
+use crate::commands::tts::preset_from_input;
+use crate::settings::{get_settings, TtsVoicePreset, TtsVoicePresetInput};
 use crate::tts::{SpeakRequest, TtsManager};
 use hound::{WavSpec, WavWriter};
 use once_cell::sync::Lazy;
@@ -38,6 +39,14 @@ pub struct StoryRenderRequest {
     pub pause_ms_between_lines: u32,
     #[serde(default)]
     pub line_instructions: Vec<StoryLineInstructionOverride>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CreateSpeechAudioRequest {
+    pub render_id: String,
+    pub title: String,
+    pub text: String,
+    pub preset: TtsVoicePresetInput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -263,6 +272,83 @@ fn cancel_story_render_locked(queue: &mut StoryRenderQueueState, render_id: &str
 #[specta::specta]
 pub fn list_story_render_jobs() -> Result<Vec<StoryRenderJobSummary>, String> {
     Ok(story_render_job_summaries())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn generate_create_speech_audio(
+    app: AppHandle,
+    request: CreateSpeechAudioRequest,
+) -> Result<StoryRenderResult, String> {
+    let text = request.text.trim().to_string();
+    if text.is_empty() {
+        return Err("Enter speech text before generating audio.".to_string());
+    }
+
+    let render_started_at = Instant::now();
+    let mut inline_preset = preset_from_input(request.preset, None)?;
+    if inline_preset.label.trim().is_empty() {
+        inline_preset.label = "Create Speech".to_string();
+    }
+
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let rendered_files = manager
+        .synthesize_to_temp_files(
+            SpeakRequest {
+                text: text.clone(),
+                locale: inline_preset.locale_snapshot.clone(),
+                preferred_voice_id: inline_preset.voice_id.clone(),
+                preset_id: None,
+                // Generate should render audio only. Voice profiles are persisted exclusively
+                // through create_tts_voice_preset, which is used by Save Tuned Voice.
+                inline_preset: Some(inline_preset.clone()),
+                trigger: Some("create_speech_generate".to_string()),
+                remember_last_output: false,
+            },
+            Arc::clone(&stop_flag),
+        )
+        .await?;
+
+    let output_path = output_path_for_story(&app, &request.title)?;
+    let rendered_groups = vec![rendered_files];
+    let duration_result = assemble_story_wav(&rendered_groups, 0, &output_path, &stop_flag);
+    cleanup_file_groups(&rendered_groups);
+    let duration_ms = duration_result?;
+
+    let output_path = output_path.to_string_lossy().to_string();
+    let result = StoryRenderResult {
+        render_id: request.render_id.clone(),
+        output_path: output_path.clone(),
+        duration_ms,
+        line_count: 1,
+    };
+    upsert_story_audio_item(
+        &app,
+        StoryAudioItem {
+            id: request.render_id,
+            title: story_title_label(&request.title),
+            script_text: text.clone(),
+            line_instructions: Vec::new(),
+            output_path,
+            created_at_ms: now_ms(),
+            duration_ms,
+            line_count: 1,
+            cast_count: 1,
+            generation_time_ms: elapsed_ms_u32(render_started_at),
+            sample_rate_hz: STORY_SAMPLE_RATE,
+            expression_tags_used: contains_expression_tag(&text),
+            inline_prompt_used: inline_preset
+                .tuning
+                .style_instructions
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty()),
+            starred: false,
+        },
+    )?;
+    emit_story_audio_updated(&app);
+
+    Ok(result)
 }
 
 async fn story_render_worker(app: AppHandle) {

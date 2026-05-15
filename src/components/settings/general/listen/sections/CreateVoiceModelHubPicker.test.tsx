@@ -13,10 +13,8 @@ vi.mock("../utils", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../utils")>();
   return {
     ...actual,
-    getTtsVoicesForSelection: (
-      providerId: string,
-      modelId: string | null,
-    ) => getTtsVoicesForSelection(providerId, modelId),
+    getTtsVoicesForSelection: (providerId: string, modelId: string | null) =>
+      getTtsVoicesForSelection(providerId, modelId),
   };
 });
 
@@ -187,7 +185,9 @@ describe("CreateVoiceModelHubPicker", () => {
 
     await act(async () => {
       (
-        Array.from(document.body.querySelectorAll("button")).find((button) =>
+        Array.from(
+          document.body.querySelectorAll('button, [role="button"]'),
+        ).find((button) =>
           button.textContent?.includes("Heart"),
         ) as HTMLButtonElement
       ).click();

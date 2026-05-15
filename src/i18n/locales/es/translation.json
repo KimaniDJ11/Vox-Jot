@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Pon nombre a estos ajustes de voz para poder reutilizarlos.",
       "tunedVoiceName": "Nombre de la voz ajustada",
       "toolAriaLabel": "Herramientas para crear voz sintética",
-      "audioTab": "Audio",
+      "audioTab": "Habla",
       "draft": "Borrador",
       "draftModelDetail": "Seleccionado solo para el borrador de Crear voz sintética. La voz activa de la app no cambia.",
       "modelDetails": "Detalles de {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Filtrar voces por género: {{label}}",
       "filterVoicesByAccent": "Filtrar voces por acento: {{label}}",
       "femaleVoice": "Voz femenina",
-      "maleVoice": "Voz masculina"
+      "maleVoice": "Voz masculina",
+      "automaticVoice": "Voz automática",
+      "selectedPreviewVoice": "Voz seleccionada: {{voice}}",
+      "textToSpeech": "Texto a voz",
+      "previewVoice": "Previsualizar {{voice}}",
+      "stopVoicePreview": "Detener vista previa de {{voice}}",
+      "generateSuccess": "Audio de voz generado. Abre Audio generado para reproducirlo.",
+      "generateFailed": "No se pudo generar el audio de voz.",
+      "loadVoicesFailed": "No se pudieron cargar las voces para el modelo seleccionado",
+      "noCloneProfile": "Sin perfil de clonación",
+      "profileNeedsAudio": "{{profile}} (necesita audio)",
+      "providerFilter": "Proveedor",
+      "languageFilter": "Idioma",
+      "bestMatchSort": "Mejor coincidencia",
+      "saveVoicePresetFailed": "No se pudo guardar el preajuste de voz"
     }
   },
   "refine": {

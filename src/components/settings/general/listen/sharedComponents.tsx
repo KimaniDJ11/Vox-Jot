@@ -326,6 +326,7 @@ export const VoiceTuningCard: React.FC<{
   embedded?: boolean;
   surfaceClassName?: string;
   modelLabel?: string | null;
+  titleAccessory?: React.ReactNode;
   onResetAll?: () => void;
   onClose?: () => void;
   footerSlot?: React.ReactNode;
@@ -339,6 +340,7 @@ export const VoiceTuningCard: React.FC<{
   embedded = false,
   surfaceClassName = workflowCardClassName,
   modelLabel,
+  titleAccessory,
   onResetAll,
   onClose,
   footerSlot,
@@ -448,6 +450,7 @@ export const VoiceTuningCard: React.FC<{
           <h3 className="text-base font-semibold text-[var(--text)]">
             {title}
           </h3>
+          {titleAccessory}
           {trimmedModelLabel ? (
             <span
               className="inline-flex items-center gap-1 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]"

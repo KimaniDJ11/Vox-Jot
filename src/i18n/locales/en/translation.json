@@ -2074,7 +2074,7 @@
       "noVoiceSearchResults": "No installed voice presets match those filters.",
       "tuning": "Tuning",
       "toolAriaLabel": "Create Speech tools",
-      "audioTab": "Audio",
+      "audioTab": "Speech",
       "draft": "Draft",
       "draftModelDetail": "Selected for the Create Speech draft only. The active app voice is unchanged.",
       "modelDetails": "{{modelName}} details",
@@ -2087,7 +2087,21 @@
       "filterVoicesByGender": "Filter voices by gender: {{label}}",
       "filterVoicesByAccent": "Filter voices by accent: {{label}}",
       "femaleVoice": "Female voice",
-      "maleVoice": "Male voice"
+      "maleVoice": "Male voice",
+      "automaticVoice": "Automatic voice",
+      "selectedPreviewVoice": "Selected voice: {{voice}}",
+      "textToSpeech": "Text to Speech",
+      "previewVoice": "Preview {{voice}}",
+      "stopVoicePreview": "Stop {{voice}} preview",
+      "generateSuccess": "Speech audio generated. Open Generated Audio to play it.",
+      "generateFailed": "Failed to generate speech audio.",
+      "loadVoicesFailed": "Failed to load voices for the selected model",
+      "noCloneProfile": "No clone profile",
+      "profileNeedsAudio": "{{profile}} (Needs audio)",
+      "providerFilter": "Provider",
+      "languageFilter": "Language",
+      "bestMatchSort": "Best Match",
+      "saveVoicePresetFailed": "Failed to save voice preset"
     }
   },
   "commandMenu": {

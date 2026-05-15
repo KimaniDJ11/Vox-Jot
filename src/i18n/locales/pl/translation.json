@@ -1759,7 +1759,7 @@
       "saveTunedVoiceDetail": "Nazwij te dostrojone ustawienia głosu, aby móc użyć ich ponownie.",
       "tunedVoiceName": "Nazwa dostrojonego głosu",
       "toolAriaLabel": "Narzędzia tworzenia mowy",
-      "audioTab": "Audio",
+      "audioTab": "Mowa",
       "draft": "Wersja robocza",
       "draftModelDetail": "Wybrano tylko dla wersji roboczej Utwórz mowę. Aktywny głos aplikacji pozostaje bez zmian.",
       "modelDetails": "Szczegóły {{modelName}}",
@@ -1772,7 +1772,21 @@
       "filterVoicesByGender": "Filtruj głosy według płci: {{label}}",
       "filterVoicesByAccent": "Filtruj głosy według akcentu: {{label}}",
       "femaleVoice": "Głos żeński",
-      "maleVoice": "Głos męski"
+      "maleVoice": "Głos męski",
+      "automaticVoice": "Głos automatyczny",
+      "selectedPreviewVoice": "Wybrany głos: {{voice}}",
+      "textToSpeech": "Tekst na mowę",
+      "previewVoice": "Odsłuchaj {{voice}}",
+      "stopVoicePreview": "Zatrzymaj podgląd {{voice}}",
+      "generateSuccess": "Wygenerowano audio mowy. Otwórz Wygenerowane audio, aby je odtworzyć.",
+      "generateFailed": "Nie udało się wygenerować audio mowy.",
+      "loadVoicesFailed": "Nie udało się wczytać głosów dla wybranego modelu",
+      "noCloneProfile": "Brak profilu klonowania",
+      "profileNeedsAudio": "{{profile}} (wymaga audio)",
+      "providerFilter": "Dostawca",
+      "languageFilter": "Język",
+      "bestMatchSort": "Najlepsze dopasowanie",
+      "saveVoicePresetFailed": "Nie udało się zapisać presetu głosu"
     }
   },
   "refine": {

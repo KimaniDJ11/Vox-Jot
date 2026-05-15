@@ -2111,6 +2111,14 @@ async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRender
     else return { status: "error", error: e  as any };
 }
 },
+async generateCreateSpeechAudio(request: CreateSpeechAudioRequest) : Promise<Result<StoryRenderResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("generate_create_speech_audio", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async cancelStoryRender(renderId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("cancel_story_render", { renderId }) };
@@ -2522,6 +2530,7 @@ export type ConvoTranscriptItem = { id: string; role: string; text: string; time
 export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
 export type CorrectionAutoApply = { status: CorrectionAutoApplyStatus; eligible: boolean; effective_confidence: number; min_frequency: number; min_confidence: number; confirmations_remaining: number }
 export type CorrectionAutoApplyStatus = "candidate" | "manual" | "active" | "low_confidence" | "blocked" | "disabled"
+export type CreateSpeechAudioRequest = { render_id: string; title: string; text: string; preset: TtsVoicePresetInput }
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
@@ -2714,6 +2723,7 @@ export type StoryLineInstructionOverride = { line_number: number; style_instruct
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
 export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
 export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[] }
+export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.
  *

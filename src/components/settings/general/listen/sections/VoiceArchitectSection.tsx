@@ -693,17 +693,7 @@ export const VoiceArchitectSection: React.FC<{
             <div className="max-h-[calc(min(88vh,920px)-146px)] overflow-y-auto p-4">
               {filteredDraftModels.length > 0 ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text)]">
-                      {t("listen.createVoices.availableModels", {
-                        defaultValue: "Available Models",
-                      })}
-                    </h4>
-                    <Badge variant="secondary">
-                      {orderedDraftModels.length}
-                    </Badge>
-                  </div>
-                  <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="flex flex-col gap-3">
                     {orderedDraftModels.map((model) => (
                       <DraftVoiceModelLibraryCard
                         key={`${model.provider_id}::${model.id}`}

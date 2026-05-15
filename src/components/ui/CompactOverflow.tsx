@@ -28,6 +28,14 @@ function badgeIconForItem(item: CompactBadgeItem) {
   return item.icon;
 }
 
+function shouldPreserveBadgeLabel(item: CompactBadgeItem): boolean {
+  return (
+    item.id === "identity-params" ||
+    item.id === "capability-size" ||
+    item.id === "identity-arch"
+  );
+}
+
 interface OverflowInfoButtonProps {
   lines: string[];
   label: string;
@@ -101,15 +109,29 @@ export const CompactBadgeRow: React.FC<{
           ? `${item.label} — ${item.detail}`
           : item.label;
         const icon = badgeIconForItem(item);
+        const preserveLabel = shouldPreserveBadgeLabel(item);
         return (
           <Badge
             key={item.id}
             variant={item.variant ?? "secondary"}
-            className="min-w-0 max-w-[9.5rem] shrink truncate"
+            className={
+              preserveLabel
+                ? "max-w-none shrink-0"
+                : "min-w-0 max-w-[9.5rem] shrink truncate"
+            }
           >
-            <span className="inline-flex min-w-0 items-center" title={tooltip}>
+            <span
+              className={
+                preserveLabel
+                  ? "inline-flex min-w-max items-center"
+                  : "inline-flex min-w-0 items-center"
+              }
+              title={tooltip}
+            >
               {icon ? <span className="mr-1 shrink-0">{icon}</span> : null}
-              <span className="truncate">{item.label}</span>
+              <span className={preserveLabel ? "whitespace-nowrap" : "truncate"}>
+                {item.label}
+              </span>
             </span>
           </Badge>
         );

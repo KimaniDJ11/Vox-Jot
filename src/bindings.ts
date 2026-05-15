@@ -2503,7 +2503,7 @@ export type AudioDevice = { index: string; name: string; is_default: boolean }
 export type AutoSubmitKey = "enter" | "ctrl_enter" | "cmd_enter"
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
 export type CapabilityFlags = { downloadable: boolean; loadable: boolean; local_only: boolean; supports_translation: boolean; supports_streaming: boolean; supports_voice_cloning: boolean; supports_instruction_prompt: boolean; supports_inline_tags: boolean; coming_soon: boolean }
-export type CatalogModelDescriptor = { id: string; provider_id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; installed: boolean; selected: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_label: string; runtime: RuntimeRequirement; license_label: string | null; locale: string | null; supported_languages: string[]; readiness_status: string | null; readiness_issues: string[]; capabilities: CapabilityFlags; delivery_support: TtsDeliverySupport }
+export type CatalogModelDescriptor = { id: string; provider_id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; installed: boolean; selected: boolean; active: boolean; runnable: boolean; downloadable: boolean; source_label: string; source_url: string | null; runtime: RuntimeRequirement; license_label: string | null; locale: string | null; supported_languages: string[]; readiness_status: string | null; readiness_issues: string[]; capabilities: CapabilityFlags; delivery_support: TtsDeliverySupport }
 export type CatalogSourceKind = "builtin" | "runtime"
 export type ClipboardHandling = "dont_modify" | "copy_to_clipboard"
 export type ContextCaptureMode = "always_frequent" | "adaptive_cache" | "mostly_on_demand"
@@ -2625,7 +2625,7 @@ runnable: boolean;
 /**
  * HuggingFace repo the in-app downloader pulls from.
  */
-hf_repo_id: string;
+hf_repo_id: string; license_label: string; upstream_url: string;
 /**
  * Public web URL pointing at the HF repo, surfaced in the UI for users
  * who want to inspect the mirror before downloading.
@@ -2643,7 +2643,7 @@ export type PostProcessProvider = { id: string; label: string; base_url: string;
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number }
-export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
+export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
 export type RecordingOverlayStyle =
 /**
  * Pill-shaped overlay with a small waveform — the historical
@@ -2744,7 +2744,7 @@ export type TtsDeliverySupport = { expressiveness_mode: TtsExpressivenessMode; a
 export type TtsEngineKind = "system" | "sherpa_onnx" | "sidecar" | "mlx_native" | "qwen_3_native" | "lfm_audio_gguf" | "vibe_voice"
 export type TtsEnginePreference = "auto" | "system" | "sherpa_onnx" | "sidecar"
 export type TtsExpressivenessMode = "native" | "mapped" | "unsupported"
-export type TtsPackInfo = { id: string; label: string; locale: string; voice_id: string; archive_name: string; installed: boolean }
+export type TtsPackInfo = { id: string; label: string; locale: string; voice_id: string; archive_name: string; source_url: string; installed: boolean }
 export type TtsReadbackTextMode = "final_output" | "translated_block"
 export type TtsStyleControlValue = { kind: "number"; value: number } | { kind: "boolean"; value: boolean } | { kind: "text"; value: string }
 export type TtsVoicePreset = { id: string; label: string; provider_id: string; model_id: string; voice_id?: string | null; voice_profile_id?: string | null; voice_label_snapshot?: string | null; locale_snapshot?: string | null; tuning: TtsVoiceTuningSettings }

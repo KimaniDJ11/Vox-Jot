@@ -15,6 +15,7 @@ import {
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import {
   commands,
@@ -42,6 +43,9 @@ import {
   resolveModelProviderId,
 } from "@/components/ui/ProviderIcon";
 import ModelListControls from "@/components/model-hub/ModelListControls";
+import LicenseAcknowledgementDialog, {
+  type LicenseAcknowledgementGate,
+} from "@/components/model-hub/LicenseAcknowledgementDialog";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import {
   DEFAULT_MODEL_SORT_OPTIONS,
@@ -52,6 +56,29 @@ import {
 import { getScreenOcrEvaluationResult } from "@/lib/screenOcrEvaluationResults";
 
 type OcrProviderFilterValue = "all" | "system" | "neural" | "tesseract";
+
+const OCR_LICENSE_ACKNOWLEDGEMENT_GATES: Record<
+  string,
+  LicenseAcknowledgementGate
+> = {
+  "chandra-ocr-2": {
+    kind: "custom_review",
+    licenseLabel: "Modified OpenRAIL-M",
+    termsUrl: "https://huggingface.co/datalab-to/chandra-ocr-2",
+    note: "Review the publisher's use restrictions before using this model outside personal, research, or covered startup use.",
+  },
+  "qwen2.5-vl-3b": {
+    kind: "non_commercial",
+    licenseLabel: "Qwen Research License",
+    termsUrl:
+      "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/main/LICENSE",
+  },
+};
+
+const ocrLicenseGate = (
+  model: OcrModelDescriptor,
+): LicenseAcknowledgementGate | null =>
+  OCR_LICENSE_ACKNOWLEDGEMENT_GATES[model.id] ?? null;
 
 interface OcrDownloadProgressPayload {
   catalog_id: string;
@@ -209,6 +236,8 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
     null,
   );
+  const [licenseGateDownloadModel, setLicenseGateDownloadModel] =
+    useState<OcrModelDescriptor | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<
     Record<
       string,
@@ -299,6 +328,14 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   };
 
   const onDownloadNeuralHf = async (model: OcrModelDescriptor) => {
+    if (!model.installed && ocrLicenseGate(model)) {
+      setLicenseGateDownloadModel(model);
+      return;
+    }
+    await downloadNeuralHf(model);
+  };
+
+  const downloadNeuralHf = async (model: OcrModelDescriptor) => {
     setBusyId(model.id);
     setCatalogError(null);
     setDownloadProgress((prev) => ({
@@ -335,6 +372,18 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       setBusyId(null);
     }
   };
+
+  const closeLicenseGateDownload = useCallback(() => {
+    if (busyId) return;
+    setLicenseGateDownloadModel(null);
+  }, [busyId]);
+
+  const confirmLicenseGateDownload = useCallback(() => {
+    if (!licenseGateDownloadModel || busyId) return;
+    const model = licenseGateDownloadModel;
+    setLicenseGateDownloadModel(null);
+    void downloadNeuralHf(model);
+  }, [busyId, licenseGateDownloadModel]);
 
   const onImportNeural = async (model: OcrModelDescriptor) => {
     let picked: string | null = null;
@@ -533,6 +582,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           active: (model) => model.id === currentNeural,
           installed: (model) => model.installed,
           runnable: (model) => model.runnable,
+          gated: (model) => Boolean(ocrLicenseGate(model)),
           rank: (model) => getScreenOcrEvaluationResult(model.id)?.rank,
           latencyMs: (model) =>
             getScreenOcrEvaluationResult(model.id)?.averageLatencyMs,
@@ -722,6 +772,22 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           }
         : null,
     ].filter(Boolean) as CompactBadgeItem[];
+    const titleBadges: CompactBadgeItem[] = [
+      ocrLicenseGate(model)
+        ? {
+            id: "license-gate",
+            label: t("modelHub.licenseGate.badge", {
+              defaultValue: "Restricted license",
+            }),
+            variant: "secondary",
+            icon: <AlertTriangle className="h-3 w-3" />,
+            detail: t("modelHub.licenseGate.badgeDetail", {
+              defaultValue:
+                "Requires acknowledging publisher license restrictions before download.",
+            }),
+          }
+        : null,
+    ].filter(Boolean) as CompactBadgeItem[];
 
     const backendLabel = ocrBackendLabel(model, t);
     const identityChips = buildModelIdentityChips({
@@ -785,69 +851,27 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           }
         : null,
     ].filter(Boolean) as CompactBadgeItem[];
-    const footerMetaItems = [backendLabel];
+    const footerMetaItems = [
+      backendLabel,
+      model.license_label,
+      model.hf_repo_id,
+    ].filter(Boolean) as string[];
 
     let trailing: HubTrailing = null;
     const dl = downloadProgress[model.id];
 
     if (!model.installed && !dl) {
       trailing = {
-        kind: "custom",
-        node: (
-          <div
-            className="flex shrink-0 items-center gap-1"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            <Button
-              variant="primary"
-              size="icon"
-              title={t("modelHub.ocr.actions.downloadFromHub", {
-                modelName: model.title,
-                repoId: model.hf_repo_id,
-                defaultValue:
-                  "Download {{modelName}} from Hugging Face ({{repoId}}). Neural OCR downloads also install the Vox Jot OCR runtime when needed.",
-              })}
-              aria-label={t("modelHub.ocr.actions.downloadFromHub", {
-                modelName: model.title,
-                repoId: model.hf_repo_id,
-                defaultValue:
-                  "Download {{modelName}} from Hugging Face ({{repoId}}). Neural OCR downloads also install the Vox Jot OCR runtime when needed.",
-              })}
-              disabled={isBusy && busyId === model.id}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void onDownloadNeuralHf(model);
-              }}
-            >
-              {isBusy && busyId === model.id ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                <Download className="h-3.5 w-3.5" aria-hidden />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title={t("modelHub.ocr.actions.importFromDisk", {
-                defaultValue: "Import from folder",
-              })}
-              aria-label={t("modelHub.ocr.actions.importFromDisk", {
-                defaultValue: "Import from folder",
-              })}
-              disabled={Boolean(busyId)}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                void onImportNeural(model);
-              }}
-              className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
-            >
-              <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-            </Button>
-          </div>
-        ),
+        kind: "acquire",
+        label: t("modelHub.ocr.actions.downloadFromHub", {
+          modelName: model.title,
+          repoId: model.hf_repo_id,
+          defaultValue:
+            "Download {{modelName}} from Hugging Face ({{repoId}}). Neural OCR downloads also install the Vox Jot OCR runtime when needed.",
+        }),
+        disabled: isBusy && busyId === model.id,
+        busy: isBusy && busyId === model.id,
+        onClick: () => void onDownloadNeuralHf(model),
       };
     } else if (!isConfirmingDelete) {
       trailing = {
@@ -972,11 +996,43 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           model.backend === "tessdata_pack" ? "tesseract" : "generic",
         )}
         subline={model.vendor}
+        titleBadges={titleBadges}
         headerBadges={headerBadges}
         headerBadgesMaxVisible={2}
         description={model.description}
         capabilityChips={capabilityChips}
         footerMetaItems={footerMetaItems}
+        footerMetaLeadingActions={
+          !model.installed && !dl ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              title={t("modelHub.ocr.actions.importFromDisk", {
+                defaultValue: "Import from folder",
+              })}
+              aria-label={t("modelHub.ocr.actions.importFromDisk", {
+                defaultValue: "Import from folder",
+              })}
+              disabled={Boolean(busyId)}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void onImportNeural(model);
+              }}
+              className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
+            >
+              <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          ) : undefined
+        }
+        footerMetaLinks={[
+          {
+            label: t("modelHub.sourceLink", {
+              defaultValue: "Open model source",
+            }),
+            url: model.upstream_url || model.hf_repo_url,
+          },
+        ]}
         footerMetaIcon={<Globe className="h-3.5 w-3.5" aria-hidden />}
         footerMetaMaxVisible={4}
         footerOverflowLabel={`${model.title} details`}
@@ -1086,6 +1142,29 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
           </div>
         ) : null}
       </div>
+      <LicenseAcknowledgementDialog
+        open={Boolean(licenseGateDownloadModel)}
+        modelName={licenseGateDownloadModel?.title ?? ""}
+        acknowledgementId={
+          licenseGateDownloadModel
+            ? `ocr.${licenseGateDownloadModel.id}`
+            : "ocr.unknown"
+        }
+        gate={
+          licenseGateDownloadModel
+            ? ocrLicenseGate(licenseGateDownloadModel)
+            : null
+        }
+        busy={Boolean(busyId)}
+        onOpenTerms={async () => {
+          if (!licenseGateDownloadModel) return;
+          const gate = ocrLicenseGate(licenseGateDownloadModel);
+          if (!gate) return;
+          await openUrl(gate.termsUrl);
+        }}
+        onCancel={closeLicenseGateDownload}
+        onConfirm={confirmLicenseGateDownload}
+      />
     </div>
   );
 };

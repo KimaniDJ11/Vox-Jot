@@ -1,0 +1,747 @@
+{
+  "schema_version": 1,
+  "generated_for": "Vox Jot model catalog",
+  "notice_file": "THIRD_PARTY_MODEL_NOTICES.md",
+  "entries": [
+    {
+      "id": "whisper-family",
+      "domains": ["stt", "speech_analysis"],
+      "name": "OpenAI Whisper / whisper.cpp GGML assets",
+      "upstream": "https://github.com/openai/whisper",
+      "distribution_source": "https://huggingface.co/ggerganov/whisper.cpp",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": ["whisper-diarization"]
+    },
+    {
+      "id": "parakeet-family",
+      "domains": ["stt"],
+      "name": "NVIDIA Parakeet",
+      "upstream": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "CC-BY-4.0",
+      "commercial_status": "allowed_with_attribution",
+      "required_notices": [
+        "model_attribution",
+        "license_link",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "moonshine-family",
+      "domains": ["stt"],
+      "name": "Useful Sensors Moonshine",
+      "upstream": "https://huggingface.co/UsefulSensors/moonshine",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"]
+    },
+    {
+      "id": "sensevoice-small",
+      "domains": ["stt"],
+      "name": "FunAudioLLM SenseVoice Small",
+      "upstream": "https://huggingface.co/FunAudioLLM/SenseVoiceSmall",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "SenseVoice model license",
+      "commercial_status": "needs_review",
+      "required_notices": ["license_text", "model_attribution", "source_link"]
+    },
+    {
+      "id": "gigaam-v3",
+      "domains": ["stt"],
+      "name": "GigaAM v3",
+      "upstream": "https://huggingface.co/ai-sage/GigaAM-v3",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"]
+    },
+    {
+      "id": "breeze-asr",
+      "domains": ["stt"],
+      "name": "Breeze ASR 25 whisper.cpp conversion",
+      "upstream": "https://huggingface.co/alan314159/Breeze-ASR-25-whispercpp",
+      "distribution_source": "https://huggingface.co/IrieDinamik/vox-jot-models",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "apple-speech",
+      "domains": ["stt"],
+      "name": "Apple SpeechAnalyzer",
+      "upstream": "https://developer.apple.com/documentation/speech",
+      "distribution_source": "Platform runtime",
+      "license": "Apple platform SDK terms",
+      "commercial_status": "platform_runtime",
+      "required_notices": ["platform_terms"]
+    },
+    {
+      "id": "qwen3-asr",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Qwen3 ASR MLX conversions",
+      "upstream": "https://huggingface.co/Qwen",
+      "distribution_source": "https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-qwen3-asr", "mlx-qwen3-asr-0.6b"]
+    },
+    {
+      "id": "fireredasr2-aed",
+      "domains": ["stt", "speech_analysis"],
+      "name": "FireRedASR2 AED MLX conversion",
+      "upstream": "https://huggingface.co/mlx-community/FireRedASR2-AED-mlx",
+      "distribution_source": "https://huggingface.co/mlx-community/FireRedASR2-AED-mlx",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-fireredasr2-aed"]
+    },
+    {
+      "id": "vibevoice-asr",
+      "domains": ["stt", "speech_analysis"],
+      "name": "Microsoft VibeVoice ASR MLX conversion",
+      "upstream": "https://huggingface.co/mlx-community/VibeVoice-ASR-bf16",
+      "distribution_source": "https://huggingface.co/mlx-community/VibeVoice-ASR-bf16",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-vibevoice-asr-bf16"]
+    },
+    {
+      "id": "granite-speech-4-1-2b",
+      "domains": ["speech_analysis"],
+      "name": "IBM Granite Speech 4.1 2B",
+      "upstream": "https://huggingface.co/ibm-granite/granite-speech-4.1-2b",
+      "distribution_source": "https://huggingface.co/ibm-granite/granite-speech-4.1-2b",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"]
+    },
+    {
+      "id": "cohere-transcribe-03-2026",
+      "domains": ["speech_analysis"],
+      "name": "Cohere Transcribe 03-2026",
+      "upstream": "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026",
+      "distribution_source": "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice_gated",
+      "required_notices": ["license_text", "copyright_notice", "accepted_terms"]
+    },
+    {
+      "id": "pyannote-community-1",
+      "domains": ["speech_analysis"],
+      "name": "pyannote Speaker Diarization Community-1",
+      "upstream": "https://huggingface.co/pyannote/speaker-diarization-community-1",
+      "distribution_source": "https://huggingface.co/pyannote/speaker-diarization-community-1",
+      "license": "CC-BY-4.0",
+      "commercial_status": "allowed_with_attribution_gated",
+      "required_notices": [
+        "model_attribution",
+        "license_link",
+        "accepted_terms"
+      ]
+    },
+    {
+      "id": "pyannote-3-1",
+      "domains": ["speech_analysis"],
+      "name": "pyannote Speaker Diarization 3.1",
+      "upstream": "https://huggingface.co/pyannote/speaker-diarization-3.1",
+      "distribution_source": "https://huggingface.co/pyannote/speaker-diarization-3.1",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice_gated",
+      "required_notices": ["license_text", "accepted_terms"]
+    },
+    {
+      "id": "sortformer-v2-1",
+      "domains": ["speech_analysis"],
+      "name": "NVIDIA Sortformer v2.1 MLX conversion",
+      "upstream": "https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2.1",
+      "distribution_source": "https://huggingface.co/mlx-community/diar_streaming_sortformer_4spk-v2.1-fp16",
+      "license": "CC-BY-4.0",
+      "commercial_status": "allowed_with_attribution",
+      "required_notices": [
+        "model_attribution",
+        "license_link",
+        "modification_notice"
+      ],
+      "catalog_ids": ["mlx-sortformer-4spk-v2-1"]
+    },
+    {
+      "id": "sortformer-v1",
+      "domains": ["speech_analysis"],
+      "name": "NVIDIA Sortformer v1",
+      "upstream": "https://huggingface.co/nvidia/diar_sortformer_4spk-v1",
+      "distribution_source": "https://huggingface.co/mlx-community/diar_sortformer_4spk-v1-fp16",
+      "license": "CC-BY-NC-4.0",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["nemo-sortformer-4spk-v1", "mlx-sortformer-4spk-v1"],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "reverb-diarization-v2",
+      "domains": ["speech_analysis"],
+      "name": "Rev.ai Reverb Diarization V2",
+      "upstream": "https://huggingface.co/Revai/reverb-diarization-v2",
+      "distribution_source": "https://huggingface.co/Revai/reverb-diarization-v2",
+      "license": "Custom / gated",
+      "commercial_status": "restricted_custom",
+      "required_notices": [
+        "license_link",
+        "accepted_terms",
+        "model_attribution"
+      ],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "polyvoice-wespeaker",
+      "domains": ["speech_analysis"],
+      "name": "Polyvoice ONNX diarization with WeSpeaker embeddings and Silero VAD",
+      "upstream": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34",
+      "distribution_source": "src-tauri/resources/models/polyvoice",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": ["onnx-polyvoice-diarization"]
+    },
+    {
+      "id": "qwen3-tts",
+      "domains": ["tts"],
+      "name": "Qwen3 TTS",
+      "upstream": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+      "distribution_source": "https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": [
+        "qwen3-tts-0.6b-4bit",
+        "qwen3-tts-1.7b",
+        "qwen3-tts-1.7b-base-8bit"
+      ]
+    },
+    {
+      "id": "openvoice",
+      "domains": ["tts"],
+      "name": "OpenVoice",
+      "upstream": "https://github.com/myshell-ai/OpenVoice",
+      "distribution_source": "https://huggingface.co/IrieDinamik/OpenVoice",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["openvoice"]
+    },
+    {
+      "id": "chatterbox",
+      "domains": ["tts"],
+      "name": "Resemble AI Chatterbox",
+      "upstream": "https://huggingface.co/ResembleAI/chatterbox",
+      "distribution_source": "https://huggingface.co/ResembleAI/chatterbox",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": [
+        "chatterbox",
+        "chatterbox-turbo",
+        "chatterbox-multilingual"
+      ]
+    },
+    {
+      "id": "kokoro",
+      "domains": ["tts"],
+      "name": "Kokoro",
+      "upstream": "https://huggingface.co/hexgrad/Kokoro-82M",
+      "distribution_source": "https://huggingface.co/mlx-community/Kokoro-82M-bf16",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["kokoro-82m", "kokoro-82m-v1.0"]
+    },
+    {
+      "id": "dia",
+      "domains": ["tts"],
+      "name": "Dia",
+      "upstream": "https://huggingface.co/nari-labs/Dia-1.6B",
+      "distribution_source": "https://huggingface.co/mlx-community/Dia-1.6B-fp16",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["dia-1.6b", "dia-1.6b-4bit"]
+    },
+    {
+      "id": "csm",
+      "domains": ["tts"],
+      "name": "Sesame CSM",
+      "upstream": "https://huggingface.co/sesame/csm-1b",
+      "distribution_source": "https://huggingface.co/mlx-community/csm-1b",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["csm-1b", "csm-1b-8bit"]
+    },
+    {
+      "id": "ming-omni",
+      "domains": ["tts"],
+      "name": "Ming Omni TTS",
+      "upstream": "https://huggingface.co/inclusionAI/Ming-Omni",
+      "distribution_source": "https://huggingface.co/mlx-community/Ming-omni-tts-0.5B-4bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["ming-omni-0.5b"]
+    },
+    {
+      "id": "kugelaudio",
+      "domains": ["tts"],
+      "name": "KugelAudio",
+      "upstream": "https://huggingface.co/kugelaudio/kugelaudio-0-open",
+      "distribution_source": "https://huggingface.co/kugelaudio/kugelaudio-0-open",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": ["kugel-audio-7b"]
+    },
+    {
+      "id": "bark-small",
+      "domains": ["tts"],
+      "name": "Suno Bark Small MLX conversion",
+      "upstream": "https://huggingface.co/suno/bark-small",
+      "distribution_source": "https://huggingface.co/mlx-community/bark-small",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["bark-small"]
+    },
+    {
+      "id": "longcat-audiodit",
+      "domains": ["tts"],
+      "name": "LongCat AudioDiT",
+      "upstream": "https://huggingface.co/Meituan-AutoSpeech/LongCat-AudioDiT",
+      "distribution_source": "https://huggingface.co/mlx-community/LongCat-AudioDiT-1B-4bit",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": [
+        "longcat-audiodit-1b-4bit",
+        "longcat-audiodit-1b-bf16",
+        "longcat-audiodit-3-5b-4bit"
+      ]
+    },
+    {
+      "id": "soprano",
+      "domains": ["tts"],
+      "name": "Soprano",
+      "upstream": "https://huggingface.co/resemble-ai/soprano-80m",
+      "distribution_source": "https://huggingface.co/mlx-community/Soprano-80M-4bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["soprano-80m-4bit", "soprano-1-1-80m-bf16"]
+    },
+    {
+      "id": "melotts",
+      "domains": ["tts"],
+      "name": "MeloTTS English MLX",
+      "upstream": "https://github.com/myshell-ai/MeloTTS",
+      "distribution_source": "https://huggingface.co/mlx-community/MeloTTS-English-MLX",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["melotts-english"]
+    },
+    {
+      "id": "higgs-audio",
+      "domains": ["tts"],
+      "name": "Higgs Audio v2",
+      "upstream": "https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base",
+      "distribution_source": "https://huggingface.co/mlx-community/higgs-audio-v2-3B-mlx-q8",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["higgs-audio-v2-3b-q6", "higgs-audio-v2-3b-q8"]
+    },
+    {
+      "id": "moss-tts-nano",
+      "domains": ["tts"],
+      "name": "MOSS-TTS Nano",
+      "upstream": "https://huggingface.co/fnlp/MOSS-TTSD-v0.5",
+      "distribution_source": "https://huggingface.co/mlx-community/MOSS-TTS-Nano-100M",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["moss-tts-nano-100m"]
+    },
+    {
+      "id": "irodori",
+      "domains": ["tts"],
+      "name": "Irodori TTS",
+      "upstream": "https://huggingface.co/Aratako/Irodori-TTS-500M-v2",
+      "distribution_source": "https://huggingface.co/mlx-community/Irodori-TTS-500M-v2-4bit",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["irodori-tts-500m-v2-4bit"]
+    },
+    {
+      "id": "indextts",
+      "domains": ["tts"],
+      "name": "IndexTTS",
+      "upstream": "https://huggingface.co/IndexTeam/IndexTTS-1.5",
+      "distribution_source": "https://huggingface.co/mlx-community/IndexTTS-1.5",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["indextts-1-5"]
+    },
+    {
+      "id": "omnivoice",
+      "domains": ["tts"],
+      "name": "OmniVoice",
+      "upstream": "https://huggingface.co/k2-fsa/OmniVoice",
+      "distribution_source": "https://huggingface.co/k2-fsa/OmniVoice",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "copyright_notice"],
+      "catalog_ids": ["omnivoice"]
+    },
+    {
+      "id": "vibevoice-realtime",
+      "domains": ["tts"],
+      "name": "VibeVoice Realtime",
+      "upstream": "https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B",
+      "distribution_source": "https://huggingface.co/mlx-community/VibeVoice-Realtime-0.5B-4bit",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["vibevoice-realtime-0-5b-4bit-mlx"]
+    },
+    {
+      "id": "voxcpm2",
+      "domains": ["tts"],
+      "name": "VoxCPM2",
+      "upstream": "https://huggingface.co/openbmb/VoxCPM2",
+      "distribution_source": "https://huggingface.co/mlx-community/VoxCPM2-8bit",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ],
+      "catalog_ids": ["voxcpm2-4bit", "voxcpm2-8bit", "voxcpm2-bf16"]
+    },
+    {
+      "id": "pocket-tts",
+      "domains": ["tts"],
+      "name": "Pocket TTS",
+      "upstream": "https://huggingface.co/andito/pocket-tts",
+      "distribution_source": "https://huggingface.co/mlx-community/pocket-tts",
+      "license": "CC-BY-4.0",
+      "commercial_status": "allowed_with_attribution",
+      "required_notices": [
+        "model_attribution",
+        "license_link",
+        "modification_notice"
+      ],
+      "catalog_ids": ["pocket-tts", "pocket-tts-4bit", "pocket-tts-8bit"]
+    },
+    {
+      "id": "xtts-v2",
+      "domains": ["tts"],
+      "name": "Coqui XTTS v2",
+      "upstream": "https://huggingface.co/coqui/XTTS-v2",
+      "distribution_source": "https://huggingface.co/coqui/XTTS-v2",
+      "license": "Coqui Public Model License",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "accepted_terms",
+        "model_attribution"
+      ],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "supertonic-3",
+      "domains": ["tts"],
+      "name": "Supertonic 3",
+      "upstream": "https://huggingface.co/supertone/supertonic-3",
+      "distribution_source": "https://huggingface.co/supertone/supertonic-3",
+      "license": "OpenRAIL-M",
+      "commercial_status": "needs_review",
+      "required_notices": ["license_link", "model_attribution"]
+    },
+    {
+      "id": "spark-tts",
+      "domains": ["tts"],
+      "name": "Spark TTS",
+      "upstream": "https://huggingface.co/SparkAudio/Spark-TTS-0.5B",
+      "distribution_source": "https://huggingface.co/mlx-community/Spark-TTS-0.5B-bf16",
+      "license": "CC-BY-NC-SA-4.0",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["spark-tts-0.5b", "spark-tts-0.5b-4-6bit"],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "outetts",
+      "domains": ["tts"],
+      "name": "Llama OuteTTS",
+      "upstream": "https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B",
+      "distribution_source": "https://huggingface.co/mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+      "license": "CC-BY-NC-SA-4.0",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["outetts-1b-4bit"],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "fish-audio-s2-pro",
+      "domains": ["tts"],
+      "name": "Fish Audio S2 Pro",
+      "upstream": "https://huggingface.co/fishaudio/fish-speech-1.5",
+      "distribution_source": "https://huggingface.co/mlx-community/fish-audio-s2-pro-bf16",
+      "license": "Fish Audio Research License",
+      "commercial_status": "restricted_custom",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["fish-audio-s2-pro", "fish-audio-s2-pro-8bit"],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "lfm2-5-audio-1-5b",
+      "domains": ["tts"],
+      "name": "Liquid LFM2.5 Audio 1.5B",
+      "upstream": "https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B",
+      "distribution_source": "https://huggingface.co/mlx-community/LFM2.5-Audio-1.5B-bf16",
+      "license": "LFM Open License v1.0",
+      "commercial_status": "restricted_custom",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "voxtral-tts",
+      "domains": ["tts"],
+      "name": "Voxtral TTS",
+      "upstream": "https://huggingface.co/mistralai/Voxtral-4B-TTS-2603",
+      "distribution_source": "https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-bf16",
+      "license": "CC-BY-NC-4.0",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "catalog_ids": ["voxtral-tts-4b", "voxtral-tts-4b-4bit"],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "sherpa-onnx-tts-packs",
+      "domains": ["tts"],
+      "name": "k2-fsa sherpa-onnx TTS runtime and VITS voice packs",
+      "upstream": "https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models",
+      "distribution_source": "https://github.com/KimaniDJ11/Vox-Jot/releases",
+      "license": "Apache-2.0 / voice-pack upstream licenses",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": ["license_text", "model_attribution", "source_link"],
+      "catalog_ids": ["tts-sherpa-en-us-lessac-medium", "tts-sherpa-zh-cn-melo"]
+    },
+    {
+      "id": "pp-ocrv5",
+      "domains": ["ocr"],
+      "name": "PaddlePaddle PP-OCRv5",
+      "upstream": "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_safetensors",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-mirror-ppocrv5",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "lighton-ocr-2-1b",
+      "domains": ["ocr"],
+      "name": "LightOnOCR-2 1B",
+      "upstream": "https://huggingface.co/lightonai/LightOnOCR-2-1B",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-mirror-lightonocr-2-1b",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "chandra-ocr-2",
+      "domains": ["ocr"],
+      "name": "Chandra OCR 2",
+      "upstream": "https://huggingface.co/datalab-to/chandra-ocr-2",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-mirror-chandra-ocr-2",
+      "license": "Modified OpenRAIL-M",
+      "commercial_status": "restricted_custom",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "olmocr-2-7b",
+      "domains": ["ocr"],
+      "name": "Allen AI olmOCR-2 7B",
+      "upstream": "https://huggingface.co/allenai/olmOCR-2-7B-1025",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-mirror-olmocr-2-7b-1025",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "glm-ocr",
+      "domains": ["ocr"],
+      "name": "GLM-OCR",
+      "upstream": "https://huggingface.co/zai-org/GLM-OCR",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-glm-ocr",
+      "license": "MIT",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    },
+    {
+      "id": "qwen2.5-vl-3b",
+      "domains": ["ocr"],
+      "name": "Qwen2.5-VL 3B Instruct",
+      "upstream": "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-qwen2-5-vl-3b",
+      "license": "Qwen Research License",
+      "commercial_status": "non_commercial",
+      "required_notices": [
+        "license_link",
+        "model_attribution",
+        "modification_notice"
+      ],
+      "ui_acknowledgement_required": true
+    },
+    {
+      "id": "tessdata-best",
+      "domains": ["ocr"],
+      "name": "Tesseract tessdata_best",
+      "upstream": "https://github.com/tesseract-ocr/tessdata_best",
+      "distribution_source": "https://huggingface.co/IrieDinamik/ocr-tessdata-best",
+      "license": "Apache-2.0",
+      "commercial_status": "allowed_with_notice",
+      "required_notices": [
+        "license_text",
+        "copyright_notice",
+        "modification_notice"
+      ]
+    }
+  ]
+}

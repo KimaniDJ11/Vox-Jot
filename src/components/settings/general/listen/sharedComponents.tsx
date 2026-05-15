@@ -155,13 +155,6 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   const languageCoverage = formatLanguageCoverage(model);
   const supportsStyle = modelHasTuningControls(model);
   const storageSizeLabel = ttsStorageSizeLabel(model, t);
-  const availabilityLabel = model.installed
-    ? t("modelHub.tts.downloaded", { defaultValue: "Downloaded" })
-    : model.downloadable
-      ? t("listen.createVoices.downloadRequired", {
-          defaultValue: "Download needed",
-        })
-      : t("listen.createVoices.available", { defaultValue: "Available" });
 
   const headerBadges: CompactBadgeItem[] = [
     selected
@@ -176,19 +169,6 @@ export const DraftVoiceModelLibraryCard: React.FC<{
           }),
         }
       : null,
-    {
-      id: model.installed ? "downloaded" : "availability",
-      label: availabilityLabel,
-      variant: "secondary",
-      detail: model.installed
-        ? t("modelHub.tts.downloadedDetail", {
-            defaultValue: "Voice pack is installed locally.",
-          })
-        : t("listen.createVoices.downloadRequiredDetail", {
-            defaultValue:
-              "Preview can download this model before generating audio.",
-          }),
-    },
   ].filter(Boolean) as CompactBadgeItem[];
 
   const sublineParts = [
@@ -272,7 +252,25 @@ export const DraftVoiceModelLibraryCard: React.FC<{
       headerBadges={headerBadges}
       description={model.description}
       capabilityChips={capabilityChips}
-      footerMetaItems={[provider?.runtime.label ?? model.runtime.label]}
+      footerMetaItems={
+        [
+          provider?.runtime.label ?? model.runtime.label,
+          model.license_label,
+          model.source_label,
+        ].filter(Boolean) as string[]
+      }
+      footerMetaLinks={
+        model.source_url
+          ? [
+              {
+                label: t("modelHub.sourceLink", {
+                  defaultValue: "Open model source",
+                }),
+                url: model.source_url,
+              },
+            ]
+          : undefined
+      }
       footerMetaMaxVisible={4}
       footerMetaIcon={<Globe className="h-3.5 w-3.5" />}
       footerOverflowLabel={t("listen.createVoices.modelDetails", {

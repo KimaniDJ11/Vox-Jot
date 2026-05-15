@@ -25,6 +25,7 @@ This does NOT run in CI — large downloads and uploads happen on your machine.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -61,6 +62,8 @@ class OcrMirrorJob:
     """For hf_multi_repo: list of (hf_repo_id, dest_subdir)."""
     git_url: str | None = None
     """Shallow clone source for tessdata_best."""
+    license_label: str = "Review upstream license"
+    """Human-readable upstream license label for the generated mirror card."""
 
 
 # Upstream repos are public community models — verify licenses before redistribution.
@@ -74,6 +77,7 @@ JOBS: tuple[OcrMirrorJob, ...] = (
             ("PaddlePaddle/PP-OCRv5_mobile_det_safetensors", "PP-OCRv5_mobile_det_safetensors"),
             ("PaddlePaddle/PP-OCRv5_mobile_rec_safetensors", "PP-OCRv5_mobile_rec_safetensors"),
         ),
+        license_label="Apache-2.0",
     ),
     OcrMirrorJob(
         catalog_id="paddleocr-vl-1.5",
@@ -81,6 +85,7 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         upstream_hf="PaddlePaddle/PaddleOCR-VL-1.5",
         notes="PaddleOCR-VL 1.5 (0.9B VLM).",
         dest_repo_slug="ocr-mirror-paddleocr-vl-1.5",
+        license_label="Apache-2.0",
     ),
     OcrMirrorJob(
         catalog_id="lighton-ocr-2-1b",
@@ -88,6 +93,7 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         upstream_hf="lightonai/LightOnOCR-2-1B",
         notes="Default OCR-oriented LightOnOCR-2 checkpoint.",
         dest_repo_slug="ocr-mirror-lightonocr-2-1b",
+        license_label="Apache-2.0",
     ),
     OcrMirrorJob(
         catalog_id="chandra-ocr-2",
@@ -95,6 +101,7 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         upstream_hf="datalab-to/chandra-ocr-2",
         notes="Chandra OCR 2.",
         dest_repo_slug="ocr-mirror-chandra-ocr-2",
+        license_label="OpenRAIL",
     ),
     OcrMirrorJob(
         catalog_id="dots-ocr",
@@ -102,6 +109,7 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         upstream_hf="rednote-hilab/dots.ocr",
         notes="May require accepting license on HF in browser before download works.",
         dest_repo_slug="ocr-mirror-dots-ocr",
+        license_label="Custom/gated upstream terms",
     ),
     OcrMirrorJob(
         catalog_id="olmocr-2-7b",
@@ -109,36 +117,42 @@ JOBS: tuple[OcrMirrorJob, ...] = (
         upstream_hf="allenai/olmOCR-2-7B-1025",
         notes="olmOCR 2 7B (matches app conventional_subdir olmOCR-2-7B-1025).",
         dest_repo_slug="ocr-mirror-olmocr-2-7b-1025",
+        license_label="Apache-2.0",
     ),
     OcrMirrorJob(
         catalog_id="deepseek-ocr-2",
         kind="hf_repo",
         upstream_hf="deepseek-ai/DeepSeek-OCR-2",
         notes="DeepSeek-OCR 2.",
+        license_label="Review upstream license",
     ),
     OcrMirrorJob(
         catalog_id="glm-ocr",
         kind="hf_repo",
         upstream_hf="zai-org/GLM-OCR",
         notes="Zhipu GLM-OCR.",
+        license_label="MIT",
     ),
     OcrMirrorJob(
         catalog_id="qwen2.5-vl-3b",
         kind="hf_repo",
         upstream_hf="Qwen/Qwen2.5-VL-3B-Instruct",
         notes="General VL; used as OCR-capable fallback in catalog.",
+        license_label="Qwen Research License",
     ),
     OcrMirrorJob(
         catalog_id="nemotron-ocr-v2",
         kind="hf_repo",
         upstream_hf="nvidia/nemotron-ocr-v2",
         notes="Includes v2_english and v2_multilingual subfolders.",
+        license_label="Review upstream license",
     ),
     OcrMirrorJob(
         catalog_id="tessdata-best",
         kind="git_shallow",
         git_url="https://github.com/tesseract-ocr/tessdata_best.git",
         notes="Tesseract traineddata pack (many .traineddata files).",
+        license_label="Apache-2.0",
     ),
 )
 
@@ -157,6 +171,98 @@ def download_single_hf(upstream: str, dest: Path) -> None:
         local_dir=str(dest),
         local_dir_use_symlinks=False,
     )
+
+
+def upstream_sources(job: OcrMirrorJob) -> list[dict[str, str]]:
+    if job.kind == "hf_repo":
+        assert job.upstream_hf
+        return [{"type": "huggingface_model", "id": job.upstream_hf, "url": f"https://huggingface.co/{job.upstream_hf}"}]
+    if job.kind == "hf_multi_repo":
+        assert job.subrepos
+        return [
+            {
+                "type": "huggingface_model",
+                "id": hf_id,
+                "url": f"https://huggingface.co/{hf_id}",
+                "mirror_subdir": subdir,
+            }
+            for hf_id, subdir in job.subrepos
+        ]
+    assert job.git_url
+    return [{"type": "git_repository", "id": job.git_url, "url": job.git_url}]
+
+
+def preserve_notice_files(staging: Path) -> None:
+    notice_names = {"README.md", "LICENSE", "LICENSE.txt", "LICENSE.md", "NOTICE", "NOTICE.txt", "COPYING", "COPYING.txt"}
+    notice_dir = staging / "upstream-notices"
+    copied = 0
+    for path in list(staging.rglob("*")):
+        if not path.is_file() or path.name not in notice_names:
+            continue
+        if notice_dir in path.parents:
+            continue
+        relative = path.relative_to(staging)
+        destination = notice_dir / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, destination)
+        copied += 1
+    if copied == 0:
+        notice_dir.mkdir(parents=True, exist_ok=True)
+
+
+def hf_card_license(license_label: str) -> str:
+    normalized = license_label.lower().replace("_", "-")
+    if normalized in {"apache-2.0", "mit"}:
+        return normalized
+    return "other"
+
+
+def write_mirror_metadata(job: OcrMirrorJob, staging: Path, repo_id: str) -> None:
+    preserve_notice_files(staging)
+    sources = upstream_sources(job)
+    payload = {
+        "catalog_id": job.catalog_id,
+        "mirror_repo": repo_id,
+        "license_label": job.license_label,
+        "upstream_sources": sources,
+        "notes": job.notes,
+        "notice": "Vox Jot mirrors these OCR assets for app-managed installation. Preserve upstream LICENSE, NOTICE, COPYING, and README/model-card files when redistributing.",
+    }
+    (staging / "VOX_JOT_UPSTREAM.json").write_text(
+        json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+
+    source_lines = "\n".join(f"- [{source['id']}]({source['url']})" for source in sources)
+    card = f"""---
+license: {hf_card_license(job.license_label)}
+library_name: transformers
+tags:
+- vox-jot
+- ocr
+- mirror
+---
+
+# Vox Jot OCR Mirror: {job.catalog_id}
+
+This repository is an app-managed mirror for Vox Jot. It preserves upstream lineage so the desktop app can download OCR model files anonymously and reproducibly.
+
+## Upstream Sources
+
+{source_lines}
+
+## License And Attribution
+
+- Upstream license: {job.license_label}
+- Attribution: original model authors and upstream repositories listed above.
+- Vox Jot changes: mirrored and repackaged for app-managed download; no model training changes are implied by this mirror.
+- Notices: upstream README, LICENSE, NOTICE, and COPYING files found during staging are preserved under `upstream-notices/`.
+
+## Notes
+
+{job.notes}
+"""
+    (staging / "README.md").write_text(card, encoding="utf-8")
 
 
 def run_job(
@@ -207,6 +313,9 @@ def run_job(
             git_dir = staging / ".git"
             if git_dir.exists():
                 shutil.rmtree(git_dir)
+
+    if not dry_run:
+        write_mirror_metadata(job, staging, repo_id)
 
     if dry_run:
         print("  (dry-run: skipping create_repo / upload_folder)")

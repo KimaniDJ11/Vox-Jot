@@ -123,6 +123,23 @@ download_file() {
   mv "$temp_dest" "$dest"
 }
 
+download_optional_file() {
+  local url="$1"
+  local dest="$2"
+  local temp_dest="${dest}.part"
+
+  mkdir -p "$(dirname "$dest")"
+  rm -f "$temp_dest"
+  if curl --fail --location --retry 2 --retry-delay 1 --silent --show-error \
+    --output "$temp_dest" \
+    "$url"; then
+    mv "$temp_dest" "$dest"
+    return 0
+  fi
+  rm -f "$temp_dest"
+  return 1
+}
+
 verify_url() {
   local url="$1"
   local code
@@ -149,6 +166,48 @@ create_tarball() {
 
   mkdir -p "$(dirname "$archive_path")"
   tar -C "$(dirname "$source_dir")" -czf "$archive_path" "$(basename "$source_dir")"
+}
+
+write_upstream_notice_manifest() {
+  local root_dir="$1"
+  local source_name="$2"
+  local source_url="$3"
+  local source_note="$4"
+
+  python3 - "$root_dir" "$source_name" "$source_url" "$source_note" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+source_name = sys.argv[2]
+source_url = sys.argv[3]
+source_note = sys.argv[4]
+payload = {
+    "source_name": source_name,
+    "source_url": source_url,
+    "source_note": source_note,
+    "notice": "Vox Jot mirrors or repackages these files for app-managed installation. Preserve upstream LICENSE, NOTICE, COPYING, and README files when redistributing.",
+}
+(root / "VOX_JOT_UPSTREAM.json").write_text(
+    json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
+    encoding="utf-8",
+)
+PY
+}
+
+download_sherpa_notice_metadata() {
+  local root_dir="$1"
+  local upstream_url="$2"
+  local source_note="$3"
+  local notice_dir="$root_dir/upstream-notices"
+
+  mkdir -p "$notice_dir"
+  local file
+  for file in README.md LICENSE NOTICE NOTICE.txt COPYING COPYING.txt; do
+    download_optional_file "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/master/$file" "$notice_dir/$file" || true
+  done
+  write_upstream_notice_manifest "$root_dir" "k2-fsa/sherpa-onnx" "$upstream_url" "$source_note"
 }
 
 find_extracted_root() {
@@ -226,6 +285,7 @@ stage_runtime() {
   extract_tar_bz2 "$download_path" "$WORKDIR/extracted-$root_name"
   rm -rf "$work_dir"
   mv "$(find_extracted_root "$WORKDIR/extracted-$root_name")" "$work_dir"
+  download_sherpa_notice_metadata "$work_dir" "$upstream_url" "sherpa-onnx runtime release metadata copied during Vox Jot mirror packaging."
   create_tarball "$work_dir" "$OUTDIR/$asset_name"
 }
 
@@ -258,6 +318,7 @@ stage_pack() {
   mv "$(find_extracted_root "$WORKDIR/extracted-$root_name")" "$work_dir"
   mv "$work_dir" "$WORKDIR/$pack_id"
   work_dir="$WORKDIR/$pack_id"
+  download_sherpa_notice_metadata "$work_dir" "$upstream_url" "sherpa-onnx TTS model release metadata copied during Vox Jot mirror packaging."
   write_pack_manifest \
     "$work_dir" \
     "$pack_id" \
@@ -297,6 +358,8 @@ build_release_notes() {
     echo "- Runtime: [k2-fsa/sherpa-onnx v1.12.20](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.20)"
     echo "- English voice: [vits-piper-en_US-lessac-medium.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2)"
     echo "- Chinese + English voice: [vits-melo-tts-zh_en.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2)"
+    echo
+    echo "Each archive includes upstream notice metadata under \`upstream-notices/\` when available and \`VOX_JOT_UPSTREAM.json\` lineage metadata."
     echo
     echo "Point \`VOX_JOT_TTS_MODELS_BASE_URL\` at this release to have Vox Jot download these assets by default."
   } >"$notes_file"

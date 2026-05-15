@@ -32,6 +32,9 @@ import {
   mergeSizeWithIdentityChips,
 } from "@/components/model-hub/modelIdentityChips";
 import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
+import LicenseAcknowledgementDialog, {
+  type LicenseAcknowledgementGate,
+} from "@/components/model-hub/LicenseAcknowledgementDialog";
 import {
   ProviderIcon,
   resolveModelProviderId,
@@ -64,10 +67,77 @@ import {
 } from "../utils";
 import { modelHasTuningControls } from "../tuningControls";
 
-const GATED_TTS_HF_ACCESS_URLS: Record<string, string> = {};
+const GATED_TTS_HF_ACCESS_URLS: Record<string, string> = {
+  "xtts-v2": "https://huggingface.co/coqui/XTTS-v2",
+};
+
+const TTS_LICENSE_ACKNOWLEDGEMENT_GATES: Record<
+  string,
+  LicenseAcknowledgementGate
+> = {
+  "xtts-v2": {
+    kind: "non_commercial",
+    licenseLabel: "Coqui Public Model License",
+    termsUrl: "https://huggingface.co/coqui/XTTS-v2/blob/main/LICENSE.txt",
+    requiresVoiceConsent: true,
+  },
+  "fish-audio-s2-pro": {
+    kind: "custom_review",
+    licenseLabel: "Fish Audio Research License",
+    termsUrl: "https://huggingface.co/mlx-community/fish-audio-s2-pro-bf16",
+    requiresVoiceConsent: true,
+    note: "Commercial use requires a separate Fish Audio license.",
+  },
+  "fish-audio-s2-pro-8bit": {
+    kind: "custom_review",
+    licenseLabel: "Fish Audio Research License",
+    termsUrl: "https://huggingface.co/mlx-community/fish-audio-s2-pro-8bit",
+    requiresVoiceConsent: true,
+    note: "Commercial use requires a separate Fish Audio license.",
+  },
+  "spark-tts-0.5b": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-SA-4.0",
+    termsUrl: "https://huggingface.co/mlx-community/Spark-TTS-0.5B-bf16",
+  },
+  "spark-tts-0.5b-4-6bit": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-SA-4.0",
+    termsUrl: "https://huggingface.co/mlx-community/Spark-TTS-0.5B-4-6bit",
+  },
+  "outetts-1b-4bit": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-SA-4.0",
+    termsUrl: "https://huggingface.co/mlx-community/Llama-OuteTTS-1.0-1B-4bit",
+    requiresVoiceConsent: true,
+  },
+  "voxtral-tts-4b": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-4.0",
+    termsUrl:
+      "https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-bf16",
+  },
+  "voxtral-tts-4b-4bit": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-4.0",
+    termsUrl:
+      "https://huggingface.co/mlx-community/Voxtral-4B-TTS-2603-mlx-4bit",
+  },
+  "lfm2-5-audio-1-5b": {
+    kind: "custom_review",
+    licenseLabel: "LFM Open License v1.0",
+    termsUrl: "https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B",
+    note: "Review the custom LFM license before using this model in a distributed or commercial setting.",
+  },
+};
 
 const ttsModelRequiresHfAccess = (model: CatalogModelDescriptor): boolean =>
   Boolean(GATED_TTS_HF_ACCESS_URLS[model.id]);
+
+const ttsModelLicenseGate = (
+  model: CatalogModelDescriptor,
+): LicenseAcknowledgementGate | null =>
+  TTS_LICENSE_ACKNOWLEDGEMENT_GATES[model.id] ?? null;
 
 interface TtsHfDownloadProgress {
   repo_id: string;
@@ -117,12 +187,20 @@ const SpeechModelLibraryCard: React.FC<{
           detail: t("listen.engineLibrary.badges.selectedDetail"),
         }
       : null,
-    model.installed && !active && !selected
+  ].filter(Boolean) as CompactBadgeItem[];
+  const titleBadges: CompactBadgeItem[] = [
+    ttsModelLicenseGate(model)
       ? {
-          id: "downloaded",
-          label: t("listen.engineLibrary.badges.downloaded"),
-          variant: "secondary",
-          detail: t("listen.engineLibrary.badges.downloadedDetail"),
+          id: "license-gate",
+          label: t("modelHub.licenseGate.badge", {
+            defaultValue: "Restricted license",
+          }),
+          variant: "secondary" as const,
+          icon: <AlertTriangle className="h-3 w-3" />,
+          detail: t("modelHub.licenseGate.badgeDetail", {
+            defaultValue:
+              "Requires acknowledging publisher license restrictions before download.",
+          }),
         }
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
@@ -228,7 +306,11 @@ const SpeechModelLibraryCard: React.FC<{
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
 
-  const detailItems = [provider?.runtime.label ?? model.runtime.label];
+  const detailItems = [
+    provider?.runtime.label ?? model.runtime.label,
+    model.license_label,
+    model.source_label,
+  ].filter(Boolean) as string[];
 
   const clickable =
     !active &&
@@ -413,10 +495,23 @@ const SpeechModelLibraryCard: React.FC<{
         model.provider_id,
       )}
       subline={subline || undefined}
+      titleBadges={titleBadges}
       headerBadges={headerBadges}
       description={model.description}
       capabilityChips={capabilityChips}
       footerMetaItems={detailItems}
+      footerMetaLinks={
+        model.source_url
+          ? [
+              {
+                label: t("modelHub.sourceLink", {
+                  defaultValue: "Open model source",
+                }),
+                url: model.source_url,
+              },
+            ]
+          : undefined
+      }
       footerMetaMaxVisible={4}
       footerMetaIcon={<Globe className="h-3.5 w-3.5" />}
       footerOverflowLabel={`${model.label} details`}
@@ -531,6 +626,8 @@ export const EngineLibraryPanel: React.FC<{
   const [hfTokenStatus, setHfTokenStatus] =
     useState<HuggingFaceTokenStatus | null>(null);
   const [gatedDownloadModel, setGatedDownloadModel] =
+    useState<CatalogModelDescriptor | null>(null);
+  const [licenseGateDownloadModel, setLicenseGateDownloadModel] =
     useState<CatalogModelDescriptor | null>(null);
   const [hfTokenDraft, setHfTokenDraft] = useState("");
   const [hfTokenError, setHfTokenError] = useState<string | null>(null);
@@ -696,7 +793,9 @@ export const EngineLibraryPanel: React.FC<{
           installed: (model) => model.installed,
           runnable: (model) => model.runnable,
           recommended: (model) => model.selected,
-          gated: (model) => ttsModelRequiresHfAccess(model),
+          gated: (model) =>
+            ttsModelRequiresHfAccess(model) ||
+            Boolean(ttsModelLicenseGate(model)),
           blocked: (model) => model.capabilities.coming_soon,
           rank: (model) => getTtsEvaluationResult(model.id)?.rank,
           latencyMs: (model) => getTtsEvaluationResult(model.id)?.latencyP50Ms,
@@ -718,12 +817,18 @@ export const EngineLibraryPanel: React.FC<{
 
   const requestGatedDownload = useCallback(
     (model: CatalogModelDescriptor): boolean => {
-      if (!ttsModelRequiresHfAccess(model)) return false;
-      setGatedDownloadModel(model);
-      setHfTokenDraft("");
-      setHfTokenError(null);
-      void loadHfTokenStatus();
-      return true;
+      if (ttsModelRequiresHfAccess(model)) {
+        setGatedDownloadModel(model);
+        setHfTokenDraft("");
+        setHfTokenError(null);
+        void loadHfTokenStatus();
+        return true;
+      }
+      if (ttsModelLicenseGate(model)) {
+        setLicenseGateDownloadModel(model);
+        return true;
+      }
+      return false;
     },
     [loadHfTokenStatus],
   );
@@ -733,6 +838,11 @@ export const EngineLibraryPanel: React.FC<{
     setGatedDownloadModel(null);
     setHfTokenDraft("");
     setHfTokenError(null);
+  }, [savingHfToken]);
+
+  const closeLicenseGateDownload = useCallback(() => {
+    if (savingHfToken) return;
+    setLicenseGateDownloadModel(null);
   }, [savingHfToken]);
 
   const confirmGatedDownload = useCallback(async () => {
@@ -763,6 +873,14 @@ export const EngineLibraryPanel: React.FC<{
     }
 
     const model = gatedDownloadModel;
+    if (ttsModelLicenseGate(model)) {
+      setSavingHfToken(false);
+      setGatedDownloadModel(null);
+      setLicenseGateDownloadModel(model);
+      setHfTokenDraft("");
+      setHfTokenError(null);
+      return;
+    }
     try {
       await speech.activateModel(model.provider_id, model.id);
       setGatedDownloadModel(null);
@@ -809,6 +927,26 @@ export const EngineLibraryPanel: React.FC<{
       setHfTokenError(result.error);
     }
   }, [savingHfToken, t]);
+
+  const confirmLicenseGateDownload = useCallback(async () => {
+    if (!licenseGateDownloadModel || savingHfToken) return;
+    const model = licenseGateDownloadModel;
+    setSavingHfToken(true);
+    try {
+      await speech.activateModel(model.provider_id, model.id);
+      setLicenseGateDownloadModel(null);
+    } catch (error) {
+      speech.setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : t("modelHub.tts.downloadFailed", {
+              defaultValue: "Download failed.",
+            }),
+      );
+    } finally {
+      setSavingHfToken(false);
+    }
+  }, [licenseGateDownloadModel, savingHfToken, speech, t]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -965,6 +1103,29 @@ export const EngineLibraryPanel: React.FC<{
         onClearToken={clearHfToken}
         onCancel={closeGatedDownload}
         onConfirm={confirmGatedDownload}
+      />
+      <LicenseAcknowledgementDialog
+        open={Boolean(licenseGateDownloadModel)}
+        modelName={licenseGateDownloadModel?.label ?? ""}
+        acknowledgementId={
+          licenseGateDownloadModel
+            ? `tts.${licenseGateDownloadModel.provider_id}.${licenseGateDownloadModel.id}`
+            : "tts.unknown"
+        }
+        gate={
+          licenseGateDownloadModel
+            ? ttsModelLicenseGate(licenseGateDownloadModel)
+            : null
+        }
+        busy={savingHfToken}
+        onOpenTerms={async () => {
+          if (!licenseGateDownloadModel) return;
+          const gate = ttsModelLicenseGate(licenseGateDownloadModel);
+          if (!gate) return;
+          await openUrl(gate.termsUrl);
+        }}
+        onCancel={closeLicenseGateDownload}
+        onConfirm={confirmLicenseGateDownload}
       />
     </div>
   );

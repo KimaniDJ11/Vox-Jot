@@ -95,6 +95,8 @@ pub struct OcrCatalogEntry {
     pub required_files: &'static [&'static str],
     pub size_hint_label: &'static str,
     pub languages_label: &'static str,
+    pub license_label: &'static str,
+    pub upstream_url: &'static str,
     /// HuggingFace repo (`<namespace>/<repo>`) the in-app downloader pulls
     /// from. Always set today — for entries whose mirror is still private,
     /// the request will fail with 401 and the UI surfaces that.
@@ -113,6 +115,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &[],
         size_hint_label: "~250 MB",
         languages_label: "Multilingual",
+        license_label: "Apache-2.0",
+        upstream_url: "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_safetensors",
         hf_repo_id: "IrieDinamik/ocr-mirror-ppocrv5",
     },
     OcrCatalogEntry {
@@ -126,6 +130,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &["config.json"],
         size_hint_label: "~2 GB",
         languages_label: "Multilingual",
+        license_label: "Apache-2.0",
+        upstream_url: "https://huggingface.co/lightonai/LightOnOCR-2-1B",
         hf_repo_id: "IrieDinamik/ocr-mirror-lightonocr-2-1b",
     },
     OcrCatalogEntry {
@@ -139,6 +145,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &["config.json"],
         size_hint_label: "~3 GB",
         languages_label: "Multilingual",
+        license_label: "OpenRAIL",
+        upstream_url: "https://huggingface.co/datalab-to/chandra-ocr-2",
         hf_repo_id: "IrieDinamik/ocr-mirror-chandra-ocr-2",
     },
     OcrCatalogEntry {
@@ -152,6 +160,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &["config.json"],
         size_hint_label: "~14 GB",
         languages_label: "English-first",
+        license_label: "Apache-2.0",
+        upstream_url: "https://huggingface.co/allenai/olmOCR-2-7B-1025",
         hf_repo_id: "IrieDinamik/ocr-mirror-olmocr-2-7b-1025",
     },
     OcrCatalogEntry {
@@ -165,6 +175,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &["config.json"],
         size_hint_label: "~5 GB",
         languages_label: "Chinese + English",
+        license_label: "MIT",
+        upstream_url: "https://huggingface.co/zai-org/GLM-OCR",
         hf_repo_id: "IrieDinamik/ocr-glm-ocr",
     },
     OcrCatalogEntry {
@@ -178,6 +190,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &["config.json"],
         size_hint_label: "~6 GB",
         languages_label: "Multilingual",
+        license_label: "Qwen Research License",
+        upstream_url: "https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct",
         hf_repo_id: "IrieDinamik/ocr-qwen2-5-vl-3b",
     },
     OcrCatalogEntry {
@@ -191,6 +205,8 @@ const CATALOG: &[OcrCatalogEntry] = &[
         required_files: &[],
         size_hint_label: "~1 GB",
         languages_label: "100+ languages",
+        license_label: "Apache-2.0",
+        upstream_url: "https://github.com/tesseract-ocr/tessdata_best",
         hf_repo_id: "IrieDinamik/ocr-tessdata-best",
     },
 ];
@@ -214,6 +230,8 @@ pub struct OcrModelDescriptor {
     pub runnable: bool,
     /// HuggingFace repo the in-app downloader pulls from.
     pub hf_repo_id: String,
+    pub license_label: String,
+    pub upstream_url: String,
     /// Public web URL pointing at the HF repo, surfaced in the UI for users
     /// who want to inspect the mirror before downloading.
     pub hf_repo_url: String,
@@ -275,6 +293,8 @@ fn descriptor_for(
         selected: selected_id == Some(entry.id),
         runnable,
         hf_repo_id: entry.hf_repo_id.to_string(),
+        license_label: entry.license_label.to_string(),
+        upstream_url: entry.upstream_url.to_string(),
         hf_repo_url: format!("https://huggingface.co/{}", entry.hf_repo_id),
     }
 }

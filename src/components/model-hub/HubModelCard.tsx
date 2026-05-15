@@ -1,8 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Loader2, Trash2, X } from "lucide-react";
+import { Download, ExternalLink, Loader2, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import {
   CompactBadgeRow,
   CompactMetaRow,
@@ -23,6 +24,8 @@ export interface HubModelCardProps {
    * Truncates to a single line.
    */
   subline?: string;
+  /** Inline title-row badges that must stay visible, such as license warnings. */
+  titleBadges?: CompactBadgeItem[];
   /** Top-right badges. Reserve for status only (Active, New, Beta, Recommended). */
   headerBadges?: CompactBadgeItem[];
   headerBadgesMaxVisible?: number;
@@ -41,6 +44,8 @@ export interface HubModelCardProps {
 
   /** Footer chips (left side): source/runtime/language list. Below the divider. */
   footerMetaItems?: string[];
+  footerMetaLeadingActions?: React.ReactNode;
+  footerMetaLinks?: Array<{ label: string; url: string }>;
   footerMetaIcon?: React.ReactNode;
   footerMetaMaxVisible?: number;
   footerOverflowLabel?: string;
@@ -125,6 +130,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   title,
   providerId,
   subline,
+  titleBadges,
   headerBadges,
   headerBadgesMaxVisible = 2,
   description,
@@ -132,6 +138,8 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   capabilityChips,
   capabilityChipsMaxVisible = 6,
   footerMetaItems,
+  footerMetaLeadingActions,
+  footerMetaLinks,
   footerMetaIcon,
   footerMetaMaxVisible = 3,
   footerOverflowLabel,
@@ -208,6 +216,11 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
             >
               {title}
             </h3>
+            {titleBadges && titleBadges.length > 0 ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                {titleBadges.map(renderTitleBadge)}
+              </div>
+            ) : null}
             {headerBadges && headerBadges.length > 0 ? (
               <CompactBadgeRow
                 items={headerBadges}
@@ -280,6 +293,30 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
           ) : (
             <span className="flex-1" />
           )}
+          {footerMetaLeadingActions ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {footerMetaLeadingActions}
+            </div>
+          ) : null}
+          {footerMetaLinks && footerMetaLinks.length > 0 ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {footerMetaLinks.slice(0, 2).map((link) => (
+                <a
+                  key={`${link.label}:${link.url}`}
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  className="inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--panel-bg)] px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  title={link.url}
+                  aria-label={link.label}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                </a>
+              ))}
+            </div>
+          ) : null}
           {trailingNode}
         </div>
       )}
@@ -291,6 +328,31 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
     </div>
   );
 };
+
+function renderTitleBadge(item: CompactBadgeItem): React.ReactNode {
+  const tooltip = item.detail ? `${item.label} — ${item.detail}` : item.label;
+  const isLicenseGate = item.id === "license-gate";
+
+  return (
+    <Badge
+      key={item.id}
+      variant={item.variant ?? "secondary"}
+      className={[
+        "shrink-0 whitespace-nowrap px-2.5 py-1 text-[11px] font-semibold",
+        isLicenseGate
+          ? "border border-[color-mix(in_srgb,var(--accent),transparent_45%)] bg-[var(--accent-soft)] text-[var(--accent)]"
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="inline-flex items-center" title={tooltip}>
+        {item.icon ? <span className="mr-1 shrink-0">{item.icon}</span> : null}
+        <span>{item.label}</span>
+      </span>
+    </Badge>
+  );
+}
 
 type FooterExtraElementProps = {
   children?: React.ReactNode;

@@ -144,6 +144,74 @@ download_file() {
   mv "$temp_dest" "$dest"
 }
 
+download_optional_file() {
+  local url="$1"
+  local dest="$2"
+  local temp_dest="${dest}.part"
+
+  mkdir -p "$(dirname "$dest")"
+  rm -f "$temp_dest"
+  if curl --fail --location --retry 2 --retry-delay 1 --silent --show-error \
+    --output "$temp_dest" \
+    "$url"; then
+    mv "$temp_dest" "$dest"
+    return 0
+  fi
+  rm -f "$temp_dest"
+  return 1
+}
+
+write_upstream_notice_manifest() {
+  local root_dir="$1"
+  local source_repo="$2"
+  local source_note="$3"
+
+  python3 - "$root_dir" "$source_repo" "$source_note" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+source_repo = sys.argv[2]
+source_note = sys.argv[3]
+payload = {
+    "source_repo": source_repo,
+    "source_url": f"https://huggingface.co/{source_repo}",
+    "source_note": source_note,
+    "notice": "Vox Jot mirrors or converts these files for app-managed installation. Preserve upstream LICENSE, NOTICE, COPYING, and README/model-card files when redistributing.",
+}
+(root / "VOX_JOT_UPSTREAM.json").write_text(
+    json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
+    encoding="utf-8",
+)
+PY
+}
+
+download_hf_notice_metadata() {
+  local source_repo="$1"
+  local root_dir="$2"
+  local notice_dir="$root_dir/upstream-notices"
+
+  mkdir -p "$notice_dir"
+  local file
+  for file in README.md LICENSE LICENSE.txt LICENSE.md NOTICE NOTICE.txt COPYING COPYING.txt; do
+    download_optional_file "$(hf_resolve_url "$source_repo" "$file")" "$notice_dir/$file" || true
+  done
+  write_upstream_notice_manifest "$root_dir" "$source_repo" "Hugging Face model repository metadata copied during Vox Jot mirror packaging."
+}
+
+package_notice_sidecar() {
+  local source_repo="$1"
+  local asset_name="$2"
+  local notice_dir="$WORKDIR/${asset_name}.notices"
+  local archive_name="${asset_name}.notices.tar.gz"
+
+  rm -rf "$notice_dir"
+  mkdir -p "$notice_dir"
+  download_hf_notice_metadata "$source_repo" "$notice_dir"
+  create_tarball "$notice_dir" "$OUTDIR/$archive_name"
+}
+
 verify_url() {
   local url="$1"
   local code
@@ -297,6 +365,7 @@ stage_parakeet() {
       "$root_dir/vocab.txt"
   fi
 
+  download_hf_notice_metadata "$source_repo" "$root_dir"
   create_tarball "$root_dir" "$OUTDIR/$archive_name"
 }
 
@@ -320,6 +389,7 @@ stage_moonshine_base() {
   download_file "$(hf_resolve_url "$repo" "onnx/merged/base/float/tokenizer.json")" \
     "$root_dir/tokenizer.json"
 
+  download_hf_notice_metadata "$repo" "$root_dir"
   create_tarball "$root_dir" "$OUTDIR/moonshine-base.tar.gz"
 }
 
@@ -358,6 +428,7 @@ stage_moonshine_streaming() {
   write_tokenizer_bin "$root_dir/tokenizer.json" "$root_dir/tokenizer.bin"
   rm -f "$root_dir/tokenizer.json"
 
+  download_hf_notice_metadata "$repo" "$root_dir"
   create_tarball "$root_dir" "$OUTDIR/$archive_name"
 }
 
@@ -384,6 +455,7 @@ stage_sense_voice() {
       "$root_dir/tokens.txt"
   fi
 
+  download_hf_notice_metadata "$repo" "$root_dir"
   create_tarball "$root_dir" "$OUTDIR/sense-voice-int8.tar.gz"
 }
 
@@ -410,6 +482,7 @@ stage_gigaam() {
   download_file "$(hf_resolve_url "$repo" "v3_e2e_ctc_vocab.txt")" \
     "$root_dir/vocab.txt"
 
+  download_hf_notice_metadata "$repo" "$root_dir"
   create_tarball "$root_dir" "$OUTDIR/giga-am-v3.tar.gz"
 }
 
@@ -429,6 +502,8 @@ stage_breeze() {
     download_file "$(hf_resolve_url "$repo" "ggml-model-q5_k.bin")" \
       "$OUTDIR/breeze-asr-q5_k.bin"
   fi
+
+  package_notice_sidecar "$repo" "breeze-asr-q5_k.bin"
 }
 
 stage_whisper() {
@@ -447,6 +522,8 @@ stage_whisper() {
   else
     download_file "$(hf_resolve_url "$repo" "$filename")" "$OUTDIR/$filename"
   fi
+
+  package_notice_sidecar "$repo" "$filename"
 }
 
 build_release_notes() {
@@ -467,6 +544,8 @@ build_release_notes() {
       echo "- \`$(basename "$asset")\`"
     done
     shopt -u nullglob
+    echo
+    echo "Single-file model assets include companion \`.notices.tar.gz\` archives containing upstream README, LICENSE, NOTICE, COPYING files when available, plus \`VOX_JOT_UPSTREAM.json\` lineage metadata."
     echo
     if [[ "$include_whisper" == "true" ]]; then
       echo "Whisper binaries are mirrored in this release."

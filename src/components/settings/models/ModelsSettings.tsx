@@ -615,6 +615,9 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       providerId={resolvedProviderId}
                       providerLabel={providerLabel}
                       runtimeLabel={catalog?.runtime.label}
+                      licenseLabel={catalog?.license_label}
+                      sourceLabel={catalog?.source_label}
+                      sourceUrl={catalog?.source_url}
                     />
                   );
                 })}
@@ -681,6 +684,9 @@ export const ModelsSettings: React.FC<ModelsSettingsProps> = ({
                       providerId={resolvedProviderId}
                       providerLabel={providerLabel}
                       runtimeLabel={catalog?.runtime.label}
+                      licenseLabel={catalog?.license_label}
+                      sourceLabel={catalog?.source_label}
+                      sourceUrl={catalog?.source_url}
                     />
                   );
                 })}

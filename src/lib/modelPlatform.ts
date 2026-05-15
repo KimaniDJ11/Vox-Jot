@@ -67,6 +67,7 @@ export interface ProviderDescriptor {
   label: string;
   description: string;
   source_label: string;
+  source_url?: string | null;
   runtime: RuntimeRequirement;
   available: boolean;
   local_only: boolean;
@@ -88,6 +89,7 @@ export interface CatalogModelDescriptor {
   runnable: boolean;
   downloadable: boolean;
   source_label: string;
+  source_url?: string | null;
   runtime: RuntimeRequirement;
   license_label?: string | null;
   locale?: string | null;

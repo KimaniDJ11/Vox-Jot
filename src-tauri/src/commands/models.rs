@@ -324,6 +324,85 @@ fn stt_catalog_provider_id(model: &ModelInfo, runtime_provider_id: &'static str)
     runtime_provider_id
 }
 
+fn stt_provider_source_url(provider_id: &str) -> Option<&'static str> {
+    match provider_id {
+        "stt_whisper" => Some("https://github.com/openai/whisper"),
+        "stt_parakeet" => Some("https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"),
+        "stt_moonshine" | "stt_moonshine_streaming" => {
+            Some("https://huggingface.co/UsefulSensors/moonshine")
+        }
+        "stt_sensevoice" => Some("https://huggingface.co/FunAudioLLM/SenseVoiceSmall"),
+        "stt_gigaam" => Some("https://huggingface.co/ai-sage/GigaAM-v3"),
+        "stt_mlx_audio" => Some("https://github.com/Blaizzy/mlx-audio"),
+        "stt_apple_speech" => Some("https://developer.apple.com/documentation/speech"),
+        "stt_qwen" => Some("https://huggingface.co/Qwen"),
+        _ => None,
+    }
+}
+
+fn stt_model_source_url(model: &ModelInfo) -> Option<&'static str> {
+    match model.id.as_str() {
+        "breeze-asr" => Some("https://huggingface.co/alan314159/Breeze-ASR-25-whispercpp"),
+        "parakeet-tdt-0.6b-v2" => {
+            Some("https://huggingface.co/smcleod/parakeet-tdt-0.6b-v2-int8")
+        }
+        "parakeet-tdt-0.6b-v3" | "mlx-parakeet-v3" => {
+            Some("https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3")
+        }
+        "moonshine-base" => Some("https://huggingface.co/UsefulSensors/moonshine"),
+        "moonshine-tiny-streaming-en"
+        | "moonshine-small-streaming-en"
+        | "moonshine-medium-streaming-en" => {
+            Some("https://huggingface.co/UsefulSensors/moonshine-streaming")
+        }
+        "sense-voice-int8" => Some("https://huggingface.co/FunAudioLLM/SenseVoiceSmall"),
+        "gigaam-v3-e2e-ctc" => Some("https://huggingface.co/ai-sage/GigaAM-v3"),
+        "mlx-whisper-large-v3-turbo" => {
+            Some("https://huggingface.co/mlx-community/whisper-large-v3-turbo-asr-fp16")
+        }
+        "mlx-distil-whisper-large-v3" => Some("https://huggingface.co/distil-whisper/distil-large-v3"),
+        "mlx-qwen3-asr" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit"),
+        "mlx-qwen3-asr-0.6b" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-0.6B-8bit"),
+        "mlx-fireredasr2-aed" => Some("https://huggingface.co/mlx-community/FireRedASR2-AED-mlx"),
+        "mlx-vibevoice-asr-bf16" => Some("https://huggingface.co/mlx-community/VibeVoice-ASR-bf16"),
+        "mlx-voxtral-mini-3b" => Some("https://huggingface.co/mlx-community/Voxtral-Mini-3B-2507-bf16"),
+        "mlx-voxtral-mini-4b-realtime" => {
+            Some("https://huggingface.co/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit")
+        }
+        "apple-speech-analyzer" | "apple-speech-progressive" => {
+            Some("https://developer.apple.com/documentation/speech")
+        }
+        _ if matches!(model.engine_type, EngineType::Whisper) => {
+            Some("https://huggingface.co/ggerganov/whisper.cpp")
+        }
+        _ => None,
+    }
+}
+
+fn stt_model_license_label(model: &ModelInfo) -> Option<&'static str> {
+    match model.id.as_str() {
+        "parakeet-tdt-0.6b-v2" => Some("CC-BY-2.0"),
+        "parakeet-tdt-0.6b-v3" | "mlx-parakeet-v3" => Some("CC-BY-4.0"),
+        "sense-voice-int8" => Some("SenseVoice model license"),
+        "apple-speech-analyzer" | "apple-speech-progressive" => Some("Apple platform terms"),
+        "mlx-qwen3-asr"
+        | "mlx-qwen3-asr-0.6b"
+        | "mlx-fireredasr2-aed"
+        | "mlx-voxtral-mini-3b"
+        | "mlx-voxtral-mini-4b-realtime"
+        | "breeze-asr" => Some("Apache-2.0"),
+        "mlx-vibevoice-asr-bf16"
+        | "gigaam-v3-e2e-ctc"
+        | "moonshine-base"
+        | "moonshine-tiny-streaming-en"
+        | "moonshine-small-streaming-en"
+        | "moonshine-medium-streaming-en"
+        | "mlx-distil-whisper-large-v3" => Some("MIT"),
+        _ if matches!(model.engine_type, EngineType::Whisper) => Some("MIT"),
+        _ => None,
+    }
+}
+
 fn stt_selection_provider_id(
     settings: &AppSettings,
     model_manager: &ModelManager,
@@ -383,6 +462,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 label: label.to_string(),
                 description: format!("{label} models are downloaded through Vox Jot-managed assets and auto-routed to the correct transcription runtime."),
                 source_label: source_label.to_string(),
+                source_url: stt_provider_source_url(provider_id).map(str::to_string),
                 runtime: RuntimeRequirement {
                     id: provider_id.to_string(),
                     label: runtime_label.to_string(),
@@ -392,7 +472,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 available: true,
                 local_only: true,
                 coming_soon: false,
-                license_label: None,
+                license_label: stt_model_license_label(model).map(str::to_string),
                 capabilities: CapabilityFlags {
                     downloadable,
                     loadable: true,
@@ -441,13 +521,14 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 runnable: available,
                 downloadable,
                 source_label: source_label.to_string(),
+                source_url: stt_model_source_url(&model).map(str::to_string),
                 runtime: RuntimeRequirement {
                     id: provider_id.to_string(),
                     label: catalog_runtime_label.to_string(),
                     engine_family: provider_id.trim_start_matches("stt_").to_string(),
                     auto_routed: true,
                 },
-                license_label: None,
+                license_label: stt_model_license_label(&model).map(str::to_string),
                 locale: None,
                 supported_languages: model.supported_languages.clone(),
                 capabilities: CapabilityFlags {
@@ -496,6 +577,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                 "Qwen speech recognition models served through the shared local transcription runtime."
                     .to_string(),
             source_label: "Alibaba Cloud / Qwen".to_string(),
+            source_url: Some("https://huggingface.co/Qwen".to_string()),
             runtime: RuntimeRequirement {
                 id: "stt_mlx_audio".to_string(),
                 label: "Shared mlx-audio sidecar".to_string(),
@@ -505,7 +587,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             available: true,
             local_only: true,
             coming_soon: false,
-            license_label: None,
+            license_label: Some("Apache-2.0".to_string()),
             capabilities: CapabilityFlags {
                 downloadable: true,
                 loadable: true,
@@ -547,13 +629,14 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
                     runnable: available,
                     downloadable,
                     source_label: "Hugging Face collection".to_string(),
+                    source_url: Some(format!("https://huggingface.co/{repo_id}")),
                     runtime: RuntimeRequirement {
                         id: STT_HF_VERIFIED_PROVIDER_ID.to_string(),
                         label: "Whisper engine".to_string(),
                         engine_family: "whisper".to_string(),
                         auto_routed: true,
                     },
-                    license_label: None,
+                    license_label: stt_model_license_label(mapped).map(str::to_string),
                     locale: None,
                     supported_languages: mapped.supported_languages.clone(),
                     capabilities: CapabilityFlags {
@@ -595,6 +678,7 @@ async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings)
             label: "Hugging Face STT Verified".to_string(),
             description: "Auto-synced STT aliases from your verified Hugging Face collection, mapped to installable local Whisper assets.".to_string(),
             source_label: "Hugging Face collection".to_string(),
+            source_url: Some(format!("https://huggingface.co/collections/{}", stt_collection_slug())),
             runtime: RuntimeRequirement {
                 id: "stt_hf_verified".to_string(),
                 label: "Whisper engine".to_string(),
@@ -671,6 +755,7 @@ fn augment_tts_catalog_with_hf_verified(
             label: "Hugging Face TTS Verified".to_string(),
             description: "Auto-synced from your verified Hugging Face TTS collection. Tap Download on a card to pull the repo into Vox Jot's local TTS store.".to_string(),
             source_label: "Hugging Face collection".to_string(),
+            source_url: Some(format!("https://huggingface.co/collections/{}", tts_collection_slug())),
             runtime: RuntimeRequirement {
                 id: "local_sidecar_api".to_string(),
                 label: "Local speech API runtime".to_string(),
@@ -731,6 +816,7 @@ fn augment_tts_catalog_with_hf_verified(
             runnable: installed,
             downloadable,
             source_label: "Hugging Face collection".to_string(),
+            source_url: Some(format!("https://huggingface.co/{repo_id}")),
             runtime: RuntimeRequirement {
                 id: "local_sidecar_api".to_string(),
                 label: "Local speech API runtime".to_string(),
@@ -1088,6 +1174,11 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
             } else {
                 provider.base_url.clone()
             },
+            source_url: if provider.base_url.trim().is_empty() {
+                None
+            } else {
+                Some(provider.base_url.clone())
+            },
             runtime: RuntimeRequirement {
                 id: provider.id.clone(),
                 label: format!("{} runtime", provider.label),
@@ -1141,6 +1232,11 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     "Managed provider".to_string()
                 } else {
                     provider.base_url.clone()
+                },
+                source_url: if provider.base_url.trim().is_empty() {
+                    None
+                } else {
+                    Some(provider.base_url.clone())
                 },
                 runtime: RuntimeRequirement {
                     id: provider.id.clone(),

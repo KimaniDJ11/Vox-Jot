@@ -8,7 +8,9 @@ import React, {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
+  AlertTriangle,
   CheckCircle2,
   Cpu,
   Download,
@@ -30,6 +32,9 @@ import {
   mergeSizeWithIdentityChips,
 } from "@/components/model-hub/modelIdentityChips";
 import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFaceAccessDialog";
+import LicenseAcknowledgementDialog, {
+  type LicenseAcknowledgementGate,
+} from "@/components/model-hub/LicenseAcknowledgementDialog";
 import {
   commands,
   type HuggingFaceTokenStatus,
@@ -65,6 +70,34 @@ interface SpeechAnalysisEnginesSectionProps {
 
 type AnalysisGroup = "asr" | "diarization";
 type AnalysisSourceFilter = "all" | "built_in" | "hugging_face";
+
+const SPEECH_ANALYSIS_LICENSE_GATES: Record<
+  string,
+  LicenseAcknowledgementGate
+> = {
+  "nemo-sortformer-4spk-v1": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-4.0",
+    termsUrl: "https://huggingface.co/nvidia/diar_sortformer_4spk-v1",
+  },
+  "mlx-sortformer-4spk-v1": {
+    kind: "non_commercial",
+    licenseLabel: "CC-BY-NC-4.0",
+    termsUrl:
+      "https://huggingface.co/mlx-community/diar_sortformer_4spk-v1-fp16",
+  },
+  "reverb-diarization-v2": {
+    kind: "custom_review",
+    licenseLabel: "Custom / gated",
+    termsUrl: "https://huggingface.co/Revai/reverb-diarization-v2",
+    note: "This gated model should only be downloaded after accepting publisher terms and confirming your intended use is allowed.",
+  },
+};
+
+const speechAnalysisLicenseGate = (
+  model: SpeechAnalysisModelDescriptor,
+): LicenseAcknowledgementGate | null =>
+  SPEECH_ANALYSIS_LICENSE_GATES[model.id] ?? null;
 
 interface SpeechAnalysisDownloadProgress {
   model_id: string;
@@ -177,6 +210,8 @@ const SpeechAnalysisEnginesSection: React.FC<
   const [hfTokenStatus, setHfTokenStatus] =
     useState<HuggingFaceTokenStatus | null>(null);
   const [gatedDownloadModel, setGatedDownloadModel] =
+    useState<SpeechAnalysisModelDescriptor | null>(null);
+  const [licenseGateDownloadModel, setLicenseGateDownloadModel] =
     useState<SpeechAnalysisModelDescriptor | null>(null);
   const [hfTokenDraft, setHfTokenDraft] = useState("");
   const [hfTokenError, setHfTokenError] = useState<string | null>(null);
@@ -483,6 +518,10 @@ const SpeechAnalysisEnginesSection: React.FC<
         void loadHfTokenStatus();
         return;
       }
+      if (speechAnalysisLicenseGate(model) && !model.installed) {
+        setLicenseGateDownloadModel(model);
+        return;
+      }
       void startDownload(model.id);
     },
     [loadHfTokenStatus, startDownload],
@@ -511,6 +550,11 @@ const SpeechAnalysisEnginesSection: React.FC<
     setGatedDownloadModel(null);
     setHfTokenDraft("");
     setHfTokenError(null);
+  }, [savingHfToken]);
+
+  const closeLicenseGateDownload = useCallback(() => {
+    if (savingHfToken) return;
+    setLicenseGateDownloadModel(null);
   }, [savingHfToken]);
 
   const confirmGatedDownload = useCallback(async () => {
@@ -545,6 +589,10 @@ const SpeechAnalysisEnginesSection: React.FC<
     setGatedDownloadModel(null);
     setHfTokenDraft("");
     setHfTokenError(null);
+    if (speechAnalysisLicenseGate(gatedDownloadModel)) {
+      setLicenseGateDownloadModel(gatedDownloadModel);
+      return;
+    }
     void startDownload(modelId);
   }, [
     gatedDownloadModel,
@@ -579,6 +627,13 @@ const SpeechAnalysisEnginesSection: React.FC<
     }
     setSavingHfToken(false);
   }, [savingHfToken, t]);
+
+  const confirmLicenseGateDownload = useCallback(() => {
+    if (!licenseGateDownloadModel || savingHfToken) return;
+    const modelId = licenseGateDownloadModel.id;
+    setLicenseGateDownloadModel(null);
+    void startDownload(modelId);
+  }, [licenseGateDownloadModel, savingHfToken, startDownload]);
 
   const deleteModel = useCallback(
     async (model: SpeechAnalysisModelDescriptor) => {
@@ -829,6 +884,29 @@ const SpeechAnalysisEnginesSection: React.FC<
         onClearToken={clearHfToken}
         onCancel={closeGatedDownload}
         onConfirm={confirmGatedDownload}
+      />
+      <LicenseAcknowledgementDialog
+        open={Boolean(licenseGateDownloadModel)}
+        modelName={licenseGateDownloadModel?.label ?? ""}
+        acknowledgementId={
+          licenseGateDownloadModel
+            ? `speech-analysis.${licenseGateDownloadModel.id}`
+            : "speech-analysis.unknown"
+        }
+        gate={
+          licenseGateDownloadModel
+            ? speechAnalysisLicenseGate(licenseGateDownloadModel)
+            : null
+        }
+        busy={Boolean(busyModelId)}
+        onOpenTerms={async () => {
+          if (!licenseGateDownloadModel) return;
+          const gate = speechAnalysisLicenseGate(licenseGateDownloadModel);
+          if (!gate) return;
+          await openUrl(gate.termsUrl);
+        }}
+        onCancel={closeLicenseGateDownload}
+        onConfirm={confirmLicenseGateDownload}
       />
     </div>
   );
@@ -1102,6 +1180,24 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                         }
                       : null,
                   ].filter(Boolean) as CompactBadgeItem[];
+                  const titleBadges: CompactBadgeItem[] = [
+                    speechAnalysisLicenseGate(model)
+                      ? {
+                          id: "license-gate",
+                          label: t("modelHub.licenseGate.badge", {
+                            defaultValue: "Restricted license",
+                          }),
+                          variant: "secondary",
+                          icon: (
+                            <AlertTriangle className="h-3 w-3" aria-hidden />
+                          ),
+                          detail: t("modelHub.licenseGate.badgeDetail", {
+                            defaultValue:
+                              "Requires acknowledging publisher license restrictions before download.",
+                          }),
+                        }
+                      : null,
+                  ].filter(Boolean) as CompactBadgeItem[];
 
                   const identityChips = buildModelIdentityChips({
                     params: inferParameterClass([
@@ -1162,20 +1258,6 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                         defaultValue: "Runtime family used by this engine.",
                       }),
                     },
-                    model.installed
-                      ? {
-                          id: "capability-installed",
-                          label: t("modelHub.analysis.meta.installed", {
-                            defaultValue: "Downloaded",
-                          }),
-                          variant: "success",
-                          icon: <HardDrive className="h-3 w-3" aria-hidden />,
-                          detail: t("modelHub.analysis.meta.installedDetail", {
-                            defaultValue:
-                              "Model files are present in Vox Jot's local model store.",
-                          }),
-                        }
-                      : null,
                   ].filter(Boolean) as CompactBadgeItem[];
 
                   const footerMetaItems = [
@@ -1335,10 +1417,23 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                       title={model.label}
                       providerId={providerIconId(model)}
                       subline={model.provider}
+                      titleBadges={titleBadges}
                       headerBadges={headerBadges}
                       description={model.description}
                       capabilityChips={capabilityChips}
                       footerMetaItems={footerMetaItems}
+                      footerMetaLinks={
+                        model.source_url
+                          ? [
+                              {
+                                label: t("modelHub.sourceLink", {
+                                  defaultValue: "Open model source",
+                                }),
+                                url: model.source_url,
+                              },
+                            ]
+                          : undefined
+                      }
                       footerMetaIcon={
                         <Server className="h-3.5 w-3.5" aria-hidden />
                       }

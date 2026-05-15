@@ -48,6 +48,15 @@ const formatLanguageCount = (
   return `${formatLanguageAbbreviation(languages[0])}+${languages.length - 1}`;
 };
 
+const sourceHostLabel = (sourceUrl?: string | null): string | null => {
+  if (!sourceUrl) return null;
+  try {
+    return new URL(sourceUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return sourceUrl;
+  }
+};
+
 export type ModelCardStatus =
   | "downloadable"
   | "downloading"
@@ -72,6 +81,9 @@ interface ModelCardProps {
   providerId?: string;
   providerLabel?: string;
   runtimeLabel?: string;
+  licenseLabel?: string | null;
+  sourceLabel?: string | null;
+  sourceUrl?: string | null;
 }
 
 const ModelCard: React.FC<ModelCardProps> = ({
@@ -90,6 +102,9 @@ const ModelCard: React.FC<ModelCardProps> = ({
   providerId,
   providerLabel,
   runtimeLabel,
+  licenseLabel,
+  sourceLabel,
+  sourceUrl,
 }) => {
   const { t } = useTranslation();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -248,7 +263,11 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   // Footer chips — runtime context only. Languages live in the capability
   // chip above; the source/runtime row stays factual and short.
-  const metadataItems = runtimeLabel ? [runtimeLabel] : [];
+  const metadataItems = [
+    runtimeLabel,
+    licenseLabel,
+    sourceLabel ?? sourceHostLabel(sourceUrl),
+  ].filter(Boolean) as string[];
 
   const handleCardClick = () => {
     if (!isClickable || disabled) return;
@@ -267,7 +286,6 @@ const ModelCard: React.FC<ModelCardProps> = ({
     trailing = {
       kind: "acquire",
       onClick: onDownload ? () => onDownload(model.id) : undefined,
-      sizeLabel: formatModelSize(Number(model.size_mb)),
       label: t("modelSelector.downloadModel", {
         modelName: displayName,
         defaultValue: `Download ${displayName}`,
@@ -393,6 +411,18 @@ const ModelCard: React.FC<ModelCardProps> = ({
       description={displayDescription}
       capabilityChips={capabilityChips}
       footerMetaItems={metadataItems}
+      footerMetaLinks={
+        sourceUrl
+          ? [
+              {
+                label: t("modelHub.sourceLink", {
+                  defaultValue: "Open model source",
+                }),
+                url: sourceUrl,
+              },
+            ]
+          : undefined
+      }
       footerOverflowLabel={`${displayName} model details`}
       trailing={trailing}
       downloadState={downloadState}

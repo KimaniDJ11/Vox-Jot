@@ -164,6 +164,7 @@ pub struct TtsPackInfo {
     pub locale: String,
     pub voice_id: String,
     pub archive_name: String,
+    pub source_url: String,
     pub installed: bool,
 }
 
@@ -1222,6 +1223,7 @@ impl TtsManager {
                 locale: definition.locale.to_string(),
                 voice_id: definition.voice_id.to_string(),
                 archive_name: definition.archive_name.to_string(),
+                source_url: definition.source_url.to_string(),
                 installed: self.installed_pack_root(definition.id).is_some(),
             })
             .collect()
@@ -1236,6 +1238,12 @@ impl TtsManager {
                 locale: definition.locale.to_string(),
                 voice_id: definition.id.to_string(),
                 archive_name: self.qwen3_pack_archive_name(definition),
+                source_url: definition
+                    .hf_repo_id
+                    .map(|repo| format!("https://huggingface.co/{repo}"))
+                    .unwrap_or_else(|| {
+                        "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base".to_string()
+                    }),
                 installed: self.resolved_qwen3_pack_root(definition).is_some(),
             })
             .collect()
@@ -1992,6 +2000,9 @@ impl TtsManager {
                     definition.description
                 ),
                 source_label: "Vox Jot managed runtime".to_string(),
+                source_url: definition
+                    .hf_repo_id
+                    .map(|repo| format!("https://huggingface.co/{repo}")),
                 runtime: RuntimeRequirement {
                     id: format!("managed_{}", definition.provider_id),
                     label: "Speech runtime".to_string(),
@@ -2049,6 +2060,9 @@ impl TtsManager {
                     runnable: installed,
                     downloadable: true,
                     source_label: "Vox Jot model assets".to_string(),
+                    source_url: definition
+                        .hf_repo_id
+                        .map(|repo| format!("https://huggingface.co/{repo}")),
                     runtime: RuntimeRequirement {
                         id: format!("managed_{}", definition.provider_id),
                         label: "Speech runtime".to_string(),
@@ -2117,6 +2131,7 @@ impl TtsManager {
                 "Liquid LFM2.5-Audio 1.5B running through the bundled native llama-liquid-audio runner."
                     .to_string(),
             source_label: "Vox Jot model assets".to_string(),
+            source_url: Some("https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B".to_string()),
             runtime: lfm_runtime,
             available: self.ensure_lfm_audio_gguf_supported().is_ok(),
             local_only: true,
@@ -2151,6 +2166,7 @@ impl TtsManager {
                 "Microsoft VibeVoice-Realtime 0.5B via PyTorch/MPS bridge. Research license — enable Labs to use."
                     .to_string(),
             source_label: "Research-licensed model".to_string(),
+            source_url: Some("https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B".to_string()),
             runtime: vv_runtime,
             available: settings.experimental_enabled
                 && self.ensure_vibevoice_supported(settings).is_ok(),
@@ -2191,6 +2207,9 @@ impl TtsManager {
             runnable: lfm_installed,
             downloadable: true,
             source_label: "Vox Jot model assets".to_string(),
+            source_url: Some(
+                "https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B".to_string(),
+            ),
             runtime: RuntimeRequirement {
                 id: "lfm_audio_gguf".to_string(),
                 label: "LFM Audio native runner".to_string(),
@@ -2245,6 +2264,7 @@ impl TtsManager {
             runnable: vv_installed,
             downloadable: true,
             source_label: "Research-licensed model".to_string(),
+            source_url: Some("https://huggingface.co/microsoft/VibeVoice-Realtime-0.5B".to_string()),
             runtime: RuntimeRequirement {
                 id: "vibevoice".to_string(),
                 label: "VibeVoice Python bridge".to_string(),
@@ -2454,6 +2474,7 @@ impl TtsManager {
                     "Use platform speech synthesis and choose from installed system voices."
                         .to_string(),
                 source_label: "Platform runtime".to_string(),
+                source_url: None,
                 runtime: system_runtime.clone(),
                 available: self.ensure_system_engine_supported().is_ok(),
                 local_only: true,
@@ -2480,6 +2501,7 @@ impl TtsManager {
                     "Use Vox Jot-managed offline voice packs with automatic local runtime routing."
                         .to_string(),
                 source_label: "Vox Jot curated assets".to_string(),
+                source_url: Some("https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models".to_string()),
                 runtime: sherpa_runtime.clone(),
                 available: true,
                 local_only: true,
@@ -2509,6 +2531,7 @@ impl TtsManager {
                     "Route speech to a local OpenAI-compatible speech endpoint managed outside the app."
                         .to_string(),
                 source_label: "User-managed local endpoint".to_string(),
+                source_url: None,
                 runtime: sidecar_runtime.clone(),
                 available: self.ensure_sidecar_supported(settings).is_ok(),
                 local_only: true,
@@ -2537,6 +2560,7 @@ impl TtsManager {
                 "Native Qwen3 runtime with preset voices, instructions, and cloning support."
                     .to_string(),
             source_label: "Provider-hosted model weights".to_string(),
+            source_url: Some("https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base".to_string()),
             runtime: RuntimeRequirement {
                 id: "qwen3_native".to_string(),
                 label: "Qwen3 native runtime".to_string(),
@@ -2568,6 +2592,7 @@ impl TtsManager {
             runnable: true,
             downloadable: false,
             source_label: "Platform runtime".to_string(),
+            source_url: None,
             runtime: system_runtime,
             license_label: None,
             locale: None,
@@ -2605,6 +2630,7 @@ impl TtsManager {
                 runnable: self.ensure_sidecar_supported(settings).is_ok(),
                 downloadable: false,
                 source_label: "User-managed local endpoint".to_string(),
+                source_url: None,
                 runtime: sidecar_runtime.clone(),
                 license_label: None,
                 locale: None,
@@ -2660,6 +2686,9 @@ impl TtsManager {
                         runnable: installed,
                         downloadable: true,
                         source_label: "Vox Jot model assets".to_string(),
+                        source_url: pack
+                            .hf_repo_id
+                            .map(|repo| format!("https://huggingface.co/{repo}")),
                         runtime: RuntimeRequirement {
                             id: "qwen3_native".to_string(),
                             label: "Qwen3 native runtime".to_string(),
@@ -2700,6 +2729,7 @@ impl TtsManager {
                 runnable: pack.installed,
                 downloadable: true,
                 source_label: "Vox Jot curated assets".to_string(),
+                source_url: Some(pack.source_url.clone()),
                 runtime: sherpa_runtime.clone(),
                 license_label: Some("Sherpa ONNX model assets".to_string()),
                 locale: Some(pack.locale.clone()),
@@ -2764,6 +2794,7 @@ impl TtsManager {
                     label: provider.label.clone(),
                     description: provider.description.clone(),
                     source_label: provider.source_label.clone(),
+                    source_url: None,
                     runtime: RuntimeRequirement {
                         id: format!("runtime_{}", provider.provider.id),
                         label: format!("{} runtime", provider.provider.label),
@@ -2813,6 +2844,8 @@ impl TtsManager {
                 let selected = selected_provider_id == model.provider_id
                     && selected_model_id.as_deref() == Some(model.id.as_str());
                 let is_mlx_runtime_model = provider_is_mlx_audio(&model.provider_id);
+                let source_url = mlx_audio_tts_model_definition(&model.id)
+                    .map(|definition| format!("https://huggingface.co/{}", definition.hf_model_id));
                 let installed = !model.readiness.status.eq_ignore_ascii_case("missing");
                 let runnable = model.readiness.status.eq_ignore_ascii_case("ready");
                 Some(CatalogModelDescriptor {
@@ -2828,6 +2861,7 @@ impl TtsManager {
                     runnable,
                     downloadable: is_mlx_runtime_model,
                     source_label: model.source_label.clone(),
+                    source_url,
                     runtime: RuntimeRequirement {
                         id: provider.runtime.id.clone(),
                         label: model.readiness.runtime_label.clone(),

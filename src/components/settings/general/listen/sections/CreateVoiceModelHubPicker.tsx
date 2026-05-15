@@ -23,6 +23,7 @@ import type {
 import { modal } from "@/motion/springs";
 import {
   buildCreateVoiceHubRows,
+  orderCreateVoiceHubRows,
   type CreateVoiceHubVoiceRow,
   type InferredVoiceGender,
 } from "../createVoiceVoiceHub";
@@ -62,7 +63,6 @@ interface CreateVoiceModelHubPickerProps {
   onSortModeChange: (value: ModelSortMode) => void;
   orderedModels: CatalogModelDescriptor[];
   filteredModelCount: number;
-  onSelectModel: (model: CatalogModelDescriptor) => void;
   onSelectVoice: (selection: {
     model: CatalogModelDescriptor;
     voiceId: string | null;
@@ -164,7 +164,7 @@ const VoiceRow: React.FC<{
         {row.description}
       </span>
     </span>
-    <span className="flex shrink-0 items-center gap-2 text-lg" aria-hidden>
+    <span className="flex shrink-0 items-center gap-2 text-2xl" aria-hidden>
       {row.countryFlag ?? null}
     </span>
   </button>
@@ -196,12 +196,14 @@ export const CreateVoiceModelHubPicker: React.FC<
   onSortModeChange,
   orderedModels,
   filteredModelCount,
-  onSelectModel,
   onSelectVoice,
   onClose,
 }) => {
   const { t } = useTranslation();
   const [view, setView] = useState<PickerView>("models");
+  const [selectedModelFilterKey, setSelectedModelFilterKey] = useState<
+    string | null
+  >(null);
   const [voiceGenderFilter, setVoiceGenderFilter] = useState("all");
   const [voiceAccentFilter, setVoiceAccentFilter] = useState("all");
   const [voicesByModelKey, setVoicesByModelKey] = useState<
@@ -215,12 +217,25 @@ export const CreateVoiceModelHubPicker: React.FC<
   useEffect(() => {
     if (!open) {
       setView("models");
+      setSelectedModelFilterKey(null);
       setVoiceGenderFilter("all");
       setVoiceAccentFilter("all");
       loadingVoiceKeysRef.current.clear();
       setLoadingVoiceKeys(new Set());
     }
   }, [open]);
+
+  useEffect(() => {
+    if (
+      selectedModelFilterKey &&
+      !models.some(
+        (model) =>
+          `${model.provider_id}::${model.id}` === selectedModelFilterKey,
+      )
+    ) {
+      setSelectedModelFilterKey(null);
+    }
+  }, [models, selectedModelFilterKey]);
 
   useEffect(() => {
     if (!open || view !== "voices") return;
@@ -311,21 +326,29 @@ export const CreateVoiceModelHubPicker: React.FC<
   const selectedVoiceAccentLabel =
     voiceAccentOptions.find((option) => option.value === voiceAccentFilter)
       ?.label ?? "Accent";
-  const filteredVoiceRows = voiceRows.filter((row) => {
-    if (providerFilter !== "all" && row.providerId !== providerFilter) {
-      return false;
-    }
-    if (languageFilter !== "all" && row.language !== languageFilter) {
-      return false;
-    }
-    if (voiceGenderFilter !== "all" && row.gender !== voiceGenderFilter) {
-      return false;
-    }
-    if (voiceAccentFilter !== "all" && row.accent !== voiceAccentFilter) {
-      return false;
-    }
-    return !normalizedQuery || row.searchText.includes(normalizedQuery);
-  });
+  const filteredVoiceRows = orderCreateVoiceHubRows(
+    voiceRows.filter((row) => {
+      if (
+        selectedModelFilterKey &&
+        `${row.providerId}::${row.modelId}` !== selectedModelFilterKey
+      ) {
+        return false;
+      }
+      if (providerFilter !== "all" && row.providerId !== providerFilter) {
+        return false;
+      }
+      if (languageFilter !== "all" && row.language !== languageFilter) {
+        return false;
+      }
+      if (voiceGenderFilter !== "all" && row.gender !== voiceGenderFilter) {
+        return false;
+      }
+      if (voiceAccentFilter !== "all" && row.accent !== voiceAccentFilter) {
+        return false;
+      }
+      return !normalizedQuery || row.searchText.includes(normalizedQuery);
+    }),
+  );
   const modelByKey = useMemo(
     () =>
       new Map(
@@ -334,6 +357,16 @@ export const CreateVoiceModelHubPicker: React.FC<
     [models],
   );
   const loadingVoices = loadingVoiceKeys.size > 0;
+  const displayedModels = useMemo(() => {
+    if (!selectedModelFilterKey) return orderedModels;
+    return [...orderedModels].sort((left, right) => {
+      const leftSelected =
+        `${left.provider_id}::${left.id}` === selectedModelFilterKey;
+      const rightSelected =
+        `${right.provider_id}::${right.id}` === selectedModelFilterKey;
+      return Number(rightSelected) - Number(leftSelected);
+    });
+  }, [orderedModels, selectedModelFilterKey]);
 
   return createPortal(
     <AnimatePresence>
@@ -527,23 +560,38 @@ export const CreateVoiceModelHubPicker: React.FC<
               {view === "models" ? (
                 filteredModelCount > 0 ? (
                   <div className="flex flex-col gap-3">
-                    {orderedModels.map((model) => (
-                      <DraftVoiceModelLibraryCard
-                        key={`${model.provider_id}::${model.id}`}
-                        model={model}
-                        provider={
-                          providers.find(
-                            (provider) => provider.id === model.provider_id,
-                          ) ?? null
-                        }
-                        selected={
-                          model.provider_id === selectedProviderId &&
-                          model.id === selectedModelId
-                        }
-                        disabled={!speech.ttsEnabled}
-                        onSelect={() => onSelectModel(model)}
-                      />
-                    ))}
+                    {displayedModels.map((model) => {
+                      const modelKey = `${model.provider_id}::${model.id}`;
+                      return (
+                        <DraftVoiceModelLibraryCard
+                          key={modelKey}
+                          model={model}
+                          provider={
+                            providers.find(
+                              (provider) => provider.id === model.provider_id,
+                            ) ?? null
+                          }
+                          selected={modelKey === selectedModelFilterKey}
+                          selectedBadgeLabel={t(
+                            "listen.createVoices.voiceFilterModel",
+                            { defaultValue: "Selected" },
+                          )}
+                          selectedBadgeDetail={t(
+                            "listen.createVoices.voiceFilterModelDetail",
+                            {
+                              defaultValue:
+                                "The Voices view is filtered to this model. Select it again to show all voices.",
+                            },
+                          )}
+                          disabled={!speech.ttsEnabled}
+                          onSelect={() =>
+                            setSelectedModelFilterKey((current) =>
+                              current === modelKey ? null : modelKey,
+                            )
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className={speechLibraryCardClassName}>

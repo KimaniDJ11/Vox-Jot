@@ -148,9 +148,19 @@ export const DraftVoiceModelLibraryCard: React.FC<{
   model: CatalogModelDescriptor;
   provider: ProviderDescriptor | null;
   selected: boolean;
+  selectedBadgeLabel?: string;
+  selectedBadgeDetail?: string;
   disabled: boolean;
   onSelect: () => void;
-}> = ({ model, provider, selected, disabled, onSelect }) => {
+}> = ({
+  model,
+  provider,
+  selected,
+  selectedBadgeLabel,
+  selectedBadgeDetail,
+  disabled,
+  onSelect,
+}) => {
   const { t } = useTranslation();
   const languageCoverage = formatLanguageCoverage(model);
   const supportsStyle = modelHasTuningControls(model);
@@ -160,13 +170,17 @@ export const DraftVoiceModelLibraryCard: React.FC<{
     selected
       ? {
           id: "draft",
-          label: t("listen.createVoices.draft", { defaultValue: "Draft" }),
+          label:
+            selectedBadgeLabel ??
+            t("listen.createVoices.draft", { defaultValue: "Draft" }),
           variant: "primary",
           icon: <Check className="h-3.5 w-3.5" />,
-          detail: t("listen.createVoices.draftModelDetail", {
-            defaultValue:
-              "Selected for the Create Voices draft only. The active app voice is unchanged.",
-          }),
+          detail:
+            selectedBadgeDetail ??
+            t("listen.createVoices.draftModelDetail", {
+              defaultValue:
+                "Selected for the Create Voices draft only. The active app voice is unchanged.",
+            }),
         }
       : null,
   ].filter(Boolean) as CompactBadgeItem[];

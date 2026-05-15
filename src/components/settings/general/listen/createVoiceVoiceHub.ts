@@ -50,6 +50,21 @@ const REGION_NAMES: Record<string, string> = {
   US: "US",
 };
 
+const LANGUAGE_DEFAULT_REGIONS: Record<string, string> = {
+  ar: "SA",
+  de: "DE",
+  en: "US",
+  es: "ES",
+  fr: "FR",
+  hi: "IN",
+  it: "IT",
+  ja: "JP",
+  ko: "KR",
+  nl: "NL",
+  pt: "PT",
+  zh: "CN",
+};
+
 function stableHash(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -101,12 +116,26 @@ export function voiceAccentFromLocale(locale: string | null | undefined) {
   return region ? (REGION_NAMES[region] ?? region) : null;
 }
 
-export function countryFlagFromLocale(locale: string | null | undefined) {
-  const region = regionFromLocale(locale);
-  if (!region) return null;
+function flagFromRegion(region: string | null | undefined) {
+  if (!region || !/^[A-Z]{2}$/.test(region)) return null;
   return Array.from(region)
     .map((letter) => String.fromCodePoint(0x1f1e6 + letter.charCodeAt(0) - 65))
     .join("");
+}
+
+export function countryFlagFromLocale(locale: string | null | undefined) {
+  const language = voiceLanguageFromLocale(locale);
+  const languageRegion = language
+    ? (LANGUAGE_DEFAULT_REGIONS[language] ?? null)
+    : null;
+  const accentRegion = regionFromLocale(locale);
+  const flags = [flagFromRegion(languageRegion)];
+
+  if (accentRegion && accentRegion !== languageRegion) {
+    flags.push(flagFromRegion(accentRegion));
+  }
+
+  return flags.filter(Boolean).join("") || null;
 }
 
 function languageDisplayName(language: string | null) {
@@ -195,5 +224,43 @@ export function buildCreateVoiceHubRows(
           .toLowerCase(),
       } satisfies CreateVoiceHubVoiceRow;
     });
+  });
+}
+
+function voiceLocaleOrder(row: CreateVoiceHubVoiceRow) {
+  const locale = row.locale?.toLowerCase() ?? "";
+  const language = row.language?.toLowerCase() ?? "";
+  const accent = row.accent?.toLowerCase() ?? "";
+
+  if (locale === "en-us" || (language === "en" && accent === "us")) {
+    return 0;
+  }
+  if (language === "en" && accent) {
+    return 1;
+  }
+  if (language === "en") {
+    return 2;
+  }
+  if (accent) {
+    return 3;
+  }
+  if (language) {
+    return 4;
+  }
+  return 5;
+}
+
+export function orderCreateVoiceHubRows(rows: CreateVoiceHubVoiceRow[]) {
+  return [...rows].sort((left, right) => {
+    const localeDelta = voiceLocaleOrder(left) - voiceLocaleOrder(right);
+    if (localeDelta !== 0) return localeDelta;
+
+    return (
+      (left.accent ?? "").localeCompare(right.accent ?? "") ||
+      (left.language ?? "").localeCompare(right.language ?? "") ||
+      left.modelLabel.localeCompare(right.modelLabel) ||
+      left.voiceLabel.localeCompare(right.voiceLabel) ||
+      left.id.localeCompare(right.id)
+    );
   });
 }

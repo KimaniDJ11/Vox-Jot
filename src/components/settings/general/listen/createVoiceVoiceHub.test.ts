@@ -5,6 +5,7 @@ import {
   buildCreateVoiceHubRows,
   countryFlagFromLocale,
   inferVoiceGender,
+  orderCreateVoiceHubRows,
   voiceAccentFromLocale,
   voiceAvatarGradient,
   voiceLanguageFromLocale,
@@ -69,6 +70,7 @@ describe("createVoiceVoiceHub", () => {
     expect(voiceLanguageFromLocale("en-US")).toBe("en");
     expect(voiceAccentFromLocale("en-US")).toBe("US");
     expect(countryFlagFromLocale("en-US")).toBe("🇺🇸");
+    expect(countryFlagFromLocale("en-IN")).toBe("🇺🇸🇮🇳");
     expect(voiceAccentFromLocale("fr-FR")).toBe("French");
   });
 
@@ -115,5 +117,30 @@ describe("createVoiceVoiceHub", () => {
       gender: "female",
       description: "female voice preset for English (US), from Kokoro 82M.",
     });
+  });
+
+  it("orders US English voices before other English accents and remaining locales", () => {
+    const sourceModel = model();
+    const rows = buildCreateVoiceHubRows(
+      [sourceModel],
+      new Map([
+        [
+          `${sourceModel.provider_id}::${sourceModel.id}`,
+          [
+            voice({ id: "zf_xiaobei", label: "Xiaobei", locale: "zh-CN" }),
+            voice({ id: "bf_bella", label: "Bella", locale: "en-GB" }),
+            voice({ id: "af_heart", label: "Heart", locale: "en-US" }),
+            voice({ id: "neutral", label: "Neutral", locale: "en" }),
+          ],
+        ],
+      ]),
+    );
+
+    expect(orderCreateVoiceHubRows(rows).map((row) => row.voiceLabel)).toEqual([
+      "Heart",
+      "Bella",
+      "Neutral",
+      "Xiaobei",
+    ]);
   });
 });

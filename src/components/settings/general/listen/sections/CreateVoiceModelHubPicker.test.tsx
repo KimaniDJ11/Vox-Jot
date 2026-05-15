@@ -85,7 +85,6 @@ const render = async (
   document.body.appendChild(container);
   let root: Root | null = null;
   const sourceModel = model();
-  const onSelectModel = vi.fn();
   const onSelectVoice = vi.fn();
   const onClose = vi.fn();
 
@@ -137,7 +136,6 @@ const render = async (
         onSortModeChange={vi.fn()}
         orderedModels={[sourceModel]}
         filteredModelCount={1}
-        onSelectModel={onSelectModel}
         onSelectVoice={onSelectVoice}
         onClose={onClose}
         {...props}
@@ -148,7 +146,6 @@ const render = async (
   return {
     container,
     sourceModel,
-    onSelectModel,
     onSelectVoice,
     async cleanup() {
       await act(async () => {
@@ -276,6 +273,80 @@ describe("CreateVoiceModelHubPicker", () => {
     });
 
     expect(document.body.textContent).not.toContain("Heart");
+    expect(document.body.textContent).toContain("Bella");
+
+    await view.cleanup();
+  });
+
+  it("uses model card selection as a toggleable voice filter, not a draft selection", async () => {
+    const firstModel = model();
+    const secondModel = model({
+      id: "chatterbox",
+      provider_id: "mlx_chatterbox",
+      label: "Chatterbox",
+    });
+    getTtsVoicesForSelection.mockImplementation((providerId: string) =>
+      Promise.resolve([
+        providerId === "mlx_chatterbox"
+          ? voice({ id: "bf_bella", label: "Bella" })
+          : voice({ id: "af_heart", label: "Heart" }),
+      ]),
+    );
+    const view = await render({
+      models: [firstModel, secondModel],
+      orderedModels: [firstModel, secondModel],
+      filteredModelCount: 2,
+    });
+
+    expect(document.body.textContent).not.toContain("Selected");
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll('[role="button"]')).find((button) =>
+          button.textContent?.includes("Chatterbox"),
+        ) as HTMLElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Selected");
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "Voices",
+        ) as HTMLButtonElement
+      ).click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).not.toContain("Heart");
+    expect(document.body.textContent).toContain("Bella");
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "Models",
+        ) as HTMLButtonElement
+      ).click();
+    });
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll('[role="button"]')).find((button) =>
+          button.textContent?.includes("Chatterbox"),
+        ) as HTMLElement
+      ).click();
+    });
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "Voices",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Heart");
     expect(document.body.textContent).toContain("Bella");
 
     await view.cleanup();

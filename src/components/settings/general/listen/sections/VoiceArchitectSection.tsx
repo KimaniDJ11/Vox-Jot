@@ -30,11 +30,9 @@ import {
   DEFAULT_TTS_PREVIEW_TEXT,
   buildPresetInput,
   defaultVoiceTuning,
-  emptyVoiceInventoryLabel,
   getTtsVoicesForSelection,
   isDraftVoiceModelAvailable,
   isVoiceFixedToModel,
-  localeLabel,
   profileSupportsModel,
   resolveVoiceModelSelection,
   ttsModelSupportsLanguage,
@@ -81,7 +79,6 @@ export const VoiceArchitectSection: React.FC<{
     initialDraft.voiceProfileId,
   );
   const [draftVoices, setDraftVoices] = useState<VoiceInfo[]>([]);
-  const [loadingDraftVoices, setLoadingDraftVoices] = useState(false);
   const [draftVoiceErrorMessage, setDraftVoiceErrorMessage] = useState<
     string | null
   >(null);
@@ -207,27 +204,23 @@ export const VoiceArchitectSection: React.FC<{
 
     if (!providerIdForControls || !modelIdForControls) {
       setDraftVoices([]);
-      setLoadingDraftVoices(false);
       setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (isVoiceFixedToModel(providerIdForControls)) {
       setDraftVoices([]);
-      setLoadingDraftVoices(false);
       setDraftVoiceErrorMessage(null);
       return;
     }
 
     if (matchesActiveModel) {
       setDraftVoices(speech.voices);
-      setLoadingDraftVoices(speech.loadingVoices);
       setDraftVoiceErrorMessage(null);
       return;
     }
 
     let cancelled = false;
-    setLoadingDraftVoices(true);
     setDraftVoiceErrorMessage(null);
 
     void getTtsVoicesForSelection(providerIdForControls, modelIdForControls)
@@ -247,7 +240,6 @@ export const VoiceArchitectSection: React.FC<{
       })
       .finally(() => {
         if (cancelled) return;
-        setLoadingDraftVoices(false);
       });
 
     return () => {
@@ -350,20 +342,6 @@ export const VoiceArchitectSection: React.FC<{
     draftVoiceProfileId,
     speech.activePreset?.voice_profile_id,
   ]);
-  const draftVoiceOptions = [
-    {
-      value: "__auto__",
-      label:
-        draftVoiceInventory.length > 0
-          ? "Automatic voice"
-          : emptyVoiceInventoryLabel(draftProviderIdForControls),
-      disabled: draftVoiceInventory.length === 0,
-    },
-    ...draftVoiceInventory.map((voice) => ({
-      value: voice.id,
-      label: `${voice.label}${localeLabel(voice.locale)}`,
-    })),
-  ];
   const normalizedModelSearch = modelSearchQuery.trim().toLowerCase();
   const modelProviderOptions = useMemo(
     () => [
@@ -455,9 +433,6 @@ export const VoiceArchitectSection: React.FC<{
     modelSortMode,
     {
       label: (model: CatalogModelDescriptor) => model.label,
-      active: (model: CatalogModelDescriptor) =>
-        model.provider_id === draftProviderIdForControls &&
-        model.id === draftModelIdForControls,
       installed: (model: CatalogModelDescriptor) => model.installed,
       runnable: (model: CatalogModelDescriptor) => model.runnable,
       recommended: (model: CatalogModelDescriptor) => model.selected,
@@ -539,15 +514,6 @@ export const VoiceArchitectSection: React.FC<{
     }
   };
 
-  const handleSelectDraftModel = (model: CatalogModelDescriptor) => {
-    lastDraftSelectionKeyRef.current = null;
-    setDraftVoiceErrorMessage(null);
-    setDraftProviderId(model.provider_id);
-    setDraftModelId(model.id);
-    setModelWindowOpen(false);
-    speech.setStatusMessage(null);
-  };
-
   const handleSelectDraftVoice = ({
     model,
     voiceId,
@@ -604,101 +570,72 @@ export const VoiceArchitectSection: React.FC<{
   const contentSpacingClassName = showTitle
     ? "space-y-7 px-4 py-3"
     : "space-y-7";
+  const showAudioControlsCard =
+    draftSupportsVoiceCloning ||
+    (draftMatchesActiveModel && supportsDraftManualVoiceId) ||
+    Boolean(statusMessage);
   const audioView = (
     <>
-      <div className={whiteWorkflowCardClassName}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-3">
-            {!isVoiceFixedToModel(draftProviderIdForControls) &&
-            !supportsDraftManualVoiceId ? (
-              <WorkflowField label={t("listen.createVoices.workflow.voice")}>
-                <SelectField
-                  value={draftVoiceId}
-                  onChange={(value) => {
-                    setDraftVoiceId(value);
-                    if (!draftMatchesActiveModel) {
-                      return;
-                    }
-                    const selectedVoice =
-                      draftVoiceInventory.find((voice) => voice.id === value) ??
-                      null;
-                    void speech.updateActivePreset({
-                      voice_id: value === "__auto__" ? null : value,
-                      voice_label_snapshot:
-                        value === "__auto__"
-                          ? null
-                          : (selectedVoice?.label ?? value),
-                      locale_snapshot:
-                        value === "__auto__"
-                          ? null
-                          : (selectedVoice?.locale ?? null),
-                    });
-                  }}
-                  disabled={!speech.ttsEnabled || loadingDraftVoices}
-                  options={
-                    loadingDraftVoices
-                      ? [{ value: "__auto__", label: "Loading voices..." }]
-                      : draftVoiceOptions
-                  }
-                />
-              </WorkflowField>
-            ) : null}
+      {showAudioControlsCard ? (
+        <div className={whiteWorkflowCardClassName}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-3">
+              {draftSupportsVoiceCloning ? (
+                <WorkflowField
+                  label={t("listen.createVoices.workflow.cloneProfile")}
+                >
+                  <SelectField
+                    value={draftVoiceProfileId}
+                    onChange={(value) => {
+                      setDraftVoiceProfileId(value);
+                      if (!draftMatchesActiveModel) {
+                        return;
+                      }
+                      const profile =
+                        draftCompatibleProfiles.find(
+                          (item) => item.id === value,
+                        ) ?? null;
+                      void speech.updateActivePreset({
+                        voice_profile_id: value === "__none__" ? null : value,
+                        voice_label_snapshot:
+                          value === "__none__"
+                            ? (speech.activePreset.voice_label_snapshot ?? null)
+                            : (profile?.label ?? value),
+                      });
+                    }}
+                    disabled={!speech.ttsEnabled || speech.loadingProfiles}
+                    options={draftProfileOptions}
+                  />
+                </WorkflowField>
+              ) : null}
 
-            {draftSupportsVoiceCloning ? (
-              <WorkflowField
-                label={t("listen.createVoices.workflow.cloneProfile")}
-              >
-                <SelectField
-                  value={draftVoiceProfileId}
-                  onChange={(value) => {
-                    setDraftVoiceProfileId(value);
-                    if (!draftMatchesActiveModel) {
-                      return;
+              {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
+                <WorkflowField
+                  label={t("listen.createVoices.workflow.manualVoiceId")}
+                >
+                  <Input
+                    value={speech.activePreset.voice_id ?? ""}
+                    onChange={(event) =>
+                      void speech.updateActivePreset({
+                        voice_id: event.target.value || null,
+                        voice_label_snapshot: event.target.value || null,
+                      })
                     }
-                    const profile =
-                      draftCompatibleProfiles.find(
-                        (item) => item.id === value,
-                      ) ?? null;
-                    void speech.updateActivePreset({
-                      voice_profile_id: value === "__none__" ? null : value,
-                      voice_label_snapshot:
-                        value === "__none__"
-                          ? (speech.activePreset.voice_label_snapshot ?? null)
-                          : (profile?.label ?? value),
-                    });
-                  }}
-                  disabled={!speech.ttsEnabled || speech.loadingProfiles}
-                  options={draftProfileOptions}
-                />
-              </WorkflowField>
-            ) : null}
-
-            {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
-              <WorkflowField
-                label={t("listen.createVoices.workflow.manualVoiceId")}
-              >
-                <Input
-                  value={speech.activePreset.voice_id ?? ""}
-                  onChange={(event) =>
-                    void speech.updateActivePreset({
-                      voice_id: event.target.value || null,
-                      voice_label_snapshot: event.target.value || null,
-                    })
-                  }
-                  placeholder={t("listen.placeholders.manualVoiceId")}
-                  disabled={!speech.ttsEnabled}
-                  className="w-full max-w-none"
-                />
-              </WorkflowField>
+                    placeholder={t("listen.placeholders.manualVoiceId")}
+                    disabled={!speech.ttsEnabled}
+                    className="w-full max-w-none"
+                  />
+                </WorkflowField>
+              ) : null}
+            </div>
+            {statusMessage ? (
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
+                {statusMessage}
+              </div>
             ) : null}
           </div>
-          {statusMessage ? (
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
-              {statusMessage}
-            </div>
-          ) : null}
         </div>
-      </div>
+      ) : null}
 
       <div className={whiteWorkflowCardClassName}>
         <div className="space-y-3">
@@ -790,7 +727,6 @@ export const VoiceArchitectSection: React.FC<{
         onSortModeChange={setModelSortMode}
         orderedModels={orderedDraftModels}
         filteredModelCount={filteredDraftModels.length}
-        onSelectModel={handleSelectDraftModel}
         onSelectVoice={handleSelectDraftVoice}
         onClose={() => setModelWindowOpen(false)}
       />

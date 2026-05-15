@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VoiceInfo } from "@/bindings";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { ListenSpeechState } from "../useListenSpeechState";
@@ -77,6 +77,13 @@ const voice = (patch: Partial<VoiceInfo> = {}): VoiceInfo => ({
 const speech = {
   ttsEnabled: true,
 } as ListenSpeechState;
+
+const flushPickerEffects = async () => {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+};
 
 const render = async (
   props: Partial<React.ComponentProps<typeof CreateVoiceModelHubPicker>> = {},
@@ -158,6 +165,10 @@ const render = async (
 };
 
 describe("CreateVoiceModelHubPicker", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
   beforeEach(() => {
     getTtsVoicesForSelection.mockReset();
     getTtsVoicesForSelection.mockResolvedValue([voice()]);
@@ -166,9 +177,7 @@ describe("CreateVoiceModelHubPicker", () => {
   it("opens on voices and selects a preset voice", async () => {
     const view = await render();
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushPickerEffects();
 
     expect(getTtsVoicesForSelection).toHaveBeenCalledWith(
       "mlx_kokoro",
@@ -202,13 +211,11 @@ describe("CreateVoiceModelHubPicker", () => {
     const onSearchQueryChange = vi.fn();
     const view = await render({ onSearchQueryChange });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushPickerEffects();
 
-    const genderFilter = document.body.querySelector(
-      '[aria-label="Filter voices by gender: Gender"] select',
-    ) as HTMLSelectElement;
+    const genderFilter = Array.from(document.body.querySelectorAll("label"))
+      .find((label) => label.textContent?.includes("Gender"))
+      ?.querySelector("select") as HTMLSelectElement;
     await act(async () => {
       genderFilter.value = "male";
       genderFilter.dispatchEvent(new Event("change", { bubbles: true }));
@@ -246,9 +253,7 @@ describe("CreateVoiceModelHubPicker", () => {
       selectedProviderLabel: "Chatterbox",
     });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushPickerEffects();
 
     expect(document.body.textContent).not.toContain("Heart");
     expect(document.body.textContent).toContain("Bella");
@@ -303,9 +308,7 @@ describe("CreateVoiceModelHubPicker", () => {
         ) as HTMLButtonElement
       ).click();
     });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushPickerEffects();
 
     expect(document.body.textContent).not.toContain("Heart");
     expect(document.body.textContent).toContain("Bella");

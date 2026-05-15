@@ -72,12 +72,6 @@ interface CreateVoiceModelHubPickerProps {
   onClose: () => void;
 }
 
-function voiceGenderLabel(gender: InferredVoiceGender | null) {
-  if (gender === "female") return "Female";
-  if (gender === "male") return "Male";
-  return "Gender";
-}
-
 const VoiceFilterSelect: React.FC<{
   value: string;
   options: FilterOption[];
@@ -126,8 +120,10 @@ const VoiceFilterSelect: React.FC<{
 const VoiceRow: React.FC<{
   row: CreateVoiceHubVoiceRow;
   selected: boolean;
+  femaleVoiceLabel: string;
+  maleVoiceLabel: string;
   onSelect: () => void;
-}> = ({ row, selected, onSelect }) => (
+}> = ({ row, selected, femaleVoiceLabel, maleVoiceLabel, onSelect }) => (
   <button
     type="button"
     onClick={onSelect}
@@ -151,12 +147,12 @@ const VoiceRow: React.FC<{
         {row.gender === "female" ? (
           <Venus
             className="h-4 w-4 shrink-0 text-[var(--voice)]"
-            aria-label="Female voice"
+            aria-label={femaleVoiceLabel}
           />
         ) : row.gender === "male" ? (
           <Mars
             className="h-4 w-4 shrink-0 text-[var(--accent)]"
-            aria-label="Male voice"
+            aria-label={maleVoiceLabel}
           />
         ) : null}
       </span>
@@ -280,7 +276,14 @@ export const CreateVoiceModelHubPicker: React.FC<
   );
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const voiceLanguageOptions = useMemo(() => {
-    const values = new Map<string, string>([["all", "Language"]]);
+    const values = new Map<string, string>([
+      [
+        "all",
+        t("listen.createVoices.voiceLanguage", {
+          defaultValue: "Language",
+        }),
+      ],
+    ]);
     for (const row of voiceRows) {
       if (!row.language) continue;
       const matching = languageOptions.find(
@@ -289,7 +292,7 @@ export const CreateVoiceModelHubPicker: React.FC<
       values.set(row.language, matching?.label ?? row.language.toUpperCase());
     }
     return Array.from(values, ([value, label]) => ({ value, label }));
-  }, [languageOptions, voiceRows]);
+  }, [languageOptions, t, voiceRows]);
   const voiceGenderOptions = useMemo(() => {
     const genders = new Set(
       voiceRows
@@ -297,13 +300,25 @@ export const CreateVoiceModelHubPicker: React.FC<
         .filter((gender): gender is InferredVoiceGender => Boolean(gender)),
     );
     return [
-      { value: "all", label: "Gender" },
+      {
+        value: "all",
+        label: t("listen.createVoices.voiceGender", {
+          defaultValue: "Gender",
+        }),
+      },
       ...Array.from(genders).map((gender) => ({
         value: gender,
-        label: voiceGenderLabel(gender),
+        label:
+          gender === "female"
+            ? t("listen.createVoices.voiceGenderFemale", {
+                defaultValue: "Female",
+              })
+            : t("listen.createVoices.voiceGenderMale", {
+                defaultValue: "Male",
+              }),
       })),
     ];
-  }, [voiceRows]);
+  }, [t, voiceRows]);
   const voiceAccentOptions = useMemo(() => {
     const accents = Array.from(
       new Set(
@@ -313,19 +328,33 @@ export const CreateVoiceModelHubPicker: React.FC<
       ),
     ).sort();
     return [
-      { value: "all", label: "Accent" },
+      {
+        value: "all",
+        label: t("listen.createVoices.voiceAccent", {
+          defaultValue: "Accent",
+        }),
+      },
       ...accents.map((accent) => ({ value: accent, label: accent })),
     ];
-  }, [voiceRows]);
+  }, [t, voiceRows]);
   const selectedVoiceLanguageLabel =
     voiceLanguageOptions.find((option) => option.value === languageFilter)
-      ?.label ?? "Language";
+      ?.label ??
+    t("listen.createVoices.voiceLanguage", {
+      defaultValue: "Language",
+    });
   const selectedVoiceGenderLabel =
     voiceGenderOptions.find((option) => option.value === voiceGenderFilter)
-      ?.label ?? "Gender";
+      ?.label ??
+    t("listen.createVoices.voiceGender", {
+      defaultValue: "Gender",
+    });
   const selectedVoiceAccentLabel =
     voiceAccentOptions.find((option) => option.value === voiceAccentFilter)
-      ?.label ?? "Accent";
+      ?.label ??
+    t("listen.createVoices.voiceAccent", {
+      defaultValue: "Accent",
+    });
   const filteredVoiceRows = orderCreateVoiceHubRows(
     voiceRows.filter((row) => {
       if (
@@ -547,7 +576,13 @@ export const CreateVoiceModelHubPicker: React.FC<
                       options={voiceLanguageOptions}
                       onChange={onLanguageFilterChange}
                       label={selectedVoiceLanguageLabel}
-                      ariaLabel={`Filter voices by language: ${selectedVoiceLanguageLabel}`}
+                      ariaLabel={t(
+                        "listen.createVoices.filterVoicesByLanguage",
+                        {
+                          label: selectedVoiceLanguageLabel,
+                          defaultValue: "Filter voices by language: {{label}}",
+                        },
+                      )}
                       show={voiceLanguageOptions.length > 1}
                     />
                     <VoiceFilterSelect
@@ -555,7 +590,13 @@ export const CreateVoiceModelHubPicker: React.FC<
                       options={voiceGenderOptions}
                       onChange={setVoiceGenderFilter}
                       label={selectedVoiceGenderLabel}
-                      ariaLabel={`Filter voices by gender: ${selectedVoiceGenderLabel}`}
+                      ariaLabel={t(
+                        "listen.createVoices.filterVoicesByGender",
+                        {
+                          label: selectedVoiceGenderLabel,
+                          defaultValue: "Filter voices by gender: {{label}}",
+                        },
+                      )}
                       show={voiceGenderOptions.length > 1}
                     />
                     <VoiceFilterSelect
@@ -563,7 +604,13 @@ export const CreateVoiceModelHubPicker: React.FC<
                       options={voiceAccentOptions}
                       onChange={setVoiceAccentFilter}
                       label={selectedVoiceAccentLabel}
-                      ariaLabel={`Filter voices by accent: ${selectedVoiceAccentLabel}`}
+                      ariaLabel={t(
+                        "listen.createVoices.filterVoicesByAccent",
+                        {
+                          label: selectedVoiceAccentLabel,
+                          defaultValue: "Filter voices by accent: {{label}}",
+                        },
+                      )}
                       show={voiceAccentOptions.length > 1}
                     />
                   </div>
@@ -639,6 +686,15 @@ export const CreateVoiceModelHubPicker: React.FC<
                           row.modelId === selectedModelId &&
                           (row.voiceId ?? "__auto__") === selectedVoiceId
                         }
+                        femaleVoiceLabel={t(
+                          "listen.createVoices.femaleVoice",
+                          {
+                            defaultValue: "Female voice",
+                          },
+                        )}
+                        maleVoiceLabel={t("listen.createVoices.maleVoice", {
+                          defaultValue: "Male voice",
+                        })}
                         onSelect={() =>
                           onSelectVoice({
                             model,

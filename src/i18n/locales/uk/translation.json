@@ -1734,7 +1734,45 @@
         "voice": "Голос",
         "cloneProfile": "Клонувати профіль",
         "manualVoiceId": "Ручний голос ID"
-      }
+      },
+      "title": "Створити мовлення",
+      "description": "Переглядайте моделі, налаштовуйте подачу та зберігайте новий голосовий профіль, не змінюючи активний голос.",
+      "voices": "Голоси",
+      "models": "Моделі",
+      "draftVoicePickerDetail": "Виберіть голос для цієї чернетки, не змінюючи активний голос застосунку.",
+      "draftModelPickerDetail": "Виберіть модель, щоб відфільтрувати доступні голоси для цієї чернетки.",
+      "searchVoicesAriaLabel": "Пошук голосів",
+      "searchModelsAriaLabel": "Пошук голосових моделей",
+      "searchVoices": "Пошук голосів",
+      "searchModels": "Пошук моделей TTS",
+      "clearVoiceSearch": "Очистити пошук голосів",
+      "clearModelSearch": "Очистити пошук моделей",
+      "modelHubView": "Вигляд центру моделей",
+      "voiceFilterModel": "Вибрано",
+      "voiceFilterModelDetail": "Вигляд Голоси відфільтровано за цією моделлю. Виберіть її ще раз, щоб показати всі голоси.",
+      "noModelSearchResults": "Немає завантажених і придатних до запуску моделей TTS, що відповідають цьому пошуку.",
+      "noModels": "Немає доступних завантажених і придатних до запуску моделей TTS.",
+      "loadingVoices": "Завантаження доступних голосів...",
+      "noVoiceSearchResults": "Немає встановлених голосових пресетів, що відповідають цим фільтрам.",
+      "tuning": "Налаштування",
+      "saveTunedVoice": "Зберегти налаштований голос",
+      "saveTunedVoiceDetail": "Назвіть ці налаштовані параметри голосу, щоб використати їх повторно.",
+      "tunedVoiceName": "Назва налаштованого голосу",
+      "toolAriaLabel": "Інструменти створення мовлення",
+      "audioTab": "Аудіо",
+      "draft": "Чернетка",
+      "draftModelDetail": "Вибрано лише для чернетки Створити мовлення. Активний голос застосунку не змінено.",
+      "modelDetails": "Відомості про {{modelName}}",
+      "voiceLanguage": "Мова",
+      "voiceGender": "Стать",
+      "voiceAccent": "Акцент",
+      "voiceGenderFemale": "Жіночий",
+      "voiceGenderMale": "Чоловічий",
+      "filterVoicesByLanguage": "Фільтрувати голоси за мовою: {{label}}",
+      "filterVoicesByGender": "Фільтрувати голоси за статтю: {{label}}",
+      "filterVoicesByAccent": "Фільтрувати голоси за акцентом: {{label}}",
+      "femaleVoice": "Жіночий голос",
+      "maleVoice": "Чоловічий голос"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Локальний диктування, уточнення та прослуховування — створено на основі моделей сімейства Whisper, користувальницьких механізмів TTS та інтеграції набору тексту на системному рівні."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Умови",
+        "title": "Юридичні умови та умови моделей",
+        "description": "Перед використанням чутливих процесів перевірте згоду на запис, ліцензії сторонніх моделей, дозвіл на клонування голосу та відповідальність за точність."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "Переклад"
       },
       "listen": {
-        "createVoices": "Створення голосів",
+        "createVoices": "Створити мовлення",
         "myVoices": "Голоси",
         "voiceCloning": "Клонування голосу",
         "studio": "Студія",
@@ -2551,73 +2589,73 @@
         "privacy": "Конфіденційність і зберігання",
         "diagnostics": "діагностика",
         "about": "Про Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "Юридичні умови та умови моделей"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "Перевірка",
+      "statusAcknowledged": "Підтверджено",
+      "statusReview": "Потрібна перевірка",
+      "modelCountLabel": "Покриття каталогу",
+      "modelCountValue": "Покрито",
+      "previewLabel": "Юридичні контрольні пункти",
+      "previewRecording": "Отримати потрібну згоду на запис",
+      "previewModels": "Дотримуватися ліцензії кожної моделі",
+      "previewVoice": "Використовувати лише дозволені зразки голосу",
+      "principlesTitle": "Що це захищає",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Закони про запис",
+          "value": "Спершу згода",
+          "detail": "Ви відповідаєте за отримання потрібної згоди перед записом, транскрибуванням або аналізом мовлення."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Сторонні моделі",
+          "value": "Ліцензія за моделлю",
+          "detail": "Кожна модель STT, TTS, OCR і мовця має власну ліцензію видавця та зобов’язання щодо повідомлень."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Клонування голосу",
+          "value": "Потрібен дозвіл",
+          "detail": "Еталонні голоси мають бути вашими, записаними вами або використаними з явним дозволом."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Маршрутизація даних",
+          "value": "Знайте, що залишає пристрій",
+          "detail": "Локальні маршрути залишаються на цьому пристрої; хмарні або сторонні маршрути регулюються умовами відповідного постачальника."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Контрольний список умов використання",
+      "termsDescription": "Це практичні зобов’язання, які Vox Jot може показати. Вони не замінюють юридичну консультацію.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Згода на запис і транскрипцію",
+          "detail": "Записуйте, транскрибуйте, підсумовуйте або діаризуйте розмови лише тоді, коли це дозволено застосовними законами й політиками."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Ліцензії моделей та атрибуція",
+          "detail": "Не видаляйте файли ліцензій, картки моделей, повідомлення, посилання на джерела чи атрибуцію із завантажених або дзеркальних ресурсів моделей."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Обмежені та некомерційні моделі",
+          "detail": "Моделі, позначені як обмежені, власні, gated, лише для досліджень або некомерційні, потребують перевірки умов видавця перед завантаженням чи використанням."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Схожість голосу та еталонне аудіо",
+          "detail": "Не клонуйте, не імітуйте й не генеруйте мовлення голосом іншої особи без прав або згоди на це конкретне використання."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Точність транскриптів і результатів AI",
+          "detail": "Транскрипти, мітки мовців, OCR-текст, переклади та згенероване мовлення можуть бути помилковими. Перевіряйте важливі результати перед використанням."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "Пов’язані елементи керування",
+      "openModelHub": "Відкрити центр моделей",
+      "openPrivacy": "Налаштування приватності",
+      "openNotices": "Повідомлення третіх сторін",
+      "ackTitle": "Локальне підтвердження",
+      "ackLabel": "Я розумію ці обов’язки щодо моделей і запису.",
+      "ackDescription": "Це підтвердження зберігається локально на цьому пристрої. Завантаження обмежених моделей усе одно потребує окремого підтвердження для конкретної моделі."
     }
   },
   "testing": {

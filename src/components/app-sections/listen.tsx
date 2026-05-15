@@ -34,7 +34,7 @@ export const ListenCreateVoicesSection: React.FC = () => {
       <SettingsGroup
         noCard
         title={t("listen.createVoices.title", {
-          defaultValue: "Create Voices",
+          defaultValue: "Create Speech",
         })}
         description={t("listen.createVoices.description", {
           defaultValue:

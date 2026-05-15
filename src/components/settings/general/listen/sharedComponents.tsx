@@ -179,7 +179,7 @@ export const DraftVoiceModelLibraryCard: React.FC<{
             selectedBadgeDetail ??
             t("listen.createVoices.draftModelDetail", {
               defaultValue:
-                "Selected for the Create Voices draft only. The active app voice is unchanged.",
+                "Selected for the Create Speech draft only. The active app voice is unchanged.",
             }),
         }
       : null,

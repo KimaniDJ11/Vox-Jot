@@ -1734,7 +1734,45 @@
         "voice": "Stimme",
         "cloneProfile": "Profil klonen",
         "manualVoiceId": "Manuelle Stimme ID"
-      }
+      },
+      "title": "Sprache erstellen",
+      "description": "Modelle prüfen, die Wiedergabe abstimmen und ein neues Sprachprofil speichern, ohne die aktive Stimme zu ändern.",
+      "voices": "Stimmen",
+      "models": "Modelle",
+      "draftVoicePickerDetail": "Wähle eine Stimme für diesen Entwurf, ohne die aktive App-Stimme zu ändern.",
+      "draftModelPickerDetail": "Wähle ein Modell, um verfügbare Stimmen für diesen Entwurf zu filtern.",
+      "searchVoicesAriaLabel": "Stimmen suchen",
+      "searchModelsAriaLabel": "Sprachmodelle suchen",
+      "searchVoices": "Stimmen suchen",
+      "searchModels": "TTS-Modelle suchen",
+      "clearVoiceSearch": "Stimmensuche löschen",
+      "clearModelSearch": "Modellsuche löschen",
+      "modelHubView": "Modell-Hub-Ansicht",
+      "voiceFilterModel": "Ausgewählt",
+      "voiceFilterModelDetail": "Die Stimmenansicht ist auf dieses Modell gefiltert. Wähle es erneut aus, um alle Stimmen anzuzeigen.",
+      "noModelSearchResults": "Keine heruntergeladenen, ausführbaren TTS-Modelle passen zu dieser Suche.",
+      "noModels": "Keine heruntergeladenen, ausführbaren TTS-Modelle verfügbar.",
+      "loadingVoices": "Verfügbare Stimmen werden geladen...",
+      "noVoiceSearchResults": "Keine installierten Stimmvorgaben passen zu diesen Filtern.",
+      "tuning": "Abstimmung",
+      "saveTunedVoice": "Abgestimmte Stimme speichern",
+      "saveTunedVoiceDetail": "Benenne diese abgestimmten Stimmeinstellungen, damit du sie wiederverwenden kannst.",
+      "tunedVoiceName": "Name der abgestimmten Stimme",
+      "toolAriaLabel": "Werkzeuge zum Erstellen von Sprache",
+      "audioTab": "Audio",
+      "draft": "Entwurf",
+      "draftModelDetail": "Nur für den Entwurf Sprache erstellen ausgewählt. Die aktive App-Stimme bleibt unverändert.",
+      "modelDetails": "Details zu {{modelName}}",
+      "voiceLanguage": "Sprache",
+      "voiceGender": "Geschlecht",
+      "voiceAccent": "Akzent",
+      "voiceGenderFemale": "Weiblich",
+      "voiceGenderMale": "Männlich",
+      "filterVoicesByLanguage": "Stimmen nach Sprache filtern: {{label}}",
+      "filterVoicesByGender": "Stimmen nach Geschlecht filtern: {{label}}",
+      "filterVoicesByAccent": "Stimmen nach Akzent filtern: {{label}}",
+      "femaleVoice": "Weibliche Stimme",
+      "maleVoice": "Männliche Stimme"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Lokales Diktieren, Verfeinern und Zuhören – basierend auf Modellen der Whisper-Familie, benutzerdefinierten TTS-Engines und Eingabeintegrationen auf Systemebene."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Bedingungen",
+        "title": "Rechtliches und Modellbedingungen",
+        "description": "Prüfe Aufnahmezustimmung, Lizenzen von Drittanbietermodellen, Erlaubnis zum Stimmenklonen und Genauigkeitsverantwortung, bevor du sensible Workflows nutzt."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "Übersetzung"
       },
       "listen": {
-        "createVoices": "Stimmen erstellen",
+        "createVoices": "Sprache erstellen",
         "myVoices": "Stimmen",
         "voiceCloning": "Stimmklonen",
         "studio": "Studio",
@@ -2551,73 +2589,73 @@
         "privacy": "Datenschutz und Speicherung",
         "diagnostics": "Diagnose",
         "about": "Über Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "Rechtliches und Modellbedingungen"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "Prüfung",
+      "statusAcknowledged": "Bestätigt",
+      "statusReview": "Prüfung nötig",
+      "modelCountLabel": "Katalogabdeckung",
+      "modelCountValue": "Abgedeckt",
+      "previewLabel": "Rechtliche Prüfpunkte",
+      "previewRecording": "Erforderliche Aufnahmezustimmung einholen",
+      "previewModels": "Jede Modelllizenz beachten",
+      "previewVoice": "Nur erlaubte Stimmproben verwenden",
+      "principlesTitle": "Was dies schützt",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Aufnahmegesetze",
+          "value": "Zustimmung zuerst",
+          "detail": "Du bist dafür verantwortlich, jede erforderliche Zustimmung einzuholen, bevor du Sprache aufnimmst, transkribierst oder analysierst."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Drittanbietermodelle",
+          "value": "Lizenz je Modell",
+          "detail": "Jedes STT-, TTS-, OCR- und Sprechermodell hat eigene Publisher-Lizenzen und Hinweispflichten."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Stimmenklonen",
+          "value": "Erlaubnis erforderlich",
+          "detail": "Referenzstimmen müssen dir gehören, von dir aufgenommen sein oder mit ausdrücklicher Erlaubnis genutzt werden."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Datenrouting",
+          "value": "Wissen, was das Gerät verlässt",
+          "detail": "Lokale Routen bleiben auf diesem Gerät; Cloud- oder Drittanbieter-Routen unterliegen den Bedingungen des jeweiligen Anbieters."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Checkliste der Nutzungsbedingungen",
+      "termsDescription": "Dies sind praktische Pflichten, die Vox Jot anzeigen kann. Sie ersetzen keine Rechtsberatung.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Zustimmung zu Aufnahme und Transkription",
+          "detail": "Nimm Gespräche nur auf, transkribiere, fasse zusammen oder diarisiere sie, wenn die für dich geltenden Gesetze und Richtlinien dies erlauben."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Modelllizenzen und Namensnennung",
+          "detail": "Entferne keine Lizenzdateien, Modellkarten, Hinweise, Quelllinks oder Namensnennungen aus heruntergeladenen oder gespiegelten Modellressourcen."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Eingeschränkte und nichtkommerzielle Modelle",
+          "detail": "Als eingeschränkt, benutzerdefiniert, gated, nur für Forschung oder nichtkommerziell markierte Modelle erfordern vor Download oder Nutzung eine Prüfung der Publisher-Bedingungen."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Stimmähnlichkeit und Referenzaudio",
+          "detail": "Klone, imitiere oder erzeuge keine Sprache mit der Stimme einer anderen Person ohne Rechte oder Zustimmung für diese konkrete Nutzung."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Genauigkeit von Transkripten und KI-Ausgaben",
+          "detail": "Transkripte, Sprecherlabels, OCR-Text, Übersetzungen und generierte Sprache können falsch sein. Prüfe wichtige Ausgaben, bevor du dich darauf verlässt."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "Zugehörige Steuerelemente",
+      "openModelHub": "Modell-Hub öffnen",
+      "openPrivacy": "Datenschutzsteuerung",
+      "openNotices": "Drittanbieterhinweise",
+      "ackTitle": "Lokale Bestätigung",
+      "ackLabel": "Ich verstehe diese Modell- und Aufnahmeverantwortung.",
+      "ackDescription": "Diese Bestätigung wird lokal auf diesem Gerät gespeichert. Eingeschränkte Modelldownloads benötigen weiterhin ihre eigene modellspezifische Bestätigung."
     }
   },
   "testing": {

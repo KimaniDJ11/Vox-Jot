@@ -1734,7 +1734,45 @@
         "voice": "음성",
         "cloneProfile": "프로필 복제",
         "manualVoiceId": "수동 음성 ID"
-      }
+      },
+      "title": "음성 만들기",
+      "description": "모델을 미리 보고 전달 방식을 조정한 뒤, 활성 음성을 바꾸지 않고 새 음성 프로필을 저장합니다.",
+      "voices": "음성",
+      "models": "모델",
+      "draftVoicePickerDetail": "앱의 활성 음성을 바꾸지 않고 이 초안에 사용할 음성을 선택하세요.",
+      "draftModelPickerDetail": "이 초안에서 사용할 수 있는 음성을 필터링할 모델을 선택하세요.",
+      "searchVoicesAriaLabel": "음성 검색",
+      "searchModelsAriaLabel": "음성 모델 검색",
+      "searchVoices": "음성 검색",
+      "searchModels": "TTS 모델 검색",
+      "clearVoiceSearch": "음성 검색 지우기",
+      "clearModelSearch": "모델 검색 지우기",
+      "modelHubView": "모델 허브 보기",
+      "voiceFilterModel": "선택됨",
+      "voiceFilterModelDetail": "음성 보기가 이 모델로 필터링되었습니다. 다시 선택하면 모든 음성을 표시합니다.",
+      "noModelSearchResults": "검색과 일치하는 다운로드된 실행 가능 TTS 모델이 없습니다.",
+      "noModels": "다운로드된 실행 가능 TTS 모델이 없습니다.",
+      "loadingVoices": "사용 가능한 음성을 불러오는 중...",
+      "noVoiceSearchResults": "이 필터와 일치하는 설치된 음성 프리셋이 없습니다.",
+      "tuning": "조정",
+      "saveTunedVoice": "조정한 음성 저장",
+      "saveTunedVoiceDetail": "나중에 다시 사용할 수 있도록 조정한 음성 설정의 이름을 지정하세요.",
+      "tunedVoiceName": "조정한 음성 이름",
+      "toolAriaLabel": "음성 만들기 도구",
+      "audioTab": "오디오",
+      "draft": "초안",
+      "draftModelDetail": "음성 만들기 초안에만 선택되었습니다. 앱의 활성 음성은 변경되지 않습니다.",
+      "modelDetails": "{{modelName}} 세부 정보",
+      "voiceLanguage": "언어",
+      "voiceGender": "성별",
+      "voiceAccent": "억양",
+      "voiceGenderFemale": "여성",
+      "voiceGenderMale": "남성",
+      "filterVoicesByLanguage": "언어별 음성 필터: {{label}}",
+      "filterVoicesByGender": "성별별 음성 필터: {{label}}",
+      "filterVoicesByAccent": "억양별 음성 필터: {{label}}",
+      "femaleVoice": "여성 음성",
+      "maleVoice": "남성 음성"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "로컬 우선 받아쓰기, 개선 및 청취 — Whisper 제품군 모델, 맞춤형 TTS 엔진 및 시스템 수준 타이핑 통합을 기반으로 구축되었습니다."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "약관",
+        "title": "법적 및 모델 약관",
+        "description": "민감한 워크플로를 사용하기 전에 녹음 동의, 타사 모델 라이선스, 음성 복제 권한, 정확도 책임을 확인하세요."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "번역"
       },
       "listen": {
-        "createVoices": "목소리 만들기",
+        "createVoices": "음성 만들기",
         "myVoices": "목소리",
         "voiceCloning": "음성 복제",
         "studio": "스튜디오",
@@ -2551,73 +2589,73 @@
         "privacy": "개인정보 보호 및 저장",
         "diagnostics": "診断",
         "about": "Vox Jotについて",
-        "legal": "Legal & Model Terms"
+        "legal": "법적 및 모델 약관"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "검토",
+      "statusAcknowledged": "확인됨",
+      "statusReview": "검토 필요",
+      "modelCountLabel": "카탈로그 범위",
+      "modelCountValue": "포함됨",
+      "previewLabel": "법적 확인 항목",
+      "previewRecording": "필요한 녹음 동의 받기",
+      "previewModels": "각 모델 라이선스 준수",
+      "previewVoice": "허용된 음성 샘플만 사용",
+      "principlesTitle": "보호 내용",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "녹음 관련 법률",
+          "value": "동의 우선",
+          "detail": "음성을 녹음, 전사 또는 분석하기 전에 필요한 동의를 얻을 책임이 있습니다."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "타사 모델",
+          "value": "모델별 라이선스",
+          "detail": "각 STT, TTS, OCR 및 화자 모델에는 자체 게시자 라이선스와 고지 의무가 있습니다."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "음성 복제",
+          "value": "권한 필요",
+          "detail": "참조 음성은 본인의 것, 본인이 녹음한 것 또는 명시적 허가를 받은 것이어야 합니다."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "데이터 라우팅",
+          "value": "무엇이 나가는지 알기",
+          "detail": "로컬 경로는 이 기기에 머무르며, 클라우드 또는 타사 경로는 해당 제공자의 약관을 따릅니다."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "이용 약관 체크리스트",
+      "termsDescription": "Vox Jot이 표시할 수 있는 실무상 의무입니다. 법률 자문을 대체하지 않습니다.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "녹음 및 전사 동의",
+          "detail": "적용되는 법률과 정책에서 허용되는 경우에만 대화를 녹음, 전사, 요약 또는 화자 분리하세요."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "모델 라이선스 및 출처 표시",
+          "detail": "다운로드하거나 미러링한 모델 자산에서 라이선스 파일, 모델 카드, 고지, 소스 링크 또는 출처 표시를 제거하지 마세요."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "제한 및 비상업 모델",
+          "detail": "제한, 사용자 지정, 게이트, 연구 전용 또는 비상업으로 표시된 모델은 다운로드나 사용 전에 게시자 약관을 검토해야 합니다."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "음성 초상권 및 참조 오디오",
+          "detail": "해당 사용에 대한 권리나 동의 없이 다른 사람의 목소리를 복제, 모방 또는 생성하지 마세요."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "전사 및 AI 출력 정확도",
+          "detail": "전사, 화자 라벨, OCR 텍스트, 번역 및 생성 음성은 틀릴 수 있습니다. 중요한 출력은 의존하기 전에 검토하세요."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "관련 제어",
+      "openModelHub": "모델 허브 열기",
+      "openPrivacy": "개인정보 보호 제어",
+      "openNotices": "타사 고지",
+      "ackTitle": "로컬 확인",
+      "ackLabel": "이 모델 및 녹음 책임을 이해합니다.",
+      "ackDescription": "이 확인은 이 기기에 로컬로 저장됩니다. 제한된 모델 다운로드에는 여전히 모델별 확인이 필요합니다."
     }
   },
   "testing": {

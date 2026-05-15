@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Layers, Loader2, Play } from "lucide-react";
+import { Layers, Loader2, Play, X } from "lucide-react";
 import { commands } from "@/bindings";
 import type { VoiceInfo } from "@/bindings";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +23,7 @@ import {
   type ModelSortMode,
 } from "@/lib/modelListOrdering";
 import { getTtsEvaluationResult } from "@/lib/ttsEvaluationResults";
+import { modal } from "@/motion/springs";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import {
   whiteWorkflowCardClassName,
@@ -53,6 +56,31 @@ import {
 } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
+
+function normalizeTuningForCompare(tuning: TtsVoicePresetInput["tuning"]) {
+  return {
+    tempo_rate: tuning.tempo_rate,
+    expressiveness: tuning.expressiveness,
+    exaggeration: tuning.exaggeration,
+    randomness: tuning.randomness,
+    guidance: tuning.guidance,
+    stability: tuning.stability,
+    repetition_penalty: tuning.repetition_penalty,
+    style_instructions: tuning.style_instructions?.trim() || null,
+    advanced_overrides: Object.fromEntries(
+      Object.entries(tuning.advanced_overrides ?? {})
+        .filter(([, value]) => value !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ),
+  };
+}
+
+function tuningMatchesDefault(tuning: TtsVoicePresetInput["tuning"]) {
+  return (
+    JSON.stringify(normalizeTuningForCompare(tuning)) ===
+    JSON.stringify(normalizeTuningForCompare(defaultVoiceTuning()))
+  );
+}
 
 export const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
@@ -87,6 +115,8 @@ export const VoiceArchitectSection: React.FC<{
     initialUiDraft.previewTextDraft,
   );
   const [modelWindowOpen, setModelWindowOpen] = useState(false);
+  const [saveTunedVoiceWindowOpen, setSaveTunedVoiceWindowOpen] =
+    useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState(
     initialUiDraft.modelSearchQuery,
   );
@@ -98,6 +128,10 @@ export const VoiceArchitectSection: React.FC<{
     initialUiDraft.createVoiceTool,
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
+  const hasTunedVoiceChanges = useMemo(
+    () => !tuningMatchesDefault(draftTuning),
+    [draftTuning],
+  );
   const availableDraftModels = useMemo(
     () => speech.visibleModels.filter(isDraftVoiceModelAvailable),
     [speech.visibleModels],
@@ -134,6 +168,12 @@ export const VoiceArchitectSection: React.FC<{
     setDraftTuning({ ...nextDraft.tuning });
     saveVoiceArchitectDraft(nextDraft);
   }, [speech.activePreset?.id]);
+
+  useEffect(() => {
+    if (!hasTunedVoiceChanges) {
+      setSaveTunedVoiceWindowOpen(false);
+    }
+  }, [hasTunedVoiceChanges]);
 
   useEffect(() => {
     if (!speech.activePreset) return;
@@ -498,7 +538,7 @@ export const VoiceArchitectSection: React.FC<{
       !draftProviderIdForControls ||
       !draftModelIdForControls
     )
-      return;
+      return false;
 
     try {
       await createTtsVoicePreset({
@@ -507,10 +547,12 @@ export const VoiceArchitectSection: React.FC<{
       });
       await speech.refreshAll();
       setSaveProfileNameDraft("");
+      return true;
     } catch (error) {
       speech.setStatusMessage(
         error instanceof Error ? error.message : "Failed to save voice preset",
       );
+      return false;
     }
   };
 
@@ -549,29 +591,61 @@ export const VoiceArchitectSection: React.FC<{
     setCreateVoiceTool(value);
   };
 
+  const handleDraftVoiceProfileChange = (value: string) => {
+    setDraftVoiceProfileId(value);
+    if (!draftMatchesActiveModel) {
+      return;
+    }
+    const profile =
+      draftCompatibleProfiles.find((item) => item.id === value) ?? null;
+    void speech.updateActivePreset({
+      voice_profile_id: value === "__none__" ? null : value,
+      voice_label_snapshot:
+        value === "__none__"
+          ? (speech.activePreset.voice_label_snapshot ?? null)
+          : (profile?.label ?? value),
+    });
+  };
+
   const tuningView = (
-    <div className={whiteWorkflowCardClassName}>
-      <VoiceTuningCard
-        preset={buildDraftPresetInput()}
-        onUpdatePreset={updateDraftPreset}
-        ttsEnabled={speech.ttsEnabled}
-        controls={controls}
-        supportsExpressiveness={supportsExpressiveness}
-        title={t("listen.createVoices.tuning", {
-          defaultValue: "Tuning",
-        })}
-        embedded
-        modelLabel={draftSelectedModel?.label ?? speech.activeModel?.label}
-        onResetAll={() => updateDraftPreset({ tuning: defaultVoiceTuning() })}
-      />
-    </div>
+    <>
+      {draftSupportsVoiceCloning ? (
+        <div className={whiteWorkflowCardClassName}>
+          <WorkflowField
+            label={t("listen.createVoices.workflow.cloneProfile")}
+          >
+            <SelectField
+              value={draftVoiceProfileId}
+              onChange={handleDraftVoiceProfileChange}
+              disabled={!speech.ttsEnabled || speech.loadingProfiles}
+              options={draftProfileOptions}
+            />
+          </WorkflowField>
+        </div>
+      ) : null}
+
+      <div className={whiteWorkflowCardClassName}>
+        <VoiceTuningCard
+          preset={buildDraftPresetInput()}
+          onUpdatePreset={updateDraftPreset}
+          ttsEnabled={speech.ttsEnabled}
+          controls={controls}
+          supportsExpressiveness={supportsExpressiveness}
+          title={t("listen.createVoices.tuning", {
+            defaultValue: "Tuning",
+          })}
+          embedded
+          modelLabel={draftSelectedModel?.label ?? speech.activeModel?.label}
+          onResetAll={() => updateDraftPreset({ tuning: defaultVoiceTuning() })}
+        />
+      </div>
+    </>
   );
 
   const contentSpacingClassName = showTitle
     ? "space-y-7 px-4 py-3"
     : "space-y-7";
   const showAudioControlsCard =
-    draftSupportsVoiceCloning ||
     (draftMatchesActiveModel && supportsDraftManualVoiceId) ||
     Boolean(statusMessage);
   const audioView = (
@@ -580,35 +654,6 @@ export const VoiceArchitectSection: React.FC<{
         <div className={whiteWorkflowCardClassName}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-3">
-              {draftSupportsVoiceCloning ? (
-                <WorkflowField
-                  label={t("listen.createVoices.workflow.cloneProfile")}
-                >
-                  <SelectField
-                    value={draftVoiceProfileId}
-                    onChange={(value) => {
-                      setDraftVoiceProfileId(value);
-                      if (!draftMatchesActiveModel) {
-                        return;
-                      }
-                      const profile =
-                        draftCompatibleProfiles.find(
-                          (item) => item.id === value,
-                        ) ?? null;
-                      void speech.updateActivePreset({
-                        voice_profile_id: value === "__none__" ? null : value,
-                        voice_label_snapshot:
-                          value === "__none__"
-                            ? (speech.activePreset.voice_label_snapshot ?? null)
-                            : (profile?.label ?? value),
-                      });
-                    }}
-                    disabled={!speech.ttsEnabled || speech.loadingProfiles}
-                    options={draftProfileOptions}
-                  />
-                </WorkflowField>
-              ) : null}
-
               {draftMatchesActiveModel && supportsDraftManualVoiceId ? (
                 <WorkflowField
                   label={t("listen.createVoices.workflow.manualVoiceId")}
@@ -638,50 +683,6 @@ export const VoiceArchitectSection: React.FC<{
       ) : null}
 
       <div className={whiteWorkflowCardClassName}>
-        <div className="space-y-3">
-          <WorkflowField
-            label={t("listen.myVoices.saveAs", {
-              defaultValue: "Name this saved voice",
-            })}
-          >
-            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-              <Input
-                value={saveProfileNameDraft}
-                onChange={(event) =>
-                  setSaveProfileNameDraft(event.target.value)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleSaveCurrent();
-                  }
-                }}
-                disabled={!speech.ttsEnabled}
-                aria-label={t("listen.myVoices.saveAs")}
-                placeholder={t("listen.placeholders.savedVoiceName")}
-                className="min-w-0 flex-1 max-w-none"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleSaveCurrent()}
-                disabled={
-                  !speech.ttsEnabled ||
-                  !saveProfileName ||
-                  !draftProviderIdForControls ||
-                  !draftModelIdForControls
-                }
-                className="shrink-0"
-              >
-                {t("listen.myVoices.saveCurrent")}
-              </Button>
-            </div>
-          </WorkflowField>
-        </div>
-      </div>
-
-      <div className={whiteWorkflowCardClassName}>
         <div className="min-w-0 space-y-2">
           <p className={workflowFieldLabelClassName}>
             {t("listen.myVoices.previewText")}
@@ -701,8 +702,137 @@ export const VoiceArchitectSection: React.FC<{
     </>
   );
 
+  const saveTunedVoiceDialog = createPortal(
+    <AnimatePresence>
+      {saveTunedVoiceWindowOpen ? (
+        <motion.div
+          className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={() => setSaveTunedVoiceWindowOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setSaveTunedVoiceWindowOpen(false);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-tuned-voice-title"
+            className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0">
+                <h3
+                  id="save-tuned-voice-title"
+                  className="truncate text-sm font-semibold text-[var(--text)]"
+                >
+                  {t("listen.createVoices.saveTunedVoice", {
+                    defaultValue: "Save Tuned Voice",
+                  })}
+                </h3>
+                <p className="truncate text-xs text-[var(--muted)]">
+                  {t("listen.createVoices.saveTunedVoiceDetail", {
+                    defaultValue:
+                      "Name these tuned voice settings so you can reuse them.",
+                  })}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setSaveTunedVoiceWindowOpen(false)}
+                aria-label={t("common.close", { defaultValue: "Close" })}
+                title={t("common.close", { defaultValue: "Close" })}
+              >
+                <X aria-hidden />
+              </Button>
+            </div>
+            <div className="space-y-4 p-4">
+              <label className="block space-y-2">
+                <span className={workflowFieldLabelClassName}>
+                  {t("listen.createVoices.tunedVoiceName", {
+                    defaultValue: "Tuned voice name",
+                  })}
+                </span>
+                <Input
+                  autoFocus
+                  value={saveProfileNameDraft}
+                  onChange={(event) =>
+                    setSaveProfileNameDraft(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSaveCurrent().then((saved) => {
+                        if (saved) setSaveTunedVoiceWindowOpen(false);
+                      });
+                    }
+                  }}
+                  disabled={!speech.ttsEnabled}
+                  aria-label={t("listen.createVoices.tunedVoiceName", {
+                    defaultValue: "Tuned voice name",
+                  })}
+                  placeholder={t("listen.placeholders.savedVoiceName")}
+                  className="w-full max-w-none"
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSaveTunedVoiceWindowOpen(false)}
+                >
+                  {t("common.cancel", { defaultValue: "Cancel" })}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    void handleSaveCurrent().then((saved) => {
+                      if (saved) setSaveTunedVoiceWindowOpen(false);
+                    });
+                  }}
+                  disabled={
+                    !speech.ttsEnabled ||
+                    !saveProfileName ||
+                    !draftProviderIdForControls ||
+                    !draftModelIdForControls
+                  }
+                >
+                  {t("listen.createVoices.saveTunedVoice", {
+                    defaultValue: "Save Tuned Voice",
+                  })}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
+
   const content = (
     <>
+      {saveTunedVoiceDialog}
       <CreateVoiceModelHubPicker
         open={modelWindowOpen}
         speech={speech}
@@ -772,7 +902,7 @@ export const VoiceArchitectSection: React.FC<{
             onChange={handleCreateVoiceToolChange}
             layoutId="create-voice-tool-toggle"
             ariaLabel={t("listen.createVoices.toolAriaLabel", {
-              defaultValue: "Create voice tools",
+              defaultValue: "Create Speech tools",
             })}
             items={[
               {
@@ -790,7 +920,24 @@ export const VoiceArchitectSection: React.FC<{
             ]}
           />
 
-          <div className="ml-auto">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {hasTunedVoiceChanges ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSaveTunedVoiceWindowOpen(true)}
+                disabled={
+                  !speech.ttsEnabled ||
+                  !draftProviderIdForControls ||
+                  !draftModelIdForControls
+                }
+              >
+                {t("listen.createVoices.saveTunedVoice", {
+                  defaultValue: "Save Tuned Voice",
+                })}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="secondary"

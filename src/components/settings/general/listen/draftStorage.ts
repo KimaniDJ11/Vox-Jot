@@ -69,7 +69,7 @@ export function readVoiceArchitectUiDraft(): VoiceArchitectUiDraftState {
       JSON.parse(rawDraft) as Partial<VoiceArchitectUiDraftState>,
     );
   } catch (error) {
-    console.warn("Failed to read Create Voices draft:", error);
+    console.warn("Failed to read Create Speech draft:", error);
     return defaultVoiceArchitectUiDraft;
   }
 }
@@ -85,7 +85,7 @@ export function writeVoiceArchitectUiDraft(draft: VoiceArchitectUiDraftState) {
       JSON.stringify(normalizeVoiceArchitectUiDraft(draft)),
     );
   } catch (error) {
-    console.warn("Failed to store Create Voices draft:", error);
+    console.warn("Failed to store Create Speech draft:", error);
   }
 }
 

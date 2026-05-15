@@ -1734,7 +1734,45 @@
         "voice": "语音",
         "cloneProfile": "克隆配置文件",
         "manualVoiceId": "手动语音 ID"
-      }
+      },
+      "title": "创建语音",
+      "description": "预览模型、调整表达方式，并保存新的语音配置，而不更改当前启用的语音。",
+      "voices": "语音",
+      "models": "模型",
+      "draftVoicePickerDetail": "为此草稿选择语音，而不更改应用当前启用的语音。",
+      "draftModelPickerDetail": "选择一个模型来筛选此草稿可用的语音。",
+      "searchVoicesAriaLabel": "搜索语音",
+      "searchModelsAriaLabel": "搜索语音模型",
+      "searchVoices": "搜索语音",
+      "searchModels": "搜索 TTS 模型",
+      "clearVoiceSearch": "清除语音搜索",
+      "clearModelSearch": "清除模型搜索",
+      "modelHubView": "模型中心视图",
+      "voiceFilterModel": "已选择",
+      "voiceFilterModelDetail": "语音视图已按此模型筛选。再次选择可显示所有语音。",
+      "noModelSearchResults": "没有下载且可运行的 TTS 模型匹配该搜索。",
+      "noModels": "没有可用的已下载且可运行的 TTS 模型。",
+      "loadingVoices": "正在加载可用语音...",
+      "noVoiceSearchResults": "没有已安装的语音预设匹配这些筛选条件。",
+      "tuning": "调校",
+      "saveTunedVoice": "保存已调校语音",
+      "saveTunedVoiceDetail": "为这些已调校的语音设置命名，以便重复使用。",
+      "tunedVoiceName": "已调校语音名称",
+      "toolAriaLabel": "创建语音工具",
+      "audioTab": "音频",
+      "draft": "草稿",
+      "draftModelDetail": "仅为“创建语音”草稿选择。应用当前启用的语音未更改。",
+      "modelDetails": "{{modelName}} 详情",
+      "voiceLanguage": "语言",
+      "voiceGender": "性别",
+      "voiceAccent": "口音",
+      "voiceGenderFemale": "女性",
+      "voiceGenderMale": "男性",
+      "filterVoicesByLanguage": "按语言筛选语音：{{label}}",
+      "filterVoicesByGender": "按性别筛选语音：{{label}}",
+      "filterVoicesByAccent": "按口音筛选语音：{{label}}",
+      "femaleVoice": "女性语音",
+      "maleVoice": "男性语音"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "本地优先听写、精炼和聆听 - 围绕 Whisper 系列模型、定制 TTS 引擎和系统级打字集成构建。"
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "条款",
+        "title": "法律与模型条款",
+        "description": "在使用敏感工作流前，请查看录音同意、第三方模型许可、语音克隆许可和准确性责任。"
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "翻译"
       },
       "listen": {
-        "createVoices": "创建声音",
+        "createVoices": "创建语音",
         "myVoices": "声音",
         "voiceCloning": "语音克隆",
         "studio": "工作室",
@@ -2551,73 +2589,73 @@
         "privacy": "隐私和存储",
         "diagnostics": "诊断",
         "about": "关于 Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "法律与模型条款"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "审阅",
+      "statusAcknowledged": "已确认",
+      "statusReview": "需要审阅",
+      "modelCountLabel": "目录覆盖范围",
+      "modelCountValue": "已覆盖",
+      "previewLabel": "法律检查点",
+      "previewRecording": "获取所需的录音同意",
+      "previewModels": "遵守每个模型许可",
+      "previewVoice": "仅使用已获许可的语音样本",
+      "principlesTitle": "这保护什么",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "录音法律",
+          "value": "先取得同意",
+          "detail": "在录音、转写或分析语音前，你有责任取得任何所需同意。"
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "第三方模型",
+          "value": "按模型授权",
+          "detail": "每个 STT、TTS、OCR 和说话人模型都有自己的发布者许可和通知义务。"
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "语音克隆",
+          "value": "需要许可",
+          "detail": "参考语音必须属于你、由你录制，或在明确许可下使用。"
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "数据路由",
+          "value": "了解哪些数据会离开",
+          "detail": "本地路由保留在此设备上；云端或第三方路由受相应提供商条款约束。"
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "使用条款清单",
+      "termsDescription": "这些是 Vox Jot 可以提示的实际义务。它们不能替代法律建议。",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "录音和转写同意",
+          "detail": "仅在适用法律和政策允许时，才录音、转写、总结或进行说话人分离。"
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "模型许可和署名",
+          "detail": "不要从下载或镜像的模型资产中删除上游许可证文件、模型卡、通知、来源链接或署名。"
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "受限和非商业模型",
+          "detail": "标记为受限、自定义、门控、仅研究或非商业的模型，需要在下载或使用前查看发布者条款。"
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "声音肖像和参考音频",
+          "detail": "未经特定用途的权利或同意，不要克隆、模仿或生成他人的声音。"
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "转写和 AI 输出准确性",
+          "detail": "转写、说话人标签、OCR 文本、翻译和生成语音可能有误。依赖重要输出前请先审阅。"
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "相关控制",
+      "openModelHub": "打开模型中心",
+      "openPrivacy": "隐私控制",
+      "openNotices": "第三方通知",
+      "ackTitle": "本地确认",
+      "ackLabel": "我理解这些模型和录音责任。",
+      "ackDescription": "此确认存储在本设备本地。受限模型下载仍需要其特定模型确认。"
     }
   },
   "testing": {

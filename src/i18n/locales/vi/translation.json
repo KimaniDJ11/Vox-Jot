@@ -1734,7 +1734,45 @@
         "voice": "Giọng nói",
         "cloneProfile": "Hồ sơ nhân bản",
         "manualVoiceId": "Giọng nói thủ công ID"
-      }
+      },
+      "title": "Tạo giọng nói",
+      "description": "Xem trước mô hình, tinh chỉnh cách đọc và lưu hồ sơ giọng mới mà không thay đổi giọng đang hoạt động.",
+      "voices": "Giọng",
+      "models": "Mô hình",
+      "draftVoicePickerDetail": "Chọn một giọng cho bản nháp này mà không thay đổi giọng đang hoạt động của ứng dụng.",
+      "draftModelPickerDetail": "Chọn mô hình để lọc các giọng có sẵn cho bản nháp này.",
+      "searchVoicesAriaLabel": "Tìm giọng",
+      "searchModelsAriaLabel": "Tìm mô hình giọng",
+      "searchVoices": "Tìm giọng",
+      "searchModels": "Tìm mô hình TTS",
+      "clearVoiceSearch": "Xóa tìm kiếm giọng",
+      "clearModelSearch": "Xóa tìm kiếm mô hình",
+      "modelHubView": "Chế độ xem trung tâm mô hình",
+      "voiceFilterModel": "Đã chọn",
+      "voiceFilterModelDetail": "Chế độ xem Giọng đang được lọc theo mô hình này. Chọn lại để hiển thị tất cả giọng.",
+      "noModelSearchResults": "Không có mô hình TTS đã tải xuống và chạy được nào khớp với tìm kiếm đó.",
+      "noModels": "Không có mô hình TTS đã tải xuống và chạy được nào.",
+      "loadingVoices": "Đang tải các giọng có sẵn...",
+      "noVoiceSearchResults": "Không có preset giọng đã cài đặt nào khớp với các bộ lọc đó.",
+      "tuning": "Tinh chỉnh",
+      "saveTunedVoice": "Lưu giọng đã tinh chỉnh",
+      "saveTunedVoiceDetail": "Đặt tên cho các thiết lập giọng đã tinh chỉnh này để bạn có thể dùng lại.",
+      "tunedVoiceName": "Tên giọng đã tinh chỉnh",
+      "toolAriaLabel": "Công cụ tạo giọng nói",
+      "audioTab": "Âm thanh",
+      "draft": "Bản nháp",
+      "draftModelDetail": "Chỉ được chọn cho bản nháp Tạo giọng nói. Giọng đang hoạt động của ứng dụng không thay đổi.",
+      "modelDetails": "Chi tiết {{modelName}}",
+      "voiceLanguage": "Ngôn ngữ",
+      "voiceGender": "Giới tính",
+      "voiceAccent": "Giọng vùng miền",
+      "voiceGenderFemale": "Nữ",
+      "voiceGenderMale": "Nam",
+      "filterVoicesByLanguage": "Lọc giọng theo ngôn ngữ: {{label}}",
+      "filterVoicesByGender": "Lọc giọng theo giới tính: {{label}}",
+      "filterVoicesByAccent": "Lọc giọng theo vùng miền: {{label}}",
+      "femaleVoice": "Giọng nữ",
+      "maleVoice": "Giọng nam"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Đọc chính tả, tinh chỉnh và nghe theo cục bộ — được xây dựng dựa trên các mô hình dòng Whisper, công cụ TTS tùy chỉnh và tích hợp nhập liệu ở cấp hệ thống."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Điều khoản",
+        "title": "Điều khoản pháp lý và mô hình",
+        "description": "Xem lại sự đồng ý ghi âm, giấy phép mô hình bên thứ ba, quyền sao chép giọng nói và trách nhiệm về độ chính xác trước khi dùng các quy trình nhạy cảm."
       }
     },
     "cross": {
@@ -2551,73 +2589,73 @@
         "privacy": "Quyền riêng tư và lưu trữ",
         "diagnostics": "Chẩn đoán",
         "about": "Giới thiệu về Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "Điều khoản pháp lý và mô hình"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "Xem xét",
+      "statusAcknowledged": "Đã xác nhận",
+      "statusReview": "Cần xem xét",
+      "modelCountLabel": "Phạm vi danh mục",
+      "modelCountValue": "Đã bao phủ",
+      "previewLabel": "Điểm kiểm tra pháp lý",
+      "previewRecording": "Nhận sự đồng ý ghi âm bắt buộc",
+      "previewModels": "Tuân thủ giấy phép của từng mô hình",
+      "previewVoice": "Chỉ dùng mẫu giọng được phép",
+      "principlesTitle": "Điều này bảo vệ gì",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Luật ghi âm",
+          "value": "Đồng ý trước",
+          "detail": "Bạn chịu trách nhiệm nhận mọi sự đồng ý cần thiết trước khi ghi âm, phiên âm hoặc phân tích lời nói."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Mô hình bên thứ ba",
+          "value": "Giấy phép theo mô hình",
+          "detail": "Mỗi mô hình STT, TTS, OCR và người nói có giấy phép nhà phát hành và nghĩa vụ thông báo riêng."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Sao chép giọng nói",
+          "value": "Cần có quyền",
+          "detail": "Giọng tham chiếu phải là của bạn, do bạn ghi âm hoặc được dùng với sự cho phép rõ ràng."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Định tuyến dữ liệu",
+          "value": "Biết dữ liệu nào rời thiết bị",
+          "detail": "Tuyến cục bộ ở lại trên thiết bị này; tuyến đám mây hoặc bên thứ ba chịu sự điều chỉnh bởi điều khoản của nhà cung cấp đó."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Danh sách điều khoản sử dụng",
+      "termsDescription": "Đây là các nghĩa vụ thực tế mà Vox Jot có thể hiển thị. Chúng không thay thế tư vấn pháp lý.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Đồng ý ghi âm và phiên âm",
+          "detail": "Chỉ ghi âm, phiên âm, tóm tắt hoặc tách người nói trong cuộc trò chuyện khi luật và chính sách áp dụng cho phép."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Giấy phép mô hình và ghi công",
+          "detail": "Không xóa tệp giấy phép, thẻ mô hình, thông báo, liên kết nguồn hoặc ghi công khỏi tài sản mô hình đã tải xuống hoặc sao chép."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Mô hình bị hạn chế và phi thương mại",
+          "detail": "Các mô hình được đánh dấu hạn chế, tùy chỉnh, gated, chỉ nghiên cứu hoặc phi thương mại yêu cầu xem lại điều khoản nhà phát hành trước khi tải xuống hoặc sử dụng."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Dáng giọng và âm thanh tham chiếu",
+          "detail": "Không sao chép, bắt chước hoặc tạo lời nói bằng giọng người khác nếu không có quyền hoặc sự đồng ý cho mục đích cụ thể đó."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Độ chính xác của phiên âm và đầu ra AI",
+          "detail": "Phiên âm, nhãn người nói, văn bản OCR, bản dịch và giọng nói tạo ra có thể sai. Hãy xem lại đầu ra quan trọng trước khi tin dùng."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "Điều khiển liên quan",
+      "openModelHub": "Mở trung tâm mô hình",
+      "openPrivacy": "Điều khiển quyền riêng tư",
+      "openNotices": "Thông báo bên thứ ba",
+      "ackTitle": "Xác nhận cục bộ",
+      "ackLabel": "Tôi hiểu các trách nhiệm về mô hình và ghi âm này.",
+      "ackDescription": "Xác nhận này được lưu cục bộ trên thiết bị này. Tải xuống mô hình bị hạn chế vẫn yêu cầu xác nhận riêng theo từng mô hình."
     }
   },
   "testing": {

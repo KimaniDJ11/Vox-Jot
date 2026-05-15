@@ -1734,7 +1734,45 @@
         "voice": "Hlas",
         "cloneProfile": "Klonovat profil",
         "manualVoiceId": "Manuální hlas ID"
-      }
+      },
+      "title": "Vytvořit řeč",
+      "description": "Prohlížejte modely, dolaďte přednes a uložte nový hlasový profil beze změny aktivního hlasu.",
+      "voices": "Hlasy",
+      "models": "Modely",
+      "draftVoicePickerDetail": "Vyberte hlas pro tento koncept beze změny aktivního hlasu aplikace.",
+      "draftModelPickerDetail": "Vyberte model pro filtrování dostupných hlasů pro tento koncept.",
+      "searchVoicesAriaLabel": "Hledat hlasy",
+      "searchModelsAriaLabel": "Hledat hlasové modely",
+      "searchVoices": "Hledat hlasy",
+      "searchModels": "Hledat modely TTS",
+      "clearVoiceSearch": "Vymazat hledání hlasů",
+      "clearModelSearch": "Vymazat hledání modelů",
+      "modelHubView": "Zobrazení centra modelů",
+      "voiceFilterModel": "Vybráno",
+      "voiceFilterModelDetail": "Zobrazení Hlasů je filtrováno na tento model. Dalším výběrem zobrazíte všechny hlasy.",
+      "noModelSearchResults": "Tomuto hledání neodpovídají žádné stažené spustitelné modely TTS.",
+      "noModels": "Nejsou dostupné žádné stažené spustitelné modely TTS.",
+      "loadingVoices": "Načítání dostupných hlasů...",
+      "noVoiceSearchResults": "Těmto filtrům neodpovídají žádné nainstalované hlasové předvolby.",
+      "tuning": "Ladění",
+      "saveTunedVoice": "Uložit vyladěný hlas",
+      "saveTunedVoiceDetail": "Pojmenujte tato vyladěná nastavení hlasu, abyste je mohli znovu použít.",
+      "tunedVoiceName": "Název vyladěného hlasu",
+      "toolAriaLabel": "Nástroje pro vytvoření řeči",
+      "audioTab": "Zvuk",
+      "draft": "Koncept",
+      "draftModelDetail": "Vybráno pouze pro koncept Vytvořit řeč. Aktivní hlas aplikace se nezměnil.",
+      "modelDetails": "Podrobnosti {{modelName}}",
+      "voiceLanguage": "Jazyk",
+      "voiceGender": "Pohlaví",
+      "voiceAccent": "Přízvuk",
+      "voiceGenderFemale": "Ženský",
+      "voiceGenderMale": "Mužský",
+      "filterVoicesByLanguage": "Filtrovat hlasy podle jazyka: {{label}}",
+      "filterVoicesByGender": "Filtrovat hlasy podle pohlaví: {{label}}",
+      "filterVoicesByAccent": "Filtrovat hlasy podle přízvuku: {{label}}",
+      "femaleVoice": "Ženský hlas",
+      "maleVoice": "Mužský hlas"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Diktování, vylepšování a poslech v první řadě na místě – postavené na modelech řady Whisper, vlastních motorech TTS a integracích psaní na úrovni systému."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Podmínky",
+        "title": "Právní podmínky a podmínky modelů",
+        "description": "Před použitím citlivých pracovních postupů zkontrolujte souhlas se záznamem, licence modelů třetích stran, povolení ke klonování hlasu a odpovědnost za přesnost."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "Překlad"
       },
       "listen": {
-        "createVoices": "Vytvářejte hlasy",
+        "createVoices": "Vytvořit řeč",
         "myVoices": "Hlasy",
         "voiceCloning": "Klonování hlasu",
         "studio": "Studio",
@@ -2551,73 +2589,73 @@
         "privacy": "Soukromí a úložiště",
         "diagnostics": "Diagnose",
         "about": "Über Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "Právní podmínky a podmínky modelů"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "Kontrola",
+      "statusAcknowledged": "Potvrzeno",
+      "statusReview": "Vyžaduje kontrolu",
+      "modelCountLabel": "Pokrytí katalogu",
+      "modelCountValue": "Pokryto",
+      "previewLabel": "Právní kontrolní body",
+      "previewRecording": "Získejte požadovaný souhlas se záznamem",
+      "previewModels": "Dodržujte licenci každého modelu",
+      "previewVoice": "Používejte pouze povolené hlasové vzorky",
+      "principlesTitle": "Co tím chráníte",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Zákony o nahrávání",
+          "value": "Nejdříve souhlas",
+          "detail": "Jste odpovědní za získání potřebného souhlasu před nahráváním, přepisem nebo analýzou řeči."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Modely třetích stran",
+          "value": "Licence podle modelu",
+          "detail": "Každý model STT, TTS, OCR a rozpoznávání mluvčích má vlastní licenci vydavatele a povinnosti oznámení."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Klonování hlasu",
+          "value": "Je vyžadováno povolení",
+          "detail": "Referenční hlasy musí být vaše, vámi nahrané nebo použité s výslovným povolením."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Směrování dat",
+          "value": "Vězte, co odchází",
+          "detail": "Místní trasy zůstávají na tomto zařízení; cloudové trasy nebo trasy třetích stran se řídí podmínkami daného poskytovatele."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Kontrolní seznam podmínek použití",
+      "termsDescription": "Toto jsou praktické povinnosti, které Vox Jot umí zobrazit. Nenahrazují právní poradenství.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Souhlas se záznamem a přepisem",
+          "detail": "Nahrávejte, přepisujte, shrnujte nebo diarizujte konverzace pouze tehdy, když vám to dovolují příslušné zákony a zásady."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Licence modelů a uvedení autorství",
+          "detail": "Neodstraňujte licenční soubory, karty modelů, oznámení, zdrojové odkazy ani uvedení autorství ze stažených nebo zrcadlených modelových aktiv."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Omezené a nekomerční modely",
+          "detail": "Modely označené jako omezené, vlastní, gated, pouze pro výzkum nebo nekomerční vyžadují před stažením nebo použitím kontrolu podmínek vydavatele."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Hlasová podoba a referenční audio",
+          "detail": "Neklonujte, nenapodobujte ani negenerujte řeč hlasem jiné osoby bez práv nebo souhlasu pro dané použití."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Přesnost přepisů a výstupů AI",
+          "detail": "Přepisy, označení mluvčích, text OCR, překlady a generovaná řeč mohou být chybné. Důležité výstupy před použitím zkontrolujte."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "Související ovládací prvky",
+      "openModelHub": "Otevřít centrum modelů",
+      "openPrivacy": "Ovládání soukromí",
+      "openNotices": "Oznámení třetích stran",
+      "ackTitle": "Místní potvrzení",
+      "ackLabel": "Rozumím těmto odpovědnostem za modely a nahrávání.",
+      "ackDescription": "Toto potvrzení je uloženo místně na tomto zařízení. Stažení omezených modelů stále vyžaduje vlastní potvrzení konkrétního modelu."
     }
   },
   "testing": {

@@ -1734,7 +1734,45 @@
         "voice": "声",
         "cloneProfile": "プロファイルのクローンを作成する",
         "manualVoiceId": "マニュアルボイス ID"
-      }
+      },
+      "title": "音声を作成",
+      "description": "モデルをプレビューし、話し方を調整し、現在の音声を変えずに新しい音声プロファイルを保存します。",
+      "voices": "音声",
+      "models": "モデル",
+      "draftVoicePickerDetail": "アプリの現在の音声を変えずに、この下書きの音声を選択します。",
+      "draftModelPickerDetail": "この下書きで利用可能な音声を絞り込むモデルを選択します。",
+      "searchVoicesAriaLabel": "音声を検索",
+      "searchModelsAriaLabel": "音声モデルを検索",
+      "searchVoices": "音声を検索",
+      "searchModels": "TTSモデルを検索",
+      "clearVoiceSearch": "音声検索をクリア",
+      "clearModelSearch": "モデル検索をクリア",
+      "modelHubView": "モデルハブ表示",
+      "voiceFilterModel": "選択済み",
+      "voiceFilterModelDetail": "音声ビューはこのモデルで絞り込まれています。もう一度選択するとすべての音声を表示します。",
+      "noModelSearchResults": "検索に一致するダウンロード済みで実行可能なTTSモデルはありません。",
+      "noModels": "ダウンロード済みで実行可能なTTSモデルはありません。",
+      "loadingVoices": "利用可能な音声を読み込んでいます...",
+      "noVoiceSearchResults": "これらのフィルターに一致するインストール済み音声プリセットはありません。",
+      "tuning": "調整",
+      "saveTunedVoice": "調整済み音声を保存",
+      "saveTunedVoiceDetail": "再利用できるように、調整した音声設定に名前を付けます。",
+      "tunedVoiceName": "調整済み音声名",
+      "toolAriaLabel": "音声作成ツール",
+      "audioTab": "オーディオ",
+      "draft": "下書き",
+      "draftModelDetail": "音声作成の下書き専用に選択されています。アプリの現在の音声は変更されません。",
+      "modelDetails": "{{modelName}}の詳細",
+      "voiceLanguage": "言語",
+      "voiceGender": "性別",
+      "voiceAccent": "アクセント",
+      "voiceGenderFemale": "女性",
+      "voiceGenderMale": "男性",
+      "filterVoicesByLanguage": "言語で音声をフィルター: {{label}}",
+      "filterVoicesByGender": "性別で音声をフィルター: {{label}}",
+      "filterVoicesByAccent": "アクセントで音声をフィルター: {{label}}",
+      "femaleVoice": "女性の音声",
+      "maleVoice": "男性の音声"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "ローカルファーストのディクテーション、絞り込み、リスニング — Whisper ファミリ モデル、カスタム TTS エンジン、およびシステム レベルのタイピング統合を中心に構築されています。"
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "規約",
+        "title": "法的条件とモデル規約",
+        "description": "機密性の高いワークフローを使う前に、録音同意、サードパーティモデルのライセンス、音声クローンの許可、正確性の責任を確認してください。"
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "翻訳"
       },
       "listen": {
-        "createVoices": "ボイスを作成する",
+        "createVoices": "音声を作成",
         "myVoices": "声",
         "voiceCloning": "音声クローン作成",
         "studio": "スタジオ",
@@ -2551,73 +2589,73 @@
         "privacy": "プライバシーとストレージ",
         "diagnostics": "診断",
         "about": "Vox Jotについて",
-        "legal": "Legal & Model Terms"
+        "legal": "法的条件とモデル規約"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "確認",
+      "statusAcknowledged": "確認済み",
+      "statusReview": "確認が必要",
+      "modelCountLabel": "カタログ範囲",
+      "modelCountValue": "対象",
+      "previewLabel": "法的チェックポイント",
+      "previewRecording": "必要な録音同意を取得",
+      "previewModels": "各モデルライセンスに従う",
+      "previewVoice": "許可された音声サンプルのみ使用",
+      "principlesTitle": "これで保護されること",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "録音に関する法律",
+          "value": "まず同意",
+          "detail": "音声を録音、文字起こし、分析する前に、必要な同意を取得する責任があります。"
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "サードパーティモデル",
+          "value": "モデルごとのライセンス",
+          "detail": "各STT、TTS、OCR、話者モデルには、それぞれ発行元のライセンスと通知義務があります。"
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "音声クローン",
+          "value": "許可が必要",
+          "detail": "参照音声は自分のもの、自分で録音したもの、または明示的な許可を得たものである必要があります。"
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "データ経路",
+          "value": "何が外部に出るか把握",
+          "detail": "ローカル経路はこのデバイスに留まります。クラウドまたはサードパーティ経路はその提供者の規約に従います。"
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "利用規約チェックリスト",
+      "termsDescription": "これはVox Jotが提示できる実務上の義務です。法的助言の代わりではありません。",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "録音と文字起こしの同意",
+          "detail": "適用される法律とポリシーで許可されている場合にのみ、会話を録音、文字起こし、要約、話者分離してください。"
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "モデルライセンスと帰属表示",
+          "detail": "ダウンロードまたはミラーされたモデル資産から、ライセンスファイル、モデルカード、通知、ソースリンク、帰属表示を削除しないでください。"
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "制限付きおよび非商用モデル",
+          "detail": "制限付き、カスタム、ゲート付き、研究専用、非商用と表示されたモデルは、ダウンロードまたは使用前に発行元の規約確認が必要です。"
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "声の類似性と参照音声",
+          "detail": "特定の用途について権利または同意がない限り、他人の声をクローン、模倣、生成しないでください。"
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "文字起こしとAI出力の正確性",
+          "detail": "文字起こし、話者ラベル、OCRテキスト、翻訳、生成音声は誤る場合があります。重要な出力は信頼する前に確認してください。"
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "関連コントロール",
+      "openModelHub": "モデルハブを開く",
+      "openPrivacy": "プライバシー設定",
+      "openNotices": "サードパーティ通知",
+      "ackTitle": "ローカル確認",
+      "ackLabel": "これらのモデルと録音に関する責任を理解しています。",
+      "ackDescription": "この確認はこのデバイスにローカル保存されます。制限付きモデルのダウンロードには、引き続きモデル固有の確認が必要です。"
     }
   },
   "testing": {

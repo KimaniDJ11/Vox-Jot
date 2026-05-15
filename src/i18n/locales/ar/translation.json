@@ -1734,7 +1734,45 @@
         "voice": "صوت",
         "cloneProfile": "استنساخ الملف الشخصي",
         "manualVoiceId": "صوت يدوي ID"
-      }
+      },
+      "title": "إنشاء الكلام",
+      "description": "عاين النماذج، واضبط الإلقاء، واحفظ ملف صوت جديدا من دون تغيير الصوت النشط.",
+      "voices": "الأصوات",
+      "models": "النماذج",
+      "draftVoicePickerDetail": "اختر صوتا لهذه المسودة من دون تغيير صوت التطبيق النشط.",
+      "draftModelPickerDetail": "اختر نموذجا لتصفية الأصوات المتاحة لهذه المسودة.",
+      "searchVoicesAriaLabel": "البحث في الأصوات",
+      "searchModelsAriaLabel": "البحث في نماذج الصوت",
+      "searchVoices": "البحث في الأصوات",
+      "searchModels": "البحث في نماذج TTS",
+      "clearVoiceSearch": "مسح بحث الأصوات",
+      "clearModelSearch": "مسح بحث النماذج",
+      "modelHubView": "عرض مركز النماذج",
+      "voiceFilterModel": "محدد",
+      "voiceFilterModelDetail": "عرض الأصوات مفلتر بهذا النموذج. حدده مرة أخرى لعرض كل الأصوات.",
+      "noModelSearchResults": "لا توجد نماذج TTS منزلة وقابلة للتشغيل تطابق هذا البحث.",
+      "noModels": "لا توجد نماذج TTS منزلة وقابلة للتشغيل.",
+      "loadingVoices": "جار تحميل الأصوات المتاحة...",
+      "noVoiceSearchResults": "لا توجد إعدادات صوت مثبتة تطابق هذه الفلاتر.",
+      "tuning": "الضبط",
+      "saveTunedVoice": "حفظ الصوت المضبوط",
+      "saveTunedVoiceDetail": "سم هذه إعدادات الصوت المضبوطة حتى تتمكن من إعادة استخدامها.",
+      "tunedVoiceName": "اسم الصوت المضبوط",
+      "toolAriaLabel": "أدوات إنشاء الكلام",
+      "audioTab": "الصوت",
+      "draft": "مسودة",
+      "draftModelDetail": "محدد لمسودة إنشاء الكلام فقط. صوت التطبيق النشط لم يتغير.",
+      "modelDetails": "تفاصيل {{modelName}}",
+      "voiceLanguage": "اللغة",
+      "voiceGender": "الجنس",
+      "voiceAccent": "اللهجة",
+      "voiceGenderFemale": "أنثى",
+      "voiceGenderMale": "ذكر",
+      "filterVoicesByLanguage": "تصفية الأصوات حسب اللغة: {{label}}",
+      "filterVoicesByGender": "تصفية الأصوات حسب الجنس: {{label}}",
+      "filterVoicesByAccent": "تصفية الأصوات حسب اللهجة: {{label}}",
+      "femaleVoice": "صوت أنثوي",
+      "maleVoice": "صوت ذكوري"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "الإملاء المحلي الأول والتحسين والاستماع - تم تصميمه حول نماذج عائلة Whisper ومحركات TTS المخصصة وعمليات تكامل الكتابة على مستوى النظام."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "الشروط",
+        "title": "الشروط القانونية وشروط النماذج",
+        "description": "راجع موافقة التسجيل وتراخيص نماذج الجهات الخارجية وإذن استنساخ الصوت ومسؤوليات الدقة قبل استخدام مسارات العمل الحساسة."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "الترجمة"
       },
       "listen": {
-        "createVoices": "إنشاء أصوات",
+        "createVoices": "إنشاء الكلام",
         "myVoices": "أصوات",
         "voiceCloning": "استنساخ الصوت",
         "studio": "استوديو",
@@ -2551,73 +2589,73 @@
         "privacy": "الخصوصية والتخزين",
         "diagnostics": "التشخيص",
         "about": "حول Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "الشروط القانونية وشروط النماذج"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "مراجعة",
+      "statusAcknowledged": "تم الإقرار",
+      "statusReview": "بحاجة إلى مراجعة",
+      "modelCountLabel": "تغطية الكتالوج",
+      "modelCountValue": "مغطى",
+      "previewLabel": "نقاط تحقق قانونية",
+      "previewRecording": "احصل على موافقة التسجيل المطلوبة",
+      "previewModels": "اتبع ترخيص كل نموذج",
+      "previewVoice": "استخدم عينات صوت مسموح بها فقط",
+      "principlesTitle": "ما الذي يحميه هذا",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "قوانين التسجيل",
+          "value": "الموافقة أولا",
+          "detail": "أنت مسؤول عن الحصول على أي موافقة مطلوبة قبل تسجيل الكلام أو نسخه أو تحليله."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "نماذج الجهات الخارجية",
+          "value": "الترخيص حسب النموذج",
+          "detail": "لكل نموذج STT وTTS وOCR ومتحدث ترخيص ناشر والتزامات إشعار خاصة به."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "استنساخ الصوت",
+          "value": "الإذن مطلوب",
+          "detail": "يجب أن تكون الأصوات المرجعية لك أو مسجلة بواسطتك أو مستخدمة بإذن صريح."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "توجيه البيانات",
+          "value": "اعرف ما يغادر الجهاز",
+          "detail": "تبقى المسارات المحلية على هذا الجهاز؛ أما المسارات السحابية أو الخاصة بجهات خارجية فتحكمها شروط ذلك المزود."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "قائمة تحقق شروط الاستخدام",
+      "termsDescription": "هذه هي الالتزامات العملية التي يمكن لـ Vox Jot إظهارها. وهي لا تحل محل المشورة القانونية.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "موافقة التسجيل والنسخ",
+          "detail": "سجل المحادثات أو انسخها أو لخصها أو ميز المتحدثين فيها فقط عندما يكون ذلك مسموحا لك بموجب القوانين والسياسات التي تنطبق عليك."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "تراخيص النماذج والإسناد",
+          "detail": "لا تزل ملفات التراخيص أو بطاقات النماذج أو الإشعارات أو روابط المصدر أو الإسناد من أصول النماذج المنزلة أو المنسوخة."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "النماذج المقيدة وغير التجارية",
+          "detail": "تتطلب النماذج الموسومة كمقيدة أو مخصصة أو محجوبة أو بحثية فقط أو غير تجارية مراجعة شروط الناشر قبل التنزيل أو الاستخدام."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "الهيئة الصوتية والصوت المرجعي",
+          "detail": "لا تستنسخ أو تقلد أو تنشئ كلاما بصوت شخص آخر من دون حقوق أو موافقة لذلك الاستخدام المحدد."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "دقة النصوص ومخرجات الذكاء الاصطناعي",
+          "detail": "قد تكون النصوص وتسميات المتحدثين ونصوص OCR والترجمات والكلام المولد خاطئة. راجع المخرجات المهمة قبل الاعتماد عليها."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "عناصر التحكم ذات الصلة",
+      "openModelHub": "فتح مركز النماذج",
+      "openPrivacy": "عناصر تحكم الخصوصية",
+      "openNotices": "إشعارات الجهات الخارجية",
+      "ackTitle": "إقرار محلي",
+      "ackLabel": "أفهم مسؤوليات النماذج والتسجيل هذه.",
+      "ackDescription": "يتم تخزين هذا الإقرار محليا على هذا الجهاز. لا تزال تنزيلات النماذج المقيدة تتطلب إقرارا خاصا بكل نموذج."
     }
   },
   "testing": {

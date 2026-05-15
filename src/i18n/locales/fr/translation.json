@@ -1734,7 +1734,45 @@
         "voice": "Voix",
         "cloneProfile": "Cloner le profil",
         "manualVoiceId": "Voix manuelle ID"
-      }
+      },
+      "title": "Créer une voix",
+      "description": "Prévisualisez les modèles, ajustez le rendu et enregistrez un nouveau profil vocal sans changer la voix active.",
+      "voices": "Voix",
+      "models": "Modèles",
+      "draftVoicePickerDetail": "Choisissez une voix pour ce brouillon sans changer la voix active de l’app.",
+      "draftModelPickerDetail": "Choisissez un modèle pour filtrer les voix disponibles pour ce brouillon.",
+      "searchVoicesAriaLabel": "Rechercher des voix",
+      "searchModelsAriaLabel": "Rechercher des modèles vocaux",
+      "searchVoices": "Rechercher des voix",
+      "searchModels": "Rechercher des modèles TTS",
+      "clearVoiceSearch": "Effacer la recherche de voix",
+      "clearModelSearch": "Effacer la recherche de modèles",
+      "modelHubView": "Vue du hub de modèles",
+      "voiceFilterModel": "Sélectionné",
+      "voiceFilterModelDetail": "La vue Voix est filtrée sur ce modèle. Sélectionnez-le à nouveau pour afficher toutes les voix.",
+      "noModelSearchResults": "Aucun modèle TTS téléchargé et exécutable ne correspond à cette recherche.",
+      "noModels": "Aucun modèle TTS téléchargé et exécutable n’est disponible.",
+      "loadingVoices": "Chargement des voix disponibles...",
+      "noVoiceSearchResults": "Aucun préréglage vocal installé ne correspond à ces filtres.",
+      "tuning": "Réglage",
+      "saveTunedVoice": "Enregistrer la voix réglée",
+      "saveTunedVoiceDetail": "Nommez ces réglages vocaux afin de pouvoir les réutiliser.",
+      "tunedVoiceName": "Nom de la voix réglée",
+      "toolAriaLabel": "Outils de création de voix",
+      "audioTab": "Audio",
+      "draft": "Brouillon",
+      "draftModelDetail": "Sélectionné uniquement pour le brouillon Créer une voix. La voix active de l’app reste inchangée.",
+      "modelDetails": "Détails de {{modelName}}",
+      "voiceLanguage": "Langue",
+      "voiceGender": "Genre",
+      "voiceAccent": "Accent vocal",
+      "voiceGenderFemale": "Féminine",
+      "voiceGenderMale": "Masculine",
+      "filterVoicesByLanguage": "Filtrer les voix par langue : {{label}}",
+      "filterVoicesByGender": "Filtrer les voix par genre : {{label}}",
+      "filterVoicesByAccent": "Filtrer les voix par accent : {{label}}",
+      "femaleVoice": "Voix féminine",
+      "maleVoice": "Voix masculine"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Dictée, affinée et écoutée en priorité locale — construite autour des modèles de la famille Whisper, des moteurs TTS personnalisés et des intégrations de saisie au niveau du système."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Conditions",
+        "title": "Conditions légales et des modèles",
+        "description": "Vérifiez le consentement à l’enregistrement, les licences des modèles tiers, l’autorisation de clonage vocal et les responsabilités d’exactitude avant d’utiliser des flux sensibles."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "Traduction"
       },
       "listen": {
-        "createVoices": "Créer des voix",
+        "createVoices": "Créer une voix",
         "myVoices": "Voix",
         "voiceCloning": "Clonage de voix",
         "studio": "Atelier",
@@ -2551,73 +2589,73 @@
         "privacy": "Confidentialité et stockage",
         "diagnostics": "Diagnostic",
         "about": "À propos de Vox Jot",
-        "legal": "Legal & Model Terms"
+        "legal": "Conditions légales et des modèles"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "Vérification",
+      "statusAcknowledged": "Reconnu",
+      "statusReview": "À vérifier",
+      "modelCountLabel": "Couverture du catalogue",
+      "modelCountValue": "Couvert",
+      "previewLabel": "Points de contrôle légaux",
+      "previewRecording": "Obtenir le consentement requis pour enregistrer",
+      "previewModels": "Respecter la licence de chaque modèle",
+      "previewVoice": "Utiliser uniquement des échantillons vocaux autorisés",
+      "principlesTitle": "Ce que cela protège",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Lois sur l’enregistrement",
+          "value": "Consentement d’abord",
+          "detail": "Vous êtes responsable d’obtenir tout consentement requis avant d’enregistrer, transcrire ou analyser la parole."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Modèles tiers",
+          "value": "Licence par modèle",
+          "detail": "Chaque modèle STT, TTS, OCR et de locuteur possède sa propre licence d’éditeur et ses obligations de notification."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Clonage vocal",
+          "value": "Autorisation requise",
+          "detail": "Les voix de référence doivent vous appartenir, avoir été enregistrées par vous ou être utilisées avec une autorisation explicite."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Routage des données",
+          "value": "Savoir ce qui sort",
+          "detail": "Les routes locales restent sur cet appareil ; les routes cloud ou tierces sont régies par les conditions de ce fournisseur."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Liste des conditions d’utilisation",
+      "termsDescription": "Voici les obligations pratiques que Vox Jot peut afficher. Elles ne remplacent pas un conseil juridique.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Consentement à l’enregistrement et à la transcription",
+          "detail": "Enregistrez, transcrivez, résumez ou diarisez des conversations uniquement lorsque les lois et politiques applicables vous y autorisent."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Licences des modèles et attribution",
+          "detail": "Ne supprimez pas les fichiers de licence, fiches de modèle, avis, liens source ou attributions des ressources de modèles téléchargées ou mises en miroir."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Modèles restreints et non commerciaux",
+          "detail": "Les modèles marqués restreints, personnalisés, gated, réservés à la recherche ou non commerciaux exigent de vérifier les conditions de l’éditeur avant téléchargement ou utilisation."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Ressemblance vocale et audio de référence",
+          "detail": "Ne clonez, n’imitez ni ne générez la voix d’une autre personne sans droits ou consentement pour cet usage précis."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Exactitude des transcriptions et sorties IA",
+          "detail": "Les transcriptions, étiquettes de locuteurs, textes OCR, traductions et voix générées peuvent être incorrects. Vérifiez les sorties importantes avant de vous y fier."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "Contrôles associés",
+      "openModelHub": "Ouvrir le hub de modèles",
+      "openPrivacy": "Contrôles de confidentialité",
+      "openNotices": "Avis de tiers",
+      "ackTitle": "Reconnaissance locale",
+      "ackLabel": "Je comprends ces responsabilités liées aux modèles et à l’enregistrement.",
+      "ackDescription": "Cette reconnaissance est stockée localement sur cet appareil. Les téléchargements de modèles restreints exigent toujours leur propre reconnaissance spécifique."
     }
   },
   "testing": {

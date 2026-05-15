@@ -1734,7 +1734,45 @@
         "voice": "Ses",
         "cloneProfile": "Profili Klonla",
         "manualVoiceId": "Manuel Ses ID"
-      }
+      },
+      "title": "Konuşma Oluştur",
+      "description": "Modelleri önizleyin, aktarımı ayarlayın ve etkin sesi değiştirmeden yeni bir ses profili kaydedin.",
+      "voices": "Sesler",
+      "models": "Modeller",
+      "draftVoicePickerDetail": "Etkin uygulama sesini değiştirmeden bu taslak için bir ses seçin.",
+      "draftModelPickerDetail": "Bu taslak için kullanılabilir sesleri filtreleyecek bir model seçin.",
+      "searchVoicesAriaLabel": "Seslerde ara",
+      "searchModelsAriaLabel": "Ses modellerinde ara",
+      "searchVoices": "Seslerde ara",
+      "searchModels": "TTS modellerinde ara",
+      "clearVoiceSearch": "Ses aramasını temizle",
+      "clearModelSearch": "Model aramasını temizle",
+      "modelHubView": "Model merkezi görünümü",
+      "voiceFilterModel": "Seçildi",
+      "voiceFilterModelDetail": "Sesler görünümü bu modele filtrelendi. Tüm sesleri göstermek için tekrar seçin.",
+      "noModelSearchResults": "Bu aramayla eşleşen indirilmiş ve çalıştırılabilir TTS modeli yok.",
+      "noModels": "İndirilmiş ve çalıştırılabilir TTS modeli yok.",
+      "loadingVoices": "Kullanılabilir sesler yükleniyor...",
+      "noVoiceSearchResults": "Bu filtrelerle eşleşen yüklü ses ön ayarı yok.",
+      "tuning": "Ayarlama",
+      "saveTunedVoice": "Ayarlanmış sesi kaydet",
+      "saveTunedVoiceDetail": "Yeniden kullanabilmek için bu ayarlanmış ses ayarlarına ad verin.",
+      "tunedVoiceName": "Ayarlanmış ses adı",
+      "toolAriaLabel": "Konuşma oluşturma araçları",
+      "audioTab": "Ses",
+      "draft": "Taslak",
+      "draftModelDetail": "Yalnızca Konuşma Oluştur taslağı için seçildi. Etkin uygulama sesi değişmedi.",
+      "modelDetails": "{{modelName}} ayrıntıları",
+      "voiceLanguage": "Dil",
+      "voiceGender": "Cinsiyet",
+      "voiceAccent": "Aksan",
+      "voiceGenderFemale": "Kadın",
+      "voiceGenderMale": "Erkek",
+      "filterVoicesByLanguage": "Sesleri dile göre filtrele: {{label}}",
+      "filterVoicesByGender": "Sesleri cinsiyete göre filtrele: {{label}}",
+      "filterVoicesByAccent": "Sesleri aksana göre filtrele: {{label}}",
+      "femaleVoice": "Kadın sesi",
+      "maleVoice": "Erkek sesi"
     }
   },
   "refine": {
@@ -2402,9 +2440,9 @@
         "description": "Whisper ailesi modeller, özel TTS motorları ve sistem düzeyinde yazma entegrasyonları temel alınarak oluşturulmuş, yerel öncelikli dikte, iyileştirme ve dinleme."
       },
       "legal": {
-        "eyebrow": "Terms",
-        "title": "Legal & Model Terms",
-        "description": "Review recording consent, third-party model licenses, voice-cloning permission, and accuracy responsibilities before using sensitive workflows."
+        "eyebrow": "Şartlar",
+        "title": "Yasal ve Model Şartları",
+        "description": "Hassas iş akışlarını kullanmadan önce kayıt izni, üçüncü taraf model lisansları, ses klonlama izni ve doğruluk sorumluluklarını gözden geçirin."
       }
     },
     "cross": {
@@ -2533,7 +2571,7 @@
         "translation": "Çeviri"
       },
       "listen": {
-        "createVoices": "Sesler Oluştur",
+        "createVoices": "Konuşma Oluştur",
         "myVoices": "Sesler",
         "voiceCloning": "Ses Klonlama",
         "studio": "stüdyo",
@@ -2551,73 +2589,73 @@
         "privacy": "Gizlilik ve Depolama",
         "diagnostics": "Teşhis",
         "about": "Vox Jot Hakkında",
-        "legal": "Legal & Model Terms"
+        "legal": "Yasal ve Model Şartları"
       }
     },
     "legal": {
-      "statusLabel": "Review",
-      "statusAcknowledged": "Acknowledged",
-      "statusReview": "Needs review",
-      "modelCountLabel": "Catalog coverage",
-      "modelCountValue": "Covered",
-      "previewLabel": "Legal checkpoints",
-      "previewRecording": "Get required recording consent",
-      "previewModels": "Follow each model license",
-      "previewVoice": "Use only permitted voice samples",
-      "principlesTitle": "What this protects",
+      "statusLabel": "İnceleme",
+      "statusAcknowledged": "Onaylandı",
+      "statusReview": "İnceleme gerekiyor",
+      "modelCountLabel": "Katalog kapsamı",
+      "modelCountValue": "Kapsandı",
+      "previewLabel": "Yasal kontrol noktaları",
+      "previewRecording": "Gerekli kayıt iznini alın",
+      "previewModels": "Her model lisansına uyun",
+      "previewVoice": "Yalnızca izinli ses örneklerini kullanın",
+      "principlesTitle": "Bunun koruduğu şeyler",
       "principles": {
         "recording": {
-          "title": "Recording laws",
-          "value": "Consent first",
-          "detail": "You are responsible for getting any consent required before recording, transcribing, or analyzing speech."
+          "title": "Kayıt yasaları",
+          "value": "Önce izin",
+          "detail": "Konuşmayı kaydetmeden, yazıya dökmeden veya analiz etmeden önce gereken izinleri almaktan siz sorumlusunuz."
         },
         "models": {
-          "title": "Third-party models",
-          "value": "License by model",
-          "detail": "Each STT, TTS, OCR, and speaker model has its own publisher license and notice obligations."
+          "title": "Üçüncü taraf modeller",
+          "value": "Modele göre lisans",
+          "detail": "Her STT, TTS, OCR ve konuşmacı modelinin kendi yayıncı lisansı ve bildirim yükümlülükleri vardır."
         },
         "voice": {
-          "title": "Voice cloning",
-          "value": "Permission required",
-          "detail": "Reference voices must be yours, recorded by you, or used with explicit permission."
+          "title": "Ses klonlama",
+          "value": "İzin gerekir",
+          "detail": "Referans sesler size ait, sizin tarafınızdan kaydedilmiş veya açık izinle kullanılmış olmalıdır."
         },
         "privacy": {
-          "title": "Data routing",
-          "value": "Know what leaves",
-          "detail": "Local routes stay on this device; cloud or third-party routes are governed by that provider's terms."
+          "title": "Veri yönlendirme",
+          "value": "Neyin dışarı çıktığını bilin",
+          "detail": "Yerel rotalar bu cihazda kalır; bulut veya üçüncü taraf rotaları ilgili sağlayıcının şartlarına tabidir."
         }
       },
-      "termsTitle": "Use terms checklist",
-      "termsDescription": "These are the practical obligations Vox Jot can surface. They do not replace legal advice.",
+      "termsTitle": "Kullanım şartları kontrol listesi",
+      "termsDescription": "Bunlar Vox Jot’un gösterebildiği pratik yükümlülüklerdir. Hukuki danışmanlığın yerine geçmez.",
       "terms": {
         "recording": {
-          "title": "Recording and transcription consent",
-          "detail": "Only record, transcribe, summarize, or diarize conversations when you are allowed to do so under the laws and policies that apply to you."
+          "title": "Kayıt ve transkripsiyon izni",
+          "detail": "Konuşmaları yalnızca size uygulanan yasa ve politikalar izin verdiğinde kaydedin, yazıya dökün, özetleyin veya konuşmacılara ayırın."
         },
         "modelLicenses": {
-          "title": "Model licenses and attribution",
-          "detail": "Do not remove upstream license files, model cards, notices, source links, or attribution from downloaded or mirrored model assets."
+          "title": "Model lisansları ve atıf",
+          "detail": "İndirilen veya yansıtılan model varlıklarından lisans dosyalarını, model kartlarını, bildirimleri, kaynak bağlantılarını veya atıfları kaldırmayın."
         },
         "restrictedModels": {
-          "title": "Restricted and non-commercial models",
-          "detail": "Models marked restricted, custom, gated, research-only, or non-commercial require reviewing publisher terms before download or use."
+          "title": "Kısıtlı ve ticari olmayan modeller",
+          "detail": "Kısıtlı, özel, gated, yalnızca araştırma veya ticari olmayan olarak işaretlenen modeller indirme veya kullanım öncesinde yayıncı şartlarının incelenmesini gerektirir."
         },
         "voiceCloning": {
-          "title": "Voice likeness and reference audio",
-          "detail": "Do not clone, imitate, or generate speech in another person's voice without rights or consent for that specific use."
+          "title": "Ses benzerliği ve referans ses",
+          "detail": "Bu belirli kullanım için hak veya izin olmadan başka bir kişinin sesiyle konuşma klonlamayın, taklit etmeyin veya üretmeyin."
         },
         "accuracy": {
-          "title": "Transcript and AI output accuracy",
-          "detail": "Transcripts, speaker labels, OCR text, translations, and generated speech can be wrong. Review important output before relying on it."
+          "title": "Transkript ve AI çıktı doğruluğu",
+          "detail": "Transkriptler, konuşmacı etiketleri, OCR metni, çeviriler ve üretilen konuşma yanlış olabilir. Önemli çıktılara güvenmeden önce inceleyin."
         }
       },
-      "actionsTitle": "Related controls",
-      "openModelHub": "Open Model Hub",
-      "openPrivacy": "Privacy controls",
-      "openNotices": "Third-party notices",
-      "ackTitle": "Local acknowledgement",
-      "ackLabel": "I understand these model and recording responsibilities.",
-      "ackDescription": "This acknowledgement is stored locally on this device. Restricted model downloads still require their own model-specific acknowledgement."
+      "actionsTitle": "İlgili kontroller",
+      "openModelHub": "Model merkezini aç",
+      "openPrivacy": "Gizlilik kontrolleri",
+      "openNotices": "Üçüncü taraf bildirimleri",
+      "ackTitle": "Yerel onay",
+      "ackLabel": "Bu model ve kayıt sorumluluklarını anlıyorum.",
+      "ackDescription": "Bu onay bu cihazda yerel olarak saklanır. Kısıtlı model indirmeleri yine kendi modele özel onayını gerektirir."
     }
   },
   "testing": {

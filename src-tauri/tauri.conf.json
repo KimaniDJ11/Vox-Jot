@@ -33,6 +33,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
+    "copyright": "Copyright (c) 2026 Irie Dinamik",
     "targets": "all",
     "resources": [
       "resources/**/*",

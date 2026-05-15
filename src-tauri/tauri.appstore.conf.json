@@ -3,6 +3,7 @@
     "macOSPrivateApi": false
   },
   "bundle": {
+    "copyright": "Copyright (c) 2026 Irie Dinamik",
     "category": "Utility",
     "createUpdaterArtifacts": false,
     "targets": "app",

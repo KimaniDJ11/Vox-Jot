@@ -163,17 +163,9 @@ describe("CreateVoiceModelHubPicker", () => {
     getTtsVoicesForSelection.mockResolvedValue([voice()]);
   });
 
-  it("switches from models to voices and selects a preset voice", async () => {
+  it("opens on voices and selects a preset voice", async () => {
     const view = await render();
 
-    expect(document.body.textContent).toContain("Kokoro 82M");
-    await act(async () => {
-      (
-        Array.from(document.body.querySelectorAll("button")).find(
-          (button) => button.textContent === "Voices",
-        ) as HTMLButtonElement
-      ).click();
-    });
     await act(async () => {
       await Promise.resolve();
     });
@@ -210,13 +202,6 @@ describe("CreateVoiceModelHubPicker", () => {
     const onSearchQueryChange = vi.fn();
     const view = await render({ onSearchQueryChange });
 
-    await act(async () => {
-      (
-        Array.from(document.body.querySelectorAll("button")).find(
-          (button) => button.textContent === "Voices",
-        ) as HTMLButtonElement
-      ).click();
-    });
     await act(async () => {
       await Promise.resolve();
     });
@@ -262,13 +247,6 @@ describe("CreateVoiceModelHubPicker", () => {
     });
 
     await act(async () => {
-      (
-        Array.from(document.body.querySelectorAll("button")).find(
-          (button) => button.textContent === "Voices",
-        ) as HTMLButtonElement
-      ).click();
-    });
-    await act(async () => {
       await Promise.resolve();
     });
 
@@ -302,8 +280,16 @@ describe("CreateVoiceModelHubPicker", () => {
 
     await act(async () => {
       (
-        Array.from(document.body.querySelectorAll('[role="button"]')).find((button) =>
-          button.textContent?.includes("Chatterbox"),
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "Models",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll('[role="button"]')).find(
+          (button) => button.textContent?.includes("Chatterbox"),
         ) as HTMLElement
       ).click();
     });
@@ -333,8 +319,8 @@ describe("CreateVoiceModelHubPicker", () => {
     });
     await act(async () => {
       (
-        Array.from(document.body.querySelectorAll('[role="button"]')).find((button) =>
-          button.textContent?.includes("Chatterbox"),
+        Array.from(document.body.querySelectorAll('[role="button"]')).find(
+          (button) => button.textContent?.includes("Chatterbox"),
         ) as HTMLElement
       ).click();
     });

@@ -798,7 +798,7 @@ export const VoiceArchitectSection: React.FC<{
               onClick={() => setModelWindowOpen(true)}
             >
               <Layers className="h-3.5 w-3.5" />
-              {t("listen.createVoices.models", { defaultValue: "Models" })}
+              {t("listen.createVoices.voices", { defaultValue: "Voices" })}
             </Button>
           </div>
         </div>

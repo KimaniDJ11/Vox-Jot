@@ -200,7 +200,7 @@ export const CreateVoiceModelHubPicker: React.FC<
   onClose,
 }) => {
   const { t } = useTranslation();
-  const [view, setView] = useState<PickerView>("models");
+  const [view, setView] = useState<PickerView>("voices");
   const [selectedModelFilterKey, setSelectedModelFilterKey] = useState<
     string | null
   >(null);
@@ -216,7 +216,7 @@ export const CreateVoiceModelHubPicker: React.FC<
 
   useEffect(() => {
     if (!open) {
-      setView("models");
+      setView("voices");
       setSelectedModelFilterKey(null);
       setVoiceGenderFilter("all");
       setVoiceAccentFilter("all");
@@ -401,15 +401,24 @@ export const CreateVoiceModelHubPicker: React.FC<
                   id="create-voice-model-title"
                   className="truncate text-sm font-semibold text-[var(--text)]"
                 >
-                  {t("listen.createVoices.models", {
-                    defaultValue: "Models",
-                  })}
+                  {view === "voices"
+                    ? t("listen.createVoices.voices", {
+                        defaultValue: "Voices",
+                      })
+                    : t("listen.createVoices.models", {
+                        defaultValue: "Models",
+                      })}
                 </h3>
                 <p className="truncate text-xs text-[var(--muted)]">
-                  {t("listen.createVoices.draftModelPickerDetail", {
-                    defaultValue:
-                      "Choose a voice model for this draft without changing the active app voice.",
-                  })}
+                  {view === "voices"
+                    ? t("listen.createVoices.draftVoicePickerDetail", {
+                        defaultValue:
+                          "Choose a voice for this draft without changing the active app voice.",
+                      })
+                    : t("listen.createVoices.draftModelPickerDetail", {
+                        defaultValue:
+                          "Choose a model to filter available voices for this draft.",
+                      })}
                 </p>
               </div>
               <Button
@@ -469,9 +478,15 @@ export const CreateVoiceModelHubPicker: React.FC<
                     type="button"
                     className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                     onClick={() => onSearchQueryChange("")}
-                    aria-label={t("listen.createVoices.clearModelSearch", {
-                      defaultValue: "Clear model search",
-                    })}
+                    aria-label={
+                      view === "voices"
+                        ? t("listen.createVoices.clearVoiceSearch", {
+                            defaultValue: "Clear voice search",
+                          })
+                        : t("listen.createVoices.clearModelSearch", {
+                            defaultValue: "Clear model search",
+                          })
+                    }
                   >
                     <X className="h-3 w-3" aria-hidden />
                   </button>
@@ -488,15 +503,15 @@ export const CreateVoiceModelHubPicker: React.FC<
                   })}
                   items={[
                     {
-                      value: "models",
-                      label: t("listen.createVoices.models", {
-                        defaultValue: "Models",
-                      }),
-                    },
-                    {
                       value: "voices",
                       label: t("listen.createVoices.voices", {
                         defaultValue: "Voices",
+                      }),
+                    },
+                    {
+                      value: "models",
+                      label: t("listen.createVoices.models", {
+                        defaultValue: "Models",
                       }),
                     },
                   ]}

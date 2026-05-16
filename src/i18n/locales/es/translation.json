@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "Reiniciar"
+    },
+    "slider": {
+      "resetToDefault": "Haz clic para restablecer al valor predeterminado",
+      "resetValue": "{{label}} {{value}} - haz clic para restablecer"
     }
   },
   "translationSettings": {

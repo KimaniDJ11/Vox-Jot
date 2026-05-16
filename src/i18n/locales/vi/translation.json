@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "Đặt lại"
+    },
+    "slider": {
+      "resetToDefault": "Nhấp để đặt lại về mặc định",
+      "resetValue": "{{label}} {{value}} - nhấp để đặt lại"
     }
   },
   "translationSettings": {

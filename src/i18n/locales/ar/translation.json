@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "إعادة تعيين"
+    },
+    "slider": {
+      "resetToDefault": "انقر لإعادة التعيين إلى الافتراضي",
+      "resetValue": "{{label}} {{value}} - انقر لإعادة التعيين"
     }
   },
   "translationSettings": {

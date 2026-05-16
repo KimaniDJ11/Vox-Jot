@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "重置"
+    },
+    "slider": {
+      "resetToDefault": "點擊重設為預設值",
+      "resetValue": "{{label}} {{value}} - 點擊重設"
     }
   },
   "translationSettings": {

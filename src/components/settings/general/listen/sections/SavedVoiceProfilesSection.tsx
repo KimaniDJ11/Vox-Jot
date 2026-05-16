@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Play, Trash2 } from "lucide-react";
+import { Check, Play, Square, Trash2 } from "lucide-react";
+import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { ActiveBadgeIcon } from "@/components/ui/CompactOverflow";
@@ -20,6 +21,16 @@ export const SavedVoiceProfilesSection: React.FC<{
 
   if (!speech.settings || !speech.activePreset) return null;
 
+  const previewLabel = t("listen.myVoices.preview");
+  const stopLabel = t("listen.myVoices.stop");
+  const activeLabel = t("listen.myVoices.active");
+  const useThisVoiceLabel = t("listen.myVoices.useThisVoice");
+  const cloneLabel = t("listen.myVoices.clone");
+  const automaticVoiceLabel = t("listen.createVoices.automaticVoice", {
+    defaultValue: "Automatic voice",
+  });
+  const deleteLabel = t("common.delete", { defaultValue: "Delete" });
+
   const content = (
     <div
       className={`space-y-3 ${showTitle ? "px-4 py-3" : ""} ${
@@ -36,97 +47,125 @@ export const SavedVoiceProfilesSection: React.FC<{
         {speech.presets.map((preset) => {
           const isActive = preset.id === speech.activePreset?.id;
           const presetVoiceLabel =
-            preset.voice_label_snapshot ?? preset.voice_id ?? "Automatic";
+            preset.voice_label_snapshot ??
+            preset.voice_id ??
+            automaticVoiceLabel;
+          const isClone = Boolean(preset.voice_profile_id);
+          const isPreviewing = speech.previewingPresetId === preset.id;
           const canActivate = !isActive && speech.ttsEnabled;
           const activate = () => void speech.setActivePreset(preset.id);
+          const togglePreview = async () => {
+            if (isPreviewing) {
+              const result = await commands.ttsStop();
+              if (result.status === "error") {
+                speech.setStatusMessage(result.error);
+              }
+              return;
+            }
+            await speech.previewPreset(preset.id, DEFAULT_TTS_PREVIEW_TEXT);
+          };
+          const description = [
+            preset.model_id,
+            presetVoiceLabel,
+            isClone ? cloneLabel : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
 
           return (
             <div
               key={preset.id}
-              onClick={canActivate ? activate : undefined}
-              className={
+              className={[
+                "group/profile-card flex w-full min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
                 isActive
-                  ? "rounded-xl border border-[var(--accent)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-md)]"
-                  : "group cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 shadow-[var(--shadow-sm)] transition-all duration-200 hover:border-[var(--accent)] hover:bg-logo-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              }
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-transparent bg-[var(--card)] hover:border-[var(--border)] hover:bg-[var(--panel-bg)]",
+              ].join(" ")}
             >
-              <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                <ProviderIcon
-                  providerId={resolveModelProviderId(preset.model_id, null)}
-                  size="lg"
-                />
-                <div className="min-w-0 space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold leading-none text-[var(--text)]">
-                      {preset.label}
-                    </p>
-                    {isActive ? (
-                      <Badge
-                        variant="primary"
-                        className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
-                      >
-                        <ActiveBadgeIcon />
-                        {t("listen.myVoices.active")}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                    <Badge variant="secondary">{preset.model_id}</Badge>
-                    <Badge variant="secondary">{presetVoiceLabel}</Badge>
-                    {preset.voice_profile_id ? (
-                      <Badge variant="secondary">
-                        {t("listen.myVoices.clone")}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div
-                  className="flex shrink-0 items-center gap-0.5 sm:justify-end"
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
+              <span className="relative h-12 w-12 shrink-0">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--panel-bg)] shadow-inner">
+                  <ProviderIcon
+                    providerId={resolveModelProviderId(preset.model_id, null)}
+                    size="lg"
+                  />
+                </span>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void togglePreview();
+                  }}
+                  aria-label={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
+                  title={isPreviewing ? stopLabel : previewLabel}
+                  className={[
+                    "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+                    isPreviewing
+                      ? "opacity-100"
+                      : "opacity-0 group-hover/profile-card:opacity-100 group-focus-within/profile-card:opacity-100",
+                  ].join(" ")}
                 >
-                  {!isActive ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="icon-sm"
-                      onClick={activate}
-                      disabled={!speech.ttsEnabled}
-                      title={t("listen.myVoices.useThisVoice")}
-                      aria-label={`${t("listen.myVoices.useThisVoice")} ${preset.label}`}
+                  {isPreviewing ? (
+                    <Square className="h-5 w-5 fill-current" aria-hidden />
+                  ) : (
+                    <Play className="h-5 w-5 fill-current" aria-hidden />
+                  )}
+                </button>
+              </span>
+
+              <button
+                type="button"
+                onClick={activate}
+                disabled={!canActivate}
+                className="min-w-0 flex-1 rounded-xl px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-default"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-[var(--text)]">
+                    {preset.label}
+                  </span>
+                  {isActive ? (
+                    <Badge
+                      variant="primary"
+                      className="gap-1 text-[var(--inverse-text)] shadow-[var(--shadow-sm)]"
                     >
-                      <Check aria-hidden />
-                    </Button>
+                      <ActiveBadgeIcon />
+                      {activeLabel}
+                    </Badge>
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() =>
-                      void speech.previewPreset(
-                        preset.id,
-                        DEFAULT_TTS_PREVIEW_TEXT,
-                      )
-                    }
-                    disabled={speech.previewingPresetId === preset.id}
-                    title={t("listen.myVoices.preview")}
-                    aria-label={`${t("listen.myVoices.preview")} ${preset.label}`}
-                  >
-                    <Play aria-hidden />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger-ghost"
-                    size="icon-sm"
-                    onClick={() => void speech.removePreset(preset.id)}
-                    disabled={!speech.ttsEnabled || speech.presets.length <= 1}
-                    title={`Delete ${preset.label}`}
-                    aria-label={`Delete ${preset.label}`}
-                  >
-                    <Trash2 aria-hidden />
-                  </Button>
                 </div>
+                <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
+                  {description}
+                </span>
+              </button>
+
+              <div
+                className="flex shrink-0 items-center gap-0.5"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                {!isActive ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-sm"
+                    onClick={activate}
+                    disabled={!speech.ttsEnabled}
+                    title={useThisVoiceLabel}
+                    aria-label={`${useThisVoiceLabel} ${preset.label}`}
+                  >
+                    <Check aria-hidden />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="danger-ghost"
+                  size="icon-sm"
+                  onClick={() => void speech.removePreset(preset.id)}
+                  disabled={!speech.ttsEnabled || speech.presets.length <= 1}
+                  title={`${deleteLabel} ${preset.label}`}
+                  aria-label={`${deleteLabel} ${preset.label}`}
+                >
+                  <Trash2 aria-hidden />
+                </Button>
               </div>
             </div>
           );

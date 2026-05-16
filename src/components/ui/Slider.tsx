@@ -89,7 +89,7 @@ export const Slider: React.FC<SliderProps> = ({
       ? 0
       : Math.min(100, Math.max(0, ((localValue - min) / (max - min)) * 100));
   const trackStyle = {
-    "--slider-bg": `linear-gradient(to right, var(--accent) 0%, var(--accent) ${fillPercent}%, color-mix(in srgb, var(--accent), white 78%) ${fillPercent}%, color-mix(in srgb, var(--text), transparent 82%) 100%)`,
+    "--slider-bg": `linear-gradient(to right, color-mix(in srgb, var(--accent), var(--card) 52%) ${fillPercent}%, var(--card) ${fillPercent}%)`,
   } as React.CSSProperties;
   const defaultPercent =
     defaultValue !== undefined && max !== min
@@ -101,7 +101,11 @@ export const Slider: React.FC<SliderProps> = ({
   };
   const canReset = defaultValue !== undefined && !disabled;
   const isAtDefault = defaultValue !== undefined && localValue === defaultValue;
-  const valueResetTitle = canReset ? "Click to reset to default" : undefined;
+  const valueResetTitle = canReset
+    ? t("ui.slider.resetToDefault", {
+        defaultValue: "Click to reset to default",
+      })
+    : undefined;
 
   if (layout === "compact") {
     return (
@@ -137,7 +141,14 @@ export const Slider: React.FC<SliderProps> = ({
       disabled={disabled}
     >
       <div className="w-full">
-        <div className="flex min-h-11 items-center gap-3">
+        <div className="relative">
+          {defaultPercent !== null ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 z-10 h-4 w-px -translate-x-1/2 -translate-y-1/2 bg-[color-mix(in_srgb,var(--text),transparent_70%)]"
+              style={{ left: `${defaultPercent}%` }}
+            />
+          ) : null}
           <input
             type="range"
             min={min}
@@ -149,7 +160,7 @@ export const Slider: React.FC<SliderProps> = ({
             onKeyUp={commit}
             onBlur={commit}
             disabled={disabled}
-            className="h-9 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="relative z-0 block h-11 w-full appearance-none bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             style={trackStyle}
           />
           {showValue && (
@@ -159,23 +170,50 @@ export const Slider: React.FC<SliderProps> = ({
                   type="button"
                   onClick={handleResetToDefault}
                   title={valueResetTitle}
-                  aria-label={`${label} ${formatValue(localValue)} - click to reset`}
-                  className={`min-w-10 rounded-md px-1.5 py-0.5 text-end text-sm font-semibold tabular-nums transition-colors ${interactiveFocusRingClass} ${
+                  aria-label={t("ui.slider.resetValue", {
+                    label,
+                    value: formatValue(localValue),
+                    defaultValue: "{{label}} {{value}} - click to reset",
+                  })}
+                  className={`absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-sm font-semibold tabular-nums transition-colors ${interactiveFocusRingClass} ${
                     isAtDefault
                       ? "text-[var(--muted)]"
-                      : "text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                      : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_92%)]"
                   }`}
                 >
                   {formatValue(localValue)}
                 </button>
               ) : (
-                <span className="min-w-10 text-end text-sm font-semibold tabular-nums text-[var(--text)]">
+                <span className="pointer-events-none absolute right-3 top-1/2 z-20 -translate-y-1/2 text-sm font-semibold tabular-nums text-[var(--text)]">
                   {formatValue(localValue)}
                 </span>
               )}
             </>
           )}
         </div>
+        {rangeHint ? (
+          <div
+            className={`mt-2 flex items-center gap-3 px-0.5 ${disabled ? "opacity-50" : ""}`}
+          >
+            <span className="text-xs font-medium text-[var(--muted)]">
+              {rangeHint.left}
+            </span>
+            <div
+              className="flex flex-1 items-center justify-between"
+              aria-hidden="true"
+            >
+              {Array.from({ length: 13 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-2 w-px bg-[var(--muted)] opacity-35"
+                />
+              ))}
+            </div>
+            <span className="text-xs font-medium text-[var(--muted)]">
+              {rangeHint.right}
+            </span>
+          </div>
+        ) : null}
       </div>
     </SettingContainer>
   );
@@ -225,7 +263,9 @@ const CompactSlider: React.FC<{
   const canReset = defaultValue !== undefined && !disabled;
   const isAtDefault = defaultValue !== undefined && value === defaultValue;
   const valueResetTitle = canReset
-    ? "Double-click to reset to default"
+    ? t("ui.slider.resetToDefault", {
+        defaultValue: "Click to reset to default",
+      })
     : undefined;
 
   return (
@@ -269,32 +309,12 @@ const CompactSlider: React.FC<{
             )}
           </button>
         ) : null}
-        {showValue && (
-          <button
-            type="button"
-            onClick={canReset ? onResetToDefault : undefined}
-            disabled={!canReset}
-            title={valueResetTitle}
-            aria-label={
-              canReset
-                ? `${label} ${formatValue(value)} — click to reset`
-                : `${label} ${formatValue(value)}`
-            }
-            className={`ml-auto rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums transition-colors ${
-              isAtDefault
-                ? "text-[var(--muted)]"
-                : "text-[var(--accent)] hover:bg-[var(--accent-soft)]"
-            } disabled:cursor-default disabled:hover:bg-transparent`}
-          >
-            {formatValue(value)}
-          </button>
-        )}
       </div>
       <div className="relative">
         {defaultPercent !== null ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 z-10 h-5 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color-mix(in_srgb,var(--text),transparent_55%)]"
+            className="pointer-events-none absolute top-1/2 z-10 h-4 w-px -translate-x-1/2 -translate-y-1/2 bg-[color-mix(in_srgb,var(--text),transparent_70%)]"
             style={{ left: `${defaultPercent}%` }}
           />
         ) : null}
@@ -310,14 +330,55 @@ const CompactSlider: React.FC<{
           onBlur={commit}
           onDoubleClick={canReset ? onResetToDefault : undefined}
           disabled={disabled}
-          className="relative z-0 h-9 w-full appearance-none rounded-full bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="relative z-0 block h-11 w-full appearance-none bg-transparent cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           style={trackStyle}
         />
+        {showValue && (
+          <>
+            {canReset ? (
+              <button
+                type="button"
+                onClick={onResetToDefault}
+                title={valueResetTitle}
+                aria-label={t("ui.slider.resetValue", {
+                  label,
+                  value: formatValue(value),
+                  defaultValue: "{{label}} {{value}} - click to reset",
+                })}
+                className={`absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-sm font-semibold tabular-nums transition-colors ${interactiveFocusRingClass} ${
+                  isAtDefault
+                    ? "text-[var(--muted)]"
+                    : "text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--text),transparent_92%)]"
+                }`}
+              >
+                {formatValue(value)}
+              </button>
+            ) : (
+              <span className="pointer-events-none absolute right-3 top-1/2 z-20 -translate-y-1/2 text-sm font-semibold tabular-nums text-[var(--text)]">
+                {formatValue(value)}
+              </span>
+            )}
+          </>
+        )}
       </div>
       {rangeHint ? (
-        <div className="mt-1 flex justify-between text-[10px] uppercase tracking-[0.06em] text-[var(--text-subtle,var(--muted))]">
-          <span>{rangeHint.left}</span>
-          <span>{rangeHint.right}</span>
+        <div
+          className={`mt-2 flex items-center gap-3 px-0.5 ${disabled ? "opacity-50" : ""}`}
+        >
+          <span className="text-xs font-medium text-[var(--muted)]">
+            {rangeHint.left}
+          </span>
+          <div
+            className="flex flex-1 items-center justify-between"
+            aria-hidden="true"
+          >
+            {Array.from({ length: 13 }).map((_, i) => (
+              <div key={i} className="h-2 w-px bg-[var(--muted)] opacity-35" />
+            ))}
+          </div>
+          <span className="text-xs font-medium text-[var(--muted)]">
+            {rangeHint.right}
+          </span>
         </div>
       ) : null}
     </div>

@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "Redefinir"
+    },
+    "slider": {
+      "resetToDefault": "Clique para redefinir para o padrão",
+      "resetValue": "{{label}} {{value}} - clique para redefinir"
     }
   },
   "translationSettings": {

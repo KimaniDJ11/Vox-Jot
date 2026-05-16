@@ -2715,6 +2715,10 @@
     },
     "resetButton": {
       "label": "Сброс"
+    },
+    "slider": {
+      "resetToDefault": "Нажмите, чтобы восстановить значение по умолчанию",
+      "resetValue": "{{label}} {{value}} - нажмите, чтобы сбросить"
     }
   },
   "translationSettings": {

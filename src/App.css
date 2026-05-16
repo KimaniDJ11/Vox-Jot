@@ -793,101 +793,82 @@ select option:checked {
 }
 
 /* ── Range Input (Slider) Track ──────────────────────────────
- * Slim 8px track + 18px thumb. The thumb sits centered on the track
- * (margin-top = -(thumb - track) / 2). Solid white thumb with a 1px
- * hairline border + subtle drop shadow — matches SwitchControl so all
- * pill-shaped controls feel like one family.
+ * Card-pill: tall (44px) rounded container. Left = soft accent fill,
+ * right = card-surface unfilled. Subtle 1px outer border. The value
+ * text and tick row are rendered in Slider.tsx since native inputs
+ * can't host overlays.
  */
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--slider-bg, rgba(128, 128, 128, 0.35));
-  border: 1px solid color-mix(in srgb, var(--text), transparent 84%);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
+  height: 44px;
+  border-radius: 12px;
+  background: var(--slider-bg, var(--card));
+  border: 1px solid color-mix(in srgb, var(--text), transparent 90%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 input[type="range"]::-moz-range-track {
-  height: 8px;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--text), transparent 86%);
-  border: 1px solid color-mix(in srgb, var(--text), transparent 84%);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.12);
+  height: 44px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--text), transparent 90%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 input[type="range"]::-moz-range-progress {
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--accent);
+  height: 44px;
+  border-radius: 12px 0 0 12px;
+  background: color-mix(in srgb, var(--accent), var(--card) 52%);
 }
 
-/* ── Range Input (Slider) Thumb ────────────────────────────── */
+/* ── Range Input (Slider) Thumb ──────────────────────────────
+ * Vertical bar marker (4×24). Sits centered on the 44px track.
+ */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: #ffffff;
+  width: 4px;
+  height: 24px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--accent);
   border: none;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 0 0 0.5px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.06);
-  box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.32),
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 0 0 4px color-mix(in srgb, var(--accent), transparent 84%);
+  transform: scaleY(1.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent), transparent 86%);
 }
 input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(0.96);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 0 0 3px color-mix(in srgb, var(--accent), transparent 78%);
+  transform: scaleY(0.95);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent), transparent 78%);
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ffffff;
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  background: var(--accent);
   border: none;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    0 0 0 0.5px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
 input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.06);
-  box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.32),
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 0 0 4px color-mix(in srgb, var(--accent), transparent 84%);
+  transform: scaleY(1.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent), transparent 86%);
 }
 input[type="range"]::-moz-range-thumb:active {
-  transform: scale(0.96);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 0 0 3px color-mix(in srgb, var(--accent), transparent 78%);
+  transform: scaleY(0.95);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent), transparent 78%);
 }
 
 input[type="range"]:disabled::-webkit-slider-thumb,
 input[type="range"]:disabled::-moz-range-thumb {
-  background: color-mix(in srgb, #ffffff, var(--text) 18%);
-  box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.2),
-    0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--accent), var(--card) 60%);
   cursor: not-allowed;
 }
 

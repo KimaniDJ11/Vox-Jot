@@ -8,6 +8,10 @@
     },
     "resetButton": {
       "label": "Reset"
+    },
+    "slider": {
+      "resetToDefault": "Click to reset to default",
+      "resetValue": "{{label}} {{value}} - click to reset"
     }
   },
   "convo": {

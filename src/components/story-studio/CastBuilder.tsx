@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
@@ -167,6 +175,12 @@ const VoicePicker: React.FC<VoicePickerProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [popoverRect, setPopoverRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const options = useMemo(
     () => [
       ...presets.map((preset) => ({
@@ -180,6 +194,47 @@ const VoicePicker: React.FC<VoicePickerProps> = ({
     ],
     [presetVoices, presets],
   );
+
+  const updatePopoverRect = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const gap = 4;
+    const viewportPadding = 12;
+    const preferredMaxHeight = 320;
+    const availableBelow = viewportHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openAbove = availableBelow < 180 && availableAbove > availableBelow;
+    const availableSpace = openAbove ? availableAbove : availableBelow;
+    const maxHeight = Math.max(
+      120,
+      Math.min(preferredMaxHeight, availableSpace),
+    );
+
+    setPopoverRect({
+      top: openAbove
+        ? Math.max(viewportPadding, rect.top - maxHeight - gap)
+        : rect.bottom + gap,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPopoverRect(null);
+      return;
+    }
+    updatePopoverRect();
+    const onScrollOrResize = () => updatePopoverRect();
+    window.addEventListener("resize", onScrollOrResize);
+    document.addEventListener("scroll", onScrollOrResize, true);
+    return () => {
+      window.removeEventListener("resize", onScrollOrResize);
+      document.removeEventListener("scroll", onScrollOrResize, true);
+    };
+  }, [open, updatePopoverRect]);
 
   useEffect(() => {
     if (!open) return;
@@ -202,6 +257,10 @@ const VoicePicker: React.FC<VoicePickerProps> = ({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   useEffect(() => {
     if (!open) return;
@@ -255,6 +314,125 @@ const VoicePicker: React.FC<VoicePickerProps> = ({
     }
   };
 
+  const popover =
+    open && popoverRect ? (
+      <div
+        ref={popoverRef}
+        role="listbox"
+        aria-label={placeholder}
+        onKeyDown={handleListKeyDown}
+        className="fixed z-[200] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg"
+        style={{
+          top: popoverRect.top,
+          left: popoverRect.left,
+          width: popoverRect.width,
+          maxHeight: popoverRect.maxHeight,
+        }}
+      >
+        {presets.length > 0 && (
+          <div className="p-1">
+            <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              {myVoicesLabel}
+            </div>
+            {presets.map((preset) => {
+              const gradient = voiceAvatarGradient(presetSeed(preset));
+              const isSelected = preset.id === value;
+              return (
+                <button
+                  key={preset.id}
+                  ref={(element) => {
+                    optionRefs.current[
+                      options.findIndex(
+                        (option) =>
+                          option.id === preset.id && option.kind === "preset",
+                      )
+                    ] = element;
+                  }}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onSelectPreset(preset.id);
+                    setOpen(false);
+                    triggerRef.current?.focus();
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] ${
+                    isSelected
+                      ? "bg-[color-mix(in_srgb,var(--accent),transparent_88%)]"
+                      : ""
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-6 w-6 shrink-0 rounded-full"
+                    style={{ background: gradient }}
+                  />
+                  <span className="flex-1 truncate text-sm font-medium text-[var(--text)]">
+                    {preset.label}
+                  </span>
+                  {isSelected && (
+                    <Check className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {presetVoices.length > 0 && (
+          <div
+            className={`p-1 ${presets.length > 0 ? "border-t border-[var(--border)]" : ""}`}
+          >
+            <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              {presetVoicesLabel}
+            </div>
+            {presetVoices.map((voice) => (
+              <button
+                key={voice.id}
+                ref={(element) => {
+                  optionRefs.current[
+                    options.findIndex(
+                      (option) =>
+                        option.id === voice.id && option.kind === "voice",
+                    )
+                  ] = element;
+                }}
+                type="button"
+                role="option"
+                aria-selected={false}
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onSelectPresetVoice(voice);
+                    setOpen(false);
+                    triggerRef.current?.focus();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] disabled:opacity-50 disabled:cursor-wait"
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-6 w-6 shrink-0 rounded-full"
+                  style={{ background: voice.avatarGradient }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-[var(--text)]">
+                    {voice.voiceLabel}
+                  </div>
+                  <div className="truncate text-[11px] text-[var(--muted)]">
+                    {voice.modelLabel}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+
   return (
     <div className="relative">
       <button
@@ -297,117 +475,9 @@ const VoicePicker: React.FC<VoicePickerProps> = ({
         <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted)]" />
       </button>
 
-      {open && (
-        <div
-          ref={popoverRef}
-          role="listbox"
-          aria-label={placeholder}
-          onKeyDown={handleListKeyDown}
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg"
-        >
-          {presets.length > 0 && (
-            <div className="p-1">
-              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                {myVoicesLabel}
-              </div>
-              {presets.map((preset) => {
-                const gradient = voiceAvatarGradient(presetSeed(preset));
-                const isSelected = preset.id === value;
-                return (
-                  <button
-                    key={preset.id}
-                    ref={(element) => {
-                      optionRefs.current[
-                        options.findIndex(
-                          (option) =>
-                            option.id === preset.id && option.kind === "preset",
-                        )
-                      ] = element;
-                    }}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      onSelectPreset(preset.id);
-                      setOpen(false);
-                      triggerRef.current?.focus();
-                    }}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] ${
-                      isSelected
-                        ? "bg-[color-mix(in_srgb,var(--accent),transparent_88%)]"
-                        : ""
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-6 w-6 shrink-0 rounded-full"
-                      style={{ background: gradient }}
-                    />
-                    <span className="flex-1 truncate text-sm font-medium text-[var(--text)]">
-                      {preset.label}
-                    </span>
-                    {isSelected && (
-                      <Check className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {presetVoices.length > 0 && (
-            <div
-              className={`p-1 ${presets.length > 0 ? "border-t border-[var(--border)]" : ""}`}
-            >
-              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                {presetVoicesLabel}
-              </div>
-              {presetVoices.map((voice) => (
-                <button
-                  key={voice.id}
-                  ref={(element) => {
-                    optionRefs.current[
-                      options.findIndex(
-                        (option) =>
-                          option.id === voice.id && option.kind === "voice",
-                      )
-                    ] = element;
-                  }}
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      await onSelectPresetVoice(voice);
-                      setOpen(false);
-                      triggerRef.current?.focus();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] disabled:opacity-50 disabled:cursor-wait"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="h-6 w-6 shrink-0 rounded-full"
-                    style={{ background: voice.avatarGradient }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-[var(--text)]">
-                      {voice.voiceLabel}
-                    </div>
-                    <div className="truncate text-[11px] text-[var(--muted)]">
-                      {voice.modelLabel}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {typeof document !== "undefined" && popover
+        ? createPortal(popover, document.body)
+        : null}
     </div>
   );
 };

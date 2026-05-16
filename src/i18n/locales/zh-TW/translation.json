@@ -2155,7 +2155,11 @@
       "action": "行動",
       "chooseVoice": "選擇聲音",
       "removeConfirm": "刪除字元“{{name}}”？",
-      "removeCharacter": "刪除字元"
+      "removeCharacter": "刪除字元",
+      "myVoices": "我的聲音",
+      "presetVoices": "預設聲音",
+      "loadingVoices": "正在載入聲音...",
+      "createVoicePresetFailed": "無法儲存該語音預設。"
     },
     "script": {
       "placeholder": "旁白：城市的燈光閃爍著醒來。\n&& 我認識那個聲音。\n指導：那就照著做吧。"

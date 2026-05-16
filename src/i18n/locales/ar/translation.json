@@ -2155,7 +2155,11 @@
       "action": "العمل",
       "chooseVoice": "اختر الصوت",
       "removeConfirm": "هل تريد إزالة الحرف \"{{name}}\"؟",
-      "removeCharacter": "إزالة الحرف"
+      "removeCharacter": "إزالة الحرف",
+      "myVoices": "أصواتي",
+      "presetVoices": "الأصوات المعدة مسبقًا",
+      "loadingVoices": "جارٍ تحميل الأصوات...",
+      "createVoicePresetFailed": "تعذّر حفظ إعداد الصوت هذا."
     },
     "script": {
       "placeholder": "الراوي: ومضت أضواء المدينة مستيقظا.\nالبطل: أعرف هذا الصوت.\nالدليل: ثم اتبعه."

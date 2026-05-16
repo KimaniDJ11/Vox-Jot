@@ -2155,7 +2155,11 @@
       "action": "액션",
       "chooseVoice": "음성 선택",
       "removeConfirm": "\"{{name}}\" 문자를 제거하시겠습니까?",
-      "removeCharacter": "캐릭터 삭제"
+      "removeCharacter": "캐릭터 삭제",
+      "myVoices": "내 목소리",
+      "presetVoices": "프리셋 음성",
+      "loadingVoices": "음성 불러오는 중...",
+      "createVoicePresetFailed": "이 음성 프리셋을 저장할 수 없습니다."
     },
     "script": {
       "placeholder": "해설자: 도시의 불빛이 깜빡깜빡 깨어났습니다.\n주인공: 나 그 목소리 알아요.\n가이드: 그럼 따라오세요."

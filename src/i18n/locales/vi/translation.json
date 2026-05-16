@@ -2155,7 +2155,11 @@
       "action": "hành động",
       "chooseVoice": "Chọn giọng nói",
       "removeConfirm": "Xóa ký tự \"{{name}}\"?",
-      "removeCharacter": "Xóa ký tự"
+      "removeCharacter": "Xóa ký tự",
+      "myVoices": "Giọng nói của tôi",
+      "presetVoices": "Giọng cài sẵn",
+      "loadingVoices": "Đang tải giọng nói...",
+      "createVoicePresetFailed": "Không thể lưu giọng nói cài sẵn đó."
     },
     "script": {
       "placeholder": "Người kể chuyện: Ánh đèn thành phố nhấp nháy thức giấc.\nAnh hùng: Tôi biết giọng nói đó.\nHướng dẫn: Thế thì làm theo nhé."

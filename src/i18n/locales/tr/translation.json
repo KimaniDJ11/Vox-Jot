@@ -2155,7 +2155,11 @@
       "action": "Eylem",
       "chooseVoice": "Sesi seçin",
       "removeConfirm": "\"{{name}}\" karakteri kaldırılsın mı?",
-      "removeCharacter": "Karakteri kaldır"
+      "removeCharacter": "Karakteri kaldır",
+      "myVoices": "Seslerim",
+      "presetVoices": "Ön ayarlı sesler",
+      "loadingVoices": "Sesler yükleniyor...",
+      "createVoicePresetFailed": "Bu ses ön ayarı kaydedilemedi."
     },
     "script": {
       "placeholder": "Anlatıcı: Şehrin ışıkları titreyerek uyandı.\nKahraman: Bu sesi tanıyorum.\nRehber: O halde onu takip edin."

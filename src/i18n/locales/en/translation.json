@@ -2170,7 +2170,11 @@
       "action": "Action",
       "chooseVoice": "Choose voice",
       "removeConfirm": "Remove character \"{{name}}\"?",
-      "removeCharacter": "Remove character"
+      "removeCharacter": "Remove character",
+      "myVoices": "My Voices",
+      "presetVoices": "Preset Voices",
+      "loadingVoices": "Loading voices...",
+      "createVoicePresetFailed": "Could not save that voice preset."
     },
     "script": {
       "placeholder": "Narrator: The city lights flickered awake.\nHero: I know that voice.\nGuide: Then follow it."

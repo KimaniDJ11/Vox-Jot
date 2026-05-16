@@ -2155,7 +2155,11 @@
       "action": "Aktion",
       "chooseVoice": "Wählen Sie Stimme",
       "removeConfirm": "Zeichen „{{name}}“ entfernen?",
-      "removeCharacter": "Zeichen entfernen"
+      "removeCharacter": "Zeichen entfernen",
+      "myVoices": "Meine Stimmen",
+      "presetVoices": "Voreingestellte Stimmen",
+      "loadingVoices": "Stimmen werden geladen...",
+      "createVoicePresetFailed": "Diese Sprachvoreinstellung konnte nicht gespeichert werden."
     },
     "script": {
       "placeholder": "Erzähler: Die Lichter der Stadt erwachten flackernd.\nHeld: Ich kenne diese Stimme.\nLeitfaden: Dann folgen Sie ihm."

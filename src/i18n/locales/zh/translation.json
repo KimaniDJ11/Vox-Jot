@@ -2155,7 +2155,11 @@
       "action": "行动",
       "chooseVoice": "选择声音",
       "removeConfirm": "删除字符“{{name}}”？",
-      "removeCharacter": "删除字符"
+      "removeCharacter": "删除字符",
+      "myVoices": "我的声音",
+      "presetVoices": "预设声音",
+      "loadingVoices": "正在加载声音...",
+      "createVoicePresetFailed": "无法保存该语音预设。"
     },
     "script": {
       "placeholder": "旁白：城市的灯光闪烁着醒来。\n&& 我认识那个声音。\n指导：那就照着做吧。"

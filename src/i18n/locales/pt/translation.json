@@ -2155,7 +2155,11 @@
       "action": "Ação",
       "chooseVoice": "Escolha a voz",
       "removeConfirm": "Remover o caractere \"{{name}}\"?",
-      "removeCharacter": "Remover personagem"
+      "removeCharacter": "Remover personagem",
+      "myVoices": "Minhas vozes",
+      "presetVoices": "Vozes predefinidas",
+      "loadingVoices": "Carregando vozes...",
+      "createVoicePresetFailed": "Não foi possível salvar essa predefinição de voz."
     },
     "script": {
       "placeholder": "Narrador: As luzes da cidade piscaram.\nHerói: Eu conheço essa voz.\nGuia: Então siga-o."

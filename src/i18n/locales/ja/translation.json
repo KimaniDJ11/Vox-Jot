@@ -2155,7 +2155,11 @@
       "action": "アクション",
       "chooseVoice": "音声を選択",
       "removeConfirm": "文字「{{name}}」を削除しますか?",
-      "removeCharacter": "文字を削除する"
+      "removeCharacter": "文字を削除する",
+      "myVoices": "マイボイス",
+      "presetVoices": "プリセット音声",
+      "loadingVoices": "音声を読み込み中...",
+      "createVoicePresetFailed": "この音声プリセットを保存できませんでした。"
     },
     "script": {
       "placeholder": "ナレーター: 街の明かりが目を覚ますようにちらつきました。\n主人公：その声は知っています。\nガイド: それに従ってください。"

@@ -2155,7 +2155,11 @@
       "action": "Akcja",
       "chooseVoice": "Wybierz głos",
       "removeConfirm": "Usunąć znak „{{name}}”?",
-      "removeCharacter": "Usuń znak"
+      "removeCharacter": "Usuń znak",
+      "myVoices": "Moje głosy",
+      "presetVoices": "Głosy ustawień wstępnych",
+      "loadingVoices": "Ładowanie głosów...",
+      "createVoicePresetFailed": "Nie można zapisać tego ustawienia głosu."
     },
     "script": {
       "placeholder": "Narrator: Światła miasta zamigotały, budząc się.\nBohater: Znam ten głos.\nPrzewodnik: Następnie postępuj zgodnie z nim."

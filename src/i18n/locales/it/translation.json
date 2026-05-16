@@ -2155,7 +2155,11 @@
       "action": "Azione",
       "chooseVoice": "Scegli la voce",
       "removeConfirm": "Rimuovere il carattere \"{{name}}\"?",
-      "removeCharacter": "Rimuovi carattere"
+      "removeCharacter": "Rimuovi carattere",
+      "myVoices": "Le mie voci",
+      "presetVoices": "Voci predefinite",
+      "loadingVoices": "Caricamento voci...",
+      "createVoicePresetFailed": "Impossibile salvare questa voce predefinita."
     },
     "script": {
       "placeholder": "Narratore: Le luci della città si risvegliarono tremolando.\nEroe: Conosco quella voce.\nGuida: Allora seguila."

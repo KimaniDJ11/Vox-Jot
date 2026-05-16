@@ -34,10 +34,20 @@ import {
   type TtsExpressionTag,
 } from "@/lib/ttsExpressionControls";
 import {
+  createTtsVoicePreset,
   listTtsVoicePresets,
   type TtsVoicePreset,
 } from "@/lib/ttsVoicePresets";
-import { commands } from "@/bindings";
+import { commands, type VoiceInfo } from "@/bindings";
+import {
+  buildCreateVoiceHubRows,
+  type CreateVoiceHubVoiceRow,
+} from "@/components/settings/general/listen/createVoiceVoiceHub";
+import {
+  defaultVoiceTuning,
+  getTtsVoicesForSelection,
+  isDraftVoiceModelAvailable,
+} from "@/components/settings/general/listen/utils";
 import { CastBuilder } from "./CastBuilder";
 import {
   ScriptEditor,
@@ -121,6 +131,14 @@ export const StoryStudioSection: React.FC = () => {
     lineNumber: scriptText.split("\n").length,
   });
   const [ttsModels, setTtsModels] = useState<CatalogModelDescriptor[]>([]);
+  const [isLoadingTtsModels, setIsLoadingTtsModels] = useState(true);
+  const [voicesByModelKey, setVoicesByModelKey] = useState<
+    Map<string, VoiceInfo[]>
+  >(() => new Map());
+  const [loadingVoiceKeys, setLoadingVoiceKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const loadingVoiceKeysRef = useRef(new Set<string>());
   const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
   const [isQueueingRender, setIsQueueingRender] = useState(false);
   const [showQueuedAck, setShowQueuedAck] = useState(false);
@@ -159,11 +177,61 @@ export const StoryStudioSection: React.FC = () => {
           "Failed to load Story Studio expression metadata:",
           error,
         );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingTtsModels(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const availableTtsModels = useMemo(
+    () => ttsModels.filter(isDraftVoiceModelAvailable),
+    [ttsModels],
+  );
+
+  // Lazy-load preset voices for each TTS model so they can populate the
+  // Cast voice picker alongside saved presets.
+  useEffect(() => {
+    for (const model of availableTtsModels) {
+      const key = `${model.provider_id}::${model.id}`;
+      if (voicesByModelKey.has(key) || loadingVoiceKeysRef.current.has(key)) {
+        continue;
+      }
+      loadingVoiceKeysRef.current.add(key);
+      setLoadingVoiceKeys((current) => {
+        const next = new Set(current);
+        next.add(key);
+        return next;
+      });
+      void getTtsVoicesForSelection(model.provider_id, model.id)
+        .then((voices) => {
+          setVoicesByModelKey((current) => {
+            const next = new Map(current);
+            next.set(key, voices);
+            return next;
+          });
+        })
+        .catch(() => {
+          setVoicesByModelKey((current) => {
+            const next = new Map(current);
+            next.set(key, []);
+            return next;
+          });
+        })
+        .finally(() => {
+          loadingVoiceKeysRef.current.delete(key);
+          setLoadingVoiceKeys((current) => {
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+        });
+    }
+  }, [availableTtsModels, voicesByModelKey]);
 
   useEffect(() => {
     writeStoredStudioDraft({
@@ -243,6 +311,56 @@ export const StoryStudioSection: React.FC = () => {
     setCast((currentCast) => currentCast.filter((member) => member.id !== id));
   }, []);
 
+  const presetVoices = useMemo(
+    () => buildCreateVoiceHubRows(availableTtsModels, voicesByModelKey),
+    [availableTtsModels, voicesByModelKey],
+  );
+  const hasVoiceChoices = presets.length > 0 || presetVoices.length > 0;
+  const isLoadingVoiceChoices =
+    isLoadingTtsModels || loadingVoiceKeys.size > 0;
+
+  // When the user picks a built-in preset voice in the Cast picker we
+  // materialize it as a saved TtsVoicePreset so the rest of the pipeline
+  // (validation, render request) can keep using presetId references.
+  const handleCreatePresetFromVoice = useCallback(
+    async (voice: CreateVoiceHubVoiceRow): Promise<string> => {
+      const existingPreset = presets.find(
+        (preset) =>
+          preset.provider_id === voice.providerId &&
+          preset.model_id === voice.modelId &&
+          (preset.voice_id ?? null) === voice.voiceId &&
+          (preset.voice_profile_id ?? null) === null,
+      );
+      if (existingPreset) {
+        return existingPreset.id;
+      }
+
+      try {
+        const created = await createTtsVoicePreset({
+          label: voice.voiceId
+            ? `${voice.modelLabel} - ${voice.voiceLabel}`
+            : voice.modelLabel,
+          provider_id: voice.providerId,
+          model_id: voice.modelId,
+          voice_id: voice.voiceId,
+          voice_profile_id: null,
+          voice_label_snapshot: voice.voiceId
+            ? voice.voiceLabel
+            : voice.modelLabel,
+          locale_snapshot: voice.locale,
+          tuning: defaultVoiceTuning(),
+        });
+        setPresets((current) => [...current, created]);
+        return created.id;
+      } catch (error) {
+        console.error("Failed to save Story Studio preset voice:", error);
+        toast.error(t("storyStudio.cast.createVoicePresetFailed"));
+        throw error;
+      }
+    },
+    [presets, t],
+  );
+
   const handleRender = useCallback(async () => {
     if (!canRender) {
       return;
@@ -304,7 +422,7 @@ export const StoryStudioSection: React.FC = () => {
   const hiddenValidationErrorCount =
     validation.errors.length - visibleValidationErrors.length;
 
-  if (!isLoadingPresets && presets.length === 0) {
+  if (!isLoadingPresets && !isLoadingVoiceChoices && !hasVoiceChoices) {
     return (
       <div className="flex h-full items-center justify-center px-6 py-10">
         <div className="max-w-md text-center">
@@ -515,10 +633,13 @@ export const StoryStudioSection: React.FC = () => {
               <CastBuilder
                 cast={cast}
                 presets={presets}
+                presetVoices={presetVoices}
+                isLoadingVoiceChoices={isLoadingVoiceChoices}
                 disabled={isLoadingPresets}
                 onAdd={addCharacter}
                 onRemove={removeCharacter}
                 onUpdate={updateCharacter}
+                onCreatePresetFromVoice={handleCreatePresetFromVoice}
               />
 
               <label className="block text-sm font-medium text-[var(--text)]">

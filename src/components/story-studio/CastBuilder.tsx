@@ -1,30 +1,51 @@
-import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import {
+  voiceAvatarGradient,
+  type CreateVoiceHubVoiceRow,
+} from "@/components/settings/general/listen/createVoiceVoiceHub";
 import type { StoryCastMemberDraft } from "./storyScript";
 
 interface CastBuilderProps {
   cast: StoryCastMemberDraft[];
   presets: TtsVoicePreset[];
+  presetVoices: CreateVoiceHubVoiceRow[];
+  isLoadingVoiceChoices?: boolean;
   disabled?: boolean;
   onAdd: () => void;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<StoryCastMemberDraft>) => void;
+  onCreatePresetFromVoice: (voice: CreateVoiceHubVoiceRow) => Promise<string>;
+}
+
+function presetSeed(preset: TtsVoicePreset): string {
+  return `${preset.provider_id}::${preset.model_id}::${preset.voice_id ?? "__model__"}`;
 }
 
 export const CastBuilder: React.FC<CastBuilderProps> = ({
   cast,
   presets,
+  presetVoices,
+  isLoadingVoiceChoices = false,
   disabled = false,
   onAdd,
   onRemove,
   onUpdate,
+  onCreatePresetFromVoice,
 }) => {
   const { t } = useTranslation();
+  const myVoicesLabel = t("storyStudio.cast.myVoices");
+  const presetVoicesLabel = t("storyStudio.cast.presetVoices");
+  const loadingVoicesLabel = t("storyStudio.cast.loadingVoices");
+  const placeholder = t("storyStudio.cast.chooseVoice");
+  const hasVoiceChoices = presets.length > 0 || presetVoices.length > 0;
+  const voicePickerDisabled =
+    disabled || (!hasVoiceChoices && isLoadingVoiceChoices);
 
   return (
     <section className="space-y-3">
@@ -42,7 +63,7 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
           variant="secondary"
           size="sm"
           onClick={onAdd}
-          disabled={disabled || presets.length === 0}
+          disabled={voicePickerDisabled || !hasVoiceChoices}
         >
           <Plus className="h-4 w-4" />
           {t("storyStudio.cast.addCharacter")}
@@ -70,21 +91,22 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
                 placeholder={t("storyStudio.cast.characterPlaceholder")}
                 className="w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
               />
-              <select
+              <VoicePicker
                 value={member.presetId}
-                onChange={(event) =>
-                  onUpdate(member.id, { presetId: event.target.value })
-                }
-                disabled={disabled || presets.length === 0}
-                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-medium text-[var(--text)] outline-none focus:border-[var(--accent)]"
-              >
-                <option value="">{t("storyStudio.cast.chooseVoice")}</option>
-                {presets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
+                presets={presets}
+                presetVoices={presetVoices}
+                disabled={voicePickerDisabled}
+                placeholder={placeholder}
+                loadingLabel={loadingVoicesLabel}
+                myVoicesLabel={myVoicesLabel}
+                presetVoicesLabel={presetVoicesLabel}
+                isLoading={isLoadingVoiceChoices && !hasVoiceChoices}
+                onSelectPreset={(presetId) => onUpdate(member.id, { presetId })}
+                onSelectPresetVoice={async (voice) => {
+                  const newId = await onCreatePresetFromVoice(voice);
+                  onUpdate(member.id, { presetId: newId });
+                }}
+              />
               <Button
                 type="button"
                 variant="danger-ghost"
@@ -110,5 +132,282 @@ export const CastBuilder: React.FC<CastBuilderProps> = ({
         </div>
       </div>
     </section>
+  );
+};
+
+interface VoicePickerProps {
+  value: string;
+  presets: TtsVoicePreset[];
+  presetVoices: CreateVoiceHubVoiceRow[];
+  disabled?: boolean;
+  placeholder: string;
+  loadingLabel: string;
+  myVoicesLabel: string;
+  presetVoicesLabel: string;
+  isLoading?: boolean;
+  onSelectPreset: (presetId: string) => void;
+  onSelectPresetVoice: (voice: CreateVoiceHubVoiceRow) => Promise<void>;
+}
+
+const VoicePicker: React.FC<VoicePickerProps> = ({
+  value,
+  presets,
+  presetVoices,
+  disabled = false,
+  placeholder,
+  loadingLabel,
+  myVoicesLabel,
+  presetVoicesLabel,
+  isLoading = false,
+  onSelectPreset,
+  onSelectPresetVoice,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const options = useMemo(
+    () => [
+      ...presets.map((preset) => ({
+        id: preset.id,
+        kind: "preset" as const,
+      })),
+      ...presetVoices.map((voice) => ({
+        id: voice.id,
+        kind: "voice" as const,
+      })),
+    ],
+    [presetVoices, presets],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !popoverRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const selectedIndex = Math.max(
+      0,
+      options.findIndex(
+        (option) => option.kind === "preset" && option.id === value,
+      ),
+    );
+    window.requestAnimationFrame(() => {
+      optionRefs.current[selectedIndex]?.focus();
+    });
+  }, [open, options, value]);
+
+  const selectedPreset = presets.find((p) => p.id === value) ?? null;
+  const selectedGradient = selectedPreset
+    ? voiceAvatarGradient(presetSeed(selectedPreset))
+    : null;
+  const selectedLabel = selectedPreset?.label ?? placeholder;
+  const isEmpty = presets.length === 0 && presetVoices.length === 0;
+  const triggerLabel = isLoading ? loadingLabel : selectedLabel;
+
+  const moveFocus = (delta: number) => {
+    const currentIndex = optionRefs.current.findIndex(
+      (element) => element === document.activeElement,
+    );
+    const nextIndex =
+      currentIndex === -1
+        ? 0
+        : (currentIndex + delta + options.length) % options.length;
+    optionRefs.current[nextIndex]?.focus();
+  };
+
+  const handleListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveFocus(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveFocus(-1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      optionRefs.current[0]?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      optionRefs.current[options.length - 1]?.focus();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled || isEmpty}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (
+            event.key === "ArrowDown" ||
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-busy={isLoading}
+        className="flex h-10 w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 text-sm font-medium text-[var(--text)] outline-none transition-colors hover:border-[var(--accent)] focus:border-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {selectedGradient ? (
+          <span
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0 rounded-full"
+            style={{ background: selectedGradient }}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0 rounded-full border border-dashed border-[var(--border)]"
+          />
+        )}
+        <span
+          className={`flex-1 truncate text-start ${selectedPreset ? "" : "text-[var(--muted)]"}`}
+        >
+          {triggerLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+      </button>
+
+      {open && (
+        <div
+          ref={popoverRef}
+          role="listbox"
+          aria-label={placeholder}
+          onKeyDown={handleListKeyDown}
+          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-lg"
+        >
+          {presets.length > 0 && (
+            <div className="p-1">
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                {myVoicesLabel}
+              </div>
+              {presets.map((preset) => {
+                const gradient = voiceAvatarGradient(presetSeed(preset));
+                const isSelected = preset.id === value;
+                return (
+                  <button
+                    key={preset.id}
+                    ref={(element) => {
+                      optionRefs.current[
+                        options.findIndex(
+                          (option) =>
+                            option.id === preset.id && option.kind === "preset",
+                        )
+                      ] = element;
+                    }}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onSelectPreset(preset.id);
+                      setOpen(false);
+                      triggerRef.current?.focus();
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] ${
+                      isSelected
+                        ? "bg-[color-mix(in_srgb,var(--accent),transparent_88%)]"
+                        : ""
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-6 w-6 shrink-0 rounded-full"
+                      style={{ background: gradient }}
+                    />
+                    <span className="flex-1 truncate text-sm font-medium text-[var(--text)]">
+                      {preset.label}
+                    </span>
+                    {isSelected && (
+                      <Check className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {presetVoices.length > 0 && (
+            <div
+              className={`p-1 ${presets.length > 0 ? "border-t border-[var(--border)]" : ""}`}
+            >
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                {presetVoicesLabel}
+              </div>
+              {presetVoices.map((voice) => (
+                <button
+                  key={voice.id}
+                  ref={(element) => {
+                    optionRefs.current[
+                      options.findIndex(
+                        (option) =>
+                          option.id === voice.id && option.kind === "voice",
+                      )
+                    ] = element;
+                  }}
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await onSelectPresetVoice(voice);
+                      setOpen(false);
+                      triggerRef.current?.focus();
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text),transparent_94%)] disabled:opacity-50 disabled:cursor-wait"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-6 w-6 shrink-0 rounded-full"
+                    style={{ background: voice.avatarGradient }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-[var(--text)]">
+                      {voice.voiceLabel}
+                    </div>
+                    <div className="truncate text-[11px] text-[var(--muted)]">
+                      {voice.modelLabel}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

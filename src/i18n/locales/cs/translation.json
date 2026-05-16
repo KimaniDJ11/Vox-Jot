@@ -2155,7 +2155,11 @@
       "action": "Akce",
       "chooseVoice": "Vyberte hlas",
       "removeConfirm": "Odebrat znak \"{{name}}\"?",
-      "removeCharacter": "Odebrat znak"
+      "removeCharacter": "Odebrat znak",
+      "myVoices": "Moje hlasy",
+      "presetVoices": "Přednastavené hlasy",
+      "loadingVoices": "Načítání hlasů...",
+      "createVoicePresetFailed": "Tuto předvolbu hlasu se nepodařilo uložit."
     },
     "script": {
       "placeholder": "Vypravěč: Světla města se probudila.\nHrdina: Znám ten hlas.\nPrůvodce: Tak to následujte."

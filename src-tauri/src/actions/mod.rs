@@ -1586,6 +1586,7 @@ impl ShortcutAction for TranscribeAction {
                                                     insertion_method,
                                                     (*correction_store).clone(),
                                                     (*recent_input).clone(),
+                                                    ah.clone(),
                                                 );
                                             }
                                         }

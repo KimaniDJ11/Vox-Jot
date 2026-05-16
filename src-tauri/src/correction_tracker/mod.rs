@@ -30,6 +30,7 @@ use span::{InsertedSpan, InsertionMethod};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use store::CorrectionStore;
+use tauri::AppHandle;
 use tokio::task::JoinHandle;
 
 /// Manages the currently active inserted span and coordinates correction monitoring.
@@ -61,6 +62,7 @@ impl InsertedSpanTracker {
         insertion_method: InsertionMethod,
         store: Arc<CorrectionStore>,
         recent_input: Arc<RecentInputTracker>,
+        app_handle: AppHandle,
     ) {
         let span = InsertedSpan::new(
             inserted_text,
@@ -99,8 +101,15 @@ impl InsertedSpanTracker {
 
         // Spawn the monitoring task
         let monitor_task = tokio::spawn(async move {
-            field_monitor::monitor_for_corrections(reader, span, store, app_behavior, recent_input)
-                .await;
+            field_monitor::monitor_for_corrections(
+                reader,
+                span,
+                store,
+                app_behavior,
+                recent_input,
+                app_handle,
+            )
+            .await;
         });
 
         let mut active_task = self.monitor_task.lock().unwrap_or_else(|e| e.into_inner());

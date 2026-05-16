@@ -8,6 +8,7 @@ use super::diff::extract_corrections;
 use super::recent_input::{RecentInputSignals, RecentInputTracker};
 use super::span::InsertedSpan;
 use super::store::CorrectionStore;
+use tauri::AppHandle;
 
 /// Trait for platform-specific text field reading.
 pub trait FieldTextReader: Send + Sync {
@@ -34,6 +35,7 @@ pub async fn monitor_for_corrections(
     store: Arc<CorrectionStore>,
     app_behavior: AppFieldBehavior,
     recent_input: Arc<RecentInputTracker>,
+    app_handle: AppHandle,
 ) {
     let params = app_behavior.monitoring_params();
 
@@ -47,8 +49,16 @@ pub async fn monitor_for_corrections(
         params.window_secs
     );
 
-    monitor_for_corrections_with_params(reader, span, store, app_behavior, params, recent_input)
-        .await;
+    monitor_for_corrections_with_params(
+        reader,
+        span,
+        store,
+        app_behavior,
+        params,
+        recent_input,
+        Some(app_handle),
+    )
+    .await;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +92,7 @@ async fn monitor_for_corrections_with_params(
     app_behavior: AppFieldBehavior,
     params: MonitoringParams,
     recent_input: Arc<RecentInputTracker>,
+    app_handle: Option<AppHandle>,
 ) {
     let total_delay = Duration::from_secs(params.window_secs as u64);
     let mut elapsed = Duration::ZERO;
@@ -216,13 +227,35 @@ async fn monitor_for_corrections_with_params(
         span.id
     );
 
+    let mut approved_pairs = Vec::new();
     for pair in &corrections {
-        if let Err(e) = store.add_correction(pair) {
-            error!(
-                "Failed to store correction '{}' → '{}': {}",
-                pair.original, pair.corrected, e
-            );
+        match store.add_observed_user_correction(pair) {
+            Ok(Some(confidence)) => approved_pairs.push((pair, confidence)),
+            Ok(None) => {
+                debug!(
+                    "Ignored observed edit '{}' → '{}' because it is not a plausible correction",
+                    pair.original, pair.corrected
+                );
+            }
+            Err(e) => {
+                error!(
+                    "Failed to store correction '{}' → '{}': {}",
+                    pair.original, pair.corrected, e
+                );
+            }
         }
+    }
+
+    if let (Some((first_pair, confidence)), Some(app_handle)) =
+        (approved_pairs.first(), app_handle.as_ref())
+    {
+        crate::overlay::show_correction_overlay(
+            app_handle,
+            &first_pair.original,
+            &first_pair.corrected,
+            *confidence,
+            approved_pairs.len().saturating_sub(1),
+        );
     }
 }
 
@@ -505,6 +538,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -520,6 +554,10 @@ mod tests {
         assert!(correcteds.contains(&"the"));
         assert!(originals.contains(&"brwn"));
         assert!(correcteds.contains(&"brown"));
+        assert!(
+            all.iter().all(|correction| correction.user_approved),
+            "Observed destination-field edits should be promoted to approved corrections"
+        );
     }
 
     #[tokio::test]
@@ -537,6 +575,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -558,6 +597,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -584,6 +624,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -606,6 +647,7 @@ mod tests {
             AppFieldBehavior::Persistent,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -627,6 +669,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -652,6 +695,7 @@ mod tests {
             AppFieldBehavior::Ephemeral,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -685,6 +729,7 @@ mod tests {
             AppFieldBehavior::Ephemeral,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -712,6 +757,7 @@ mod tests {
             AppFieldBehavior::Ephemeral,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -738,6 +784,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -763,6 +810,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -789,6 +837,7 @@ mod tests {
             AppFieldBehavior::Persistent,
             tiny_params(),
             test_recent_input(),
+            None,
         )
         .await;
 
@@ -815,6 +864,7 @@ mod tests {
             AppFieldBehavior::Ephemeral,
             tiny_params(),
             recent_input,
+            None,
         )
         .await;
 
@@ -841,6 +891,7 @@ mod tests {
             AppFieldBehavior::Unknown,
             tiny_params(),
             recent_input,
+            None,
         )
         .await;
 

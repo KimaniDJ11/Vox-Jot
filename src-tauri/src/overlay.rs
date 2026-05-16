@@ -36,6 +36,11 @@ const OVERLAY_HEIGHT_MINIMAL: f64 = 18.0;
 // region below the notch lip.
 const OVERLAY_WIDTH_NOTCH: f64 = 190.0;
 const OVERLAY_HEIGHT_NOTCH: f64 = 30.0;
+const OVERLAY_WIDTH_CORRECTION: f64 = 300.0;
+const OVERLAY_HEIGHT_CORRECTION: f64 = 72.0;
+const CORRECTION_OVERLAY_VISIBLE_MS: u64 = 4_200;
+static OVERLAY_DISPLAY_GENERATION: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
 
 fn overlay_dimensions(style: RecordingOverlayStyle) -> (f64, f64) {
     match style {
@@ -149,6 +154,16 @@ fn is_mouse_within_monitor(
 /// converts PhysicalPosition using the scale factor of the monitor the window
 /// is *currently* on, which is wrong when moving cross-monitor.
 fn calculate_overlay_position(app_handle: &AppHandle) -> Option<(f64, f64)> {
+    let settings = settings::get_settings(app_handle);
+    let dimensions = overlay_dimensions(settings.recording_overlay_style);
+    calculate_overlay_position_for_size(app_handle, dimensions, settings.recording_overlay_style)
+}
+
+fn calculate_overlay_position_for_size(
+    app_handle: &AppHandle,
+    dimensions: (f64, f64),
+    style: RecordingOverlayStyle,
+) -> Option<(f64, f64)> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let scale = monitor.scale_factor();
     let monitor_x = monitor.position().x as f64 / scale;
@@ -157,17 +172,14 @@ fn calculate_overlay_position(app_handle: &AppHandle) -> Option<(f64, f64)> {
     let monitor_height = monitor.size().height as f64 / scale;
 
     let settings = settings::get_settings(app_handle);
-    let (ov_width, ov_height) = overlay_dimensions(settings.recording_overlay_style);
+    let (ov_width, ov_height) = dimensions;
 
     let x = monitor_x + (monitor_width - ov_width) / 2.0;
     // The Notch style ignores OverlayPosition and pins to the very
     // top of the screen so it can hug the menu-bar / camera notch
     // area on macOS. On other platforms this just behaves like a
     // top-aligned compact pill.
-    let y = if matches!(
-        settings.recording_overlay_style,
-        RecordingOverlayStyle::Notch
-    ) {
+    let y = if matches!(style, RecordingOverlayStyle::Notch) {
         monitor_y
     } else {
         match settings.overlay_position {
@@ -284,6 +296,7 @@ fn show_overlay_state(app_handle: &AppHandle, state: &str) {
     apply_recording_overlay_metrics(app_handle);
 
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let _ = overlay_window.show();
 
         // On Windows, aggressively re-assert "topmost" in the native Z-order after showing
@@ -316,6 +329,69 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
     show_overlay_state(app_handle, "processing");
 }
 
+/// Shows a short, non-activating confirmation after a user edit is approved as
+/// a correction. This reuses the existing overlay window so it does not steal
+/// focus from the target app.
+pub fn show_correction_overlay(
+    app_handle: &AppHandle,
+    original: &str,
+    corrected: &str,
+    confidence: f64,
+    additional_count: usize,
+) {
+    let settings = settings::get_settings(app_handle);
+    if settings.overlay_position == OverlayPosition::None {
+        return;
+    }
+
+    if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        let generation =
+            OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        let _ = overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: OVERLAY_WIDTH_CORRECTION,
+            height: OVERLAY_HEIGHT_CORRECTION,
+        }));
+
+        if let Some((x, y)) = calculate_overlay_position_for_size(
+            app_handle,
+            (OVERLAY_WIDTH_CORRECTION, OVERLAY_HEIGHT_CORRECTION),
+            RecordingOverlayStyle::Detailed,
+        ) {
+            let _ = overlay_window
+                .set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+        }
+
+        let _ = overlay_window.show();
+
+        #[cfg(target_os = "windows")]
+        force_overlay_topmost(&overlay_window);
+
+        let payload = serde_json::json!({
+            "original": original,
+            "corrected": corrected,
+            "confidence": confidence,
+            "additionalCount": additional_count,
+        });
+        let _ = overlay_window.emit("show-correction-overlay", payload);
+
+        let window_clone = overlay_window.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(
+                CORRECTION_OVERLAY_VISIBLE_MS,
+            ));
+            if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed) != generation {
+                return;
+            }
+            let _ = window_clone.emit("hide-overlay", ());
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            if OVERLAY_DISPLAY_GENERATION.load(std::sync::atomic::Ordering::Relaxed) != generation {
+                return;
+            }
+            let _ = window_clone.hide();
+        });
+    }
+}
+
 /// Applies current overlay style dimensions and re-centers the window.
 pub fn apply_recording_overlay_metrics(app_handle: &AppHandle) {
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
@@ -344,6 +420,7 @@ pub fn hide_recording_overlay(app_handle: &AppHandle) {
     // Always hide the overlay regardless of settings - if setting was changed while recording,
     // we still want to hide it properly
     if let Some(overlay_window) = app_handle.get_webview_window("recording_overlay") {
+        OVERLAY_DISPLAY_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         // Emit event to trigger fade-out animation
         let _ = overlay_window.emit("hide-overlay", ());
         // Hide the window after a short delay to allow animation to complete

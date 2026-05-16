@@ -138,6 +138,85 @@
     inset 0 -0.5px 0 rgba(255, 255, 255, 0.08);
 }
 
+/* ---------- correction confirmation -------------------------- */
+.recording-overlay--correction {
+  width: 300px;
+  height: 72px;
+  display: block;
+  padding: 8px;
+  --ov-radius: 14px;
+}
+
+.correction-overlay-body {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.correction-overlay-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ov-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ov-accent) 32%, transparent);
+}
+
+.correction-overlay-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.correction-overlay-title {
+  color: var(--ov-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.correction-overlay-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ov-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.correction-overlay-token {
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.correction-overlay-arrow {
+  flex: 0 0 auto;
+  color: var(--ov-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.correction-overlay-meta {
+  color: var(--ov-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---------- left: icon area ---------------------------------- */
 .overlay-left {
   display: flex;

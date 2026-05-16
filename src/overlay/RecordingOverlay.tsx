@@ -26,6 +26,13 @@ interface ShowOverlayPayload {
   style: OverlayStyle;
 }
 
+interface CorrectionOverlayPayload {
+  original: string;
+  corrected: string;
+  confidence: number;
+  additionalCount?: number;
+}
+
 interface SettingsChangedPayload {
   setting?: string;
   value?: unknown;
@@ -202,6 +209,9 @@ const RecordingOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [state, setState] = useState<OverlayState>("recording");
   const [style, setStyle] = useState<OverlayStyle>("compact");
+  const [correction, setCorrection] = useState<CorrectionOverlayPayload | null>(
+    null,
+  );
   const [partialText, setPartialText] = useState("");
   const [screenContextEnabled, setScreenContextEnabled] = useState(true);
   const [screenContextStatus, setScreenContextStatus] =
@@ -274,12 +284,23 @@ const RecordingOverlay: React.FC = () => {
           const payload = event.payload;
           setState(payload.state);
           setStyle(payload.style);
+          setCorrection(null);
+          setIsVisible(true);
+        },
+      );
+
+      const unCorrection = await listen<CorrectionOverlayPayload>(
+        "show-correction-overlay",
+        (event) => {
+          setCorrection(event.payload);
+          setStyle("detailed");
           setIsVisible(true);
         },
       );
 
       const unHide = await listen("hide-overlay", () => {
         setIsVisible(false);
+        setCorrection(null);
         setPartialText("");
         setMatchedRule(null);
         clearScreenContextPulse();
@@ -349,6 +370,7 @@ const RecordingOverlay: React.FC = () => {
 
       return () => {
         unShow();
+        unCorrection();
         unHide();
         unLevel();
         unPartial();
@@ -389,6 +411,7 @@ const RecordingOverlay: React.FC = () => {
             isCompact ? "recording-overlay--compact" : "",
             isMinimal ? "recording-overlay--minimal" : "",
             isNotch ? "recording-overlay--notch" : "",
+            correction ? "recording-overlay--correction" : "",
             !isCompact && !isMinimal && !isNotch && state === "recording"
               ? "is-interactive"
               : "",
@@ -400,7 +423,9 @@ const RecordingOverlay: React.FC = () => {
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={bounce}
         >
-          {isMinimal ? (
+          {correction ? (
+            <CorrectionBody payload={correction} />
+          ) : isMinimal ? (
             // Minimal: just a single dot — pulsing while recording,
             // amber while transcribing, slow while post-processing.
             <span
@@ -503,7 +528,58 @@ const ScreenContextPulse: React.FC<{ visible: boolean }> = ({ visible }) => {
   return <span className="screen-context-pulse" aria-hidden />;
 };
 
+const CorrectionBody: React.FC<{ payload: CorrectionOverlayPayload }> = ({
+  payload,
+}) => {
+  const { t } = useTranslation();
+  const confidence = Math.round(
+    Math.max(0, Math.min(1, payload.confidence)) * 100,
+  );
+  const additionalCount = payload.additionalCount ?? 0;
+
+  return (
+    <div className="correction-overlay-body">
+      <div className="correction-overlay-icon" aria-hidden>
+        <CheckIcon />
+      </div>
+      <div className="correction-overlay-copy">
+        <div className="correction-overlay-title">
+          {t("overlay.correctionAdded", {
+            defaultValue: "Added correction",
+          })}
+        </div>
+        <div className="correction-overlay-pair">
+          <span className="correction-overlay-token">{payload.original}</span>
+          <span className="correction-overlay-arrow" aria-hidden>
+            -&gt;
+          </span>
+          <span className="correction-overlay-token">{payload.corrected}</span>
+        </div>
+        <div className="correction-overlay-meta">
+          {t("overlay.correctionConfidence", {
+            confidence,
+            defaultValue: "Confidence {{confidence}}%",
+          })}
+          {additionalCount > 0 ? `, +${additionalCount} more` : ""}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ── Inline SVG icons (no external deps in the overlay bundle) ── */
+
+const CheckIcon: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path
+      d="M4 9.2l3.1 3.1L14 5.4"
+      stroke="var(--ov-accent)"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const MicIcon: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">

@@ -328,7 +328,22 @@ impl SidecarManager {
 
     pub fn ensure_running(&self) -> Result<(), String> {
         let already_running = self.is_running();
+        let mlx_audio_needs_runtime_restart = if self.backend == SidecarBackend::MlxAudio {
+            let had_required_patches = self.mlx_audio_runtime_has_required_patches();
+            self.ensure_mlx_audio_environment()?;
+            already_running
+                && !had_required_patches
+                && self.mlx_audio_runtime_has_required_patches()
+        } else {
+            false
+        };
+
         if already_running {
+            if mlx_audio_needs_runtime_restart {
+                info!("Restarting mlx-audio sidecar after applying required runtime patches");
+                self.reclaim_sidecar_port(MLX_AUDIO_PORT)?;
+                return self.ensure_mlx_audio_running();
+            }
             return Ok(());
         }
 
@@ -896,6 +911,12 @@ impl SidecarManager {
 
     fn apply_mlx_audio_runtime_patches(&self, venv_dir: &Path) -> Result<(), String> {
         let site_packages = Self::mlx_audio_site_packages_dir(venv_dir)?;
+        Self::apply_mlx_audio_runtime_patches_in_site_packages(&site_packages)
+    }
+
+    fn apply_mlx_audio_runtime_patches_in_site_packages(
+        site_packages: &Path,
+    ) -> Result<(), String> {
         let voxtral_model_file = site_packages
             .join("mlx_audio")
             .join("stt")
@@ -903,15 +924,77 @@ impl SidecarManager {
             .join("voxtral")
             .join("voxtral.py");
 
-        if !voxtral_model_file.exists() {
-            return Ok(());
+        if voxtral_model_file.exists() {
+            let contents = std::fs::read_to_string(&voxtral_model_file).map_err(|err| {
+                format!("Failed to read '{}': {err}", voxtral_model_file.display())
+            })?;
+            if let Some(patched) = Self::patch_mlx_audio_voxtral_model(&contents) {
+                std::fs::write(&voxtral_model_file, patched).map_err(|err| {
+                    format!(
+                        "Failed to write patched mlx-audio Voxtral file '{}': {err}",
+                        voxtral_model_file.display()
+                    )
+                })?;
+            } else if !contents.contains("_vox_jot_eos_token_ids") {
+                warn!(
+                    "Skipping mlx-audio Voxtral tokenizer patch because the expected upstream block was not found in '{}'",
+                    voxtral_model_file.display()
+                );
+            }
         }
 
-        let contents = std::fs::read_to_string(&voxtral_model_file)
-            .map_err(|err| format!("Failed to read '{}': {err}", voxtral_model_file.display()))?;
+        let kugel_model_file = site_packages
+            .join("mlx_audio")
+            .join("tts")
+            .join("models")
+            .join("kugelaudio")
+            .join("kugelaudio.py");
 
+        if kugel_model_file.exists() {
+            let kugel_contents = std::fs::read_to_string(&kugel_model_file).unwrap_or_default();
+            let kugel_patched = kugel_contents.replace(
+                "AutoTokenizer.from_pretrained(\n            qwen_model, trust_remote_code=False\n        )",
+                "AutoTokenizer.from_pretrained(\n            str(model_path), trust_remote_code=False\n        )",
+            );
+            if kugel_patched != kugel_contents {
+                let _ = std::fs::write(&kugel_model_file, kugel_patched);
+            }
+        }
+
+        let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
+
+        if stt_utils_file.exists() {
+            let stt_utils_contents = std::fs::read_to_string(&stt_utils_file)
+                .map_err(|err| format!("Failed to read '{}': {err}", stt_utils_file.display()))?;
+            if let Some(stt_utils_patched) = Self::patch_mlx_audio_stt_utils(&stt_utils_contents) {
+                std::fs::write(&stt_utils_file, stt_utils_patched).map_err(|err| {
+                    format!(
+                        "Failed to write patched mlx-audio STT utils file '{}': {err}",
+                        stt_utils_file.display()
+                    )
+                })?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn mlx_audio_runtime_has_required_patches(&self) -> bool {
+        let Ok(venv_dir) = self.mlx_audio_venv_dir() else {
+            return false;
+        };
+        let Ok(site_packages) = Self::mlx_audio_site_packages_dir(&venv_dir) else {
+            return false;
+        };
+        let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
+        std::fs::read_to_string(stt_utils_file)
+            .map(|contents| Self::mlx_audio_stt_utils_has_parakeet_remap(&contents))
+            .unwrap_or(false)
+    }
+
+    fn patch_mlx_audio_voxtral_model(contents: &str) -> Option<String> {
         if contents.contains("_vox_jot_eos_token_ids") {
-            return Ok(());
+            return None;
         }
 
         let old_block = r#"        model._processor.tokenizer.eos_token_ids = getattr(
@@ -940,61 +1023,24 @@ impl SidecarManager {
             "with wired_limit(self):",
         );
 
-        if patched == contents {
-            warn!(
-                "Skipping mlx-audio Voxtral tokenizer patch because the expected upstream block was not found in '{}'",
-                voxtral_model_file.display()
-            );
-            return Ok(());
+        (patched != contents).then_some(patched)
+    }
+
+    fn mlx_audio_stt_utils_has_parakeet_remap(contents: &str) -> bool {
+        contents.contains("\"parakeet\": \"parakeet\"")
+            || contents.contains("'parakeet': 'parakeet'")
+    }
+
+    fn patch_mlx_audio_stt_utils(contents: &str) -> Option<String> {
+        if Self::mlx_audio_stt_utils_has_parakeet_remap(contents) {
+            return None;
         }
 
-        std::fs::write(&voxtral_model_file, patched).map_err(|err| {
-            format!(
-                "Failed to write patched mlx-audio Voxtral file '{}': {err}",
-                voxtral_model_file.display()
-            )
-        })?;
-
-        let kugel_model_file = site_packages
-            .join("mlx_audio")
-            .join("tts")
-            .join("models")
-            .join("kugelaudio")
-            .join("kugelaudio.py");
-
-        if kugel_model_file.exists() {
-            let kugel_contents = std::fs::read_to_string(&kugel_model_file).unwrap_or_default();
-            let kugel_patched = kugel_contents.replace(
-                "AutoTokenizer.from_pretrained(\n            qwen_model, trust_remote_code=False\n        )",
-                "AutoTokenizer.from_pretrained(\n            str(model_path), trust_remote_code=False\n        )",
-            );
-            if kugel_patched != kugel_contents {
-                let _ = std::fs::write(&kugel_model_file, kugel_patched);
-            }
-        }
-
-        let stt_utils_file = site_packages.join("mlx_audio").join("stt").join("utils.py");
-
-        if stt_utils_file.exists() {
-            let stt_utils_contents = std::fs::read_to_string(&stt_utils_file)
-                .map_err(|err| format!("Failed to read '{}': {err}", stt_utils_file.display()))?;
-            if !stt_utils_contents.contains("\"parakeet\": \"parakeet\"") {
-                let stt_utils_patched = stt_utils_contents.replace(
-                    "MODEL_REMAPPING = {\n",
-                    "MODEL_REMAPPING = {\n    \"parakeet\": \"parakeet\",\n",
-                );
-                if stt_utils_patched != stt_utils_contents {
-                    std::fs::write(&stt_utils_file, stt_utils_patched).map_err(|err| {
-                        format!(
-                            "Failed to write patched mlx-audio STT utils file '{}': {err}",
-                            stt_utils_file.display()
-                        )
-                    })?;
-                }
-            }
-        }
-
-        Ok(())
+        let patched = contents.replace(
+            "MODEL_REMAPPING = {\n",
+            "MODEL_REMAPPING = {\n    \"parakeet\": \"parakeet\",\n",
+        );
+        (patched != contents).then_some(patched)
     }
 
     fn mlx_audio_site_packages_dir(venv_dir: &Path) -> Result<PathBuf, String> {
@@ -1031,6 +1077,9 @@ impl SidecarManager {
 
     pub fn ensure_running_if_available(&self) -> Result<bool, String> {
         if self.is_running() {
+            if self.backend == SidecarBackend::MlxAudio {
+                self.ensure_running()?;
+            }
             return Ok(true);
         }
 
@@ -1056,5 +1105,53 @@ impl SidecarManager {
 impl Drop for SidecarManager {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SidecarManager;
+
+    #[test]
+    fn mlx_audio_stt_patch_adds_parakeet_remap_once() {
+        let original = "MODEL_REMAPPING = {\n    \"moonshine\": \"moonshine\",\n}\n";
+
+        let patched =
+            SidecarManager::patch_mlx_audio_stt_utils(original).expect("patch should apply");
+
+        assert!(SidecarManager::mlx_audio_stt_utils_has_parakeet_remap(
+            &patched
+        ));
+        assert!(SidecarManager::patch_mlx_audio_stt_utils(&patched).is_none());
+    }
+
+    #[test]
+    fn mlx_audio_runtime_patcher_continues_after_prepatched_voxtral() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let site_packages = temp_dir.path();
+        let voxtral_dir = site_packages.join("mlx_audio/stt/models/voxtral");
+        let stt_dir = site_packages.join("mlx_audio/stt");
+        std::fs::create_dir_all(&voxtral_dir).expect("voxtral dir");
+        std::fs::create_dir_all(&stt_dir).expect("stt dir");
+
+        std::fs::write(
+            voxtral_dir.join("voxtral.py"),
+            "model._processor._vox_jot_eos_token_ids = [2, 4, 32000]\n",
+        )
+        .expect("write voxtral");
+        let stt_utils = stt_dir.join("utils.py");
+        std::fs::write(
+            &stt_utils,
+            "MODEL_REMAPPING = {\n    \"moonshine\": \"moonshine\",\n}\n",
+        )
+        .expect("write stt utils");
+
+        SidecarManager::apply_mlx_audio_runtime_patches_in_site_packages(site_packages)
+            .expect("patch runtime");
+
+        let patched = std::fs::read_to_string(stt_utils).expect("read stt utils");
+        assert!(SidecarManager::mlx_audio_stt_utils_has_parakeet_remap(
+            &patched
+        ));
     }
 }

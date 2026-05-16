@@ -156,7 +156,7 @@ impl MlxAudioRegressionEngine {
                 .ok()
                 .map(|value| value.trim().trim_end_matches('/').to_string())
                 .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| "http://127.0.0.1:8008".to_string()),
+                .unwrap_or_else(|| "http://127.0.0.1:8018".to_string()),
             model_source,
         };
         engine.ensure_running()?;

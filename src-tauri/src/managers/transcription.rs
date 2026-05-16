@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::io::Cursor;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard};
+use std::sync::{Arc, Condvar, LazyLock, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager};
@@ -40,6 +40,15 @@ struct MlxAudioSttEngine {
     base_url: String,
     model_source: String,
 }
+
+const MLX_AUDIO_STT_REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
+static MLX_AUDIO_STT_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
+    ureq::Agent::new_with_config(
+        ureq::Agent::config_builder()
+            .timeout_global(Some(MLX_AUDIO_STT_REQUEST_TIMEOUT))
+            .build(),
+    )
+});
 
 #[derive(Debug, Deserialize)]
 struct MlxAudioTranscriptionResponse {
@@ -113,12 +122,13 @@ impl MlxAudioSttEngine {
             .text("model", &self.model_source)
             .part("file", file_part);
 
-        let mut response = ureq::post(&format!(
-            "{}/v1/audio/transcriptions",
-            self.base_url.trim_end_matches('/')
-        ))
-        .send(form)
-        .map_err(|err| anyhow::anyhow!("mlx-audio transcription request failed: {}", err))?;
+        let mut response = MLX_AUDIO_STT_AGENT
+            .post(&format!(
+                "{}/v1/audio/transcriptions",
+                self.base_url.trim_end_matches('/')
+            ))
+            .send(form)
+            .map_err(|err| anyhow::anyhow!("mlx-audio transcription request failed: {}", err))?;
         let response_body = response
             .body_mut()
             .read_to_string()

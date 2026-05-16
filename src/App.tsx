@@ -447,10 +447,24 @@ function App() {
       icon: SidebarItem["icon"],
       content: React.ReactNode,
       iconTone: SidebarItem["iconTone"] = "accent",
+      groupLabel?: string,
     ): ViewSection => {
       const label = t(i18nKey);
-      return { id, label, icon, iconTone, title: label, content };
+      return { id, label, icon, iconTone, groupLabel, title: label, content };
     };
+
+    const settingsBasics = t("appSections.nav.groups.settingsBasics", {
+      defaultValue: "Basics",
+    });
+    const settingsIntelligence = t(
+      "appSections.nav.groups.settingsIntelligence",
+      {
+        defaultValue: "Intelligence",
+      },
+    );
+    const settingsSystem = t("appSections.nav.groups.settingsSystem", {
+      defaultValue: "System",
+    });
 
     return {
       dictate: [
@@ -550,6 +564,7 @@ function App() {
           AppWindow,
           <GeneralAppSettingsSection />,
           "accent",
+          settingsBasics,
         ),
         makeSection(
           "shortcuts",
@@ -557,6 +572,7 @@ function App() {
           Keyboard,
           <ShortcutsSettingsSection />,
           "violet",
+          settingsBasics,
         ),
         makeSection(
           "recording-devices",
@@ -564,6 +580,7 @@ function App() {
           Volume2,
           <RecordingDevicesSettingsSection />,
           "blue",
+          settingsBasics,
         ),
         makeSection(
           "output-paste",
@@ -571,6 +588,7 @@ function App() {
           SlidersHorizontal,
           <OutputPasteSettingsSection />,
           "teal",
+          settingsBasics,
         ),
         makeSection(
           "corrections-settings",
@@ -578,6 +596,7 @@ function App() {
           SpellCheck,
           <CorrectionsSettingsSection />,
           "green",
+          settingsIntelligence,
         ),
         makeSection(
           "ai-setup",
@@ -585,6 +604,7 @@ function App() {
           Cpu,
           <AISetupSettingsSection />,
           "gold",
+          settingsIntelligence,
         ),
         makeSection(
           "model-testing",
@@ -592,6 +612,7 @@ function App() {
           FlaskConical,
           <ModelTestingSection />,
           "violet",
+          settingsIntelligence,
         ),
         makeSection(
           "screen-context",
@@ -599,6 +620,7 @@ function App() {
           Monitor,
           <ScreenContextSettingsSection />,
           "blue",
+          settingsIntelligence,
         ),
         makeSection(
           "privacy",
@@ -606,6 +628,7 @@ function App() {
           Shield,
           <PrivacyStorageSettingsSection />,
           "green",
+          settingsSystem,
         ),
         makeSection(
           "legal-model-terms",
@@ -613,6 +636,7 @@ function App() {
           Scale,
           <LegalModelTermsSection />,
           "red",
+          settingsSystem,
         ),
         makeSection(
           "diagnostics",
@@ -620,6 +644,7 @@ function App() {
           FlaskConical,
           <DiagnosticsSettingsSection />,
           "violet",
+          settingsSystem,
         ),
         makeSection(
           "about",
@@ -627,6 +652,7 @@ function App() {
           Info,
           <AboutSection />,
           "blue",
+          settingsSystem,
         ),
       ],
     };

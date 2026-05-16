@@ -26,6 +26,7 @@ export interface SidebarItem {
   label: string;
   icon: SidebarIcon;
   iconTone?: SidebarIconTone;
+  groupLabel?: string;
 }
 
 export type SidebarIconTone =
@@ -265,16 +266,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="sidebar__nav min-h-0 flex-1 overflow-y-auto"
           >
             <div className="flex flex-col gap-1">
-              {items.map((item) =>
-                renderRow(
-                  item.id,
-                  item.label,
-                  item.icon,
-                  item.iconTone,
-                  activeSectionId === item.id,
-                  () => onSectionChange(item.id),
-                ),
-              )}
+              {items.map((item, index) => {
+                const previousGroup = items[index - 1]?.groupLabel;
+                const showGroupLabel =
+                  !collapsed &&
+                  item.groupLabel &&
+                  item.groupLabel !== previousGroup;
+
+                return (
+                  <React.Fragment key={item.id}>
+                    {showGroupLabel ? (
+                      <div className="sidebar__group-label px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] first:pt-0">
+                        {item.groupLabel}
+                      </div>
+                    ) : null}
+                    {renderRow(
+                      item.id,
+                      item.label,
+                      item.icon,
+                      item.iconTone,
+                      activeSectionId === item.id,
+                      () => onSectionChange(item.id),
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </nav>
 

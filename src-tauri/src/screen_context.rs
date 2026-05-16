@@ -547,24 +547,47 @@ impl ContextCaptureManager {
                 } else {
                     ContextCaptureStatus::Failed
                 };
-                let status_changed = {
+                let (status_changed, consecutive_failures, retry_delay_ms) = {
                     let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
                     let changed = state.status != next_status;
                     state.has_permission = !err.contains("permission");
                     state.last_error = Some(err.clone());
                     state.status = next_status;
                     state.consecutive_failures = state.consecutive_failures.saturating_add(1);
-                    state.next_capture_allowed_at_ms =
-                        now_millis() + failure_backoff_ms(&err, state.consecutive_failures);
-                    changed
+                    let retry_delay_ms = failure_backoff_ms(&err, state.consecutive_failures);
+                    state.next_capture_allowed_at_ms = now_millis() + retry_delay_ms;
+                    (changed, state.consecutive_failures, retry_delay_ms)
                 };
                 if status_changed {
                     self.emit_status(next_status);
                 }
-                warn!("Screen context capture failed: {}", err);
+                log_screen_context_failure(&err, consecutive_failures, retry_delay_ms);
                 None
             }
         }
+    }
+}
+
+fn log_screen_context_failure(error: &str, consecutive_failures: u32, retry_delay_ms: i64) {
+    let message = if error.contains("Active display was unavailable") {
+        format!(
+            "Screen context capture failed: active display unavailable. Retrying in {}ms; check Screen Recording permission, active display state, and whether the app is running in a headless/remote session.",
+            retry_delay_ms
+        )
+    } else {
+        format!(
+            "Screen context capture failed: {}. Retrying in {}ms.",
+            error, retry_delay_ms
+        )
+    };
+
+    if consecutive_failures == 1 || consecutive_failures.is_power_of_two() {
+        warn!("{}", message);
+    } else {
+        debug!(
+            "{} Consecutive failures: {}.",
+            message, consecutive_failures
+        );
     }
 }
 

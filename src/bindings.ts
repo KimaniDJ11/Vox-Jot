@@ -2095,6 +2095,18 @@ async addTranscriptWordCorrection(original: string, corrected: string) : Promise
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Show the correction overlay with a deterministic sample payload. This is a
+ * UI-only diagnostic and intentionally does not write to the corrections DB.
+ */
+async testCorrectionOverlay() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("test_correction_overlay") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getDictationStats() : Promise<Result<DictationStats, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_dictation_stats") };
@@ -2530,6 +2542,7 @@ export type ConvoTranscriptItem = { id: string; role: string; text: string; time
 export type ConvoTurnResponse = { user_text: string | null; assistant_text: string; audio_base64: string | null; session_id: string; suggested_actions: ConvoActionSuggestion[] }
 export type CorrectionAutoApply = { status: CorrectionAutoApplyStatus; eligible: boolean; effective_confidence: number; min_frequency: number; min_confidence: number; confirmations_remaining: number }
 export type CorrectionAutoApplyStatus = "candidate" | "manual" | "active" | "low_confidence" | "blocked" | "disabled"
+export type CorrectionSourceKind = "manual" | "observed_edit" | "imported" | "auto_learned"
 export type CreateSpeechAudioRequest = { render_id: string; title: string; text: string; preset: TtsVoicePresetInput }
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
@@ -2716,7 +2729,7 @@ export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization"
 /**
  * A stored correction entry, as returned to the frontend.
  */
-export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
+export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; source_kind?: CorrectionSourceKind; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
 export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; cast_count?: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
 export type StoryLineInstructionOverride = { line_number: number; style_instructions: string }

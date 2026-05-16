@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   Plus,
   Search,
+  TestTube2,
   Trash2,
+  Undo2,
   X,
   SpellCheck,
   FileJson,
@@ -204,6 +206,47 @@ const getEntryStatusClassName = (entry: StoredCorrection): string => {
   }
 };
 
+const getEntrySourceLabel = (
+  entry: StoredCorrection,
+  t: ReturnType<typeof useTranslation>["t"],
+): string => {
+  switch (entry.source_kind) {
+    case "manual":
+      return t("settings.corrections.dictionary.source.manual", {
+        defaultValue: "Manual",
+      });
+    case "observed_edit":
+      return t("settings.corrections.dictionary.source.observedEdit", {
+        defaultValue: "Observed edit",
+      });
+    case "imported":
+      return t("settings.corrections.dictionary.source.imported", {
+        defaultValue: "Imported",
+      });
+    case "auto_learned":
+    default:
+      return t("settings.corrections.dictionary.source.autoLearned", {
+        defaultValue: "Learned",
+      });
+  }
+};
+
+const getEntrySourceTitle = (
+  entry: StoredCorrection,
+  t: ReturnType<typeof useTranslation>["t"],
+): string => {
+  const confidence = Math.round(
+    (entry.auto_apply?.effective_confidence ?? entry.confidence) * 100,
+  );
+  return t("settings.corrections.dictionary.source.title", {
+    source: getEntrySourceLabel(entry, t),
+    frequency: entry.frequency,
+    confidence,
+    defaultValue:
+      "{{source}} correction. Seen {{frequency}} time(s). Confidence {{confidence}}%.",
+  });
+};
+
 const getGroupStatus = (
   group: CorrectionGroup,
   t: ReturnType<typeof useTranslation>["t"],
@@ -305,6 +348,7 @@ export const CorrectionDictionaryView: React.FC<
   const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
+  const [testOverlayMessage, setTestOverlayMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
   const manualOriginalRef = useRef<HTMLInputElement>(null);
 
@@ -468,6 +512,45 @@ export const CorrectionDictionaryView: React.FC<
       }
     } catch (error) {
       console.error("Failed to approve correction:", error);
+    }
+  };
+
+  const handleToggleEntryActive = async (
+    entry: StoredCorrection,
+    active: boolean,
+  ) => {
+    try {
+      const result = await commands.toggleCorrection(entry.id, active);
+      if (result.status === "ok") {
+        await loadCorrections();
+      }
+    } catch (error) {
+      console.error("Failed to toggle correction:", error);
+    }
+  };
+
+  const handleTestOverlay = async () => {
+    setTestOverlayMessage("");
+    try {
+      const result = await commands.testCorrectionOverlay();
+      if (result.status === "ok") {
+        setTestOverlayMessage(
+          t("settings.corrections.dictionary.testOverlayShown", {
+            defaultValue: "Test overlay shown. No correction was saved.",
+          }),
+        );
+      } else {
+        setTestOverlayMessage(result.error);
+      }
+    } catch (error) {
+      console.error("Failed to show correction overlay:", error);
+      setTestOverlayMessage(
+        error instanceof Error
+          ? error.message
+          : t("settings.corrections.dictionary.testOverlayFailed", {
+              defaultValue: "Failed to show test overlay.",
+            }),
+      );
     }
   };
 
@@ -666,6 +749,20 @@ export const CorrectionDictionaryView: React.FC<
           <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.postProcessing.dictionary.add", {
             defaultValue: "Add entry",
+          })}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => void handleTestOverlay()}
+          title={t("settings.corrections.dictionary.testOverlayTitle", {
+            defaultValue: "Show a sample correction overlay without saving it",
+          })}
+        >
+          <TestTube2 className="h-3.5 w-3.5" aria-hidden />
+          {t("settings.corrections.dictionary.testOverlay", {
+            defaultValue: "Test overlay",
           })}
         </Button>
         <SegmentedControl<CorrectionViewMode>
@@ -920,6 +1017,7 @@ export const CorrectionDictionaryView: React.FC<
                     onUpdate={handleUpdateOriginal}
                     onDelete={handleDelete}
                     onApprove={handleApprove}
+                    onToggleActive={handleToggleEntryActive}
                   />
                 ))}
                 {addingTo === group.corrected ? (
@@ -1087,6 +1185,14 @@ export const CorrectionDictionaryView: React.FC<
           {importError}
         </div>
       ) : null}
+      {testOverlayMessage ? (
+        <div
+          className="px-1 text-xs font-medium text-[var(--muted)]"
+          role="status"
+        >
+          {testOverlayMessage}
+        </div>
+      ) : null}
 
       <div className="flat-card overflow-visible">{renderContent()}</div>
     </section>
@@ -1102,7 +1208,8 @@ const OriginalChip: React.FC<{
   onUpdate: (entry: StoredCorrection, newOriginal: string) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onApprove: (entry: StoredCorrection) => Promise<void>;
-}> = ({ entry, onUpdate, onDelete, onApprove }) => {
+  onToggleActive: (entry: StoredCorrection, active: boolean) => Promise<void>;
+}> = ({ entry, onUpdate, onDelete, onApprove, onToggleActive }) => {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(entry.original);
@@ -1164,6 +1271,12 @@ const OriginalChip: React.FC<{
       >
         {getEntryStatusLabel(entry)}
       </span>
+      <span
+        className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--muted)]"
+        title={getEntrySourceTitle(entry, t)}
+      >
+        {getEntrySourceLabel(entry, t)}
+      </span>
       {!entry.user_approved ? (
         <button
           type="button"
@@ -1179,6 +1292,23 @@ const OriginalChip: React.FC<{
           title={t("settings.corrections.dictionary.approveAlways")}
         >
           <CheckCircle2 className="h-3 w-3" aria-hidden />
+        </button>
+      ) : null}
+      {entry.is_active ? (
+        <button
+          type="button"
+          className="shrink-0 text-[var(--muted)] transition-colors hover:text-[var(--warning)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          onClick={() => void onToggleActive(entry, false)}
+          aria-label={t("settings.corrections.dictionary.undoCorrectionAria", {
+            original: entry.original,
+            corrected: entry.corrected,
+            defaultValue: "Undo correction from {{original}} to {{corrected}}",
+          })}
+          title={t("settings.corrections.dictionary.undoCorrection", {
+            defaultValue: "Undo / disable",
+          })}
+        >
+          <Undo2 className="h-3 w-3" aria-hidden />
         </button>
       ) : null}
       <button

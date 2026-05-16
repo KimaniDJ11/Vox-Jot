@@ -28,6 +28,9 @@ static MIGRATIONS: &[M] = &[
     );",
     ),
     M::up("ALTER TABLE auto_corrections ADD COLUMN exact_only BOOLEAN NOT NULL DEFAULT 0;"),
+    M::up(
+        "ALTER TABLE auto_corrections ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'auto_learned';",
+    ),
 ];
 
 /// A stored correction entry, as returned to the frontend.
@@ -41,12 +44,24 @@ pub struct StoredCorrection {
     #[serde(default)]
     pub exact_only: bool,
     pub source_app: Option<String>,
+    #[serde(default)]
+    pub source_kind: CorrectionSourceKind,
     pub first_seen: i64,
     pub last_seen: i64,
     pub is_active: bool,
     pub user_approved: bool,
     #[serde(default)]
     pub auto_apply: CorrectionAutoApply,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CorrectionSourceKind {
+    Manual,
+    ObservedEdit,
+    Imported,
+    #[default]
+    AutoLearned,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Default)]
@@ -169,8 +184,8 @@ impl CorrectionStore {
             );
         } else {
             conn.execute(
-                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, source_app, first_seen, last_seen, is_active, user_approved)
-                 VALUES (?1, ?2, 1, ?3, ?4, ?5, ?6, 1, 0)",
+                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, source_app, source_kind, first_seen, last_seen, is_active, user_approved)
+                 VALUES (?1, ?2, 1, ?3, ?4, 'auto_learned', ?5, ?6, 1, 0)",
                 params![
                     pair.original,
                     pair.corrected,
@@ -306,7 +321,7 @@ impl CorrectionStore {
     pub fn list_all(&self) -> Result<Vec<StoredCorrection>> {
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, original, corrected, frequency, confidence, exact_only, source_app, first_seen, last_seen, is_active, user_approved
+            "SELECT id, original, corrected, frequency, confidence, exact_only, source_app, source_kind, first_seen, last_seen, is_active, user_approved
              FROM auto_corrections
              ORDER BY last_seen DESC",
         )?;
@@ -318,6 +333,9 @@ impl CorrectionStore {
             let confidence: f64 = row.get("confidence")?;
             let is_active: bool = row.get("is_active")?;
             let user_approved: bool = row.get("user_approved")?;
+            let source_app: Option<String> = row.get("source_app")?;
+            let raw_source_kind: String = row.get("source_kind")?;
+            let source_kind = normalize_source_kind(&raw_source_kind, user_approved, &source_app);
 
             Ok(StoredCorrection {
                 id: row.get("id")?,
@@ -334,7 +352,8 @@ impl CorrectionStore {
                 frequency,
                 confidence,
                 exact_only: row.get("exact_only")?,
-                source_app: row.get("source_app")?,
+                source_app,
+                source_kind,
                 first_seen: row.get("first_seen")?,
                 last_seen: row.get("last_seen")?,
                 is_active,
@@ -403,16 +422,18 @@ impl CorrectionStore {
                 confidence,
                 exact_only,
                 source_app,
+                source_kind,
                 first_seen,
                 last_seen,
                 is_active,
                 user_approved
              )
-             VALUES (?1, ?2, 0, 1.0, ?3, ?4, ?5, ?5, 1, 1)
+             VALUES (?1, ?2, 0, 1.0, ?3, ?4, 'manual', ?5, ?5, 1, 1)
              ON CONFLICT(original, corrected) DO UPDATE SET
                 confidence = 1.0,
                 exact_only = excluded.exact_only,
                 source_app = excluded.source_app,
+                source_kind = excluded.source_kind,
                 last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
                 is_active = 1,
                 user_approved = 1",
@@ -462,16 +483,18 @@ impl CorrectionStore {
                 confidence,
                 exact_only,
                 source_app,
+                source_kind,
                 first_seen,
                 last_seen,
                 is_active,
                 user_approved
              )
-             VALUES (?1, ?2, 1, ?3, 0, ?4, ?5, ?6, 1, 1)
+             VALUES (?1, ?2, 1, ?3, 0, ?4, 'observed_edit', ?5, ?6, 1, 1)
              ON CONFLICT(original, corrected) DO UPDATE SET
                 frequency = MAX(auto_corrections.frequency + 1, excluded.frequency),
                 confidence = MAX(auto_corrections.confidence, excluded.confidence),
                 source_app = COALESCE(excluded.source_app, auto_corrections.source_app),
+                source_kind = excluded.source_kind,
                 last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
                 is_active = 1,
                 user_approved = 1",
@@ -561,13 +584,14 @@ impl CorrectionStore {
 
         for correction in &corrections {
             conn.execute(
-                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, exact_only, source_app, first_seen, last_seen, is_active, user_approved)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                "INSERT INTO auto_corrections (original, corrected, frequency, confidence, exact_only, source_app, source_kind, first_seen, last_seen, is_active, user_approved)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'imported', ?7, ?8, ?9, ?10)
                  ON CONFLICT(original, corrected) DO UPDATE SET
                     frequency = MAX(auto_corrections.frequency, excluded.frequency),
                     confidence = MAX(auto_corrections.confidence, excluded.confidence),
                     exact_only = excluded.exact_only,
                     source_app = excluded.source_app,
+                    source_kind = excluded.source_kind,
                     last_seen = MAX(auto_corrections.last_seen, excluded.last_seen),
                     is_active = 1,
                     user_approved = 1",
@@ -678,6 +702,26 @@ fn evaluate_auto_apply(
     }
 }
 
+fn normalize_source_kind(
+    raw: &str,
+    user_approved: bool,
+    source_app: &Option<String>,
+) -> CorrectionSourceKind {
+    match raw {
+        "manual" => CorrectionSourceKind::Manual,
+        "observed_edit" => CorrectionSourceKind::ObservedEdit,
+        "imported" => CorrectionSourceKind::Imported,
+        _ if user_approved && source_app.as_deref() == Some("manual") => {
+            CorrectionSourceKind::Manual
+        }
+        _ if user_approved && source_app.as_deref() == Some("imported") => {
+            CorrectionSourceKind::Imported
+        }
+        _ if user_approved => CorrectionSourceKind::ObservedEdit,
+        _ => CorrectionSourceKind::AutoLearned,
+    }
+}
+
 /// Map frequency × confidence to a 0-255 priority scale.
 /// Auto-corrections get lower priority than manual entries (which typically use 0-100).
 /// We cap at 200 to leave headroom for manual entries.
@@ -764,6 +808,7 @@ mod tests {
         assert_eq!(all[0].corrected, "Cheyenne");
         assert_eq!(all[0].frequency, 1);
         assert!(all[0].user_approved);
+        assert_eq!(all[0].source_kind, CorrectionSourceKind::ObservedEdit);
         assert!(matches!(
             all[0].auto_apply.status,
             CorrectionAutoApplyStatus::Manual

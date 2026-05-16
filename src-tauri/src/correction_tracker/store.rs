@@ -1,10 +1,12 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{debug, info, warn};
 use rusqlite::{params, Connection};
 use rusqlite_migration::{Migrations, M};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::fs;
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::post_processing::DictionaryEntry;
 
@@ -97,7 +99,21 @@ impl CorrectionStore {
         let db_path = app_data_dir.join("corrections.db");
 
         let store = Self { db_path };
-        store.init_database()?;
+        if let Err(err) = store.init_database() {
+            if is_database_too_far_ahead(&err) {
+                warn!(
+                    "Corrections database is newer than this app build; backing it up and starting a fresh database: {err:#}"
+                );
+                store
+                    .backup_and_remove_incompatible_database("too-far-ahead")
+                    .context("Failed to back up incompatible corrections database")?;
+                store
+                    .init_database()
+                    .context("Failed to initialize fresh corrections database")?;
+            } else {
+                return Err(err);
+            }
+        }
 
         Ok(store)
     }
@@ -136,6 +152,52 @@ impl CorrectionStore {
             );
         }
 
+        Ok(())
+    }
+
+    fn backup_and_remove_incompatible_database(&self, reason: &str) -> Result<()> {
+        if !self.db_path.exists() {
+            return Ok(());
+        }
+
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let backup_path = self.db_path.with_file_name(format!(
+            "corrections.db.incompatible-{reason}-{timestamp}.bak"
+        ));
+
+        fs::copy(&self.db_path, &backup_path).with_context(|| {
+            format!(
+                "copy '{}' to '{}'",
+                self.db_path.display(),
+                backup_path.display()
+            )
+        })?;
+        fs::remove_file(&self.db_path)
+            .with_context(|| format!("remove '{}'", self.db_path.display()))?;
+
+        for suffix in ["-wal", "-shm"] {
+            let sidecar = PathBuf::from(format!("{}{}", self.db_path.display(), suffix));
+            if sidecar.exists() {
+                let sidecar_backup = PathBuf::from(format!("{}{}", backup_path.display(), suffix));
+                fs::copy(&sidecar, &sidecar_backup).with_context(|| {
+                    format!(
+                        "copy '{}' to '{}'",
+                        sidecar.display(),
+                        sidecar_backup.display()
+                    )
+                })?;
+                fs::remove_file(&sidecar)
+                    .with_context(|| format!("remove '{}'", sidecar.display()))?;
+            }
+        }
+
+        warn!(
+            "Backed up incompatible corrections database to '{}'",
+            backup_path.display()
+        );
         Ok(())
     }
 
@@ -731,6 +793,11 @@ fn compute_priority(frequency: u32, confidence: f64) -> u8 {
     (raw as u8).min(200)
 }
 
+fn is_database_too_far_ahead(err: &anyhow::Error) -> bool {
+    let message = format!("{err:#}");
+    message.contains("DatabaseTooFarAhead") || message.contains("migration number that is too high")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -740,6 +807,32 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let store = CorrectionStore::new(dir.path()).unwrap();
         (store, dir)
+    }
+
+    #[test]
+    fn recovers_when_corrections_database_is_too_far_ahead() {
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("corrections.db");
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.pragma_update(None, "user_version", (MIGRATIONS.len() + 10) as i32)
+                .unwrap();
+        }
+
+        let store = CorrectionStore::new(dir.path()).unwrap();
+        assert!(store.list_all().unwrap().is_empty());
+
+        let backups = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("corrections.db.incompatible-too-far-ahead-")
+            })
+            .count();
+        assert_eq!(backups, 1);
     }
 
     #[test]

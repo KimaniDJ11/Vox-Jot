@@ -25,7 +25,17 @@ export interface SidebarItem {
   id: string;
   label: string;
   icon: SidebarIcon;
+  iconTone?: SidebarIconTone;
 }
+
+export type SidebarIconTone =
+  | "accent"
+  | "blue"
+  | "gold"
+  | "green"
+  | "red"
+  | "teal"
+  | "violet";
 
 interface SidebarProps {
   activeSectionId: string;
@@ -47,6 +57,42 @@ interface StoryRenderJobSummary {
  * LayoutGroup.
  */
 const SETTINGS_ROW_ID = "__settings__";
+
+type SidebarIconToneStyle = React.CSSProperties & {
+  "--sidebar-icon-color"?: string;
+  "--sidebar-icon-bg"?: string;
+};
+
+const sidebarIconToneStyles: Record<SidebarIconTone, SidebarIconToneStyle> = {
+  accent: {
+    "--sidebar-icon-color": "var(--accent)",
+    "--sidebar-icon-bg": "color-mix(in srgb, var(--accent) 14%, transparent)",
+  },
+  blue: {
+    "--sidebar-icon-color": "var(--info)",
+    "--sidebar-icon-bg": "var(--info-soft)",
+  },
+  gold: {
+    "--sidebar-icon-color": "var(--voice)",
+    "--sidebar-icon-bg": "var(--voice-soft)",
+  },
+  green: {
+    "--sidebar-icon-color": "var(--success)",
+    "--sidebar-icon-bg": "var(--success-soft)",
+  },
+  red: {
+    "--sidebar-icon-color": "var(--danger)",
+    "--sidebar-icon-bg": "var(--danger-soft)",
+  },
+  teal: {
+    "--sidebar-icon-color": "var(--accent-teal)",
+    "--sidebar-icon-bg": "var(--accent-teal-soft)",
+  },
+  violet: {
+    "--sidebar-icon-color": "var(--accent-2)",
+    "--sidebar-icon-bg": "color-mix(in srgb, var(--accent-2) 14%, transparent)",
+  },
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeSectionId,
@@ -112,6 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     id: string,
     label: string,
     Icon: SidebarIcon,
+    iconTone: SidebarIconTone = "accent",
     isActive: boolean,
     onClick: () => void,
   ) => {
@@ -130,6 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onPointerEnter={() => setHoveredId(id)}
         onFocus={() => setHoveredId(id)}
         className={`sidebar__nav-button group relative flex w-full items-center rounded-2xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
+        style={sidebarIconToneStyles[iconTone]}
         aria-current={isActive ? "page" : undefined}
         aria-label={collapsed ? label : undefined}
         title={collapsed ? label : undefined}
@@ -159,12 +207,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <span
           className={`relative z-10 flex w-full items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}
         >
-          <Icon
-            width={collapsed ? 18 : 17}
-            height={collapsed ? 18 : 17}
-            strokeWidth={1.75}
-            className="sidebar__nav-icon shrink-0"
-          />
+          <span className="sidebar__nav-icon-shell flex shrink-0 items-center justify-center rounded-full">
+            <Icon
+              width={collapsed ? 18 : 17}
+              height={collapsed ? 18 : 17}
+              strokeWidth={1.85}
+              className="sidebar__nav-icon shrink-0"
+            />
+          </span>
           <AnimatePresence initial={false}>
             {!collapsed && (
               <motion.span
@@ -220,6 +270,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   item.id,
                   item.label,
                   item.icon,
+                  item.iconTone,
                   activeSectionId === item.id,
                   () => onSectionChange(item.id),
                 ),
@@ -240,6 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 SETTINGS_ROW_ID,
                 t("sidebar.settingsButton", { defaultValue: "Settings" }),
                 Settings,
+                "teal",
                 settingsActive,
                 onSettingsClick,
               )}

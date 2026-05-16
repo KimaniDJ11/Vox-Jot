@@ -1434,8 +1434,19 @@ input[type="range"]:disabled::-moz-range-thumb {
     transition: color var(--transition-smooth);
   }
 
+  .sidebar__nav-icon-shell {
+    width: 1.75rem;
+    height: 1.75rem;
+    background: var(--sidebar-icon-bg);
+    color: var(--sidebar-icon-color);
+    transition:
+      background var(--transition-smooth),
+      color var(--transition-smooth),
+      transform var(--transition-fast);
+  }
+
   .sidebar__nav-icon {
-    color: color-mix(in srgb, var(--muted) 94%, var(--text) 6%);
+    color: currentColor;
     transition:
       color var(--transition-smooth),
       transform var(--transition-fast);
@@ -1446,13 +1457,15 @@ input[type="range"]:disabled::-moz-range-thumb {
     transition: color var(--transition-smooth);
   }
 
-  .sidebar__nav-button:hover .sidebar__nav-icon {
-    color: var(--text);
+  .sidebar__nav-button:hover .sidebar__nav-icon-shell {
+    background: color-mix(in srgb, var(--sidebar-icon-color) 20%, transparent);
+    color: color-mix(in srgb, var(--sidebar-icon-color) 82%, var(--text) 18%);
     transform: none;
   }
 
-  .sidebar__nav-button[aria-current="page"] .sidebar__nav-icon {
-    color: var(--text);
+  .sidebar__nav-button[aria-current="page"] .sidebar__nav-icon-shell {
+    background: color-mix(in srgb, var(--sidebar-icon-color) 24%, transparent);
+    color: var(--sidebar-icon-color);
   }
 
   .sidebar__nav-button[aria-current="page"] .sidebar__nav-label {

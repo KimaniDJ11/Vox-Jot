@@ -446,9 +446,10 @@ function App() {
       i18nKey: string,
       icon: SidebarItem["icon"],
       content: React.ReactNode,
+      iconTone: SidebarItem["iconTone"] = "accent",
     ): ViewSection => {
       const label = t(i18nKey);
-      return { id, label, icon, title: label, content };
+      return { id, label, icon, iconTone, title: label, content };
     };
 
     return {
@@ -458,24 +459,28 @@ function App() {
           "appSections.nav.dictate.history",
           History,
           <DictateHistorySection />,
+          "blue",
         ),
         makeSection(
           "corrections",
           "appSections.nav.dictate.corrections",
           SpellCheck,
           <CorrectionsSection />,
+          "teal",
         ),
         makeSection(
           "jot-pad",
           "appSections.nav.dictate.jotPad",
           NotebookPen,
           <JotPadSection />,
+          "gold",
         ),
         makeSection(
           "file-transcription",
           "appSections.nav.dictate.fileTranscription",
           FileAudio,
           <FileTranscriptionSection />,
+          "green",
         ),
       ],
       refine: [
@@ -484,18 +489,21 @@ function App() {
           "appSections.nav.refine.writeProfiles",
           WandSparkles,
           <RefineProfilesSection />,
+          "gold",
         ),
         makeSection(
           "phrase-keys",
           "appSections.nav.refine.phraseKeys",
           WholeWord,
           <RefinePhraseKeysSection />,
+          "teal",
         ),
         makeSection(
           "translation",
           "appSections.nav.refine.translation",
           Languages,
           <RefineTranslationSection />,
+          "blue",
         ),
       ],
       listen: [
@@ -504,30 +512,35 @@ function App() {
           "appSections.nav.listen.createVoices",
           WandSparkles,
           <ListenCreateVoicesSection />,
+          "gold",
         ),
         makeSection(
           "my-voices",
           "appSections.nav.listen.myVoices",
           Volume2,
           <ListenMyVoicesSection />,
+          "blue",
         ),
         makeSection(
           "voice-cloning",
           "appSections.nav.listen.voiceCloning",
           Dna,
           <ListenVoiceCloningSection />,
+          "teal",
         ),
         makeSection(
           "story-studio",
           "appSections.nav.listen.studio",
           BookOpen,
           <StoryStudioAppSection />,
+          "green",
         ),
         makeSection(
           "story-audio-history",
           "appSections.nav.listen.generatedAudio",
           FileAudio,
           <StoryAudioHistoryAppSection />,
+          "gold",
         ),
       ],
       settings: [
@@ -536,72 +549,84 @@ function App() {
           "appSections.nav.settings.general",
           AppWindow,
           <GeneralAppSettingsSection />,
+          "accent",
         ),
         makeSection(
           "shortcuts",
           "appSections.nav.settings.shortcuts",
           Keyboard,
           <ShortcutsSettingsSection />,
+          "violet",
         ),
         makeSection(
           "recording-devices",
           "appSections.nav.settings.recordingDevices",
           Volume2,
           <RecordingDevicesSettingsSection />,
+          "blue",
         ),
         makeSection(
           "output-paste",
           "appSections.nav.settings.outputPaste",
           SlidersHorizontal,
           <OutputPasteSettingsSection />,
+          "teal",
         ),
         makeSection(
           "corrections-settings",
           "appSections.nav.settings.correctionsSettings",
           SpellCheck,
           <CorrectionsSettingsSection />,
+          "green",
         ),
         makeSection(
           "ai-setup",
           "appSections.nav.settings.aiSetup",
           Cpu,
           <AISetupSettingsSection />,
+          "gold",
         ),
         makeSection(
           "model-testing",
           "appSections.nav.settings.modelTesting",
           FlaskConical,
           <ModelTestingSection />,
+          "violet",
         ),
         makeSection(
           "screen-context",
           "appSections.nav.settings.screenContext",
           Monitor,
           <ScreenContextSettingsSection />,
+          "blue",
         ),
         makeSection(
           "privacy",
           "appSections.nav.settings.privacy",
           Shield,
           <PrivacyStorageSettingsSection />,
+          "green",
         ),
         makeSection(
           "legal-model-terms",
           "appSections.nav.settings.legal",
           Scale,
           <LegalModelTermsSection />,
+          "red",
         ),
         makeSection(
           "diagnostics",
           "appSections.nav.settings.diagnostics",
           FlaskConical,
           <DiagnosticsSettingsSection />,
+          "violet",
         ),
         makeSection(
           "about",
           "appSections.nav.settings.about",
           Info,
           <AboutSection />,
+          "blue",
         ),
       ],
     };

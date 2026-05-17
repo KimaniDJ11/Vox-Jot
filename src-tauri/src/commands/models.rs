@@ -343,9 +343,7 @@ fn stt_provider_source_url(provider_id: &str) -> Option<&'static str> {
 fn stt_model_source_url(model: &ModelInfo) -> Option<&'static str> {
     match model.id.as_str() {
         "breeze-asr" => Some("https://huggingface.co/alan314159/Breeze-ASR-25-whispercpp"),
-        "parakeet-tdt-0.6b-v2" => {
-            Some("https://huggingface.co/smcleod/parakeet-tdt-0.6b-v2-int8")
-        }
+        "parakeet-tdt-0.6b-v2" => Some("https://huggingface.co/smcleod/parakeet-tdt-0.6b-v2-int8"),
         "parakeet-tdt-0.6b-v3" | "mlx-parakeet-v3" => {
             Some("https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3")
         }
@@ -360,12 +358,16 @@ fn stt_model_source_url(model: &ModelInfo) -> Option<&'static str> {
         "mlx-whisper-large-v3-turbo" => {
             Some("https://huggingface.co/mlx-community/whisper-large-v3-turbo-asr-fp16")
         }
-        "mlx-distil-whisper-large-v3" => Some("https://huggingface.co/distil-whisper/distil-large-v3"),
+        "mlx-distil-whisper-large-v3" => {
+            Some("https://huggingface.co/distil-whisper/distil-large-v3")
+        }
         "mlx-qwen3-asr" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-1.7B-8bit"),
         "mlx-qwen3-asr-0.6b" => Some("https://huggingface.co/mlx-community/Qwen3-ASR-0.6B-8bit"),
         "mlx-fireredasr2-aed" => Some("https://huggingface.co/mlx-community/FireRedASR2-AED-mlx"),
         "mlx-vibevoice-asr-bf16" => Some("https://huggingface.co/mlx-community/VibeVoice-ASR-bf16"),
-        "mlx-voxtral-mini-3b" => Some("https://huggingface.co/mlx-community/Voxtral-Mini-3B-2507-bf16"),
+        "mlx-voxtral-mini-3b" => {
+            Some("https://huggingface.co/mlx-community/Voxtral-Mini-3B-2507-bf16")
+        }
         "mlx-voxtral-mini-4b-realtime" => {
             Some("https://huggingface.co/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit")
         }

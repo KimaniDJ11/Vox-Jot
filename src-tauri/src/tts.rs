@@ -2501,7 +2501,9 @@ impl TtsManager {
                     "Use Vox Jot-managed offline voice packs with automatic local runtime routing."
                         .to_string(),
                 source_label: "Vox Jot curated assets".to_string(),
-                source_url: Some("https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models".to_string()),
+                source_url: Some(
+                    "https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models".to_string(),
+                ),
                 runtime: sherpa_runtime.clone(),
                 available: true,
                 local_only: true,

@@ -70,6 +70,7 @@ import { ClamshellMicrophoneSelector } from "@/components/settings/ClamshellMicr
 import { ClipboardHandlingSetting } from "@/components/settings/ClipboardHandling";
 import { CorrectionSettings } from "@/components/settings/corrections/CorrectionSettings";
 import { ExperimentalToggle } from "@/components/settings/ExperimentalToggle";
+import { FeatureHealthCheckPanel } from "@/components/settings/FeatureHealthCheck";
 import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { HistoryLimit } from "@/components/settings/HistoryLimit";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
@@ -1856,6 +1857,13 @@ export const DiagnosticsSettingsSection: React.FC = () => {
         description={t("appSections.diagnostics.localApiDescription")}
       >
         <LocalApiToggle grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title={t("settings.diagnostics.featureHealth.groupTitle")}
+        description={t("settings.diagnostics.featureHealth.groupDescription")}
+      >
+        <FeatureHealthCheckPanel />
       </SettingsGroup>
 
       {debugMode ? (

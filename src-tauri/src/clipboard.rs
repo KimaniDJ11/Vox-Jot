@@ -68,6 +68,27 @@ fn mark_pasteboard_transient() {
 #[cfg(not(target_os = "macos"))]
 fn mark_pasteboard_transient() {}
 
+#[cfg(target_os = "macos")]
+fn pasteboard_change_count() -> Option<i64> {
+    use objc::runtime::{Class, Object};
+    use objc::{msg_send, sel, sel_impl};
+
+    unsafe {
+        let pasteboard_class = Class::get("NSPasteboard")?;
+        let pasteboard: *mut Object = msg_send![pasteboard_class, generalPasteboard];
+        if pasteboard.is_null() {
+            return None;
+        }
+        let change_count: i64 = msg_send![pasteboard, changeCount];
+        Some(change_count)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn pasteboard_change_count() -> Option<i64> {
+    None
+}
+
 const SCRATCHPAD_WINDOW_LABEL: &str = "scratchpad";
 const SCRATCHPAD_INSERT_EVENT: &str = "scratchpad-insert-text";
 const DIRECT_PASTE_PREFERRED_BUNDLE_IDS: &[&str] = &["com.openai.codex"];
@@ -117,9 +138,21 @@ enum ClipboardRestoreTarget {
     DictatedText,
 }
 
-fn schedule_clipboard_restore(app_handle: AppHandle, restore_text: String, delay_ms: u64) {
+fn schedule_clipboard_restore(
+    app_handle: AppHandle,
+    restore_text: String,
+    delay_ms: u64,
+    expected_change_count: Option<i64>,
+) {
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(delay_ms));
+        if let Some(expected) = expected_change_count {
+            if pasteboard_change_count() != Some(expected) {
+                info!("Skipping clipboard restore because the clipboard changed after paste");
+                return;
+            }
+        }
+
         let clipboard = app_handle.clipboard();
 
         #[cfg(target_os = "linux")]
@@ -211,6 +244,7 @@ fn paste_via_clipboard(
     // Mark the pasteboard as transient so clipboard-history managers skip
     // logging the dictated text. No-op on non-macOS.
     mark_pasteboard_transient();
+    let restore_change_count = pasteboard_change_count();
 
     std::thread::sleep(Duration::from_millis(paste_delay_ms));
 
@@ -241,6 +275,7 @@ fn paste_via_clipboard(
         app_handle.clone(),
         restore_text,
         clipboard_restore_delay_ms(app_handle),
+        restore_change_count,
     );
 
     Ok(())

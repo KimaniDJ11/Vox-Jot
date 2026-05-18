@@ -475,12 +475,18 @@ impl AudioRecordingManager {
                 self.is_recording.store(false, Ordering::SeqCst);
                 self.remove_mute();
 
-                // In on-demand mode turn the mic off again
+                // In on-demand mode turn the mic off again after returning
+                // samples to the transcription task. Closing joins the audio
+                // worker thread, so doing it inline adds stop-to-transcript
+                // latency for every on-demand dictation.
                 if matches!(
                     *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                     MicrophoneMode::OnDemand
                 ) {
-                    self.stop_microphone_stream();
+                    let manager = self.clone();
+                    std::thread::spawn(move || {
+                        manager.stop_microphone_stream();
+                    });
                 }
 
                 // Pad if very short

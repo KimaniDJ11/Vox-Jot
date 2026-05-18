@@ -6,8 +6,8 @@ use crate::model_platform::{
 };
 use crate::portable;
 use crate::settings::{
-    default_tts_model_store_dir, get_settings, is_local_base_url, AppSettings, TtsEnginePreference,
-    TtsStyleControlValue, TtsVoicePreset, TtsVoiceTuningSettings,
+    default_tts_model_store_dir, get_settings, is_local_base_url, write_settings, AppSettings,
+    TtsEnginePreference, TtsStyleControlValue, TtsVoicePreset, TtsVoiceTuningSettings,
     TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID, TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID,
     TTS_MODEL_SYSTEM_DEFAULT_ID, TTS_MODEL_VIBEVOICE_DEFAULT_ID, TTS_PROVIDER_CHATTERBOX_ID,
     TTS_PROVIDER_KOKORO_ID, TTS_PROVIDER_LFM_AUDIO_GGUF_ID, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
@@ -48,7 +48,9 @@ mod voices;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use catalog::{supported_voice_profile_compatibility, tts_model_id_for_hf_repo};
+pub(crate) use catalog::{
+    retired_tts_model_ids, supported_voice_profile_compatibility, tts_model_id_for_hf_repo,
+};
 pub use chunking::{chunk_text, normalize_locale};
 pub use readback::{build_auto_speak_plan, choose_readback_locale, default_preview_request};
 
@@ -634,25 +636,28 @@ impl TtsManager {
             }
         }
 
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let repo_root = manifest_dir
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or(manifest_dir.clone());
-        candidates.push(
-            manifest_dir
-                .join("resources")
-                .join("tts-runtime-models")
-                .join(definition.archive_name),
-        );
-        candidates.push(
-            manifest_dir
-                .join("resources")
-                .join("tts-runtime-models")
-                .join(definition.model_id),
-        );
-        candidates.push(repo_root.join(definition.archive_name));
-        candidates.push(repo_root.join(definition.model_id));
+        #[cfg(debug_assertions)]
+        {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let repo_root = manifest_dir
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or(manifest_dir.clone());
+            candidates.push(
+                manifest_dir
+                    .join("resources")
+                    .join("tts-runtime-models")
+                    .join(definition.archive_name),
+            );
+            candidates.push(
+                manifest_dir
+                    .join("resources")
+                    .join("tts-runtime-models")
+                    .join(definition.model_id),
+            );
+            candidates.push(repo_root.join(definition.archive_name));
+            candidates.push(repo_root.join(definition.model_id));
+        }
 
         candidates
     }
@@ -681,27 +686,30 @@ impl TtsManager {
             }
         }
 
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let repo_root = manifest_dir
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or(manifest_dir.clone());
-        candidates.push(
-            manifest_dir
-                .join("resources")
-                .join("tts-packs")
-                .join("qwen3")
-                .join(&archive_name),
-        );
-        candidates.push(
-            manifest_dir
-                .join("resources")
-                .join("tts-packs")
-                .join("qwen3")
-                .join(definition.id),
-        );
-        candidates.push(repo_root.join(&archive_name));
-        candidates.push(repo_root.join(definition.id));
+        #[cfg(debug_assertions)]
+        {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let repo_root = manifest_dir
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or(manifest_dir.clone());
+            candidates.push(
+                manifest_dir
+                    .join("resources")
+                    .join("tts-packs")
+                    .join("qwen3")
+                    .join(&archive_name),
+            );
+            candidates.push(
+                manifest_dir
+                    .join("resources")
+                    .join("tts-packs")
+                    .join("qwen3")
+                    .join(definition.id),
+            );
+            candidates.push(repo_root.join(&archive_name));
+            candidates.push(repo_root.join(definition.id));
+        }
 
         let configured_store = self.tts_model_store_root();
         for central_store in [configured_store.join("qwen3"), configured_store] {
@@ -951,20 +959,33 @@ impl TtsManager {
         &self,
         definition: &ManagedSpeechRuntimeDefinition,
     ) -> Vec<PathBuf> {
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let repo_root = manifest_dir
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| manifest_dir.clone());
+        let mut candidates = Vec::new();
 
-        vec![
-            manifest_dir
-                .join("resources")
-                .join("tts-runtime")
-                .join(definition.archive_name),
-            repo_root.join("dist").join(definition.archive_name),
-            repo_root.join(definition.archive_name),
-        ]
+        if let Ok(path) = portable::resolve_resource(
+            &self.app_handle,
+            &format!("resources/tts-runtime/{}", definition.archive_name),
+        ) {
+            candidates.push(path);
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let repo_root = manifest_dir
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| manifest_dir.clone());
+            candidates.push(
+                manifest_dir
+                    .join("resources")
+                    .join("tts-runtime")
+                    .join(definition.archive_name),
+            );
+            candidates.push(repo_root.join("dist").join(definition.archive_name));
+            candidates.push(repo_root.join(definition.archive_name));
+        }
+
+        candidates
     }
 
     fn find_managed_speech_runtime_source(
@@ -3176,6 +3197,7 @@ impl TtsManager {
                 fs::remove_dir_all(&install_dir)
                     .map_err(|err| format!("Failed to remove LFM Audio assets: {err}"))?;
             }
+            self.prune_tts_presets_for_removed_pack(pack_id);
             return Ok(());
         }
 
@@ -3186,6 +3208,7 @@ impl TtsManager {
                 fs::remove_dir_all(&install_dir)
                     .map_err(|err| format!("Failed to remove VibeVoice assets: {err}"))?;
             }
+            self.prune_tts_presets_for_removed_pack(pack_id);
             return Ok(());
         }
 
@@ -3199,6 +3222,7 @@ impl TtsManager {
                     )
                 })?;
             }
+            self.prune_tts_presets_for_removed_pack(pack_id);
             return Ok(());
         }
 
@@ -3212,6 +3236,7 @@ impl TtsManager {
                     )
                 })?;
             }
+            self.prune_tts_presets_for_removed_pack(pack_id);
             return Ok(());
         }
 
@@ -3236,6 +3261,7 @@ impl TtsManager {
                         format!("Failed to remove HF TTS model '{}': {err}", pack_id)
                     })?;
                 }
+                self.prune_tts_presets_for_removed_pack(pack_id);
                 return Ok(());
             }
         }
@@ -3245,7 +3271,23 @@ impl TtsManager {
             fs::remove_dir_all(&install_dir)
                 .map_err(|err| format!("Failed to remove TTS pack: {err}"))?;
         }
+        self.prune_tts_presets_for_removed_pack(pack_id);
         Ok(())
+    }
+
+    fn prune_tts_presets_for_removed_pack(&self, pack_id: &str) {
+        let mut settings = get_settings(&self.app_handle);
+        let selected_removed_model = settings.selected_tts_model_id.as_deref() == Some(pack_id);
+        let removed_presets = settings.delete_tts_presets_for_model(pack_id);
+        if removed_presets > 0 || selected_removed_model {
+            if removed_presets > 0 {
+                info!(
+                    "Removed {} saved TTS voice preset(s) that referenced deleted model '{}'",
+                    removed_presets, pack_id
+                );
+            }
+            write_settings(&self.app_handle, settings);
+        }
     }
 
     pub async fn speak(&self, request: SpeakRequest) -> Result<(), String> {

@@ -28,6 +28,7 @@ mod input;
 mod lfm_audio_gguf;
 mod llm_client;
 mod managers;
+mod mcp;
 mod model_platform;
 mod ocr_backend;
 mod ocr_models;

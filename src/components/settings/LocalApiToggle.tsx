@@ -125,10 +125,25 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
   }, [port, t]);
 
   const url = `http://127.0.0.1:${port}`;
+  const mcpUrl = `${url}/mcp`;
   const authHeader = `X-Vox-Jot-Api-Token: ${token}`;
   const displayedAuthHeader = token
     ? authHeader.replace(token, "<token>")
     : "X-Vox-Jot-Api-Token: <token>";
+  const mcpConfig = JSON.stringify(
+    {
+      mcpServers: {
+        "vox-jot": {
+          url: mcpUrl,
+          headers: {
+            "x-vox-jot-api-token": "<token>",
+          },
+        },
+      },
+    },
+    null,
+    2,
+  );
   const copyUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -148,6 +163,13 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
   }, []);
+  const copyMcpConfig = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(mcpConfig);
+    } catch {
+      /* clipboard may be unavailable in some contexts; non-fatal */
+    }
+  }, [mcpConfig]);
   const rotateToken = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -236,6 +258,32 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
 
           <div className="font-mono text-[var(--muted)]">
             {displayedAuthHeader}
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[var(--muted)]">
+                {t("settings.diagnostics.localApi.mcpEndpoint", {
+                  defaultValue: "MCP",
+                })}
+              </span>
+              <span className="min-w-0 truncate font-mono text-[var(--text)]">
+                {mcpUrl}
+              </span>
+              <Button
+                variant="secondary"
+                onClick={() => void copyMcpConfig()}
+                className="ml-auto"
+              >
+                <Copy size={12} className="mr-1" />
+                {t("settings.diagnostics.localApi.copyMcpConfig", {
+                  defaultValue: "Copy MCP config",
+                })}
+              </Button>
+            </div>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--input)] p-2 font-mono text-[11px] leading-5 text-[var(--muted)]">
+              {mcpConfig}
+            </pre>
           </div>
 
           <div className="flex items-center gap-2">

@@ -63,24 +63,33 @@ interface StoryRenderEnqueueResult {
 
 interface StoryRenderRequest {
   render_id: string;
+  project_id: string;
   title: string;
   cast: Array<{ character_name: string; preset_id: string }>;
   script_text: string;
   pause_ms_between_lines: number;
   line_instructions: Array<{ line_number: number; style_instructions: string }>;
+  audio_effect: StoryAudioEffectPreset;
 }
 
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
 type StudioTool = "script" | "cast";
+type StoryAudioEffectPreset =
+  | "clean"
+  | "voice_polish"
+  | "radio"
+  | "warm_room";
 
 interface StoryStudioDraft {
+  projectId: string;
   title: string;
   cast: StoryCastMemberDraft[];
   scriptText: string;
   pauseMs: number;
   activeTool: StudioTool;
   lineInstructions: Record<string, string>;
+  audioEffect: StoryAudioEffectPreset;
 }
 
 interface ExpressionContext {
@@ -95,17 +104,20 @@ interface ExpressionContext {
 }
 
 const defaultStudioDraft: StoryStudioDraft = {
+  projectId: "",
   title: "",
   cast: [],
   scriptText: "",
   pauseMs: 500,
   activeTool: "script",
   lineInstructions: {},
+  audioEffect: "clean",
 };
 
 export const StoryStudioSection: React.FC = () => {
   const { t } = useTranslation();
   const initialDraft = useMemo(readStoredStudioDraft, []);
+  const [projectId] = useState(initialDraft.projectId || crypto.randomUUID());
 
   const [presets, setPresets] = useState<TtsVoicePreset[]>([]);
   const [isLoadingPresets, setIsLoadingPresets] = useState(true);
@@ -122,6 +134,9 @@ export const StoryStudioSection: React.FC = () => {
   );
   const [lineInstructions, setLineInstructions] = useState(
     initialDraft.lineInstructions,
+  );
+  const [audioEffect, setAudioEffect] = useState<StoryAudioEffectPreset>(
+    initialDraft.audioEffect,
   );
   const [expressionQuery, setExpressionQuery] = useState("");
   const [expressionPopoverOpen, setExpressionPopoverOpen] = useState(false);
@@ -235,14 +250,25 @@ export const StoryStudioSection: React.FC = () => {
 
   useEffect(() => {
     writeStoredStudioDraft({
+      projectId,
       title,
       cast,
       scriptText,
       pauseMs,
       activeTool,
       lineInstructions,
+      audioEffect,
     });
-  }, [activeTool, cast, lineInstructions, pauseMs, scriptText, title]);
+  }, [
+    activeTool,
+    audioEffect,
+    cast,
+    lineInstructions,
+    pauseMs,
+    projectId,
+    scriptText,
+    title,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -370,6 +396,7 @@ export const StoryStudioSection: React.FC = () => {
 
     const request: StoryRenderRequest = {
       render_id: renderId,
+      project_id: projectId,
       title,
       cast: cast.map((member) => ({
         character_name: member.characterName.trim(),
@@ -381,6 +408,7 @@ export const StoryStudioSection: React.FC = () => {
         validation.lines,
         lineInstructions,
       ),
+      audio_effect: audioEffect,
     };
 
     try {
@@ -411,9 +439,11 @@ export const StoryStudioSection: React.FC = () => {
     }
   }, [
     canRender,
+    audioEffect,
     cast,
     lineInstructions,
     pauseMs,
+    projectId,
     scriptText,
     title,
     validation.lines,
@@ -485,6 +515,41 @@ export const StoryStudioSection: React.FC = () => {
               items={[
                 { value: "script", label: t("storyStudio.tools.script") },
                 { value: "cast", label: t("storyStudio.tools.cast") },
+              ]}
+            />
+
+            <SegmentedControl<StoryAudioEffectPreset>
+              value={audioEffect}
+              onChange={setAudioEffect}
+              layoutId="story-studio-audio-effect"
+              ariaLabel={t("storyStudio.audioEffectAriaLabel", {
+                defaultValue: "Story audio effect",
+              })}
+              items={[
+                {
+                  value: "clean",
+                  label: t("storyStudio.audioEffects.clean", {
+                    defaultValue: "Clean",
+                  }),
+                },
+                {
+                  value: "voice_polish",
+                  label: t("storyStudio.audioEffects.voicePolish", {
+                    defaultValue: "Voice Polish",
+                  }),
+                },
+                {
+                  value: "radio",
+                  label: t("storyStudio.audioEffects.radio", {
+                    defaultValue: "Radio",
+                  }),
+                },
+                {
+                  value: "warm_room",
+                  label: t("storyStudio.audioEffects.warmRoom", {
+                    defaultValue: "Warm Room",
+                  }),
+                },
               ]}
             />
           </div>
@@ -994,6 +1059,10 @@ function normalizeStoredStudioDraft(
   draft: Partial<StoryStudioDraft>,
 ): StoryStudioDraft {
   return {
+    projectId:
+      typeof draft.projectId === "string" && draft.projectId.trim()
+        ? draft.projectId
+        : defaultStudioDraft.projectId,
     title:
       typeof draft.title === "string" ? draft.title : defaultStudioDraft.title,
     cast: Array.isArray(draft.cast)
@@ -1011,7 +1080,16 @@ function normalizeStoredStudioDraft(
         : defaultStudioDraft.pauseMs,
     activeTool: draft.activeTool === "cast" ? "cast" : "script",
     lineInstructions: normalizeStoredLineInstructions(draft.lineInstructions),
+    audioEffect: normalizeStoredAudioEffect(draft.audioEffect),
   };
+}
+
+function normalizeStoredAudioEffect(value: unknown): StoryAudioEffectPreset {
+  return value === "voice_polish" ||
+    value === "radio" ||
+    value === "warm_room"
+    ? value
+    : "clean";
 }
 
 function normalizeStoredLineInstructions(

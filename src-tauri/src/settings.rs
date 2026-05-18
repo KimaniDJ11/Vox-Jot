@@ -2156,6 +2156,111 @@ impl AppSettings {
         original_len != self.tts_voice_presets.len()
     }
 
+    pub fn delete_tts_presets_for_profile(&mut self, profile_id: &str) -> usize {
+        let original_len = self.tts_voice_presets.len();
+        self.tts_voice_presets
+            .retain(|preset| preset.voice_profile_id.as_deref() != Some(profile_id));
+        let removed = original_len.saturating_sub(self.tts_voice_presets.len());
+        if removed > 0 || self.selected_tts_profile_id.as_deref() == Some(profile_id) {
+            if self.selected_tts_profile_id.as_deref() == Some(profile_id) {
+                self.selected_tts_profile_id = None;
+            }
+            self.reconcile_tts_selection_after_preset_prune();
+        }
+        removed
+    }
+
+    pub fn delete_tts_presets_for_model(&mut self, model_id: &str) -> usize {
+        let original_len = self.tts_voice_presets.len();
+        self.tts_voice_presets
+            .retain(|preset| preset.model_id != model_id);
+        let removed = original_len.saturating_sub(self.tts_voice_presets.len());
+        if removed > 0 || self.selected_tts_model_id.as_deref() == Some(model_id) {
+            if self.selected_tts_model_id.as_deref() == Some(model_id) {
+                self.selected_tts_model_id = None;
+            }
+            self.reconcile_tts_selection_after_preset_prune();
+        }
+        removed
+    }
+
+    pub fn delete_tts_presets_for_models<'a, I>(&mut self, model_ids: I) -> usize
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let removed_models: std::collections::HashSet<&str> = model_ids.into_iter().collect();
+        let original_len = self.tts_voice_presets.len();
+        self.tts_voice_presets
+            .retain(|preset| !removed_models.contains(preset.model_id.as_str()));
+        let removed = original_len.saturating_sub(self.tts_voice_presets.len());
+        if removed > 0 {
+            if self
+                .selected_tts_model_id
+                .as_deref()
+                .is_some_and(|model_id| removed_models.contains(model_id))
+            {
+                self.selected_tts_model_id = None;
+            }
+            self.reconcile_tts_selection_after_preset_prune();
+        }
+        removed
+    }
+
+    pub fn delete_tts_presets_for_missing_profiles<'a, I>(&mut self, profile_ids: I) -> usize
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let available_profiles: std::collections::HashSet<&str> = profile_ids.into_iter().collect();
+        let original_len = self.tts_voice_presets.len();
+        self.tts_voice_presets.retain(|preset| {
+            preset
+                .voice_profile_id
+                .as_deref()
+                .is_none_or(|profile_id| available_profiles.contains(profile_id))
+        });
+        let removed = original_len.saturating_sub(self.tts_voice_presets.len());
+        if removed > 0 {
+            if self
+                .selected_tts_profile_id
+                .as_deref()
+                .is_some_and(|profile_id| !available_profiles.contains(profile_id))
+            {
+                self.selected_tts_profile_id = None;
+            }
+            self.reconcile_tts_selection_after_preset_prune();
+        }
+        removed
+    }
+
+    fn reconcile_tts_selection_after_preset_prune(&mut self) -> bool {
+        let mut changed = false;
+        let current_active_exists = self
+            .tts_active_preset_id
+            .as_deref()
+            .is_some_and(|preset_id| self.tts_preset(preset_id).is_some());
+        if !current_active_exists {
+            changed |= self.set_active_tts_preset_id(None);
+        }
+
+        if self.tts_voice_presets.is_empty() {
+            if self.tts_active_preset_id.take().is_some() {
+                changed = true;
+            }
+            if self.selected_tts_profile_id.take().is_some() {
+                changed = true;
+            }
+            if self.selected_tts_voice_id.take().is_some() {
+                changed = true;
+            }
+            if self.tts_default_voice_id.take().is_some() {
+                changed = true;
+            }
+            return changed;
+        }
+
+        changed | self.sync_legacy_tts_state_from_active_preset()
+    }
+
     pub fn sync_legacy_tts_state_from_active_preset(&mut self) -> bool {
         let Some(preset) = self.active_tts_preset().cloned() else {
             return false;
@@ -2762,6 +2867,35 @@ mod tests {
     use crate::secret_store::{install_test_secret_store, TestSecretStore};
     use std::sync::Arc;
 
+    fn test_tts_tuning(settings: &AppSettings) -> TtsVoiceTuningSettings {
+        TtsVoiceTuningSettings {
+            tempo_rate: settings.tts_rate.clamp(0.5, 2.0),
+            expressiveness: default_tts_expressiveness(),
+            exaggeration: default_tts_exaggeration(),
+            randomness: default_tts_randomness(),
+            guidance: default_tts_guidance(),
+            stability: default_tts_stability(),
+            repetition_penalty: default_tts_repetition_penalty(),
+            style_instructions: None,
+            advanced_overrides: HashMap::new(),
+        }
+    }
+
+    fn test_tts_preset(id: &str, model_id: &str, profile_id: Option<&str>) -> TtsVoicePreset {
+        let settings = get_default_settings();
+        TtsVoicePreset {
+            id: id.to_string(),
+            label: id.to_string(),
+            provider_id: "mlx_qwen3tts".to_string(),
+            model_id: model_id.to_string(),
+            voice_id: None,
+            voice_profile_id: profile_id.map(str::to_string),
+            voice_label_snapshot: None,
+            locale_snapshot: None,
+            tuning: test_tts_tuning(&settings),
+        }
+    }
+
     #[test]
     fn default_settings_disable_auto_submit() {
         let settings = get_default_settings();
@@ -3150,17 +3284,7 @@ mod tests {
     #[test]
     fn explicit_active_tts_preset_does_not_fall_back_to_first_preset() {
         let mut settings = get_default_settings();
-        let default_tuning = TtsVoiceTuningSettings {
-            tempo_rate: settings.tts_rate.clamp(0.5, 2.0),
-            expressiveness: default_tts_expressiveness(),
-            exaggeration: default_tts_exaggeration(),
-            randomness: default_tts_randomness(),
-            guidance: default_tts_guidance(),
-            stability: default_tts_stability(),
-            repetition_penalty: default_tts_repetition_penalty(),
-            style_instructions: None,
-            advanced_overrides: HashMap::new(),
-        };
+        let default_tuning = test_tts_tuning(&settings);
         settings.tts_voice_presets = vec![
             TtsVoicePreset {
                 id: "preset-1".to_string(),
@@ -3203,6 +3327,105 @@ mod tests {
                 .expect("explicit preset should resolve")
                 .id,
             "preset-2"
+        );
+    }
+
+    #[test]
+    fn deleting_tts_profile_prunes_dependent_presets() {
+        let mut settings = get_default_settings();
+        settings.tts_voice_presets = vec![
+            test_tts_preset("profile-backed", "qwen3-tts-0.6b", Some("deleted-profile")),
+            test_tts_preset("fallback", "kokoro-82m", None),
+        ];
+        settings.tts_active_preset_id = Some("profile-backed".to_string());
+        settings.selected_tts_profile_id = Some("deleted-profile".to_string());
+        settings.selected_tts_model_id = Some("qwen3-tts-0.6b".to_string());
+
+        assert_eq!(
+            settings.delete_tts_presets_for_profile("deleted-profile"),
+            1
+        );
+
+        assert!(settings.tts_preset("profile-backed").is_none());
+        assert_eq!(settings.tts_active_preset_id.as_deref(), Some("fallback"));
+        assert_eq!(
+            settings.selected_tts_model_id.as_deref(),
+            Some("kokoro-82m")
+        );
+        assert!(settings.selected_tts_profile_id.is_none());
+    }
+
+    #[test]
+    fn deleting_tts_model_prunes_dependent_presets() {
+        let mut settings = get_default_settings();
+        settings.tts_voice_presets = vec![
+            test_tts_preset("deleted-model", "qwen3-tts-0.6b", Some("profile-1")),
+            test_tts_preset("kept-model", "kokoro-82m", None),
+        ];
+        settings.tts_active_preset_id = Some("deleted-model".to_string());
+        settings.selected_tts_model_id = Some("qwen3-tts-0.6b".to_string());
+        settings.selected_tts_profile_id = Some("profile-1".to_string());
+
+        assert_eq!(settings.delete_tts_presets_for_model("qwen3-tts-0.6b"), 1);
+
+        assert!(settings.tts_preset("deleted-model").is_none());
+        assert_eq!(settings.tts_active_preset_id.as_deref(), Some("kept-model"));
+        assert_eq!(
+            settings.selected_tts_model_id.as_deref(),
+            Some("kokoro-82m")
+        );
+        assert!(settings.selected_tts_profile_id.is_none());
+    }
+
+    #[test]
+    fn deleting_tts_models_prunes_retired_model_presets() {
+        let mut settings = get_default_settings();
+        settings.tts_voice_presets = vec![
+            test_tts_preset("retired-model", "qwen3-tts-1.7b-base", None),
+            test_tts_preset("current-model", "qwen3-tts-1.7b-base-8bit", None),
+        ];
+        settings.tts_active_preset_id = Some("retired-model".to_string());
+        settings.selected_tts_model_id = Some("qwen3-tts-1.7b-base".to_string());
+
+        assert_eq!(
+            settings.delete_tts_presets_for_models(["qwen3-tts-1.7b-base"].into_iter()),
+            1
+        );
+
+        assert!(settings.tts_preset("retired-model").is_none());
+        assert!(settings.tts_preset("current-model").is_some());
+        assert_eq!(
+            settings.tts_active_preset_id.as_deref(),
+            Some("current-model")
+        );
+        assert_eq!(
+            settings.selected_tts_model_id.as_deref(),
+            Some("qwen3-tts-1.7b-base-8bit")
+        );
+    }
+
+    #[test]
+    fn listing_tts_presets_can_prune_missing_profiles() {
+        let mut settings = get_default_settings();
+        settings.tts_voice_presets = vec![
+            test_tts_preset("missing-profile", "qwen3-tts-0.6b", Some("missing")),
+            test_tts_preset("existing-profile", "qwen3-tts-0.6b", Some("existing")),
+            test_tts_preset("plain", "kokoro-82m", None),
+        ];
+        settings.tts_active_preset_id = Some("missing-profile".to_string());
+        settings.selected_tts_profile_id = Some("missing".to_string());
+
+        assert_eq!(
+            settings.delete_tts_presets_for_missing_profiles(["existing"].into_iter()),
+            1
+        );
+
+        assert!(settings.tts_preset("missing-profile").is_none());
+        assert!(settings.tts_preset("existing-profile").is_some());
+        assert!(settings.tts_preset("plain").is_some());
+        assert_ne!(
+            settings.tts_active_preset_id.as_deref(),
+            Some("missing-profile")
         );
     }
 

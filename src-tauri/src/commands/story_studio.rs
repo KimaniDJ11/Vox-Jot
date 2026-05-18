@@ -5,6 +5,7 @@ use hound::{WavSpec, WavWriter};
 use once_cell::sync::Lazy;
 use rodio::Source;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use specta::Type;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
@@ -17,6 +18,7 @@ use uuid::Uuid;
 
 const STORY_SAMPLE_RATE: u32 = 24_000;
 const STORY_PEAK_TARGET: f32 = 0.95;
+const STORY_WAVEFORM_PEAKS: usize = 96;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryCastMember {
@@ -33,12 +35,16 @@ pub struct StoryScriptLine {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryRenderRequest {
     pub render_id: String,
+    #[serde(default)]
+    pub project_id: Option<String>,
     pub title: String,
     pub cast: Vec<StoryCastMember>,
     pub script_text: String,
     pub pause_ms_between_lines: u32,
     #[serde(default)]
     pub line_instructions: Vec<StoryLineInstructionOverride>,
+    #[serde(default)]
+    pub audio_effect: StoryAudioEffectPreset,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -83,6 +89,43 @@ pub struct ProcessStoryAudioRequest {
     pub id: String,
     pub playback_rate: f32,
     pub sample_rate_hz: u32,
+    #[serde(default)]
+    pub audio_effect: StoryAudioEffectPreset,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum StoryAudioEffectPreset {
+    #[default]
+    Clean,
+    VoicePolish,
+    Radio,
+    WarmRoom,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryClipMetadata {
+    pub id: String,
+    pub line_number: u32,
+    pub speaker: String,
+    pub text: String,
+    pub hash: String,
+    pub file_path: String,
+    pub duration_ms: u32,
+    pub offset_ms: u32,
+    pub waveform_peaks: Vec<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StoryProjectMetadata {
+    pub project_id: String,
+    pub render_id: String,
+    pub title: String,
+    pub output_path: String,
+    pub pause_ms_between_lines: u32,
+    pub audio_effect: StoryAudioEffectPreset,
+    pub sample_rate_hz: u32,
+    pub clips: Vec<StoryClipMetadata>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -103,11 +146,15 @@ pub struct StoryRenderJobSummary {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryAudioItem {
     pub id: String,
+    #[serde(default)]
+    pub project_id: Option<String>,
     pub title: String,
     pub script_text: String,
     #[serde(default)]
     pub line_instructions: Vec<StoryLineInstructionOverride>,
     pub output_path: String,
+    #[serde(default)]
+    pub clips_path: Option<String>,
     pub created_at_ms: i64,
     pub duration_ms: u32,
     pub line_count: u32,
@@ -121,6 +168,8 @@ pub struct StoryAudioItem {
     pub expression_tags_used: bool,
     #[serde(default)]
     pub inline_prompt_used: bool,
+    #[serde(default)]
+    pub audio_effect: StoryAudioEffectPreset,
     pub starred: bool,
 }
 
@@ -327,10 +376,12 @@ pub async fn generate_create_speech_audio(
         &app,
         StoryAudioItem {
             id: request.render_id,
+            project_id: None,
             title: story_title_label(&request.title),
             script_text: text.clone(),
             line_instructions: Vec::new(),
             output_path,
+            clips_path: None,
             created_at_ms: now_ms(),
             duration_ms,
             line_count: 1,
@@ -343,6 +394,7 @@ pub async fn generate_create_speech_audio(
                 .style_instructions
                 .as_deref()
                 .is_some_and(|value| !value.trim().is_empty()),
+            audio_effect: StoryAudioEffectPreset::Clean,
             starred: false,
         },
     )?;
@@ -640,6 +692,16 @@ pub fn delete_story_audio(app: AppHandle, id: String) -> Result<(), String> {
         fs::remove_file(&path)
             .map_err(|err| format!("Failed to delete story audio file: {err}"))?;
     }
+    if let Some(clips_path) = item.clips_path.as_deref() {
+        let clips_path_is_still_used = items
+            .iter()
+            .any(|remaining| remaining.clips_path.as_deref() == Some(clips_path));
+        if !clips_path_is_still_used {
+            if let Some(project_dir) = Path::new(clips_path).parent() {
+                let _ = fs::remove_dir_all(project_dir);
+            }
+        }
+    }
     write_story_audio_items(&app, &items)?;
     emit_story_audio_updated(&app);
     Ok(())
@@ -666,9 +728,19 @@ pub fn create_processed_story_audio(
     let source_samples = decode_audio_file_mono(&source_path, source_sample_rate)?;
     let sped_samples = apply_story_audio_playback_rate(&source_samples, playback_rate);
     let mut output_samples = resample_linear(&sped_samples, source_sample_rate, output_sample_rate);
+    apply_story_audio_effect(
+        &mut output_samples,
+        output_sample_rate,
+        request.audio_effect,
+    );
     normalize_story_samples(&mut output_samples);
 
-    let title = processed_story_title(&source.title, playback_rate, output_sample_rate);
+    let title = processed_story_title(
+        &source.title,
+        playback_rate,
+        output_sample_rate,
+        request.audio_effect,
+    );
     let output_path = output_path_for_story(&app, &title)?;
     write_story_wav(&output_samples, output_sample_rate, &output_path)?;
     let duration_ms =
@@ -676,10 +748,12 @@ pub fn create_processed_story_audio(
     let output_path_string = output_path.to_string_lossy().to_string();
     let processed = StoryAudioItem {
         id: Uuid::new_v4().to_string(),
+        project_id: source.project_id,
         title,
         script_text: source.script_text,
         line_instructions: source.line_instructions,
         output_path: output_path_string,
+        clips_path: None,
         created_at_ms: now_ms(),
         duration_ms,
         line_count: source.line_count,
@@ -688,6 +762,7 @@ pub fn create_processed_story_audio(
         sample_rate_hz: output_sample_rate,
         expression_tags_used: source.expression_tags_used,
         inline_prompt_used: source.inline_prompt_used,
+        audio_effect: request.audio_effect,
         starred: false,
     };
     items.push(processed.clone());
@@ -714,15 +789,35 @@ async fn render_story_audio_inner(
     let line_instructions = normalize_line_instructions(&request.line_instructions);
     let expression_tags_used = lines.iter().any(|line| contains_expression_tag(&line.text));
     let inline_prompt_used = !line_instructions.is_empty();
+    let project_id = sanitize_project_id(
+        request
+            .project_id
+            .as_deref()
+            .unwrap_or(request.render_id.as_str()),
+    );
+    let project_dir = story_project_dir(&app, &project_id)?;
+    let clips_dir = project_dir.join("clips");
+    fs::create_dir_all(&clips_dir)
+        .map_err(|err| format!("Failed to create story clip directory: {err}"))?;
+    let existing_clips = read_story_project_metadata(&project_dir)
+        .map(|metadata| {
+            metadata
+                .clips
+                .into_iter()
+                .filter(|clip| Path::new(&clip.file_path).exists())
+                .map(|clip| (clip.hash.clone(), clip))
+                .collect::<HashMap<_, _>>()
+        })
+        .unwrap_or_default();
 
     let total_lines = lines.len() as u32;
     emit_progress(&app, &request.render_id, 0, total_lines, None, "validating");
 
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     let mut rendered_line_files: Vec<Vec<PathBuf>> = Vec::new();
+    let mut clips: Vec<StoryClipMetadata> = Vec::new();
     for (index, line) in lines.iter().enumerate() {
         if stop_flag.load(Ordering::Relaxed) {
-            cleanup_file_groups(&rendered_line_files);
             return Err("Story rendering was cancelled.".to_string());
         }
 
@@ -742,6 +837,23 @@ async fn render_story_audio_inner(
         if let Some(instruction) = line_instructions.get(&(index as u32 + 1)) {
             preset.tuning.style_instructions = Some(instruction.clone());
         }
+        let line_number = index as u32 + 1;
+        let line_hash = story_line_hash(line_number, line, &preset);
+        if let Some(existing_clip) = existing_clips.get(&line_hash) {
+            rendered_line_files.push(vec![PathBuf::from(&existing_clip.file_path)]);
+            clips.push(StoryClipMetadata {
+                id: existing_clip.id.clone(),
+                line_number,
+                speaker: line.speaker.clone(),
+                text: line.text.clone(),
+                hash: line_hash,
+                file_path: existing_clip.file_path.clone(),
+                duration_ms: existing_clip.duration_ms,
+                offset_ms: 0,
+                waveform_peaks: existing_clip.waveform_peaks.clone(),
+            });
+            continue;
+        }
         let files = manager
             .synthesize_to_temp_files(
                 SpeakRequest {
@@ -756,11 +868,24 @@ async fn render_story_audio_inner(
                 Arc::clone(&stop_flag),
             )
             .await?;
-        rendered_line_files.push(files);
+        let clip_path = clips_dir.join(format!("line-{line_number}-{}.wav", &line_hash[..12]));
+        let (duration_ms, waveform_peaks) = assemble_story_line_clip(&files, &clip_path)?;
+        cleanup_files(&files);
+        rendered_line_files.push(vec![clip_path.clone()]);
+        clips.push(StoryClipMetadata {
+            id: format!("line-{line_number}-{}", &line_hash[..12]),
+            line_number,
+            speaker: line.speaker.clone(),
+            text: line.text.clone(),
+            hash: line_hash,
+            file_path: clip_path.to_string_lossy().to_string(),
+            duration_ms,
+            offset_ms: 0,
+            waveform_peaks,
+        });
     }
 
     if stop_flag.load(Ordering::Relaxed) {
-        cleanup_file_groups(&rendered_line_files);
         return Err("Story rendering was cancelled.".to_string());
     }
 
@@ -774,13 +899,20 @@ async fn render_story_audio_inner(
     );
 
     let output_path = output_path_for_story(&app, &request.title)?;
-    let duration_ms = assemble_story_wav(
+    let (duration_ms, clip_timing) = assemble_story_wav_with_effect(
         &rendered_line_files,
         request.pause_ms_between_lines.clamp(0, 10_000),
         &output_path,
         &stop_flag,
+        request.audio_effect,
     )?;
-    cleanup_file_groups(&rendered_line_files);
+    for (clip, timing) in clips.iter_mut().zip(clip_timing) {
+        clip.offset_ms = timing.offset_ms;
+        clip.duration_ms = timing.duration_ms;
+        if clip.waveform_peaks.is_empty() {
+            clip.waveform_peaks = timing.waveform_peaks;
+        }
+    }
 
     if stop_flag.load(Ordering::Relaxed) {
         let _ = std::fs::remove_file(&output_path);
@@ -797,6 +929,17 @@ async fn render_story_audio_inner(
     );
 
     let output_path = output_path.to_string_lossy().to_string();
+    let project_metadata = StoryProjectMetadata {
+        project_id: project_id.clone(),
+        render_id: request.render_id.clone(),
+        title: story_title_label(&request.title),
+        output_path: output_path.clone(),
+        pause_ms_between_lines: request.pause_ms_between_lines.clamp(0, 10_000),
+        audio_effect: request.audio_effect,
+        sample_rate_hz: STORY_SAMPLE_RATE,
+        clips,
+    };
+    let clips_path = write_story_project_metadata(&project_dir, &project_metadata)?;
     let result = StoryRenderResult {
         render_id: request.render_id.clone(),
         output_path: output_path.clone(),
@@ -807,10 +950,12 @@ async fn render_story_audio_inner(
         &app,
         StoryAudioItem {
             id: request.render_id,
+            project_id: Some(project_id),
             title: story_title_label(&request.title),
             script_text: request.script_text,
             line_instructions: request.line_instructions,
             output_path,
+            clips_path: Some(clips_path.to_string_lossy().to_string()),
             created_at_ms: now_ms(),
             duration_ms,
             line_count: total_lines,
@@ -819,6 +964,7 @@ async fn render_story_audio_inner(
             sample_rate_hz: STORY_SAMPLE_RATE,
             expression_tags_used,
             inline_prompt_used,
+            audio_effect: request.audio_effect,
             starred: false,
         },
     )?;
@@ -975,8 +1121,38 @@ fn story_audio_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(stories_dir)
 }
 
+fn story_project_dir(app: &AppHandle, project_id: &str) -> Result<PathBuf, String> {
+    let project_id = sanitize_project_id(project_id);
+    let dir = story_audio_dir(app)?.join("projects").join(project_id);
+    fs::create_dir_all(&dir).map_err(|err| format!("Failed to create story project: {err}"))?;
+    Ok(dir)
+}
+
 fn story_audio_index_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(story_audio_dir(app)?.join("story-audio-index.json"))
+}
+
+fn story_project_metadata_path(project_dir: &Path) -> PathBuf {
+    project_dir.join("clips.json")
+}
+
+fn read_story_project_metadata(project_dir: &Path) -> Result<StoryProjectMetadata, String> {
+    let path = story_project_metadata_path(project_dir);
+    let bytes =
+        fs::read(&path).map_err(|err| format!("Failed to read story clip metadata: {err}"))?;
+    serde_json::from_slice::<StoryProjectMetadata>(&bytes)
+        .map_err(|err| format!("Failed to parse story clip metadata: {err}"))
+}
+
+fn write_story_project_metadata(
+    project_dir: &Path,
+    metadata: &StoryProjectMetadata,
+) -> Result<PathBuf, String> {
+    let path = story_project_metadata_path(project_dir);
+    let bytes = serde_json::to_vec_pretty(metadata)
+        .map_err(|err| format!("Failed to serialize story clip metadata: {err}"))?;
+    fs::write(&path, bytes).map_err(|err| format!("Failed to write story clip metadata: {err}"))?;
+    Ok(path)
 }
 
 fn output_path_for_story(app: &AppHandle, title: &str) -> Result<PathBuf, String> {
@@ -1063,10 +1239,12 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             .unwrap_or_else(|| "Untitled Story".to_string());
         items.push(StoryAudioItem {
             id: format!("file:{file_name}"),
+            project_id: None,
             title,
             script_text: String::new(),
             line_instructions: Vec::new(),
             output_path: path.to_string_lossy().to_string(),
+            clips_path: None,
             created_at_ms: metadata_time_ms(&metadata),
             duration_ms: wav_duration_ms(&path).unwrap_or(0),
             line_count: 0,
@@ -1075,6 +1253,7 @@ fn discover_story_audio_files(app: &AppHandle) -> Result<Vec<StoryAudioItem>, St
             sample_rate_hz: wav_sample_rate_hz(&path).unwrap_or(STORY_SAMPLE_RATE),
             expression_tags_used: false,
             inline_prompt_used: false,
+            audio_effect: StoryAudioEffectPreset::Clean,
             starred: false,
         });
     }
@@ -1174,36 +1353,101 @@ fn sanitize_file_stem(value: &str) -> Option<String> {
     Some(sanitized).filter(|value| !value.is_empty())
 }
 
+fn sanitize_project_id(value: &str) -> String {
+    let sanitized = value
+        .trim()
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_')
+        .collect::<String>();
+    if sanitized.is_empty() {
+        Uuid::new_v4().to_string()
+    } else {
+        sanitized
+    }
+}
+
 fn assemble_story_wav(
     line_files: &[Vec<PathBuf>],
     pause_ms_between_lines: u32,
     output_path: &Path,
     stop_flag: &AtomicBool,
 ) -> Result<u32, String> {
+    let (duration_ms, _) = assemble_story_wav_with_effect(
+        line_files,
+        pause_ms_between_lines,
+        output_path,
+        stop_flag,
+        StoryAudioEffectPreset::Clean,
+    )?;
+    Ok(duration_ms)
+}
+
+#[derive(Debug, Clone)]
+struct StoryClipTiming {
+    duration_ms: u32,
+    offset_ms: u32,
+    waveform_peaks: Vec<f32>,
+}
+
+fn assemble_story_wav_with_effect(
+    line_files: &[Vec<PathBuf>],
+    pause_ms_between_lines: u32,
+    output_path: &Path,
+    stop_flag: &AtomicBool,
+    effect: StoryAudioEffectPreset,
+) -> Result<(u32, Vec<StoryClipTiming>), String> {
     if line_files.is_empty() {
         return Err("No rendered audio was produced.".to_string());
     }
 
     let mut samples = Vec::new();
+    let mut timings = Vec::new();
     let silence_len = (STORY_SAMPLE_RATE as u64 * pause_ms_between_lines as u64 / 1000) as usize;
     for (line_index, files) in line_files.iter().enumerate() {
         if stop_flag.load(Ordering::Relaxed) {
             return Err("Story rendering was cancelled.".to_string());
         }
+        let offset_ms = ((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32;
+        let mut line_samples = Vec::new();
         for path in files {
-            let mut line_samples = decode_audio_file_mono(path, STORY_SAMPLE_RATE)?;
-            samples.append(&mut line_samples);
+            let mut decoded = decode_audio_file_mono(path, STORY_SAMPLE_RATE)?;
+            line_samples.append(&mut decoded);
         }
+        let duration_ms =
+            ((line_samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32;
+        timings.push(StoryClipTiming {
+            duration_ms,
+            offset_ms,
+            waveform_peaks: waveform_peaks(&line_samples, STORY_WAVEFORM_PEAKS),
+        });
+        samples.append(&mut line_samples);
         if line_index + 1 < line_files.len() && silence_len > 0 {
             samples.extend(std::iter::repeat_n(0.0, silence_len));
         }
     }
 
+    apply_story_audio_effect(&mut samples, STORY_SAMPLE_RATE, effect);
     normalize_story_samples(&mut samples);
 
     write_story_wav(&samples, STORY_SAMPLE_RATE, output_path)?;
 
-    Ok(((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32)
+    let duration_ms = ((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32;
+    Ok((duration_ms, timings))
+}
+
+fn assemble_story_line_clip(
+    source_files: &[PathBuf],
+    output_path: &Path,
+) -> Result<(u32, Vec<f32>), String> {
+    let mut samples = Vec::new();
+    for path in source_files {
+        let mut decoded = decode_audio_file_mono(path, STORY_SAMPLE_RATE)?;
+        samples.append(&mut decoded);
+    }
+    normalize_story_samples(&mut samples);
+    write_story_wav(&samples, STORY_SAMPLE_RATE, output_path)?;
+    let duration_ms = ((samples.len() as f64 / STORY_SAMPLE_RATE as f64) * 1000.0).round() as u32;
+    Ok((duration_ms, waveform_peaks(&samples, STORY_WAVEFORM_PEAKS)))
 }
 
 fn validate_story_audio_playback_rate(value: f32) -> Result<f32, String> {
@@ -1229,13 +1473,32 @@ fn validate_story_audio_sample_rate(value: u32) -> Result<u32, String> {
     }
 }
 
-fn processed_story_title(title: &str, playback_rate: f32, sample_rate_hz: u32) -> String {
-    format!(
-        "{} (processed {}x {})",
-        story_title_label(title),
-        format_story_playback_rate(playback_rate),
-        format_story_sample_rate(sample_rate_hz)
-    )
+fn processed_story_title(
+    title: &str,
+    playback_rate: f32,
+    sample_rate_hz: u32,
+    effect: StoryAudioEffectPreset,
+) -> String {
+    let effect_label = match effect {
+        StoryAudioEffectPreset::Clean => None,
+        StoryAudioEffectPreset::VoicePolish => Some("voice polish"),
+        StoryAudioEffectPreset::Radio => Some("radio"),
+        StoryAudioEffectPreset::WarmRoom => Some("warm room"),
+    };
+    let suffix = match effect_label {
+        Some(effect_label) => format!(
+            "processed {}x {} {}",
+            format_story_playback_rate(playback_rate),
+            format_story_sample_rate(sample_rate_hz),
+            effect_label
+        ),
+        None => format!(
+            "processed {}x {}",
+            format_story_playback_rate(playback_rate),
+            format_story_sample_rate(sample_rate_hz)
+        ),
+    };
+    format!("{} ({})", story_title_label(title), suffix)
 }
 
 fn format_story_playback_rate(value: f32) -> String {
@@ -1266,6 +1529,176 @@ fn normalize_story_samples(samples: &mut [f32]) {
         for sample in samples {
             *sample *= scale;
         }
+    }
+}
+
+fn story_line_hash(_line_number: u32, line: &StoryScriptLine, preset: &TtsVoicePreset) -> String {
+    let payload = serde_json::json!({
+        "sample_rate": STORY_SAMPLE_RATE,
+        "speaker": line.speaker,
+        "text": line.text,
+        "provider_id": preset.provider_id,
+        "model_id": preset.model_id,
+        "voice_id": preset.voice_id,
+        "voice_profile_id": preset.voice_profile_id,
+        "locale": preset.locale_snapshot,
+        "tuning": preset.tuning,
+    });
+    let mut hasher = Sha256::new();
+    hasher.update(payload.to_string().as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn waveform_peaks(samples: &[f32], peak_count: usize) -> Vec<f32> {
+    if samples.is_empty() || peak_count == 0 {
+        return Vec::new();
+    }
+    let chunk_len = samples.len().div_ceil(peak_count).max(1);
+    samples
+        .chunks(chunk_len)
+        .map(|chunk| {
+            chunk
+                .iter()
+                .fold(0.0_f32, |peak, sample| peak.max(sample.abs()))
+                .min(1.0)
+        })
+        .collect()
+}
+
+fn apply_story_audio_effect(samples: &mut [f32], sample_rate: u32, effect: StoryAudioEffectPreset) {
+    if samples.is_empty() {
+        return;
+    }
+    match effect {
+        StoryAudioEffectPreset::Clean => {}
+        StoryAudioEffectPreset::VoicePolish => {
+            apply_biquad(samples, Biquad::high_pass(sample_rate as f32, 90.0, 0.707));
+            apply_soft_knee_compressor(samples, 0.32, 0.16, 2.8, 1.18);
+            apply_limiter(samples, 0.94);
+        }
+        StoryAudioEffectPreset::Radio => {
+            apply_biquad(samples, Biquad::high_pass(sample_rate as f32, 180.0, 0.707));
+            apply_biquad(
+                samples,
+                Biquad::low_pass(sample_rate as f32, 3_800.0, 0.707),
+            );
+            apply_soft_knee_compressor(samples, 0.22, 0.18, 4.2, 1.35);
+            apply_limiter(samples, 0.92);
+        }
+        StoryAudioEffectPreset::WarmRoom => {
+            apply_biquad(samples, Biquad::high_pass(sample_rate as f32, 75.0, 0.707));
+            apply_soft_knee_compressor(samples, 0.34, 0.18, 2.3, 1.12);
+            apply_short_room_tail(samples, sample_rate, 0.11);
+            apply_limiter(samples, 0.94);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Biquad {
+    b0: f32,
+    b1: f32,
+    b2: f32,
+    a1: f32,
+    a2: f32,
+}
+
+impl Biquad {
+    fn high_pass(sample_rate: f32, cutoff_hz: f32, q: f32) -> Self {
+        let omega = 2.0 * std::f32::consts::PI * cutoff_hz / sample_rate;
+        let cos_omega = omega.cos();
+        let alpha = omega.sin() / (2.0 * q);
+        let b0 = (1.0 + cos_omega) / 2.0;
+        let b1 = -(1.0 + cos_omega);
+        let b2 = (1.0 + cos_omega) / 2.0;
+        let a0 = 1.0 + alpha;
+        let a1 = -2.0 * cos_omega;
+        let a2 = 1.0 - alpha;
+        Self::normalized(b0, b1, b2, a0, a1, a2)
+    }
+
+    fn low_pass(sample_rate: f32, cutoff_hz: f32, q: f32) -> Self {
+        let omega = 2.0 * std::f32::consts::PI * cutoff_hz / sample_rate;
+        let cos_omega = omega.cos();
+        let alpha = omega.sin() / (2.0 * q);
+        let b0 = (1.0 - cos_omega) / 2.0;
+        let b1 = 1.0 - cos_omega;
+        let b2 = (1.0 - cos_omega) / 2.0;
+        let a0 = 1.0 + alpha;
+        let a1 = -2.0 * cos_omega;
+        let a2 = 1.0 - alpha;
+        Self::normalized(b0, b1, b2, a0, a1, a2)
+    }
+
+    fn normalized(b0: f32, b1: f32, b2: f32, a0: f32, a1: f32, a2: f32) -> Self {
+        Self {
+            b0: b0 / a0,
+            b1: b1 / a0,
+            b2: b2 / a0,
+            a1: a1 / a0,
+            a2: a2 / a0,
+        }
+    }
+}
+
+fn apply_biquad(samples: &mut [f32], filter: Biquad) {
+    let mut x1 = 0.0;
+    let mut x2 = 0.0;
+    let mut y1 = 0.0;
+    let mut y2 = 0.0;
+    for sample in samples {
+        let x0 = *sample;
+        let y0 = filter.b0 * x0 + filter.b1 * x1 + filter.b2 * x2 - filter.a1 * y1 - filter.a2 * y2;
+        *sample = y0;
+        x2 = x1;
+        x1 = x0;
+        y2 = y1;
+        y1 = y0;
+    }
+}
+
+fn apply_soft_knee_compressor(
+    samples: &mut [f32],
+    threshold: f32,
+    knee_width: f32,
+    ratio: f32,
+    makeup_gain: f32,
+) {
+    let half_knee = knee_width / 2.0;
+    for sample in samples {
+        let input = *sample;
+        let level = input.abs();
+        let compressed = if level <= threshold - half_knee {
+            level
+        } else if level >= threshold + half_knee {
+            threshold + (level - threshold) / ratio
+        } else {
+            let x = level - (threshold - half_knee);
+            level + ((1.0 / ratio - 1.0) * x * x) / (2.0 * knee_width.max(0.001))
+        };
+        *sample = input.signum() * compressed * makeup_gain;
+    }
+}
+
+fn apply_limiter(samples: &mut [f32], ceiling: f32) {
+    for sample in samples {
+        *sample = (*sample).clamp(-ceiling, ceiling);
+    }
+}
+
+fn apply_short_room_tail(samples: &mut [f32], sample_rate: u32, wet: f32) {
+    let delay_a = (sample_rate as f32 * 0.021).round() as usize;
+    let delay_b = (sample_rate as f32 * 0.047).round() as usize;
+    let original = samples.to_vec();
+    for index in 0..samples.len() {
+        let mut tail = 0.0;
+        if index >= delay_a {
+            tail += original[index - delay_a] * 0.55;
+        }
+        if index >= delay_b {
+            tail += original[index - delay_b] * 0.28;
+        }
+        samples[index] = original[index] * (1.0 - wet) + tail * wet;
     }
 }
 
@@ -1596,10 +2029,12 @@ mod tests {
         StoryRenderJob {
             request: StoryRenderRequest {
                 render_id: render_id.to_string(),
+                project_id: None,
                 title: render_id.to_string(),
                 cast: Vec::new(),
                 script_text: String::new(),
                 pause_ms_between_lines: 0,
+                audio_effect: StoryAudioEffectPreset::Clean,
                 line_instructions: Vec::new(),
             },
             stop_flag: Arc::new(AtomicBool::new(false)),
@@ -1617,10 +2052,12 @@ mod tests {
     fn test_audio_item(id: &str, created_at_ms: i64, starred: bool) -> StoryAudioItem {
         StoryAudioItem {
             id: id.to_string(),
+            project_id: None,
             title: id.to_string(),
             script_text: String::new(),
             line_instructions: Vec::new(),
             output_path: format!("{id}.wav"),
+            clips_path: None,
             created_at_ms,
             duration_ms: 0,
             line_count: 0,
@@ -1629,6 +2066,7 @@ mod tests {
             sample_rate_hz: STORY_SAMPLE_RATE,
             expression_tags_used: false,
             inline_prompt_used: false,
+            audio_effect: StoryAudioEffectPreset::Clean,
             starred,
         }
     }

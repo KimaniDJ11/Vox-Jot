@@ -1152,6 +1152,10 @@ pub fn is_known_tts_model_id(id: &str) -> bool {
             .any(|d| d.model_id == id)
 }
 
+pub fn retired_tts_model_ids() -> &'static [&'static str] {
+    RETIRED_TTS_MODEL_IDS
+}
+
 pub fn is_known_tts_provider_id(id: &str) -> bool {
     matches!(
         id,

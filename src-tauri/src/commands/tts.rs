@@ -255,7 +255,16 @@ pub fn remove_tts_pack(app: AppHandle, pack_id: String) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 pub fn list_tts_voice_presets(app: AppHandle) -> Result<Vec<TtsVoicePreset>, String> {
-    let settings = get_settings(&app);
+    let mut settings = get_settings(&app);
+    let profiles = list_voice_profiles(&app)?;
+    let removed_presets = settings.delete_tts_presets_for_missing_profiles(
+        profiles.iter().map(|profile| profile.id.as_str()),
+    );
+    let removed_retired_presets =
+        settings.delete_tts_presets_for_models(crate::tts::retired_tts_model_ids().iter().copied());
+    if removed_presets > 0 || removed_retired_presets > 0 {
+        write_settings(&app, settings.clone());
+    }
     Ok(settings.tts_voice_presets)
 }
 

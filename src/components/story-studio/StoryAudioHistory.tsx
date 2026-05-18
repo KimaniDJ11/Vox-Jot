@@ -34,9 +34,11 @@ import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
 
 export interface StoryAudioItem {
   id: string;
+  project_id?: string | null;
   title: string;
   script_text: string;
   output_path: string;
+  clips_path?: string | null;
   created_at_ms: number;
   duration_ms: number;
   line_count: number;
@@ -45,7 +47,37 @@ export interface StoryAudioItem {
   sample_rate_hz?: number;
   expression_tags_used?: boolean;
   inline_prompt_used?: boolean;
+  audio_effect?: StoryAudioEffectPreset;
   starred: boolean;
+}
+
+type StoryAudioEffectPreset =
+  | "clean"
+  | "voice_polish"
+  | "radio"
+  | "warm_room";
+
+interface StoryClipMetadata {
+  id: string;
+  line_number: number;
+  speaker: string;
+  text: string;
+  hash: string;
+  file_path: string;
+  duration_ms: number;
+  offset_ms: number;
+  waveform_peaks: number[];
+}
+
+interface StoryProjectMetadata {
+  project_id: string;
+  render_id: string;
+  title: string;
+  output_path: string;
+  pause_ms_between_lines: number;
+  audio_effect: StoryAudioEffectPreset;
+  sample_rate_hz: number;
+  clips: StoryClipMetadata[];
 }
 
 type StoryRenderJobStatus =
@@ -88,6 +120,7 @@ interface StoryAudioHistoryProps {
     item: StoryAudioItem,
     playbackRate: number,
     sampleRateHz: number,
+    audioEffect: StoryAudioEffectPreset,
   ) => Promise<void>;
 }
 
@@ -109,6 +142,12 @@ const storyMetaSeparatorClassName =
 
 const playbackRateOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const fixedSampleRateOptions = [16_000, 24_000, 44_100, 48_000];
+const storyAudioEffectOptions: StoryAudioEffectPreset[] = [
+  "clean",
+  "voice_polish",
+  "radio",
+  "warm_room",
+];
 const storyExpressionTokenPattern = /(\[[^\]\n]{1,80}\]|\([^()\n]{1,80}\))/g;
 
 export const StoryAudioHistory: React.FC<StoryAudioHistoryProps> = ({
@@ -450,6 +489,7 @@ export const StoryAudioSidebar: React.FC = () => {
       item: StoryAudioItem,
       playbackRate: number,
       sampleRateHz: number,
+      audioEffect: StoryAudioEffectPreset,
     ) => {
       try {
         const processed = await invoke<StoryAudioItem>(
@@ -459,6 +499,7 @@ export const StoryAudioSidebar: React.FC = () => {
               id: item.id,
               playback_rate: playbackRate,
               sample_rate_hz: sampleRateHz,
+              audio_effect: audioEffect,
             },
           },
         );
@@ -710,6 +751,11 @@ const StoryAudioMetaLine: React.FC<{ item: StoryAudioItem }> = ({ item }) => {
   if (typeof item.sample_rate_hz === "number" && item.sample_rate_hz > 0) {
     parts.push(<span key="sr">{formatSampleRate(item.sample_rate_hz)}</span>);
   }
+  if (item.audio_effect && item.audio_effect !== "clean") {
+    parts.push(
+      <span key="effect">{formatStoryAudioEffect(item.audio_effect)}</span>,
+    );
+  }
   parts.push(
     <span
       key="script"
@@ -764,6 +810,7 @@ const StoryAudioPlayerView: React.FC<{
     item: StoryAudioItem,
     playbackRate: number,
     sampleRateHz: number,
+    audioEffect: StoryAudioEffectPreset,
   ) => Promise<void>;
 }> = ({
   item,
@@ -782,6 +829,9 @@ const StoryAudioPlayerView: React.FC<{
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [sampleRateHz, setSampleRateHz] = useState(24_000);
+  const [audioEffect, setAudioEffect] = useState<StoryAudioEffectPreset>(
+    item?.audio_effect ?? "clean",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -795,13 +845,14 @@ const StoryAudioPlayerView: React.FC<{
     setIsPlaying(false);
     setPlaybackRate(1);
     setSampleRateHz(item?.sample_rate_hz || 24_000);
+    setAudioEffect(item?.audio_effect ?? "clean");
     setAudioSrc((currentSrc) => {
       if (currentSrc?.startsWith("blob:")) {
         URL.revokeObjectURL(currentSrc);
       }
       return null;
     });
-  }, [item?.id, item?.sample_rate_hz, item?.duration_ms]);
+  }, [item?.id, item?.sample_rate_hz, item?.duration_ms, item?.audio_effect]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -891,7 +942,7 @@ const StoryAudioPlayerView: React.FC<{
     if (!item || isSaving) return;
     setIsSaving(true);
     try {
-      await onCreateProcessed(item, playbackRate, sampleRateHz);
+      await onCreateProcessed(item, playbackRate, sampleRateHz, audioEffect);
     } finally {
       setIsSaving(false);
     }
@@ -948,6 +999,17 @@ const StoryAudioPlayerView: React.FC<{
       onTouchEnd={handleTouchEnd}
     >
       <div className="min-h-[16rem] flex-1 overflow-y-auto px-1 py-1">
+        <StoryClipTimeline
+          item={item}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={(seconds) => {
+            setCurrentTime(seconds);
+            if (audioRef.current) {
+              audioRef.current.currentTime = seconds;
+            }
+          }}
+        />
         {hasScript ? (
           <pre className="whitespace-pre-wrap break-words font-[var(--font-body)] text-[17px] font-medium leading-8 text-[var(--text)]">
             {renderStoryScriptText(item.script_text)}
@@ -970,6 +1032,7 @@ const StoryAudioPlayerView: React.FC<{
         progressPercent={progressPercent}
         playbackRate={playbackRate}
         sampleRateHz={sampleRateHz}
+        audioEffect={audioEffect}
         sampleRateOptions={sampleRateOptions}
         isSaving={isSaving}
         previousItem={previousItem}
@@ -978,6 +1041,7 @@ const StoryAudioPlayerView: React.FC<{
         onScrub={handleScrub}
         onChangePlaybackRate={setPlaybackRate}
         onChangeSampleRate={setSampleRateHz}
+        onChangeAudioEffect={setAudioEffect}
         onSelectAudio={onSelectAudio}
         onReveal={onReveal}
         onRenameTitle={onRename}
@@ -1008,6 +1072,7 @@ interface DockedStoryAudioPlayerProps {
   progressPercent: number;
   playbackRate: number;
   sampleRateHz: number;
+  audioEffect: StoryAudioEffectPreset;
   sampleRateOptions: number[];
   isSaving: boolean;
   previousItem: StoryAudioItem | null;
@@ -1016,6 +1081,7 @@ interface DockedStoryAudioPlayerProps {
   onScrub: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onChangePlaybackRate: (value: number) => void;
   onChangeSampleRate: (value: number) => void;
+  onChangeAudioEffect: (value: StoryAudioEffectPreset) => void;
   onSelectAudio: (item: StoryAudioItem, openPlayer?: boolean) => void;
   onReveal: (item: StoryAudioItem) => void;
   onRenameTitle: (item: StoryAudioItem, title: string) => Promise<void>;
@@ -1056,6 +1122,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   progressPercent,
   playbackRate,
   sampleRateHz,
+  audioEffect,
   sampleRateOptions,
   isSaving,
   previousItem,
@@ -1064,6 +1131,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   onScrub,
   onChangePlaybackRate,
   onChangeSampleRate,
+  onChangeAudioEffect,
   onSelectAudio,
   onReveal,
   onRenameTitle,
@@ -1195,6 +1263,14 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
               ·
             </span>
             <span>{formatSampleRate(item.sample_rate_hz || 24_000)}</span>
+            {item.audio_effect && item.audio_effect !== "clean" ? (
+              <>
+                <span aria-hidden className={storyMetaSeparatorClassName}>
+                  ·
+                </span>
+                <span>{formatStoryAudioEffect(item.audio_effect)}</span>
+              </>
+            ) : null}
             {item.line_count > 0 ? (
               <>
                 <span aria-hidden className={storyMetaSeparatorClassName}>
@@ -1292,7 +1368,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* Bottom control row: speed, sample rate, save */}
+      {/* Bottom control row: speed, sample rate, effect, save */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
           <span>{t("storyAudio.controls.speed")}</span>
@@ -1300,6 +1376,15 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
             value={playbackRate}
             options={playbackRateOptions}
             onChange={onChangePlaybackRate}
+          />
+        </div>
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+          <span>
+            {t("storyAudio.controls.effect", { defaultValue: "Effect" })}
+          </span>
+          <StoryAudioEffectPopover
+            value={audioEffect}
+            onChange={onChangeAudioEffect}
           />
         </div>
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
@@ -1387,6 +1472,436 @@ const SampleRatePopover: React.FC<{
         );
       })}
     </div>
+  );
+};
+
+const StoryAudioEffectPopover: React.FC<{
+  value: StoryAudioEffectPreset;
+  onChange: (value: StoryAudioEffectPreset) => void;
+}> = ({ value, onChange }) => {
+  return (
+    <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--bg)] p-0.5">
+      {storyAudioEffectOptions.map((option) => {
+        const isActive = option === value;
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            aria-pressed={isActive}
+            className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold normal-case tracking-normal transition-colors ${
+              isActive
+                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
+                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+            }`}
+            title={`Save with ${formatStoryAudioEffect(option)}`}
+          >
+            {formatStoryAudioEffect(option)}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+const StoryClipTimeline: React.FC<{
+  item: StoryAudioItem;
+  currentTime: number;
+  duration: number;
+  onSeek: (seconds: number) => void;
+}> = ({ item, currentTime, duration, onSeek }) => {
+  const { t } = useTranslation();
+  const [metadata, setMetadata] = useState<StoryProjectMetadata | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [offsetAdjustments, setOffsetAdjustments] = useState<
+    Record<string, number>
+  >({});
+  const [durationAdjustments, setDurationAdjustments] = useState<
+    Record<string, number>
+  >({});
+  const dragRef = useRef<{
+    clipId: string;
+    startX: number;
+    startOffset: number;
+    timelineMs: number;
+    mode: "move" | "resize";
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMetadata(null);
+    setLoadError(null);
+    setSelectedClipId(null);
+    setOffsetAdjustments({});
+    setDurationAdjustments({});
+
+    if (!item.clips_path) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const fileData = await readFile(item.clips_path ?? "");
+        const parsed = JSON.parse(
+          new TextDecoder().decode(fileData),
+        ) as StoryProjectMetadata;
+        if (cancelled) return;
+        const clips = [...(parsed.clips ?? [])].sort(
+          (left, right) =>
+            left.offset_ms - right.offset_ms || left.line_number - right.line_number,
+        );
+        setMetadata({ ...parsed, clips });
+        setSelectedClipId(clips[0]?.id ?? null);
+      } catch (error) {
+        console.error("Failed to load story clip timeline:", error);
+        if (!cancelled) {
+          setLoadError(
+            t("storyAudio.timelineLoadError", {
+              defaultValue: "Clip timeline unavailable.",
+            }),
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.clips_path, item.id, t]);
+
+  const clips = metadata?.clips ?? [];
+  const timelineMs = Math.max(
+    item.duration_ms,
+    Math.round(duration * 1000),
+    ...clips.map((clip) => clip.offset_ms + clip.duration_ms),
+    1,
+  );
+  const selectedIndex = clips.findIndex((clip) => clip.id === selectedClipId);
+  const selectedClip = selectedIndex >= 0 ? clips[selectedIndex] : null;
+
+  const getAdjustedOffset = useCallback(
+    (clip: StoryClipMetadata) =>
+      Math.max(0, clip.offset_ms + (offsetAdjustments[clip.id] ?? 0)),
+    [offsetAdjustments],
+  );
+  const getAdjustedDuration = useCallback(
+    (clip: StoryClipMetadata) =>
+      Math.max(250, clip.duration_ms + (durationAdjustments[clip.id] ?? 0)),
+    [durationAdjustments],
+  );
+
+  const selectClip = useCallback(
+    (clip: StoryClipMetadata) => {
+      setSelectedClipId(clip.id);
+      onSeek(getAdjustedOffset(clip) / 1000);
+    },
+    [getAdjustedOffset, onSeek],
+  );
+
+  const selectByDelta = useCallback(
+    (delta: number) => {
+      if (clips.length === 0) return;
+      const currentIndex = Math.max(0, selectedIndex);
+      const nextIndex = Math.min(
+        clips.length - 1,
+        Math.max(0, currentIndex + delta),
+      );
+      selectClip(clips[nextIndex]);
+    },
+    [clips, selectClip, selectedIndex],
+  );
+
+  const nudgeSelected = useCallback(
+    (deltaMs: number) => {
+      if (!selectedClip) return;
+      setOffsetAdjustments((current) => ({
+        ...current,
+        [selectedClip.id]: Math.max(
+          -selectedClip.offset_ms,
+          (current[selectedClip.id] ?? 0) + deltaMs,
+        ),
+      }));
+    },
+    [selectedClip],
+  );
+
+  const resizeSelected = useCallback(
+    (deltaMs: number) => {
+      if (!selectedClip) return;
+      setDurationAdjustments((current) => ({
+        ...current,
+        [selectedClip.id]: Math.max(
+          250 - selectedClip.duration_ms,
+          (current[selectedClip.id] ?? 0) + deltaMs,
+        ),
+      }));
+    },
+    [selectedClip],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const target = event.currentTarget;
+      const width = target.getBoundingClientRect().width;
+      if (width <= 0) return;
+      const deltaMs = Math.round(
+        ((event.clientX - drag.startX) / width) * drag.timelineMs,
+      );
+      if (drag.mode === "resize") {
+        setDurationAdjustments((current) => ({
+          ...current,
+          [drag.clipId]: drag.startOffset + deltaMs,
+        }));
+      } else {
+        setOffsetAdjustments((current) => ({
+          ...current,
+          [drag.clipId]: drag.startOffset + deltaMs,
+        }));
+      }
+    },
+    [],
+  );
+
+  const stopDragging = useCallback(() => {
+    dragRef.current = null;
+  }, []);
+
+  if (!item.clips_path && !metadata) {
+    return null;
+  }
+
+  if (loadError) {
+    return (
+      <p className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm font-medium text-[var(--muted)]">
+        {loadError}
+      </p>
+    );
+  }
+
+  if (clips.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      className="mb-4 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--input)] p-3"
+      aria-label={t("storyAudio.clipTimelineAriaLabel", {
+        defaultValue: "Story clip timeline",
+      })}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+          {t("storyAudio.clipTimelineTitle", {
+            defaultValue: "Clips",
+          })}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => nudgeSelected(-100)}
+            disabled={!selectedClip}
+            className={historyActionButtonClassName}
+            title={t("storyAudio.controls.nudgeEarlier", {
+              defaultValue: "Nudge earlier",
+            })}
+            aria-label={t("storyAudio.controls.nudgeEarlier", {
+              defaultValue: "Nudge earlier",
+            })}
+          >
+            <Rewind width={14} height={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => nudgeSelected(100)}
+            disabled={!selectedClip}
+            className={historyActionButtonClassName}
+            title={t("storyAudio.controls.nudgeLater", {
+              defaultValue: "Nudge later",
+            })}
+            aria-label={t("storyAudio.controls.nudgeLater", {
+              defaultValue: "Nudge later",
+            })}
+          >
+            <Forward width={14} height={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => resizeSelected(-100)}
+            disabled={!selectedClip}
+            className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
+            title={t("storyAudio.controls.shortenClip", {
+              defaultValue: "Shorten clip preview",
+            })}
+            aria-label={t("storyAudio.controls.shortenClip", {
+              defaultValue: "Shorten clip preview",
+            })}
+          >
+            -100
+          </button>
+          <button
+            type="button"
+            onClick={() => resizeSelected(100)}
+            disabled={!selectedClip}
+            className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-transparent px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
+            title={t("storyAudio.controls.lengthenClip", {
+              defaultValue: "Lengthen clip preview",
+            })}
+            aria-label={t("storyAudio.controls.lengthenClip", {
+              defaultValue: "Lengthen clip preview",
+            })}
+          >
+            +100
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="relative h-24 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel-bg)]"
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+      >
+        <div
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-px bg-[var(--accent)] opacity-80"
+          style={{
+            left: `${Math.min(
+              100,
+              Math.max(0, (currentTime * 1000 * 100) / timelineMs),
+            )}%`,
+          }}
+        />
+        {clips.map((clip, index) => {
+          const adjustedOffset = getAdjustedOffset(clip);
+          const adjustedDuration = getAdjustedDuration(clip);
+          const left = (adjustedOffset / timelineMs) * 100;
+          const width = Math.max(3, (adjustedDuration / timelineMs) * 100);
+          const isSelected = clip.id === selectedClipId;
+          return (
+            <div
+              key={clip.id}
+              className="absolute top-2 h-20 min-w-14"
+              style={{ left: `${left}%`, width: `${width}%` }}
+            >
+              <button
+                type="button"
+                onClick={() => selectClip(clip)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    selectByDelta(1);
+                  } else if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    selectByDelta(-1);
+                  }
+                }}
+                onPointerDown={(event) => {
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setSelectedClipId(clip.id);
+                  dragRef.current = {
+                    clipId: clip.id,
+                    startX: event.clientX,
+                    startOffset: offsetAdjustments[clip.id] ?? 0,
+                    timelineMs,
+                    mode: "move",
+                  };
+                }}
+                className={`relative h-full w-full overflow-hidden rounded-lg border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] ${
+                  isSelected
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                    : "border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-bg),var(--accent-soft)_20%)] hover:border-[color-mix(in_srgb,var(--accent),transparent_45%)]"
+                }`}
+                aria-label={t("storyAudio.clipAriaLabel", {
+                  defaultValue:
+                    "Clip {{line}} {{speaker}}, starts at {{time}}",
+                  line: clip.line_number,
+                  speaker: clip.speaker,
+                  time: formatDuration(adjustedOffset),
+                })}
+                aria-pressed={isSelected}
+              >
+                <span className="flex h-6 min-w-0 items-center gap-1 border-b border-[var(--border)] px-2 text-[10px] font-semibold text-[var(--text)]">
+                  <span className="truncate">{clip.speaker}</span>
+                  <span className="ml-auto shrink-0 tabular-nums text-[var(--muted)]">
+                    {index + 1}
+                  </span>
+                </span>
+                <ClipWaveCanvas
+                  peaks={clip.waveform_peaks}
+                  selected={isSelected}
+                />
+                <span
+                  aria-hidden
+                  className="absolute inset-y-2 right-0 w-2 cursor-ew-resize rounded-full bg-[color-mix(in_srgb,var(--accent),transparent_55%)]"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    setSelectedClipId(clip.id);
+                    dragRef.current = {
+                      clipId: clip.id,
+                      startX: event.clientX,
+                      startOffset: durationAdjustments[clip.id] ?? 0,
+                      timelineMs,
+                      mode: "resize",
+                    };
+                  }}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
+const ClipWaveCanvas: React.FC<{
+  peaks: number[];
+  selected: boolean;
+}> = ({ peaks, selected }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const pixelRatio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * pixelRatio));
+    const height = Math.max(1, Math.round(rect.height * pixelRatio));
+    canvas.width = width;
+    canvas.height = height;
+    context.clearRect(0, 0, width, height);
+    context.strokeStyle = selected ? "var(--accent)" : "var(--muted)";
+    context.globalAlpha = selected ? 0.95 : 0.7;
+    context.lineWidth = Math.max(1, pixelRatio);
+    const centerY = height / 2;
+    const usableHeight = height * 0.72;
+    const safePeaks = peaks.length > 0 ? peaks : [0.2, 0.45, 0.3, 0.5];
+    for (let x = 0; x < width; x += Math.max(1, Math.round(pixelRatio))) {
+      const index = Math.min(
+        safePeaks.length - 1,
+        Math.floor((x / width) * safePeaks.length),
+      );
+      const peak = Math.min(1, Math.max(0.04, Math.abs(safePeaks[index])));
+      const half = peak * usableHeight * 0.5;
+      context.beginPath();
+      context.moveTo(x, centerY - half);
+      context.lineTo(x, centerY + half);
+      context.stroke();
+    }
+  }, [peaks, selected]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="block h-[calc(100%-1.5rem)] w-full"
+      aria-hidden
+    />
   );
 };
 
@@ -1798,6 +2313,20 @@ function formatSampleRate(sampleRateHz: number): string {
 
 function formatPlaybackRate(playbackRate: number): string {
   return `${playbackRate}x`;
+}
+
+function formatStoryAudioEffect(effect: StoryAudioEffectPreset): string {
+  switch (effect) {
+    case "voice_polish":
+      return "Voice Polish";
+    case "radio":
+      return "Radio";
+    case "warm_room":
+      return "Warm Room";
+    case "clean":
+    default:
+      return "Clean";
+  }
 }
 
 function sortStoryAudioItems(items: StoryAudioItem[]): StoryAudioItem[] {

@@ -21,6 +21,8 @@ const HEALTH_UNKNOWN: u8 = 0;
 const HEALTH_NONE: u8 = 1;
 const HEALTH_LEGACY: u8 = 2;
 const HEALTH_MLX: u8 = 3;
+const SPEECH_RUNTIME_HEALTH_ATTEMPTS: usize = 120;
+const MLX_AUDIO_HEALTH_ATTEMPTS: usize = 60;
 
 fn health_client() -> &'static reqwest::blocking::Client {
     // Reuse a single blocking client: builds TLS/connection pool once so
@@ -191,9 +193,17 @@ impl SidecarManager {
     }
 
     fn repo_runtime_path(&self) -> Option<PathBuf> {
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let repo_root = manifest_dir.parent()?;
-        Self::normalize_runtime_root(&repo_root.join("speech-runtime"))
+        #[cfg(not(debug_assertions))]
+        {
+            None
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let repo_root = manifest_dir.parent()?;
+            Self::normalize_runtime_root(&repo_root.join("speech-runtime"))
+        }
     }
 
     pub fn runtime_python_path(runtime_root: &Path) -> Option<PathBuf> {
@@ -240,10 +250,9 @@ impl SidecarManager {
             }
         }
 
-        // Prefer the repository checkout (next to `src-tauri`) before the managed install so
-        // `cargo run` / dev builds pick up local `speech-runtime` changes. Release bundles
-        // bake a compile-time path that typically does not exist on end-user machines, so
-        // `repo_runtime_path` is None there and the managed runtime is used.
+        // Prefer the repository checkout in debug builds only so `cargo run`
+        // picks up local `speech-runtime` changes. Release bundles must not
+        // depend on the compile-machine checkout path.
         if let Some(runtime_root) = self.repo_runtime_path() {
             return Some(runtime_root);
         }
@@ -439,9 +448,12 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_runtime_probe("Speech runtime", HEALTH_LEGACY, 20, |manager| {
-            manager.is_speech_runtime_running()
-        })
+        self.wait_for_runtime_probe(
+            "Speech runtime",
+            HEALTH_LEGACY,
+            SPEECH_RUNTIME_HEALTH_ATTEMPTS,
+            |manager| manager.is_speech_runtime_running(),
+        )
     }
 
     fn ensure_mlx_audio_running(&self) -> Result<(), String> {
@@ -472,9 +484,12 @@ impl SidecarManager {
             *guard = Some(child);
         }
 
-        self.wait_for_runtime_probe("mlx-audio sidecar", HEALTH_MLX, 60, |manager| {
-            manager.is_mlx_audio_running()
-        })
+        self.wait_for_runtime_probe(
+            "mlx-audio sidecar",
+            HEALTH_MLX,
+            MLX_AUDIO_HEALTH_ATTEMPTS,
+            |manager| manager.is_mlx_audio_running(),
+        )
     }
 
     fn wait_for_runtime_probe<F>(

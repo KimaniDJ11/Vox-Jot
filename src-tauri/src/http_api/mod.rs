@@ -52,8 +52,8 @@ const MAX_TRANSCRIBE_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
 const API_TOKEN_HEADER: &str = "x-vox-jot-api-token";
 
 #[derive(Clone)]
-struct ApiState {
-    app: AppHandle,
+pub(crate) struct ApiState {
+    pub(crate) app: AppHandle,
 }
 
 #[derive(Serialize)]
@@ -153,6 +153,7 @@ impl HttpApiManager {
             .route("/v1/speak", post(handle_speak))
             .route("/v1/tts/profiles", get(handle_tts_profiles))
             .route("/v1/transcribe", post(handle_transcribe))
+            .route("/mcp", post(crate::mcp::handle_mcp))
             .layer(DefaultBodyLimit::max(MAX_TRANSCRIBE_UPLOAD_BYTES))
             .with_state(state);
 
@@ -592,7 +593,7 @@ async fn handle_transcribe(
     }
 }
 
-fn require_api_token(
+pub(crate) fn require_api_token(
     app: &AppHandle,
     headers: &HeaderMap,
 ) -> Result<(), Box<axum::response::Response>> {
@@ -637,7 +638,7 @@ fn require_api_token(
     ))
 }
 
-fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
+pub(crate) fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
     let cursor = Cursor::new(bytes);
     let mut reader = hound::WavReader::new(cursor).map_err(|e| format!("WavReader: {}", e))?;
     let spec = reader.spec();

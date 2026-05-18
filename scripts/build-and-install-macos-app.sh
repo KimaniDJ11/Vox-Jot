@@ -160,6 +160,47 @@ notarize_built_app() {
   /usr/sbin/spctl -a -t execute -vv "${BUILT_APP_PATH}"
 }
 
+terminate_vox_jot_sidecars() {
+  local pids=()
+  local pid command cwd
+
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    command="$(/bin/ps -p "${pid}" -ww -o command= 2>/dev/null || true)"
+    cwd="$(/usr/sbin/lsof -a -p "${pid}" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p' | /usr/bin/head -n 1)"
+
+    case "${command}" in
+      *"mlx_audio.server"*|*"-m runtime.app"*|*"runtime/engine_worker.py"*)
+        if [[ "${cwd}" == *"/Vox Jot/"* ]] || [[ "${cwd}" == *"/com.iriedinamik.voxjot/"* ]] || [[ "${command}" == *"/com.iriedinamik.voxjot/"* ]]; then
+          pids+=("${pid}")
+        fi
+        ;;
+    esac
+  done < <(/usr/bin/pgrep -f "mlx_audio.server|-m runtime.app|runtime/engine_worker.py" 2>/dev/null || true)
+
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    return
+  fi
+
+  echo "Stopping Vox Jot speech sidecars: ${pids[*]}"
+  /bin/kill "${pids[@]}" >/dev/null 2>&1 || true
+
+  for _ in {1..10}; do
+    local still_running=()
+    for pid in "${pids[@]}"; do
+      if /bin/kill -0 "${pid}" >/dev/null 2>&1; then
+        still_running+=("${pid}")
+      fi
+    done
+    if [[ "${#still_running[@]}" -eq 0 ]]; then
+      return
+    fi
+    /bin/sleep 1
+  done
+
+  /bin/kill -9 "${pids[@]}" >/dev/null 2>&1 || true
+}
+
 ensure_notary_credentials
 resolve_signing_identity
 export APPLE_SIGNING_IDENTITY="${SIGNING_IDENTITY}"
@@ -167,6 +208,7 @@ export APPLE_SIGNING_IDENTITY="${SIGNING_IDENTITY}"
 echo "Closing running ${APP_NAME} instances..."
 /usr/bin/osascript -e "tell application \"${APP_NAME}\" to quit" >/dev/null 2>&1 || true
 /usr/bin/pkill -x "vox_jot" >/dev/null 2>&1 || true
+terminate_vox_jot_sidecars
 
 for _ in {1..20}; do
   if ! /usr/bin/pgrep -x "vox_jot" >/dev/null 2>&1; then

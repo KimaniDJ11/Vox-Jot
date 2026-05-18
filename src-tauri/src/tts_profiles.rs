@@ -256,8 +256,9 @@ pub fn delete_voice_profile(app_handle: &AppHandle, profile_id: &str) -> Result<
     }
 
     let mut settings = get_settings(app_handle);
-    if settings.selected_tts_profile_id.as_deref() == Some(profile_id) {
-        settings.selected_tts_profile_id = None;
+    let selected_deleted_profile = settings.selected_tts_profile_id.as_deref() == Some(profile_id);
+    let removed_presets = settings.delete_tts_presets_for_profile(profile_id);
+    if removed_presets > 0 || selected_deleted_profile {
         write_settings(app_handle, settings);
     }
 

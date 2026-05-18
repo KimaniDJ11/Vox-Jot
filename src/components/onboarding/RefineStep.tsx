@@ -8,7 +8,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 import OnboardingLayout from "./OnboardingLayout";
 
-const DEFAULT_REFINE_MODEL_ID = "qwen2.5:0.5b";
+const FALLBACK_REFINE_MODEL_ID = "smollm2:135m";
 
 interface RefineStepProps {
   onComplete: () => void;
@@ -16,10 +16,6 @@ interface RefineStepProps {
 }
 
 type Phase = "checking" | "idle" | "installing" | "pulling" | "ready";
-
-const matchesPulledModel = (installed: string[], modelId: string): boolean => {
-  return installed.some((m) => m === modelId);
-};
 
 const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   const { t } = useTranslation();
@@ -35,6 +31,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
     pullModel,
     startServe,
     loadRecommendedModels,
+    recommendedModels,
   } = useOllamaStore();
   const { setPostProcessProvider } = useSettingsStore();
 
@@ -47,29 +44,36 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   }, []);
 
   const installedModels = status?.models ?? [];
-  const hasDefaultModel = matchesPulledModel(
-    installedModels,
-    DEFAULT_REFINE_MODEL_ID,
+  const preferredRefineModelId = useMemo(
+    () =>
+      recommendedModels.find((model) => model.id === FALLBACK_REFINE_MODEL_ID)
+        ?.id ??
+      recommendedModels[0]?.id ??
+      FALLBACK_REFINE_MODEL_ID,
+    [recommendedModels],
   );
-  const isPullingDefault = pullingModels.has(DEFAULT_REFINE_MODEL_ID);
-  const defaultPullPercent = pullProgress[DEFAULT_REFINE_MODEL_ID] ?? 0;
+  const installedRefineModelId = installedModels[0] ?? null;
+  const refineModelId = installedRefineModelId ?? preferredRefineModelId;
+  const hasRefineModel = installedModels.length > 0;
+  const isPullingRefineModel = pullingModels.has(refineModelId);
+  const refinePullPercent = pullProgress[refineModelId] ?? 0;
 
   const phase: Phase = useMemo(() => {
     if (!status || isChecking) return "checking";
     if (isInstalling) return "installing";
-    if (isPullingDefault) return "pulling";
-    if (status?.installed && status.running && hasDefaultModel) return "ready";
+    if (isPullingRefineModel) return "pulling";
+    if (status?.installed && status.running && hasRefineModel) return "ready";
     return "idle";
-  }, [status, isChecking, isInstalling, isPullingDefault, hasDefaultModel]);
+  }, [status, isChecking, isInstalling, isPullingRefineModel, hasRefineModel]);
 
-  const finalizeAndContinue = async () => {
+  const finalizeAndContinue = async (modelId: string) => {
     if (autoFinishedRef.current) return;
     autoFinishedRef.current = true;
     try {
       await setPostProcessProvider("ollama");
       await invoke("change_post_process_model_setting", {
         providerId: "ollama",
-        model: DEFAULT_REFINE_MODEL_ID,
+        model: modelId,
       });
     } catch (e) {
       console.error("Failed to set default Refine provider/model:", e);
@@ -99,17 +103,18 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
       await loadRecommendedModels();
 
       const refreshed = await checkStatus();
-      if (matchesPulledModel(refreshed.models, DEFAULT_REFINE_MODEL_ID)) {
-        await finalizeAndContinue();
+      const installedModelId = refreshed.models[0] ?? null;
+      if (installedModelId) {
+        await finalizeAndContinue(installedModelId);
         return;
       }
 
-      const pulled = await pullModel(DEFAULT_REFINE_MODEL_ID);
+      const pulled = await pullModel(refineModelId);
       if (!pulled) {
         setError(t("onboarding.refine.errors.pullFailed"));
         return;
       }
-      await finalizeAndContinue();
+      await finalizeAndContinue(refineModelId);
     } catch (e) {
       console.error("Refine onboarding install failed:", e);
       toast.error(t("onboarding.refine.errors.installFailed"));
@@ -161,17 +166,17 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         <h1 className="ob-heading">{t("onboarding.refine.pulling.title")}</h1>
         <p className="ob-subtext">
           {t("onboarding.refine.pulling.description", {
-            model: DEFAULT_REFINE_MODEL_ID,
+            model: refineModelId,
           })}
         </p>
         <div className="mt-4">
           <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--ob-track,rgba(125,125,125,0.25))]">
             <div
               className="h-full rounded-full bg-[var(--ob-primary)] transition-all"
-              style={{ width: `${defaultPullPercent}%` }}
+              style={{ width: `${refinePullPercent}%` }}
             />
           </div>
-          <p className="ob-footnote mt-2">{defaultPullPercent}%</p>
+          <p className="ob-footnote mt-2">{refinePullPercent}%</p>
         </div>
       </>
     );
@@ -247,7 +252,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         <p className="ob-card-copy">
           {phase === "pulling"
             ? t("onboarding.refine.pulling.description", {
-                model: DEFAULT_REFINE_MODEL_ID,
+                model: refineModelId,
               })
             : phase === "installing"
               ? installProgress || t("onboarding.refine.installing.description")
@@ -282,7 +287,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
   return (
     <OnboardingLayout
       currentStep="refine"
-      onBack={isInstalling || isPullingDefault ? undefined : onBack}
+      onBack={isInstalling || isPullingRefineModel ? undefined : onBack}
       leftContent={leftContent}
       rightContent={rightVisual}
     />

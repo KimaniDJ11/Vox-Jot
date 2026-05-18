@@ -57,6 +57,7 @@ pub const TTS_MODEL_LOCAL_SIDECAR_DEFAULT_ID: &str = "local-sidecar-default";
 const POST_PROCESS_PROMPT_POLICY_VERSION: u32 = 6;
 const DEFAULT_POST_PROCESS_PROMPT_ID: &str = "default_improve_transcriptions_v2";
 const DEFAULT_POST_PROCESS_PROMPT_NAME: &str = "Improve Transcriptions";
+const LEGACY_OLLAMA_DEFAULT_MODEL_ID: &str = "qwen2.5:0.5b";
 
 pub fn default_tts_model_store_dir(app: &AppHandle) -> PathBuf {
     crate::storage_paths::tts_model_store_dir(app).unwrap_or_else(|_| {
@@ -1331,9 +1332,6 @@ pub(crate) fn default_model_for_provider(provider_id: &str) -> String {
     if provider_id == APPLE_INTELLIGENCE_PROVIDER_ID {
         return APPLE_INTELLIGENCE_DEFAULT_MODEL_ID.to_string();
     }
-    if provider_id == OLLAMA_PROVIDER_ID {
-        return "qwen2.5:0.5b".to_string();
-    }
     if provider_id == "groq" {
         return "llama-3.1-8b-instant".to_string();
     }
@@ -1437,6 +1435,15 @@ fn ensure_translation_defaults(settings: &mut AppSettings) -> bool {
                 settings
                     .translation_model_ids
                     .insert(provider_id, default_model);
+                changed = true;
+            }
+        }
+    }
+
+    if settings.translation_provider_id != OLLAMA_PROVIDER_ID || !settings.translation_enabled() {
+        if let Some(existing) = settings.translation_model_ids.get_mut(OLLAMA_PROVIDER_ID) {
+            if existing == LEGACY_OLLAMA_DEFAULT_MODEL_ID {
+                existing.clear();
                 changed = true;
             }
         }
@@ -1708,6 +1715,15 @@ fn ensure_post_process_defaults(settings: &mut AppSettings) -> bool {
                 .post_process_api_key_status
                 .insert(provider.id.clone(), false);
             changed = true;
+        }
+    }
+
+    if settings.post_process_provider_id != OLLAMA_PROVIDER_ID || !settings.post_process_enabled {
+        if let Some(existing) = settings.post_process_models.get_mut(OLLAMA_PROVIDER_ID) {
+            if existing == LEGACY_OLLAMA_DEFAULT_MODEL_ID {
+                existing.clear();
+                changed = true;
+            }
         }
     }
 
@@ -2887,7 +2903,7 @@ mod tests {
     }
 
     #[test]
-    fn default_post_process_models_prefer_fast_presets() {
+    fn default_post_process_models_prefer_remote_fast_presets_without_local_ollama() {
         let settings = get_default_settings();
 
         assert_eq!(
@@ -2895,7 +2911,7 @@ mod tests {
                 .post_process_models
                 .get(OLLAMA_PROVIDER_ID)
                 .map(String::as_str),
-            Some("qwen2.5:0.5b")
+            Some("")
         );
         assert_eq!(
             settings.post_process_models.get("groq").map(String::as_str),
@@ -2907,6 +2923,72 @@ mod tests {
                 .get("cerebras")
                 .map(String::as_str),
             Some("llama-3.3-70b")
+        );
+    }
+
+    #[test]
+    fn ensure_defaults_clear_inactive_legacy_ollama_model() {
+        let mut settings = get_default_settings();
+        settings.post_process_provider_id = "openai".to_string();
+        settings
+            .post_process_models
+            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.translation_provider_id = "openai".to_string();
+        settings
+            .translation_model_ids
+            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+
+        let translation_changed = ensure_translation_defaults(&mut settings);
+        let post_process_changed = ensure_post_process_defaults(&mut settings);
+
+        assert!(translation_changed);
+        assert!(post_process_changed);
+        assert_eq!(
+            settings
+                .post_process_models
+                .get(OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some("")
+        );
+        assert_eq!(
+            settings
+                .translation_model_ids
+                .get(OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some("")
+        );
+    }
+
+    #[test]
+    fn ensure_defaults_preserve_active_legacy_ollama_model() {
+        let mut settings = get_default_settings();
+        settings.post_process_provider_id = OLLAMA_PROVIDER_ID.to_string();
+        settings.post_process_enabled = true;
+        settings
+            .post_process_models
+            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.translation_provider_id = OLLAMA_PROVIDER_ID.to_string();
+        settings.translation_output_mode = TranslationOutputMode::Translated;
+        settings
+            .translation_model_ids
+            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+
+        let _translation_changed = ensure_translation_defaults(&mut settings);
+        let _post_process_changed = ensure_post_process_defaults(&mut settings);
+
+        assert_eq!(
+            settings
+                .post_process_models
+                .get(OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some(LEGACY_OLLAMA_DEFAULT_MODEL_ID)
+        );
+        assert_eq!(
+            settings
+                .translation_model_ids
+                .get(OLLAMA_PROVIDER_ID)
+                .map(String::as_str),
+            Some(LEGACY_OLLAMA_DEFAULT_MODEL_ID)
         );
     }
 

@@ -69,6 +69,44 @@ pub(crate) use sanitize::{
     should_fallback_to_plain_text_candidate,
 };
 
+fn schedule_correction_monitoring_after_paste(
+    app_handle: AppHandle,
+    inserted_text: String,
+    app_identifier: Option<String>,
+    app_name: Option<String>,
+    insertion_method: InsertionMethod,
+) {
+    tauri::async_runtime::spawn(async move {
+        // Let the destination app settle after paste/direct typing before
+        // taking the first Accessibility snapshot. This runs after paste and
+        // off the main thread, so it does not add paste latency.
+        tokio::time::sleep(Duration::from_millis(75)).await;
+
+        let Some(span_tracker) = app_handle.try_state::<InsertedSpanTracker>() else {
+            debug!("Correction monitoring skipped: InsertedSpanTracker state is unavailable");
+            return;
+        };
+        let Some(correction_store) = app_handle.try_state::<Arc<CorrectionStore>>() else {
+            debug!("Correction monitoring skipped: CorrectionStore state is unavailable");
+            return;
+        };
+        let Some(recent_input) = app_handle.try_state::<Arc<RecentInputTracker>>() else {
+            debug!("Correction monitoring skipped: RecentInputTracker state is unavailable");
+            return;
+        };
+
+        span_tracker.record_and_start_monitoring(
+            inserted_text,
+            app_identifier,
+            app_name,
+            insertion_method,
+            (*correction_store).clone(),
+            (*recent_input).clone(),
+            app_handle.clone(),
+        );
+    });
+}
+
 use active_app::*;
 #[cfg(test)]
 use post_process::*;
@@ -1549,49 +1587,32 @@ impl ShortcutAction for TranscribeAction {
                                 ) {
                                     return;
                                 }
-                                // Start correction monitoring if enabled
-                                if effective_settings.correction_tracking_enabled {
-                                    if let Some(span_tracker) =
-                                        ah.try_state::<InsertedSpanTracker>()
-                                    {
-                                        if let Some(correction_store) =
-                                            ah.try_state::<Arc<CorrectionStore>>()
-                                        {
-                                            if let Some(recent_input) =
-                                                ah.try_state::<Arc<RecentInputTracker>>()
-                                            {
-                                                let insertion_method = match effective_settings
-                                                    .paste_method
-                                                {
-                                                    crate::settings::PasteMethod::Direct => {
-                                                        InsertionMethod::DirectType
-                                                    }
-                                                    crate::settings::PasteMethod::ExternalScript => {
-                                                        InsertionMethod::ExternalScript
-                                                    }
-                                                    _ => InsertionMethod::Clipboard,
-                                                };
-
-                                                let app_id = active_app_context
-                                                    .as_ref()
-                                                    .map(|c| c.bundle_id.clone());
-                                                let app_name_val = active_app_context
-                                                    .as_ref()
-                                                    .map(|c| c.localized_name.clone());
-
-                                                span_tracker.record_and_start_monitoring(
-                                                    text_to_paste.clone(),
-                                                    app_id,
-                                                    app_name_val,
-                                                    insertion_method,
-                                                    (*correction_store).clone(),
-                                                    (*recent_input).clone(),
-                                                    ah.clone(),
-                                                );
-                                            }
+                                let correction_monitoring_request = if effective_settings
+                                    .correction_tracking_enabled
+                                    && effective_settings.paste_method
+                                        != crate::settings::PasteMethod::None
+                                {
+                                    let insertion_method = match effective_settings.paste_method {
+                                        crate::settings::PasteMethod::Direct => {
+                                            InsertionMethod::DirectType
                                         }
-                                    }
-                                }
+                                        crate::settings::PasteMethod::ExternalScript => {
+                                            InsertionMethod::ExternalScript
+                                        }
+                                        _ => InsertionMethod::Clipboard,
+                                    };
+
+                                    Some((
+                                        text_to_paste.clone(),
+                                        active_app_context.as_ref().map(|c| c.bundle_id.clone()),
+                                        active_app_context
+                                            .as_ref()
+                                            .map(|c| c.localized_name.clone()),
+                                        insertion_method,
+                                    ))
+                                } else {
+                                    None
+                                };
 
                                 // Paste the final text (either processed or original)
                                 let text_for_paste = text_to_paste.clone();
@@ -1653,6 +1674,21 @@ impl ShortcutAction for TranscribeAction {
                                                 "Text pasted successfully in {:?}",
                                                 paste_time.elapsed()
                                             );
+                                            if let Some((
+                                                inserted_text,
+                                                app_id,
+                                                app_name,
+                                                insertion_method,
+                                            )) = correction_monitoring_request
+                                            {
+                                                schedule_correction_monitoring_after_paste(
+                                                    ah_clone.clone(),
+                                                    inserted_text,
+                                                    app_id,
+                                                    app_name,
+                                                    insertion_method,
+                                                );
+                                            }
                                             spawn_history_save(
                                                 &ah_clone,
                                                 Arc::clone(&hm_for_paste),

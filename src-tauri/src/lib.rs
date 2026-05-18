@@ -244,7 +244,10 @@ fn warm_selected_stt_engine(
     }
 }
 
-async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
+async fn maybe_warm_selected_ollama_model(
+    app_handle: AppHandle,
+    mut settings: settings::AppSettings,
+) {
     if !settings.post_process_enabled
         || settings.post_process_provider_id != settings::OLLAMA_PROVIDER_ID
     {
@@ -262,17 +265,6 @@ async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
     else {
         return;
     };
-    let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
-        .unwrap_or_else(|error| {
-            log::warn!(
-                "Failed to load secure warm-up API key for provider '{}': {}",
-                provider.id,
-                error
-            );
-            None
-        })
-        .unwrap_or_default();
-
     let mut status = ollama::get_ollama_status().await;
     if !status.installed {
         return;
@@ -304,12 +296,46 @@ async fn maybe_warm_selected_ollama_model(settings: settings::AppSettings) {
         .iter()
         .any(|candidate| candidate.eq_ignore_ascii_case(&model))
     {
-        log::info!(
-            "Skipping Ollama warm-up for '{}': model is not installed locally",
-            model
-        );
+        let replacement_model = status.models.first().cloned().unwrap_or_default();
+        let replacement_model_for_log = replacement_model.clone();
+        settings
+            .post_process_models
+            .insert(settings::OLLAMA_PROVIDER_ID.to_string(), replacement_model.clone());
+        if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID {
+            settings.selected_llm_model_id = replacement_model.clone();
+        }
+        if settings.translation_provider_id == settings::OLLAMA_PROVIDER_ID {
+            settings
+                .translation_model_ids
+                .insert(settings::OLLAMA_PROVIDER_ID.to_string(), replacement_model);
+        }
+        settings::write_settings(&app_handle, settings);
+
+        if status.models.is_empty() {
+            log::info!(
+                "Cleared unavailable Ollama model '{}' during startup warm-up because no Ollama models are installed locally",
+                model
+            );
+        } else {
+            log::info!(
+                "Replaced unavailable Ollama model '{}' with installed model '{}' during startup warm-up",
+                model,
+                replacement_model_for_log
+            );
+        }
         return;
     }
+
+    let api_key = crate::secret_store::get_post_process_api_key(&provider.id)
+        .unwrap_or_else(|error| {
+            log::warn!(
+                "Failed to load secure warm-up API key for provider '{}': {}",
+                provider.id,
+                error
+            );
+            None
+        })
+        .unwrap_or_default();
 
     if let Err(e) = llm_client::warm_ollama_model(&provider, api_key, &model).await {
         log::warn!("Failed to warm Ollama model '{}': {}", model, e);
@@ -558,7 +584,10 @@ fn initialize_core_logic(app_handle: &AppHandle) {
     utils::create_recording_overlay(app_handle);
 
     // Auto-start and preload Ollama if it's the configured post-process provider.
-    tauri::async_runtime::spawn(maybe_warm_selected_ollama_model(settings));
+    tauri::async_runtime::spawn(maybe_warm_selected_ollama_model(
+        app_handle.clone(),
+        settings,
+    ));
 }
 
 fn shutdown_core_logic(app: &AppHandle) {

@@ -509,6 +509,7 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
 
     await page.getByRole("button", { name: /Set Up Vox Jot/i }).click();
+    await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(
       page.getByRole("heading", {
@@ -526,6 +527,7 @@ test.describe("Vox Jot app", () => {
     });
 
     await page.getByRole("button", { name: /Set Up Vox Jot/i }).click();
+    await page.getByRole("button", { name: /Continue setup/i }).click();
 
     await expect(page.getByText("Parakeet V3")).toBeVisible();
     await expect(page.getByText("Large V3")).toHaveCount(0);

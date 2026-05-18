@@ -108,13 +108,47 @@ impl Drop for ModelLoadGuard {
 }
 
 impl MlxAudioSttEngine {
-    fn transcribe(
+    fn transcribe_with_sidecar_recovery(
         &self,
         audio: Vec<f32>,
         sample_rate: u32,
+        sidecar: Option<&crate::sidecar::SidecarManager>,
     ) -> Result<transcribe_rs::TranscriptionResult> {
         let wav_bytes = self.encode_wav(audio, sample_rate)?;
-        let file_part = ureq::unversioned::multipart::Part::bytes(&wav_bytes)
+        let response_body = match self.send_wav_bytes(&wav_bytes) {
+            Ok(body) => body,
+            Err(first_err) => {
+                if let Some(sidecar) = sidecar {
+                    log::warn!(
+                        "mlx-audio transcription request failed; ensuring sidecar is running before one retry: {}",
+                        first_err
+                    );
+                    sidecar.ensure_running().map_err(|err| {
+                        anyhow::anyhow!(
+                            "Failed to restart mlx-audio sidecar after request failure: {err}"
+                        )
+                    })?;
+                    self.send_wav_bytes(&wav_bytes).map_err(|retry_err| {
+                        anyhow::anyhow!(
+                            "mlx-audio transcription request failed after sidecar restart: {}",
+                            retry_err
+                        )
+                    })?
+                } else {
+                    return Err(first_err);
+                }
+            }
+        };
+        let payload = Self::decode_transcription_response(&response_body)?;
+
+        Ok(transcribe_rs::TranscriptionResult {
+            text: payload.text,
+            segments: None,
+        })
+    }
+
+    fn send_wav_bytes(&self, wav_bytes: &[u8]) -> Result<String> {
+        let file_part = ureq::unversioned::multipart::Part::bytes(wav_bytes)
             .file_name("vox-jot.wav")
             .mime_str("audio/wav")
             .map_err(|err| anyhow::anyhow!("Failed to prepare mlx-audio upload: {}", err))?;
@@ -133,12 +167,7 @@ impl MlxAudioSttEngine {
             .body_mut()
             .read_to_string()
             .map_err(|err| anyhow::anyhow!("Failed to read mlx-audio response: {}", err))?;
-        let payload = Self::decode_transcription_response(&response_body)?;
-
-        Ok(transcribe_rs::TranscriptionResult {
-            text: payload.text,
-            segments: None,
-        })
+        Ok(response_body)
     }
 
     fn decode_transcription_response(body: &str) -> Result<MlxAudioTranscriptionResponse> {
@@ -690,11 +719,12 @@ impl TranscriptionManager {
     /// File transcription that needs SRT/WebVTT calls
     /// `transcribe_with_loaded_engine_segments` instead.
     fn transcribe_with_loaded_engine(
+        &self,
         engine: &mut LoadedEngine,
         audio: Vec<f32>,
         settings: &AppSettings,
     ) -> Result<String> {
-        Self::transcribe_with_loaded_engine_inner(engine, audio, settings, false)
+        self.transcribe_with_loaded_engine_inner(engine, audio, settings, false)
             .map(|(text, _)| text)
     }
 
@@ -704,14 +734,16 @@ impl TranscriptionManager {
     /// an empty `Vec`, in which case callers should fall back to text-only
     /// export with a UI hint.
     fn transcribe_with_loaded_engine_segments(
+        &self,
         engine: &mut LoadedEngine,
         audio: Vec<f32>,
         settings: &AppSettings,
     ) -> Result<(String, Vec<TimedSegment>)> {
-        Self::transcribe_with_loaded_engine_inner(engine, audio, settings, true)
+        self.transcribe_with_loaded_engine_inner(engine, audio, settings, true)
     }
 
     fn transcribe_with_loaded_engine_inner(
+        &self,
         engine: &mut LoadedEngine,
         audio: Vec<f32>,
         settings: &AppSettings,
@@ -820,8 +852,15 @@ impl TranscriptionManager {
                 (r.text, segs)
             }
             LoadedEngine::MlxAudioStt(mlx_engine) => {
+                let sidecar = self
+                    .app_handle
+                    .try_state::<Arc<crate::sidecar::SidecarManager>>();
                 let r = mlx_engine
-                    .transcribe(audio, 16_000)
+                    .transcribe_with_sidecar_recovery(
+                        audio,
+                        16_000,
+                        sidecar.as_deref().map(Arc::as_ref),
+                    )
                     .map_err(|e| anyhow::anyhow!("MLX transcription failed: {}", e))?;
                 let segs = convert_segments(r.segments);
                 (r.text, segs)
@@ -870,7 +909,7 @@ impl TranscriptionManager {
         settings: &AppSettings,
     ) -> Result<String> {
         match catch_unwind(AssertUnwindSafe(|| {
-            Self::transcribe_with_loaded_engine(engine, audio, settings)
+            self.transcribe_with_loaded_engine(engine, audio, settings)
         })) {
             Ok(result) => result,
             Err(panic_payload) => {
@@ -1007,6 +1046,14 @@ impl TranscriptionManager {
             debug!(
                 "Skipping partial transcription for binding {}: no model loaded",
                 binding_id
+            );
+            return;
+        }
+        let current_model = self.get_current_model();
+        if current_model.as_deref() != Some(model_id.as_str()) {
+            debug!(
+                "Skipping partial transcription for binding {} because loaded model {:?} does not match selected model {}",
+                binding_id, current_model, model_id
             );
             return;
         }
@@ -1306,7 +1353,7 @@ impl TranscriptionManager {
             drop(audio);
 
             let r = catch_unwind(AssertUnwindSafe(|| {
-                Self::transcribe_with_loaded_engine_segments(
+                self.transcribe_with_loaded_engine_segments(
                     &mut engine,
                     audio_for_engine,
                     &settings,
@@ -1448,7 +1495,7 @@ impl TranscriptionManager {
             let audio_for_engine = (*audio).clone();
             drop(audio);
             let transcribe_result = catch_unwind(AssertUnwindSafe(|| {
-                Self::transcribe_with_loaded_engine(&mut engine, audio_for_engine, &settings)
+                self.transcribe_with_loaded_engine(&mut engine, audio_for_engine, &settings)
             }));
 
             match transcribe_result {

@@ -14,6 +14,7 @@ export const AppAwareWriteProfilesToggle: React.FC<
     settingKey="app_aware_tone_enabled"
     labelKey="settings.styles.toggle.label"
     descriptionKey="settings.styles.toggle.description"
+    defaultValue={true}
     {...props}
   />
 );

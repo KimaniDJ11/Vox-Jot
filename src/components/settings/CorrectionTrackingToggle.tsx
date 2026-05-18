@@ -13,6 +13,7 @@ export const CorrectionTrackingToggle: React.FC<
     settingKey="correction_tracking_enabled"
     labelKey="settings.corrections.tracking.label"
     descriptionKey="settings.corrections.tracking.description"
+    defaultValue={true}
     {...props}
   />
 );

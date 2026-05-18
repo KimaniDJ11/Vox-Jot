@@ -690,7 +690,7 @@ pub struct AppSettings {
     pub tts_model_store_path: Option<String>,
     #[serde(default)]
     pub speech_backend_override: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_audio_enhancement_enabled")]
     pub audio_enhancement_enabled: bool,
     #[serde(default = "default_audio_enhancement_model")]
     pub audio_enhancement_model: String,
@@ -998,6 +998,10 @@ fn default_audio_enhancement_model() -> String {
     "rnnoise".to_string()
 }
 
+fn default_audio_enhancement_enabled() -> bool {
+    true
+}
+
 fn default_selected_llm_provider_id() -> String {
     default_post_process_provider_id()
 }
@@ -1056,7 +1060,7 @@ fn default_log_level() -> LogLevel {
 }
 
 fn default_word_correction_threshold() -> f64 {
-    0.18
+    0.22
 }
 
 fn default_paste_delay_ms() -> u64 {
@@ -1989,7 +1993,7 @@ pub fn get_default_settings() -> AppSettings {
         speech_runtime_path: None,
         tts_model_store_path: None,
         speech_backend_override: None,
-        audio_enhancement_enabled: true,
+        audio_enhancement_enabled: default_audio_enhancement_enabled(),
         audio_enhancement_model: default_audio_enhancement_model(),
         overlay_position: default_overlay_position(),
         recording_overlay_style: default_recording_overlay_style(),

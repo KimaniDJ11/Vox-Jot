@@ -20,11 +20,11 @@ export const WordCorrectionThreshold: React.FC<
 
   return (
     <Slider
-      value={settings?.word_correction_threshold ?? 0.18}
+      value={settings?.word_correction_threshold ?? 0.22}
       onChange={handleThresholdChange}
       min={0.0}
       max={1.0}
-      defaultValue={0.18}
+      defaultValue={0.22}
       label={t("settings.debug.wordCorrectionThreshold.title")}
       description={t("settings.debug.wordCorrectionThreshold.description")}
       descriptionMode={descriptionMode}

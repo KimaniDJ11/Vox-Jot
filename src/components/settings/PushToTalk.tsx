@@ -23,7 +23,7 @@ const PushToTalkPreview: React.FC<PushToTalkProps> = ({
 }) => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
-  const selectedPushToTalk = getSetting("push_to_talk") ?? false;
+  const selectedPushToTalk = getSetting("push_to_talk") ?? true;
   const disabled = isUpdating("push_to_talk");
 
   return (

@@ -18,6 +18,7 @@ export const AudioEnhancement: React.FC<AudioEnhancementProps> = (props) => {
       label={t("settings.sound.audioEnhancement.label", {
         defaultValue: "Noise Reduction",
       })}
+      defaultValue={true}
       description={t("settings.sound.audioEnhancement.description", {
         defaultValue:
           "Denoise microphone audio before speech detection and transcription. Best for fans, HVAC, and room noise.",

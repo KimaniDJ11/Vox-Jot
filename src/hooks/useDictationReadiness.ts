@@ -99,7 +99,7 @@ export function useDictationReadiness(): DictationReadiness {
     const postKeyReady = postProvider
       ? (settings?.post_process_api_key_status?.[postProvider] ?? true)
       : true;
-    const screenContextEnabled = settings?.screen_context_enabled ?? false;
+    const screenContextEnabled = settings?.screen_context_enabled ?? true;
 
     const gates: DictationReadinessGate[] = [
       {

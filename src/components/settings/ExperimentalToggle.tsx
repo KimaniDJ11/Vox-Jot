@@ -13,6 +13,7 @@ export const ExperimentalToggle: React.FC<ExperimentalToggleProps> = (
     settingKey="experimental_enabled"
     labelKey="settings.advanced.experimentalToggle.label"
     descriptionKey="settings.advanced.experimentalToggle.description"
+    defaultValue={true}
     {...props}
   />
 );

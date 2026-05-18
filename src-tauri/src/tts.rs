@@ -24,10 +24,12 @@ use crate::settings::{
 };
 use crate::sidecar::SidecarBackend;
 use crate::tts_profiles;
+use futures_util::StreamExt;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -4316,18 +4318,35 @@ impl TtsManager {
             ));
         }
 
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|err| format!("Failed to read {label} bytes: {err}"))?;
-
         let file_name = url
             .split('/')
             .next_back()
             .filter(|name| !name.is_empty())
             .unwrap_or("tts-asset.tar.gz");
         let archive_path = download_dir.join(format!("{}-{}", Uuid::new_v4(), file_name));
-        fs::write(&archive_path, bytes).map_err(|err| format!("Failed to save {label}: {err}"))?;
+        let partial_path = archive_path.with_extension(format!(
+            "{}partial",
+            archive_path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| format!("{extension}."))
+                .unwrap_or_default()
+        ));
+        let mut output = fs::File::create(&partial_path)
+            .map_err(|err| format!("Failed to create {label} download file: {err}"))?;
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|err| format!("Failed to read {label} bytes: {err}"))?;
+            output
+                .write_all(&chunk)
+                .map_err(|err| format!("Failed to save {label}: {err}"))?;
+        }
+        output
+            .sync_all()
+            .map_err(|err| format!("Failed to flush {label}: {err}"))?;
+        drop(output);
+        fs::rename(&partial_path, &archive_path)
+            .map_err(|err| format!("Failed to finalize {label} download: {err}"))?;
         Ok(archive_path)
     }
 

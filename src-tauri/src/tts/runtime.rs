@@ -3,7 +3,8 @@ use crate::portable;
 use crate::settings::{TtsStyleControlValue, TtsVoiceTuningSettings, TTS_PROVIDER_QWEN3_NATIVE_ID};
 use crate::tts_profiles::ResolvedTtsVoiceProfile;
 use std::fs::{self, File};
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::AppHandle;
@@ -334,22 +335,16 @@ pub fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), St
 
     if archive_name.ends_with(".tar.gz") {
         let decoder = flate2::read::GzDecoder::new(file);
-        let mut archive = tar::Archive::new(decoder);
-        archive
-            .unpack(install_dir)
-            .map_err(|err| format!("Failed to extract tar.gz archive: {err}"))?;
+        let archive = tar::Archive::new(decoder);
+        extract_tar_archive(archive, install_dir)?;
     } else if archive_name.ends_with(".tar.bz2") {
         let decoder = bzip2::read::BzDecoder::new(file);
-        let mut archive = tar::Archive::new(decoder);
-        archive
-            .unpack(install_dir)
-            .map_err(|err| format!("Failed to extract tar.bz2 archive: {err}"))?;
+        let archive = tar::Archive::new(decoder);
+        extract_tar_archive(archive, install_dir)?;
     } else if archive_name.ends_with(".zip") {
         let mut archive = zip::ZipArchive::new(file)
             .map_err(|err| format!("Failed to read zip archive: {err}"))?;
-        archive
-            .extract(install_dir)
-            .map_err(|err| format!("Failed to extract zip archive: {err}"))?;
+        extract_zip_archive(&mut archive, install_dir)?;
     } else {
         return Err(format!(
             "Unsupported TTS archive format: {}",
@@ -358,6 +353,136 @@ pub fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), St
     }
 
     Ok(())
+}
+
+fn extract_tar_archive<R: io::Read>(
+    mut archive: tar::Archive<R>,
+    install_dir: &Path,
+) -> Result<(), String> {
+    for entry in archive
+        .entries()
+        .map_err(|err| format!("Failed to read TTS archive: {err}"))?
+    {
+        let mut entry = entry.map_err(|err| format!("Failed to read TTS archive entry: {err}"))?;
+        let entry_type = entry.header().entry_type();
+        if entry_type.is_symlink() || entry_type.is_hard_link() {
+            return Err("TTS archive contains unsupported links.".into());
+        }
+        let relative_path = sanitize_archive_path(
+            entry
+                .path()
+                .map_err(|err| format!("Failed to read TTS archive entry path: {err}"))?,
+        )?;
+        if relative_path.as_os_str().is_empty() {
+            continue;
+        }
+        let destination = install_dir.join(relative_path);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("Failed to create TTS extraction directory: {err}"))?;
+        }
+        entry
+            .unpack(&destination)
+            .map_err(|err| format!("Failed to extract TTS archive entry: {err}"))?;
+    }
+    Ok(())
+}
+
+fn extract_zip_archive<R: io::Read + io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    install_dir: &Path,
+) -> Result<(), String> {
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|err| format!("Failed to read TTS zip entry: {err}"))?;
+        #[cfg(unix)]
+        if entry
+            .unix_mode()
+            .map(|mode| (mode & 0o170000) == 0o120000)
+            .unwrap_or(false)
+        {
+            return Err("TTS zip archive contains unsupported symlinks.".into());
+        }
+
+        let enclosed = entry
+            .enclosed_name()
+            .ok_or_else(|| format!("TTS zip archive contains unsafe path: {}", entry.name()))?;
+        let relative_path = sanitize_archive_path(std::borrow::Cow::Borrowed(enclosed))?;
+        if relative_path.as_os_str().is_empty() {
+            continue;
+        }
+        let destination = install_dir.join(relative_path);
+        if entry.is_dir() {
+            fs::create_dir_all(&destination)
+                .map_err(|err| format!("Failed to create TTS zip directory: {err}"))?;
+            continue;
+        }
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("Failed to create TTS zip directory: {err}"))?;
+        }
+        let mut output = File::create(&destination)
+            .map_err(|err| format!("Failed to create TTS zip output: {err}"))?;
+        io::copy(&mut entry, &mut output)
+            .map_err(|err| format!("Failed to extract TTS zip entry: {err}"))?;
+
+        #[cfg(unix)]
+        if let Some(mode) = entry.unix_mode() {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&destination, fs::Permissions::from_mode(mode & 0o777))
+                .map_err(|err| format!("Failed to set TTS zip permissions: {err}"))?;
+        }
+    }
+    Ok(())
+}
+
+fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, String> {
+    let mut sanitized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => sanitized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(format!(
+                    "TTS archive contains unsafe path: {}",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Ok(sanitized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_archive_path;
+    use std::borrow::Cow;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn sanitize_archive_path_keeps_safe_relative_entries() {
+        let path = sanitize_archive_path(Cow::Borrowed(Path::new("./runtime/bin/tool")))
+            .expect("safe relative path should sanitize");
+
+        assert_eq!(path, PathBuf::from("runtime/bin/tool"));
+    }
+
+    #[test]
+    fn sanitize_archive_path_rejects_traversal_entries() {
+        let error = sanitize_archive_path(Cow::Borrowed(Path::new("../outside")))
+            .expect_err("parent traversal should be rejected");
+
+        assert!(error.contains("unsafe path"));
+    }
+
+    #[test]
+    fn sanitize_archive_path_rejects_absolute_entries() {
+        let error = sanitize_archive_path(Cow::Borrowed(Path::new("/tmp/outside")))
+            .expect_err("absolute archive paths should be rejected");
+
+        assert!(error.contains("unsafe path"));
+    }
 }
 
 /// Repair a WAV file whose RIFF header size doesn't match the actual file size.

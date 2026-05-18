@@ -17,6 +17,8 @@ fi
 DMG_PATH="${DMG_DIR}/${APP_NAME}_${APP_VERSION}_${TARGET_ARCH}.dmg"
 DMG_STAGE_DIR="${DMG_DIR}/${APP_NAME}-dmg-stage"
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-voxjot-notary}"
+APPLE_NOTARY_PASSWORD="${APPLE_PASSWORD:-${APPLE_ID_PASSWORD:-}}"
+NOTARY_CREDENTIAL_MODE=""
 KEYCHAIN_PASSWORD="${KEYCHAIN_PASSWORD:-$(/usr/bin/openssl rand -hex 24)}"
 KEYCHAIN_NAME="vox-jot-build.keychain-db"
 KEYCHAIN_PATH="${HOME}/Library/Keychains/${KEYCHAIN_NAME}"
@@ -44,37 +46,54 @@ require_env() {
 }
 
 ensure_notary_credentials() {
-  local has_keychain_profile="false"
-  local has_apple_id_flow="false"
-  local has_api_key_flow="false"
-
-  if /usr/bin/xcrun notarytool history \
-    --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" >/dev/null 2>&1; then
-    has_keychain_profile="true"
-  fi
-
-  if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
-    has_apple_id_flow="true"
+  if [[ -n "${APPLE_ID:-}" && -n "${APPLE_NOTARY_PASSWORD}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+    NOTARY_CREDENTIAL_MODE="apple_id"
+    echo "Using Apple ID notarization credentials from environment."
+    return
   fi
 
   if [[ -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY_PATH:-}" ]]; then
-    has_api_key_flow="true"
+    NOTARY_CREDENTIAL_MODE="api_key"
+    echo "Using App Store Connect API notarization credentials from environment."
+    return
   fi
 
-  if [[ "${has_keychain_profile}" != "true" && "${has_apple_id_flow}" != "true" && "${has_api_key_flow}" != "true" ]]; then
-    cat >&2 <<'EOF'
-Notarization credentials are missing.
+  NOTARY_CREDENTIAL_MODE="keychain_profile"
+  if /usr/bin/xcrun notarytool history \
+    --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" >/dev/null 2>&1; then
+    echo "Using stored notarytool profile: ${NOTARY_KEYCHAIN_PROFILE}"
+    return
+  fi
+
+  cat >&2 <<EOF
+Stored notarytool profile "${NOTARY_KEYCHAIN_PROFILE}" could not be verified during preflight.
+The build will still submit with that profile so notarytool can report the real failure, if any.
 
 Provide one of these credential sets:
-  1. Stored notarytool profile named "voxjot-notary"
-     xcrun notarytool store-credentials "voxjot-notary" --apple-id ... --team-id ... --password ...
+  1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
+     xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
   2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
+     APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
   3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH
 
 APPLE_PASSWORD should be a fresh app-specific password when using the APPLE_ID flow.
 EOF
-    exit 1
-  fi
+}
+
+notary_submit_failed() {
+  local credential_description="$1"
+
+  cat >&2 <<EOF
+Notarization submission failed using ${credential_description}.
+
+Fix one of these credential paths, then rerun this script:
+  1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
+     xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
+  2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
+     APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
+  3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH
+EOF
+  exit 1
 }
 
 import_certificate() {
@@ -162,31 +181,30 @@ EOF
 submit_for_notarization() {
   local dmg_path="$1"
 
-  if /usr/bin/xcrun notarytool history \
-    --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" >/dev/null 2>&1; then
+  case "${NOTARY_CREDENTIAL_MODE}" in
+  keychain_profile)
     /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" \
-      --wait
+      --wait || notary_submit_failed "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\""
     return
-  fi
-
-  if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+    ;;
+  apple_id)
     /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --apple-id "${APPLE_ID}" \
       --team-id "${APPLE_TEAM_ID}" \
-      --password "${APPLE_PASSWORD}" \
-      --wait
+      --password "${APPLE_NOTARY_PASSWORD}" \
+      --wait || notary_submit_failed "Apple ID environment credentials"
     return
-  fi
-
-  if [[ -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY_PATH:-}" ]]; then
+    ;;
+  api_key)
     /usr/bin/xcrun notarytool submit "${dmg_path}" \
       --key "${APPLE_API_KEY_PATH}" \
       --key-id "${APPLE_API_KEY}" \
       --issuer "${APPLE_API_ISSUER}" \
-      --wait
+      --wait || notary_submit_failed "App Store Connect API environment credentials"
     return
-  fi
+    ;;
+  esac
 
   echo "Notarization credentials became unavailable before submit." >&2
   exit 1

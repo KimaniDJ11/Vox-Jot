@@ -1317,9 +1317,12 @@
         "port": "Port",
         "portHint": "Le redémarrage s'applique sur le flou.",
         "errorPrefix": "Erreur API :",
-        "cliHint": "Essayez-le : vox-jot transcrit chemin/vers/fichier.wav --format srt",
+        "cliHint": "Essayez : VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Le port doit être compris entre 1024 et 65535.",
-        "enableConfirm": "Activer le HTTP local API ? Les outils locaux sur ce Mac peuvent contrôler le Vox Jot avec le jeton affiché. Gardez le jeton privé."
+        "enableConfirm": "Activer le HTTP local API ? Les outils locaux sur ce Mac peuvent contrôler le Vox Jot avec le jeton affiché. Gardez le jeton privé.",
+        "token": "Jeton",
+        "copyToken": "Copier le jeton",
+        "rotateToken": "Renouveler"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Confidentialité et stockage",
         "diagnostics": "Diagnostic",
         "about": "À propos de Vox Jot",
-        "legal": "Conditions légales et des modèles"
+        "legal": "Conditions légales et des modèles",
+        "automationAgents": "Automatisation et agents"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Reconnaissance locale",
       "ackLabel": "Je comprends ces responsabilités liées aux modèles et à l’enregistrement.",
       "ackDescription": "Cette reconnaissance est stockée localement sur cet appareil. Les téléchargements de modèles restreints exigent toujours leur propre reconnaissance spécifique."
+    },
+    "readiness": {
+      "title": "Préparation de la dictée",
+      "description": "Autorisations requises, modèle vocal et état de livraison.",
+      "status": {
+        "ready": "Prêt",
+        "warning": "Attention requise",
+        "blocked": "Bloqué"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Micro",
+          "permissionBlocked": "Autorisez l’accès au microphone avant de dicter.",
+          "noDevice": "Aucun périphérique d’entrée n’est actuellement listé.",
+          "ready": "L’autorisation d’entrée et la liste des périphériques sont disponibles."
+        },
+        "accessibility": {
+          "label": "Accessibilité",
+          "blocked": "Autorisez Accessibilité pour que Vox Jot puisse coller dans l’application cible.",
+          "ready": "L’autorisation d’automatisation du collage est disponible."
+        },
+        "inputMonitoring": {
+          "label": "Surveillance de l’entrée",
+          "blocked": "Autorisez la surveillance de l’entrée pour fiabiliser les raccourcis.",
+          "ready": "L’autorisation de surveillance des raccourcis est disponible."
+        },
+        "sttModel": {
+          "label": "Modèle vocal",
+          "loaded": "{{model}} est chargé.",
+          "pending": "{{model}} se chargera avant la prochaine transcription.",
+          "missing": "Choisissez un modèle vocal avant de dicter."
+        },
+        "pasteMethod": {
+          "label": "Livraison",
+          "disabled": "Le collage est désactivé ; les transcriptions restent dans Vox Jot.",
+          "direct": "Le texte sera saisi directement dans l’application active.",
+          "clipboard": "Le texte sera livré via le chemin de collage du presse-papiers."
+        },
+        "postProcessing": {
+          "label": "Affiner",
+          "ready": "Affiner est activé et les identifiants du fournisseur semblent prêts.",
+          "missingCredentials": "Affiner est activé, mais le fournisseur sélectionné nécessite des identifiants.",
+          "off": "Affiner est désactivé pour le chemin à plus faible latence."
+        },
+        "screenContext": {
+          "label": "Contexte d’écran",
+          "on": "Le contexte d’écran est activé pour une rédaction adaptée à l’application.",
+          "off": "Le contexte d’écran est désactivé."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Automatisation",
+      "title": "Automatisation et agents",
+      "description": "Connectez des scripts locaux, des raccourcis et des clients d’agents à Vox Jot sans exposer l’API au-delà de ce Mac.",
+      "surfaceLabel": "Interface",
+      "surfaceValue": "Boucle locale",
+      "authLabel": "Authentification",
+      "authValue": "Jeton",
+      "localApiTitle": "API locale",
+      "localApiDescription": "Accès en boucle locale protégé par jeton pour l’automatisation locale. Le jeton est stocké dans le magasin d’identifiants du système et révélé uniquement lors de la copie."
     }
   },
   "testing": {

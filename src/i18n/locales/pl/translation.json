@@ -1317,9 +1317,12 @@
         "port": "Portu",
         "portHint": "Ponowne uruchomienie dotyczy rozmycia.",
         "errorPrefix": "Błąd API:",
-        "cliHint": "Wypróbuj: vox-jot transcribe ścieżka/do/pliku.wav --format srt",
+        "cliHint": "Wypróbuj: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Port musi należeć do zakresu od 1024 do 65535.",
-        "enableConfirm": "Włączyć lokalny HTTP API? Lokalne narzędzia na tym Mac mogą sterować Vox Jot za pomocą wyświetlanego tokena. Zachowaj token jako prywatny."
+        "enableConfirm": "Włączyć lokalny HTTP API? Lokalne narzędzia na tym Mac mogą sterować Vox Jot za pomocą wyświetlanego tokena. Zachowaj token jako prywatny.",
+        "token": "Token dostępu",
+        "copyToken": "Kopiuj token",
+        "rotateToken": "Obróć"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Prywatność i przechowywanie",
         "diagnostics": "Diagnose",
         "about": "Über Vox Jot",
-        "legal": "Warunki prawne i modeli"
+        "legal": "Warunki prawne i modeli",
+        "automationAgents": "Automatyzacja i agenci"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Lokalne potwierdzenie",
       "ackLabel": "Rozumiem te obowiązki dotyczące modeli i nagrywania.",
       "ackDescription": "To potwierdzenie jest przechowywane lokalnie na tym urządzeniu. Pobieranie modeli ograniczonych nadal wymaga osobnego potwierdzenia dla danego modelu."
+    },
+    "readiness": {
+      "title": "Gotowość dyktowania",
+      "description": "Wymagane uprawnienia, model mowy i stan dostarczania.",
+      "status": {
+        "ready": "Gotowe",
+        "warning": "Wymaga uwagi",
+        "blocked": "Zablokowane"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Mikrofon",
+          "permissionBlocked": "Przyznaj dostęp do mikrofonu przed dyktowaniem.",
+          "noDevice": "Obecnie nie ma na liście żadnego urządzenia wejściowego.",
+          "ready": "Uprawnienie wejścia i lista urządzeń są dostępne."
+        },
+        "accessibility": {
+          "label": "Dostępność",
+          "blocked": "Przyznaj Dostępność, aby Vox Jot mógł wklejać do aplikacji docelowej.",
+          "ready": "Uprawnienie automatyzacji wklejania jest dostępne."
+        },
+        "inputMonitoring": {
+          "label": "Monitorowanie wejścia",
+          "blocked": "Przyznaj Monitorowanie wejścia, aby skróty były niezawodne.",
+          "ready": "Uprawnienie monitorowania skrótów jest dostępne."
+        },
+        "sttModel": {
+          "label": "Model mowy",
+          "loaded": "{{model}} jest załadowany.",
+          "pending": "{{model}} załaduje się przed następną transkrypcją.",
+          "missing": "Wybierz model mowy przed dyktowaniem."
+        },
+        "pasteMethod": {
+          "label": "Dostarczanie",
+          "disabled": "Wklejanie jest wyłączone; transkrypcje pozostają w Vox Jot.",
+          "direct": "Tekst zostanie wpisany bezpośrednio w aktywnej aplikacji.",
+          "clipboard": "Tekst zostanie dostarczony ścieżką wklejania ze schowka."
+        },
+        "postProcessing": {
+          "label": "Ulepsz",
+          "ready": "Ulepszanie jest włączone, a poświadczenia dostawcy wyglądają na gotowe.",
+          "missingCredentials": "Ulepszanie jest włączone, ale wybrany dostawca wymaga poświadczeń.",
+          "off": "Ulepszanie jest wyłączone dla ścieżki o najniższym opóźnieniu."
+        },
+        "screenContext": {
+          "label": "Kontekst ekranu",
+          "on": "Kontekst ekranu jest włączony dla pisania świadomego aplikacji.",
+          "off": "Kontekst ekranu jest wyłączony."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Automatyzacja",
+      "title": "Automatyzacja i agenci",
+      "description": "Połącz lokalne skrypty, skróty i klientów agentów z Vox Jot bez wystawiania API poza ten Mac.",
+      "surfaceLabel": "Powierzchnia",
+      "surfaceValue": "Pętla zwrotna",
+      "authLabel": "Autoryzacja",
+      "authValue": "Token dostępu",
+      "localApiTitle": "Lokalny API",
+      "localApiDescription": "Dostęp przez pętlę zwrotną chroniony tokenem do lokalnej automatyzacji. Token jest przechowywany w magazynie poświadczeń systemu i ujawniany tylko podczas kopiowania."
     }
   },
   "testing": {

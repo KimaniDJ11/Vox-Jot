@@ -1317,9 +1317,12 @@
         "port": "Liman",
         "portHint": "Bulanıklaştırma durumunda yeniden başlatma uygulanır.",
         "errorPrefix": "API hatası:",
-        "cliHint": "Deneyin: vox-jot transcribe path/to/file.wav --format srt",
+        "cliHint": "Deneyin: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Bağlantı noktası 1024 ile 65535 arasında olmalıdır.",
-        "enableConfirm": "Yerel HTTP API etkinleştirilsin mi? Bu Mac üzerindeki yerel araçlar, görüntülenen jetonla Vox Jot'yu kontrol edebilir. Belirteci gizli tutun."
+        "enableConfirm": "Yerel HTTP API etkinleştirilsin mi? Bu Mac üzerindeki yerel araçlar, görüntülenen jetonla Vox Jot'yu kontrol edebilir. Belirteci gizli tutun.",
+        "token": "Belirteç",
+        "copyToken": "Belirteci kopyala",
+        "rotateToken": "Yenile"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Gizlilik ve Depolama",
         "diagnostics": "Teşhis",
         "about": "Vox Jot Hakkında",
-        "legal": "Yasal ve Model Şartları"
+        "legal": "Yasal ve Model Şartları",
+        "automationAgents": "Otomasyon ve aracılar"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Yerel onay",
       "ackLabel": "Bu model ve kayıt sorumluluklarını anlıyorum.",
       "ackDescription": "Bu onay bu cihazda yerel olarak saklanır. Kısıtlı model indirmeleri yine kendi modele özel onayını gerektirir."
+    },
+    "readiness": {
+      "title": "Dikte hazırlığı",
+      "description": "Gerekli izinler, konuşma modeli ve teslim durumu.",
+      "status": {
+        "ready": "Hazır",
+        "warning": "Dikkat gerekiyor",
+        "blocked": "Engellendi"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Mikrofon",
+          "permissionBlocked": "Dikte etmeden önce mikrofon erişimi verin.",
+          "noDevice": "Şu anda listelenen giriş aygıtı yok.",
+          "ready": "Giriş izni ve aygıt listesi kullanılabilir."
+        },
+        "accessibility": {
+          "label": "Erişilebilirlik",
+          "blocked": "Vox Jot hedef uygulamaya yapıştırabilsin diye Erişilebilirlik izni verin.",
+          "ready": "Yapıştırma otomasyonu izni kullanılabilir."
+        },
+        "inputMonitoring": {
+          "label": "Giriş izleme",
+          "blocked": "Kısayollar güvenilir olsun diye Giriş İzleme izni verin.",
+          "ready": "Kısayol izleme izni kullanılabilir."
+        },
+        "sttModel": {
+          "label": "Konuşma modeli",
+          "loaded": "{{model}} yüklendi.",
+          "pending": "{{model}} bir sonraki dökümden önce yüklenecek.",
+          "missing": "Dikte etmeden önce bir konuşma modeli seçin."
+        },
+        "pasteMethod": {
+          "label": "Teslim",
+          "disabled": "Yapıştırma kapalı; dökümler Vox Jot içinde kalır.",
+          "direct": "Metin doğrudan odaktaki uygulamaya yazılacak.",
+          "clipboard": "Metin pano yapıştırma yolu ile teslim edilecek."
+        },
+        "postProcessing": {
+          "label": "İyileştir",
+          "ready": "İyileştir açık ve sağlayıcı kimlik bilgileri hazır görünüyor.",
+          "missingCredentials": "İyileştir açık, ancak seçili sağlayıcı kimlik bilgileri gerektiriyor.",
+          "off": "İyileştir en düşük gecikme yolu için kapalı."
+        },
+        "screenContext": {
+          "label": "Ekran bağlamı",
+          "on": "Ekran bağlamı uygulamaya duyarlı yazma için açık.",
+          "off": "Ekran bağlamı kapalı."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Otomasyon",
+      "title": "Otomasyon ve aracılar",
+      "description": "Yerel betikleri, kısayolları ve aracı istemcilerini API’yi bu Mac dışına açmadan Vox Jot’a bağlayın.",
+      "surfaceLabel": "Yüzey",
+      "surfaceValue": "Geri döngü",
+      "authLabel": "Kimlik doğrulama",
+      "authValue": "Belirteç",
+      "localApiTitle": "Yerel API",
+      "localApiDescription": "Yerel otomasyon için belirteç korumalı geri döngü erişimi. Belirteç sistem kimlik bilgisi deposunda saklanır ve yalnızca kopyaladığınızda gösterilir."
     }
   },
   "testing": {

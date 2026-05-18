@@ -1652,6 +1652,22 @@ async getHttpApiStatus() : Promise<Result<HttpApiStatus, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async revealHttpApiToken() : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reveal_http_api_token") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async rotateHttpApiToken() : Promise<Result<HttpApiStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("rotate_http_api_token") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getHistoryEntries() : Promise<Result<HistoryEntry[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_history_entries") };
@@ -2516,7 +2532,9 @@ http_api_enabled?: boolean;
  */
 http_api_port?: number;
 /**
- * Bearer token required by state-changing/local-control HTTP API routes.
+ * Legacy bearer token storage. New installs keep this empty and store the
+ * token in the OS credential store; old values are migrated lazily when
+ * the Local API status or HTTP server reads the token.
  */
 http_api_token?: string }
 export type AudioDevice = { index: string; name: string; is_default: boolean }
@@ -2575,7 +2593,7 @@ export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStream
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null; screen_context_metadata: ScreenContextHistoryMetadata | null; duration_ms: number | null }
-export type HttpApiStatus = { enabled: boolean; port: number; token: string }
+export type HttpApiStatus = { enabled: boolean; port: number; token: string; token_available: boolean }
 export type HuggingFaceTokenStatus = { configured: boolean; source: string | null }
 /**
  * Result of changing keyboard implementation

@@ -851,7 +851,9 @@ pub struct AppSettings {
     /// Port the loopback API binds to when `http_api_enabled` is true.
     #[serde(default = "default_http_api_port")]
     pub http_api_port: u16,
-    /// Bearer token required by state-changing/local-control HTTP API routes.
+    /// Legacy bearer token storage. New installs keep this empty and store the
+    /// token in the OS credential store; old values are migrated lazily when
+    /// the Local API status or HTTP server reads the token.
     #[serde(default = "default_http_api_token")]
     pub http_api_token: String,
 }
@@ -2061,19 +2063,12 @@ pub fn get_default_settings() -> AppSettings {
         watch_folders: Vec::new(),
         http_api_enabled: false,
         http_api_port: default_http_api_port(),
-        http_api_token: generate_http_api_token(),
+        http_api_token: String::new(),
     }
-}
-
-fn generate_http_api_token() -> String {
-    format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
 }
 
 fn ensure_http_api_defaults(settings: &mut AppSettings) -> bool {
-    if settings.http_api_token.trim().is_empty() {
-        settings.http_api_token = generate_http_api_token();
-        return true;
-    }
+    let _ = settings;
     false
 }
 
@@ -2716,6 +2711,7 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
     ensure_tts_defaults(&mut settings);
     ensure_http_api_defaults(&mut settings);
     normalize_post_process_api_key_statuses(&mut settings);
+    settings.http_api_token.clear();
 
     settings
 }
@@ -2723,6 +2719,7 @@ pub fn get_settings_without_secrets(app: &AppHandle) -> AppSettings {
 pub fn write_settings(app: &AppHandle, settings: AppSettings) {
     let mut settings = settings;
     settings.post_process_api_keys.clear();
+    settings.http_api_token.clear();
     normalize_post_process_api_key_statuses(&mut settings);
     let store = app
         .store(crate::portable::store_path(SETTINGS_STORE_PATH))
@@ -2930,13 +2927,15 @@ mod tests {
     fn ensure_defaults_clear_inactive_legacy_ollama_model() {
         let mut settings = get_default_settings();
         settings.post_process_provider_id = "openai".to_string();
-        settings
-            .post_process_models
-            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.post_process_models.insert(
+            OLLAMA_PROVIDER_ID.to_string(),
+            LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string(),
+        );
         settings.translation_provider_id = "openai".to_string();
-        settings
-            .translation_model_ids
-            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.translation_model_ids.insert(
+            OLLAMA_PROVIDER_ID.to_string(),
+            LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string(),
+        );
 
         let translation_changed = ensure_translation_defaults(&mut settings);
         let post_process_changed = ensure_post_process_defaults(&mut settings);
@@ -2964,14 +2963,16 @@ mod tests {
         let mut settings = get_default_settings();
         settings.post_process_provider_id = OLLAMA_PROVIDER_ID.to_string();
         settings.post_process_enabled = true;
-        settings
-            .post_process_models
-            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.post_process_models.insert(
+            OLLAMA_PROVIDER_ID.to_string(),
+            LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string(),
+        );
         settings.translation_provider_id = OLLAMA_PROVIDER_ID.to_string();
         settings.translation_output_mode = TranslationOutputMode::Translated;
-        settings
-            .translation_model_ids
-            .insert(OLLAMA_PROVIDER_ID.to_string(), LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string());
+        settings.translation_model_ids.insert(
+            OLLAMA_PROVIDER_ID.to_string(),
+            LEGACY_OLLAMA_DEFAULT_MODEL_ID.to_string(),
+        );
 
         let _translation_changed = ensure_translation_defaults(&mut settings);
         let _post_process_changed = ensure_post_process_defaults(&mut settings);

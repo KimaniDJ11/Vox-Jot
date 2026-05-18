@@ -6,5 +6,7 @@
   <false/>
   <key>NSMicrophoneUsageDescription</key>
   <string>Request microphone access to transcribe audio locally</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Request screen recording access only when Screen Context is enabled to read visible text for app-aware dictation.</string>
 </dict>
 </plist>

@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 
 import { commands } from "@/bindings";
+import { useDictationReadiness } from "@/hooks/useDictationReadiness";
 import { useSettings, useSettingsSlice } from "@/hooks/useSettings";
 import { isMacAppStoreBuild } from "@/lib/distribution";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
@@ -589,14 +590,18 @@ export const RecordingDevicesSettingsSection: React.FC = () => {
 const OutputPasteHero: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
-  const pasteMethod = (getSetting("paste_method") ?? "paste") as string;
+  const pasteMethod = (getSetting("paste_method") ?? "ctrl_v") as string;
 
   const methodLabel =
-    pasteMethod === "paste"
-      ? t("appSections.output.methodPaste")
-      : pasteMethod === "type"
-        ? t("appSections.output.methodType")
-        : t("appSections.output.methodNone");
+    pasteMethod === "direct"
+      ? t("appSections.output.methodType")
+      : pasteMethod === "ctrl_v" ||
+          pasteMethod === "ctrl_shift_v" ||
+          pasteMethod === "shift_insert"
+        ? t("appSections.output.methodPaste")
+        : pasteMethod === "external_script"
+          ? t("appSections.output.methodType")
+          : t("appSections.output.methodNone");
 
   return (
     <SectionHero
@@ -680,6 +685,68 @@ const MethodLegend: React.FC = () => {
   );
 };
 
+const DictationReadinessChecklist: React.FC = () => {
+  const { t } = useTranslation();
+  const readiness = useDictationReadiness();
+  const statusLabel =
+    readiness.overall === "ready"
+      ? t("appSections.readiness.status.ready")
+      : readiness.overall === "warning"
+        ? t("appSections.readiness.status.warning")
+        : t("appSections.readiness.status.blocked");
+  const statusClass =
+    readiness.overall === "ready"
+      ? "text-[var(--success)]"
+      : readiness.overall === "warning"
+        ? "text-[var(--warning)]"
+        : "text-[var(--danger)]";
+
+  return (
+    <section className="rounded-xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-[13px] font-semibold text-[var(--text)]">
+            {t("appSections.readiness.title")}
+          </h3>
+          <p className="mt-0.5 text-[11.5px] text-[var(--muted)]">
+            {t("appSections.readiness.description")}
+          </p>
+        </div>
+        <span className={`text-xs font-semibold ${statusClass}`}>
+          {statusLabel}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {readiness.gates.map((gate) => {
+          const Icon = gate.state === "blocked" ? XCircle : CheckCircle2;
+          const iconClass =
+            gate.state === "blocked"
+              ? "text-[var(--danger)]"
+              : gate.state === "warning"
+                ? "text-[var(--warning)]"
+                : "text-[var(--success)]";
+          return (
+            <div
+              key={gate.id}
+              className="flex min-w-0 items-start gap-2 rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] px-3 py-2"
+            >
+              <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${iconClass}`} />
+              <div className="min-w-0">
+                <div className="text-[12px] font-semibold text-[var(--text)]">
+                  {gate.label}
+                </div>
+                <p className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
+                  {gate.detail}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 export const OutputPasteSettingsSection: React.FC = () => {
   const { getSetting } = useSettings();
   const debugMode = getSetting("debug_mode") ?? false;
@@ -688,6 +755,7 @@ export const OutputPasteSettingsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       <OutputPasteHero />
+      <DictationReadinessChecklist />
 
       <section className="space-y-3">
         <header className="px-1">
@@ -1806,6 +1874,53 @@ export const DiagnosticsSettingsSection: React.FC = () => {
           {t("appSections.diagnostics.debugRevealNotice")}
         </Alert>
       )}
+    </div>
+  );
+};
+
+export const AutomationAgentsSettingsSection: React.FC = () => {
+  const { t } = useTranslation();
+  const routeSnippets = [
+    "GET /v1/health",
+    "GET /v1/models",
+    "POST /v1/transcribe",
+  ];
+
+  return (
+    <div className="space-y-6">
+      <SectionHero
+        icon={<Bot className="h-5 w-5" aria-hidden />}
+        eyebrow={t("appSections.automationAgents.eyebrow")}
+        title={t("appSections.automationAgents.title")}
+        description={t("appSections.automationAgents.description")}
+        tone="info"
+        stats={[
+          {
+            label: t("appSections.automationAgents.surfaceLabel"),
+            value: t("appSections.automationAgents.surfaceValue"),
+          },
+          {
+            label: t("appSections.automationAgents.authLabel"),
+            value: t("appSections.automationAgents.authValue"),
+          },
+        ]}
+        visual={
+          <PreviewSlate className="w-full">
+            <div className="space-y-2 font-mono text-[11px] text-[var(--muted)]">
+              {routeSnippets.map((route) => (
+                <p key={route}>{route}</p>
+              ))}
+            </div>
+          </PreviewSlate>
+        }
+      />
+
+      <SettingsGroup
+        title={t("appSections.automationAgents.localApiTitle")}
+        description={t("appSections.automationAgents.localApiDescription")}
+      >
+        <LocalApiToggle grouped={true} />
+      </SettingsGroup>
     </div>
   );
 };

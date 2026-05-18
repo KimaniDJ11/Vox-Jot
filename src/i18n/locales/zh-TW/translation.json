@@ -1317,9 +1317,12 @@
         "port": "港口",
         "portHint": "重新啟動適用於模糊。",
         "errorPrefix": "API 錯誤：",
-        "cliHint": "試試看：vox-jot 轉錄 path/to/file.wav --format srt",
+        "cliHint": "試用：VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "連接埠必須介於 1024 和 65535 之間。",
-        "enableConfirm": "啟用本地HTTP API？ Mac 上的本機工具可以使用顯示的令牌控制 Vox Jot。保持令牌的私密性。"
+        "enableConfirm": "啟用本地HTTP API？ Mac 上的本機工具可以使用顯示的令牌控制 Vox Jot。保持令牌的私密性。",
+        "token": "權杖",
+        "copyToken": "複製權杖",
+        "rotateToken": "輪換"
       }
     },
     "speechCleanup": {
@@ -1486,11 +1489,7 @@
       "copyLastReply": "複製上次回覆",
       "refreshFailed": "目前無法捕捉選擇內容或剪貼簿片段。",
       "copiedReply": "複製了上次的回覆。",
-      "starterPrompts": [
-        "總結所選文本",
-        "重寫一下更清楚",
-        "拉出行動項目"
-      ]
+      "starterPrompts": ["總結所選文本", "重寫一下更清楚", "拉出行動項目"]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1504,11 +1503,7 @@
       "noteAppended": "將草稿附加到說明中。",
       "noteAppendFailed": "無法附加到註釋。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": [
-        "把這張紙條變成乾淨的草稿",
-        "找到重點",
-        "建議後續步驟"
-      ]
+      "starterPrompts": ["把這張紙條變成乾淨的草稿", "找到重點", "建議後續步驟"]
     },
     "settingsCoach": {
       "label": "設定教練",
@@ -2607,7 +2602,8 @@
         "privacy": "隱私和存儲",
         "diagnostics": "診斷",
         "about": "關於 Vox Jot",
-        "legal": "法律與模型條款"
+        "legal": "法律與模型條款",
+        "automationAgents": "自動化與代理"
       }
     },
     "legal": {
@@ -2674,6 +2670,67 @@
       "ackTitle": "本機確認",
       "ackLabel": "我了解這些模型與錄音責任。",
       "ackDescription": "此確認會儲存在本裝置本機。受限模型下載仍需要其特定模型確認。"
+    },
+    "readiness": {
+      "title": "聽寫就緒狀態",
+      "description": "必要權限、語音模型和傳送狀態。",
+      "status": {
+        "ready": "就緒",
+        "warning": "需要注意",
+        "blocked": "已封鎖"
+      },
+      "gates": {
+        "microphone": {
+          "label": "麥克風",
+          "permissionBlocked": "聽寫前請授予麥克風存取權。",
+          "noDevice": "目前未列出輸入裝置。",
+          "ready": "輸入權限和裝置清單可用。"
+        },
+        "accessibility": {
+          "label": "輔助使用",
+          "blocked": "授予輔助使用權限，讓 Vox Jot 能貼到目標 App。",
+          "ready": "貼上自動化權限可用。"
+        },
+        "inputMonitoring": {
+          "label": "輸入監控",
+          "blocked": "授予輸入監控權限，讓快捷鍵更可靠。",
+          "ready": "快捷鍵監控權限可用。"
+        },
+        "sttModel": {
+          "label": "語音模型",
+          "loaded": "{{model}} 已載入。",
+          "pending": "{{model}} 會在下一次轉錄前載入。",
+          "missing": "聽寫前請選擇語音模型。"
+        },
+        "pasteMethod": {
+          "label": "傳送",
+          "disabled": "貼上已停用；轉錄內容會保留在 Vox Jot。",
+          "direct": "文字會直接輸入到目前聚焦的 App。",
+          "clipboard": "文字會透過剪貼簿貼上路徑傳送。"
+        },
+        "postProcessing": {
+          "label": "潤飾",
+          "ready": "潤飾已啟用，供應商憑證看起來已就緒。",
+          "missingCredentials": "潤飾已啟用，但所選供應商需要憑證。",
+          "off": "潤飾已關閉，以使用最低延遲路徑。"
+        },
+        "screenContext": {
+          "label": "螢幕上下文",
+          "on": "螢幕上下文已啟用，可依 App 情境寫作。",
+          "off": "螢幕上下文已關閉。"
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "自動化",
+      "title": "自動化與代理",
+      "description": "將本機腳本、捷徑和代理用戶端連接到 Vox Jot，同時不把 API 暴露到這台 Mac 之外。",
+      "surfaceLabel": "介面",
+      "surfaceValue": "回環",
+      "authLabel": "驗證",
+      "authValue": "權杖",
+      "localApiTitle": "本地 API",
+      "localApiDescription": "用於本機自動化的權杖保護回環存取。權杖儲存在系統憑證儲存中，只有複製時才會顯示。"
     }
   },
   "testing": {

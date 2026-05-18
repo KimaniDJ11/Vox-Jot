@@ -16,7 +16,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
-import { Copy } from "lucide-react";
+import { Copy, RotateCcw } from "lucide-react";
 import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -126,6 +126,9 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
 
   const url = `http://127.0.0.1:${port}`;
   const authHeader = `X-Vox-Jot-Api-Token: ${token}`;
+  const displayedAuthHeader = token
+    ? authHeader.replace(token, "<token>")
+    : "X-Vox-Jot-Api-Token: <token>";
   const copyUrl = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -134,12 +137,31 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
     }
   }, [url]);
   const copyToken = useCallback(async () => {
+    const tokenResult = await commands.revealHttpApiToken();
+    if (tokenResult.status === "error") {
+      setError(tokenResult.error);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(token);
+      await navigator.clipboard.writeText(tokenResult.data);
     } catch {
       /* clipboard may be unavailable in some contexts; non-fatal */
     }
-  }, [token]);
+  }, []);
+  const rotateToken = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await commands.rotateHttpApiToken();
+      if (result.status === "ok") {
+        setToken(result.data.token);
+      } else {
+        setError(result.error);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   return (
     <div className="space-y-2">
@@ -200,13 +222,21 @@ export const LocalApiToggle: React.FC<{ grouped?: boolean }> = ({
               className="ml-auto"
             >
               <Copy size={12} className="mr-1" />
-              {t("settings.diagnostics.localApi.copyToken", {
-                defaultValue: "Copy Token",
-              })}
+              {t("settings.diagnostics.localApi.copyToken")}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void rotateToken()}
+              disabled={busy}
+            >
+              <RotateCcw size={12} className="mr-1" />
+              {t("settings.diagnostics.localApi.rotateToken")}
             </Button>
           </div>
 
-          <div className="font-mono text-[var(--muted)]">{authHeader}</div>
+          <div className="font-mono text-[var(--muted)]">
+            {displayedAuthHeader}
+          </div>
 
           <div className="flex items-center gap-2">
             <label

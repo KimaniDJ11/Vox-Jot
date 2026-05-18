@@ -143,7 +143,7 @@ export const CrossLinkCard: React.FC<CrossLinkCardProps> = ({
   <button
     type="button"
     onClick={onClick}
-    className="group flex w-full items-center gap-3 rounded-xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-4 py-3 text-left transition-colors hover:border-[color-mix(in_srgb,var(--accent)_42%,var(--border))] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel-bg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+    className="group flex w-full items-center gap-3 rounded-xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] px-4 py-3 text-left transition-colors hover:border-[color-mix(in_srgb,var(--accent)_42%,var(--border))] hover:bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel-bg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
   >
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
       {icon}

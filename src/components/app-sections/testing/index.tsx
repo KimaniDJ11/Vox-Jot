@@ -161,7 +161,7 @@ export const ModelTestingSection: React.FC = () => {
                       whileTap={{ scale: 0.97 }}
                       transition={press}
                       onClick={() => setActiveTab(tab.id)}
-                      className="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+                      className="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
                       style={{
                         color: isActive
                           ? "var(--inverse-text)"

@@ -8,6 +8,7 @@
 //! (main, scratchpad, etc.) is consistent.
 
 use crate::http_api::HttpApiManager;
+use crate::secret_store;
 use crate::settings::{get_settings, write_settings};
 use serde::Serialize;
 use specta::Type;
@@ -19,6 +20,7 @@ pub struct HttpApiStatus {
     pub enabled: bool,
     pub port: u16,
     pub token: String,
+    pub token_available: bool,
 }
 
 #[tauri::command]
@@ -72,10 +74,60 @@ pub async fn set_http_api_port(
 #[tauri::command]
 #[specta::specta]
 pub fn get_http_api_status(app: AppHandle) -> Result<HttpApiStatus, String> {
-    let s = get_settings(&app);
+    let mut s = get_settings(&app);
+    let token = secret_store::get_or_create_http_api_token(Some(&s.http_api_token))?;
+    if !s.http_api_token.trim().is_empty() {
+        s.http_api_token.clear();
+        write_settings(&app, s.clone());
+    }
     Ok(HttpApiStatus {
         enabled: s.http_api_enabled,
         port: s.http_api_port,
-        token: s.http_api_token,
+        token: mask_token(&token),
+        token_available: true,
     })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn reveal_http_api_token(app: AppHandle) -> Result<String, String> {
+    let mut settings = get_settings(&app);
+    let token = secret_store::get_or_create_http_api_token(Some(&settings.http_api_token))?;
+    if !settings.http_api_token.trim().is_empty() {
+        settings.http_api_token.clear();
+        write_settings(&app, settings);
+    }
+    Ok(token)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn rotate_http_api_token(app: AppHandle) -> Result<HttpApiStatus, String> {
+    let settings = get_settings(&app);
+    let token = secret_store::rotate_http_api_token()?;
+    Ok(HttpApiStatus {
+        enabled: settings.http_api_enabled,
+        port: settings.http_api_port,
+        token: mask_token(&token),
+        token_available: true,
+    })
+}
+
+fn mask_token(token: &str) -> String {
+    let trimmed = token.trim();
+    let chars: Vec<char> = trimmed.chars().collect();
+    if chars.len() <= 12 {
+        return "••••".to_string();
+    }
+    let prefix: String = chars.iter().take(6).copied().collect();
+    let suffix: String = chars
+        .iter()
+        .rev()
+        .take(6)
+        .copied()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    format!("{prefix}…{suffix}")
 }

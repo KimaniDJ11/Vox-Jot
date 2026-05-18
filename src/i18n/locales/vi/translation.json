@@ -1317,9 +1317,12 @@
         "port": "Cảng",
         "portHint": "Khởi động lại áp dụng khi mờ.",
         "errorPrefix": "Lỗi API:",
-        "cliHint": "Hãy thử: vox-jot transcribe path/to/file.wav --format srt",
+        "cliHint": "Thử: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Cổng phải nằm trong khoảng từ 1024 đến 65535.",
-        "enableConfirm": "Kích hoạt HTTP API cục bộ? Các công cụ cục bộ trên Mac này có thể điều khiển Vox Jot bằng mã thông báo được hiển thị. Giữ mã thông báo ở chế độ riêng tư."
+        "enableConfirm": "Kích hoạt HTTP API cục bộ? Các công cụ cục bộ trên Mac này có thể điều khiển Vox Jot bằng mã thông báo được hiển thị. Giữ mã thông báo ở chế độ riêng tư.",
+        "token": "Mã thông báo",
+        "copyToken": "Sao chép mã",
+        "rotateToken": "Xoay vòng"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Quyền riêng tư và lưu trữ",
         "diagnostics": "Chẩn đoán",
         "about": "Giới thiệu về Vox Jot",
-        "legal": "Điều khoản pháp lý và mô hình"
+        "legal": "Điều khoản pháp lý và mô hình",
+        "automationAgents": "Tự động hóa và tác nhân"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Xác nhận cục bộ",
       "ackLabel": "Tôi hiểu các trách nhiệm về mô hình và ghi âm này.",
       "ackDescription": "Xác nhận này được lưu cục bộ trên thiết bị này. Tải xuống mô hình bị hạn chế vẫn yêu cầu xác nhận riêng theo từng mô hình."
+    },
+    "readiness": {
+      "title": "Mức sẵn sàng đọc chính tả",
+      "description": "Quyền bắt buộc, mô hình giọng nói và trạng thái gửi.",
+      "status": {
+        "ready": "Sẵn sàng",
+        "warning": "Cần chú ý",
+        "blocked": "Bị chặn"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Micrô",
+          "permissionBlocked": "Cấp quyền truy cập micrô trước khi đọc chính tả.",
+          "noDevice": "Hiện không có thiết bị đầu vào nào trong danh sách.",
+          "ready": "Quyền đầu vào và danh sách thiết bị đã sẵn sàng."
+        },
+        "accessibility": {
+          "label": "Trợ năng",
+          "blocked": "Cấp quyền Trợ năng để Vox Jot có thể dán vào ứng dụng đích.",
+          "ready": "Quyền tự động hóa dán đã sẵn sàng."
+        },
+        "inputMonitoring": {
+          "label": "Giám sát đầu vào",
+          "blocked": "Cấp quyền Giám sát đầu vào để phím tắt đáng tin cậy.",
+          "ready": "Quyền giám sát phím tắt đã sẵn sàng."
+        },
+        "sttModel": {
+          "label": "Mô hình giọng nói",
+          "loaded": "{{model}} đã được tải.",
+          "pending": "{{model}} sẽ tải trước bản chép tiếp theo.",
+          "missing": "Chọn mô hình giọng nói trước khi đọc chính tả."
+        },
+        "pasteMethod": {
+          "label": "Gửi",
+          "disabled": "Dán đã tắt; bản chép ở lại trong Vox Jot.",
+          "direct": "Văn bản sẽ được gõ trực tiếp vào ứng dụng đang được focus.",
+          "clipboard": "Văn bản sẽ được gửi qua đường dán bằng bảng nhớ tạm."
+        },
+        "postProcessing": {
+          "label": "Tinh chỉnh",
+          "ready": "Tinh chỉnh đang bật và thông tin xác thực nhà cung cấp có vẻ sẵn sàng.",
+          "missingCredentials": "Tinh chỉnh đang bật nhưng nhà cung cấp đã chọn cần thông tin xác thực.",
+          "off": "Tinh chỉnh đang tắt để có đường đi độ trễ thấp nhất."
+        },
+        "screenContext": {
+          "label": "Ngữ cảnh màn hình",
+          "on": "Ngữ cảnh màn hình đang bật để viết theo ứng dụng.",
+          "off": "Ngữ cảnh màn hình đang tắt."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Tự động hóa",
+      "title": "Tự động hóa và tác nhân",
+      "description": "Kết nối tập lệnh cục bộ, phím tắt và ứng dụng tác nhân với Vox Jot mà không để lộ API ra ngoài máy Mac này.",
+      "surfaceLabel": "Bề mặt",
+      "surfaceValue": "Vòng lặp nội bộ",
+      "authLabel": "Xác thực",
+      "authValue": "Mã thông báo",
+      "localApiTitle": "API cục bộ",
+      "localApiDescription": "Truy cập loopback có mã thông báo cho tự động hóa cục bộ. Mã được lưu trong kho thông tin xác thực của hệ thống và chỉ hiển thị khi bạn sao chép."
     }
   },
   "testing": {

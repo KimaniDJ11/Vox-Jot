@@ -1317,9 +1317,12 @@
         "port": "Porto",
         "portHint": "A reinicialização se aplica ao desfoque.",
         "errorPrefix": "Erro API:",
-        "cliHint": "Experimente: vox-jot transcreve caminho/para/arquivo.wav --format srt",
+        "cliHint": "Experimente: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "A porta deve estar entre 1024 e 65535.",
-        "enableConfirm": "Habilitar o HTTP API local? As ferramentas locais neste Mac podem controlar Vox Jot com o token exibido. Mantenha o token privado."
+        "enableConfirm": "Habilitar o HTTP API local? As ferramentas locais neste Mac podem controlar Vox Jot com o token exibido. Mantenha o token privado.",
+        "token": "Token de acesso",
+        "copyToken": "Copiar token",
+        "rotateToken": "Rotacionar"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Privacidade e armazenamento",
         "diagnostics": "Diagnósticos",
         "about": "Acerca de Vox Jot",
-        "legal": "Termos legais e dos modelos"
+        "legal": "Termos legais e dos modelos",
+        "automationAgents": "Automação e agentes"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Reconhecimento local",
       "ackLabel": "Entendo estas responsabilidades sobre modelos e gravação.",
       "ackDescription": "Este reconhecimento é armazenado localmente neste dispositivo. Downloads de modelos restritos ainda exigem reconhecimento específico do modelo."
+    },
+    "readiness": {
+      "title": "Prontidão do ditado",
+      "description": "Permissões necessárias, modelo de fala e estado de entrega.",
+      "status": {
+        "ready": "Pronto",
+        "warning": "Precisa de atenção",
+        "blocked": "Bloqueado"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Microfone",
+          "permissionBlocked": "Conceda acesso ao microfone antes de ditar.",
+          "noDevice": "Nenhum dispositivo de entrada está listado no momento.",
+          "ready": "A permissão de entrada e a lista de dispositivos estão disponíveis."
+        },
+        "accessibility": {
+          "label": "Acessibilidade",
+          "blocked": "Conceda Acessibilidade para que o Vox Jot possa colar no app de destino.",
+          "ready": "A permissão de automação de colagem está disponível."
+        },
+        "inputMonitoring": {
+          "label": "Monitoramento de entrada",
+          "blocked": "Conceda Monitoramento de entrada para que os atalhos sejam confiáveis.",
+          "ready": "A permissão de monitoramento de atalhos está disponível."
+        },
+        "sttModel": {
+          "label": "Modelo de fala",
+          "loaded": "{{model}} está carregado.",
+          "pending": "{{model}} será carregado antes da próxima transcrição.",
+          "missing": "Escolha um modelo de fala antes de ditar."
+        },
+        "pasteMethod": {
+          "label": "Entrega",
+          "disabled": "Colar está desativado; as transcrições ficam no Vox Jot.",
+          "direct": "O texto será digitado diretamente no app em foco.",
+          "clipboard": "O texto será entregue pelo caminho de colagem da área de transferência."
+        },
+        "postProcessing": {
+          "label": "Refinar",
+          "ready": "Refinar está ativado e as credenciais do provedor parecem prontas.",
+          "missingCredentials": "Refinar está ativado, mas o provedor selecionado precisa de credenciais.",
+          "off": "Refinar está desativado para o caminho de menor latência."
+        },
+        "screenContext": {
+          "label": "Contexto de tela",
+          "on": "O contexto de tela está ativado para escrita consciente do app.",
+          "off": "O contexto de tela está desativado."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Automação",
+      "title": "Automação e agentes",
+      "description": "Conecte scripts locais, atalhos e clientes de agentes ao Vox Jot sem expor a API além deste Mac.",
+      "surfaceLabel": "Superfície",
+      "surfaceValue": "Retorno local",
+      "authLabel": "Autenticação",
+      "authValue": "Token de acesso",
+      "localApiTitle": "API local",
+      "localApiDescription": "Acesso de loopback protegido por token para automação local. O token é armazenado no cofre de credenciais do sistema e só é revelado quando você o copia."
     }
   },
   "testing": {

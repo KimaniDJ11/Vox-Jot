@@ -1,11 +1,13 @@
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex, Once};
+use uuid::Uuid;
 
 #[cfg(test)]
 use std::collections::{HashMap, HashSet};
 
 const POST_PROCESS_KEY_SERVICE: &str = "com.voxjot.post_process_api_keys";
 const HUGGING_FACE_TOKEN_ACCOUNT: &str = "hugging_face:hub_token";
+const HTTP_API_TOKEN_ACCOUNT: &str = "http_api:loopback_token";
 
 pub trait SecretStore: Send + Sync {
     fn get_secret(&self, account: &str) -> Result<Option<String>, String>;
@@ -136,6 +138,32 @@ pub fn set_hugging_face_token(token: &str) -> Result<(), String> {
 
 pub fn clear_hugging_face_token() -> Result<(), String> {
     store().clear_secret(HUGGING_FACE_TOKEN_ACCOUNT)
+}
+
+pub fn generate_http_api_token() -> String {
+    format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+}
+
+pub fn get_or_create_http_api_token(legacy_token: Option<&str>) -> Result<String, String> {
+    if let Some(token) = store().get_secret(HTTP_API_TOKEN_ACCOUNT)? {
+        if !token.trim().is_empty() {
+            return Ok(token);
+        }
+    }
+
+    let token = legacy_token
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(generate_http_api_token);
+    store().set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
+    Ok(token)
+}
+
+pub fn rotate_http_api_token() -> Result<String, String> {
+    let token = generate_http_api_token();
+    store().set_secret(HTTP_API_TOKEN_ACCOUNT, &token)?;
+    Ok(token)
 }
 
 #[cfg(test)]

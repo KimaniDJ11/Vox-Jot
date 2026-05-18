@@ -30,7 +30,9 @@
 
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
-use crate::settings::get_settings_without_secrets;
+use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
+use crate::tts::{SpeakRequest, TtsManager, VoiceInfo};
+use crate::tts_profiles::{list_voice_profiles, TtsVoiceProfileDescriptor};
 use axum::{
     extract::{DefaultBodyLimit, Multipart, State as AxumState},
     http::{HeaderMap, StatusCode},
@@ -39,7 +41,7 @@ use axum::{
     Router,
 };
 use log::{info, warn};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -70,6 +72,34 @@ struct TranscribeResponse {
 struct ModelsResponse {
     current: Option<String>,
     available: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct ReadinessGateResponse {
+    id: &'static str,
+    state: &'static str,
+    detail: String,
+}
+
+#[derive(Serialize)]
+struct ReadinessResponse {
+    overall: &'static str,
+    gates: Vec<ReadinessGateResponse>,
+    updated_at_ms: u128,
+}
+
+#[derive(Deserialize)]
+struct SpeakApiRequest {
+    text: String,
+    locale: Option<String>,
+    preferred_voice_id: Option<String>,
+    preset_id: Option<String>,
+    remember_last_output: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct SpeakApiResponse {
+    status: &'static str,
 }
 
 #[derive(Serialize)]
@@ -117,7 +147,11 @@ impl HttpApiManager {
 
         let router = Router::new()
             .route("/v1/health", get(handle_health))
+            .route("/v1/readiness", get(handle_readiness))
             .route("/v1/models", get(handle_models))
+            .route("/v1/voices", get(handle_voices))
+            .route("/v1/speak", post(handle_speak))
+            .route("/v1/tts/profiles", get(handle_tts_profiles))
             .route("/v1/transcribe", post(handle_transcribe))
             .layer(DefaultBodyLimit::max(MAX_TRANSCRIBE_UPLOAD_BYTES))
             .with_state(state);
@@ -255,6 +289,198 @@ async fn handle_models_authorized(state: ApiState) -> axum::response::Response {
     .into_response()
 }
 
+async fn handle_readiness(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+
+    let settings = get_settings_without_secrets(&state.app);
+    let loaded_model = state
+        .app
+        .try_state::<Arc<TranscriptionManager>>()
+        .and_then(|manager| manager.get_current_model());
+    let selected_model = settings.selected_model.clone();
+    let gates = vec![
+        ReadinessGateResponse {
+            id: "stt_model",
+            state: if selected_model.trim().is_empty() {
+                "blocked"
+            } else if loaded_model.as_deref() == Some(selected_model.as_str()) {
+                "ready"
+            } else {
+                "warning"
+            },
+            detail: if selected_model.trim().is_empty() {
+                "No speech model is selected.".to_string()
+            } else if loaded_model.as_deref() == Some(selected_model.as_str()) {
+                format!("{selected_model} is loaded.")
+            } else {
+                format!("{selected_model} is selected but not loaded.")
+            },
+        },
+        ReadinessGateResponse {
+            id: "paste_method",
+            state: if matches!(settings.paste_method, crate::settings::PasteMethod::None) {
+                "warning"
+            } else {
+                "ready"
+            },
+            detail: format!("Paste method: {:?}", settings.paste_method),
+        },
+        ReadinessGateResponse {
+            id: "post_processing",
+            state: if settings.post_process_enabled {
+                "warning"
+            } else {
+                "ready"
+            },
+            detail: if settings.post_process_enabled {
+                "Refine is enabled and may add post-processing latency.".to_string()
+            } else {
+                "Refine is disabled for the lowest-latency path.".to_string()
+            },
+        },
+        ReadinessGateResponse {
+            id: "screen_context",
+            state: "ready",
+            detail: if settings.screen_context_enabled {
+                "Screen context is enabled.".to_string()
+            } else {
+                "Screen context is disabled.".to_string()
+            },
+        },
+    ];
+    let overall = if gates.iter().any(|gate| gate.state == "blocked") {
+        "blocked"
+    } else if gates.iter().any(|gate| gate.state == "warning") {
+        "warning"
+    } else {
+        "ready"
+    };
+
+    Json(ReadinessResponse {
+        overall,
+        gates,
+        updated_at_ms: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_millis())
+            .unwrap_or_default(),
+    })
+    .into_response()
+}
+
+async fn handle_voices(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    let Some(manager) = state.app.try_state::<Arc<TtsManager>>() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                error: "TTS manager is unavailable.".to_string(),
+            }),
+        )
+            .into_response();
+    };
+    let manager = manager.inner().clone();
+    match tokio::task::spawn_blocking(move || manager.get_available_voices()).await {
+        Ok(Ok(voices)) => Json::<Vec<VoiceInfo>>(voices).into_response(),
+        Ok(Err(error)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("task join: {error}"),
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_tts_profiles(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    match list_voice_profiles(&state.app) {
+        Ok(profiles) => Json::<Vec<TtsVoiceProfileDescriptor>>(profiles).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_speak(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<SpeakApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    let text = request.text.trim();
+    if text.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Text is required.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+    if text.chars().count() > 20_000 {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(ErrorResponse {
+                error: "Text is too large for /v1/speak.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+    let Some(manager) = state.app.try_state::<Arc<TtsManager>>() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                error: "TTS manager is unavailable.".to_string(),
+            }),
+        )
+            .into_response();
+    };
+    let manager = manager.inner().clone();
+    match manager
+        .speak(SpeakRequest {
+            text: text.to_string(),
+            locale: request.locale,
+            preferred_voice_id: request.preferred_voice_id,
+            preset_id: request.preset_id,
+            inline_preset: None,
+            trigger: Some("local_api".to_string()),
+            remember_last_output: request.remember_last_output.unwrap_or(false),
+        })
+        .await
+    {
+        Ok(()) => Json(SpeakApiResponse { status: "ok" }).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
 async fn handle_transcribe(
     AxumState(state): AxumState<ApiState>,
     headers: HeaderMap,
@@ -370,7 +596,19 @@ fn require_api_token(
     app: &AppHandle,
     headers: &HeaderMap,
 ) -> Result<(), Box<axum::response::Response>> {
-    let expected = get_settings_without_secrets(app).http_api_token;
+    let mut settings = get_settings(app);
+    let expected =
+        match crate::secret_store::get_or_create_http_api_token(Some(&settings.http_api_token)) {
+            Ok(token) => token,
+            Err(err) => {
+                warn!("Local API token unavailable: {err}");
+                String::new()
+            }
+        };
+    if !settings.http_api_token.trim().is_empty() {
+        settings.http_api_token.clear();
+        write_settings(app, settings);
+    }
     let expected = expected.trim();
     let provided = headers
         .get(API_TOKEN_HEADER)

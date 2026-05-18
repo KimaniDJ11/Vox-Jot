@@ -1317,9 +1317,12 @@
         "port": "Port",
         "portHint": "Restart se použije na rozmazání.",
         "errorPrefix": "Chyba API:",
-        "cliHint": "Zkuste to: vox-jot transscribe path/to/file.wav --format srt",
+        "cliHint": "Vyzkoušejte: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Port musí být mezi 1024 a 65535.",
-        "enableConfirm": "Povolit místní HTTP API? Místní nástroje na tomto Mac mohou ovládat Vox Jot pomocí zobrazeného tokenu. Udržujte token v soukromí."
+        "enableConfirm": "Povolit místní HTTP API? Místní nástroje na tomto Mac mohou ovládat Vox Jot pomocí zobrazeného tokenu. Udržujte token v soukromí.",
+        "token": "Přístupový token",
+        "copyToken": "Kopírovat token",
+        "rotateToken": "Otočit"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "Soukromí a úložiště",
         "diagnostics": "Diagnose",
         "about": "Über Vox Jot",
-        "legal": "Právní podmínky a podmínky modelů"
+        "legal": "Právní podmínky a podmínky modelů",
+        "automationAgents": "Automatizace a agenti"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "Místní potvrzení",
       "ackLabel": "Rozumím těmto odpovědnostem za modely a nahrávání.",
       "ackDescription": "Toto potvrzení je uloženo místně na tomto zařízení. Stažení omezených modelů stále vyžaduje vlastní potvrzení konkrétního modelu."
+    },
+    "readiness": {
+      "title": "Připravenost diktování",
+      "description": "Požadovaná oprávnění, řečový model a stav doručení.",
+      "status": {
+        "ready": "Připraveno",
+        "warning": "Vyžaduje pozornost",
+        "blocked": "Blokováno"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Mikrofon",
+          "permissionBlocked": "Před diktováním povolte přístup k mikrofonu.",
+          "noDevice": "Aktuálně není uvedeno žádné vstupní zařízení.",
+          "ready": "Oprávnění vstupu a seznam zařízení jsou dostupné."
+        },
+        "accessibility": {
+          "label": "Zpřístupnění",
+          "blocked": "Povolte Zpřístupnění, aby Vox Jot mohl vkládat do cílové aplikace.",
+          "ready": "Oprávnění automatizace vložení je dostupné."
+        },
+        "inputMonitoring": {
+          "label": "Sledování vstupu",
+          "blocked": "Povolte Sledování vstupu, aby byly zkratky spolehlivé.",
+          "ready": "Oprávnění sledování zkratek je dostupné."
+        },
+        "sttModel": {
+          "label": "Řečový model",
+          "loaded": "{{model}} je načten.",
+          "pending": "{{model}} se načte před dalším přepisem.",
+          "missing": "Před diktováním vyberte řečový model."
+        },
+        "pasteMethod": {
+          "label": "Doručení",
+          "disabled": "Vkládání je vypnuté; přepisy zůstanou ve Vox Jot.",
+          "direct": "Text se bude psát přímo do aktivní aplikace.",
+          "clipboard": "Text bude doručen cestou vložení ze schránky."
+        },
+        "postProcessing": {
+          "label": "Upravit",
+          "ready": "Upravit je zapnuté a přihlašovací údaje poskytovatele vypadají připravené.",
+          "missingCredentials": "Upravit je zapnuté, ale vybraný poskytovatel potřebuje přihlašovací údaje.",
+          "off": "Upravit je vypnuté pro cestu s nejnižší latencí."
+        },
+        "screenContext": {
+          "label": "Kontext obrazovky",
+          "on": "Kontext obrazovky je zapnutý pro psaní s ohledem na aplikaci.",
+          "off": "Kontext obrazovky je vypnutý."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Automatizace",
+      "title": "Automatizace a agenti",
+      "description": "Připojte místní skripty, zkratky a klienty agentů k Vox Jot bez vystavení API mimo tento Mac.",
+      "surfaceLabel": "Rozhraní",
+      "surfaceValue": "Zpětná smyčka",
+      "authLabel": "Ověření",
+      "authValue": "Přístupový token",
+      "localApiTitle": "Místní API",
+      "localApiDescription": "Přístup přes loopback chráněný tokenem pro místní automatizaci. Token je uložen v úložišti přihlašovacích údajů systému a zobrazí se jen při kopírování."
     }
   },
   "testing": {

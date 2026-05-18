@@ -1317,9 +1317,12 @@
         "port": "항구",
         "portHint": "흐림 시 다시 시작이 적용됩니다.",
         "errorPrefix": "API 오류:",
-        "cliHint": "시도해 보세요: vox-jot transcribe path/to/file.wav --format srt",
+        "cliHint": "사용해 보기: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "포트는 1024에서 65535 사이여야 합니다.",
-        "enableConfirm": "로컬 HTTP API를 활성화하시겠습니까? 이 Mac의 로컬 도구는 표시된 토큰으로 Vox Jot를 제어할 수 있습니다. 토큰을 비공개로 유지하세요."
+        "enableConfirm": "로컬 HTTP API를 활성화하시겠습니까? 이 Mac의 로컬 도구는 표시된 토큰으로 Vox Jot를 제어할 수 있습니다. 토큰을 비공개로 유지하세요.",
+        "token": "토큰",
+        "copyToken": "토큰 복사",
+        "rotateToken": "회전"
       }
     },
     "speechCleanup": {
@@ -2607,7 +2610,8 @@
         "privacy": "개인정보 보호 및 저장",
         "diagnostics": "診断",
         "about": "Vox Jotについて",
-        "legal": "법적 및 모델 약관"
+        "legal": "법적 및 모델 약관",
+        "automationAgents": "자동화 및 에이전트"
       }
     },
     "legal": {
@@ -2674,6 +2678,67 @@
       "ackTitle": "로컬 확인",
       "ackLabel": "이 모델 및 녹음 책임을 이해합니다.",
       "ackDescription": "이 확인은 이 기기에 로컬로 저장됩니다. 제한된 모델 다운로드에는 여전히 모델별 확인이 필요합니다."
+    },
+    "readiness": {
+      "title": "받아쓰기 준비 상태",
+      "description": "필수 권한, 음성 모델, 전달 상태입니다.",
+      "status": {
+        "ready": "준비됨",
+        "warning": "주의 필요",
+        "blocked": "차단됨"
+      },
+      "gates": {
+        "microphone": {
+          "label": "마이크",
+          "permissionBlocked": "받아쓰기 전에 마이크 접근 권한을 허용하세요.",
+          "noDevice": "현재 나열된 입력 장치가 없습니다.",
+          "ready": "입력 권한과 장치 목록을 사용할 수 있습니다."
+        },
+        "accessibility": {
+          "label": "손쉬운 사용",
+          "blocked": "Vox Jot이 대상 앱에 붙여넣을 수 있도록 손쉬운 사용 권한을 허용하세요.",
+          "ready": "붙여넣기 자동화 권한을 사용할 수 있습니다."
+        },
+        "inputMonitoring": {
+          "label": "입력 모니터링",
+          "blocked": "단축키가 안정적으로 작동하도록 입력 모니터링 권한을 허용하세요.",
+          "ready": "단축키 모니터링 권한을 사용할 수 있습니다."
+        },
+        "sttModel": {
+          "label": "음성 모델",
+          "loaded": "{{model}}이 로드되었습니다.",
+          "pending": "{{model}}은 다음 전사 전에 로드됩니다.",
+          "missing": "받아쓰기 전에 음성 모델을 선택하세요."
+        },
+        "pasteMethod": {
+          "label": "전달",
+          "disabled": "붙여넣기가 비활성화되어 전사 결과가 Vox Jot에 남습니다.",
+          "direct": "텍스트가 포커스된 앱에 직접 입력됩니다.",
+          "clipboard": "텍스트가 클립보드 붙여넣기 경로로 전달됩니다."
+        },
+        "postProcessing": {
+          "label": "다듬기",
+          "ready": "다듬기가 켜져 있고 공급자 자격 증명이 준비된 것으로 보입니다.",
+          "missingCredentials": "다듬기가 켜져 있지만 선택한 공급자에 자격 증명이 필요합니다.",
+          "off": "최저 지연 경로를 위해 다듬기가 꺼져 있습니다."
+        },
+        "screenContext": {
+          "label": "화면 컨텍스트",
+          "on": "앱 인식 작성을 위해 화면 컨텍스트가 켜져 있습니다.",
+          "off": "화면 컨텍스트가 꺼져 있습니다."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "자동화",
+      "title": "자동화 및 에이전트",
+      "description": "API를 이 Mac 밖으로 노출하지 않고 로컬 스크립트, 단축키, 에이전트 클라이언트를 Vox Jot에 연결합니다.",
+      "surfaceLabel": "표면",
+      "surfaceValue": "루프백",
+      "authLabel": "인증",
+      "authValue": "토큰",
+      "localApiTitle": "로컬 API",
+      "localApiDescription": "로컬 자동화를 위한 토큰 보호 루프백 접근입니다. 토큰은 시스템 자격 증명 저장소에 저장되며 복사할 때만 표시됩니다."
     }
   },
   "testing": {

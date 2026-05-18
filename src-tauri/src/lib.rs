@@ -298,9 +298,10 @@ async fn maybe_warm_selected_ollama_model(
     {
         let replacement_model = status.models.first().cloned().unwrap_or_default();
         let replacement_model_for_log = replacement_model.clone();
-        settings
-            .post_process_models
-            .insert(settings::OLLAMA_PROVIDER_ID.to_string(), replacement_model.clone());
+        settings.post_process_models.insert(
+            settings::OLLAMA_PROVIDER_ID.to_string(),
+            replacement_model.clone(),
+        );
         if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID {
             settings.selected_llm_model_id = replacement_model.clone();
         }
@@ -887,6 +888,8 @@ pub fn run(cli_args: CliArgs) {
         commands::http_api::set_http_api_enabled,
         commands::http_api::set_http_api_port,
         commands::http_api::get_http_api_status,
+        commands::http_api::reveal_http_api_token,
+        commands::http_api::rotate_http_api_token,
         commands::history::get_history_entries,
         commands::history::get_history_entries_page,
         commands::history::get_latest_history_entry,

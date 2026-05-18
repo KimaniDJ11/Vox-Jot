@@ -251,7 +251,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       className="sidebar flex flex-col transition-all duration-300"
-      aria-hidden={collapsed ? true : undefined}
       onPointerLeave={clearHover}
       onBlur={clearHover}
     >

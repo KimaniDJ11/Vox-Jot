@@ -647,9 +647,12 @@
         "port": "Port",
         "portHint": "Restart applies on blur.",
         "errorPrefix": "API error:",
-        "cliHint": "Try it: vox-jot transcribe path/to/file.wav --format srt",
+        "cliHint": "Try it: VOX_JOT_API_TOKEN=<token> vox-jot transcribe path/to/file.wav --format srt",
         "portRangeError": "Port must be between 1024 and 65535.",
-        "enableConfirm": "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private."
+        "enableConfirm": "Enable the local HTTP API? Local tools on this Mac can control Vox Jot with the displayed token. Keep the token private.",
+        "token": "Token",
+        "copyToken": "Copy Token",
+        "rotateToken": "Rotate"
       }
     },
     "corrections": {
@@ -2433,6 +2436,7 @@
         "screenContext": "Screen Context",
         "privacy": "Privacy & Storage",
         "legal": "Legal & Model Terms",
+        "automationAgents": "Automation & Agents",
         "diagnostics": "Diagnostics",
         "about": "About Vox Jot"
       }
@@ -2689,6 +2693,67 @@
       "stackTauri": "Tauri 2.x",
       "stackReact": "React + TypeScript",
       "stackRust": "Rust audio pipeline"
+    },
+    "readiness": {
+      "title": "Dictation readiness",
+      "description": "Required permissions, speech model, and delivery status.",
+      "status": {
+        "ready": "Ready",
+        "warning": "Needs attention",
+        "blocked": "Blocked"
+      },
+      "gates": {
+        "microphone": {
+          "label": "Microphone",
+          "permissionBlocked": "Grant microphone access before dictating.",
+          "noDevice": "No input device is currently listed.",
+          "ready": "Input permission and device list are available."
+        },
+        "accessibility": {
+          "label": "Accessibility",
+          "blocked": "Grant Accessibility so Vox Jot can paste into the target app.",
+          "ready": "Paste automation permission is available."
+        },
+        "inputMonitoring": {
+          "label": "Input Monitoring",
+          "blocked": "Grant Input Monitoring so shortcuts are reliable.",
+          "ready": "Shortcut monitoring permission is available."
+        },
+        "sttModel": {
+          "label": "Speech model",
+          "loaded": "{{model}} is loaded.",
+          "pending": "{{model}} will load before the next transcript.",
+          "missing": "Choose a speech model before dictating."
+        },
+        "pasteMethod": {
+          "label": "Delivery",
+          "disabled": "Paste is disabled; transcripts stay in Vox Jot.",
+          "direct": "Text will be typed directly into the focused app.",
+          "clipboard": "Text will be delivered with the clipboard paste path."
+        },
+        "postProcessing": {
+          "label": "Refine",
+          "ready": "Refine is enabled and provider credentials look ready.",
+          "missingCredentials": "Refine is enabled but the selected provider needs credentials.",
+          "off": "Refine is off for the lowest latency path."
+        },
+        "screenContext": {
+          "label": "Screen Context",
+          "on": "Screen context is enabled for app-aware writing.",
+          "off": "Screen context is off."
+        }
+      }
+    },
+    "automationAgents": {
+      "eyebrow": "Automation",
+      "title": "Automation & Agents",
+      "description": "Connect local scripts, shortcuts, and agent clients to Vox Jot without exposing the API beyond this Mac.",
+      "surfaceLabel": "Surface",
+      "surfaceValue": "Loopback",
+      "authLabel": "Auth",
+      "authValue": "Token",
+      "localApiTitle": "Local API",
+      "localApiDescription": "Token-gated loopback access for local automation. The token is stored in the OS credential store and only revealed when you copy it."
     }
   },
   "testing": {

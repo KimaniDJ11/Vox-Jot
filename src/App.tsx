@@ -15,6 +15,7 @@ import { platform } from "@tauri-apps/plugin-os";
 import {
   AppWindow,
   BookOpen,
+  Bot,
   Cpu,
   Dna,
   FileAudio,
@@ -240,6 +241,11 @@ const LegalModelTermsSection = lazy(() =>
 const DiagnosticsSettingsSection = lazy(() =>
   import("@/components/app-sections/settings").then((module) => ({
     default: module.DiagnosticsSettingsSection,
+  })),
+);
+const AutomationAgentsSettingsSection = lazy(() =>
+  import("@/components/app-sections/settings").then((module) => ({
+    default: module.AutomationAgentsSettingsSection,
   })),
 );
 const AboutSection = lazy(() =>
@@ -636,6 +642,14 @@ function App() {
           Scale,
           <LegalModelTermsSection />,
           "red",
+          settingsSystem,
+        ),
+        makeSection(
+          "automation-agents",
+          "appSections.nav.settings.automationAgents",
+          Bot,
+          <AutomationAgentsSettingsSection />,
+          "blue",
           settingsSystem,
         ),
         makeSection(

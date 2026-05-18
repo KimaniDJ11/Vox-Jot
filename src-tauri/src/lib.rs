@@ -291,25 +291,21 @@ async fn maybe_warm_selected_ollama_model(
         }
     }
 
-    if !status
-        .models
-        .iter()
-        .any(|candidate| candidate.eq_ignore_ascii_case(&model))
-    {
+    let model_is_installed = status.models.iter().any(|candidate| {
+        let candidate = candidate.trim();
+        let model = model.trim();
+        candidate.eq_ignore_ascii_case(model)
+            || candidate.eq_ignore_ascii_case(&format!("{model}:latest"))
+            || model.eq_ignore_ascii_case(&format!("{candidate}:latest"))
+    });
+
+    if !model_is_installed {
         let replacement_model = status.models.first().cloned().unwrap_or_default();
         let replacement_model_for_log = replacement_model.clone();
         settings.post_process_models.insert(
             settings::OLLAMA_PROVIDER_ID.to_string(),
             replacement_model.clone(),
         );
-        if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID {
-            settings.selected_llm_model_id = replacement_model.clone();
-        }
-        if settings.translation_provider_id == settings::OLLAMA_PROVIDER_ID {
-            settings
-                .translation_model_ids
-                .insert(settings::OLLAMA_PROVIDER_ID.to_string(), replacement_model);
-        }
         settings::write_settings(&app_handle, settings);
 
         if status.models.is_empty() {

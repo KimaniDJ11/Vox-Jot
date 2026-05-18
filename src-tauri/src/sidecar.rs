@@ -55,6 +55,7 @@ pub enum SidecarBackend {
 pub struct SidecarManager {
     app_handle: AppHandle,
     child: Mutex<Option<std::process::Child>>,
+    lifecycle: Mutex<()>,
     backend: SidecarBackend,
     cached_health: AtomicU8,
     cached_health_checked_at_ms: AtomicU64,
@@ -65,6 +66,7 @@ impl SidecarManager {
         Self {
             app_handle: app_handle.clone(),
             child: Mutex::new(None),
+            lifecycle: Mutex::new(()),
             backend: Self::detect_backend(app_handle),
             cached_health: AtomicU8::new(HEALTH_UNKNOWN),
             cached_health_checked_at_ms: AtomicU64::new(0),
@@ -310,6 +312,11 @@ impl SidecarManager {
             return Ok(());
         }
 
+        let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
+        if self.is_speech_runtime_running() {
+            return Ok(());
+        }
+
         if !self.listener_pids(SPEECH_RUNTIME_PORT).is_empty() {
             info!("Stopping non-speech-runtime listener to make room for the speech-runtime");
             self.reclaim_sidecar_port(SPEECH_RUNTIME_PORT)?;
@@ -319,6 +326,7 @@ impl SidecarManager {
     }
 
     pub fn restart_speech_runtime(&self) -> Result<(), String> {
+        let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
         if !self.listener_pids(SPEECH_RUNTIME_PORT).is_empty() {
             self.reclaim_sidecar_port(SPEECH_RUNTIME_PORT)?;
         }
@@ -327,6 +335,11 @@ impl SidecarManager {
     }
 
     pub fn ensure_running(&self) -> Result<(), String> {
+        let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
+        self.ensure_running_locked()
+    }
+
+    fn ensure_running_locked(&self) -> Result<(), String> {
         let already_running = self.is_running();
         let mlx_audio_needs_runtime_restart = if self.backend == SidecarBackend::MlxAudio {
             let had_required_patches = self.mlx_audio_runtime_has_required_patches();
@@ -1087,7 +1100,18 @@ impl SidecarManager {
             return Ok(false);
         }
 
-        self.ensure_running()?;
+        let _lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner());
+        if self.is_running() {
+            if self.backend == SidecarBackend::MlxAudio {
+                self.ensure_running_locked()?;
+            }
+            return Ok(true);
+        }
+        if !self.can_auto_start() {
+            return Ok(false);
+        }
+
+        self.ensure_running_locked()?;
         Ok(true)
     }
 

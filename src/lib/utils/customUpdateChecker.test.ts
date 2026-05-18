@@ -44,6 +44,15 @@ describe("update checker (plugin-backed)", () => {
     expect(result).toEqual({ available: false, currentVersion: "1.0.0" });
   });
 
+  it("returns 'not available' when the update manifest is unavailable", async () => {
+    checkMock.mockRejectedValue(new Error("server returned 404"));
+
+    const result = await module.checkForCustomUpdate("1.0.0");
+
+    expect(checkMock).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ available: false, currentVersion: "1.0.0" });
+  });
+
   it("surfaces available update details from the plugin", async () => {
     const fakeUpdate = {
       version: "1.2.0",

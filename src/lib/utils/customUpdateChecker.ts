@@ -19,7 +19,14 @@ let pendingUpdate: Update | null = null;
 export const checkForCustomUpdate = async (
   currentVersion: string,
 ): Promise<CustomUpdateResult> => {
-  const update = await check();
+  let update: Update | null;
+  try {
+    update = await check();
+  } catch (error) {
+    pendingUpdate = null;
+    console.warn("Update manifest unavailable; treating as no update.", error);
+    return { available: false, currentVersion };
+  }
 
   if (!update) {
     pendingUpdate = null;

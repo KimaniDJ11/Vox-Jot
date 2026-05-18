@@ -172,7 +172,7 @@ export function useDictationReadiness(): DictationReadiness {
             ? t("appSections.readiness.gates.postProcessing.ready")
             : t("appSections.readiness.gates.postProcessing.missingCredentials")
           : t("appSections.readiness.gates.postProcessing.off"),
-        state: postProcessingEnabled && !postKeyReady ? "blocked" : "ready",
+        state: postProcessingEnabled && !postKeyReady ? "warning" : "ready",
       },
       {
         id: "screen_context",

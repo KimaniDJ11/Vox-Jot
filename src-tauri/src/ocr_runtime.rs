@@ -464,6 +464,9 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
             if relative_path.as_os_str().is_empty() {
                 continue;
             }
+            if is_macos_metadata_path(&relative_path) {
+                continue;
+            }
             let destination = install_dir.join(&relative_path);
             if let Some(parent) = destination.parent() {
                 fs::create_dir_all(parent).map_err(|err| {
@@ -595,9 +598,19 @@ fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, St
     Ok(sanitized)
 }
 
+fn is_macos_metadata_path(path: &Path) -> bool {
+    path.components().any(|component| {
+        matches!(component, Component::Normal(part) if part == "__MACOSX")
+    }) || path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.starts_with("._"))
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_archive_path, validate_archive_link_target};
+    use super::{is_macos_metadata_path, sanitize_archive_path, validate_archive_link_target};
     use std::borrow::Cow;
     use std::path::{Path, PathBuf};
 
@@ -615,6 +628,19 @@ mod tests {
             .expect_err("parent traversal should be rejected");
 
         assert!(error.contains("unsafe path"));
+    }
+
+    #[test]
+    fn macos_metadata_path_detection_skips_appledouble_files() {
+        assert!(is_macos_metadata_path(Path::new(
+            "runtime/.python/lib/python3.11/site-packages/matplotlib/._style.mplstyle"
+        )));
+        assert!(is_macos_metadata_path(Path::new(
+            "__MACOSX/runtime/.python/lib/._style.mplstyle"
+        )));
+        assert!(!is_macos_metadata_path(Path::new(
+            "runtime/.python/lib/python3.11/site-packages/matplotlib/style.mplstyle"
+        )));
     }
 
     #[test]

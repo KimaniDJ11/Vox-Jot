@@ -161,6 +161,10 @@ sign_macho_files_in_tar_gz_archives() {
   while IFS= read -r -d '' archive_path; do
     temp_dir="$(/usr/bin/mktemp -d)"
     /usr/bin/tar -xzf "${archive_path}" -C "${temp_dir}"
+    /usr/bin/find "${temp_dir}" \
+      \( -name '._*' -o -name '__MACOSX' \) \
+      -depth \
+      -exec /bin/rm -rf {} +
 
     archive_signed_count=0
     while IFS= read -r -d '' file_path; do

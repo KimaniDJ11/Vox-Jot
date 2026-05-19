@@ -18,12 +18,12 @@ export interface ScreenOcrEvaluationResult {
 }
 
 export const SCREEN_OCR_EVALUATION_RUN = {
-  generatedAt: "2026-05-12T03:24:29Z",
+  generatedAt: "2026-05-19T22:03:49Z",
   suite: "Screen OCR real-world fixture benchmark",
   corpus:
     "Six generated real-world surfaces: settings, browser release note, code review, dense benchmark table, untrusted prompt-looking document, and muted note.",
   limitations:
-    "Generated screenshot fixtures only. This run enumerates OCR engines that the macOS app can actually execute locally. CUDA/Linux-native, Docker-only, or upstream-incompatible OCR packages are excluded from the shippable catalog until they have a local sidecar route.",
+    "Generated screenshot fixtures only. This run used the installed /Applications/Vox Jot.app app support model store and app-managed OCR runtime on macOS. CUDA/Linux-native, Docker-only, or upstream-incompatible OCR packages are excluded from the shippable catalog until they have a local sidecar route.",
   metricGuide: [
     "Rank: #1 is best for this suite.",
     "Score: required phrase recall across all fixtures.",
@@ -32,7 +32,7 @@ export const SCREEN_OCR_EVALUATION_RUN = {
     "Confidence is the engine-reported mean confidence when available.",
   ],
   reportPath:
-    "output/screen-ocr-eval/2026-05-12T03-24-29Z/screen-ocr-summary.md",
+    "output/screen-ocr-eval/2026-05-19T22-03-49Z/screen-ocr-summary.md",
 };
 
 export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
@@ -46,7 +46,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 88,
+    averageLatencyMs: 84,
     averageConfidence: 1,
     strongestCategory: "settings, code, tables, prompt-looking documents",
     weakestCategory: "not yet tested on live multilingual or rotated text",
@@ -62,7 +62,7 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 231,
+    averageLatencyMs: 229,
     averageConfidence: 0.9450657784938813,
     notes:
       "Classic Tesseract backup route using the installed tessdata-best pack.",
@@ -77,24 +77,25 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 2079,
+    averageLatencyMs: 1493,
     averageConfidence: 0.9848472038904825,
     notes:
-      "PaddleOCR detector/recognizer route using the installed PP-OCRv5 pack.",
+      "PaddleOCR detector/recognizer route using the installed app model pack and managed OCR runtime.",
   },
   {
     engineId: "lighton-ocr-2-1b",
     label: "LightOnOCR-2 1B",
     status: "tested",
-    rank: 5,
+    rank: 4,
     score: 100,
     passedCases: 6,
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 8418,
+    averageLatencyMs: 7079,
     averageConfidence: 0.6499999761581421,
-    notes: "Transformers LightOnOCR route using the installed local weights.",
+    notes:
+      "Transformers LightOnOCR route using the installed app model pack and managed OCR runtime.",
   },
   {
     engineId: "chandra-ocr-2",
@@ -106,9 +107,10 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 63431,
+    averageLatencyMs: 56741,
     averageConfidence: 0.6499999761581421,
-    notes: "Transformers VL route using the installed local weights.",
+    notes:
+      "Transformers VL route using the installed app model pack and managed OCR runtime.",
   },
   {
     engineId: "olmocr-2-7b",
@@ -120,23 +122,25 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 22093,
+    averageLatencyMs: 20846,
     averageConfidence: 0.6499999761581421,
-    notes: "Transformers VL route using the installed local weights.",
+    notes:
+      "Transformers VL route using the installed app model pack and managed OCR runtime.",
   },
   {
     engineId: "glm-ocr",
     label: "GLM-OCR",
     status: "tested",
-    rank: 4,
+    rank: 5,
     score: 100,
     passedCases: 6,
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 8111,
+    averageLatencyMs: 7180,
     averageConfidence: 0.6499999761581421,
-    notes: "Transformers VL route using the installed local weights.",
+    notes:
+      "Transformers VL route using the installed app model pack and managed OCR runtime.",
   },
   {
     engineId: "qwen2.5-vl-3b",
@@ -148,9 +152,10 @@ export const SCREEN_OCR_EVALUATION_RESULTS: ScreenOcrEvaluationResult[] = [
     totalCases: 6,
     matchedPhrases: 29,
     totalPhrases: 29,
-    averageLatencyMs: 11882,
+    averageLatencyMs: 11068,
     averageConfidence: 0.6499999761581421,
-    notes: "Transformers VL route using the installed local weights.",
+    notes:
+      "Transformers VL route using the installed app model pack and managed OCR runtime.",
   },
 ];
 

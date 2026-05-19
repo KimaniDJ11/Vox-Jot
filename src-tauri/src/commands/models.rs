@@ -424,6 +424,38 @@ fn sync_stt_selection_fields(settings: &mut AppSettings, model_info: &ModelInfo)
     settings.selected_stt_provider_id = stt_provider_meta(&model_info.engine_type).0.to_string();
 }
 
+fn stt_fallback_after_delete(
+    model_manager: &ModelManager,
+    deleted_model_id: &str,
+) -> Option<ModelInfo> {
+    let mut candidates = model_manager
+        .get_available_models()
+        .into_iter()
+        .filter(|model| model.id != deleted_model_id && model_is_available(model))
+        .collect::<Vec<_>>();
+
+    candidates.sort_by(|left, right| {
+        right
+            .is_recommended
+            .cmp(&left.is_recommended)
+            .then_with(|| {
+                right
+                    .accuracy_score
+                    .partial_cmp(&left.accuracy_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .then_with(|| {
+                right
+                    .speed_score
+                    .partial_cmp(&left.speed_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    candidates.into_iter().next()
+}
+
 async fn build_stt_catalog(model_manager: &ModelManager, settings: &AppSettings) -> DomainCatalog {
     let models = model_manager.get_available_models();
     let model_lookup = models
@@ -1137,13 +1169,8 @@ pub async fn download_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Re
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
-    let dir = tts_hf_install_dir(&app_handle, &repo_id)
-        .ok_or_else(|| "Failed to resolve TTS HF install dir.".to_string())?;
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir)
-            .map_err(|err| format!("Failed to remove '{}': {err}", dir.display()))?;
-    }
-    Ok(())
+    let manager = app_handle.state::<Arc<TtsManager>>();
+    manager.remove_pack(&repo_id)
 }
 
 fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
@@ -1214,6 +1241,22 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                 .get(&provider.id)
                 .cloned()
                 .unwrap_or_default();
+            let is_ollama = provider.id == crate::settings::OLLAMA_PROVIDER_ID;
+            let model_configured = !model_id.trim().is_empty();
+            let installed = !is_ollama || model_configured;
+            let runnable = installed;
+            let readiness_issues = if is_ollama && !model_configured {
+                vec!["No Ollama model is selected.".to_string()]
+            } else {
+                Vec::new()
+            };
+            let readiness_status = if runnable {
+                "ready"
+            } else if installed {
+                "runtime-unavailable"
+            } else {
+                "missing"
+            };
             CatalogModelDescriptor {
                 id: format!("{}::{}", provider.id, model_id),
                 provider_id: provider.id.clone(),
@@ -1225,11 +1268,13 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     model_id.clone()
                 },
                 description: "Current default model for this provider.".to_string(),
-                installed: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
+                installed,
                 selected: selected_provider_id == provider.id && selected_model_id == model_id,
-                active: selected_provider_id == provider.id && selected_model_id == model_id,
-                runnable: true,
-                downloadable: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
+                active: selected_provider_id == provider.id
+                    && selected_model_id == model_id
+                    && runnable,
+                runnable,
+                downloadable: is_ollama,
                 source_label: if provider.base_url.trim().is_empty() {
                     "Managed provider".to_string()
                 } else {
@@ -1250,7 +1295,7 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                 locale: None,
                 supported_languages: Vec::new(),
                 capabilities: CapabilityFlags {
-                    downloadable: provider.id == crate::settings::OLLAMA_PROVIDER_ID,
+                    downloadable: is_ollama,
                     loadable: true,
                     local_only: crate::settings::post_process_provider_is_local(provider),
                     supports_translation: true,
@@ -1261,8 +1306,8 @@ fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
                     coming_soon: false,
                 },
                 delivery_support: unsupported_delivery_support(),
-                readiness_status: Some("ready".to_string()),
-                readiness_issues: Vec::new(),
+                readiness_status: Some(readiness_status.to_string()),
+                readiness_issues,
             }
         })
         .collect();
@@ -1373,21 +1418,70 @@ pub async fn delete_model(
     model_id: String,
 ) -> Result<(), String> {
     let settings = get_settings(&app_handle);
-    if settings.selected_model == model_id {
+    let deleting_active_model =
+        settings.selected_model == model_id || settings.selected_stt_model_id == model_id;
+    if deleting_active_model {
         transcription_manager
             .unload_model()
             .map_err(|e| format!("Failed to unload model: {}", e))?;
-
-        let mut settings = get_settings(&app_handle);
-        settings.selected_model = String::new();
-        settings.selected_stt_model_id = String::new();
-        settings.selected_stt_provider_id = String::new();
-        write_settings(&app_handle, settings);
     }
 
     model_manager
         .delete_model(&model_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    if deleting_active_model {
+        let fallback = stt_fallback_after_delete(&model_manager, &model_id);
+        let mut settings = get_settings(&app_handle);
+
+        if let Some(fallback_model) = fallback {
+            let load_model_id = fallback_model.id.clone();
+            let transcription_manager = transcription_manager.inner().clone();
+            match tokio::task::spawn_blocking(move || {
+                transcription_manager.load_model(&load_model_id)
+            })
+            .await
+            {
+                Ok(Ok(())) => {
+                    sync_stt_selection_fields(&mut settings, &fallback_model);
+                    write_settings(&app_handle, settings.clone());
+                    let _ = app_handle.emit("settings-changed", settings);
+                    let _ = app_handle.emit("active-model-changed", fallback_model.id);
+                }
+                Ok(Err(err)) => {
+                    settings.selected_model.clear();
+                    settings.selected_stt_model_id.clear();
+                    settings.selected_stt_provider_id.clear();
+                    write_settings(&app_handle, settings.clone());
+                    let _ = app_handle.emit("settings-changed", settings);
+                    return Err(format!(
+                        "Deleted model '{}', but failed to load fallback STT model '{}': {err}",
+                        model_id, fallback_model.id
+                    ));
+                }
+                Err(err) => {
+                    settings.selected_model.clear();
+                    settings.selected_stt_model_id.clear();
+                    settings.selected_stt_provider_id.clear();
+                    write_settings(&app_handle, settings.clone());
+                    let _ = app_handle.emit("settings-changed", settings);
+                    return Err(format!(
+                        "Deleted model '{}', but failed to join fallback STT load task: {err}",
+                        model_id
+                    ));
+                }
+            }
+        } else {
+            settings.selected_model.clear();
+            settings.selected_stt_model_id.clear();
+            settings.selected_stt_provider_id.clear();
+            write_settings(&app_handle, settings.clone());
+            let _ = app_handle.emit("settings-changed", settings);
+            let _ = app_handle.emit("active-model-changed", String::new());
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

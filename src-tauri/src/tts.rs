@@ -34,7 +34,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
 mod catalog;
@@ -137,6 +137,37 @@ fn hf_access_error(repo_id: &str) -> String {
     format!(
         "{repo_id} requires Hugging Face access. Open https://huggingface.co/{repo_id}, accept the model terms, save a Hugging Face read token in Vox Jot, then download again."
     )
+}
+
+fn managed_speech_runtime_is_current(root: &Path) -> bool {
+    if managed_speech_runtime_entrypoint(root).is_none() {
+        return false;
+    }
+
+    let config_path = root.join("runtime").join("config.py");
+    let config_path = if config_path.exists() {
+        config_path
+    } else {
+        root.join("config.py")
+    };
+    let Ok(config) = fs::read_to_string(&config_path) else {
+        return false;
+    };
+
+    let missing_model_ids: Vec<_> = MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .filter(|definition| !config.contains(definition.model_id))
+        .map(|definition| definition.model_id)
+        .collect();
+    if !missing_model_ids.is_empty() {
+        warn!(
+            "Installed Speech runtime is missing managed model support: {}",
+            missing_model_ids.join(", ")
+        );
+        return false;
+    }
+
+    true
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -815,7 +846,7 @@ impl TtsManager {
             definition.platform_id,
         );
         if let Some(root) = resolve_extracted_root(&install_dir) {
-            if managed_speech_runtime_entrypoint(&root).is_some() {
+            if managed_speech_runtime_is_current(&root) {
                 return Ok(root);
             }
         }
@@ -825,7 +856,7 @@ impl TtsManager {
             let root = resolve_extracted_root(&install_dir).ok_or_else(|| {
                 "Speech runtime extraction did not produce any files.".to_string()
             })?;
-            if managed_speech_runtime_entrypoint(&root).is_some() {
+            if managed_speech_runtime_is_current(&root) {
                 return Ok(root);
             }
         }
@@ -839,9 +870,9 @@ impl TtsManager {
 
         let root = resolve_extracted_root(&install_dir)
             .ok_or_else(|| "Speech runtime extraction did not produce any files.".to_string())?;
-        if managed_speech_runtime_entrypoint(&root).is_none() {
+        if !managed_speech_runtime_is_current(&root) {
             return Err(
-                "Speech runtime download completed, but the runtime launcher is missing."
+                "Speech runtime download completed, but the runtime is missing managed model support."
                     .to_string(),
             );
         }
@@ -3279,14 +3310,28 @@ impl TtsManager {
         let mut settings = get_settings(&self.app_handle);
         let selected_removed_model = settings.selected_tts_model_id.as_deref() == Some(pack_id);
         let removed_presets = settings.delete_tts_presets_for_model(pack_id);
-        if removed_presets > 0 || selected_removed_model {
+        let fallback_to_system = selected_removed_model
+            && settings.selected_tts_model_id.is_none()
+            && settings.explicit_active_tts_preset().is_none();
+
+        if fallback_to_system {
+            settings.selected_tts_provider_id = TTS_PROVIDER_SYSTEM_BUILTIN_ID.to_string();
+            settings.selected_tts_model_id = Some(TTS_MODEL_SYSTEM_DEFAULT_ID.to_string());
+            settings.selected_tts_profile_id = None;
+            settings.selected_tts_voice_id = None;
+            settings.tts_default_voice_id = None;
+            settings.tts_engine_preference = TtsEnginePreference::System;
+        }
+
+        if removed_presets > 0 || selected_removed_model || fallback_to_system {
             if removed_presets > 0 {
                 info!(
                     "Removed {} saved TTS voice preset(s) that referenced deleted model '{}'",
                     removed_presets, pack_id
                 );
             }
-            write_settings(&self.app_handle, settings);
+            write_settings(&self.app_handle, settings.clone());
+            let _ = self.app_handle.emit("settings-changed", settings);
         }
     }
 

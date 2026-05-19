@@ -351,6 +351,16 @@ fn ollama_model_ids_equivalent(left: &str, right: &str) -> bool {
         || ollama_model_matches(&[right.to_string()], left)
 }
 
+fn replacement_ollama_model_id(
+    installed_models: &[String],
+    removed_model_id: &str,
+) -> Option<String> {
+    installed_models
+        .iter()
+        .find(|candidate| !ollama_model_ids_equivalent(candidate, removed_model_id))
+        .cloned()
+}
+
 fn remove_local_ollama_rows_shadowed_by_installed_hf_imports(
     models: &mut Vec<RefineModelDescriptor>,
     hf_models: &[RefineModelDescriptor],
@@ -382,8 +392,8 @@ fn remove_local_ollama_rows_shadowed_by_installed_hf_imports(
 mod tests {
     use super::{
         ollama_model_ids_equivalent, ollama_model_matches,
-        remove_local_ollama_rows_shadowed_by_installed_hf_imports, RefineModelDescriptor,
-        RefineModelSourceKind, OLLAMA_PROVIDER_ID,
+        remove_local_ollama_rows_shadowed_by_installed_hf_imports, replacement_ollama_model_id,
+        RefineModelDescriptor, RefineModelSourceKind, OLLAMA_PROVIDER_ID,
     };
 
     fn refine_model(
@@ -473,6 +483,33 @@ mod tests {
             .map(|model| model.runtime_model_id.as_str())
             .collect::<Vec<_>>();
         assert_eq!(remaining, vec!["mistral:7b", "qwen2.5:0.5b"]);
+    }
+
+    #[test]
+    fn replacement_ollama_model_skips_removed_aliases() {
+        let installed = vec![
+            "smollm2:135m".to_string(),
+            "qwen2.5-0.5b-instruct-q4_k_m".to_string(),
+        ];
+
+        assert_eq!(
+            replacement_ollama_model_id(&installed, "smollm2:135m"),
+            Some("qwen2.5-0.5b-instruct-q4_k_m".to_string())
+        );
+        assert_eq!(
+            replacement_ollama_model_id(&installed, "smollm2:135m:latest"),
+            Some("qwen2.5-0.5b-instruct-q4_k_m".to_string())
+        );
+    }
+
+    #[test]
+    fn replacement_ollama_model_returns_none_when_last_model_removed() {
+        let installed = vec!["smollm2:135m".to_string()];
+
+        assert_eq!(
+            replacement_ollama_model_id(&installed, "smollm2:135m"),
+            None
+        );
     }
 }
 
@@ -1516,6 +1553,11 @@ pub async fn delete_refine_model_impl(
             .map_err(|e| format!("Failed to remove refine import cache: {e}"))?;
     }
 
+    let replacement_model_id = {
+        let status = ollama::get_ollama_status().await;
+        replacement_ollama_model_id(&status.models, &model_id)
+    };
+
     let mut settings = settings::get_settings(app);
 
     if settings
@@ -1526,22 +1568,19 @@ pub async fn delete_refine_model_impl(
     {
         settings.post_process_models.insert(
             provider_id.clone(),
-            settings::default_model_for_provider(&provider_id),
+            replacement_model_id.clone().unwrap_or_default(),
         );
     }
 
     if settings.selected_llm_provider_id == provider_id
         && settings.selected_llm_model_id == model_id
     {
-        settings.selected_llm_model_id = settings
-            .post_process_models
-            .get(&provider_id)
-            .cloned()
-            .unwrap_or_else(|| settings::default_model_for_provider(&provider_id));
+        settings.selected_llm_model_id = replacement_model_id.unwrap_or_default();
     }
 
     settings.enforce_local_privacy_mode();
-    settings::write_settings(app, settings);
+    settings::write_settings(app, settings.clone());
+    let _ = app.emit("settings-changed", settings);
     Ok(())
 }
 

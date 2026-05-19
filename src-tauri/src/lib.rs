@@ -307,6 +307,11 @@ async fn maybe_warm_selected_ollama_model(
             settings::OLLAMA_PROVIDER_ID.to_string(),
             replacement_model.clone(),
         );
+        if settings.selected_llm_provider_id == settings::OLLAMA_PROVIDER_ID
+            && settings.selected_llm_model_id == model
+        {
+            settings.selected_llm_model_id = replacement_model.clone();
+        }
         settings::write_settings(&app_handle, settings);
 
         if status.models.is_empty() {

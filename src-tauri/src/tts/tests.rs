@@ -142,6 +142,39 @@ fn managed_catalog_includes_supertonic_3() {
 }
 
 #[test]
+fn managed_runtime_current_check_rejects_stale_runtime_catalog() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let runtime_dir = dir.path().join("runtime");
+    std::fs::create_dir_all(&runtime_dir).expect("runtime dir");
+    std::fs::write(runtime_dir.join("app.py"), "").expect("app.py");
+    std::fs::write(
+        runtime_dir.join("config.py"),
+        r#"EngineSpec(provider_id="openvoice", model_id="openvoice")
+EngineSpec(provider_id="chatterbox", model_id="chatterbox")
+"#,
+    )
+    .expect("config.py");
+
+    assert!(!super::managed_speech_runtime_is_current(dir.path()));
+}
+
+#[test]
+fn managed_runtime_current_check_accepts_full_runtime_catalog() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let runtime_dir = dir.path().join("runtime");
+    std::fs::create_dir_all(&runtime_dir).expect("runtime dir");
+    std::fs::write(runtime_dir.join("app.py"), "").expect("app.py");
+    let config = MANAGED_RUNTIME_MODEL_DEFINITIONS
+        .iter()
+        .map(|definition| format!("model_id=\"{}\"", definition.model_id))
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(runtime_dir.join("config.py"), config).expect("config.py");
+
+    assert!(super::managed_speech_runtime_is_current(dir.path()));
+}
+
+#[test]
 fn hf_repo_lookup_prefers_native_tts_catalog_entries() {
     assert_eq!(
         tts_model_id_for_hf_repo("Supertone/supertonic-3"),

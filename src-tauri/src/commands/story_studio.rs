@@ -1,5 +1,5 @@
 use crate::commands::tts::preset_from_input;
-use crate::settings::{get_settings, TtsVoicePreset, TtsVoicePresetInput};
+use crate::settings::{get_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput};
 use crate::tts::{SpeakRequest, TtsManager};
 use hound::{WavSpec, WavWriter};
 use once_cell::sync::Lazy;
@@ -241,6 +241,33 @@ struct StoryRenderQueueState {
 static STORY_RENDER_QUEUE: Lazy<Mutex<StoryRenderQueueState>> =
     Lazy::new(|| Mutex::new(StoryRenderQueueState::default()));
 static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
+
+pub(crate) fn active_story_render_references_tts_model(
+    settings: &AppSettings,
+    model_id: &str,
+) -> bool {
+    let preset_ids_for_model = settings
+        .tts_voice_presets
+        .iter()
+        .filter(|preset| preset.model_id == model_id)
+        .map(|preset| preset.id.as_str())
+        .collect::<HashSet<_>>();
+    if preset_ids_for_model.is_empty() {
+        return false;
+    }
+
+    let queue = STORY_RENDER_QUEUE
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    queue.jobs.iter().any(|job| {
+        job.status.is_active()
+            && job
+                .request
+                .cast
+                .iter()
+                .any(|member| preset_ids_for_model.contains(member.preset_id.trim()))
+    })
+}
 
 #[tauri::command]
 #[specta::specta]

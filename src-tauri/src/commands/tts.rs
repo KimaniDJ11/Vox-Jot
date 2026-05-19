@@ -489,6 +489,9 @@ async fn convert_voice_source(
     }
 
     let profile = resolve_voice_profile(&app, &profile_id)?;
+    let _model_use_guard = app
+        .try_state::<Arc<TtsManager>>()
+        .map(|manager| manager.track_model_use(Some("openvoice")));
     let sidecar = app
         .try_state::<Arc<crate::sidecar::SidecarManager>>()
         .ok_or_else(|| "Speech runtime manager is not available.".to_string())?;

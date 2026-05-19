@@ -493,6 +493,15 @@ pub async fn transcribe_file(
     let diarization_model_id = selection.diarization_model_id.clone();
     let use_sidecar_asr = asr_model_id != CURRENT_DICTATION_ASR_ID;
     let use_diarization = speech_analysis::should_run_diarization(&diarization_model_id);
+    let mut active_speech_analysis_models = Vec::new();
+    if use_sidecar_asr {
+        active_speech_analysis_models.push(asr_model_id.clone());
+    }
+    if use_diarization {
+        active_speech_analysis_models.push(diarization_model_id.clone());
+    }
+    let speech_analysis_model_guard =
+        speech_analysis::mark_models_in_use(active_speech_analysis_models);
     let speech_sidecar_manager = sidecar_manager.inner().clone();
     let is_wav = path.to_ascii_lowercase().ends_with(".wav");
     let sidecar_app = app.clone();
@@ -504,6 +513,7 @@ pub async fn transcribe_file(
 
     let (raw_text, raw_segments, raw_speaker_turns) = tokio::task::spawn_blocking(
         move || -> Result<(String, Vec<TimedSegment>, Vec<SpeakerTurn>), String> {
+            let _speech_analysis_model_guard = speech_analysis_model_guard;
             let audio_16k = if is_wav {
                 let (mono, sample_rate) = read_wav_as_mono_f32(&path)?;
                 resample_linear(&mono, sample_rate, 16_000)

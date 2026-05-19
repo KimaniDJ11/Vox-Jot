@@ -28,6 +28,7 @@ use futures_util::StreamExt;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -242,6 +243,31 @@ pub struct TtsManager {
     current_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
     last_output: Mutex<Option<LastOutput>>,
     cached_system_voices: Mutex<Option<Vec<VoiceInfo>>>,
+    active_model_uses: Arc<Mutex<HashMap<String, usize>>>,
+}
+
+pub(crate) struct TtsModelUseGuard {
+    active_model_uses: Arc<Mutex<HashMap<String, usize>>>,
+    model_id: Option<String>,
+}
+
+impl Drop for TtsModelUseGuard {
+    fn drop(&mut self) {
+        let Some(model_id) = self.model_id.as_deref() else {
+            return;
+        };
+        let mut active = self
+            .active_model_uses
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let Some(count) = active.get_mut(model_id) else {
+            return;
+        };
+        *count = count.saturating_sub(1);
+        if *count == 0 {
+            active.remove(model_id);
+        }
+    }
 }
 
 impl TtsManager {
@@ -251,6 +277,7 @@ impl TtsManager {
             current_stop_flag: Mutex::new(None),
             last_output: Mutex::new(None),
             cached_system_voices: Mutex::new(None),
+            active_model_uses: Arc::new(Mutex::new(HashMap::new())),
         };
 
         if let Err(err) = migrate_legacy_tts_model_layout(app_handle) {
@@ -258,6 +285,49 @@ impl TtsManager {
         }
 
         manager
+    }
+
+    pub(crate) fn track_model_use(&self, model_id: Option<&str>) -> TtsModelUseGuard {
+        let model_id = model_id
+            .map(str::trim)
+            .filter(|model_id| !model_id.is_empty())
+            .map(ToOwned::to_owned);
+        if let Some(model_id) = model_id.as_deref() {
+            let mut active = self
+                .active_model_uses
+                .lock()
+                .unwrap_or_else(|err| err.into_inner());
+            *active.entry(model_id.to_string()).or_insert(0) += 1;
+        }
+        TtsModelUseGuard {
+            active_model_uses: Arc::clone(&self.active_model_uses),
+            model_id,
+        }
+    }
+
+    fn model_in_use(&self, model_id: &str) -> bool {
+        let active = self
+            .active_model_uses
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        active.get(model_id).copied().unwrap_or(0) > 0
+    }
+
+    fn ensure_pack_not_in_use_for_delete(&self, pack_id: &str) -> Result<(), String> {
+        if self.model_in_use(pack_id) {
+            return Err(format!(
+                "The speech model '{pack_id}' is currently being used. Try deleting it again after playback, rendering, or voice conversion finishes."
+            ));
+        }
+        let settings = get_settings(&self.app_handle);
+        if crate::commands::story_studio::active_story_render_references_tts_model(
+            &settings, pack_id,
+        ) {
+            return Err(format!(
+                "The speech model '{pack_id}' is referenced by a queued or running Studio render. Cancel or wait for the render before deleting it."
+            ));
+        }
+        Ok(())
     }
 
     fn qwen3_pack_features(&self, definition: &Qwen3PackDefinition) -> Qwen3PackFeatures {
@@ -3221,6 +3291,8 @@ impl TtsManager {
     }
 
     pub fn remove_pack(&self, pack_id: &str) -> Result<(), String> {
+        self.ensure_pack_not_in_use_for_delete(pack_id)?;
+
         if pack_id == TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID {
             let install_dir = crate::storage_paths::lfm_audio_gguf_dir(&self.app_handle)
                 .map_err(|err| format!("Failed to resolve LFM Audio install dir: {err}"))?;
@@ -3388,6 +3460,7 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
 
         let chunks = chunk_text(trimmed);
         if engine == TtsEngineKind::Sidecar {
@@ -3660,6 +3733,7 @@ impl TtsManager {
             .as_ref()
             .and_then(|preset| preset.voice_profile_id.clone())
             .or_else(|| effective_settings.selected_tts_profile_id.clone());
+        let _model_use_guard = self.track_model_use(selected_model_id.as_deref());
 
         let chunks = chunk_text(trimmed);
         if engine == TtsEngineKind::Sidecar {

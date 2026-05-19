@@ -28,8 +28,58 @@ pub const POLYVOICE_DIARIZATION_ID: &str = "onnx-polyvoice-diarization";
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 static DOWNLOAD_CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+static ACTIVE_MODEL_USES: Lazy<std::sync::Mutex<HashMap<String, usize>>> =
+    Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
 
 const DOWNLOAD_CANCELLED_MESSAGE: &str = "Download cancelled.";
+
+pub struct SpeechAnalysisModelUseGuard {
+    model_ids: Vec<String>,
+}
+
+impl Drop for SpeechAnalysisModelUseGuard {
+    fn drop(&mut self) {
+        let mut active = ACTIVE_MODEL_USES
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        for model_id in &self.model_ids {
+            let Some(count) = active.get_mut(model_id) else {
+                continue;
+            };
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                active.remove(model_id);
+            }
+        }
+    }
+}
+
+pub fn mark_models_in_use<I>(model_ids: I) -> SpeechAnalysisModelUseGuard
+where
+    I: IntoIterator<Item = String>,
+{
+    let model_ids = model_ids
+        .into_iter()
+        .map(|model_id| model_id.trim().to_string())
+        .filter(|model_id| !model_id.is_empty())
+        .collect::<Vec<_>>();
+    if !model_ids.is_empty() {
+        let mut active = ACTIVE_MODEL_USES
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        for model_id in &model_ids {
+            *active.entry(model_id.clone()).or_insert(0) += 1;
+        }
+    }
+    SpeechAnalysisModelUseGuard { model_ids }
+}
+
+pub fn model_in_use(model_id: &str) -> bool {
+    let active = ACTIVE_MODEL_USES
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+    active.get(model_id).copied().unwrap_or(0) > 0
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
@@ -1490,6 +1540,12 @@ pub fn delete_model(
             model.label
         ));
     }
+    if model_in_use(&model.id) {
+        return Err(format!(
+            "{} is currently being used by a file transcription. Try deleting it again after that transcription finishes.",
+            model.label
+        ));
+    }
 
     let deleted = if crate::shared_model_assets::is_shared_model_asset(&model.id) {
         crate::shared_model_assets::delete_shared_model_assets(app, &model.id)?
@@ -1723,6 +1779,17 @@ mod tests {
         ] {
             assert!(ids.contains(required), "missing required model {required}");
         }
+    }
+
+    #[test]
+    fn model_use_guard_tracks_active_models_until_drop() {
+        let model_id = format!("test-model-use-{}", std::process::id());
+        assert!(!model_in_use(&model_id));
+        {
+            let _guard = mark_models_in_use(vec![model_id.clone()]);
+            assert!(model_in_use(&model_id));
+        }
+        assert!(!model_in_use(&model_id));
     }
 
     #[test]

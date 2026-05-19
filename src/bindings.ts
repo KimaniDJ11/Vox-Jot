@@ -2682,7 +2682,7 @@ export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
-export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number }
+export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
 export type RecordingOverlayStyle =
 /**
@@ -2748,12 +2748,13 @@ export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization"
  * A stored correction entry, as returned to the frontend.
  */
 export type StoredCorrection = { id: number; original: string; corrected: string; frequency: number; confidence: number; exact_only?: boolean; source_app: string | null; source_kind?: CorrectionSourceKind; first_seen: number; last_seen: number; is_active: boolean; user_approved: boolean; auto_apply?: CorrectionAutoApply }
-export type StoryAudioItem = { id: string; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; created_at_ms: number; duration_ms: number; line_count: number; cast_count?: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; starred: boolean }
+export type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room"
+export type StoryAudioItem = { id: string; project_id?: string | null; title: string; script_text: string; line_instructions?: StoryLineInstructionOverride[]; output_path: string; clips_path?: string | null; created_at_ms: number; duration_ms: number; line_count: number; cast_count?: number; generation_time_ms?: number; sample_rate_hz?: number; expression_tags_used?: boolean; inline_prompt_used?: boolean; audio_effect?: StoryAudioEffectPreset; starred: boolean }
 export type StoryCastMember = { character_name: string; preset_id: string }
 export type StoryLineInstructionOverride = { line_number: number; style_instructions: string }
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
 export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
-export type StoryRenderRequest = { render_id: string; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[] }
+export type StoryRenderRequest = { render_id: string; project_id?: string | null; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[]; audio_effect?: StoryAudioEffectPreset }
 export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.

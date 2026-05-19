@@ -374,20 +374,18 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const downloadState: HubDownloadState | undefined =
     status === "downloading"
       ? {
-          label:
-            downloadProgress !== undefined
-              ? t("modelSelector.downloading", {
-                  percentage: Math.round(downloadProgress),
-                })
-              : t("modelSelector.downloading", {
-                  percentage: 0,
-                  defaultValue: "Downloading...",
-                }),
+          label: t("common.downloading", {
+            defaultValue: "Downloading...",
+          }),
           detail:
-            downloadSpeed !== undefined && downloadSpeed > 0
+            downloadSpeed !== undefined && downloadSpeed >= 0.05
               ? t("modelSelector.downloadSpeed", {
                   speed: downloadSpeed.toFixed(1),
                 })
+              : downloadSpeed !== undefined
+                ? t("modelSelector.waitingForData", {
+                    defaultValue: "Waiting for data...",
+                  })
               : metadataItems.join(" · "),
           progress: downloadProgress,
           indeterminate: downloadProgress === undefined,

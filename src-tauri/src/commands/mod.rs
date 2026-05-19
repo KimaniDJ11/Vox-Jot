@@ -134,6 +134,13 @@ pub fn get_detail_target_section(app: AppHandle) -> Result<Option<String>, Strin
     Ok(crate::detail_view::get_detail_target_section(&app))
 }
 
+#[specta::specta]
+#[tauri::command]
+pub fn set_model_hub_native_dialog_active(app: AppHandle, active: bool) -> Result<(), String> {
+    crate::detail_view::set_model_hub_native_dialog_active(&app, active);
+    Ok(())
+}
+
 /// Check if Apple Intelligence is available on this device.
 /// Called by the frontend when the user selects Apple Intelligence provider.
 #[specta::specta]

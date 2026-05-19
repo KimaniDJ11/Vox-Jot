@@ -457,10 +457,6 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
         {
             let mut entry =
                 entry.map_err(|err| format!("Failed to read OCR runtime archive entry: {err}"))?;
-            let entry_type = entry.header().entry_type();
-            if entry_type.is_symlink() || entry_type.is_hard_link() {
-                return Err("OCR runtime archive contains unsupported links.".into());
-            }
             let relative_path =
                 sanitize_archive_path(entry.path().map_err(|err| {
                     format!("Failed to read OCR runtime archive entry path: {err}")
@@ -468,15 +464,22 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
             if relative_path.as_os_str().is_empty() {
                 continue;
             }
-            let destination = install_dir.join(relative_path);
+            let destination = install_dir.join(&relative_path);
             if let Some(parent) = destination.parent() {
                 fs::create_dir_all(parent).map_err(|err| {
                     format!("Failed to create OCR runtime extraction directory: {err}")
                 })?;
             }
-            entry
-                .unpack(&destination)
-                .map_err(|err| format!("Failed to extract OCR runtime archive: {err}"))?;
+            let entry_type = entry.header().entry_type();
+            if entry_type.is_symlink() {
+                extract_safe_symlink(&mut entry, &relative_path, &destination)?;
+            } else if entry_type.is_hard_link() {
+                extract_safe_hard_link(&mut entry, install_dir, &relative_path, &destination)?;
+            } else {
+                entry
+                    .unpack(&destination)
+                    .map_err(|err| format!("Failed to extract OCR runtime archive: {err}"))?;
+            }
         }
         Ok(())
     } else {
@@ -485,6 +488,94 @@ fn extract_archive(archive_path: &Path, install_dir: &Path) -> Result<(), String
             archive_path.display()
         ))
     }
+}
+
+fn extract_safe_symlink<R: std::io::Read>(
+    entry: &mut tar::Entry<'_, R>,
+    relative_path: &Path,
+    destination: &Path,
+) -> Result<(), String> {
+    let link_name = entry_link_name(entry)?;
+    validate_archive_link_target(relative_path, &link_name)?;
+
+    #[cfg(unix)]
+    {
+        if destination.exists() || destination.symlink_metadata().is_ok() {
+            fs::remove_file(destination)
+                .map_err(|err| format!("Failed to replace OCR runtime symlink: {err}"))?;
+        }
+        std::os::unix::fs::symlink(&link_name, destination)
+            .map_err(|err| format!("Failed to extract OCR runtime symlink: {err}"))?;
+        Ok(())
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = (link_name, destination);
+        Err("OCR runtime archive contains symlinks that are not supported on this platform.".into())
+    }
+}
+
+fn extract_safe_hard_link<R: std::io::Read>(
+    entry: &mut tar::Entry<'_, R>,
+    install_dir: &Path,
+    relative_path: &Path,
+    destination: &Path,
+) -> Result<(), String> {
+    let link_name = entry_link_name(entry)?;
+    let resolved_link = validate_archive_link_target(relative_path, &link_name)?;
+    let source = install_dir.join(resolved_link);
+    fs::hard_link(&source, destination)
+        .map_err(|err| format!("Failed to extract OCR runtime hard link: {err}"))
+}
+
+fn entry_link_name<R: std::io::Read>(entry: &mut tar::Entry<'_, R>) -> Result<PathBuf, String> {
+    entry
+        .link_name()
+        .map_err(|err| format!("Failed to read OCR runtime archive link target: {err}"))?
+        .map(|target| target.into_owned())
+        .ok_or_else(|| "OCR runtime archive link entry is missing its target.".to_string())
+}
+
+fn validate_archive_link_target(relative_path: &Path, link_name: &Path) -> Result<PathBuf, String> {
+    if link_name.is_absolute() {
+        return Err(format!(
+            "OCR runtime archive contains unsafe link target: {}",
+            link_name.display()
+        ));
+    }
+
+    let destination_parent = relative_path
+        .parent()
+        .ok_or_else(|| "OCR runtime archive link destination has no parent.".to_string())?;
+    let mut resolved = PathBuf::from(destination_parent);
+    resolved.push(link_name);
+    normalize_relative_to_install_root(&resolved)
+}
+
+fn normalize_relative_to_install_root(path: &Path) -> Result<PathBuf, String> {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => normalized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return Err(format!(
+                        "OCR runtime archive contains unsafe link target: {}",
+                        path.display()
+                    ));
+                }
+            }
+            Component::RootDir | Component::Prefix(_) => {
+                return Err(format!(
+                    "OCR runtime archive contains unsafe link target: {}",
+                    path.display()
+                ));
+            }
+        }
+    }
+    Ok(normalized)
 }
 
 fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, String> {
@@ -502,6 +593,71 @@ fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, St
         }
     }
     Ok(sanitized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{sanitize_archive_path, validate_archive_link_target};
+    use std::borrow::Cow;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn sanitize_archive_path_keeps_safe_relative_entries() {
+        let path = sanitize_archive_path(Cow::Borrowed(Path::new("./runtime/bin/tool")))
+            .expect("safe relative path should sanitize");
+
+        assert_eq!(path, PathBuf::from("runtime/bin/tool"));
+    }
+
+    #[test]
+    fn sanitize_archive_path_rejects_traversal_entries() {
+        let error = sanitize_archive_path(Cow::Borrowed(Path::new("../outside")))
+            .expect_err("parent traversal should be rejected");
+
+        assert!(error.contains("unsafe path"));
+    }
+
+    #[test]
+    fn validate_archive_link_target_allows_relative_links_inside_archive_root() {
+        let target = validate_archive_link_target(
+            Path::new("runtime/.venv/bin/python"),
+            Path::new("python3.11"),
+        )
+        .expect("relative link within the runtime should be allowed");
+
+        assert_eq!(target, PathBuf::from("runtime/.venv/bin/python3.11"));
+    }
+
+    #[test]
+    fn validate_archive_link_target_allows_parent_segments_inside_archive_root() {
+        let target = validate_archive_link_target(
+            Path::new("runtime/bin/python"),
+            Path::new("../.python/bin/python3"),
+        )
+        .expect("relative link that stays inside the runtime should be allowed");
+
+        assert_eq!(target, PathBuf::from("runtime/.python/bin/python3"));
+    }
+
+    #[test]
+    fn validate_archive_link_target_rejects_links_outside_install_root() {
+        let error = validate_archive_link_target(
+            Path::new("runtime/bin/python"),
+            Path::new("../../../outside"),
+        )
+        .expect_err("link target escaping the install root should be rejected");
+
+        assert!(error.contains("unsafe link target"));
+    }
+
+    #[test]
+    fn validate_archive_link_target_rejects_absolute_links() {
+        let error =
+            validate_archive_link_target(Path::new("runtime/bin/python"), Path::new("/tmp/python"))
+                .expect_err("absolute link target should be rejected");
+
+        assert!(error.contains("unsafe link target"));
+    }
 }
 
 #[derive(Debug, Clone)]

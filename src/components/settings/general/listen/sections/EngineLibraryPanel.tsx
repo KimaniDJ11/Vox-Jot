@@ -35,6 +35,7 @@ import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFac
 import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
+import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
 import {
   ProviderIcon,
   resolveModelProviderId,
@@ -139,12 +140,20 @@ const ttsModelLicenseGate = (
 ): LicenseAcknowledgementGate | null =>
   TTS_LICENSE_ACKNOWLEDGEMENT_GATES[model.id] ?? null;
 
+const huggingFaceRepoIdFromSourceUrl = (sourceUrl?: string | null) => {
+  const prefix = "https://huggingface.co/";
+  if (!sourceUrl?.startsWith(prefix)) return null;
+  return sourceUrl.slice(prefix.length).replace(/\/$/, "");
+};
+
 interface TtsHfDownloadProgress {
   repo_id: string;
   stage: string;
   file?: string | null;
   file_index?: number | null;
   file_count?: number | null;
+  downloaded_bytes?: number | null;
+  total_bytes?: number | null;
   error?: string | null;
 }
 
@@ -169,6 +178,9 @@ const SpeechModelLibraryCard: React.FC<{
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [locallyDownloading, setLocallyDownloading] = useState(false);
+  const [localDownloadError, setLocalDownloadError] = useState<string | null>(
+    null,
+  );
   const headerBadges: CompactBadgeItem[] = [
     active
       ? {
@@ -322,6 +334,7 @@ const SpeechModelLibraryCard: React.FC<{
 
   const downloadOrActivate = useCallback(async () => {
     if (locallyDownloading || downloadProgress) return;
+    setLocalDownloadError(null);
     if (
       model.downloadable &&
       !model.installed &&
@@ -332,6 +345,15 @@ const SpeechModelLibraryCard: React.FC<{
     setLocallyDownloading(model.downloadable && !model.installed);
     try {
       await speech.activateModel(model.provider_id, model.id);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : t("modelHub.tts.downloadFailed", {
+              defaultValue: "Download failed.",
+            });
+      setLocalDownloadError(message);
+      speech.setStatusMessage(message);
     } finally {
       setLocallyDownloading(false);
     }
@@ -344,6 +366,7 @@ const SpeechModelLibraryCard: React.FC<{
     model.provider_id,
     onGatedDownloadRequest,
     speech,
+    t,
   ]);
 
   let trailing: HubTrailing = null;
@@ -373,11 +396,17 @@ const SpeechModelLibraryCard: React.FC<{
     };
   }
 
-  const progressFileName = downloadProgress?.file
-    ? downloadProgress.file.includes("/")
-      ? downloadProgress.file.slice(downloadProgress.file.lastIndexOf("/") + 1)
-      : downloadProgress.file
-    : null;
+  const byteProgress =
+    downloadProgress?.total_bytes && downloadProgress.total_bytes > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((downloadProgress.downloaded_bytes ?? 0) /
+              downloadProgress.total_bytes) *
+              100,
+          ),
+        )
+      : null;
   const fileProgress =
     downloadProgress?.file_count && downloadProgress.file_count > 0
       ? Math.min(
@@ -389,16 +418,14 @@ const SpeechModelLibraryCard: React.FC<{
         )
       : null;
   const downloadState: HubDownloadState | undefined =
-    downloadProgress || locallyDownloading
+    downloadProgress || locallyDownloading || localDownloadError
       ? {
-          label: downloadProgress?.error
+          label: (downloadProgress?.error ?? localDownloadError)
             ? t("listen.engineLibrary.downloadFailed", {
                 defaultValue: "Setup failed",
               })
             : downloadProgress?.stage === "preparing"
-              ? t("listen.engineLibrary.downloadPreparing", {
-                  defaultValue: "Checking model files...",
-                })
+              ? downloadingModelFilesLabel(t)
               : downloadProgress?.stage === "installing-runtime"
                 ? t("listen.engineLibrary.installingRuntime", {
                     defaultValue: "Installing required runtime...",
@@ -408,20 +435,15 @@ const SpeechModelLibraryCard: React.FC<{
                       defaultValue: "Ready to use",
                     })
                   : locallyDownloading && !downloadProgress
-                    ? t("listen.engineLibrary.preparingModel", {
-                        defaultValue: "Preparing model...",
-                      })
-                    : t("settings.refineModels.actions.downloadingUnknown", {
-                        defaultValue: "Downloading model files...",
-                      }),
-          detail:
-            progressFileName ??
-            provider?.runtime.label ??
-            model.runtime.label ??
-            model.id,
-          error: downloadProgress?.error ?? null,
-          progress: fileProgress,
-          indeterminate: fileProgress === null,
+                    ? downloadingModelFilesLabel(t)
+                    : downloadingModelFilesLabel(t),
+          detail: null,
+          error: downloadProgress?.error ?? localDownloadError,
+          progress: byteProgress ?? fileProgress,
+          indeterminate:
+            !localDownloadError &&
+            byteProgress === null &&
+            fileProgress === null,
         }
       : undefined;
 
@@ -928,24 +950,48 @@ export const EngineLibraryPanel: React.FC<{
     }
   }, [savingHfToken, t]);
 
-  const confirmLicenseGateDownload = useCallback(async () => {
+  const confirmLicenseGateDownload = useCallback(() => {
     if (!licenseGateDownloadModel || savingHfToken) return;
     const model = licenseGateDownloadModel;
-    setSavingHfToken(true);
-    try {
-      await speech.activateModel(model.provider_id, model.id);
-      setLicenseGateDownloadModel(null);
-    } catch (error) {
-      speech.setStatusMessage(
-        error instanceof Error
-          ? error.message
-          : t("modelHub.tts.downloadFailed", {
-              defaultValue: "Download failed.",
-            }),
-      );
-    } finally {
-      setSavingHfToken(false);
-    }
+    setLicenseGateDownloadModel(null);
+
+    setTtsDownloadProgress((current) => ({
+      ...current,
+      [model.id]: {
+        repo_id: huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id,
+        stage: "downloading",
+      },
+    }));
+
+    void speech
+      .activateModel(model.provider_id, model.id)
+      .then(() => {
+        setTtsDownloadProgress((current) => {
+          const next = { ...current };
+          delete next[model.id];
+          const repoId = huggingFaceRepoIdFromSourceUrl(model.source_url);
+          if (repoId) delete next[repoId];
+          return next;
+        });
+      })
+      .catch((error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : t("modelHub.tts.downloadFailed", {
+                defaultValue: "Download failed.",
+              });
+        speech.setStatusMessage(message);
+        setTtsDownloadProgress((current) => ({
+          ...current,
+          [model.id]: {
+            repo_id:
+              huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id,
+            stage: "failed",
+            error: message,
+          },
+        }));
+      });
   }, [licenseGateDownloadModel, savingHfToken, speech, t]);
 
   useEffect(() => {
@@ -958,10 +1004,17 @@ export const EngineLibraryPanel: React.FC<{
           if (!progress.repo_id) return;
           setTtsDownloadProgress((current) => {
             const next = { ...current };
+            const matchingModel = speech.visibleModels.find(
+              (model) =>
+                huggingFaceRepoIdFromSourceUrl(model.source_url) ===
+                progress.repo_id,
+            );
             if (progress.stage === "complete") {
               delete next[progress.repo_id];
+              if (matchingModel) delete next[matchingModel.id];
             } else {
               next[progress.repo_id] = progress;
+              if (matchingModel) next[matchingModel.id] = progress;
             }
             return next;
           });
@@ -969,7 +1022,7 @@ export const EngineLibraryPanel: React.FC<{
       );
     })();
     return () => unlisten?.();
-  }, []);
+  }, [speech.visibleModels]);
 
   if (!speech.settings) return null;
 

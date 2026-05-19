@@ -46,6 +46,7 @@ import ModelListControls from "@/components/model-hub/ModelListControls";
 import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
+import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import {
   DEFAULT_MODEL_SORT_OPTIONS,
@@ -388,6 +389,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   const onImportNeural = async (model: OcrModelDescriptor) => {
     let picked: string | null = null;
     try {
+      const dialogState = await commands.setModelHubNativeDialogActive(true);
+      if (dialogState.status === "error") {
+        throw new Error(dialogState.error);
+      }
       const result = await openDialog({
         directory: true,
         multiple: false,
@@ -400,6 +405,12 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     } catch (err) {
       setCatalogError(err instanceof Error ? err.message : String(err));
       return;
+    } finally {
+      try {
+        await commands.setModelHubNativeDialogActive(false);
+      } catch (err) {
+        console.warn("Failed to clear Model Hub native dialog state:", err);
+      }
     }
     if (!picked) return;
 
@@ -885,11 +896,6 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       };
     }
 
-    const dlFileName = dl?.file
-      ? dl.file.includes("/")
-        ? dl.file.slice(dl.file.lastIndexOf("/") + 1)
-        : dl.file
-      : null;
     const dlPercentage =
       dl && Number.isFinite(dl.percentage)
         ? Math.min(100, Math.round(dl.percentage))
@@ -899,23 +905,17 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         ? {
             label:
               dl.stage === "preparing"
-                ? t("modelHub.ocr.download.preparing", {
-                    defaultValue: "Preparing download...",
-                  })
+                ? downloadingModelFilesLabel(t)
                 : dl.stage === "runtime-downloading"
                   ? t("modelHub.ocr.download.runtimeDownloading", {
-                      value: dlPercentage ?? 0,
-                      defaultValue: "Downloading OCR runtime {{value}}%",
+                      defaultValue: "Downloading OCR runtime...",
                     })
                   : dl.stage === "runtime-installing"
                     ? t("modelHub.ocr.download.runtimeInstalling", {
                         defaultValue: "Installing OCR runtime...",
                       })
-                    : t("modelHub.ocr.download.percent", {
-                        value: dlPercentage ?? 0,
-                        defaultValue: "Downloading {{value}}%",
-                      }),
-            detail: dlFileName ?? model.hf_repo_id ?? backendLabel,
+                    : downloadingModelFilesLabel(t),
+            detail: null,
             error: dl.error ?? null,
             progress: dlPercentage,
             indeterminate:

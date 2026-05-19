@@ -146,6 +146,47 @@ sign_nested_macho_files() {
   echo "Signed nested Mach-O files: ${signed_count}"
 }
 
+sign_macho_files_in_tar_gz_archives() {
+  local app_bundle_path="$1"
+  local resource_root="${app_bundle_path}/Contents/Resources"
+  local archive_path temp_dir signed_count archive_count
+  signed_count=0
+  archive_count=0
+
+  if [[ ! -d "${resource_root}" ]]; then
+    return
+  fi
+
+  echo "Signing Mach-O files inside bundled tar.gz archives..."
+  while IFS= read -r -d '' archive_path; do
+    temp_dir="$(/usr/bin/mktemp -d)"
+    /usr/bin/tar -xzf "${archive_path}" -C "${temp_dir}"
+
+    archive_signed_count=0
+    while IFS= read -r -d '' file_path; do
+      if /usr/bin/file "${file_path}" | /usr/bin/grep -q "Mach-O"; then
+        /usr/bin/codesign \
+          --force \
+          --options runtime \
+          --timestamp \
+          --sign "${SIGNING_IDENTITY}" \
+          "${file_path}"
+        archive_signed_count=$((archive_signed_count + 1))
+      fi
+    done < <(/usr/bin/find "${temp_dir}" -type f -print0)
+
+    if [[ "${archive_signed_count}" -gt 0 ]]; then
+      /usr/bin/tar -czf "${archive_path}" -C "${temp_dir}" .
+      archive_count=$((archive_count + 1))
+      signed_count=$((signed_count + archive_signed_count))
+    fi
+
+    /bin/rm -rf "${temp_dir}"
+  done < <(/usr/bin/find "${resource_root}" -type f \( -name '*.tar.gz' -o -name '*.tgz' \) -print0)
+
+  echo "Signed Mach-O files inside archives: ${signed_count} across ${archive_count} archives"
+}
+
 notarize_built_app() {
   echo "Creating notarization archive..."
   /bin/rm -f "${NOTARY_ZIP_PATH}"
@@ -307,6 +348,7 @@ fi
 
 echo "Signing built bundle..."
 sign_nested_macho_files "${BUILT_APP_PATH}"
+sign_macho_files_in_tar_gz_archives "${BUILT_APP_PATH}"
 /usr/bin/codesign \
   --force \
   --deep \

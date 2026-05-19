@@ -42,6 +42,13 @@ import {
   providerOptionContext,
 } from "./utils";
 
+const TTS_HF_VERIFIED_PROVIDER_ID = "local_sidecar_api";
+
+const isHuggingFaceVerifiedTtsModel = (model: CatalogModelDescriptor) =>
+  model.provider_id === TTS_HF_VERIFIED_PROVIDER_ID &&
+  model.id.includes("/") &&
+  model.source_url?.startsWith("https://huggingface.co/");
+
 export function useListenSpeechState() {
   const { t } = useTranslation();
   const { settings, updateSetting, isUpdating, refreshSettings } =
@@ -382,6 +389,13 @@ export function useListenSpeechState() {
   const ensureModelInstalled = useCallback(
     async (model: CatalogModelDescriptor) => {
       if (!model.downloadable || model.installed) return;
+      if (isHuggingFaceVerifiedTtsModel(model)) {
+        const result = await commands.downloadTtsHfModel(model.id);
+        if (result.status === "error") {
+          throw new Error(result.error);
+        }
+        return;
+      }
       const result = await commands.downloadTtsPack(model.id);
       if (result.status === "error") {
         throw new Error(result.error);

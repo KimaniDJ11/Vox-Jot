@@ -961,6 +961,7 @@ pub fn run(cli_args: CliArgs) {
         commands::story_studio::create_processed_story_audio,
         commands::show_detail_view,
         commands::get_detail_target_section,
+        commands::set_model_hub_native_dialog_active,
         commands::list_installed_apps,
         commands::get_app_icon,
         commands::get_file_icon,

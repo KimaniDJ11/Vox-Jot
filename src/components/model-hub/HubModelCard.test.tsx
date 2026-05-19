@@ -3,6 +3,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
+const { openUrlMock } = vi.hoisted(() => ({
+  openUrlMock: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: openUrlMock,
+}));
+
 import HubModelCard from "./HubModelCard";
 
 describe("HubModelCard", () => {
@@ -176,6 +184,39 @@ describe("HubModelCard", () => {
     expect(text.match(/1\.5B/g)).toHaveLength(2);
     expect(text.match(/Tesseract/g)).toHaveLength(2);
     expect(text.match(/Tessdata/g)).toHaveLength(1);
+
+    await view.cleanup();
+  });
+
+  it("opens footer metadata links through the Tauri opener", async () => {
+    openUrlMock.mockResolvedValueOnce(undefined);
+    const cardClick = vi.fn();
+    const view = await render(
+      <HubModelCard
+        title="Linked model"
+        footerMetaLinks={[
+          {
+            label: "Open model source",
+            url: "https://huggingface.co/example/model",
+          },
+        ]}
+        onClick={cardClick}
+      />,
+    );
+
+    const linkButton = view.container.querySelector(
+      'button[aria-label="Open model source"]',
+    ) as HTMLButtonElement | null;
+    expect(linkButton).not.toBeNull();
+
+    await act(async () => {
+      linkButton?.click();
+    });
+
+    expect(openUrlMock).toHaveBeenCalledWith(
+      "https://huggingface.co/example/model",
+    );
+    expect(cardClick).not.toHaveBeenCalled();
 
     await view.cleanup();
   });

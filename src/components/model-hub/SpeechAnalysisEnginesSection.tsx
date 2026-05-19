@@ -35,6 +35,7 @@ import GatedHuggingFaceAccessDialog from "@/components/model-hub/GatedHuggingFac
 import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
+import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
 import {
   commands,
   type HuggingFaceTokenStatus,
@@ -1061,11 +1062,6 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                           ),
                         )
                       : null;
-                  const progressFileName = progress?.file
-                    ? progress.file.includes("/")
-                      ? progress.file.slice(progress.file.lastIndexOf("/") + 1)
-                      : progress.file
-                    : null;
                   const progressLabel = (() => {
                     if (isFailed) {
                       return t("modelHub.analysis.downloadProgress.failed", {
@@ -1081,9 +1077,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                       );
                     }
                     if (progress?.phase === "preparing") {
-                      return t("modelHub.analysis.downloadProgress.preparing", {
-                        defaultValue: "Checking model files...",
-                      });
+                      return downloadingModelFilesLabel(t);
                     }
                     if (progress?.phase === "recovering") {
                       return t(
@@ -1122,22 +1116,14 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                         defaultValue: "Ready to use",
                       });
                     }
-                    if (progressPct !== null) {
-                      return t("modelHub.analysis.downloadProgress.percent", {
-                        defaultValue: "Downloading model files {{percent}}%",
-                        percent: progressPct,
-                      });
-                    }
-                    return t("modelHub.analysis.downloadProgress.downloading", {
-                      defaultValue: "Downloading model files...",
-                    });
+                    return downloadingModelFilesLabel(t);
                   })();
 
                   const downloadState: HubDownloadState | undefined =
                     isDownloading || isFailed
                       ? {
                           label: progressLabel,
-                          detail: progressFileName ?? model.repo_id ?? null,
+                          detail: null,
                           error: progress?.error ?? null,
                           progress:
                             progress?.phase === "installing-model"

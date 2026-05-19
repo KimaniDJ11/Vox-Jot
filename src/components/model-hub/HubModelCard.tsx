@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Download, ExternalLink, Loader2, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -301,19 +302,25 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
           {footerMetaLinks && footerMetaLinks.length > 0 ? (
             <div className="flex shrink-0 items-center gap-1">
               {footerMetaLinks.slice(0, 2).map((link) => (
-                <a
+                <Button
                   key={`${link.label}:${link.url}`}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(event) => event.stopPropagation()}
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void openUrl(link.url).catch((error) => {
+                      console.error("Failed to open model source:", error);
+                    });
+                  }}
                   onKeyDown={(event) => event.stopPropagation()}
-                  className="inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--panel-bg)] px-2 text-xs font-semibold text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
                   title={link.url}
                   aria-label={link.label}
                 >
                   <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                </a>
+                </Button>
               ))}
             </div>
           ) : null}

@@ -11,6 +11,7 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
   - STT MLX: `~/Library/Application Support/com.iriedinamik.voxjot/models/stt/store/MLX`
   - Speech analysis: `~/Library/Application Support/com.iriedinamik.voxjot/models/speech-analysis`
 - Use resumable Hugging Face downloads with clear logs and status files. Prefer `scripts/download-untested-tts-models.zsh` for TTS backlog downloads.
+- For external model-drive backups, if the model is already present on the Mac, copy it directly to `/Volumes/Models/VoxJot/app-support/models/...` with macOS filesystem copy (`ditto`) or Finder/Computer Use. Do not use Python download/fill scripts or Hugging Face cache paths for local-to-drive transfers. Copy one model/category at a time and verify matching size plus file count after transfer.
 - Never delete built-in Apple/system options while pruning local model files.
 - If a model is downloaded but cannot run, mark the benchmark row `blocked` or `failed` and disable the model in the app catalog until the bridge/runtime is fixed.
 

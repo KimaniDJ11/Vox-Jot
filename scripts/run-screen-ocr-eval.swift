@@ -76,6 +76,10 @@ try FileManager.default.createDirectory(at: runDir, withIntermediateDirectories:
 let appDataOcrRoot = FileManager.default
     .homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/com.iriedinamik.voxjot/models/ocr", isDirectory: true)
+let appDataOcrRuntimeRoot = FileManager.default
+    .homeDirectoryForCurrentUser
+    .appendingPathComponent("Library/Application Support/com.iriedinamik.voxjot/models/ocr-runtime", isDirectory: true)
+let installedAppPath = URL(fileURLWithPath: "/Applications/Vox Jot.app", isDirectory: true)
 
 let catalog: [CatalogEntry] = [
     CatalogEntry(id: "pp-ocrv5", label: "PP-OCRv5", backend: "paddle_det_rec"),
@@ -593,10 +597,93 @@ print(json.dumps({
 }))
 """
 
+func platformRuntimeId() -> String {
+    #if arch(arm64)
+    return "macos-aarch64"
+    #else
+    return "macos-x64"
+    #endif
+}
+
+func isRuntimeRoot(_ root: URL) -> Bool {
+    let packageEntrypoints = [
+        root.appendingPathComponent("ocr_runtime/__main__.py"),
+        root.appendingPathComponent("ocr-runtime/ocr_runtime/__main__.py"),
+    ]
+    return packageEntrypoints.contains { FileManager.default.fileExists(atPath: $0.path) }
+}
+
+func resolveRuntimeRoot(_ base: URL) -> URL? {
+    guard FileManager.default.fileExists(atPath: base.path) else { return nil }
+    if isRuntimeRoot(base) { return base }
+
+    var current = base
+    while true {
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: current,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return nil
+        }
+        let childDirs = entries.filter { url in
+            ((try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false)
+        }
+        let sawFile = entries.contains { url in
+            !(((try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false))
+        }
+        if !sawFile, childDirs.count == 1 {
+            current = childDirs[0]
+            if isRuntimeRoot(current) { return current }
+            continue
+        }
+        return isRuntimeRoot(current) ? current : nil
+    }
+}
+
+func managedRuntimeRoot() -> URL? {
+    resolveRuntimeRoot(appDataOcrRuntimeRoot.appendingPathComponent(platformRuntimeId(), isDirectory: true))
+}
+
+func appBundleRuntimeRoot() -> URL? {
+    let candidates = [
+        installedAppPath.appendingPathComponent("Contents/Resources/ocr-runtime", isDirectory: true),
+        installedAppPath.appendingPathComponent("Contents/Resources/_up_/ocr-runtime", isDirectory: true),
+        installedAppPath.appendingPathComponent("Contents/Resources/resources/ocr-runtime", isDirectory: true),
+    ]
+    return candidates.compactMap(resolveRuntimeRoot).first
+}
+
+func repoRuntimeRoot() -> URL? {
+    let candidate = repoRoot.appendingPathComponent("ocr-runtime", isDirectory: true)
+    return isRuntimeRoot(candidate) ? candidate : nil
+}
+
+func runtimeRoot() -> URL? {
+    if let custom = ProcessInfo.processInfo.environment["OCR_RUNTIME_ROOT"] {
+        let url = URL(fileURLWithPath: custom, isDirectory: true)
+        if let root = resolveRuntimeRoot(url) { return root }
+    }
+    return managedRuntimeRoot() ?? appBundleRuntimeRoot() ?? repoRuntimeRoot()
+}
+
+func managedRuntimePython(in root: URL) -> String? {
+    let candidates = [
+        root.appendingPathComponent(".python/bin/python3").path,
+        root.appendingPathComponent(".python/bin/python3.11").path,
+        root.appendingPathComponent(".python/bin/python").path,
+        root.appendingPathComponent(".venv/bin/python").path,
+    ]
+    return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+}
+
 func pythonExecutable() -> String {
     let env = ProcessInfo.processInfo.environment
     if let custom = env["OCR_RUNTIME_PYTHON"], FileManager.default.isExecutableFile(atPath: custom) {
         return custom
+    }
+    if let root = runtimeRoot(), let python = managedRuntimePython(in: root) {
+        return python
     }
     let repoVenv = repoRoot.appendingPathComponent("ocr-runtime/.venv/bin/python").path
     if FileManager.default.isExecutableFile(atPath: repoVenv) {
@@ -606,12 +693,15 @@ func pythonExecutable() -> String {
 }
 
 func recognizeWithRuntimeBatch(assets: [CaseAsset], entry: CatalogEntry, modelRoot: URL) throws -> ([CaseResult], String?) {
+    guard let runtime = runtimeRoot() else {
+        throw NSError(domain: "ScreenOcrEval", code: 6, userInfo: [NSLocalizedDescriptionKey: "Could not locate the installed app OCR runtime package."])
+    }
     let started = Date()
     let arguments = ["-c", pythonHelper, modelRoot.path, entry.backend, entry.id] + assets.map(\.pngPath.path)
     let output = try runProcess(
         executable: pythonExecutable(),
         arguments: arguments,
-        environment: ["PYTHONPATH": repoRoot.appendingPathComponent("ocr-runtime").path],
+        environment: ["PYTHONPATH": runtime.path],
         timeoutSeconds: 600
     )
     let elapsedMs = Int(Date().timeIntervalSince(started) * 1000.0)
@@ -834,6 +924,9 @@ let report: [String: Any] = [
     "suite": "Screen OCR real-world fixture benchmark",
     "corpus": "Six generated real-world surfaces: settings, browser release note, code review, dense benchmark table, untrusted prompt-looking document, and muted note.",
     "app_data_ocr_root": appDataOcrRoot.path,
+    "installed_app_path": installedAppPath.path,
+    "ocr_runtime_root": runtimeRoot()?.path ?? "",
+    "ocr_runtime_python": pythonExecutable(),
     "cases": assets.count,
     "total_phrases": totalPhrases,
     "engines": engineResults.map { jsonEngine($0, rank: rankedIds[$0.engineId]) },
@@ -847,6 +940,8 @@ var markdown = """
 
 Generated: \(generatedAt)
 Model root: \(appDataOcrRoot.path)
+Installed app: \(installedAppPath.path)
+OCR runtime: \(runtimeRoot()?.path ?? "not found")
 
 | Rank | Engine | Status | Score | Passed cases | Matched phrases | Avg latency | Avg confidence | Notes |
 | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |

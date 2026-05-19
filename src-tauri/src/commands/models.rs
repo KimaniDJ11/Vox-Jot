@@ -889,6 +889,7 @@ fn augment_tts_catalog_with_hf_verified(
 #[derive(Debug, Deserialize)]
 struct HfRepoSibling {
     rfilename: String,
+    size: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -905,7 +906,7 @@ fn hf_tts_filter_file(name: &str) -> bool {
         && !name.starts_with(".git/")
 }
 
-async fn fetch_hf_repo_files(repo_id: &str) -> Result<Vec<String>, String> {
+async fn fetch_hf_repo_files(repo_id: &str) -> Result<Vec<HfRepoSibling>, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
         .build()
@@ -934,11 +935,10 @@ async fn fetch_hf_repo_files(repo_id: &str) -> Result<Vec<String>, String> {
         .json()
         .await
         .map_err(|err| format!("Failed to decode repo info for {repo_id}: {err}"))?;
-    let files: Vec<String> = info
+    let files: Vec<HfRepoSibling> = info
         .siblings
         .into_iter()
-        .map(|s| s.rfilename)
-        .filter(|name| hf_tts_filter_file(name))
+        .filter(|s| hf_tts_filter_file(&s.rfilename))
         .collect();
     if files.is_empty() {
         return Err(format!("No downloadable files in {repo_id}."));
@@ -953,6 +953,8 @@ fn emit_tts_download_progress(
     file: Option<&str>,
     file_index: Option<usize>,
     file_count: Option<usize>,
+    downloaded_bytes: Option<u64>,
+    total_bytes: Option<u64>,
     error: Option<&str>,
 ) {
     let payload = serde_json::json!({
@@ -961,6 +963,8 @@ fn emit_tts_download_progress(
         "file": file,
         "file_index": file_index,
         "file_count": file_count,
+        "downloaded_bytes": downloaded_bytes,
+        "total_bytes": total_bytes,
         "error": error,
     });
     let _ = app.emit("tts-hf-download-progress", payload);
@@ -989,17 +993,41 @@ pub async fn download_hf_tts_repo_impl(
         .await
         .map_err(|err| format!("Failed to create staging dir: {err}"))?;
 
-    emit_tts_download_progress(app, repo_id, "preparing", None, None, None, None);
+    emit_tts_download_progress(
+        app,
+        repo_id,
+        "preparing",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
 
     let files = match fetch_hf_repo_files(repo_id).await {
         Ok(files) => files,
         Err(err) => {
             let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-            emit_tts_download_progress(app, repo_id, "failed", None, None, None, Some(&err));
+            emit_tts_download_progress(
+                app,
+                repo_id,
+                "failed",
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(&err),
+            );
             return Err(err);
         }
     };
     let file_count = files.len();
+    let total_bytes = files.iter().try_fold(0_u64, |acc, file| {
+        file.size.map(|size| acc.saturating_add(size))
+    });
+    let mut downloaded_bytes = 0_u64;
     emit_tts_download_progress(
         app,
         repo_id,
@@ -1007,6 +1035,8 @@ pub async fn download_hf_tts_repo_impl(
         None,
         Some(0),
         Some(file_count),
+        Some(downloaded_bytes),
+        total_bytes,
         None,
     );
 
@@ -1015,7 +1045,8 @@ pub async fn download_hf_tts_repo_impl(
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
 
-    for (idx, rel) in files.iter().enumerate() {
+    for (idx, hf_file) in files.iter().enumerate() {
+        let rel = &hf_file.rfilename;
         let encoded = rel
             .split('/')
             .map(|seg| seg.replace(' ', "%20"))
@@ -1034,6 +1065,8 @@ pub async fn download_hf_tts_repo_impl(
                     Some(rel),
                     None,
                     None,
+                    Some(downloaded_bytes),
+                    total_bytes,
                     Some(&msg),
                 );
                 return Err(msg);
@@ -1052,6 +1085,8 @@ pub async fn download_hf_tts_repo_impl(
                     Some(rel),
                     None,
                     None,
+                    Some(downloaded_bytes),
+                    total_bytes,
                     Some(&msg),
                 );
                 return Err(msg);
@@ -1060,7 +1095,17 @@ pub async fn download_hf_tts_repo_impl(
         if !response.status().is_success() {
             let _ = tokio_fs::remove_dir_all(&staging_dir).await;
             let msg = format!("Failed to download {rel}: HTTP {}", response.status());
-            emit_tts_download_progress(app, repo_id, "failed", Some(rel), None, None, Some(&msg));
+            emit_tts_download_progress(
+                app,
+                repo_id,
+                "failed",
+                Some(rel),
+                None,
+                None,
+                Some(downloaded_bytes),
+                total_bytes,
+                Some(&msg),
+            );
             return Err(msg);
         }
 
@@ -1076,6 +1121,8 @@ pub async fn download_hf_tts_repo_impl(
                     Some(rel),
                     None,
                     None,
+                    Some(downloaded_bytes),
+                    total_bytes,
                     Some(&msg),
                 );
                 return Err(msg);
@@ -1083,6 +1130,7 @@ pub async fn download_hf_tts_repo_impl(
         };
 
         use futures_util::StreamExt;
+        let mut last_emit_bytes = downloaded_bytes;
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
             let chunk = match chunk {
@@ -1097,6 +1145,8 @@ pub async fn download_hf_tts_repo_impl(
                         Some(rel),
                         None,
                         None,
+                        Some(downloaded_bytes),
+                        total_bytes,
                         Some(&msg),
                     );
                     return Err(msg);
@@ -1112,9 +1162,26 @@ pub async fn download_hf_tts_repo_impl(
                     Some(rel),
                     None,
                     None,
+                    Some(downloaded_bytes),
+                    total_bytes,
                     Some(&msg),
                 );
                 return Err(msg);
+            }
+            downloaded_bytes = downloaded_bytes.saturating_add(chunk.len() as u64);
+            if downloaded_bytes.saturating_sub(last_emit_bytes) >= 1_048_576 {
+                emit_tts_download_progress(
+                    app,
+                    repo_id,
+                    "downloading",
+                    Some(rel),
+                    Some(idx),
+                    Some(file_count),
+                    Some(downloaded_bytes),
+                    total_bytes,
+                    None,
+                );
+                last_emit_bytes = downloaded_bytes;
             }
         }
         let _ = file.flush().await;
@@ -1125,6 +1192,8 @@ pub async fn download_hf_tts_repo_impl(
             Some(rel),
             Some(idx + 1),
             Some(file_count),
+            Some(downloaded_bytes),
+            total_bytes,
             None,
         );
     }
@@ -1154,6 +1223,8 @@ pub async fn download_hf_tts_repo_impl(
         None,
         Some(file_count),
         Some(file_count),
+        Some(downloaded_bytes),
+        total_bytes,
         None,
     );
     Ok(install_dir)

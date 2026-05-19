@@ -4519,9 +4519,13 @@ impl TtsManager {
         install_dir: &Path,
         label: &str,
     ) -> Result<(), String> {
+        use tokio::fs as tokio_fs;
+        use tokio::io::AsyncWriteExt;
+
         #[derive(Deserialize)]
         struct HfSibling {
             rfilename: String,
+            size: Option<u64>,
         }
         #[derive(Deserialize)]
         struct HfModelInfo {
@@ -4531,6 +4535,16 @@ impl TtsManager {
         let client = reqwest::Client::new();
         let api_url = format!("https://huggingface.co/api/models/{repo_id}");
         info!("HF snapshot: listing files from {api_url}");
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "preparing",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
 
         let response = hf_get(&client, &api_url)
             .send()
@@ -4549,6 +4563,21 @@ impl TtsManager {
             .json()
             .await
             .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
+        let file_count = model_info.siblings.len();
+        let total_bytes = model_info.siblings.iter().try_fold(0_u64, |acc, sibling| {
+            sibling.size.map(|size| acc.saturating_add(size))
+        });
+        let mut downloaded_bytes = 0_u64;
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "downloading",
+            None,
+            Some(0),
+            Some(file_count),
+            Some(downloaded_bytes),
+            total_bytes,
+            None,
+        );
 
         if install_dir.exists() {
             fs::remove_dir_all(install_dir)
@@ -4561,7 +4590,7 @@ impl TtsManager {
         fs::create_dir_all(&inner_dir)
             .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
 
-        for sibling in &model_info.siblings {
+        for (idx, sibling) in model_info.siblings.iter().enumerate() {
             let file_url = format!(
                 "https://huggingface.co/{repo_id}/resolve/main/{}",
                 sibling.rfilename
@@ -4573,6 +4602,16 @@ impl TtsManager {
                 })?;
             }
             info!("HF snapshot: downloading {}", sibling.rfilename);
+            self.emit_tts_hf_download_progress(
+                repo_id,
+                "downloading",
+                Some(&sibling.rfilename),
+                Some(idx),
+                Some(file_count),
+                Some(downloaded_bytes),
+                total_bytes,
+                None,
+            );
             let response = hf_get(&client, &file_url)
                 .send()
                 .await
@@ -4587,17 +4626,60 @@ impl TtsManager {
                     response.status()
                 ));
             }
-            let bytes = response
-                .bytes()
+            let mut file = tokio_fs::File::create(&dest)
                 .await
-                .map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
-            fs::write(&dest, bytes)
                 .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+            let mut last_emit_bytes = downloaded_bytes;
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                let chunk =
+                    chunk.map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
+                file.write_all(&chunk)
+                    .await
+                    .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+                downloaded_bytes = downloaded_bytes.saturating_add(chunk.len() as u64);
+                if downloaded_bytes.saturating_sub(last_emit_bytes) >= 1_048_576 {
+                    self.emit_tts_hf_download_progress(
+                        repo_id,
+                        "downloading",
+                        Some(&sibling.rfilename),
+                        Some(idx),
+                        Some(file_count),
+                        Some(downloaded_bytes),
+                        total_bytes,
+                        None,
+                    );
+                    last_emit_bytes = downloaded_bytes;
+                }
+            }
+            file.flush()
+                .await
+                .map_err(|e| format!("Failed to finalize {}: {e}", sibling.rfilename))?;
+            self.emit_tts_hf_download_progress(
+                repo_id,
+                "downloading",
+                Some(&sibling.rfilename),
+                Some(idx + 1),
+                Some(file_count),
+                Some(downloaded_bytes),
+                total_bytes,
+                None,
+            );
         }
 
         info!(
             "HF snapshot: completed {label} ({} files)",
             model_info.siblings.len()
+        );
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "complete",
+            None,
+            Some(file_count),
+            Some(file_count),
+            Some(downloaded_bytes),
+            total_bytes,
+            None,
         );
         Ok(())
     }
@@ -4608,9 +4690,13 @@ impl TtsManager {
         install_dir: &Path,
         label: &str,
     ) -> Result<(), String> {
+        use tokio::fs as tokio_fs;
+        use tokio::io::AsyncWriteExt;
+
         #[derive(Deserialize)]
         struct HfSibling {
             rfilename: String,
+            size: Option<u64>,
         }
         #[derive(Deserialize)]
         struct HfModelInfo {
@@ -4620,6 +4706,16 @@ impl TtsManager {
         let client = reqwest::Client::new();
         let api_url = format!("https://huggingface.co/api/models/{repo_id}");
         info!("HF snapshot: listing files from {api_url}");
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "preparing",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
 
         let response = hf_get(&client, &api_url)
             .send()
@@ -4638,6 +4734,21 @@ impl TtsManager {
             .json()
             .await
             .map_err(|e| format!("Failed to parse HuggingFace API response for {label}: {e}"))?;
+        let file_count = model_info.siblings.len();
+        let total_bytes = model_info.siblings.iter().try_fold(0_u64, |acc, sibling| {
+            sibling.size.map(|size| acc.saturating_add(size))
+        });
+        let mut downloaded_bytes = 0_u64;
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "downloading",
+            None,
+            Some(0),
+            Some(file_count),
+            Some(downloaded_bytes),
+            total_bytes,
+            None,
+        );
 
         if install_dir.exists() {
             fs::remove_dir_all(install_dir)
@@ -4646,7 +4757,7 @@ impl TtsManager {
         fs::create_dir_all(install_dir)
             .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
 
-        for sibling in &model_info.siblings {
+        for (idx, sibling) in model_info.siblings.iter().enumerate() {
             let file_url = format!(
                 "https://huggingface.co/{repo_id}/resolve/main/{}",
                 sibling.rfilename
@@ -4658,6 +4769,16 @@ impl TtsManager {
                 })?;
             }
             info!("HF snapshot: downloading {}", sibling.rfilename);
+            self.emit_tts_hf_download_progress(
+                repo_id,
+                "downloading",
+                Some(&sibling.rfilename),
+                Some(idx),
+                Some(file_count),
+                Some(downloaded_bytes),
+                total_bytes,
+                None,
+            );
             let response = hf_get(&client, &file_url)
                 .send()
                 .await
@@ -4672,19 +4793,86 @@ impl TtsManager {
                     response.status()
                 ));
             }
-            let bytes = response
-                .bytes()
+            let mut file = tokio_fs::File::create(&dest)
                 .await
-                .map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
-            fs::write(&dest, bytes)
                 .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+            let mut last_emit_bytes = downloaded_bytes;
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                let chunk =
+                    chunk.map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
+                file.write_all(&chunk)
+                    .await
+                    .map_err(|e| format!("Failed to write {}: {e}", sibling.rfilename))?;
+                downloaded_bytes = downloaded_bytes.saturating_add(chunk.len() as u64);
+                if downloaded_bytes.saturating_sub(last_emit_bytes) >= 1_048_576 {
+                    self.emit_tts_hf_download_progress(
+                        repo_id,
+                        "downloading",
+                        Some(&sibling.rfilename),
+                        Some(idx),
+                        Some(file_count),
+                        Some(downloaded_bytes),
+                        total_bytes,
+                        None,
+                    );
+                    last_emit_bytes = downloaded_bytes;
+                }
+            }
+            file.flush()
+                .await
+                .map_err(|e| format!("Failed to finalize {}: {e}", sibling.rfilename))?;
+            self.emit_tts_hf_download_progress(
+                repo_id,
+                "downloading",
+                Some(&sibling.rfilename),
+                Some(idx + 1),
+                Some(file_count),
+                Some(downloaded_bytes),
+                total_bytes,
+                None,
+            );
         }
 
         info!(
             "HF snapshot: completed {label} ({} files)",
             model_info.siblings.len()
         );
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "complete",
+            None,
+            Some(file_count),
+            Some(file_count),
+            Some(downloaded_bytes),
+            total_bytes,
+            None,
+        );
         Ok(())
+    }
+
+    fn emit_tts_hf_download_progress(
+        &self,
+        repo_id: &str,
+        stage: &str,
+        file: Option<&str>,
+        file_index: Option<usize>,
+        file_count: Option<usize>,
+        downloaded_bytes: Option<u64>,
+        total_bytes: Option<u64>,
+        error: Option<&str>,
+    ) {
+        let payload = serde_json::json!({
+            "repo_id": repo_id,
+            "stage": stage,
+            "file": file,
+            "file_index": file_index,
+            "file_count": file_count,
+            "downloaded_bytes": downloaded_bytes,
+            "total_bytes": total_bytes,
+            "error": error,
+        });
+        let _ = self.app_handle.emit("tts-hf-download-progress", payload);
     }
 
     fn default_pack_manifest(&self, definition: &PackDefinition) -> SherpaPackManifest {

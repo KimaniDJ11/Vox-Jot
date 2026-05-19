@@ -83,9 +83,15 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             {showLabel && item.label && (
               <span className="me-2">{item.label}</span>
             )}
-            {showSpeed && item.speed !== undefined && item.speed > 0 ? (
+            {showSpeed && item.speed !== undefined && item.speed >= 0.05 ? (
               // eslint-disable-next-line i18next/no-literal-string
-              <span>{item.speed.toFixed(1)}MB/s</span>
+              <span>{item.speed.toFixed(1)} MB/s</span>
+            ) : showSpeed && item.speed !== undefined ? (
+              <span>
+                {t("modelSelector.waitingForData", {
+                  defaultValue: "Waiting for data...",
+                })}
+              </span>
             ) : showSpeed ? (
               <span>{t("common.downloading")}</span>
             ) : null}

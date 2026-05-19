@@ -21,6 +21,7 @@ const DETAIL_MIN_HEIGHT: f64 = 640.0;
 #[derive(Default)]
 pub struct DetailViewRoutingState {
     target_section: Mutex<Option<String>>,
+    model_hub_native_dialog_active: Mutex<bool>,
 }
 
 impl DetailViewRoutingState {
@@ -35,6 +36,19 @@ impl DetailViewRoutingState {
             .lock()
             .ok()
             .and_then(|target| target.clone())
+    }
+
+    fn set_model_hub_native_dialog_active(&self, active: bool) {
+        if let Ok(mut is_active) = self.model_hub_native_dialog_active.lock() {
+            *is_active = active;
+        }
+    }
+
+    fn is_model_hub_native_dialog_active(&self) -> bool {
+        self.model_hub_native_dialog_active
+            .lock()
+            .map(|is_active| *is_active)
+            .unwrap_or(false)
     }
 }
 
@@ -100,6 +114,13 @@ fn attach_blur_hide_handler(app: &AppHandle, label: &'static str) {
         window.on_window_event(move |event| {
             if let tauri::WindowEvent::Focused(focused) = event {
                 if !*focused {
+                    if label == MODEL_HUB_LABEL
+                        && app_clone
+                            .state::<DetailViewRoutingState>()
+                            .is_model_hub_native_dialog_active()
+                    {
+                        return;
+                    }
                     if let Some(w) = app_clone.get_webview_window(label) {
                         let _ = w.hide();
                         if label == MODEL_HUB_LABEL {
@@ -250,7 +271,7 @@ fn create_model_hub_window(app: &AppHandle) {
         }))
         .level(PanelLevel::Floating)
         .floating(true)
-        .hides_on_deactivate(true)
+        .hides_on_deactivate(false)
         .collection_behavior(
             CollectionBehavior::new()
                 .can_join_all_spaces()
@@ -397,4 +418,9 @@ pub fn show_detail_view(app: &AppHandle, section: &str) {
 pub fn get_detail_target_section(app: &AppHandle) -> Option<String> {
     let state = app.state::<DetailViewRoutingState>();
     state.get_target_section()
+}
+
+pub fn set_model_hub_native_dialog_active(app: &AppHandle, active: bool) {
+    let state = app.state::<DetailViewRoutingState>();
+    state.set_model_hub_native_dialog_active(active);
 }

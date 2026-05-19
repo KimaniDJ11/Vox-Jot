@@ -39,6 +39,7 @@ import HubModelCard, {
   type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
+import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
 import {
   buildModelIdentityChips,
   inferArchitectureLabel,
@@ -939,9 +940,7 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
             ? t("settings.refineModels.actions.downloading", {
                 percent: Math.round(progress.percentage ?? 0),
               })
-            : t("settings.refineModels.actions.downloadingUnknown", {
-                defaultValue: "Downloading...",
-              });
+            : downloadingModelFilesLabel(t);
       } else if (isBusy && progress?.stage === "importing") {
         label = t("settings.refineModels.actions.importing");
       } else if (needsOllamaInstall) {
@@ -1197,19 +1196,17 @@ const RefineModelsSettings: React.FC<RefineModelsSettingsProps> = ({
       const speed = speedMapRef.current[model.runtime_model_id]?.speed ?? 0;
       const detail = [
         `${formatBytes(downloaded)}${hasKnownTotal ? ` / ${formatBytes(total)}` : ""}`,
-        speed > 0 ? `${speed.toFixed(1)} MB/s` : null,
+        speed >= 0.05
+          ? `${speed.toFixed(1)} MB/s`
+          : t("modelSelector.waitingForData", {
+              defaultValue: "Waiting for data...",
+            }),
       ]
         .filter(Boolean)
         .join(" · ");
 
       return {
-        label: hasKnownTotal
-          ? t("settings.refineModels.actions.downloading", {
-              percent: percentage,
-            })
-          : t("settings.refineModels.actions.downloadingUnknown", {
-              defaultValue: "Downloading...",
-            }),
+        label: downloadingModelFilesLabel(t),
         detail,
         progress: hasKnownTotal ? percentage : null,
         indeterminate: !hasKnownTotal,

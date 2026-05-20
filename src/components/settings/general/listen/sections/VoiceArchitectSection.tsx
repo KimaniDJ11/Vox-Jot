@@ -52,6 +52,7 @@ import {
   InlineCueHint,
   SelectField,
   VoiceTuningCard,
+  WorkflowStatusStrip,
   WorkflowField,
 } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
@@ -699,6 +700,49 @@ export const VoiceArchitectSection: React.FC<{
     setCreateVoiceTool(value);
   };
 
+  const createSpeechWorkflowSteps = [
+    {
+      id: "voice",
+      label: t("listen.createVoices.workflow.voiceReady", {
+        defaultValue: "Voice selected",
+      }),
+      detail: draftPreviewVoiceName,
+      tone:
+        draftProviderIdForControls && draftModelIdForControls
+          ? ("ready" as const)
+          : ("warning" as const),
+    },
+    {
+      id: "text",
+      label: t("listen.createVoices.workflow.scriptReady", {
+        defaultValue: "Text ready",
+      }),
+      detail: previewTextDraft.trim()
+        ? t("listen.createVoices.workflow.characterCount", {
+            defaultValue: "{{count}} characters",
+            count: previewTextDraft.trim().length,
+          })
+        : t("listen.createVoices.workflow.needsText", {
+            defaultValue: "Add text before generating",
+          }),
+      tone: previewTextDraft.trim() ? ("ready" as const) : ("pending" as const),
+    },
+    {
+      id: "output",
+      label: t("listen.createVoices.workflow.generatedAudio", {
+        defaultValue: "Generated audio",
+      }),
+      detail: generatingSpeech
+        ? t("listen.createVoices.workflow.generating", {
+            defaultValue: "Rendering now",
+          })
+        : t("listen.createVoices.workflow.generatedAudioDetail", {
+            defaultValue: "Saved to Generated Audio",
+          }),
+      tone: generatingSpeech ? ("active" as const) : ("pending" as const),
+    },
+  ];
+
   const handleDraftVoiceProfileChange = (value: string) => {
     setDraftVoiceProfileId(value);
     if (!draftMatchesActiveModel) {
@@ -1067,6 +1111,13 @@ export const VoiceArchitectSection: React.FC<{
             </Button>
           </div>
         </div>
+
+        <WorkflowStatusStrip
+          steps={createSpeechWorkflowSteps}
+          ariaLabel={t("listen.createVoices.workflow.statusAriaLabel", {
+            defaultValue: "Create Speech workflow status",
+          })}
+        />
 
         {createVoiceTool === "audio" ? audioView : tuningView}
       </div>

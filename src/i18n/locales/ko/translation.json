@@ -2347,7 +2347,9 @@
       "studioDescription": "저장된 음성을 캐릭터에 할당하고, 스크립트를 편집하고, 스토리 오디오를 렌더링하세요.",
       "generatedAudioTitle": "생성된 오디오",
       "generatedAudioDescription": "Studio에서 렌더링된 오디오를 재생, 공개, 복사, 별표 표시 또는 제거합니다.",
-      "dictionaryTitle": "사전"
+      "dictionaryTitle": "사전",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "받아쓰기",
@@ -2668,7 +2670,8 @@
         "myVoices": "목소리",
         "voiceCloning": "음성 복제",
         "studio": "스튜디오",
-        "generatedAudio": "생성된 오디오"
+        "generatedAudio": "생성된 오디오",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "앱 및 받아쓰기",

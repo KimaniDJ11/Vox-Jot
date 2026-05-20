@@ -2347,7 +2347,9 @@
       "studioDescription": "قم بتعيين الأصوات المحفوظة للشخصيات، وتحرير البرنامج النصي، وتقديم صوت القصة.",
       "generatedAudioTitle": "الصوت المولد",
       "generatedAudioDescription": "إعادة تشغيل الصوت الصادر من الاستوديو أو كشفه أو نسخه أو تمييزه بنجمة أو إزالته.",
-      "dictionaryTitle": "قاموس"
+      "dictionaryTitle": "قاموس",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "الإملاء",
@@ -2668,7 +2670,8 @@
         "myVoices": "أصوات",
         "voiceCloning": "استنساخ الصوت",
         "studio": "استوديو",
-        "generatedAudio": "الصوت المولد"
+        "generatedAudio": "الصوت المولد",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "التطبيق والإملاء",

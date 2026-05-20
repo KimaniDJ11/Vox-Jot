@@ -138,6 +138,13 @@ export const ListenVoiceCloningSection: React.FC<{
   return <VoiceCloningSection speech={speech} showTitle={showGroupTitle} />;
 };
 
+export const ListenVoiceChangerSection: React.FC<{
+  showGroupTitle?: boolean;
+}> = ({ showGroupTitle = true }) => {
+  const speech = useListenSpeechState();
+  return <VoiceChangerSection speech={speech} showTitle={showGroupTitle} />;
+};
+
 export const AutoReadbackSection: React.FC<{
   showGroupTitle?: boolean;
 }> = ({ showGroupTitle = true }) => {

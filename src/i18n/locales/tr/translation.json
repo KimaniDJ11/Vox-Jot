@@ -2347,7 +2347,9 @@
       "studioDescription": "Kaydedilen sesleri karakterlere atayın, bir komut dosyasını düzenleyin ve hikaye sesini işleyin.",
       "generatedAudioTitle": "Oluşturulan ses",
       "generatedAudioDescription": "Studio'da oluşturulan sesi yeniden oynatın, ortaya çıkarın, kopyalayın, yıldız ekleyin veya kaldırın.",
-      "dictionaryTitle": "Sözlük"
+      "dictionaryTitle": "Sözlük",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Dikte",
@@ -2668,7 +2670,8 @@
         "myVoices": "Sesler",
         "voiceCloning": "Ses Klonlama",
         "studio": "stüdyo",
-        "generatedAudio": "Oluşturulan Ses"
+        "generatedAudio": "Oluşturulan Ses",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Uygulama ve Dikte",

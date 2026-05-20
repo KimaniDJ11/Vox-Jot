@@ -2347,7 +2347,9 @@
       "studioDescription": "Weisen Sie Charakteren gespeicherte Stimmen zu, bearbeiten Sie ein Skript und rendern Sie den Ton der Geschichte.",
       "generatedAudioTitle": "Generiertes Audio",
       "generatedAudioDescription": "Aus Studio gerendertes Audio wiedergeben, anzeigen, kopieren, markieren oder entfernen.",
-      "dictionaryTitle": "Wörterbuch"
+      "dictionaryTitle": "Wörterbuch",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Diktat",
@@ -2668,7 +2670,8 @@
         "myVoices": "Stimmen",
         "voiceCloning": "Stimmklonen",
         "studio": "Studio",
-        "generatedAudio": "Generiertes Audio"
+        "generatedAudio": "Generiertes Audio",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "App & Diktat",

@@ -2,6 +2,7 @@ import React from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   Check,
+  Circle,
   Dna,
   Globe,
   HardDrive,
@@ -55,6 +56,58 @@ import {
   tuningNumberValue,
   tuningRangeHint,
 } from "./tuningControls";
+
+type WorkflowStatusTone = "ready" | "active" | "pending" | "warning";
+
+export interface WorkflowStatusStep {
+  id: string;
+  label: string;
+  detail?: string | null;
+  tone: WorkflowStatusTone;
+}
+
+const workflowStatusToneClassNames: Record<WorkflowStatusTone, string> = {
+  ready:
+    "border-[color-mix(in_srgb,var(--success),transparent_64%)] bg-[var(--success-soft)] text-[var(--success)]",
+  active:
+    "border-[color-mix(in_srgb,var(--accent),transparent_60%)] bg-[var(--accent-soft)] text-[var(--accent)]",
+  pending: "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]",
+  warning:
+    "border-[color-mix(in_srgb,var(--danger),transparent_62%)] bg-[var(--danger-soft)] text-[var(--danger)]",
+};
+
+export const WorkflowStatusStrip: React.FC<{
+  steps: WorkflowStatusStep[];
+  ariaLabel: string;
+}> = ({ steps, ariaLabel }) => (
+  <div
+    className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-2 sm:grid-cols-3"
+    aria-label={ariaLabel}
+  >
+    {steps.map((step) => (
+      <div
+        key={step.id}
+        className={`flex min-w-0 items-start gap-2 rounded-lg border px-2.5 py-2 ${workflowStatusToneClassNames[step.tone]}`}
+      >
+        {step.tone === "ready" ? (
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        ) : (
+          <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        )}
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-semibold text-[var(--text)]">
+            {step.label}
+          </span>
+          {step.detail ? (
+            <span className="block truncate text-[11px] leading-4 text-[var(--muted)]">
+              {step.detail}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    ))}
+  </div>
+);
 
 export function SelectField({
   value,

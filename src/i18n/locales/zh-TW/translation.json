@@ -2339,7 +2339,9 @@
       "studioDescription": "將已儲存的聲音指派給角色、編輯腳本並渲染故事音訊。",
       "generatedAudioTitle": "產生的音訊",
       "generatedAudioDescription": "重播、顯示、複製、加星標或刪除從 Studio 渲染的音訊。",
-      "dictionaryTitle": "字典"
+      "dictionaryTitle": "字典",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "聽寫",
@@ -2660,7 +2662,8 @@
         "myVoices": "聲音",
         "voiceCloning": "語音克隆",
         "studio": "工作室",
-        "generatedAudio": "產生的音訊"
+        "generatedAudio": "產生的音訊",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "應用程式和聽寫",

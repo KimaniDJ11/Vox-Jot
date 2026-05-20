@@ -2347,7 +2347,9 @@
       "studioDescription": "Přiřaďte uložené hlasy postavám, upravte scénář a vykreslete zvuk příběhu.",
       "generatedAudioTitle": "Generovaný zvuk",
       "generatedAudioDescription": "Přehrajte, odhalte, zkopírujte, označte hvězdičkou nebo odstraňte zvuk vykreslený ze Studia.",
-      "dictionaryTitle": "Slovník"
+      "dictionaryTitle": "Slovník",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Diktát",
@@ -2668,7 +2670,8 @@
         "myVoices": "Hlasy",
         "voiceCloning": "Klonování hlasu",
         "studio": "Studio",
-        "generatedAudio": "Generovaný zvuk"
+        "generatedAudio": "Generovaný zvuk",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Aplikace a diktát",

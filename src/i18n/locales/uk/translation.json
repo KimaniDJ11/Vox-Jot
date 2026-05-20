@@ -2347,7 +2347,9 @@
       "studioDescription": "Призначайте збережені голоси персонажам, редагуйте сценарій і відтворюйте звук історії.",
       "generatedAudioTitle": "Згенероване аудіо",
       "generatedAudioDescription": "Повторно відтворюйте, виявляйте, копіюйте, позначайте або видаляйте аудіо, відтворене в Studio.",
-      "dictionaryTitle": "Словник"
+      "dictionaryTitle": "Словник",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Диктант",
@@ -2668,7 +2670,8 @@
         "myVoices": "Голоси",
         "voiceCloning": "Клонування голосу",
         "studio": "Студія",
-        "generatedAudio": "Згенероване аудіо"
+        "generatedAudio": "Згенероване аудіо",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Додаток і диктування",

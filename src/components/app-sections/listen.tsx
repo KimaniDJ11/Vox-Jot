@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 
 import {
   CreateVoicesSection as CreateVoicesPanel,
-  VoicesSection as VoicesPanel,
+  MyVoicesSection as MyVoicesPanel,
   ListenVoiceCloningSection as VoiceCloningPanel,
+  ListenVoiceChangerSection as VoiceChangerPanel,
 } from "@/components/settings/general/ListenSections";
 import {
   StoryAudioHistorySection,
@@ -21,7 +22,7 @@ export const ListenMyVoicesSection: React.FC = () => {
         title={t("appSections.sections.myVoicesTitle")}
         description={t("appSections.sections.myVoicesDescription")}
       >
-        <VoicesPanel showGroupTitle={false} />
+        <MyVoicesPanel showGroupTitle={false} />
       </SectionIntro>
     </div>
   );
@@ -58,6 +59,25 @@ export const ListenVoiceCloningSection: React.FC = () => {
         description={t("appSections.sections.voiceCloningDescription")}
       >
         <VoiceCloningPanel showGroupTitle={false} />
+      </SectionIntro>
+    </div>
+  );
+};
+
+export const ListenVoiceChangerSection: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-6">
+      <SectionIntro
+        title={t("appSections.sections.voiceChangerTitle", {
+          defaultValue: "Voice Changer",
+        })}
+        description={t("appSections.sections.voiceChangerDescription", {
+          defaultValue:
+            "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact.",
+        })}
+      >
+        <VoiceChangerPanel showGroupTitle={false} />
       </SectionIntro>
     </div>
   );

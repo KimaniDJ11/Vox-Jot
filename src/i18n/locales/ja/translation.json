@@ -2347,7 +2347,9 @@
       "studioDescription": "保存した音声をキャラクターに割り当て、スクリプトを編集し、ストーリー音声をレンダリングします。",
       "generatedAudioTitle": "生成された音声",
       "generatedAudioDescription": "Studio からレンダリングされたオーディオを再生、公開、コピー、スター付け、または削除します。",
-      "dictionaryTitle": "辞書"
+      "dictionaryTitle": "辞書",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "ディクテーション",
@@ -2668,7 +2670,8 @@
         "myVoices": "声",
         "voiceCloning": "音声クローン作成",
         "studio": "スタジオ",
-        "generatedAudio": "生成されたオーディオ"
+        "generatedAudio": "生成されたオーディオ",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "アプリとディクテーション",

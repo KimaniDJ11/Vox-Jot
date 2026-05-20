@@ -2344,7 +2344,9 @@
       "studioDescription": "Assign saved voices to characters, edit a script, and render story audio.",
       "generatedAudioTitle": "Generated audio",
       "generatedAudioDescription": "Replay, reveal, copy, star, or remove audio rendered from Studio.",
-      "dictionaryTitle": "Dictionary"
+      "dictionaryTitle": "Dictionary",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Dictation",
@@ -2495,7 +2497,8 @@
         "myVoices": "Voices",
         "voiceCloning": "Voice Cloning",
         "studio": "Studio",
-        "generatedAudio": "Generated Audio"
+        "generatedAudio": "Generated Audio",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "App & Dictation",

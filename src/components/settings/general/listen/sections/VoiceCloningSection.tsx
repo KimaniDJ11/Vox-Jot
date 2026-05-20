@@ -64,6 +64,7 @@ import { readVoiceCloningDraft, writeVoiceCloningDraft } from "../draftStorage";
 import {
   DraftVoiceModelLibraryCard,
   SelectField,
+  WorkflowStatusStrip,
   WorkflowField,
 } from "../sharedComponents";
 
@@ -472,6 +473,44 @@ export const VoiceCloningSection: React.FC<{
   const handleVoiceCloneToolChange = (value: "audio" | "profile") => {
     setVoiceCloneTool(value);
   };
+  const voiceCloneWorkflowSteps = [
+    {
+      id: "reference",
+      label: t("listen.voiceCloning.workflow.reference", {
+        defaultValue: "Reference audio",
+      }),
+      detail: referenceAudioPathDraft
+        ? basename(referenceAudioPathDraft)
+        : t("listen.voiceCloning.workflow.needsReference", {
+            defaultValue: "Record or choose a WAV",
+          }),
+      tone: referenceAudioPathDraft ? ("ready" as const) : ("pending" as const),
+    },
+    {
+      id: "profile",
+      label: t("listen.voiceCloning.workflow.profile", {
+        defaultValue: "Profile",
+      }),
+      detail:
+        profileNameDraft.trim() ||
+        t("listen.voiceCloning.workflow.needsName", {
+          defaultValue: "Name the cloned voice",
+        }),
+      tone: profileNameDraft.trim() ? ("ready" as const) : ("pending" as const),
+    },
+    {
+      id: "model",
+      label: t("listen.voiceCloning.workflow.model", {
+        defaultValue: "Clone model",
+      }),
+      detail:
+        selectedCloneModel?.label ??
+        t("listen.voiceCloning.workflow.needsModel", {
+          defaultValue: "Choose a clone-capable model",
+        }),
+      tone: selectedCloneModel ? ("ready" as const) : ("warning" as const),
+    },
+  ];
 
   const generateCloneVoice = async () => {
     if (!selectedCloneModel) {
@@ -847,6 +886,13 @@ export const VoiceCloningSection: React.FC<{
           </div>
         ) : null}
 
+        <WorkflowStatusStrip
+          steps={voiceCloneWorkflowSteps}
+          ariaLabel={t("listen.voiceCloning.workflow.statusAriaLabel", {
+            defaultValue: "Voice cloning workflow status",
+          })}
+        />
+
         {voiceCloneTool === "audio" ? (
           <>
             <div
@@ -1052,6 +1098,53 @@ export const VoiceCloningSection: React.FC<{
                   </Button>
                 </div>
               ) : null}
+            </div>
+
+            <div className={whiteWorkflowCardClassName}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <WorkflowField
+                  label={t("listen.voiceCloning.profileName", {
+                    defaultValue: "Profile name",
+                  })}
+                  hint={t("listen.voiceCloning.profileNameHint", {
+                    defaultValue:
+                      "This required name saves with the cloned voice profile.",
+                  })}
+                >
+                  <Input
+                    value={profileNameDraft}
+                    onChange={(event) =>
+                      setProfileNameDraft(event.target.value)
+                    }
+                    placeholder={t("listen.placeholders.voiceProfileName", {
+                      defaultValue: "New voice profile name",
+                    })}
+                    disabled={!speech.ttsEnabled}
+                    className="w-full"
+                  />
+                </WorkflowField>
+                <WorkflowField
+                  label={t("listen.voiceCloning.profileNote", {
+                    defaultValue: "Profile note",
+                  })}
+                  hint={t("listen.voiceCloning.profileNoteHint", {
+                    defaultValue:
+                      "Optional context, such as speaker, mic, or source.",
+                  })}
+                >
+                  <Input
+                    value={profileDescriptionDraft}
+                    onChange={(event) =>
+                      setProfileDescriptionDraft(event.target.value)
+                    }
+                    placeholder={t("listen.placeholders.voiceProfileNote", {
+                      defaultValue: "Optional note about this speaker",
+                    })}
+                    disabled={!speech.ttsEnabled}
+                    className="w-full"
+                  />
+                </WorkflowField>
+              </div>
             </div>
 
             <div className={whiteWorkflowCardClassName}>

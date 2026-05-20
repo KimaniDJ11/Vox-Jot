@@ -184,6 +184,11 @@ const ListenVoiceCloningSection = lazy(() =>
     default: module.ListenVoiceCloningSection,
   })),
 );
+const ListenVoiceChangerSection = lazy(() =>
+  import("@/components/app-sections/listen").then((module) => ({
+    default: module.ListenVoiceChangerSection,
+  })),
+);
 const StoryStudioAppSection = lazy(() =>
   import("@/components/app-sections/listen").then((module) => ({
     default: module.StoryStudioAppSection,
@@ -550,6 +555,13 @@ function App() {
           Dna,
           <ListenVoiceCloningSection />,
           "teal",
+        ),
+        makeSection(
+          "voice-changer",
+          "appSections.nav.listen.voiceChanger",
+          SlidersHorizontal,
+          <ListenVoiceChangerSection />,
+          "violet",
         ),
         makeSection(
           "story-studio",

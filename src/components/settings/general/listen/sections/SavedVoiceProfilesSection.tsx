@@ -142,6 +142,17 @@ export const SavedVoiceProfilesSection: React.FC<{
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
+                <Button
+                  type="button"
+                  variant={isPreviewing ? "secondary" : "ghost"}
+                  size="icon-sm"
+                  onClick={() => void togglePreview()}
+                  disabled={!speech.ttsEnabled}
+                  title={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
+                  aria-label={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
+                >
+                  {isPreviewing ? <Square aria-hidden /> : <Play aria-hidden />}
+                </Button>
                 {!isActive ? (
                   <Button
                     type="button"

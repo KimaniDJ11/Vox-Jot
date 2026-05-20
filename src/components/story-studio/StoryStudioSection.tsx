@@ -75,11 +75,7 @@ interface StoryRenderRequest {
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
 type StudioTool = "script" | "cast";
-type StoryAudioEffectPreset =
-  | "clean"
-  | "voice_polish"
-  | "radio"
-  | "warm_room";
+type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room";
 
 interface StoryStudioDraft {
   projectId: string;
@@ -342,8 +338,7 @@ export const StoryStudioSection: React.FC = () => {
     [availableTtsModels, voicesByModelKey],
   );
   const hasVoiceChoices = presets.length > 0 || presetVoices.length > 0;
-  const isLoadingVoiceChoices =
-    isLoadingTtsModels || loadingVoiceKeys.size > 0;
+  const isLoadingVoiceChoices = isLoadingTtsModels || loadingVoiceKeys.size > 0;
 
   // When the user picks a built-in preset voice in the Cast picker we
   // materialize it as a saved TtsVoicePreset so the rest of the pipeline
@@ -451,6 +446,23 @@ export const StoryStudioSection: React.FC = () => {
   const visibleValidationErrors = validation.errors.slice(0, 4);
   const hiddenValidationErrorCount =
     validation.errors.length - visibleValidationErrors.length;
+  const renderReadinessPill = (
+    <div
+      className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
+        validation.errors.length > 0
+          ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--text)]"
+          : "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
+      }`}
+      aria-live="polite"
+    >
+      {validation.errors.length > 0 ? (
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
+      ) : (
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
+      )}
+      <span className="truncate">{readySummary}</span>
+    </div>
+  );
 
   if (!isLoadingPresets && !isLoadingVoiceChoices && !hasVoiceChoices) {
     return (
@@ -556,6 +568,7 @@ export const StoryStudioSection: React.FC = () => {
 
           {activeTool === "script" ? (
             <div className="story-studio-toolbar__trailing ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
+              {renderReadinessPill}
               <div className="relative">
                 <label
                   className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
@@ -633,20 +646,8 @@ export const StoryStudioSection: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div
-              className={`ms-auto inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${
-                validation.errors.length > 0
-                  ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--text)]"
-                  : "border-[color-mix(in_srgb,var(--success),transparent_70%)] bg-[var(--success-soft)] text-[var(--text)]"
-              }`}
-              aria-live="polite"
-            >
-              {validation.errors.length > 0 ? (
-                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
-              )}
-              <span className="truncate">{readySummary}</span>
+            <div className="ms-auto flex max-w-full justify-end">
+              {renderReadinessPill}
             </div>
           )}
         </div>
@@ -1085,9 +1086,7 @@ function normalizeStoredStudioDraft(
 }
 
 function normalizeStoredAudioEffect(value: unknown): StoryAudioEffectPreset {
-  return value === "voice_polish" ||
-    value === "radio" ||
-    value === "warm_room"
+  return value === "voice_polish" || value === "radio" || value === "warm_room"
     ? value
     : "clean";
 }

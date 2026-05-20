@@ -2347,7 +2347,9 @@
       "studioDescription": "Atribua vozes salvas aos personagens, edite um roteiro e renderize o áudio da história.",
       "generatedAudioTitle": "Áudio gerado",
       "generatedAudioDescription": "Reproduza, revele, copie, marque com estrela ou remova o áudio renderizado do Studio.",
-      "dictionaryTitle": "Dicionário"
+      "dictionaryTitle": "Dicionário",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Ditado",
@@ -2668,7 +2670,8 @@
         "myVoices": "Vozes",
         "voiceCloning": "Clonagem de voz",
         "studio": "Estúdio",
-        "generatedAudio": "Áudio gerado"
+        "generatedAudio": "Áudio gerado",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Aplicativo e ditado",

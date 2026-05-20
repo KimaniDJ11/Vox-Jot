@@ -2347,7 +2347,9 @@
       "studioDescription": "Gán giọng nói đã lưu cho các nhân vật, chỉnh sửa tập lệnh và hiển thị âm thanh câu chuyện.",
       "generatedAudioTitle": "Âm thanh được tạo",
       "generatedAudioDescription": "Phát lại, tiết lộ, sao chép, gắn dấu sao hoặc xóa âm thanh được kết xuất khỏi Studio.",
-      "dictionaryTitle": "từ điển"
+      "dictionaryTitle": "từ điển",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "chính tả",
@@ -2668,7 +2670,8 @@
         "myVoices": "Giọng nói",
         "voiceCloning": "Nhân bản giọng nói",
         "studio": "Studio",
-        "generatedAudio": "Âm thanh được tạo"
+        "generatedAudio": "Âm thanh được tạo",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Ứng dụng & Đọc chính tả",

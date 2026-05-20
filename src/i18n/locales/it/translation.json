@@ -2347,7 +2347,9 @@
       "studioDescription": "Assegna voci salvate ai personaggi, modifica una sceneggiatura ed esegui il rendering dell'audio della storia.",
       "generatedAudioTitle": "Audio generato",
       "generatedAudioDescription": "Riproduci, rivela, copia, contrassegna come Speciale o rimuovi l'audio sottoposto a rendering da Studio.",
-      "dictionaryTitle": "Dizionario"
+      "dictionaryTitle": "Dizionario",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Dettatura",
@@ -2668,7 +2670,8 @@
         "myVoices": "Voci",
         "voiceCloning": "Clonazione vocale",
         "studio": "Studio",
-        "generatedAudio": "Audio generato"
+        "generatedAudio": "Audio generato",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "App e dettatura",

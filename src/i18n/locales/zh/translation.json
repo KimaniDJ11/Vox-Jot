@@ -2339,7 +2339,9 @@
       "studioDescription": "将保存的声音分配给角色、编辑脚本并渲染故事音频。",
       "generatedAudioTitle": "生成的音频",
       "generatedAudioDescription": "重播、显示、复制、加星标或删除从 Studio 渲染的音频。",
-      "dictionaryTitle": "词典"
+      "dictionaryTitle": "词典",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "听写",
@@ -2660,7 +2662,8 @@
         "myVoices": "声音",
         "voiceCloning": "语音克隆",
         "studio": "工作室",
-        "generatedAudio": "生成的音频"
+        "generatedAudio": "生成的音频",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "应用程序和听写",

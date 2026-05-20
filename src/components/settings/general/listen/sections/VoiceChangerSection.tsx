@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import type { ListenSpeechState } from "../useListenSpeechState";
+import { WorkflowStatusStrip } from "../sharedComponents";
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/);
@@ -424,6 +425,58 @@ export const VoiceChangerSection: React.FC<{
         "Still working. Longer clips and first runs can take extra time.",
     });
   }, [elapsedSeconds, t, waitPhase]);
+  const voiceChangerWorkflowSteps = [
+    {
+      id: "runtime",
+      label: t("listen.voiceChanger.workflow.runtime", {
+        defaultValue: "Runtime",
+      }),
+      detail: waitPhase
+        ? (status ?? null)
+        : openVoiceInstalled
+          ? t("listen.voiceChanger.workflow.runtimeReady", {
+              defaultValue: "OpenVoice ready",
+            })
+          : t("listen.voiceChanger.workflow.runtimeWillInstall", {
+              defaultValue: "Installs on first convert",
+            }),
+      tone: waitPhase
+        ? ("active" as const)
+        : openVoiceInstalled
+          ? ("ready" as const)
+          : ("pending" as const),
+    },
+    {
+      id: "source",
+      label: t("listen.voiceChanger.workflow.source", {
+        defaultValue: "Source",
+      }),
+      detail: sourcePath
+        ? basename(sourcePath)
+        : isRecording
+          ? t("listen.voiceChanger.workflow.recording", {
+              defaultValue: "Recording microphone",
+            })
+          : t("listen.voiceChanger.workflow.needsSource", {
+              defaultValue: "Record mic or choose WAV",
+            }),
+      tone:
+        sourcePath || isRecording ? ("ready" as const) : ("pending" as const),
+    },
+    {
+      id: "target",
+      label: t("listen.voiceChanger.workflow.target", {
+        defaultValue: "Target profile",
+      }),
+      detail:
+        readyProfiles.find((profile) => profile.id === selectedProfileId)
+          ?.label ??
+        t("listen.voiceChanger.noReadyProfiles", {
+          defaultValue: "No ready profiles",
+        }),
+      tone: selectedProfileId ? ("ready" as const) : ("warning" as const),
+    },
+  ];
 
   const content = (
     <div
@@ -457,6 +510,13 @@ export const VoiceChangerSection: React.FC<{
           </div>
         </div>
       ) : null}
+
+      <WorkflowStatusStrip
+        steps={voiceChangerWorkflowSteps}
+        ariaLabel={t("listen.voiceChanger.workflow.statusAriaLabel", {
+          defaultValue: "Voice Changer workflow status",
+        })}
+      />
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,0.7fr)]">
         <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">

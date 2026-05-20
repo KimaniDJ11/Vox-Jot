@@ -2347,7 +2347,9 @@
       "studioDescription": "Attribuez des voix enregistrées aux personnages, modifiez un script et restituez l'audio de l'histoire.",
       "generatedAudioTitle": "Audio généré",
       "generatedAudioDescription": "Rejouez, révélez, copiez, ajoutez une étoile ou supprimez l'audio rendu depuis Studio.",
-      "dictionaryTitle": "Dictionnaire"
+      "dictionaryTitle": "Dictionnaire",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Dictée",
@@ -2668,7 +2670,8 @@
         "myVoices": "Voix",
         "voiceCloning": "Clonage de voix",
         "studio": "Atelier",
-        "generatedAudio": "Audio généré"
+        "generatedAudio": "Audio généré",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Application et dictée",

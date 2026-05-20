@@ -2347,7 +2347,9 @@
       "studioDescription": "Przypisz zapisane głosy do postaci, edytuj scenariusz i renderuj dźwięk historii.",
       "generatedAudioTitle": "Wygenerowany dźwięk",
       "generatedAudioDescription": "Odtwarzaj, odkrywaj, kopiuj, oznaczaj gwiazdką lub usuwaj dźwięk renderowany z Studio.",
-      "dictionaryTitle": "Słownik"
+      "dictionaryTitle": "Słownik",
+      "voiceChangerTitle": "Voice Changer",
+      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
     },
     "groups": {
       "dictation": "Dyktando",
@@ -2668,7 +2670,8 @@
         "myVoices": "Głosy",
         "voiceCloning": "Klonowanie głosu",
         "studio": "Studio",
-        "generatedAudio": "Wygenerowany dźwięk"
+        "generatedAudio": "Wygenerowany dźwięk",
+        "voiceChanger": "Voice Changer"
       },
       "settings": {
         "general": "Aplikacja i dyktando",

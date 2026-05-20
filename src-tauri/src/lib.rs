@@ -38,6 +38,7 @@ mod ollama;
 mod overlay;
 pub mod portable;
 mod post_processing;
+mod product_architecture;
 mod refine_models;
 #[cfg(not(feature = "ci-mock-transcription"))]
 mod regression;

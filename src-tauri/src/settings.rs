@@ -905,7 +905,7 @@ fn default_true() -> bool {
 }
 
 fn default_experimental_enabled() -> bool {
-    true
+    false
 }
 
 fn default_app_theme() -> String {

@@ -67,6 +67,7 @@ import {
 import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
+import { isProductSectionVisible } from "@/lib/productArchitecture";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
@@ -392,6 +393,7 @@ function App() {
     app_theme: appTheme,
     app_font_scale: appFontScale,
     debug_mode: debugMode,
+    experimental_enabled: experimentalEnabled,
     post_process_enabled: postProcessEnabled,
     selected_language: selectedLanguage,
     translation_target_language: translationTargetLanguage,
@@ -399,6 +401,7 @@ function App() {
     "app_theme",
     "app_font_scale",
     "debug_mode",
+    "experimental_enabled",
     "post_process_enabled",
     "selected_language",
     "translation_target_language",
@@ -472,7 +475,7 @@ function App() {
       defaultValue: "System",
     });
 
-    return {
+    const sectionsByRoot = {
       dictate: [
         makeSection(
           "history",
@@ -670,7 +673,16 @@ function App() {
         ),
       ],
     };
-  }, [t]);
+
+    return Object.fromEntries(
+      Object.entries(sectionsByRoot).map(([view, sections]) => [
+        view,
+        sections.filter((section) =>
+          isProductSectionVisible(section.id, experimentalEnabled ?? false),
+        ),
+      ]),
+    ) as Record<RootView, ViewSection[]>;
+  }, [experimentalEnabled, t]);
 
   const activeSections = sectionsByView[activeRootView];
 
@@ -1128,12 +1140,13 @@ function App() {
     return match ?? activeSections[0];
   }, [activeSections, activeSectionId]);
 
-  // Keep activeSectionId in sync if it drifts (e.g. section removed)
+  // Keep activeSectionId in sync if it drifts behind a gated section.
   useEffect(() => {
     if (activeSection && activeSection.id !== activeSectionId) {
       setActiveSectionId(activeSection.id);
+      lastSectionByView.current[activeRootView] = activeSection.id;
     }
-  }, [activeSection, activeSectionId]);
+  }, [activeRootView, activeSection, activeSectionId]);
 
   if (onboardingStep === null) {
     return (

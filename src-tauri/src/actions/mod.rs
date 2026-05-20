@@ -839,7 +839,12 @@ impl ShortcutAction for TranscribeAction {
             let recording_start_time = Instant::now();
             match rm.try_start_recording(&binding_id) {
                 Ok(()) => {
-                    debug!("Recording started in {:?}", recording_start_time.elapsed());
+                    let recording_start_elapsed = recording_start_time.elapsed();
+                    crate::product_architecture::record_dictation_latency(
+                        "recording_start",
+                        recording_start_elapsed,
+                    );
+                    debug!("Recording started in {:?}", recording_start_elapsed);
                     // Small delay to ensure microphone stream is active
                     let app_clone = app.clone();
                     let rm_clone = Arc::clone(&rm);
@@ -940,9 +945,14 @@ impl ShortcutAction for TranscribeAction {
 
             let stop_recording_time = Instant::now();
             if let Some(samples) = rm.stop_recording(&binding_id) {
+                let stop_capture_elapsed = stop_recording_time.elapsed();
+                crate::product_architecture::record_dictation_latency(
+                    "stop_capture",
+                    stop_capture_elapsed,
+                );
                 debug!(
                     "Recording stopped and samples retrieved in {:?}, sample count: {}",
-                    stop_recording_time.elapsed(),
+                    stop_capture_elapsed,
                     samples.len()
                 );
 
@@ -986,9 +996,14 @@ impl ShortcutAction for TranscribeAction {
 
                 match tm.transcribe_with_settings(samples, effective_settings.clone()) {
                     Ok(transcription) => {
+                        let transcription_elapsed = transcription_time.elapsed();
+                        crate::product_architecture::record_dictation_latency(
+                            "warm_transcription",
+                            transcription_elapsed,
+                        );
                         debug!(
                             "Transcription completed in {:?} ({} chars)",
-                            transcription_time.elapsed(),
+                            transcription_elapsed,
                             transcription.chars().count()
                         );
                         // Require at least one alphanumeric character. Whisper
@@ -1670,6 +1685,10 @@ impl ShortcutAction for TranscribeAction {
                                     let mut history_save_request = history_save_request;
                                     match paste_result {
                                         Ok(()) => {
+                                            crate::product_architecture::record_dictation_latency(
+                                                "paste",
+                                                paste_time.elapsed(),
+                                            );
                                             debug!(
                                                 "Text pasted successfully in {:?}",
                                                 paste_time.elapsed()

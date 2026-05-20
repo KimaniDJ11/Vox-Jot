@@ -5,6 +5,7 @@ const commandMocks = vi.hoisted(() => ({
   getAvailableModels: vi.fn(),
   getCurrentModel: vi.fn(),
   hasAnyModelsAvailable: vi.fn(),
+  downloadModel: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -164,5 +165,29 @@ describe("model store", () => {
     expect(useModelStore.getState().downloadProgress.medium?.percentage).toBe(
       50,
     );
+  });
+
+  it("does not invoke a duplicate native download while one is already active", async () => {
+    const downloadDeferred = deferred<{
+      status: "ok";
+      data: null;
+    }>();
+    commandMocks.downloadModel.mockReturnValue(downloadDeferred.promise);
+    commandMocks.getAvailableModels.mockResolvedValue({
+      status: "ok",
+      data: [],
+    });
+
+    const firstDownload = useModelStore.getState().downloadModel("small");
+    const secondDownload = await useModelStore
+      .getState()
+      .downloadModel("small");
+
+    expect(secondDownload).toBe(true);
+    expect(commandMocks.downloadModel).toHaveBeenCalledTimes(1);
+    expect(commandMocks.downloadModel).toHaveBeenCalledWith("small");
+
+    downloadDeferred.resolve({ status: "ok", data: null });
+    await firstDownload;
   });
 });

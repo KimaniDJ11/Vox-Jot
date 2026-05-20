@@ -1,9 +1,6 @@
 use log::{debug, error};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager};
-
-#[cfg(not(target_os = "macos"))]
-use tauri::WebviewWindowBuilder;
+use tauri::{AppHandle, Emitter, Manager, WebviewWindowBuilder};
 
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel, StyleMask};
@@ -67,23 +64,7 @@ mod detail_panel {
 }
 
 #[cfg(target_os = "macos")]
-mod model_hub_panel {
-    use tauri::Manager;
-    use tauri_nspanel::tauri_panel;
-    tauri_panel! {
-        panel!(ModelHubPanel {
-            config: {
-                can_become_key_window: true,
-                is_floating_panel: true
-            }
-        })
-    }
-}
-
-#[cfg(target_os = "macos")]
 use detail_panel::DetailViewPanel;
-#[cfg(target_os = "macos")]
-use model_hub_panel::ModelHubPanel;
 
 fn emit_model_hub_visibility(app: &AppHandle, visible: bool) {
     if let Err(e) = app.emit_to("main", "model-hub-visibility", visible) {
@@ -253,98 +234,6 @@ fn create_detail_window(app: &AppHandle, section: &str) {
     }
 }
 
-#[cfg(target_os = "macos")]
-fn create_model_hub_window(app: &AppHandle) {
-    let webview_data_dir = crate::portable::data_dir().map(|dir| dir.join("webview"));
-    let app_clone = app.clone();
-
-    let builder = PanelBuilder::<_, ModelHubPanel>::new(app, MODEL_HUB_LABEL)
-        .url(tauri::WebviewUrl::App(DETAIL_PATH.into()))
-        .title("Vox Jot")
-        .size(tauri::Size::Logical(tauri::LogicalSize {
-            width: DETAIL_WIDTH,
-            height: DETAIL_HEIGHT,
-        }))
-        .content_size(tauri::Size::Logical(tauri::LogicalSize {
-            width: DETAIL_WIDTH,
-            height: DETAIL_HEIGHT,
-        }))
-        .level(PanelLevel::Floating)
-        .floating(true)
-        .hides_on_deactivate(false)
-        .collection_behavior(
-            CollectionBehavior::new()
-                .can_join_all_spaces()
-                .full_screen_auxiliary(),
-        )
-        // Keep `.titled()` (WKWebView requires it for `contentLayoutRect` KVO);
-        // traffic lights are hidden natively below so the window looks chromeless.
-        .style_mask(
-            StyleMask::empty()
-                .titled()
-                .resizable()
-                .full_size_content_view(),
-        )
-        .with_window(move |w| {
-            let w = w
-                .min_inner_size(DETAIL_MIN_WIDTH, DETAIL_MIN_HEIGHT)
-                .resizable(true)
-                .always_on_top(true)
-                .focused(true)
-                .visible(true)
-                .title_bar_style(tauri::TitleBarStyle::Overlay)
-                .hidden_title(true)
-                .on_page_load(move |window, payload| {
-                    if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-                        emit_section_to(window.app_handle(), MODEL_HUB_LABEL, MODEL_HUB_SECTION);
-                    }
-                });
-
-            if let Some(data_dir) = webview_data_dir.clone() {
-                w.data_directory(data_dir)
-            } else {
-                w
-            }
-        });
-
-    match builder.build() {
-        Ok(panel) => {
-            hide_traffic_lights(&app_clone, MODEL_HUB_LABEL);
-            panel.show();
-            debug!("Model hub panel created");
-            attach_close_handler(&app_clone, MODEL_HUB_LABEL);
-            attach_blur_hide_handler(&app_clone, MODEL_HUB_LABEL);
-        }
-        Err(e) => {
-            error!("Failed to create model hub panel: {}", e);
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn hide_traffic_lights(app: &AppHandle, label: &str) {
-    use objc::runtime::Object;
-    use objc::{msg_send, sel, sel_impl};
-
-    let Some(window) = app.get_webview_window(label) else {
-        return;
-    };
-    let Ok(ns_window) = window.ns_window() else {
-        return;
-    };
-    unsafe {
-        let ns_window = ns_window as *mut Object;
-        // NSWindowButton: close = 0, miniaturize = 1, zoom = 2
-        for idx in 0u64..=2 {
-            let btn: *mut Object = msg_send![ns_window, standardWindowButton: idx];
-            if !btn.is_null() {
-                let _: () = msg_send![btn, setHidden: true];
-            }
-        }
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
 fn create_model_hub_window(app: &AppHandle) {
     let mut builder = WebviewWindowBuilder::new(
         app,

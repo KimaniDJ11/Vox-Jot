@@ -219,6 +219,13 @@ export const useModelStore = create<ModelsStore>()(
     },
 
     downloadModel: async (modelId: string) => {
+      if (
+        modelId in get().downloadingModels ||
+        modelId in get().extractingModels
+      ) {
+        return true;
+      }
+
       try {
         set({ error: null });
         set(

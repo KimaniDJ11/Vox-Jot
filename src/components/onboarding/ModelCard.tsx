@@ -112,9 +112,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   const isClickable =
     !confirmingDelete &&
     !deleting &&
-    (status === "available" ||
-      status === "active" ||
-      status === "downloadable");
+    (status === "available" || status === "active");
 
   const displayName = getTranslatedModelName(model, t);
   const displayDescription = getTranslatedModelDescription(model, t);
@@ -271,11 +269,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   const handleCardClick = () => {
     if (!isClickable || disabled) return;
-    if (status === "downloadable" && onDownload) {
-      onDownload(model.id);
-    } else {
-      onSelect(model.id);
-    }
+    onSelect(model.id);
   };
 
   // Trailing: Download icon (acquire) or Trash (remove) — never both. While
@@ -386,7 +380,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
                 ? t("modelSelector.waitingForData", {
                     defaultValue: "Waiting for data...",
                   })
-              : metadataItems.join(" · "),
+                : metadataItems.join(" · "),
           progress: downloadProgress,
           indeterminate: downloadProgress === undefined,
           onCancel: onCancel ? () => onCancel(model.id) : undefined,

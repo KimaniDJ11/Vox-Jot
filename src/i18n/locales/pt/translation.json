@@ -1700,7 +1700,8 @@
       "title": "Gerenciador de pacotes",
       "description": "Baixe ou remova pacotes de fala offline sem sair das configurações.",
       "remove": "Remover",
-      "download": "Baixar"
+      "download": "Baixar",
+      "downloadStarted": "O download de {{packName}} começou. O pacote aparecerá quando terminar."
     },
     "engineLibrary": {
       "allLanguages": "Todos os idiomas",
@@ -2196,6 +2197,12 @@
       "tts": "Vozes (TTS)",
       "ocr": "Tela OCR",
       "ariaLabel": "Categorias de modelos"
+    },
+    "download": {
+      "failed": "Falha no download",
+      "retry": "Tentar novamente",
+      "dismiss": "Dispensar",
+      "cancel": "Cancelar download"
     }
   },
   "commandMenu": {

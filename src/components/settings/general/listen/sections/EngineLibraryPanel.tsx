@@ -21,7 +21,6 @@ import Badge from "@/components/ui/Badge";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import { type CompactBadgeItem } from "@/components/ui/CompactOverflow";
 import HubModelCard, {
-  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import {
@@ -36,6 +35,11 @@ import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
 import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
+import {
+  buildHubDownloadState,
+  isDownloadActive,
+  isDownloadFailed,
+} from "@/components/model-hub/hubDownloadState";
 import {
   ProviderIcon,
   resolveModelProviderId,
@@ -161,6 +165,8 @@ const SpeechModelLibraryCard: React.FC<{
   speech: ListenSpeechState;
   downloadProgress?: TtsHfDownloadProgress;
   onGatedDownloadRequest: (model: CatalogModelDescriptor) => boolean;
+  onClearDownloadProgress: (model: CatalogModelDescriptor) => void;
+  onCancelDownload: (model: CatalogModelDescriptor) => Promise<void>;
 }> = ({
   model,
   provider,
@@ -169,6 +175,8 @@ const SpeechModelLibraryCard: React.FC<{
   speech,
   downloadProgress,
   onGatedDownloadRequest,
+  onClearDownloadProgress,
+  onCancelDownload,
 }) => {
   const { t } = useTranslation();
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -177,6 +185,7 @@ const SpeechModelLibraryCard: React.FC<{
   const [localDownloadError, setLocalDownloadError] = useState<string | null>(
     null,
   );
+  const [cancellingDownload, setCancellingDownload] = useState(false);
   const headerBadges: CompactBadgeItem[] = [
     active
       ? {
@@ -338,19 +347,20 @@ const SpeechModelLibraryCard: React.FC<{
 
   const canAcquire = model.downloadable && !model.installed;
   const canActivate = model.installed && model.runnable;
+  const downloadActive = isDownloadActive(downloadProgress, locallyDownloading);
+  const downloadFailed = isDownloadFailed(downloadProgress, localDownloadError);
   const clickable =
     !active &&
     speech.ttsEnabled &&
     !speech.loadingPlatform &&
     !confirmingRemove &&
-    !locallyDownloading &&
-    !downloadProgress &&
+    !downloadActive &&
     (canAcquire || canActivate);
 
   const downloadOrActivate = useCallback(async () => {
-    if (locallyDownloading || downloadProgress) return;
+    if (downloadActive) return;
     setLocalDownloadError(null);
-    const hfRepoId = verifiedTtsHuggingFaceRepoId(model);
+    onClearDownloadProgress(model);
     if (
       canAcquire &&
       onGatedDownloadRequest(model)
@@ -358,6 +368,7 @@ const SpeechModelLibraryCard: React.FC<{
       return;
     }
     setLocallyDownloading(canAcquire);
+    const hfRepoId = verifiedTtsHuggingFaceRepoId(model);
     if (canAcquire && hfRepoId) {
       speech.setStatusMessage(
         t("modelHub.tts.downloadStarting", {
@@ -382,26 +393,36 @@ const SpeechModelLibraryCard: React.FC<{
     }
   }, [
     canAcquire,
-    downloadProgress,
+    downloadActive,
     locallyDownloading,
-    model.downloadable,
-    model.id,
-    model.installed,
-    model.label,
-    model.provider_id,
-    model.runnable,
-    model.source_url,
+    model,
+    onClearDownloadProgress,
     onGatedDownloadRequest,
     speech,
     t,
   ]);
 
+  const dismissDownload = useCallback(() => {
+    setLocalDownloadError(null);
+    onClearDownloadProgress(model);
+  }, [model, onClearDownloadProgress]);
+
+  const cancelDownload = useCallback(async () => {
+    setCancellingDownload(true);
+    try {
+      await onCancelDownload(model);
+    } finally {
+      setCancellingDownload(false);
+      setLocallyDownloading(false);
+    }
+  }, [model, onCancelDownload]);
+
   let trailing: HubTrailing = null;
   if (
     !active &&
     canAcquire &&
-    !locallyDownloading &&
-    !downloadProgress
+    !downloadActive &&
+    !downloadFailed
   ) {
     trailing = {
       kind: "acquire",
@@ -443,35 +464,40 @@ const SpeechModelLibraryCard: React.FC<{
           ),
         )
       : null;
-  const downloadState: HubDownloadState | undefined =
-    downloadProgress || locallyDownloading || localDownloadError
-      ? {
-          label: (downloadProgress?.error ?? localDownloadError)
-            ? t("listen.engineLibrary.downloadFailed", {
-                defaultValue: "Setup failed",
-              })
-            : downloadProgress?.stage === "preparing"
-              ? downloadingModelFilesLabel(t)
-              : downloadProgress?.stage === "installing-runtime"
-                ? t("listen.engineLibrary.installingRuntime", {
-                    defaultValue: "Installing required runtime...",
-                  })
-                : downloadProgress?.stage === "complete"
-                  ? t("listen.engineLibrary.ready", {
-                      defaultValue: "Ready to use",
-                    })
-                  : locallyDownloading && !downloadProgress
-                    ? downloadingModelFilesLabel(t)
-                    : downloadingModelFilesLabel(t),
-          detail: null,
-          error: downloadProgress?.error ?? localDownloadError,
-          progress: byteProgress ?? fileProgress,
-          indeterminate:
-            !localDownloadError &&
-            byteProgress === null &&
-            fileProgress === null,
-        }
-      : undefined;
+  const activeDownloadLabel =
+    downloadProgress?.stage === "preparing"
+      ? downloadingModelFilesLabel(t)
+      : downloadProgress?.stage === "installing-runtime"
+        ? t("listen.engineLibrary.installingRuntime", {
+            defaultValue: "Installing required runtime...",
+          })
+        : downloadProgress?.stage === "complete"
+          ? t("listen.engineLibrary.ready", {
+              defaultValue: "Ready to use",
+            })
+          : locallyDownloading && !downloadProgress
+            ? downloadingModelFilesLabel(t)
+            : downloadingModelFilesLabel(t);
+
+  const downloadState = buildHubDownloadState({
+    t,
+    progress: downloadProgress,
+    localError: localDownloadError,
+    localBusy: locallyDownloading,
+    activeLabel: activeDownloadLabel,
+    failedLabel: t("listen.engineLibrary.downloadFailed", {
+      defaultValue: "Setup failed",
+    }),
+    progressPct: byteProgress ?? fileProgress,
+    indeterminate:
+      !localDownloadError &&
+      byteProgress === null &&
+      fileProgress === null,
+    cancelling: cancellingDownload,
+    onCancel: downloadActive ? () => void cancelDownload() : undefined,
+    onRetry: downloadFailed ? () => void downloadOrActivate() : undefined,
+    onDismiss: downloadFailed ? dismissDownload : undefined,
+  });
 
   const footerExtra =
     confirmingRemove && ttsHubModelCanRemove(model) ? (
@@ -582,6 +608,8 @@ const SpeechModelList: React.FC<{
   showHeader?: boolean;
   ttsDownloadProgress: Record<string, TtsHfDownloadProgress>;
   onGatedDownloadRequest: (model: CatalogModelDescriptor) => boolean;
+  onClearDownloadProgress: (model: CatalogModelDescriptor) => void;
+  onCancelDownload: (model: CatalogModelDescriptor) => Promise<void>;
 }> = ({
   title,
   count,
@@ -591,6 +619,8 @@ const SpeechModelList: React.FC<{
   showHeader = true,
   ttsDownloadProgress,
   onGatedDownloadRequest,
+  onClearDownloadProgress,
+  onCancelDownload,
 }) => (
   <div className="space-y-3">
     {showHeader ? (
@@ -625,6 +655,8 @@ const SpeechModelList: React.FC<{
             speech={speech}
             downloadProgress={ttsDownloadProgress[model.id]}
             onGatedDownloadRequest={onGatedDownloadRequest}
+            onClearDownloadProgress={onClearDownloadProgress}
+            onCancelDownload={onCancelDownload}
           />
         ))}
       </div>
@@ -671,6 +703,31 @@ export const EngineLibraryPanel: React.FC<{
   const [ttsDownloadProgress, setTtsDownloadProgress] = useState<
     Record<string, TtsHfDownloadProgress>
   >({});
+
+  const clearTtsDownloadProgress = useCallback(
+    (model: CatalogModelDescriptor) => {
+      const repoId =
+        huggingFaceRepoIdFromSourceUrl(model.source_url) ?? model.id;
+      setTtsDownloadProgress((current) => {
+        const next = { ...current };
+        delete next[model.id];
+        delete next[repoId];
+        return next;
+      });
+    },
+    [],
+  );
+
+  const cancelTtsModelDownload = useCallback(
+    async (model: CatalogModelDescriptor) => {
+      const artifactId = verifiedTtsHuggingFaceRepoId(model) ?? model.id;
+      const result = await commands.cancelArtifactDownload("tts", artifactId);
+      if (result.status === "error") {
+        speech.setStatusMessage(result.error);
+      }
+    },
+    [speech],
+  );
   const [hfTokenStatus, setHfTokenStatus] =
     useState<HuggingFaceTokenStatus | null>(null);
   const [gatedDownloadModel, setGatedDownloadModel] =
@@ -1032,8 +1089,9 @@ export const EngineLibraryPanel: React.FC<{
             const next = { ...current };
             const matchingModel = speech.visibleModels.find(
               (model) =>
+                model.id === progress.repo_id ||
                 huggingFaceRepoIdFromSourceUrl(model.source_url) ===
-                progress.repo_id,
+                  progress.repo_id,
             );
             if (progress.stage === "complete") {
               delete next[progress.repo_id];
@@ -1129,6 +1187,8 @@ export const EngineLibraryPanel: React.FC<{
           speech={speech}
           ttsDownloadProgress={ttsDownloadProgress}
           onGatedDownloadRequest={requestGatedDownload}
+          onClearDownloadProgress={clearTtsDownloadProgress}
+          onCancelDownload={cancelTtsModelDownload}
           showHeader={false}
           emptyMessage={
             providerFilter !== "all" || languageFilter !== "all"
@@ -1145,6 +1205,8 @@ export const EngineLibraryPanel: React.FC<{
             speech={speech}
             ttsDownloadProgress={ttsDownloadProgress}
             onGatedDownloadRequest={requestGatedDownload}
+            onClearDownloadProgress={clearTtsDownloadProgress}
+            onCancelDownload={cancelTtsModelDownload}
             emptyMessage={
               providerFilter !== "all" || languageFilter !== "all"
                 ? t("listen.engineLibrary.noAvailableMatches")

@@ -868,6 +868,19 @@ async fn download_ocr_model_inner(
         );
     });
 
+    let cancel_flag = crate::artifact_download::register_download_cancel_flag("ocr", entry.id);
+    struct CancelGuard {
+        artifact_id: String,
+    }
+    impl Drop for CancelGuard {
+        fn drop(&mut self) {
+            crate::artifact_download::clear_download_cancel_flag("ocr", &self.artifact_id);
+        }
+    }
+    let _cancel_guard = CancelGuard {
+        artifact_id: entry.id.to_string(),
+    };
+
     let report = crate::artifact_download::download_hf_repo(HfRepoDownloadOptions {
         domain: "ocr".to_string(),
         artifact_id: entry.id.to_string(),
@@ -877,7 +890,7 @@ async fn download_ocr_model_inner(
         token: crate::speech_analysis::hugging_face_token_for_runtime(),
         gated: false,
         resume_existing_staging: true,
-        cancel_flag: None,
+        cancel_flag: Some(cancel_flag),
         progress: Some(progress),
     })
     .await?;

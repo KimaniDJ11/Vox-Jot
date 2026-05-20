@@ -1700,7 +1700,8 @@
       "title": "Packmanager",
       "description": "Laden Sie Offline-Sprachpakete herunter oder entfernen Sie sie, ohne die Einstellungen zu verlassen.",
       "remove": "Entfernen",
-      "download": "Herunterladen"
+      "download": "Herunterladen",
+      "downloadStarted": "Der Download von {{packName}} wurde gestartet. Das Paket wird nach Abschluss angezeigt."
     },
     "engineLibrary": {
       "allLanguages": "Alle Sprachen",
@@ -2196,6 +2197,12 @@
       "tts": "Stimmen (TTS)",
       "ocr": "Bildschirm OCR",
       "ariaLabel": "Modellkategorien"
+    },
+    "download": {
+      "failed": "Download fehlgeschlagen",
+      "retry": "Erneut versuchen",
+      "dismiss": "Schließen",
+      "cancel": "Download abbrechen"
     }
   },
   "commandMenu": {

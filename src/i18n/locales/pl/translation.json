@@ -1700,7 +1700,8 @@
       "title": "Menedżer pakietów",
       "description": "Pobierz lub usuń pakiety mowy offline bez opuszczania Ustawień.",
       "remove": "Usuń",
-      "download": "Pobierz"
+      "download": "Pobierz",
+      "downloadStarted": "Rozpoczęto pobieranie {{packName}}. Pakiet pojawi się po zakończeniu."
     },
     "engineLibrary": {
       "allLanguages": "Wszystkie języki",
@@ -2196,6 +2197,12 @@
       "tts": "Głosy (TTS)",
       "ocr": "Ekran OCR",
       "ariaLabel": "Kategorie modeli"
+    },
+    "download": {
+      "failed": "Pobieranie nie powiodło się",
+      "retry": "Spróbuj ponownie",
+      "dismiss": "Odrzuć",
+      "cancel": "Anuluj pobieranie"
     }
   },
   "commandMenu": {

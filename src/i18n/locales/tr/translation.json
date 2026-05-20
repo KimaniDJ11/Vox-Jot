@@ -1700,7 +1700,8 @@
       "title": "Paket Yöneticisi",
       "description": "Ayarlar'dan çıkmadan çevrimdışı konuşma paketlerini indirin veya kaldırın.",
       "remove": "Kaldır",
-      "download": "İndir"
+      "download": "İndir",
+      "downloadStarted": "{{packName}} indirmesi başladı. Paket tamamlandığında görünecek."
     },
     "engineLibrary": {
       "allLanguages": "Tüm Diller",
@@ -2196,6 +2197,12 @@
       "tts": "Sesler (TTS)",
       "ocr": "Ekran OCR",
       "ariaLabel": "Model kategorileri"
+    },
+    "download": {
+      "failed": "İndirme başarısız",
+      "retry": "Tekrar dene",
+      "dismiss": "Kapat",
+      "cancel": "İndirmeyi iptal et"
     }
   },
   "commandMenu": {

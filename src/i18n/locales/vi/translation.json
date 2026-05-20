@@ -1700,7 +1700,8 @@
       "title": "Trình quản lý gói",
       "description": "Tải xuống hoặc xóa gói lời nói ngoại tuyến mà không cần rời khỏi Cài đặt.",
       "remove": "Xóa",
-      "download": "Tải xuống"
+      "download": "Tải xuống",
+      "downloadStarted": "Đã bắt đầu tải xuống {{packName}}. Gói sẽ xuất hiện sau khi hoàn tất."
     },
     "engineLibrary": {
       "allLanguages": "Tất cả ngôn ngữ",
@@ -2196,6 +2197,12 @@
       "tts": "Giọng nói (TTS)",
       "ocr": "Màn hình OCR",
       "ariaLabel": "Danh mục mô hình"
+    },
+    "download": {
+      "failed": "Tải xuống thất bại",
+      "retry": "Thử lại",
+      "dismiss": "Đóng",
+      "cancel": "Hủy tải xuống"
     }
   },
   "commandMenu": {

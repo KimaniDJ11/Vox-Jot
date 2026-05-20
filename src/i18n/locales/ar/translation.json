@@ -1700,7 +1700,8 @@
       "title": "مدير الحزمة",
       "description": "قم بتنزيل حزم الكلام غير المتصلة بالإنترنت أو إزالتها دون مغادرة الإعدادات.",
       "remove": "إزالة",
-      "download": "تحميل"
+      "download": "تحميل",
+      "downloadStarted": "بدأ تنزيل {{packName}}. ستظهر الحزمة بعد اكتماله."
     },
     "engineLibrary": {
       "allLanguages": "جميع اللغات",
@@ -2196,6 +2197,12 @@
       "tts": "الأصوات (TTS)",
       "ocr": "شاشة OCR",
       "ariaLabel": "فئات النماذج"
+    },
+    "download": {
+      "failed": "فشل التنزيل",
+      "retry": "حاول مرة أخرى",
+      "dismiss": "تجاهل",
+      "cancel": "إلغاء التنزيل"
     }
   },
   "commandMenu": {

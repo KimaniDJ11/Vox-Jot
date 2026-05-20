@@ -1700,7 +1700,8 @@
       "title": "Správce balíčků",
       "description": "Stáhněte si nebo odeberte offline řečové balíčky, aniž byste opustili Nastavení.",
       "remove": "Odebrat",
-      "download": "Stáhnout"
+      "download": "Stáhnout",
+      "downloadStarted": "Stahování balíčku {{packName}} začalo. Balíček se zobrazí po dokončení."
     },
     "engineLibrary": {
       "allLanguages": "Všechny jazyky",
@@ -2196,6 +2197,12 @@
       "tts": "Hlasy (TTS)",
       "ocr": "Obrazovka OCR",
       "ariaLabel": "Kategorie modelů"
+    },
+    "download": {
+      "failed": "Stahování se nezdařilo",
+      "retry": "Zkusit znovu",
+      "dismiss": "Zavřít",
+      "cancel": "Zrušit stahování"
     }
   },
   "commandMenu": {

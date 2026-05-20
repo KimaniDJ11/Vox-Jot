@@ -43,6 +43,8 @@ import {
   verifiedTtsHuggingFaceRepoId,
 } from "./utils";
 
+type ModelInstallResult = "available" | "download-started";
+
 export function useListenSpeechState() {
   const { t } = useTranslation();
   const { settings, updateSetting, isUpdating, refreshSettings } =
@@ -381,20 +383,21 @@ export function useListenSpeechState() {
   );
 
   const ensureModelInstalled = useCallback(
-    async (model: CatalogModelDescriptor) => {
-      if (!model.downloadable || model.installed) return;
+    async (model: CatalogModelDescriptor): Promise<ModelInstallResult> => {
+      if (!model.downloadable || model.installed) return "available";
       const hfRepoId = verifiedTtsHuggingFaceRepoId(model);
       if (hfRepoId) {
         const result = await commands.downloadTtsHfModel(hfRepoId);
         if (result.status === "error") {
           throw new Error(result.error);
         }
-        return;
+        return "download-started";
       }
       const result = await commands.downloadTtsPack(model.id);
       if (result.status === "error") {
         throw new Error(result.error);
       }
+      return "download-started";
     },
     [],
   );
@@ -413,7 +416,18 @@ export function useListenSpeechState() {
                 m.id === preset.model_id,
             ) ?? null;
           if (model) {
-            await ensureModelInstalled(model);
+            const installResult = await ensureModelInstalled(model);
+            if (installResult === "download-started") {
+              setStatusMessage(
+                t("listen.engineLibrary.downloadStarted", {
+                  modelName: model.label,
+                  defaultValue:
+                    "{{modelName}} download started. Preview will be available after it finishes.",
+                }),
+              );
+              void refreshAll();
+              return;
+            }
           }
           if (
             model &&
@@ -443,7 +457,7 @@ export function useListenSpeechState() {
         setPreviewingPresetId(null);
       }
     },
-    [presets, allModels, ensureModelInstalled, refreshPlatform],
+    [presets, allModels, ensureModelInstalled, refreshAll, refreshPlatform, t],
   );
 
   const previewPresetDraft = useCallback(
@@ -457,7 +471,18 @@ export function useListenSpeechState() {
               item.id === input.model_id,
           ) ?? null;
         if (model) {
-          await ensureModelInstalled(model);
+          const installResult = await ensureModelInstalled(model);
+          if (installResult === "download-started") {
+            setStatusMessage(
+              t("listen.engineLibrary.downloadStarted", {
+                modelName: model.label,
+                defaultValue:
+                  "{{modelName}} download started. Preview will be available after it finishes.",
+              }),
+            );
+            void refreshAll();
+            return;
+          }
           if (
             model.source_kind === "runtime" &&
             model.readiness_status === "downloaded"
@@ -485,7 +510,7 @@ export function useListenSpeechState() {
         setPreviewingPresetId(null);
       }
     },
-    [allModels, ensureModelInstalled, refreshPlatform],
+    [allModels, ensureModelInstalled, refreshAll, refreshPlatform, t],
   );
 
   const selectProvider = useCallback(
@@ -493,11 +518,22 @@ export function useListenSpeechState() {
       const nextModel =
         visibleModels.find((model) => model.provider_id === providerId) ?? null;
       if (!nextModel) return;
-      await ensureModelInstalled(nextModel);
+      const installResult = await ensureModelInstalled(nextModel);
+      if (installResult === "download-started") {
+        setStatusMessage(
+          t("listen.engineLibrary.downloadStarted", {
+            modelName: nextModel.label,
+            defaultValue:
+              "{{modelName}} download started. You can select it after it finishes.",
+          }),
+        );
+        void refreshAll();
+        return;
+      }
       await setTtsPlatformSelection(providerId, nextModel.id);
       await refreshAll();
     },
-    [ensureModelInstalled, refreshAll, visibleModels],
+    [ensureModelInstalled, refreshAll, t, visibleModels],
   );
 
   const selectModel = useCallback(
@@ -508,11 +544,22 @@ export function useListenSpeechState() {
             model.provider_id === providerIdForControls && model.id === modelId,
         ) ?? null;
       if (!nextModel) return;
-      await ensureModelInstalled(nextModel);
+      const installResult = await ensureModelInstalled(nextModel);
+      if (installResult === "download-started") {
+        setStatusMessage(
+          t("listen.engineLibrary.downloadStarted", {
+            modelName: nextModel.label,
+            defaultValue:
+              "{{modelName}} download started. You can select it after it finishes.",
+          }),
+        );
+        void refreshAll();
+        return;
+      }
       await setTtsPlatformSelection(providerIdForControls, modelId);
       await refreshAll();
     },
-    [ensureModelInstalled, providerIdForControls, refreshAll, visibleModels],
+    [ensureModelInstalled, providerIdForControls, refreshAll, t, visibleModels],
   );
 
   const activateModel = useCallback(
@@ -522,18 +569,16 @@ export function useListenSpeechState() {
           (model) => model.provider_id === providerId && model.id === modelId,
         ) ?? null;
       if (!nextModel) return;
-      const hfRepoId = verifiedTtsHuggingFaceRepoId(nextModel);
-      const wasInstalled = nextModel.installed;
-      await ensureModelInstalled(nextModel);
-      if (hfRepoId && !wasInstalled) {
+      const installResult = await ensureModelInstalled(nextModel);
+      if (installResult === "download-started") {
         setStatusMessage(
-          t("listen.engineLibrary.hfDownloadComplete", {
+          t("listen.engineLibrary.downloadStarted", {
             modelName: nextModel.label,
             defaultValue:
-              "{{modelName}} downloaded. Vox Jot will show it in downloaded models after refresh.",
+              "{{modelName}} download started. Vox Jot will show it as downloaded after it finishes.",
           }),
         );
-        await refreshAll();
+        void refreshAll();
         return;
       }
       await setTtsPlatformSelection(providerId, modelId);

@@ -99,6 +99,42 @@ describe("HubModelCard", () => {
     await view.cleanup();
   });
 
+  it("shows retry and dismiss controls on failed downloads", async () => {
+    const onRetry = vi.fn();
+    const onDismiss = vi.fn();
+    const view = await render(
+      <HubModelCard
+        title="Failed model"
+        downloadState={{
+          label: "Download failed",
+          error: "Stream failed for model.safetensors",
+          onRetry,
+          onDismiss,
+          retryLabel: "Try again",
+          dismissLabel: "Dismiss",
+        }}
+      />,
+    );
+
+    expect(view.container.textContent).toContain("Stream failed for model.safetensors");
+    const retry = view.container.querySelector(
+      'button[aria-label="Try again"]',
+    ) as HTMLButtonElement | null;
+    const dismiss = view.container.querySelector(
+      'button[aria-label="Dismiss"]',
+    ) as HTMLButtonElement | null;
+    expect(retry).not.toBeNull();
+    expect(dismiss).not.toBeNull();
+    await act(async () => {
+      retry?.click();
+      dismiss?.click();
+    });
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    await view.cleanup();
+  });
+
   it("renders interactive footerExtra in the fixed footer row", async () => {
     const view = await render(
       <HubModelCard
@@ -217,6 +253,87 @@ describe("HubModelCard", () => {
       "https://huggingface.co/example/model",
     );
     expect(cardClick).not.toHaveBeenCalled();
+
+    await view.cleanup();
+  });
+
+  it("does not expose a root button when footer controls are nested", async () => {
+    openUrlMock.mockResolvedValueOnce(undefined);
+    const cardClick = vi.fn();
+    const acquireClick = vi.fn();
+    const view = await render(
+      <HubModelCard
+        title="Chatterbox Turbo"
+        footerMetaLinks={[
+          {
+            label: "Open Chatterbox Turbo source",
+            url: "https://huggingface.co/ResembleAI/chatterbox-turbo",
+          },
+        ]}
+        trailing={{
+          kind: "acquire",
+          label: "Download Chatterbox Turbo",
+          onClick: acquireClick,
+        }}
+        onClick={cardClick}
+      />,
+    );
+
+    const card = view.container.firstElementChild as HTMLElement | null;
+    expect(card).not.toBeNull();
+    expect(card?.getAttribute("role")).toBeNull();
+    expect(card?.getAttribute("tabindex")).toBeNull();
+
+    await act(async () => {
+      card?.click();
+    });
+    expect(cardClick).toHaveBeenCalledTimes(1);
+
+    const sourceButton = view.container.querySelector(
+      'button[aria-label="Open Chatterbox Turbo source"]',
+    ) as HTMLButtonElement | null;
+    expect(sourceButton).not.toBeNull();
+    await act(async () => {
+      sourceButton?.click();
+    });
+    expect(openUrlMock).toHaveBeenCalledWith(
+      "https://huggingface.co/ResembleAI/chatterbox-turbo",
+    );
+    expect(cardClick).toHaveBeenCalledTimes(1);
+
+    const downloadButton = view.container.querySelector(
+      'button[aria-label="Download Chatterbox Turbo"]',
+    ) as HTMLButtonElement | null;
+    expect(downloadButton?.type).toBe("button");
+    await act(async () => {
+      downloadButton?.click();
+    });
+    expect(acquireClick).toHaveBeenCalledTimes(1);
+    expect(cardClick).toHaveBeenCalledTimes(1);
+
+    await view.cleanup();
+  });
+
+  it("keeps plain clickable cards keyboard accessible", async () => {
+    const cardClick = vi.fn();
+    const view = await render(
+      <HubModelCard title="Plain model" onClick={cardClick} />,
+    );
+
+    const card = view.container.firstElementChild as HTMLElement | null;
+    expect(card?.getAttribute("role")).toBe("button");
+    expect(card?.getAttribute("tabindex")).toBe("0");
+
+    await act(async () => {
+      card?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(cardClick).toHaveBeenCalledTimes(1);
 
     await view.cleanup();
   });

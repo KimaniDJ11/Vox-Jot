@@ -837,6 +837,7 @@ pub fn run(cli_args: CliArgs) {
         commands::models::set_stt_platform_selection,
         commands::models::set_tts_platform_selection,
         commands::models::download_tts_hf_model,
+        commands::models::cancel_artifact_download,
         commands::models::delete_tts_hf_model,
         commands::models::set_active_model,
         commands::models::get_current_model,

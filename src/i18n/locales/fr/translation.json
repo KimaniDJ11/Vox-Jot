@@ -1700,7 +1700,8 @@
       "title": "Gestionnaire de packs",
       "description": "Téléchargez ou supprimez des packs vocaux hors ligne sans quitter les paramètres.",
       "remove": "Supprimer",
-      "download": "Télécharger"
+      "download": "Télécharger",
+      "downloadStarted": "Le téléchargement de {{packName}} a commencé. Le pack apparaîtra une fois terminé."
     },
     "engineLibrary": {
       "allLanguages": "Toutes les langues",
@@ -2196,6 +2197,12 @@
       "tts": "Voix (TTS)",
       "ocr": "Écran OCR",
       "ariaLabel": "Catégories de modèles"
+    },
+    "download": {
+      "failed": "Échec du téléchargement",
+      "retry": "Réessayer",
+      "dismiss": "Ignorer",
+      "cancel": "Annuler le téléchargement"
     }
   },
   "commandMenu": {

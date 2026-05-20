@@ -1700,7 +1700,8 @@
       "title": "パックマネージャー",
       "description": "設定を終了せずに、オフライン音声パックをダウンロードまたは削除します。",
       "remove": "削除",
-      "download": "ダウンロード"
+      "download": "ダウンロード",
+      "downloadStarted": "{{packName}} のダウンロードを開始しました。完了するとパックが表示されます。"
     },
     "engineLibrary": {
       "allLanguages": "すべての言語",
@@ -2196,6 +2197,12 @@
       "tts": "声 (TTS)",
       "ocr": "画面 OCR",
       "ariaLabel": "モデルカテゴリ"
+    },
+    "download": {
+      "failed": "ダウンロードに失敗しました",
+      "retry": "もう一度試す",
+      "dismiss": "閉じる",
+      "cancel": "ダウンロードをキャンセル"
     }
   },
   "commandMenu": {

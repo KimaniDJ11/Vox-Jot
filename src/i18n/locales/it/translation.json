@@ -1700,7 +1700,8 @@
       "title": "Responsabile del pacco",
       "description": "Scarica o rimuovi pacchetti vocali offline senza uscire dalle Impostazioni.",
       "remove": "Rimuovi",
-      "download": "Scarica"
+      "download": "Scarica",
+      "downloadStarted": "Il download di {{packName}} è iniziato. Il pacchetto apparirà al termine."
     },
     "engineLibrary": {
       "allLanguages": "Tutte le lingue",
@@ -2196,6 +2197,12 @@
       "tts": "Voci (TTS)",
       "ocr": "Schermo OCR",
       "ariaLabel": "Categorie modelli"
+    },
+    "download": {
+      "failed": "Download non riuscito",
+      "retry": "Riprova",
+      "dismiss": "Ignora",
+      "cancel": "Annulla download"
     }
   },
   "commandMenu": {

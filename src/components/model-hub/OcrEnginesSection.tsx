@@ -24,7 +24,6 @@ import {
   type ScreenContextOcrEngine,
 } from "@/bindings";
 import HubModelCard, {
-  type HubDownloadState,
   type HubTrailing,
 } from "@/components/model-hub/HubModelCard";
 import {
@@ -47,6 +46,11 @@ import LicenseAcknowledgementDialog, {
   type LicenseAcknowledgementGate,
 } from "@/components/model-hub/LicenseAcknowledgementDialog";
 import { downloadingModelFilesLabel } from "@/components/model-hub/downloadStatusLabels";
+import {
+  buildHubDownloadState,
+  isDownloadActive,
+  isDownloadFailed,
+} from "@/components/model-hub/hubDownloadState";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import {
   DEFAULT_MODEL_SORT_OPTIONS,
@@ -249,6 +253,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
     >
   >({});
 
+  const [cancellingDownloads, setCancellingDownloads] = useState<Set<string>>(
+    new Set(),
+  );
+
   const headerActionPortal = usePortalTarget(titleActionTargetId ?? null);
   const platform = useMemo(() => detectPlatform(), []);
 
@@ -402,6 +410,31 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       setBusyId(null);
     }
   };
+
+  const clearOcrDownloadProgress = useCallback((modelId: string) => {
+    setDownloadProgress((prev) => {
+      const next = { ...prev };
+      delete next[modelId];
+      return next;
+    });
+  }, []);
+
+  const cancelOcrDownload = useCallback(async (modelId: string) => {
+    setCancellingDownloads((current) => new Set(current).add(modelId));
+    try {
+      const result = await commands.cancelArtifactDownload("ocr", modelId);
+      if (result.status === "error") {
+        setCatalogError(result.error);
+      }
+    } finally {
+      setCancellingDownloads((current) => {
+        const next = new Set(current);
+        next.delete(modelId);
+        return next;
+      });
+      setBusyId((current) => (current === modelId ? null : current));
+    }
+  }, []);
 
   const closeLicenseGateDownload = useCallback(() => {
     if (busyId) return;
@@ -899,8 +932,10 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
 
     let trailing: HubTrailing = null;
     const dl = downloadProgress[model.id];
+    const downloadActive = isDownloadActive(dl);
+    const downloadFailed = isDownloadFailed(dl);
 
-    if (!model.installed && !dl) {
+    if (!model.installed && !downloadActive && !downloadFailed) {
       trailing = {
         kind: "acquire",
         label: t("modelHub.ocr.actions.downloadFromHub", {
@@ -929,30 +964,41 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
       dl && Number.isFinite(dl.percentage)
         ? Math.min(100, Math.round(dl.percentage))
         : null;
-    const downloadState: HubDownloadState | undefined =
-      dl && !isConfirmingDelete
-        ? {
-            label:
-              dl.stage === "preparing"
-                ? downloadingModelFilesLabel(t)
-                : dl.stage === "runtime-downloading"
-                  ? t("modelHub.ocr.download.runtimeDownloading", {
-                      defaultValue: "Downloading OCR runtime...",
-                    })
-                  : dl.stage === "runtime-installing"
-                    ? t("modelHub.ocr.download.runtimeInstalling", {
-                        defaultValue: "Installing OCR runtime...",
-                      })
-                    : downloadingModelFilesLabel(t),
-            detail: null,
-            error: dl.error ?? null,
-            progress: dlPercentage,
-            indeterminate:
-              dlPercentage === null ||
-              dl.stage === "preparing" ||
-              dl.stage === "runtime-installing",
-          }
-        : undefined;
+    const activeDownloadLabel =
+      dl?.stage === "preparing"
+        ? downloadingModelFilesLabel(t)
+        : dl?.stage === "runtime-downloading"
+          ? t("modelHub.ocr.download.runtimeDownloading", {
+              defaultValue: "Downloading OCR runtime...",
+            })
+          : dl?.stage === "runtime-installing"
+            ? t("modelHub.ocr.download.runtimeInstalling", {
+                defaultValue: "Installing OCR runtime...",
+              })
+            : downloadingModelFilesLabel(t);
+    const downloadState = buildHubDownloadState({
+      t,
+      progress: dl,
+      activeLabel: activeDownloadLabel,
+      failedLabel: t("modelHub.ocr.download.failed", {
+        defaultValue: "OCR download failed",
+      }),
+      progressPct: dlPercentage,
+      indeterminate:
+        dlPercentage === null ||
+        dl?.stage === "preparing" ||
+        dl?.stage === "runtime-installing",
+      cancelling: cancellingDownloads.has(model.id),
+      onCancel: downloadActive
+        ? () => void cancelOcrDownload(model.id)
+        : undefined,
+      onRetry: downloadFailed
+        ? () => void onDownloadNeuralHf(model)
+        : undefined,
+      onDismiss: downloadFailed
+        ? () => clearOcrDownloadProgress(model.id)
+        : undefined,
+    });
 
     const footerExtra = isConfirmingDelete ? (
       <div
@@ -1067,7 +1113,7 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
         footerOverflowLabel={`${model.title} details`}
         active={isActive}
         trailing={trailing}
-        downloadState={downloadState}
+        downloadState={isConfirmingDelete ? undefined : downloadState}
         footerExtra={footerExtra}
         onClick={handleClick}
       />

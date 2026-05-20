@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -240,9 +240,50 @@ pub fn get_available_tts_packs(app: AppHandle) -> Result<Vec<TtsPackInfo>, Strin
 
 #[tauri::command]
 #[specta::specta]
-pub async fn download_tts_pack(app: AppHandle, pack_id: String) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager.download_pack(&pack_id).await
+pub fn download_tts_pack(app: AppHandle, pack_id: String) -> Result<(), String> {
+    if pack_id.trim().is_empty() {
+        return Err("TTS pack id is required.".to_string());
+    }
+
+    let manager = app.state::<Arc<TtsManager>>().inner().clone();
+    let event_app = app.clone();
+    let event_pack_id = pack_id.clone();
+    let cancel_flag = crate::artifact_download::register_download_cancel_flag("tts", &pack_id);
+    tauri::async_runtime::spawn(async move {
+        tokio::task::yield_now().await;
+        emit_tts_pack_download_progress(&event_app, &event_pack_id, "preparing", None);
+        let result = manager
+            .download_pack(&pack_id, Some(Arc::clone(&cancel_flag)))
+            .await;
+        crate::artifact_download::clear_download_cancel_flag("tts", &event_pack_id);
+        match result {
+            Ok(()) => emit_tts_pack_download_progress(&event_app, &event_pack_id, "complete", None),
+            Err(error) => {
+                warn!("TTS pack download failed for {event_pack_id}: {error}");
+                emit_tts_pack_download_progress(&event_app, &event_pack_id, "failed", Some(&error));
+            }
+        }
+    });
+    Ok(())
+}
+
+fn emit_tts_pack_download_progress(
+    app: &AppHandle,
+    pack_id: &str,
+    stage: &str,
+    error: Option<&str>,
+) {
+    let payload = serde_json::json!({
+        "repo_id": pack_id,
+        "stage": stage,
+        "file": null,
+        "file_index": null,
+        "file_count": null,
+        "downloaded_bytes": null,
+        "total_bytes": null,
+        "error": error,
+    });
+    let _ = app.emit("tts-hf-download-progress", payload);
 }
 
 #[tauri::command]

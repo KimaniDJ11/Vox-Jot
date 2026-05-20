@@ -1232,6 +1232,14 @@ async downloadTtsHfModel(repoId: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async cancelArtifactDownload(domain: string, artifactId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_artifact_download", { domain, artifactId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async deleteTtsHfModel(repoId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_tts_hf_model", { repoId }) };

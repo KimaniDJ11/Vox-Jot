@@ -1700,7 +1700,8 @@
       "title": "팩 관리자",
       "description": "설정을 종료하지 않고 오프라인 음성 팩을 다운로드하거나 제거하세요.",
       "remove": "제거",
-      "download": "다운로드"
+      "download": "다운로드",
+      "downloadStarted": "{{packName}} 다운로드가 시작되었습니다. 완료되면 팩이 표시됩니다."
     },
     "engineLibrary": {
       "allLanguages": "모든 언어",
@@ -2196,6 +2197,12 @@
       "tts": "음색(TTS)",
       "ocr": "스크린 OCR",
       "ariaLabel": "모델 카테고리"
+    },
+    "download": {
+      "failed": "다운로드 실패",
+      "retry": "다시 시도",
+      "dismiss": "닫기",
+      "cancel": "다운로드 취소"
     }
   },
   "commandMenu": {

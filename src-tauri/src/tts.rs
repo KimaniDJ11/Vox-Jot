@@ -866,7 +866,12 @@ impl TtsManager {
         ))
     }
 
-    async fn install_qwen3_pack(&self, definition: &Qwen3PackDefinition) -> Result<(), String> {
+    async fn install_qwen3_pack(
+        &self,
+        definition: &Qwen3PackDefinition,
+        cancel_flag: Option<Arc<AtomicBool>>,
+    ) -> Result<(), String> {
+        crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
         let install_dir = self.pack_install_dir(definition.id);
         let label = format!("Qwen3 pack '{}'", definition.label);
         if let Some(source_path) = self.find_qwen3_pack_source(definition) {
@@ -885,6 +890,7 @@ impl TtsManager {
                 &[self.asset_download_url(&archive_name)],
                 &install_dir,
                 &label,
+                cancel_flag.clone(),
             )
             .await;
 
@@ -892,10 +898,11 @@ impl TtsManager {
             Ok(()) => Ok(()),
             Err(github_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
+                    crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                     info!(
                         "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
                     );
-                    self.download_hf_snapshot(hf_repo, &install_dir, &label)
+                    self.download_hf_snapshot(hf_repo, &install_dir, &label, cancel_flag)
                         .await
                 } else {
                     Err(github_error)
@@ -933,6 +940,7 @@ impl TtsManager {
             &[self.asset_download_url(definition.archive_name)],
             &install_dir,
             "Speech runtime",
+            None,
         )
         .await?;
 
@@ -1099,7 +1107,9 @@ impl TtsManager {
     async fn install_managed_runtime_model(
         &self,
         definition: &ManagedRuntimeModelDefinition,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<(), String> {
+        crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
         let install_dir = self.managed_runtime_model_install_dir(definition);
         let label = format!("{} model assets", definition.label);
 
@@ -1121,6 +1131,7 @@ impl TtsManager {
                 &[self.asset_download_url(definition.archive_name)],
                 &install_dir,
                 &label,
+                cancel_flag.clone(),
             )
             .await;
 
@@ -1131,10 +1142,11 @@ impl TtsManager {
             }
             Err(github_error) => {
                 if let Some(hf_repo) = definition.hf_repo_id {
+                    crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                     info!(
                         "{label}: GitHub download failed ({github_error}), falling back to HuggingFace ({hf_repo})"
                     );
-                    self.download_hf_snapshot(hf_repo, &install_dir, &label)
+                    self.download_hf_snapshot(hf_repo, &install_dir, &label, cancel_flag)
                         .await?;
                     let _ = self.ensure_managed_speech_runtime_installed().await?;
                     Ok(())
@@ -1148,12 +1160,19 @@ impl TtsManager {
     async fn install_mlx_audio_model(
         &self,
         definition: &MlxAudioTtsModelDefinition,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<(), String> {
+        crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
         let install_dir = self.mlx_audio_model_install_dir(definition);
         let label = format!("{} MLX model assets", definition.label);
 
-        self.download_hf_snapshot_into_exact_dir(definition.hf_model_id, &install_dir, &label)
-            .await
+        self.download_hf_snapshot_into_exact_dir(
+            definition.hf_model_id,
+            &install_dir,
+            &label,
+            cancel_flag,
+        )
+        .await
     }
 
     async fn download_hf_file_set_into_dir(
@@ -3235,7 +3254,12 @@ impl TtsManager {
         self.fetch_runtime_listen_voices(&provider_id, model_id.as_deref())
     }
 
-    pub async fn download_pack(&self, pack_id: &str) -> Result<(), String> {
+    pub async fn download_pack(
+        &self,
+        pack_id: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
+    ) -> Result<(), String> {
+        crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
         if let Some(definition) = PACK_DEFINITIONS
             .iter()
             .find(|definition| definition.id == pack_id)
@@ -3248,6 +3272,7 @@ impl TtsManager {
                 ],
                 &install_dir,
                 &format!("TTS pack '{}'", definition.label),
+                cancel_flag.clone(),
             )
             .await?;
 
@@ -3266,22 +3291,33 @@ impl TtsManager {
             .iter()
             .find(|definition| definition.id == pack_id)
         {
-            return self.install_qwen3_pack(definition).await;
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            return self
+                .install_qwen3_pack(definition, cancel_flag.clone())
+                .await;
         }
 
         if let Some(definition) = mlx_audio_tts_model_definition(pack_id) {
-            return self.install_mlx_audio_model(definition).await;
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            return self
+                .install_mlx_audio_model(definition, cancel_flag.clone())
+                .await;
         }
 
         if let Some(definition) = self.managed_runtime_model_definition(pack_id) {
-            return self.install_managed_runtime_model(definition).await;
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            return self
+                .install_managed_runtime_model(definition, cancel_flag.clone())
+                .await;
         }
 
         if pack_id == TTS_MODEL_LFM_AUDIO_GGUF_DEFAULT_ID {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
             return self.install_lfm_audio_gguf_model().await;
         }
 
         if pack_id == TTS_MODEL_VIBEVOICE_DEFAULT_ID {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
             return self.install_vibevoice_model().await;
         }
 
@@ -4180,6 +4216,7 @@ impl TtsManager {
             ],
             &install_dir,
             "Sherpa-ONNX runtime",
+            None,
         )
         .await?;
 
@@ -4216,6 +4253,7 @@ impl TtsManager {
             ],
             &install_dir,
             "Qwen3 Native runtime",
+            None,
         )
         .await?;
 
@@ -4439,6 +4477,7 @@ impl TtsManager {
         candidate_urls: &[String],
         install_dir: &Path,
         label: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<(), String> {
         let download_dir = crate::storage_paths::tts_downloads_dir(&self.app_handle)
             .map_err(|err| format!("TTS dir error: {err}"))?;
@@ -4447,7 +4486,11 @@ impl TtsManager {
 
         let mut last_error = None;
         for url in candidate_urls {
-            match self.download_archive(url, &download_dir, label).await {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            match self
+                .download_archive(url, &download_dir, label, cancel_flag.clone())
+                .await
+            {
                 Ok(archive_path) => {
                     let extract_result = extract_archive(&archive_path, install_dir);
                     let _ = fs::remove_file(&archive_path);
@@ -4465,6 +4508,7 @@ impl TtsManager {
         url: &str,
         download_dir: &Path,
         label: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<PathBuf, String> {
         let file_name = url
             .split('/')
@@ -4492,7 +4536,7 @@ impl TtsManager {
             final_path: archive_path.clone(),
             expected_sha256: None,
             expected_size: None,
-            cancel_flag: None,
+            cancel_flag,
             progress: Some(progress),
         })
         .await
@@ -4506,6 +4550,7 @@ impl TtsManager {
         repo_id: &str,
         install_dir: &Path,
         label: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<(), String> {
         use tokio::fs as tokio_fs;
         use tokio::io::AsyncWriteExt;
@@ -4579,6 +4624,7 @@ impl TtsManager {
             .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
 
         for (idx, sibling) in model_info.siblings.iter().enumerate() {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
             let file_url = format!(
                 "https://huggingface.co/{repo_id}/resolve/main/{}",
                 sibling.rfilename
@@ -4620,6 +4666,7 @@ impl TtsManager {
             let mut last_emit_bytes = downloaded_bytes;
             let mut stream = response.bytes_stream();
             while let Some(chunk) = stream.next().await {
+                crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                 let chunk =
                     chunk.map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
                 file.write_all(&chunk)
@@ -4677,6 +4724,7 @@ impl TtsManager {
         repo_id: &str,
         install_dir: &Path,
         label: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<(), String> {
         use tokio::fs as tokio_fs;
         use tokio::io::AsyncWriteExt;
@@ -4746,6 +4794,7 @@ impl TtsManager {
             .map_err(|e| format!("Failed to create install dir for {label}: {e}"))?;
 
         for (idx, sibling) in model_info.siblings.iter().enumerate() {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
             let file_url = format!(
                 "https://huggingface.co/{repo_id}/resolve/main/{}",
                 sibling.rfilename
@@ -4787,6 +4836,7 @@ impl TtsManager {
             let mut last_emit_bytes = downloaded_bytes;
             let mut stream = response.bytes_stream();
             while let Some(chunk) = stream.next().await {
+                crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
                 let chunk =
                     chunk.map_err(|e| format!("Failed to read {}: {e}", sibling.rfilename))?;
                 file.write_all(&chunk)

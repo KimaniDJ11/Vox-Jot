@@ -1,18 +1,57 @@
 use futures_util::StreamExt;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use specta::Type;
+use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc,
+    Arc, Mutex,
 };
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-const DOWNLOAD_CANCELLED_MESSAGE: &str = "Download cancelled.";
+pub const DOWNLOAD_CANCELLED_MESSAGE: &str = "Download cancelled.";
+
+static DOWNLOAD_CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+pub fn download_job_key(domain: &str, artifact_id: &str) -> String {
+    format!("{domain}:{artifact_id}")
+}
+
+pub fn register_download_cancel_flag(domain: &str, artifact_id: &str) -> Arc<AtomicBool> {
+    let key = download_job_key(domain, artifact_id);
+    let flag = Arc::new(AtomicBool::new(false));
+    DOWNLOAD_CANCEL_FLAGS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .insert(key, Arc::clone(&flag));
+    flag
+}
+
+pub fn cancel_download_job(domain: &str, artifact_id: &str) -> bool {
+    let key = download_job_key(domain, artifact_id);
+    DOWNLOAD_CANCEL_FLAGS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .get(&key)
+        .map(|flag| {
+            flag.store(true, Ordering::Relaxed);
+            true
+        })
+        .unwrap_or(false)
+}
+
+pub fn clear_download_cancel_flag(domain: &str, artifact_id: &str) {
+    DOWNLOAD_CANCEL_FLAGS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .remove(&download_job_key(domain, artifact_id));
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ArtifactProgress {
@@ -153,11 +192,15 @@ fn emit_file(options: &FileDownloadOptions, progress: ArtifactProgress) {
     }
 }
 
-fn ensure_not_cancelled(cancel_flag: Option<&Arc<AtomicBool>>) -> Result<(), String> {
+pub fn ensure_download_not_cancelled(cancel_flag: Option<&Arc<AtomicBool>>) -> Result<(), String> {
     if cancel_flag.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
         return Err(DOWNLOAD_CANCELLED_MESSAGE.to_string());
     }
     Ok(())
+}
+
+fn ensure_not_cancelled(cancel_flag: Option<&Arc<AtomicBool>>) -> Result<(), String> {
+    ensure_download_not_cancelled(cancel_flag)
 }
 
 pub fn is_cancelled_error(error: &str) -> bool {
@@ -795,8 +838,12 @@ async fn sha256_file(path: &Path) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_hf_file_filter, encode_hf_path, safe_join};
+    use super::{
+        cancel_download_job, clear_download_cancel_flag, default_hf_file_filter, encode_hf_path,
+        register_download_cancel_flag, safe_join,
+    };
     use std::path::Path;
+    use std::sync::atomic::Ordering;
 
     #[test]
     fn hf_path_encoding_preserves_segments() {
@@ -812,6 +859,15 @@ mod tests {
         assert!(!default_hf_file_filter("foo/.cache/blob"));
         assert!(!default_hf_file_filter(".git/config"));
         assert!(default_hf_file_filter("model.safetensors"));
+    }
+
+    #[test]
+    fn cancel_download_job_sets_registered_flag() {
+        let flag = register_download_cancel_flag("tts", "org/model");
+        assert!(!flag.load(Ordering::Relaxed));
+        assert!(cancel_download_job("tts", "org/model"));
+        assert!(flag.load(Ordering::Relaxed));
+        clear_download_cancel_flag("tts", "org/model");
     }
 
     #[test]

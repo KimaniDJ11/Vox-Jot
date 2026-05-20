@@ -1700,7 +1700,8 @@
       "title": "Gerente de paquete",
       "description": "Descargue o elimine paquetes de voz sin conexión sin salir de Configuración.",
       "remove": "Quitar",
-      "download": "Descargar"
+      "download": "Descargar",
+      "downloadStarted": "La descarga de {{packName}} comenzó. El paquete aparecerá cuando termine."
     },
     "engineLibrary": {
       "allLanguages": "Todos los idiomas",
@@ -2196,6 +2197,12 @@
       "tts": "Voces (TTS)",
       "ocr": "Pantalla OCR",
       "ariaLabel": "Categorías de modelos"
+    },
+    "download": {
+      "failed": "Error de descarga",
+      "retry": "Intentar de nuevo",
+      "dismiss": "Descartar",
+      "cancel": "Cancelar descarga"
     }
   },
   "commandMenu": {

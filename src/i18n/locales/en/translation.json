@@ -1733,6 +1733,12 @@
     }
   },
   "modelHub": {
+    "download": {
+      "failed": "Download failed",
+      "retry": "Try again",
+      "dismiss": "Dismiss",
+      "cancel": "Cancel download"
+    },
     "ocr": {
       "filters": {
         "providerIdle": "Provider",
@@ -2021,7 +2027,8 @@
       "title": "Pack Manager",
       "description": "Download or remove offline speech packs without leaving Settings.",
       "remove": "Remove",
-      "download": "Download"
+      "download": "Download",
+      "downloadStarted": "{{packName}} download started. The pack will appear after it finishes."
     },
     "engineLibrary": {
       "allLanguages": "All Languages",

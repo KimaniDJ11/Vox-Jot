@@ -30,6 +30,7 @@ const TTS_HF_COLLECTION_DEFAULT: &str = "IrieDinamik/vox-jot-tts-verified";
 const HF_COLLECTION_CACHE_TTL: Duration = Duration::from_secs(300);
 const HF_COLLECTION_FETCH_TIMEOUT: Duration = Duration::from_secs(4);
 const HF_COLLECTION_MAX_ITEMS: usize = 48;
+const TTS_HF_VOICE_WAREHOUSE_REPOS: &[&str] = &["rhasspy/piper-voices"];
 
 static HF_COLLECTION_CACHE: Lazy<std::sync::Mutex<HashMap<String, (Instant, Vec<String>)>>> =
     Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
@@ -85,6 +86,12 @@ fn sanitize_hf_repo_id(repo_id: &str) -> String {
             }
         })
         .collect()
+}
+
+fn is_tts_hf_voice_warehouse_repo(repo_id: &str) -> bool {
+    TTS_HF_VOICE_WAREHOUSE_REPOS
+        .iter()
+        .any(|warehouse_repo| warehouse_repo.eq_ignore_ascii_case(repo_id.trim()))
 }
 
 fn tts_hf_install_dir(app: &AppHandle, repo_id: &str) -> Option<std::path::PathBuf> {
@@ -760,6 +767,10 @@ fn augment_tts_catalog_with_hf_verified(
     let repo_ids = repo_ids
         .into_iter()
         .filter(|repo_id| {
+            if is_tts_hf_voice_warehouse_repo(repo_id) {
+                return false;
+            }
+
             if tts_model_id_for_hf_repo(repo_id).is_some() {
                 return false;
             }
@@ -945,6 +956,19 @@ pub async fn download_hf_tts_repo_impl(
         );
     });
 
+    let cancel_flag = crate::artifact_download::register_download_cancel_flag("tts", repo_id);
+    struct CancelGuard {
+        artifact_id: String,
+    }
+    impl Drop for CancelGuard {
+        fn drop(&mut self) {
+            crate::artifact_download::clear_download_cancel_flag("tts", &self.artifact_id);
+        }
+    }
+    let _cancel_guard = CancelGuard {
+        artifact_id: repo_id.to_string(),
+    };
+
     match crate::artifact_download::download_hf_repo(HfRepoDownloadOptions {
         domain: "tts".to_string(),
         artifact_id: repo_id.to_string(),
@@ -954,7 +978,7 @@ pub async fn download_hf_tts_repo_impl(
         token: crate::speech_analysis::hugging_face_token_for_runtime(),
         gated: false,
         resume_existing_staging: true,
-        cancel_flag: None,
+        cancel_flag: Some(cancel_flag),
         progress: Some(progress),
     })
     .await
@@ -979,9 +1003,46 @@ pub async fn download_hf_tts_repo_impl(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn download_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
-    download_hf_tts_repo_impl(&app_handle, &repo_id).await?;
+pub fn download_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
+    if !repo_id.contains('/') {
+        return Err(format!("Invalid HF repo id '{}'", repo_id));
+    }
+
+    let task_app = app_handle.clone();
+    let task_repo_id = repo_id.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::task::yield_now().await;
+        if let Err(error) = download_hf_tts_repo_impl(&task_app, &task_repo_id).await {
+            emit_tts_download_progress(
+                &task_app,
+                &task_repo_id,
+                "failed",
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(&error),
+            );
+        }
+    });
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cancel_artifact_download(domain: String, artifact_id: String) -> Result<(), String> {
+    if domain.trim().is_empty() || artifact_id.trim().is_empty() {
+        return Err("Download domain and artifact id are required.".to_string());
+    }
+    if crate::artifact_download::cancel_download_job(&domain, &artifact_id) {
+        Ok(())
+    } else {
+        Err(format!(
+            "No active {} download for '{}'.",
+            domain, artifact_id
+        ))
+    }
 }
 
 #[tauri::command]
@@ -1488,7 +1549,7 @@ pub async fn set_tts_platform_selection(
         if model.provider_id == TTS_PROVIDER_LOCAL_SIDECAR_API_ID {
             download_hf_tts_repo_impl(&app_handle, &resolved_model_id).await?;
         } else {
-            tts_manager.download_pack(&resolved_model_id).await?;
+            tts_manager.download_pack(&resolved_model_id, None).await?;
         }
     }
 
@@ -1616,4 +1677,18 @@ pub async fn cancel_download(
     model_manager
         .cancel_download(&model_id)
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_tts_hf_voice_warehouse_repo;
+
+    #[test]
+    fn tts_hf_voice_warehouse_filter_matches_piper_repo() {
+        assert!(is_tts_hf_voice_warehouse_repo("rhasspy/piper-voices"));
+        assert!(is_tts_hf_voice_warehouse_repo(" RHASSPY/PIPER-VOICES "));
+        assert!(!is_tts_hf_voice_warehouse_repo(
+            "ResembleAI/chatterbox-turbo"
+        ));
+    }
 }

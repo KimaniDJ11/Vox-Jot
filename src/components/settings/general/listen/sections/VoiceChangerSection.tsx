@@ -187,6 +187,12 @@ export const VoiceChangerSection: React.FC<{
       throw new Error(result.error);
     }
     await speech.refreshAll();
+    throw new Error(
+      t("listen.voiceChanger.openVoiceDownloadStarted", {
+        defaultValue:
+          "OpenVoice download started. Try the conversion again after it finishes.",
+      }),
+    );
   }, [beginWait, openVoiceInstalled, speech, t]);
 
   const runConversion = useCallback(async () => {

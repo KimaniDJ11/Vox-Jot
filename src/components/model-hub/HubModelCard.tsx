@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Download, ExternalLink, Loader2, Trash2, X } from "lucide-react";
+import { Download, ExternalLink, Loader2, Trash2, X, AlertTriangle, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -122,6 +122,10 @@ export interface HubDownloadState {
   cancelling?: boolean;
   onCancel?: () => void;
   cancelLabel?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+  onDismiss?: () => void;
+  dismissLabel?: string;
 }
 
 const baseClasses =
@@ -159,10 +163,13 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   const isFeatured = variant === "featured";
   const hasNestedInteractive =
     Boolean(downloadState?.onCancel) ||
+    Boolean(downloadState?.onRetry) ||
+    Boolean(downloadState?.onDismiss) ||
     Boolean(footerExtra) ||
     Boolean(footerMetaLeadingActions) ||
     Boolean(footerMetaLinks?.length) ||
     Boolean(trailing);
+  const exposeRootButton = isClickable && !hasNestedInteractive;
 
   const variantClasses = isFeatured
     ? "border-2 border-logo-primary/25 bg-logo-primary/5 shadow-[var(--shadow-sm)]"
@@ -184,7 +191,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     onKeyDown?.(event);
-    if (!isClickable) return;
+    if (!exposeRootButton) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onClick?.();
@@ -202,9 +209,8 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
 
   return (
     <div
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={hasNestedInteractive && isClickable ? title : undefined}
+      role={exposeRootButton ? "button" : undefined}
+      tabIndex={exposeRootButton ? 0 : undefined}
       aria-disabled={disabled || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -427,20 +433,26 @@ function renderInlineFooterExtra(
 }
 
 function renderDownloadState(state: HubDownloadState): React.ReactNode {
+  const failed = Boolean(state.error);
   const hasKnownProgress =
-    typeof state.progress === "number" && Number.isFinite(state.progress);
+    !failed &&
+    typeof state.progress === "number" &&
+    Number.isFinite(state.progress);
   const progress = hasKnownProgress
     ? Math.max(0, Math.min(100, state.progress ?? 0))
     : null;
-  const indeterminate = state.indeterminate || progress === null;
-  const label = state.error ?? state.label;
+  const indeterminate = !failed && (state.indeterminate || progress === null);
+  const label = state.label;
+  const detail = state.detail ?? (failed ? state.error : null);
   const cancelLabel = state.cancelLabel ?? "Cancel download";
+  const retryLabel = state.retryLabel ?? "Try again";
+  const dismissLabel = state.dismissLabel ?? "Dismiss";
 
   return (
     <div
       className={[
         "relative flex min-h-11 min-w-0 items-center gap-2 overflow-hidden rounded-lg border px-2.5 pb-2.5 pt-1.5",
-        state.error
+        failed
           ? "border-[color-mix(in_srgb,var(--danger),transparent_58%)] bg-[var(--danger-soft)]"
           : "border-[var(--border)] bg-[var(--panel-bg)]",
       ].join(" ")}
@@ -449,66 +461,107 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
       role="group"
       aria-label={label}
     >
-      <div
-        className={[
-          "pointer-events-none absolute inset-y-0 left-0 opacity-55",
-          state.error
-            ? "bg-[color-mix(in_srgb,var(--danger),transparent_80%)]"
-            : "bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent),transparent_82%),color-mix(in_srgb,var(--accent),transparent_68%))]",
-          indeterminate
-            ? "w-1/2 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
-            : "transition-[width] duration-300",
-        ].join(" ")}
-        style={indeterminate ? undefined : { width: `${progress}%` }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-x-2.5 bottom-1 h-1 overflow-hidden rounded-full bg-[var(--input)]"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress ?? undefined}
-        aria-label={label}
-      >
+      {!failed ? (
         <div
           className={[
-            "h-full rounded-full bg-[var(--accent)]",
+            "pointer-events-none absolute inset-y-0 left-0 opacity-55",
+            "bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent),transparent_82%),color-mix(in_srgb,var(--accent),transparent_68%))]",
             indeterminate
-              ? "w-1/3 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
+              ? "w-1/2 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
               : "transition-[width] duration-300",
           ].join(" ")}
           style={indeterminate ? undefined : { width: `${progress}%` }}
+          aria-hidden
         />
-      </div>
+      ) : null}
+      {!failed ? (
+        <div
+          className="absolute inset-x-2.5 bottom-1 h-1 overflow-hidden rounded-full bg-[var(--input)]"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress ?? undefined}
+          aria-label={label}
+        >
+          <div
+            className={[
+              "h-full rounded-full bg-[var(--accent)]",
+              indeterminate
+                ? "w-1/3 animate-[hub-progress-sweep_1.35s_ease-in-out_infinite]"
+                : "transition-[width] duration-300",
+            ].join(" ")}
+            style={indeterminate ? undefined : { width: `${progress}%` }}
+          />
+        </div>
+      ) : null}
       <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--accent)] shadow-[inset_0_0_0_1px_var(--border)]">
         {state.cancelling ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : failed ? (
+          <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" aria-hidden />
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden />
         )}
       </div>
       <div className="relative z-10 min-w-0 flex-1">
         <p
-          className={`truncate text-xs font-semibold ${state.error ? "text-[var(--danger)]" : "text-[var(--text)]"}`}
+          className={`truncate text-xs font-semibold ${failed ? "text-[var(--danger)]" : "text-[var(--text)]"}`}
           title={label}
         >
           {label}
         </p>
-        {state.detail ? (
+        {detail ? (
           <p
-            className="truncate text-[11px] leading-4 text-[var(--muted)]"
-            title={state.detail}
+            className={`truncate text-[11px] leading-4 ${failed ? "text-[var(--text)]" : "text-[var(--muted)]"}`}
+            title={detail}
           >
-            {state.detail}
+            {detail}
           </p>
         ) : null}
       </div>
-      {progress !== null && !state.error ? (
+      {progress !== null && !failed ? (
         <span className="relative z-10 shrink-0 text-xs font-semibold tabular-nums text-[var(--muted)]">
           {Math.round(progress)}%
         </span>
       ) : null}
-      {state.onCancel ? (
+      {failed && state.onRetry ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          title={retryLabel}
+          aria-label={retryLabel}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.onRetry?.();
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+          className="relative z-10 shrink-0 gap-1 px-2 text-[var(--text)]"
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+          <span className="hidden sm:inline">{retryLabel}</span>
+        </Button>
+      ) : null}
+      {failed && state.onDismiss ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          title={dismissLabel}
+          aria-label={dismissLabel}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.onDismiss?.();
+          }}
+          onKeyDown={(event) => event.stopPropagation()}
+          className="relative z-10 shrink-0 px-2 text-[var(--muted)]"
+        >
+          {dismissLabel}
+        </Button>
+      ) : null}
+      {!failed && state.onCancel ? (
         <Button
           type="button"
           variant="danger-ghost"
@@ -555,12 +608,14 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
           </span>
         ) : null}
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           title={label}
           aria-label={label}
           disabled={itemDisabled || busy}
           onClick={(event) => {
+            event.preventDefault();
             event.stopPropagation();
             onClick?.();
           }}
@@ -581,12 +636,14 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
   const { onClick, disabled: itemDisabled, busy, label } = trailing;
   return (
     <Button
+      type="button"
       variant="ghost"
       size="icon"
       title={label}
       aria-label={label}
       disabled={itemDisabled || busy}
       onClick={(event) => {
+        event.preventDefault();
         event.stopPropagation();
         onClick?.();
       }}

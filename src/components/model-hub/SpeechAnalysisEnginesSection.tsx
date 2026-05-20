@@ -546,6 +546,19 @@ const SpeechAnalysisEnginesSection: React.FC<
     [activeDownloads],
   );
 
+  const dismissDownload = useCallback((modelId: string) => {
+    setDownloadProgress((current) => {
+      const next = { ...current };
+      delete next[modelId];
+      return next;
+    });
+    setActiveDownloads((current) => {
+      const next = new Set(current);
+      next.delete(modelId);
+      return next;
+    });
+  }, []);
+
   const closeGatedDownload = useCallback(() => {
     if (savingHfToken) return;
     setGatedDownloadModel(null);
@@ -858,6 +871,7 @@ const SpeechAnalysisEnginesSection: React.FC<
         onSelect={selectModel}
         onDownload={requestDownload}
         onCancelDownload={cancelDownload}
+        onDismissDownload={dismissDownload}
         onRequestDelete={(modelId) => setDeleteConfirmModelId(modelId)}
         onCancelDelete={() => setDeleteConfirmModelId(null)}
         onDelete={deleteModel}
@@ -929,6 +943,7 @@ interface EngineGroupProps {
   onSelect: (group: AnalysisGroup, modelId: string) => void;
   onDownload: (model: SpeechAnalysisModelDescriptor) => void;
   onCancelDownload: (model: SpeechAnalysisModelDescriptor) => void;
+  onDismissDownload: (modelId: string) => void;
   onRequestDelete: (modelId: string) => void;
   onCancelDelete: () => void;
   onDelete: (model: SpeechAnalysisModelDescriptor) => void;
@@ -950,6 +965,7 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
   onSelect,
   onDownload,
   onCancelDownload,
+  onDismissDownload,
   onRequestDelete,
   onCancelDelete,
   onDelete,
@@ -1145,6 +1161,16 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                               modelName: model.label,
                             },
                           ),
+                          onRetry: isFailed ? () => onDownload(model) : undefined,
+                          onDismiss: isFailed
+                            ? () => onDismissDownload(model.id)
+                            : undefined,
+                          retryLabel: t("modelHub.download.retry", {
+                            defaultValue: "Try again",
+                          }),
+                          dismissLabel: t("modelHub.download.dismiss", {
+                            defaultValue: "Dismiss",
+                          }),
                         }
                       : undefined;
 

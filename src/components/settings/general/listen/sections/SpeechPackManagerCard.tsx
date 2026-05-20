@@ -94,7 +94,14 @@ export const SpeechPackManagerCard: React.FC<{
                       if (result.status !== "ok") {
                         speech.setStatusMessage(result.error);
                       } else {
-                        await speech.refreshAll();
+                        speech.setStatusMessage(
+                          t("listen.packManager.downloadStarted", {
+                            packName: pack.label,
+                            defaultValue:
+                              "{{packName}} download started. The pack will appear after it finishes.",
+                          }),
+                        );
+                        void speech.refreshAll();
                       }
                       speech.setBusyPackId(null);
                     }}

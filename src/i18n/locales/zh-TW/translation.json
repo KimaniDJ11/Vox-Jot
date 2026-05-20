@@ -1700,7 +1700,8 @@
       "title": "套件管理器",
       "description": "無需離開「設定」即可下載或刪除離線語音包。",
       "remove": "刪除",
-      "download": "下載"
+      "download": "下載",
+      "downloadStarted": "{{packName}} 下載已開始。完成後會顯示此語音包。"
     },
     "engineLibrary": {
       "allLanguages": "所有語言",
@@ -2196,6 +2197,12 @@
       "tts": "聲音 (TTS)",
       "ocr": "螢幕OCR",
       "ariaLabel": "模型類別"
+    },
+    "download": {
+      "failed": "下載失敗",
+      "retry": "重試",
+      "dismiss": "關閉",
+      "cancel": "取消下載"
     }
   },
   "commandMenu": {

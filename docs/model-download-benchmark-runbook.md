@@ -11,7 +11,10 @@ This is the durable handoff for agents working on Vox Jot model downloads, bench
   - STT MLX: `~/Library/Application Support/com.iriedinamik.voxjot/models/stt/store/MLX`
   - Speech analysis: `~/Library/Application Support/com.iriedinamik.voxjot/models/speech-analysis`
 - Use resumable Hugging Face downloads with clear logs and status files. Prefer `scripts/download-untested-tts-models.zsh` for TTS backlog downloads.
+- Treat Hugging Face repos/collections, app-support stores, and the external model drive as synchronized artifact mirrors. If a runtime, model, dependency pack, checksum, manifest, or benchmark-backed catalog file changes and that artifact is hosted on Hugging Face, update the Hugging Face copy before ending the session. If the artifact is also present on `/Volumes/Models`, update that copy in the same session.
+- After updating a Hugging Face runtime/model artifact, verify the uploaded checksum or manifest by reading it back from Hugging Face. For archives, list or extract-check enough of the uploaded/local artifact to confirm macOS metadata files (`._*`, `__MACOSX`) are absent.
 - For external model-drive backups, if the model is already present on the Mac, copy it directly to `/Volumes/Models/VoxJot/app-support/models/...` with macOS filesystem copy (`ditto`) or Finder/Computer Use. Do not use Python download/fill scripts or Hugging Face cache paths for local-to-drive transfers. Copy one model/category at a time and verify matching size plus file count after transfer.
+- After updating `/Volumes/Models`, verify source and destination size, source and destination file count, and zero `._*` / `__MACOSX` metadata entries at the destination. Do not mark the drive update complete without those checks.
 - Never delete built-in Apple/system options while pruning local model files.
 - If a model is downloaded but cannot run, mark the benchmark row `blocked` or `failed` and disable the model in the app catalog until the bridge/runtime is fixed.
 

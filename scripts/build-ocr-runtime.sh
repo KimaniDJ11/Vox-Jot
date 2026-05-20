@@ -179,11 +179,11 @@ fi
 (cd "$BUILD_DIR" && "$RUNTIME_PYTHON" -m pip install --no-compile ".[$EXTRAS]")
 
 find "$BUILD_DIR" \
-  \( -name '*.pyc' -o -name '__pycache__' -o -name '.DS_Store' \) \
+  \( -name '*.pyc' -o -name '__pycache__' -o -name '.DS_Store' -o -name '._*' -o -name '__MACOSX' \) \
   -exec rm -rf {} + 2>/dev/null || true
 
 find "$BUILD_DIR/.python" \
-  \( -type d -name '__pycache__' -o -type f -name '*.pyc' \) \
+  \( -type d -name '__pycache__' -o -type d -name '__MACOSX' -o -type f -name '*.pyc' -o -type f -name '._*' \) \
   -exec rm -rf {} + 2>/dev/null || true
 
 rm -rf "$BUILD_DIR/build" "$BUILD_DIR/ocr_runtime.egg-info"

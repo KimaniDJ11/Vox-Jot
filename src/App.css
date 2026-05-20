@@ -47,6 +47,7 @@
   --type-title: 1.5rem;
 
   --accent: #27408b;
+  --accent-foreground: #ffffff;
   --accent-hover: #1f3370;
   --accent-soft: rgba(39, 64, 139, 0.08);
   --accent-glow: rgba(39, 64, 139, 0.15);
@@ -144,6 +145,7 @@
   --inverse-text: #ffffff;
 
   --accent: #7b9ce8;
+  --accent-foreground: #07111f;
   --accent-hover: #93b1f0;
   --accent-soft: rgba(123, 156, 232, 0.14);
   --accent-glow: rgba(123, 156, 232, 0.25);
@@ -202,6 +204,7 @@
     --inverse-text: #ffffff;
 
     --accent: #7b9ce8;
+    --accent-foreground: #07111f;
     --accent-hover: #93b1f0;
     --accent-soft: rgba(123, 156, 232, 0.12);
     --accent-glow: rgba(123, 156, 232, 0.25);
@@ -493,6 +496,7 @@
   --inverse-text: #ffffff;
 
   --accent: #87a5d8;
+  --accent-foreground: #07111f;
   --accent-hover: #9cb7e3;
   --accent-soft: rgba(135, 165, 216, 0.16);
   --accent-glow: rgba(135, 165, 216, 0.3);
@@ -551,6 +555,7 @@
   --inverse-text: #ffffff;
 
   --accent: #a9c4f3;
+  --accent-foreground: #07111f;
   --accent-hover: #bad0f6;
   --accent-soft: rgba(144, 174, 230, 0.18);
   --accent-glow: rgba(144, 174, 230, 0.32);
@@ -818,6 +823,20 @@ input[type="range"]::-moz-range-progress {
   height: 44px;
   border-radius: 12px 0 0 12px;
   background: color-mix(in srgb, var(--accent), var(--card) 52%);
+}
+
+input[type="range"]:focus-visible::-webkit-slider-runnable-track {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--accent-glow),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+input[type="range"]:focus-visible::-moz-range-track {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--accent-glow),
+    0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Range Input (Slider) Thumb ──────────────────────────────

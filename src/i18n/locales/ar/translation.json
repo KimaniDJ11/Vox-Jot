@@ -27,7 +27,8 @@
     "about": "حول",
     "settingsLabel": "الإعدادات",
     "settingsButton": "الإعدادات",
-    "sectionNavigation": "الملاحة القسم"
+    "sectionNavigation": "الملاحة القسم",
+    "generatedAudioActive": "نشاط الصوت المولد جارٍ"
   },
   "onboarding": {
     "subtitle": "للبدء، اختر نموذج النسخ",
@@ -193,7 +194,8 @@
       "permissions": "الأذونات",
       "setup": "نموذج",
       "refine": "صقل",
-      "learn": "الإملاء الأول"
+      "learn": "الإملاء الأول",
+      "progress": "تقدم الإعداد"
     },
     "refine": {
       "title": "هل تريد محرك Refine محلي؟",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "تنزيل نموذج التحسين الافتراضي",
-        "description": "سحب {{model}}. يستغرق هذا عادةً دقيقة أو دقيقتين عند الاتصال السريع."
+        "description": "سحب {{model}}. يستغرق هذا عادةً دقيقة أو دقيقتين عند الاتصال السريع.",
+        "progressLabel": "تقدم تنزيل نموذج التحسين"
       },
       "ready": {
         "title": "التحسين المحلي جاهز",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "عرض المزيد من خيارات النموذج",
         "hide": "إخفاء خيارات النموذج الإضافية"
+      },
+      "installed": {
+        "title": "النموذج جاهز",
+        "description": "{{modelName}} مثبت بالفعل. تابع بهذا النموذج.",
+        "continue": "متابعة"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     },
     "deleteConfirm": "هل تريد حذف {{modelName}}؟ ستتم إزالة الملفات من القرص.",
     "deleteActiveConfirm": "هل تريد حذف {{modelName}}؟ إنه النموذج النشط — ستحتاج إلى اختيار نموذج آخر لإملائه.",
-    "confirmDelete": "حذف"
+    "confirmDelete": "حذف",
+    "downloadProgressLabel": "جارٍ تنزيل النموذج {{modelId}}",
+    "downloadProgress": "تقدم تنزيل النموذج",
+    "switcherAriaLabel": "النموذج الحالي: {{model}}. افتح مبدل النماذج.",
+    "waitingForData": "في انتظار البيانات..."
   },
   "settings": {
     "general": {
@@ -596,7 +608,8 @@
         "apiKey": {
           "title": "مفتاح API",
           "description": "مفتاح API للموفر المحدد.",
-          "placeholder": "كورونا-..."
+          "placeholder": "كورونا-...",
+          "savedPlaceholder": "محفوظ في سلسلة مفاتيح النظام. أدخل قيمة جديدة لاستبداله."
         },
         "model": {
           "title": "نموذج",
@@ -741,7 +754,13 @@
           "originalLabel": "نسخة طبيعية",
           "editedLabel": "النص المراد لصقه",
           "cancel": "إلغاء اللصق",
-          "apply": "لصق النص"
+          "apply": "لصق النص",
+          "translationTitle": "مراجعة الترجمة",
+          "translationDescription": "أكّد النص المترجم قبل أن يلصقه Vox Jot أو يوجهه.",
+          "translatedLabel": "مترجم",
+          "finalOutputLabel": "الإخراج النهائي",
+          "destinationPrefix": "الوجهة",
+          "resolving": "جارٍ تطبيق المعاينة..."
         },
         "disabledMessage": "قم بتشغيل \"عملية النشر\" لمحاولة معاينة المخرجات المصقولة."
       },
@@ -996,7 +1015,10 @@
         "importFailed": "فشل استيراد مفاتيح العبارة.",
         "importJsonOnly": "اختر ملف مفاتيح العبارة JSON.",
         "importTooLarge": "هذا الملف كبير جدًا بحيث لا يمكن استيراده.",
-        "duplicateTrigger": "يستخدم مفتاح العبارة هذا المشغل المنطوق بالفعل."
+        "duplicateTrigger": "يستخدم مفتاح العبارة هذا المشغل المنطوق بالفعل.",
+        "deleteConfirm": "حذف مفتاح العبارة \"{{trigger}}\"؟",
+        "disableAriaLabel": "تعطيل مفتاح العبارة: {{trigger}}",
+        "enableAriaLabel": "تفعيل مفتاح العبارة: {{trigger}}"
       }
     },
     "styles": {
@@ -1460,7 +1482,14 @@
     "notAvailable": "غير متوفر",
     "pause": "وقفة",
     "play": "العب",
-    "refresh": "تحديث"
+    "refresh": "تحديث",
+    "stop": "إيقاف",
+    "disable": "تعطيل",
+    "enable": "تفعيل",
+    "downloadProgress": "تقدم التنزيل",
+    "downloadProgressForItem": "تقدم تنزيل {{id}}",
+    "percentComplete": "اكتمل {{percentage}}%",
+    "downloadingCount": "{{count}} قيد التنزيل..."
   },
   "accessibility": {
     "permissionsRequired": "أذونات الوصول مطلوبة",
@@ -2165,7 +2194,8 @@
       "analysis": "تحليل الكلام",
       "llm": "صقل (LLM)",
       "tts": "الأصوات (TTS)",
-      "ocr": "شاشة OCR"
+      "ocr": "شاشة OCR",
+      "ariaLabel": "فئات النماذج"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "الصوت المولد",
       "generatedAudioDescription": "إعادة تشغيل الصوت الصادر من الاستوديو أو كشفه أو نسخه أو تمييزه بنجمة أو إزالته.",
       "dictionaryTitle": "قاموس",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "مغير الصوت",
+      "voiceChangerDescription": "حوّل صوت WAV مسجلاً أو مستورداً إلى ملف صوتي جاهز مع الحفاظ على الأداء والتوقيت."
     },
     "groups": {
       "dictation": "الإملاء",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "استنساخ الصوت",
         "studio": "استوديو",
         "generatedAudio": "الصوت المولد",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "مغير الصوت"
       },
       "settings": {
         "general": "التطبيق والإملاء",
@@ -2687,6 +2717,11 @@
         "about": "حول Vox Jot",
         "legal": "الشروط القانونية وشروط النماذج",
         "automationAgents": "الأتمتة والوكلاء"
+      },
+      "groups": {
+        "settingsBasics": "الأساسيات",
+        "settingsIntelligence": "الذكاء",
+        "settingsSystem": "النظام"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "ملف ASR",
       "llm": "LLM",
       "stt": "يعيش STT",
-      "screenOcr": "شاشة OCR"
+      "screenOcr": "شاشة OCR",
+      "ariaLabel": "مجموعات الاختبار"
     },
     "notRanked": {
       "title": "لم يتم تصنيفها بعد",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "تم اختبار {{count}}",
       "pending": "{{count}} معلق",
-      "blocked": "تم حظر {{count}}"
-    }
+      "blocked": "تم حظر {{count}}",
+      "failed": "فشل {{count}}",
+      "downloadRequired": "يحتاج {{count}} إلى تنزيل",
+      "runtimeReady": "{{count}} جاهز للتشغيل",
+      "other": "{{count}} أخرى"
+    },
+    "overview": {
+      "updated": "تم التحديث {{date}}"
+    },
+    "reportPath": "التقرير: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "حدد خيارًا..."
+      "placeholder": "حدد خيارًا...",
+      "ariaLabel": "اختر خيارًا"
     },
     "pathDisplay": {
       "pathLabel": "مسار نظام الملفات"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "إملاء",
     "refine": "صقل",
-    "listen": "استمع"
+    "listen": "استمع",
+    "switcherLabel": "الوضع الأساسي"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "تم إنشاء قصة صوتية",

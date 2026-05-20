@@ -27,7 +27,8 @@
     "about": "про",
     "settingsLabel": "Налаштування",
     "settingsButton": "Налаштування",
-    "sectionNavigation": "Навігація по розділах"
+    "sectionNavigation": "Навігація по розділах",
+    "generatedAudioActive": "Триває робота зі згенерованим аудіо"
   },
   "onboarding": {
     "subtitle": "Щоб почати, виберіть модель транскрипції",
@@ -193,7 +194,8 @@
       "permissions": "Дозволи",
       "setup": "Модель",
       "refine": "Уточніть",
-      "learn": "Перший диктант"
+      "learn": "Перший диктант",
+      "progress": "Перебіг налаштування"
     },
     "refine": {
       "title": "Хочете локальну систему Refine?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Завантаження стандартної моделі Refine",
-        "description": "Витягування {{model}}. Зазвичай це займає хвилину-дві при швидкому з’єднанні."
+        "description": "Витягування {{model}}. Зазвичай це займає хвилину-дві при швидкому з’єднанні.",
+        "progressLabel": "Перебіг завантаження моделі Refine"
       },
       "ready": {
         "title": "Local Refine готовий",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Показати більше варіантів моделі",
         "hide": "Приховати додаткові параметри моделі"
+      },
+      "installed": {
+        "title": "Модель готова",
+        "description": "{{modelName}} уже встановлено. Продовжте з цією моделлю.",
+        "continue": "Продовжити"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Скасувати завантаження",
     "deleteConfirm": "Видалити {{modelName}}? Файли буде видалено з диска.",
     "deleteActiveConfirm": "Видалити {{modelName}}? Це активна модель — вам потрібно буде вибрати іншу, щоб продиктувати.",
-    "confirmDelete": "Видалити"
+    "confirmDelete": "Видалити",
+    "downloadProgressLabel": "Завантаження моделі {{modelId}}",
+    "downloadProgress": "Перебіг завантаження моделі",
+    "switcherAriaLabel": "Поточна модель: {{model}}. Відкрити перемикач моделей.",
+    "waitingForData": "Очікування даних..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Не вдалося імпортувати фразові ключі.",
         "importJsonOnly": "Виберіть файл ключових фраз JSON.",
         "importTooLarge": "Цей файл завеликий для імпорту.",
-        "duplicateTrigger": "Фразова клавіша вже використовує цей голосовий тригер."
+        "duplicateTrigger": "Фразова клавіша вже використовує цей голосовий тригер.",
+        "deleteConfirm": "Видалити ключ фрази «{{trigger}}»?",
+        "disableAriaLabel": "Вимкнути ключ фрази: {{trigger}}",
+        "enableAriaLabel": "Увімкнути ключ фрази: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "Ключ API",
           "description": "Ключ API для вибраного провайдера.",
-          "placeholder": "ск-..."
+          "placeholder": "ск-...",
+          "savedPlaceholder": "Збережено в системному сховищі ключів. Введіть нове значення, щоб замінити його."
         },
         "model": {
           "title": "Модель",
@@ -854,7 +870,13 @@
           "originalLabel": "Нормалізована транскрипція",
           "editedLabel": "Текст для вставлення",
           "cancel": "Скасувати вставлення",
-          "apply": "Вставте текст"
+          "apply": "Вставте текст",
+          "translationTitle": "Переглянути переклад",
+          "translationDescription": "Підтвердьте перекладений текст, перш ніж Vox Jot вставить або спрямує його.",
+          "translatedLabel": "Перекладено",
+          "finalOutputLabel": "Фінальний вивід",
+          "destinationPrefix": "Призначення",
+          "resolving": "Застосування попереднього перегляду..."
         },
         "disabledMessage": "Увімкніть Post Process, щоб спробувати переглянути відшліфований результат."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Не доступний",
     "pause": "Пауза",
     "play": "грати",
-    "refresh": "Оновити"
+    "refresh": "Оновити",
+    "stop": "Зупинити",
+    "disable": "Вимкнути",
+    "enable": "Увімкнути",
+    "downloadProgress": "Перебіг завантаження",
+    "downloadProgressForItem": "Перебіг завантаження для {{id}}",
+    "percentComplete": "Завершено {{percentage}}%",
+    "downloadingCount": "{{count}} завантажується..."
   },
   "accessibility": {
     "permissionsRequired": "Потрібні дозволи на доступність",
@@ -2165,7 +2194,8 @@
       "analysis": "Аналіз мовлення",
       "llm": "Уточнити (LLM)",
       "tts": "Голоси (TTS)",
-      "ocr": "Екран OCR"
+      "ocr": "Екран OCR",
+      "ariaLabel": "Категорії моделей"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Згенероване аудіо",
       "generatedAudioDescription": "Повторно відтворюйте, виявляйте, копіюйте, позначайте або видаляйте аудіо, відтворене в Studio.",
       "dictionaryTitle": "Словник",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Зміна голосу",
+      "voiceChangerDescription": "Перетворіть записане або імпортоване WAV-аудіо на готовий голосовий профіль, зберігаючи подачу й таймінг."
     },
     "groups": {
       "dictation": "Диктант",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Клонування голосу",
         "studio": "Студія",
         "generatedAudio": "Згенероване аудіо",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Зміна голосу"
       },
       "settings": {
         "general": "Додаток і диктування",
@@ -2687,6 +2717,11 @@
         "about": "Про Vox Jot",
         "legal": "Юридичні умови та умови моделей",
         "automationAgents": "Автоматизація та агенти"
+      },
+      "groups": {
+        "settingsBasics": "Основи",
+        "settingsIntelligence": "Інтелект",
+        "settingsSystem": "Система"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Файл ASR",
       "llm": "LLM",
       "stt": "Живий STT",
-      "screenOcr": "Екран OCR"
+      "screenOcr": "Екран OCR",
+      "ariaLabel": "Набори бенчмарків"
     },
     "notRanked": {
       "title": "Ще не в рейтингу",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} протестовано",
       "pending": "{{count}} очікує на розгляд",
-      "blocked": "{{count}} заблоковано"
-    }
+      "blocked": "{{count}} заблоковано",
+      "failed": "{{count}} невдалих",
+      "downloadRequired": "{{count}} потребують завантаження",
+      "runtimeReady": "{{count}} середовищ виконання готові",
+      "other": "{{count}} інші"
+    },
+    "overview": {
+      "updated": "Оновлено {{date}}"
+    },
+    "reportPath": "Звіт: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Виберіть варіант..."
+      "placeholder": "Виберіть варіант...",
+      "ariaLabel": "Виберіть опцію"
     },
     "pathDisplay": {
       "pathLabel": "Шлях файлової системи"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Диктуйте",
     "refine": "Уточніть",
-    "listen": "Слухай"
+    "listen": "Слухай",
+    "switcherLabel": "Основний режим"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Згенерований звук історії",

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -23,6 +29,7 @@ import { commands } from "@/bindings";
 import { HighlightTrack } from "@/motion/HighlightTrack";
 import { modal } from "@/motion/springs";
 import { Kbd } from "@/components/ui/Kbd";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 export type CommandAction = {
   id: string;
@@ -74,6 +81,13 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocusTrap({
+    enabled: open,
+    containerRef: dialogRef,
+    initialFocusSelector: "input",
+  });
 
   useEffect(() => {
     if (!open) {
@@ -301,19 +315,6 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
     return Array.from(map.entries());
   }, [actions]);
 
-  // Esc closes — cmdk handles arrow/enter natively.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
   return (
     <AnimatePresence>
       {open && (
@@ -332,12 +333,19 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
             aria-hidden
           />
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("commandMenu.label")}
             className="relative w-full max-w-[640px]"
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.99 }}
             transition={modal}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(event) =>
+              handleDialogKeyDown(event, dialogRef.current, onClose)
+            }
           >
             <Command
               label={t("commandMenu.label")}
@@ -385,7 +393,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
                         onSelect={() => run(a.onRun)}
                         onPointerEnter={() => setActiveItemId(a.id)}
                         onFocus={() => setActiveItemId(a.id)}
-                        className="group relative flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 text-[13px] outline-none"
+                        className="group relative flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 text-[13px] text-[var(--text)] outline-none data-[selected=true]:bg-[var(--input)] data-[selected=true]:text-[var(--text)]"
                       >
                         <HighlightTrack
                           active={activeItemId === a.id}
@@ -399,7 +407,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
                           {a.title}
                         </span>
                         {a.subtitle && (
-                          <span className="relative z-10 text-[12px] text-[var(--muted)]">
+                          <span className="relative z-10 text-[12px] text-[var(--muted)] group-data-[selected=true]:text-[var(--text)]">
                             {a.subtitle}
                           </span>
                         )}

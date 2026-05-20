@@ -27,7 +27,8 @@
     "about": "について",
     "settingsLabel": "設定",
     "settingsButton": "設定",
-    "sectionNavigation": "セクションのナビゲーション"
+    "sectionNavigation": "セクションのナビゲーション",
+    "generatedAudioActive": "生成音声の処理中"
   },
   "onboarding": {
     "subtitle": "まず、文字起こしモデルを選択してください",
@@ -193,7 +194,8 @@
       "permissions": "権限",
       "setup": "モデル",
       "refine": "絞り込む",
-      "learn": "初めてのディクテーション"
+      "learn": "初めてのディクテーション",
+      "progress": "オンボーディングの進行状況"
     },
     "refine": {
       "title": "ローカルの Refine エンジンが必要ですか?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "デフォルトのリファインモデルのダウンロード",
-        "description": "{{model}}を引いています。高速接続の場合、これには通常 1 ～ 2 分かかります。"
+        "description": "{{model}}を引いています。高速接続の場合、これには通常 1 ～ 2 分かかります。",
+        "progressLabel": "Refineモデルのダウンロード進行状況"
       },
       "ready": {
         "title": "ローカルリファインの準備が完了しました",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "さらにモデルオプションを表示",
         "hide": "追加のモデル オプションを非表示にする"
+      },
+      "installed": {
+        "title": "モデルの準備完了",
+        "description": "{{modelName}} はすでにインストールされています。このモデルで続行します。",
+        "continue": "続行"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "ダウンロードをキャンセルする",
     "deleteConfirm": "{{modelName}}を削除しますか?ファイルはディスクから削除されます。",
     "deleteActiveConfirm": "{{modelName}}を削除しますか?これはアクティブなモデルです。指示するには別のモデルを選択する必要があります。",
-    "confirmDelete": "削除"
+    "confirmDelete": "削除",
+    "downloadProgressLabel": "モデル {{modelId}} をダウンロード中",
+    "downloadProgress": "モデルのダウンロード進行状況",
+    "switcherAriaLabel": "現在のモデル: {{model}}。モデル切り替えを開く。",
+    "waitingForData": "データを待機中..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "フレーズキーのインポートに失敗しました。",
         "importJsonOnly": "JSON フレーズ キー ファイルを選択します。",
         "importTooLarge": "そのファイルは大きすぎてインポートできません。",
-        "duplicateTrigger": "フレーズ キーはすでにその音声トリガーを使用しています。"
+        "duplicateTrigger": "フレーズ キーはすでにその音声トリガーを使用しています。",
+        "deleteConfirm": "フレーズキー「{{trigger}}」を削除しますか？",
+        "disableAriaLabel": "フレーズキーを無効化: {{trigger}}",
+        "enableAriaLabel": "フレーズキーを有効化: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "API キー",
           "description": "選択したプロバイダーの API キー。",
-          "placeholder": "スク..."
+          "placeholder": "スク...",
+          "savedPlaceholder": "システムキーチェーンに保存済みです。置き換えるには新しい値を入力してください。"
         },
         "model": {
           "title": "モデル",
@@ -854,7 +870,13 @@
           "originalLabel": "正規化されたトランスクリプト",
           "editedLabel": "貼り付けるテキスト",
           "cancel": "貼り付けをキャンセル",
-          "apply": "テキストを貼り付ける"
+          "apply": "テキストを貼り付ける",
+          "translationTitle": "翻訳を確認",
+          "translationDescription": "Vox Jotが貼り付けまたは転送する前に、翻訳テキストを確認してください。",
+          "translatedLabel": "翻訳済み",
+          "finalOutputLabel": "最終出力",
+          "destinationPrefix": "宛先",
+          "resolving": "プレビューを適用中..."
         },
         "disabledMessage": "後処理をオンにして、洗練された出力をプレビューしてみます。"
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "利用できません",
     "pause": "一時停止",
     "play": "遊ぶ",
-    "refresh": "リフレッシュ"
+    "refresh": "リフレッシュ",
+    "stop": "停止",
+    "disable": "無効化",
+    "enable": "有効化",
+    "downloadProgress": "ダウンロード進行状況",
+    "downloadProgressForItem": "{{id}} のダウンロード進行状況",
+    "percentComplete": "{{percentage}}% 完了",
+    "downloadingCount": "{{count}} 件をダウンロード中..."
   },
   "accessibility": {
     "permissionsRequired": "アクセシビリティ権限が必要です",
@@ -2165,7 +2194,8 @@
       "analysis": "音声分析",
       "llm": "絞り込み (LLM)",
       "tts": "声 (TTS)",
-      "ocr": "画面 OCR"
+      "ocr": "画面 OCR",
+      "ariaLabel": "モデルカテゴリ"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "生成された音声",
       "generatedAudioDescription": "Studio からレンダリングされたオーディオを再生、公開、コピー、スター付け、または削除します。",
       "dictionaryTitle": "辞書",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "ボイスチェンジャー",
+      "voiceChangerDescription": "録音またはインポートしたWAV音声を、話し方とタイミングを保ったまま使える音声プロファイルに変換します。"
     },
     "groups": {
       "dictation": "ディクテーション",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "音声クローン作成",
         "studio": "スタジオ",
         "generatedAudio": "生成されたオーディオ",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "ボイスチェンジャー"
       },
       "settings": {
         "general": "アプリとディクテーション",
@@ -2687,6 +2717,11 @@
         "about": "Vox Jotについて",
         "legal": "法的条件とモデル規約",
         "automationAgents": "自動化とエージェント"
+      },
+      "groups": {
+        "settingsBasics": "基本",
+        "settingsIntelligence": "インテリジェンス",
+        "settingsSystem": "システム"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "ファイルASR",
       "llm": "LLM",
       "stt": "ライブ STT",
-      "screenOcr": "画面 OCR"
+      "screenOcr": "画面 OCR",
+      "ariaLabel": "ベンチマークスイート"
     },
     "notRanked": {
       "title": "まだランク付けされていません",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} テスト済み",
       "pending": "{{count}} 保留中",
-      "blocked": "{{count}} がブロックされました"
-    }
+      "blocked": "{{count}} がブロックされました",
+      "failed": "{{count}} 件失敗",
+      "downloadRequired": "{{count}} 件はダウンロードが必要",
+      "runtimeReady": "{{count}} 件はランタイム準備完了",
+      "other": "{{count}} 件その他"
+    },
+    "overview": {
+      "updated": "{{date}} 更新"
+    },
+    "reportPath": "レポート: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "オプションを選択してください..."
+      "placeholder": "オプションを選択してください...",
+      "ariaLabel": "オプションを選択"
     },
     "pathDisplay": {
       "pathLabel": "ファイルシステムのパス"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "口述する",
     "refine": "絞り込む",
-    "listen": "聞いてください"
+    "listen": "聞いてください",
+    "switcherLabel": "プライマリモード"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "生成されたストーリー音声",

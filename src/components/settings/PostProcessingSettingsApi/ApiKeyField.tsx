@@ -20,17 +20,28 @@ export const ApiKeyField: React.FC<ApiKeyFieldProps> = React.memo(
     className = "",
   }) => {
     const [localValue, setLocalValue] = useState("");
+    const [isDirty, setIsDirty] = useState(false);
 
     React.useEffect(() => {
       setLocalValue("");
+      setIsDirty(false);
     }, [resetKey, hasSavedValue]);
 
     return (
       <Input
         type="password"
         value={localValue}
-        onChange={(event) => setLocalValue(event.target.value)}
-        onBlur={() => onBlur(localValue)}
+        onChange={(event) => {
+          setLocalValue(event.target.value);
+          setIsDirty(true);
+        }}
+        onBlur={() => {
+          if (!isDirty) {
+            return;
+          }
+          onBlur(localValue);
+          setIsDirty(false);
+        }}
         placeholder={placeholder}
         variant="compact"
         disabled={disabled}

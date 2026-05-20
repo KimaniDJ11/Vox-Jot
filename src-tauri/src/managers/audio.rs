@@ -6,7 +6,8 @@ use crate::helpers::clamshell;
 use crate::settings::{get_settings, AppSettings};
 use crate::utils;
 use log::{debug, error, info};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -157,10 +158,12 @@ pub struct AudioRecordingManager {
     state: Arc<Mutex<RecordingState>>,
     mode: Arc<Mutex<MicrophoneMode>>,
     app_handle: tauri::AppHandle,
+    vad_model_path: Arc<Mutex<Option<PathBuf>>>,
 
     recorder: Arc<Mutex<Option<AudioRecorder>>>,
     is_open: Arc<AtomicBool>,
     is_recording: Arc<AtomicBool>,
+    stream_epoch: Arc<AtomicU64>,
     audio_ducker: AudioDucker,
     did_mute: Arc<AtomicBool>,
     temporary_mute_override: Arc<Mutex<Option<bool>>>,
@@ -181,10 +184,12 @@ impl AudioRecordingManager {
             state: Arc::new(Mutex::new(RecordingState::Idle)),
             mode: Arc::new(Mutex::new(mode.clone())),
             app_handle: app.clone(),
+            vad_model_path: Arc::new(Mutex::new(None)),
 
             recorder: Arc::new(Mutex::new(None)),
             is_open: Arc::new(AtomicBool::new(false)),
             is_recording: Arc::new(AtomicBool::new(false)),
+            stream_epoch: Arc::new(AtomicU64::new(0)),
             audio_ducker: AudioDucker::new(),
             did_mute: Arc::new(AtomicBool::new(false)),
             temporary_mute_override: Arc::new(Mutex::new(None)),
@@ -225,6 +230,24 @@ impl AudioRecordingManager {
                 None
             }
         }
+    }
+
+    fn get_vad_model_path(&self) -> Result<PathBuf, anyhow::Error> {
+        let mut vad_model_path = self
+            .vad_model_path
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if let Some(path) = vad_model_path.as_ref() {
+            return Ok(path.clone());
+        }
+
+        let resolved = crate::portable::resolve_resource(
+            &self.app_handle,
+            "resources/models/silero_vad_v4.onnx",
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {}", e))?;
+        *vad_model_path = Some(resolved.clone());
+        Ok(resolved)
     }
 
     /* ---------- microphone life-cycle -------------------------------------- */
@@ -278,20 +301,8 @@ impl AudioRecordingManager {
     }
 
     pub fn start_microphone_stream(&self) -> Result<(), anyhow::Error> {
-        if self.is_open.load(Ordering::SeqCst) {
-            debug!("Microphone stream already active");
-            return Ok(());
-        }
-
         let start_time = Instant::now();
 
-        // Don't mute immediately - caller will handle muting after audio feedback
-        self.did_mute.store(false, Ordering::SeqCst);
-
-        let vad_path = &self.app_handle;
-        let vad_path =
-            crate::portable::resolve_resource(vad_path, "resources/models/silero_vad_v4.onnx")
-                .map_err(|e| anyhow::anyhow!("Failed to resolve VAD path: {}", e))?;
         let mut recorder_opt = self.recorder.lock().unwrap_or_else(|e| e.into_inner());
 
         if self.is_open.load(Ordering::SeqCst) {
@@ -299,9 +310,13 @@ impl AudioRecordingManager {
             return Ok(());
         }
 
+        // Don't mute immediately - caller will handle muting after audio feedback.
+        self.did_mute.store(false, Ordering::SeqCst);
+
         if recorder_opt.is_none() {
+            let vad_model_path = self.get_vad_model_path()?;
             *recorder_opt = Some(create_audio_recorder(
-                vad_path
+                vad_model_path
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("VAD path contains invalid UTF-8"))?,
                 &self.app_handle,
@@ -326,6 +341,8 @@ impl AudioRecordingManager {
     }
 
     pub fn stop_microphone_stream(&self) {
+        let mut recorder_guard = self.recorder.lock().unwrap_or_else(|e| e.into_inner());
+
         if !self.is_open.load(Ordering::SeqCst) {
             return;
         }
@@ -336,12 +353,7 @@ impl AudioRecordingManager {
             set_mute(false);
         }
 
-        if let Some(rec) = self
-            .recorder
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_mut()
-        {
+        if let Some(rec) = recorder_guard.as_mut() {
             // If still recording, stop first.
             if self.is_recording.load(Ordering::SeqCst) {
                 let _ = rec.stop();
@@ -352,6 +364,37 @@ impl AudioRecordingManager {
 
         self.is_open.store(false, Ordering::SeqCst);
         debug!("Microphone stream stopped");
+    }
+
+    fn stop_microphone_stream_if_epoch(&self, expected_epoch: u64) {
+        if !matches!(
+            *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
+            MicrophoneMode::OnDemand
+        ) {
+            return;
+        }
+
+        let mut recorder_guard = self.recorder.lock().unwrap_or_else(|e| e.into_inner());
+
+        if self.stream_epoch.load(Ordering::SeqCst) != expected_epoch
+            || self.is_recording.load(Ordering::SeqCst)
+            || !self.is_open.load(Ordering::SeqCst)
+        {
+            return;
+        }
+
+        self.audio_ducker.restore_async();
+
+        if self.did_mute.swap(false, Ordering::SeqCst) {
+            set_mute(false);
+        }
+
+        if let Some(rec) = recorder_guard.as_mut() {
+            let _ = rec.close();
+        }
+
+        self.is_open.store(false, Ordering::SeqCst);
+        debug!("Microphone stream stopped for epoch {expected_epoch}");
     }
 
     /* ---------- mode switching --------------------------------------------- */
@@ -381,6 +424,8 @@ impl AudioRecordingManager {
     /* ---------- recording --------------------------------------------------- */
 
     pub fn try_start_recording(&self, binding_id: &str) -> Result<(), String> {
+        self.stream_epoch.fetch_add(1, Ordering::SeqCst);
+
         // Open the stream before taking the recording-state lock so start/mute
         // paths cannot deadlock on inverted lock ordering.
         if matches!(
@@ -484,8 +529,9 @@ impl AudioRecordingManager {
                     MicrophoneMode::OnDemand
                 ) {
                     let manager = self.clone();
+                    let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
                     std::thread::spawn(move || {
-                        manager.stop_microphone_stream();
+                        manager.stop_microphone_stream_if_epoch(expected_epoch);
                     });
                 }
 
@@ -557,7 +603,11 @@ impl AudioRecordingManager {
                 *self.mode.lock().unwrap_or_else(|e| e.into_inner()),
                 MicrophoneMode::OnDemand
             ) {
-                self.stop_microphone_stream();
+                let manager = self.clone();
+                let expected_epoch = self.stream_epoch.load(Ordering::SeqCst);
+                std::thread::spawn(move || {
+                    manager.stop_microphone_stream_if_epoch(expected_epoch);
+                });
             }
         }
     }

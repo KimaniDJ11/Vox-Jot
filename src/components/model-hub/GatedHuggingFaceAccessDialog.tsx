@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { HuggingFaceTokenStatus } from "@/bindings";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 interface GatedHuggingFaceAccessDialogProps {
   open: boolean;
@@ -44,17 +45,28 @@ const GatedHuggingFaceAccessDialog: React.FC<
   onConfirm,
 }) => {
   const { t } = useTranslation();
+  const descriptionId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap({
+    enabled: open,
+    containerRef: dialogRef,
+    initialFocusSelector: "input, button",
+  });
+
   if (!open) return null;
 
   const canConfirm =
     Boolean(tokenDraft.trim()) || Boolean(tokenStatus?.configured);
   const tokenSource = tokenStatus?.source?.replace(/_/g, " ");
+  const handleBackdropCancel = () => {
+    if (!busy) onCancel();
+  };
 
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
       role="presentation"
-      onClick={onCancel}
+      onClick={handleBackdropCancel}
     >
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -64,8 +76,15 @@ const GatedHuggingFaceAccessDialog: React.FC<
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-[680px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+        aria-describedby={descriptionId}
+        ref={dialogRef}
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-[680px] overflow-y-auto rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) =>
+          handleDialogKeyDown(event, dialogRef.current, onCancel, {
+            escapeDisabled: busy,
+          })
+        }
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -77,7 +96,10 @@ const GatedHuggingFaceAccessDialog: React.FC<
                 defaultValue: "Hugging Face access required",
               })}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            <p
+              id={descriptionId}
+              className="mt-1 text-sm leading-5 text-[var(--muted)]"
+            >
               {t("modelHub.analysis.hfAccess.description", {
                 defaultValue:
                   "{{modelName}} is gated by its publisher. Accept the model terms with your Hugging Face account, then save your own read token so Vox Jot can download the weights into its local model store.",
@@ -208,7 +230,10 @@ const GatedHuggingFaceAccessDialog: React.FC<
           </div>
 
           {error ? (
-            <div className="rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_65%)] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]">
+            <div
+              role="alert"
+              className="rounded-lg border border-[color-mix(in_srgb,var(--danger),transparent_65%)] bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger)]"
+            >
               {error}
             </div>
           ) : null}

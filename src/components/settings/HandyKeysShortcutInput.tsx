@@ -8,6 +8,10 @@ import { useSettings } from "../../hooks/useSettings";
 import { useOsType } from "../../hooks/useOsType";
 import { commands } from "@/bindings";
 import { toast } from "sonner";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface HandyKeysShortcutInputProps {
   descriptionMode?: "inline" | "tooltip";
@@ -35,7 +39,7 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [currentKeys, setCurrentKeys] = useState<string>("");
   const [originalBinding, setOriginalBinding] = useState<string>("");
-  const shortcutRef = useRef<HTMLDivElement | null>(null);
+  const shortcutRef = useRef<HTMLButtonElement | null>(null);
   const unlistenRef = useRef<(() => void) | null>(null);
   // Use a ref to track currentKeys for the event handler (avoids stale closure)
   const currentKeysRef = useRef<string>("");
@@ -182,6 +186,7 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
 
   // Start recording a new shortcut
   const startRecording = async () => {
+    if (disabled) return;
     if (isRecording) return;
 
     // Store the original binding to restore if canceled
@@ -276,23 +281,30 @@ export const HandyKeysShortcutInput: React.FC<HandyKeysShortcutInputProps> = ({
     >
       <div className="flex items-center space-x-1">
         {isRecording ? (
-          <div
+          <button
+            type="button"
             ref={shortcutRef}
-            className="px-2 py-1 text-sm font-semibold border border-logo-primary bg-logo-primary/30 rounded-md"
+            className={`rounded-md border border-logo-primary bg-logo-primary/30 px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
           >
             {formatCurrentKeys()}
-          </div>
+          </button>
         ) : (
-          <div
-            className="px-2 py-1 text-sm font-semibold bg-mid-gray/10 border border-mid-gray/80 hover:bg-logo-primary/10 rounded-md cursor-pointer hover:border-logo-primary"
+          <button
+            type="button"
+            className={`rounded-md border border-mid-gray/80 bg-mid-gray/10 px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+              disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:border-logo-primary hover:bg-logo-primary/10"
+            }`}
             onClick={startRecording}
+            disabled={disabled}
           >
             {formatKeyCombination(binding.current_binding, osType)}
-          </div>
+          </button>
         )}
         <ResetButton
           onClick={() => resetBinding(shortcutId)}
-          disabled={isUpdating(`binding_${shortcutId}`)}
+          disabled={disabled || isUpdating(`binding_${shortcutId}`)}
         />
       </div>
     </SettingContainer>

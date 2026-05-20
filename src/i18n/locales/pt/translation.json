@@ -27,7 +27,8 @@
     "about": "Sobre",
     "settingsLabel": "Configurações",
     "settingsButton": "Configurações",
-    "sectionNavigation": "Navegação de seção"
+    "sectionNavigation": "Navegação de seção",
+    "generatedAudioActive": "Atividade de áudio gerado em andamento"
   },
   "onboarding": {
     "subtitle": "Para começar, escolha um modelo de transcrição",
@@ -193,7 +194,8 @@
       "permissions": "Permissões",
       "setup": "Modelo",
       "refine": "Refinar",
-      "learn": "Primeiro Ditado"
+      "learn": "Primeiro Ditado",
+      "progress": "Progresso de configuração"
     },
     "refine": {
       "title": "Quer um mecanismo Refine local?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Baixando o modelo Refine padrão",
-        "description": "Puxando {{model}}. Isso geralmente leva um ou dois minutos em uma conexão rápida."
+        "description": "Puxando {{model}}. Isso geralmente leva um ou dois minutos em uma conexão rápida.",
+        "progressLabel": "Progresso do download do modelo Refine"
       },
       "ready": {
         "title": "O Refinamento Local está pronto",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Mostrar mais opções de modelos",
         "hide": "Ocultar opções extras de modelo"
+      },
+      "installed": {
+        "title": "Modelo pronto",
+        "description": "{{modelName}} já está instalado. Continue com este modelo.",
+        "continue": "Continuar"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Cancelar download",
     "deleteConfirm": "Excluir {{modelName}}? Os arquivos serão removidos do disco.",
     "deleteActiveConfirm": "Excluir {{modelName}}? É o modelo ativo – você precisará escolher outro para ditar.",
-    "confirmDelete": "Excluir"
+    "confirmDelete": "Excluir",
+    "downloadProgressLabel": "Baixando modelo {{modelId}}",
+    "downloadProgress": "Progresso do download do modelo",
+    "switcherAriaLabel": "Modelo atual: {{model}}. Abrir seletor de modelos.",
+    "waitingForData": "Aguardando dados..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Falha ao importar chaves de frase.",
         "importJsonOnly": "Escolha um arquivo de chaves de frase JSON.",
         "importTooLarge": "Esse arquivo é muito grande para importar.",
-        "duplicateTrigger": "Uma chave de frase já usa esse gatilho falado."
+        "duplicateTrigger": "Uma chave de frase já usa esse gatilho falado.",
+        "deleteConfirm": "Excluir chave de frase \"{{trigger}}\"?",
+        "disableAriaLabel": "Desativar chave de frase: {{trigger}}",
+        "enableAriaLabel": "Ativar chave de frase: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "Chave API",
           "description": "Chave API para o provedor selecionado.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Armazenada no chaveiro do sistema. Insira um novo valor para substituir."
         },
         "model": {
           "title": "Modelo",
@@ -854,7 +870,13 @@
           "originalLabel": "Transcrição normalizada",
           "editedLabel": "Texto para colar",
           "cancel": "Cancelar colar",
-          "apply": "Colar texto"
+          "apply": "Colar texto",
+          "translationTitle": "Revisar tradução",
+          "translationDescription": "Confirme o texto traduzido antes que o Vox Jot cole ou encaminhe.",
+          "translatedLabel": "Traduzido",
+          "finalOutputLabel": "Saída final",
+          "destinationPrefix": "Destino",
+          "resolving": "Aplicando prévia..."
         },
         "disabledMessage": "Ative o Pós-processamento para tentar visualizar a saída finalizada."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Não disponível",
     "pause": "Pausa",
     "play": "Jogar",
-    "refresh": "Atualizar"
+    "refresh": "Atualizar",
+    "stop": "Parar",
+    "disable": "Desativar",
+    "enable": "Ativar",
+    "downloadProgress": "Progresso do download",
+    "downloadProgressForItem": "Progresso do download de {{id}}",
+    "percentComplete": "{{percentage}}% concluído",
+    "downloadingCount": "{{count}} baixando..."
   },
   "accessibility": {
     "permissionsRequired": "Permissões de acessibilidade necessárias",
@@ -2165,7 +2194,8 @@
       "analysis": "Análise de Fala",
       "llm": "Refinar (LLM)",
       "tts": "Vozes (TTS)",
-      "ocr": "Tela OCR"
+      "ocr": "Tela OCR",
+      "ariaLabel": "Categorias de modelos"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Áudio gerado",
       "generatedAudioDescription": "Reproduza, revele, copie, marque com estrela ou remova o áudio renderizado do Studio.",
       "dictionaryTitle": "Dicionário",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Trocador de voz",
+      "voiceChangerDescription": "Converta áudio WAV gravado ou importado em um perfil de voz pronto, mantendo a interpretação e o tempo intactos."
     },
     "groups": {
       "dictation": "Ditado",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Clonagem de voz",
         "studio": "Estúdio",
         "generatedAudio": "Áudio gerado",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Trocador de voz"
       },
       "settings": {
         "general": "Aplicativo e ditado",
@@ -2687,6 +2717,11 @@
         "about": "Acerca de Vox Jot",
         "legal": "Termos legais e dos modelos",
         "automationAgents": "Automação e agentes"
+      },
+      "groups": {
+        "settingsBasics": "Noções básicas",
+        "settingsIntelligence": "Inteligência",
+        "settingsSystem": "Sistema"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Arquivo ASR",
       "llm": "LLM",
       "stt": "Ao vivo STT",
-      "screenOcr": "Tela OCR"
+      "screenOcr": "Tela OCR",
+      "ariaLabel": "Suítes de benchmark"
     },
     "notRanked": {
       "title": "Ainda não classificado",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} testado",
       "pending": "{{count}} pendente",
-      "blocked": "{{count}} bloqueado"
-    }
+      "blocked": "{{count}} bloqueado",
+      "failed": "{{count}} falharam",
+      "downloadRequired": "{{count}} precisam de download",
+      "runtimeReady": "{{count}} runtime prontos",
+      "other": "{{count}} outros"
+    },
+    "overview": {
+      "updated": "Atualizado em {{date}}"
+    },
+    "reportPath": "Relatório: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Selecione uma opção..."
+      "placeholder": "Selecione uma opção...",
+      "ariaLabel": "Selecionar uma opção"
     },
     "pathDisplay": {
       "pathLabel": "Caminho do sistema de arquivos"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Ditar",
     "refine": "Refinar",
-    "listen": "Ouça"
+    "listen": "Ouça",
+    "switcherLabel": "Modo principal"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Áudio da história gerado",

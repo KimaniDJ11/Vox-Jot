@@ -50,6 +50,7 @@ import {
 import ModelListControls from "@/components/model-hub/ModelListControls";
 import type { ModelHubControlState } from "@/components/model-hub/modelHubControls";
 import type { CompactBadgeItem } from "@/components/ui/CompactOverflow";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 import {
   getLlmEvaluationResult,
   LLM_EVALUATION_RESULTS,
@@ -1745,30 +1746,42 @@ const RefineApiKeyDialog: React.FC<{
   onConfirm,
 }) => {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocusTrap({
+    enabled: open,
+    containerRef: dialogRef,
+    initialFocusSelector: "input",
+  });
+
   if (!open) return null;
+
+  const handleCancel = () => {
+    if (!busy) onCancel();
+  };
 
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
       role="presentation"
-      onClick={onCancel}
+      onClick={handleCancel}
     >
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         aria-hidden
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="refine-api-key-dialog-title"
+        aria-describedby="refine-api-key-dialog-description"
         className="relative w-full max-w-[560px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
         onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            onCancel();
-          }
-        }}
+        onKeyDown={(event) =>
+          handleDialogKeyDown(event, dialogRef.current, onCancel, {
+            escapeDisabled: busy,
+          })
+        }
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -1781,7 +1794,10 @@ const RefineApiKeyDialog: React.FC<{
                 provider: providerLabel,
               })}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            <p
+              id="refine-api-key-dialog-description"
+              className="mt-1 text-sm leading-5 text-[var(--muted)]"
+            >
               {t("settings.refineModels.apiKeyDialog.description", {
                 defaultValue:
                   "{{modelTitle}} needs a {{provider}} API key before Vox Jot can use this cloud model.",

@@ -7,6 +7,7 @@ import {
   minTapTargetSquareClass,
 } from "@/lib/interactiveFocus";
 
+import { SettingAccessibilityProvider } from "./settingAccessibilityContext";
 import { Tooltip } from "./Tooltip";
 import { useSettingsGroupContext } from "./SettingsGroup";
 
@@ -43,7 +44,9 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
   const [hovered, setHovered] = useState(false);
   const tooltipRef = useRef<HTMLButtonElement>(null);
   const rowId = useId();
+  const tooltipId = `${rowId}-description`;
   const groupContext = useSettingsGroupContext();
+  const accessibilityValue = title ? { label: title } : {};
   const grouped = Boolean(groupContext);
   const hoverLayoutId = groupContext
     ? `settings-hover-${groupContext.groupId}`
@@ -81,6 +84,7 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
       onClick={toggleTooltip}
       aria-label={t("common.moreInformation")}
       aria-expanded={showTooltip}
+      aria-describedby={showTooltip ? tooltipId : undefined}
     >
       <svg
         className="h-3.5 w-3.5 select-none"
@@ -97,7 +101,11 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
         />
       </svg>
       {showTooltip && (
-        <Tooltip targetRef={tooltipRef} position={tooltipPosition}>
+        <Tooltip
+          id={tooltipId}
+          targetRef={tooltipRef}
+          position={tooltipPosition}
+        >
           <p className="text-sm text-center leading-relaxed">{description}</p>
         </Tooltip>
       )}
@@ -149,7 +157,9 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
           {descriptionMode === "inline" && description ? (
             <p className={`mb-2 ${stackedDescriptionClass}`}>{description}</p>
           ) : null}
-          <div className="w-full">{children}</div>
+          <SettingAccessibilityProvider value={accessibilityValue}>
+            <div className="w-full">{children}</div>
+          </SettingAccessibilityProvider>
         </div>
       </div>
     );
@@ -182,9 +192,11 @@ export const SettingContainer: React.FC<SettingContainerProps> = ({
             </>
           )}
         </div>
-        <div className="relative shrink-0 self-center whitespace-nowrap">
-          {children}
-        </div>
+        <SettingAccessibilityProvider value={accessibilityValue}>
+          <div className="relative shrink-0 self-center whitespace-nowrap">
+            {children}
+          </div>
+        </SettingAccessibilityProvider>
       </div>
     </div>
   );

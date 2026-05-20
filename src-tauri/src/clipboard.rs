@@ -791,6 +791,18 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
+fn clipboard_copy_changed(
+    selected_text: &str,
+    sentinel: &str,
+    current_change_count: Option<i64>,
+    sentinel_change_count: Option<i64>,
+) -> bool {
+    match (current_change_count, sentinel_change_count) {
+        (Some(after_copy), Some(after_sentinel)) => after_copy != after_sentinel,
+        _ => selected_text != sentinel,
+    }
+}
+
 pub fn capture_selected_text(app_handle: &AppHandle) -> Result<Option<String>, String> {
     let clipboard = app_handle.clipboard();
     let previous_content = clipboard.read_text().unwrap_or_default();
@@ -804,13 +816,32 @@ pub fn capture_selected_text(app_handle: &AppHandle) -> Result<Option<String>, S
         .lock()
         .map_err(|e| format!("Failed to lock Enigo: {}", e))?;
 
-    input::send_copy_ctrl_c(&mut enigo)?;
+    let sentinel = format!("vox-jot-copy-sentinel-{}", uuid::Uuid::new_v4());
+    clipboard.write_text(&sentinel).map_err(|e| {
+        format!(
+            "Failed to prepare clipboard for selected text capture: {}",
+            e
+        )
+    })?;
+    mark_pasteboard_transient();
+    let sentinel_change_count = pasteboard_change_count();
+
+    if let Err(err) = input::send_copy_ctrl_c(&mut enigo) {
+        let _ = clipboard.write_text(&previous_content);
+        return Err(err);
+    }
     std::thread::sleep(Duration::from_millis(120));
 
     let selected_text = clipboard.read_text().unwrap_or_default();
+    let copied_selection = clipboard_copy_changed(
+        &selected_text,
+        &sentinel,
+        pasteboard_change_count(),
+        sentinel_change_count,
+    );
     let _ = clipboard.write_text(&previous_content);
 
-    if selected_text.trim().is_empty() {
+    if !copied_selection || selected_text.trim().is_empty() {
         Ok(None)
     } else {
         Ok(Some(selected_text))
@@ -966,5 +997,32 @@ mod tests {
         assert!(prefers_direct_paste_for_bundle_id("com.openai.codex"));
         assert!(prefers_direct_paste_for_bundle_id("COM.OPENAI.CODEX"));
         assert!(!prefers_direct_paste_for_bundle_id("com.apple.TextEdit"));
+    }
+
+    #[test]
+    fn selected_text_capture_rejects_unchanged_sentinel() {
+        assert!(!clipboard_copy_changed("sentinel", "sentinel", None, None));
+        assert!(!clipboard_copy_changed(
+            "selected",
+            "sentinel",
+            Some(42),
+            Some(42)
+        ));
+    }
+
+    #[test]
+    fn selected_text_capture_accepts_changed_clipboard_even_when_text_matches_previous() {
+        assert!(clipboard_copy_changed(
+            "previous text",
+            "sentinel",
+            Some(43),
+            Some(42)
+        ));
+        assert!(clipboard_copy_changed(
+            "previous text",
+            "sentinel",
+            None,
+            None
+        ));
     }
 }

@@ -27,7 +27,8 @@
     "about": "Über",
     "settingsLabel": "Einstellungen",
     "settingsButton": "Einstellungen",
-    "sectionNavigation": "Abschnittsnavigation"
+    "sectionNavigation": "Abschnittsnavigation",
+    "generatedAudioActive": "Aktivität für generiertes Audio läuft"
   },
   "onboarding": {
     "subtitle": "Wählen Sie zunächst ein Transkriptionsmodell",
@@ -193,7 +194,8 @@
       "permissions": "Berechtigungen",
       "setup": "Modell",
       "refine": "Verfeinern",
-      "learn": "Erstes Diktat"
+      "learn": "Erstes Diktat",
+      "progress": "Einrichtungsfortschritt"
     },
     "refine": {
       "title": "Möchten Sie eine lokale Refine-Engine?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Herunterladen des Standard-Refine-Modells",
-        "description": "Ziehen {{model}}. Bei einer schnellen Verbindung dauert dies normalerweise ein bis zwei Minuten."
+        "description": "Ziehen {{model}}. Bei einer schnellen Verbindung dauert dies normalerweise ein bis zwei Minuten.",
+        "progressLabel": "Downloadfortschritt des Refine-Modells"
       },
       "ready": {
         "title": "Local Refine ist fertig",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Weitere Modelloptionen anzeigen",
         "hide": "Zusätzliche Modelloptionen ausblenden"
+      },
+      "installed": {
+        "title": "Modell bereit",
+        "description": "{{modelName}} ist bereits installiert. Mit diesem Modell fortfahren.",
+        "continue": "Fortfahren"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Download abbrechen",
     "deleteConfirm": "{{modelName}} löschen? Dateien werden von der Festplatte entfernt.",
     "deleteActiveConfirm": "{{modelName}} löschen? Es ist das aktive Modell – Sie müssen ein anderes zum Diktieren auswählen.",
-    "confirmDelete": "Löschen"
+    "confirmDelete": "Löschen",
+    "downloadProgressLabel": "Modell {{modelId}} wird heruntergeladen",
+    "downloadProgress": "Modell-Downloadfortschritt",
+    "switcherAriaLabel": "Aktuelles Modell: {{model}}. Modellauswahl öffnen.",
+    "waitingForData": "Warten auf Daten..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Phrasenschlüssel konnten nicht importiert werden.",
         "importJsonOnly": "Wählen Sie eine JSON Phrasenschlüsseldatei.",
         "importTooLarge": "Diese Datei ist zu groß zum Importieren.",
-        "duplicateTrigger": "Ein Phrasenschlüssel verwendet diesen gesprochenen Auslöser bereits."
+        "duplicateTrigger": "Ein Phrasenschlüssel verwendet diesen gesprochenen Auslöser bereits.",
+        "deleteConfirm": "Phrasenschlüssel „{{trigger}}“ löschen?",
+        "disableAriaLabel": "Phrasenschlüssel deaktivieren: {{trigger}}",
+        "enableAriaLabel": "Phrasenschlüssel aktivieren: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "API-Schlüssel",
           "description": "API-Schlüssel für den ausgewählten Anbieter.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Im Systemschlüsselbund gespeichert. Geben Sie einen neuen Wert ein, um ihn zu ersetzen."
         },
         "model": {
           "title": "Modell",
@@ -854,7 +870,13 @@
           "originalLabel": "Normalisiertes Transkript",
           "editedLabel": "Text zum Einfügen",
           "cancel": "Einfügen abbrechen",
-          "apply": "Text einfügen"
+          "apply": "Text einfügen",
+          "translationTitle": "Übersetzung prüfen",
+          "translationDescription": "Bestätigen Sie den übersetzten Text, bevor Vox Jot ihn einfügt oder weiterleitet.",
+          "translatedLabel": "Übersetzt",
+          "finalOutputLabel": "Endausgabe",
+          "destinationPrefix": "Ziel",
+          "resolving": "Vorschau wird angewendet..."
         },
         "disabledMessage": "Aktivieren Sie die Nachbearbeitung, um eine Vorschau der polierten Ausgabe zu testen."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Nicht verfügbar",
     "pause": "Pause",
     "play": "Spielen",
-    "refresh": "Aktualisieren"
+    "refresh": "Aktualisieren",
+    "stop": "Stopp",
+    "disable": "Deaktivieren",
+    "enable": "Aktivieren",
+    "downloadProgress": "Downloadfortschritt",
+    "downloadProgressForItem": "Downloadfortschritt für {{id}}",
+    "percentComplete": "{{percentage}} % abgeschlossen",
+    "downloadingCount": "{{count}} wird heruntergeladen..."
   },
   "accessibility": {
     "permissionsRequired": "Barrierefreiheitsberechtigungen erforderlich",
@@ -2165,7 +2194,8 @@
       "analysis": "Sprachanalyse",
       "llm": "Verfeinern (LLM)",
       "tts": "Stimmen (TTS)",
-      "ocr": "Bildschirm OCR"
+      "ocr": "Bildschirm OCR",
+      "ariaLabel": "Modellkategorien"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Generiertes Audio",
       "generatedAudioDescription": "Aus Studio gerendertes Audio wiedergeben, anzeigen, kopieren, markieren oder entfernen.",
       "dictionaryTitle": "Wörterbuch",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Sprachwechsler",
+      "voiceChangerDescription": "Wandeln Sie aufgezeichnetes oder importiertes WAV-Audio in ein fertiges Stimmprofil um, während Ausdruck und Timing erhalten bleiben."
     },
     "groups": {
       "dictation": "Diktat",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Stimmklonen",
         "studio": "Studio",
         "generatedAudio": "Generiertes Audio",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Sprachwechsler"
       },
       "settings": {
         "general": "App & Diktat",
@@ -2687,6 +2717,11 @@
         "about": "Über Vox Jot",
         "legal": "Rechtliches und Modellbedingungen",
         "automationAgents": "Automatisierung & Agenten"
+      },
+      "groups": {
+        "settingsBasics": "Grundlagen",
+        "settingsIntelligence": "Intelligenz",
+        "settingsSystem": "System"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Datei ASR",
       "llm": "LLM",
       "stt": "Live STT",
-      "screenOcr": "Bildschirm OCR"
+      "screenOcr": "Bildschirm OCR",
+      "ariaLabel": "Benchmark-Suiten"
     },
     "notRanked": {
       "title": "Noch nicht gerankt",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} getestet",
       "pending": "{{count}} ausstehend",
-      "blocked": "{{count}} blockiert"
-    }
+      "blocked": "{{count}} blockiert",
+      "failed": "{{count}} fehlgeschlagen",
+      "downloadRequired": "{{count}} brauchen Download",
+      "runtimeReady": "{{count}} Runtime bereit",
+      "other": "{{count}} andere"
+    },
+    "overview": {
+      "updated": "Aktualisiert {{date}}"
+    },
+    "reportPath": "Bericht: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Wählen Sie eine Option..."
+      "placeholder": "Wählen Sie eine Option...",
+      "ariaLabel": "Option auswählen"
     },
     "pathDisplay": {
       "pathLabel": "Dateisystempfad"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Diktieren",
     "refine": "Verfeinern",
-    "listen": "Hören Sie"
+    "listen": "Hören Sie",
+    "switcherLabel": "Primärer Modus"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Generiertes Story-Audio",

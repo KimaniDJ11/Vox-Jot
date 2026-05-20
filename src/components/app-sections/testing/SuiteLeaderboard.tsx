@@ -30,16 +30,40 @@ interface SuiteLeaderboardProps<T extends EvaluationResult> {
 function countByStatus(results: EvaluationResult[]) {
   return results.reduce(
     (counts, result) => {
-      if (result.status === "tested") {
-        counts.tested += 1;
-      } else if (result.status === "pending") {
-        counts.pending += 1;
-      } else {
-        counts.blocked += 1;
+      switch (result.status) {
+        case "tested":
+          counts.tested += 1;
+          break;
+        case "pending":
+          counts.pending += 1;
+          break;
+        case "blocked":
+          counts.blocked += 1;
+          break;
+        case "failed":
+          counts.failed += 1;
+          break;
+        case "download_required":
+          counts.downloadRequired += 1;
+          break;
+        case "runtime_ready":
+          counts.runtimeReady += 1;
+          break;
+        default:
+          counts.other += 1;
+          break;
       }
       return counts;
     },
-    { tested: 0, pending: 0, blocked: 0 },
+    {
+      tested: 0,
+      pending: 0,
+      blocked: 0,
+      failed: 0,
+      downloadRequired: 0,
+      runtimeReady: 0,
+      other: 0,
+    },
   );
 }
 
@@ -80,26 +104,55 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
             </div>
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
-            <span>
-              {t("testing.counts.tested", {
+            {[
+              t("testing.counts.tested", {
                 defaultValue: "{{count}} tested",
                 count: counts.tested,
-              })}
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              {t("testing.counts.pending", {
-                defaultValue: "{{count}} pending",
-                count: counts.pending,
-              })}
-            </span>
-            <span aria-hidden>·</span>
-            <span>
-              {t("testing.counts.blocked", {
-                defaultValue: "{{count}} blocked",
-                count: counts.blocked,
-              })}
-            </span>
+              }),
+              counts.pending > 0
+                ? t("testing.counts.pending", {
+                    defaultValue: "{{count}} pending",
+                    count: counts.pending,
+                  })
+                : null,
+              counts.blocked > 0
+                ? t("testing.counts.blocked", {
+                    defaultValue: "{{count}} blocked",
+                    count: counts.blocked,
+                  })
+                : null,
+              counts.failed > 0
+                ? t("testing.counts.failed", {
+                    defaultValue: "{{count}} failed",
+                    count: counts.failed,
+                  })
+                : null,
+              counts.downloadRequired > 0
+                ? t("testing.counts.downloadRequired", {
+                    defaultValue: "{{count}} need download",
+                    count: counts.downloadRequired,
+                  })
+                : null,
+              counts.runtimeReady > 0
+                ? t("testing.counts.runtimeReady", {
+                    defaultValue: "{{count}} runtime ready",
+                    count: counts.runtimeReady,
+                  })
+                : null,
+              counts.other > 0
+                ? t("testing.counts.other", {
+                    defaultValue: "{{count}} other",
+                    count: counts.other,
+                  })
+                : null,
+            ]
+              .filter(Boolean)
+              .map((label, index) => (
+                <React.Fragment key={label}>
+                  {index > 0 ? <span aria-hidden>·</span> : null}
+                  <span>{label}</span>
+                </React.Fragment>
+              ))}
           </div>
         </div>
 
@@ -156,13 +209,7 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
             {unranked.map((result) => {
               const row = renderRow(result, t);
               return (
-                <LeaderboardRow
-                  key={result.label}
-                  {...row}
-                  rank={undefined}
-                  metrics={[]}
-                  footer={undefined}
-                />
+                <LeaderboardRow key={result.label} {...row} rank={undefined} />
               );
             })}
           </div>

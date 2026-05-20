@@ -5,6 +5,7 @@ import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
+import { handleHorizontalSegmentedControlKeyDown } from "@/lib/ui/segmentedControlKeyboard";
 import { press, track } from "@/motion/springs";
 
 export type SegmentedControlItem<Value extends string> = {
@@ -35,8 +36,13 @@ export function SegmentedControl<Value extends string>({
   return (
     <LayoutGroup id={indicatorId}>
       <div
-        role="tablist"
+        role="group"
         aria-label={ariaLabel}
+        onKeyDown={(event) =>
+          handleHorizontalSegmentedControlKeyDown(event, {
+            direction: document.dir === "rtl" ? "rtl" : "ltr",
+          })
+        }
         className={[
           "relative inline-flex rounded-full border border-[var(--border)] bg-[var(--panel-bg)] p-0.5",
           className,
@@ -48,8 +54,8 @@ export function SegmentedControl<Value extends string>({
             <motion.button
               key={item.value}
               type="button"
-              role="tab"
-              aria-selected={selected}
+              aria-pressed={selected}
+              data-segmented-control-item="true"
               whileTap={{ scale: 0.97 }}
               transition={press}
               onClick={() => onChange(item.value)}

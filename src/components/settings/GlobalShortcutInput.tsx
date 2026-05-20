@@ -11,6 +11,10 @@ import { useSettings } from "../../hooks/useSettings";
 import { useOsType } from "../../hooks/useOsType";
 import { commands } from "@/bindings";
 import { toast } from "sonner";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
 
 interface GlobalShortcutInputProps {
   descriptionMode?: "inline" | "tooltip";
@@ -34,7 +38,7 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
     null,
   );
   const [originalBinding, setOriginalBinding] = useState<string>("");
-  const shortcutRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const shortcutRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
   const osType = useOsType();
 
   const bindings = getSetting("bindings") || {};
@@ -196,6 +200,7 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
 
   // Start recording a new shortcut
   const startRecording = async (id: string) => {
+    if (disabled) return;
     if (editingShortcutId === id) return; // Already editing this shortcut
 
     // Suspend current binding to avoid firing while recording
@@ -218,7 +223,7 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
   };
 
   // Store references to shortcut elements
-  const setShortcutRef = (id: string, ref: HTMLDivElement | null) => {
+  const setShortcutRef = (id: string, ref: HTMLButtonElement | null) => {
     shortcutRefs.current.set(id, ref);
   };
 
@@ -291,23 +296,30 @@ export const GlobalShortcutInput: React.FC<GlobalShortcutInputProps> = ({
     >
       <div className="flex items-center space-x-1">
         {editingShortcutId === shortcutId ? (
-          <div
+          <button
+            type="button"
             ref={(ref) => setShortcutRef(shortcutId, ref)}
-            className="px-2 py-1 text-sm font-semibold border border-logo-primary bg-logo-primary/30 rounded-md"
+            className={`rounded-md border border-logo-primary bg-logo-primary/30 px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
           >
             {formatCurrentKeys()}
-          </div>
+          </button>
         ) : (
-          <div
-            className="px-2 py-1 text-sm font-semibold bg-mid-gray/10 border border-mid-gray/80 hover:bg-logo-primary/10 rounded-md cursor-pointer hover:border-logo-primary"
+          <button
+            type="button"
+            className={`rounded-md border border-mid-gray/80 bg-mid-gray/10 px-2 py-1 text-sm font-semibold ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
+              disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:border-logo-primary hover:bg-logo-primary/10"
+            }`}
             onClick={() => startRecording(shortcutId)}
+            disabled={disabled}
           >
             {formatKeyCombination(binding.current_binding, osType)}
-          </div>
+          </button>
         )}
         <ResetButton
           onClick={() => resetBinding(shortcutId)}
-          disabled={isUpdating(`binding_${shortcutId}`)}
+          disabled={disabled || isUpdating(`binding_${shortcutId}`)}
         />
       </div>
     </SettingContainer>

@@ -27,7 +27,8 @@
     "about": "소개",
     "settingsLabel": "설정",
     "settingsButton": "설정",
-    "sectionNavigation": "섹션 탐색"
+    "sectionNavigation": "섹션 탐색",
+    "generatedAudioActive": "생성된 오디오 작업 진행 중"
   },
   "onboarding": {
     "subtitle": "시작하려면 텍스트 변환 모델을 선택하세요.",
@@ -193,7 +194,8 @@
       "permissions": "권한",
       "setup": "모델",
       "refine": "구체화",
-      "learn": "첫 번째 받아쓰기"
+      "learn": "첫 번째 받아쓰기",
+      "progress": "온보딩 진행률"
     },
     "refine": {
       "title": "로컬 Refine 엔진을 원하시나요?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "기본 Refine 모델 다운로드",
-        "description": "{{model}}를 당기는 중입니다. 연결 속도가 빠른 경우 일반적으로 1~2분 정도 소요됩니다."
+        "description": "{{model}}를 당기는 중입니다. 연결 속도가 빠른 경우 일반적으로 1~2분 정도 소요됩니다.",
+        "progressLabel": "Refine 모델 다운로드 진행률"
       },
       "ready": {
         "title": "로컬 구체화가 준비되었습니다.",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "더 많은 모델 옵션 보기",
         "hide": "추가 모델 옵션 숨기기"
+      },
+      "installed": {
+        "title": "모델 준비 완료",
+        "description": "{{modelName}}이 이미 설치되어 있습니다. 이 모델로 계속하세요.",
+        "continue": "계속"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     },
     "deleteConfirm": "{{modelName}}를 삭제하시겠습니까? 파일이 디스크에서 제거됩니다.",
     "deleteActiveConfirm": "{{modelName}}를 삭제하시겠습니까? 이는 활성 모델입니다. 지시하려면 다른 모델을 선택해야 합니다.",
-    "confirmDelete": "삭제"
+    "confirmDelete": "삭제",
+    "downloadProgressLabel": "모델 {{modelId}} 다운로드 중",
+    "downloadProgress": "모델 다운로드 진행률",
+    "switcherAriaLabel": "현재 모델: {{model}}. 모델 전환기를 엽니다.",
+    "waitingForData": "데이터를 기다리는 중..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "구문 키를 가져오지 못했습니다.",
         "importJsonOnly": "JSON 구문 키 파일을 선택하세요.",
         "importTooLarge": "파일이 너무 커서 가져올 수 없습니다.",
-        "duplicateTrigger": "문구 키는 이미 해당 음성 트리거를 사용하고 있습니다."
+        "duplicateTrigger": "문구 키는 이미 해당 음성 트리거를 사용하고 있습니다.",
+        "deleteConfirm": "구문 키 \"{{trigger}}\"을(를) 삭제할까요?",
+        "disableAriaLabel": "구문 키 비활성화: {{trigger}}",
+        "enableAriaLabel": "구문 키 활성화: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "API 키",
           "description": "선택한 공급자의 API 키입니다.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "시스템 키체인에 저장되었습니다. 바꾸려면 새 값을 입력하세요."
         },
         "model": {
           "title": "모델",
@@ -854,7 +870,13 @@
           "originalLabel": "정규화된 성적표",
           "editedLabel": "붙여넣을 텍스트",
           "cancel": "붙여넣기 취소",
-          "apply": "텍스트 붙여넣기"
+          "apply": "텍스트 붙여넣기",
+          "translationTitle": "번역 검토",
+          "translationDescription": "Vox Jot이 붙여넣거나 라우팅하기 전에 번역된 텍스트를 확인하세요.",
+          "translatedLabel": "번역됨",
+          "finalOutputLabel": "최종 출력",
+          "destinationPrefix": "대상",
+          "resolving": "미리보기 적용 중..."
         },
         "disabledMessage": "세련된 출력을 미리 보려면 포스트 프로세스를 켜십시오."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "사용할 수 없음",
     "pause": "일시중지",
     "play": "플레이",
-    "refresh": "새로고침"
+    "refresh": "새로고침",
+    "stop": "중지",
+    "disable": "비활성화",
+    "enable": "활성화",
+    "downloadProgress": "다운로드 진행률",
+    "downloadProgressForItem": "{{id}} 다운로드 진행률",
+    "percentComplete": "{{percentage}}% 완료",
+    "downloadingCount": "{{count}}개 다운로드 중..."
   },
   "accessibility": {
     "permissionsRequired": "접근성 권한이 필요합니다",
@@ -2165,7 +2194,8 @@
       "analysis": "음성 분석",
       "llm": "개선(LLM)",
       "tts": "음색(TTS)",
-      "ocr": "스크린 OCR"
+      "ocr": "스크린 OCR",
+      "ariaLabel": "모델 카테고리"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "생성된 오디오",
       "generatedAudioDescription": "Studio에서 렌더링된 오디오를 재생, 공개, 복사, 별표 표시 또는 제거합니다.",
       "dictionaryTitle": "사전",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "보이스 체인저",
+      "voiceChangerDescription": "녹음했거나 가져온 WAV 오디오를 말투와 타이밍을 유지한 채 바로 쓸 수 있는 음성 프로필로 변환합니다."
     },
     "groups": {
       "dictation": "받아쓰기",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "음성 복제",
         "studio": "스튜디오",
         "generatedAudio": "생성된 오디오",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "보이스 체인저"
       },
       "settings": {
         "general": "앱 및 받아쓰기",
@@ -2687,6 +2717,11 @@
         "about": "Vox Jotについて",
         "legal": "법적 및 모델 약관",
         "automationAgents": "자동화 및 에이전트"
+      },
+      "groups": {
+        "settingsBasics": "기본",
+        "settingsIntelligence": "지능",
+        "settingsSystem": "시스템"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "파일 ASR",
       "llm": "LLM",
       "stt": "라이브 STT",
-      "screenOcr": "스크린 OCR"
+      "screenOcr": "스크린 OCR",
+      "ariaLabel": "벤치마크 모음"
     },
     "notRanked": {
       "title": "아직 순위가 정해지지 않았습니다",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} 테스트됨",
       "pending": "{{count}} 보류 중",
-      "blocked": "{{count}}가 차단됨"
-    }
+      "blocked": "{{count}}가 차단됨",
+      "failed": "{{count}}개 실패",
+      "downloadRequired": "{{count}}개 다운로드 필요",
+      "runtimeReady": "{{count}}개 런타임 준비됨",
+      "other": "{{count}}개 기타"
+    },
+    "overview": {
+      "updated": "{{date}} 업데이트됨"
+    },
+    "reportPath": "보고서: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "옵션을 선택하세요..."
+      "placeholder": "옵션을 선택하세요...",
+      "ariaLabel": "옵션 선택"
     },
     "pathDisplay": {
       "pathLabel": "파일 시스템 경로"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "받아쓰기",
     "refine": "구체화",
-    "listen": "들어봐"
+    "listen": "들어봐",
+    "switcherLabel": "기본 모드"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "생성된 스토리 오디오",

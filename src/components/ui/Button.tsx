@@ -37,7 +37,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      "border-[var(--accent)] bg-[var(--accent)] text-[var(--inverse-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
+      "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)] active:translate-y-px",
     "primary-soft":
       "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_85%)]",
     secondary:
@@ -58,8 +58,9 @@ export const Button: React.FC<ButtonProps> = ({
     lg: "min-h-[48px] px-5 py-2.5 text-base",
     icon: "h-11 w-11 shrink-0 p-0 [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0",
     "icon-sm":
-      "h-8 w-8 shrink-0 p-0 [&>svg]:h-[14px] [&>svg]:w-[14px] [&>svg]:shrink-0",
-    "icon-xs": "h-6 w-6 shrink-0 p-0 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0",
+      "h-11 w-11 shrink-0 p-0 [&>svg]:h-[14px] [&>svg]:w-[14px] [&>svg]:shrink-0",
+    "icon-xs":
+      "h-11 w-11 shrink-0 p-0 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0",
   };
 
   return (

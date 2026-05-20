@@ -31,6 +31,7 @@ import { SegmentedControl } from "../../ui/SegmentedControl";
 import { pickJsonFileText } from "@/lib/fileIo";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 type CorrectionViewMode = "corrections" | "dictionary";
 
@@ -351,6 +352,13 @@ export const CorrectionDictionaryView: React.FC<
   const [testOverlayMessage, setTestOverlayMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
   const manualOriginalRef = useRef<HTMLInputElement>(null);
+  const manualDialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocusTrap({
+    enabled: showManualEditor,
+    containerRef: manualDialogRef,
+    initialFocusSelector: '[data-manual-correction-original="true"]',
+  });
 
   const loadCorrections = useCallback(async () => {
     try {
@@ -374,24 +382,6 @@ export const CorrectionDictionaryView: React.FC<
       addInputRef.current.focus();
     }
   }, [addingTo]);
-
-  useEffect(() => {
-    if (showManualEditor && manualOriginalRef.current) {
-      manualOriginalRef.current.focus();
-    }
-  }, [showManualEditor]);
-
-  useEffect(() => {
-    if (!showManualEditor) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        resetManualEditor();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showManualEditor]);
 
   const handleDelete = async (id: number) => {
     const entry = corrections.find((correction) => correction.id === id);
@@ -798,6 +788,7 @@ export const CorrectionDictionaryView: React.FC<
             aria-hidden="true"
           />
           <motion.div
+            ref={manualDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-correction-title"
@@ -807,6 +798,13 @@ export const CorrectionDictionaryView: React.FC<
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) =>
+              handleDialogKeyDown(
+                event,
+                manualDialogRef.current,
+                resetManualEditor,
+              )
+            }
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2
@@ -835,6 +833,7 @@ export const CorrectionDictionaryView: React.FC<
                 </span>
                 <input
                   ref={manualOriginalRef}
+                  data-manual-correction-original="true"
                   value={manualDraft.original}
                   onChange={(event) =>
                     setManualDraft((current) => ({

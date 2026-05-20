@@ -157,6 +157,12 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   const { t } = useTranslation();
   const isClickable = Boolean(onClick) && !disabled;
   const isFeatured = variant === "featured";
+  const hasNestedInteractive =
+    Boolean(downloadState?.onCancel) ||
+    Boolean(footerExtra) ||
+    Boolean(footerMetaLeadingActions) ||
+    Boolean(footerMetaLinks?.length) ||
+    Boolean(trailing);
 
   const variantClasses = isFeatured
     ? "border-2 border-logo-primary/25 bg-logo-primary/5 shadow-[var(--shadow-sm)]"
@@ -176,6 +182,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
     onKeyDown?.(event);
     if (!isClickable) return;
     if (event.key === "Enter" || event.key === " ") {
@@ -197,6 +204,7 @@ const HubModelCard: React.FC<HubModelCardProps> = ({
     <div
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
+      aria-label={hasNestedInteractive && isClickable ? title : undefined}
       aria-disabled={disabled || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -513,6 +521,7 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
             event.stopPropagation();
             state.onCancel?.();
           }}
+          onKeyDown={(event) => event.stopPropagation()}
           className="relative z-10"
         >
           {state.cancelling ? (
@@ -555,6 +564,7 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
             event.stopPropagation();
             onClick?.();
           }}
+          onKeyDown={(event) => event.stopPropagation()}
           className="text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
         >
           {busy ? (
@@ -580,6 +590,7 @@ function renderTrailing(trailing: HubTrailing): React.ReactNode {
         event.stopPropagation();
         onClick?.();
       }}
+      onKeyDown={(event) => event.stopPropagation()}
       className="shrink-0 text-[var(--accent)] hover:bg-logo-primary/10 hover:text-[var(--accent)]"
     >
       {busy ? (

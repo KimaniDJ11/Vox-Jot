@@ -27,7 +27,8 @@
     "about": "Hakkında",
     "settingsLabel": "Ayarlar",
     "settingsButton": "Ayarlar",
-    "sectionNavigation": "Bölüm navigasyonu"
+    "sectionNavigation": "Bölüm navigasyonu",
+    "generatedAudioActive": "Oluşturulan ses etkinliği sürüyor"
   },
   "onboarding": {
     "subtitle": "Başlamak için bir transkripsiyon modeli seçin",
@@ -193,7 +194,8 @@
       "permissions": "İzinler",
       "setup": "Modeli",
       "refine": "Hassaslaştır",
-      "learn": "İlk Dikte"
+      "learn": "İlk Dikte",
+      "progress": "Başlangıç ilerlemesi"
     },
     "refine": {
       "title": "Yerel bir Refine motoru mu istiyorsunuz?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Varsayılan Hassaslaştırma modelini indirme",
-        "description": "{{model}} çekiliyor. Bu genellikle hızlı bir bağlantıda bir veya iki dakika sürer."
+        "description": "{{model}} çekiliyor. Bu genellikle hızlı bir bağlantıda bir veya iki dakika sürer.",
+        "progressLabel": "Refine modeli indirme ilerlemesi"
       },
       "ready": {
         "title": "Yerel İnceltme hazır",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Daha fazla model seçeneği göster",
         "hide": "Ekstra model seçeneklerini gizle"
+      },
+      "installed": {
+        "title": "Model hazır",
+        "description": "{{modelName}} zaten yüklü. Bu modelle devam edin.",
+        "continue": "Devam et"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "İndirmeyi iptal et",
     "deleteConfirm": "{{modelName}} silinsin mi? Dosyalar diskten kaldırılacaktır.",
     "deleteActiveConfirm": "{{modelName}} silinsin mi? Bu aktif modeldir; dikte etmek için başka bir model seçmeniz gerekecektir.",
-    "confirmDelete": "Sil"
+    "confirmDelete": "Sil",
+    "downloadProgressLabel": "{{modelId}} modeli indiriliyor",
+    "downloadProgress": "Model indirme ilerlemesi",
+    "switcherAriaLabel": "Geçerli model: {{model}}. Model değiştiriciyi aç.",
+    "waitingForData": "Veri bekleniyor..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "İfade anahtarları içe aktarılamadı.",
         "importJsonOnly": "Bir JSON ifade anahtarları dosyası seçin.",
         "importTooLarge": "Bu dosya içe aktarılamayacak kadar büyük.",
-        "duplicateTrigger": "Bir cümle anahtarı zaten bu sözlü tetikleyiciyi kullanıyor."
+        "duplicateTrigger": "Bir cümle anahtarı zaten bu sözlü tetikleyiciyi kullanıyor.",
+        "deleteConfirm": "\"{{trigger}}\" ifade anahtarı silinsin mi?",
+        "disableAriaLabel": "İfade anahtarını devre dışı bırak: {{trigger}}",
+        "enableAriaLabel": "İfade anahtarını etkinleştir: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "API Anahtarı",
           "description": "Seçilen sağlayıcı için API anahtarı.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Sistem anahtar zincirinde saklanıyor. Değiştirmek için yeni bir değer girin."
         },
         "model": {
           "title": "Modeli",
@@ -854,7 +870,13 @@
           "originalLabel": "Normalleştirilmiş transkript",
           "editedLabel": "Yapıştırılacak metin",
           "cancel": "Yapıştırmayı iptal et",
-          "apply": "Metni yapıştır"
+          "apply": "Metni yapıştır",
+          "translationTitle": "Çeviriyi gözden geçir",
+          "translationDescription": "Vox Jot yapıştırmadan veya yönlendirmeden önce çevrilmiş metni onaylayın.",
+          "translatedLabel": "Çevrildi",
+          "finalOutputLabel": "Son çıktı",
+          "destinationPrefix": "Hedef",
+          "resolving": "Önizleme uygulanıyor..."
         },
         "disabledMessage": "Gösterişli çıktının önizlemesini denemek için Post Process'i açın."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Mevcut değil",
     "pause": "Duraklat",
     "play": "Oyna",
-    "refresh": "Yenile"
+    "refresh": "Yenile",
+    "stop": "Durdur",
+    "disable": "Devre dışı bırak",
+    "enable": "Etkinleştir",
+    "downloadProgress": "İndirme ilerlemesi",
+    "downloadProgressForItem": "{{id}} için indirme ilerlemesi",
+    "percentComplete": "%{{percentage}} tamamlandı",
+    "downloadingCount": "{{count}} indiriliyor..."
   },
   "accessibility": {
     "permissionsRequired": "Erişilebilirlik İzinleri Gerekli",
@@ -2165,7 +2194,8 @@
       "analysis": "Konuşma Analizi",
       "llm": "İncelt (LLM)",
       "tts": "Sesler (TTS)",
-      "ocr": "Ekran OCR"
+      "ocr": "Ekran OCR",
+      "ariaLabel": "Model kategorileri"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Oluşturulan ses",
       "generatedAudioDescription": "Studio'da oluşturulan sesi yeniden oynatın, ortaya çıkarın, kopyalayın, yıldız ekleyin veya kaldırın.",
       "dictionaryTitle": "Sözlük",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Ses Değiştirici",
+      "voiceChangerDescription": "Kaydedilmiş veya içe aktarılmış WAV sesini, tonlama ve zamanlamayı koruyarak hazır bir ses profiline dönüştürün."
     },
     "groups": {
       "dictation": "Dikte",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Ses Klonlama",
         "studio": "stüdyo",
         "generatedAudio": "Oluşturulan Ses",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Ses Değiştirici"
       },
       "settings": {
         "general": "Uygulama ve Dikte",
@@ -2687,6 +2717,11 @@
         "about": "Vox Jot Hakkında",
         "legal": "Yasal ve Model Şartları",
         "automationAgents": "Otomasyon ve aracılar"
+      },
+      "groups": {
+        "settingsBasics": "Temel bilgiler",
+        "settingsIntelligence": "Zeka",
+        "settingsSystem": "Sistem"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Dosya ASR",
       "llm": "LLM",
       "stt": "Canlı STT",
-      "screenOcr": "Ekran OCR"
+      "screenOcr": "Ekran OCR",
+      "ariaLabel": "Benchmark paketleri"
     },
     "notRanked": {
       "title": "Henüz sıralanmadı",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} test edildi",
       "pending": "{{count}} beklemede",
-      "blocked": "{{count}} engellendi"
-    }
+      "blocked": "{{count}} engellendi",
+      "failed": "{{count}} başarısız",
+      "downloadRequired": "{{count}} indirme gerektiriyor",
+      "runtimeReady": "{{count}} çalışma zamanı hazır",
+      "other": "{{count}} diğer"
+    },
+    "overview": {
+      "updated": "{{date}} tarihinde güncellendi"
+    },
+    "reportPath": "Rapor: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Bir seçenek seçin..."
+      "placeholder": "Bir seçenek seçin...",
+      "ariaLabel": "Bir seçenek seçin"
     },
     "pathDisplay": {
       "pathLabel": "Dosya sistemi yolu"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Dikte et",
     "refine": "Hassaslaştır",
-    "listen": "Dinle"
+    "listen": "Dinle",
+    "switcherLabel": "Birincil mod"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Oluşturulan hikaye sesi",

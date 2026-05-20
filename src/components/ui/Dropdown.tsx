@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -12,6 +13,8 @@ import {
   interactiveFocusRingClass,
   minTapTargetHeightClass,
 } from "@/lib/interactiveFocus";
+
+import { useSettingAccessibilityContext } from "./settingAccessibilityContext";
 
 export interface DropdownOption {
   value: string;
@@ -27,6 +30,7 @@ interface DropdownProps {
   placeholder?: string;
   disabled?: boolean;
   onRefresh?: () => void;
+  ariaLabel?: string;
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
@@ -37,15 +41,27 @@ export const Dropdown: React.FC<DropdownProps> = ({
   placeholder,
   disabled = false,
   onRefresh,
+  ariaLabel,
 }) => {
   const { t } = useTranslation();
+  const settingAccessibility = useSettingAccessibilityContext();
+  const triggerId = useId();
+  const listboxId = useId();
+  const resolvedAriaLabel =
+    ariaLabel ??
+    settingAccessibility.label ??
+    t("ui.dropdown.ariaLabel", {
+      defaultValue: "Select an option",
+    });
   const resolvedPlaceholder =
     placeholder ??
     t("ui.dropdown.placeholder", { defaultValue: "Select an option..." });
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [menuRect, setMenuRect] = useState<{
     top: number;
     left: number;
@@ -92,10 +108,52 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const selectedOption = options.find(
     (option) => option.value === selectedValue,
   );
+  const triggerAccessibleName = selectedOption?.label
+    ? `${resolvedAriaLabel}: ${selectedOption.label}`
+    : resolvedAriaLabel;
+  const selectedIndex = options.findIndex(
+    (option) => option.value === selectedValue && !option.disabled,
+  );
+  const firstEnabledIndex = options.findIndex((option) => !option.disabled);
+  const reverseEnabledIndex = [...options]
+    .reverse()
+    .findIndex((option) => !option.disabled);
+  const lastEnabledIndex =
+    reverseEnabledIndex >= 0 ? options.length - 1 - reverseEnabledIndex : -1;
+
+  const getNextEnabledIndex = (fromIndex: number, direction: 1 | -1) => {
+    if (options.length === 0 || firstEnabledIndex < 0) {
+      return 0;
+    }
+
+    let nextIndex = fromIndex;
+    for (let i = 0; i < options.length; i += 1) {
+      nextIndex = (nextIndex + direction + options.length) % options.length;
+      if (!options[nextIndex]?.disabled) {
+        return nextIndex;
+      }
+    }
+
+    return firstEnabledIndex;
+  };
 
   const handleSelect = (value: string) => {
     onSelect(value);
     setIsOpen(false);
+    requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+
+  const openDropdown = (
+    initialIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex,
+  ) => {
+    if (disabled) return;
+    if (onRefresh) onRefresh();
+    if (buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      setMenuRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setActiveIndex(Math.max(0, initialIndex));
+    setIsOpen(true);
   };
 
   const handleToggle = () => {
@@ -105,12 +163,56 @@ export const Dropdown: React.FC<DropdownProps> = ({
       setMenuRect(null);
       return;
     }
-    if (onRefresh) onRefresh();
-    if (buttonRef.current) {
-      const r = buttonRef.current.getBoundingClientRect();
-      setMenuRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    openDropdown();
+  };
+
+  useEffect(() => {
+    if (!isOpen || options.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      optionRefs.current[activeIndex]?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeIndex, isOpen, options.length]);
+
+  const handleTriggerKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (
+    event,
+  ) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      openDropdown(firstEnabledIndex);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      openDropdown(
+        lastEnabledIndex >= 0 ? lastEnabledIndex : firstEnabledIndex,
+      );
+    } else if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      setIsOpen(false);
+      setMenuRect(null);
     }
-    setIsOpen(true);
+  };
+
+  const handleMenuKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (
+    event,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsOpen(false);
+      setMenuRect(null);
+      requestAnimationFrame(() => buttonRef.current?.focus());
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => getNextEnabledIndex(index, 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => getNextEnabledIndex(index, -1));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(firstEnabledIndex >= 0 ? firstEnabledIndex : 0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(lastEnabledIndex >= 0 ? lastEnabledIndex : 0);
+    }
   };
 
   const menuPanel =
@@ -119,6 +221,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
         ref={menuRef}
         className="fixed z-[200] max-h-[min(15rem,70vh)] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-lg)]"
         role="listbox"
+        id={listboxId}
+        aria-labelledby={triggerId}
+        onKeyDown={handleMenuKeyDown}
         style={{
           top: menuRect.top,
           left: menuRect.left,
@@ -130,12 +235,16 @@ export const Dropdown: React.FC<DropdownProps> = ({
             {t("common.noOptionsFound")}
           </div>
         ) : (
-          options.map((option) => (
+          options.map((option, index) => (
             <button
               key={option.value}
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
               type="button"
               role="option"
               aria-selected={selectedValue === option.value}
+              tabIndex={index === activeIndex ? 0 : -1}
               className={`w-full px-3 py-2.5 text-start text-[14px] transition-colors duration-150 ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${
                 selectedValue === option.value
                   ? "bg-[var(--accent-soft)] font-semibold !text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent),transparent_86%)]"
@@ -162,7 +271,13 @@ export const Dropdown: React.FC<DropdownProps> = ({
             : "hover:bg-[color-mix(in_srgb,var(--accent),transparent_92%)] cursor-pointer hover:border-[var(--accent)]"
         }`}
         onClick={handleToggle}
+        onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
+        id={triggerId}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-label={triggerAccessibleName}
       >
         <span className="truncate">
           {selectedOption?.label || resolvedPlaceholder}

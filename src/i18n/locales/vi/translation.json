@@ -27,7 +27,8 @@
     "about": "Giới thiệu",
     "settingsLabel": "Cài đặt",
     "settingsButton": "Cài đặt",
-    "sectionNavigation": "Điều hướng phần"
+    "sectionNavigation": "Điều hướng phần",
+    "generatedAudioActive": "Hoạt động âm thanh đã tạo đang diễn ra"
   },
   "onboarding": {
     "subtitle": "Để bắt đầu, hãy chọn một mô hình chép lời",
@@ -193,7 +194,8 @@
       "permissions": "Quyền",
       "setup": "người mẫu",
       "refine": "Tinh chỉnh",
-      "learn": "Đọc chính tả đầu tiên"
+      "learn": "Đọc chính tả đầu tiên",
+      "progress": "Tiến trình thiết lập ban đầu"
     },
     "refine": {
       "title": "Muốn có một công cụ Refine cục bộ?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Đang tải xuống mô hình Tinh chỉnh mặc định",
-        "description": "Đang kéo {{model}}. Quá trình này thường mất một hoặc hai phút đối với kết nối nhanh."
+        "description": "Đang kéo {{model}}. Quá trình này thường mất một hoặc hai phút đối với kết nối nhanh.",
+        "progressLabel": "Tiến trình tải xuống mô hình Refine"
       },
       "ready": {
         "title": "Tinh chỉnh cục bộ đã sẵn sàng",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Hiển thị thêm tùy chọn mô hình",
         "hide": "Ẩn các tùy chọn mô hình bổ sung"
+      },
+      "installed": {
+        "title": "Mô hình đã sẵn sàng",
+        "description": "{{modelName}} đã được cài đặt. Tiếp tục với mô hình này.",
+        "continue": "Tiếp tục"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Hủy tải xuống",
     "deleteConfirm": "Xóa {{modelName}}? Các tập tin sẽ bị xóa khỏi đĩa.",
     "deleteActiveConfirm": "Xóa {{modelName}}? Đó là mô hình đang hoạt động - bạn sẽ cần chọn một mô hình khác để ra lệnh.",
-    "confirmDelete": "Xóa"
+    "confirmDelete": "Xóa",
+    "downloadProgressLabel": "Đang tải xuống mô hình {{modelId}}",
+    "downloadProgress": "Tiến trình tải xuống mô hình",
+    "switcherAriaLabel": "Mô hình hiện tại: {{model}}. Mở bộ chuyển mô hình.",
+    "waitingForData": "Đang chờ dữ liệu..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Không thể nhập khóa cụm từ.",
         "importJsonOnly": "Chọn tệp khóa cụm từ JSON.",
         "importTooLarge": "Tệp đó quá lớn để nhập.",
-        "duplicateTrigger": "Khóa cụm từ đã sử dụng trình kích hoạt bằng giọng nói đó."
+        "duplicateTrigger": "Khóa cụm từ đã sử dụng trình kích hoạt bằng giọng nói đó.",
+        "deleteConfirm": "Xóa phím cụm từ \"{{trigger}}\"?",
+        "disableAriaLabel": "Tắt phím cụm từ: {{trigger}}",
+        "enableAriaLabel": "Bật phím cụm từ: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "Khóa API",
           "description": "Khóa API cho nhà cung cấp đã chọn.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Đã lưu trong chuỗi khóa hệ thống. Nhập giá trị mới để thay thế."
         },
         "model": {
           "title": "người mẫu",
@@ -833,7 +849,13 @@
           "originalLabel": "Bản ghi chuẩn hóa",
           "editedLabel": "Văn bản để dán",
           "cancel": "Hủy dán",
-          "apply": "Dán văn bản"
+          "apply": "Dán văn bản",
+          "translationTitle": "Xem lại bản dịch",
+          "translationDescription": "Xác nhận văn bản đã dịch trước khi Vox Jot dán hoặc định tuyến nó.",
+          "translatedLabel": "Đã dịch",
+          "finalOutputLabel": "Đầu ra cuối cùng",
+          "destinationPrefix": "Đích",
+          "resolving": "Đang áp dụng bản xem trước..."
         },
         "disabledMessage": "Bật Quá trình đăng bài để thử xem trước đầu ra đã được đánh bóng."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Không có sẵn",
     "pause": "Tạm dừng",
     "play": "Chơi",
-    "refresh": "Làm mới"
+    "refresh": "Làm mới",
+    "stop": "Dừng",
+    "disable": "Tắt",
+    "enable": "Bật",
+    "downloadProgress": "Tiến trình tải xuống",
+    "downloadProgressForItem": "Tiến trình tải xuống cho {{id}}",
+    "percentComplete": "Hoàn tất {{percentage}}%",
+    "downloadingCount": "{{count}} đang tải xuống..."
   },
   "accessibility": {
     "permissionsRequired": "Cần có quyền truy cập",
@@ -2165,7 +2194,8 @@
       "analysis": "Phân tích giọng nói",
       "llm": "Tinh chỉnh (LLM)",
       "tts": "Giọng nói (TTS)",
-      "ocr": "Màn hình OCR"
+      "ocr": "Màn hình OCR",
+      "ariaLabel": "Danh mục mô hình"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Âm thanh được tạo",
       "generatedAudioDescription": "Phát lại, tiết lộ, sao chép, gắn dấu sao hoặc xóa âm thanh được kết xuất khỏi Studio.",
       "dictionaryTitle": "từ điển",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Thay đổi giọng nói",
+      "voiceChangerDescription": "Chuyển đổi âm thanh WAV đã ghi hoặc đã nhập thành hồ sơ giọng nói sẵn sàng, giữ nguyên cách thể hiện và nhịp thời gian."
     },
     "groups": {
       "dictation": "chính tả",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Nhân bản giọng nói",
         "studio": "Studio",
         "generatedAudio": "Âm thanh được tạo",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Thay đổi giọng nói"
       },
       "settings": {
         "general": "Ứng dụng & Đọc chính tả",
@@ -2687,6 +2717,11 @@
         "about": "Giới thiệu về Vox Jot",
         "legal": "Điều khoản pháp lý và mô hình",
         "automationAgents": "Tự động hóa và tác nhân"
+      },
+      "groups": {
+        "settingsBasics": "Cơ bản",
+        "settingsIntelligence": "Trí tuệ",
+        "settingsSystem": "Hệ thống"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Tệp ASR",
       "llm": "LLM",
       "stt": "Trực tiếp STT",
-      "screenOcr": "Màn hình OCR"
+      "screenOcr": "Màn hình OCR",
+      "ariaLabel": "Bộ benchmark"
     },
     "notRanked": {
       "title": "Chưa được xếp hạng",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} đã được thử nghiệm",
       "pending": "{{count}} đang chờ xử lý",
-      "blocked": "{{count}} bị chặn"
-    }
+      "blocked": "{{count}} bị chặn",
+      "failed": "{{count}} thất bại",
+      "downloadRequired": "{{count}} cần tải xuống",
+      "runtimeReady": "{{count}} runtime sẵn sàng",
+      "other": "{{count}} khác"
+    },
+    "overview": {
+      "updated": "Đã cập nhật {{date}}"
+    },
+    "reportPath": "Báo cáo: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Chọn một tùy chọn..."
+      "placeholder": "Chọn một tùy chọn...",
+      "ariaLabel": "Chọn một tùy chọn"
     },
     "pathDisplay": {
       "pathLabel": "Đường dẫn hệ thống tập tin"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Ra lệnh",
     "refine": "Tinh chỉnh",
-    "listen": "Nghe"
+    "listen": "Nghe",
+    "switcherLabel": "Chế độ chính"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Âm thanh câu chuyện được tạo",

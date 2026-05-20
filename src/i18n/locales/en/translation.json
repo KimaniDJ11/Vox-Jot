@@ -1,7 +1,8 @@
 {
   "ui": {
     "dropdown": {
-      "placeholder": "Select an option..."
+      "placeholder": "Select an option...",
+      "ariaLabel": "Select an option"
     },
     "pathDisplay": {
       "pathLabel": "Filesystem path"
@@ -327,7 +328,8 @@
     "debug": "Debug",
     "about": "About",
     "settingsButton": "Settings",
-    "sectionNavigation": "Section navigation"
+    "sectionNavigation": "Section navigation",
+    "generatedAudioActive": "Generated audio activity in progress"
   },
   "onboarding": {
     "subtitle": "To get started, choose a transcription model",
@@ -493,7 +495,8 @@
       "permissions": "Permissions",
       "setup": "Model",
       "refine": "Refine",
-      "learn": "First Dictation"
+      "learn": "First Dictation",
+      "progress": "Onboarding progress"
     },
     "refine": {
       "title": "Want a local Refine engine?",
@@ -516,7 +519,8 @@
       },
       "pulling": {
         "title": "Downloading the default Refine model",
-        "description": "Pulling {{model}}. This usually takes a minute or two on a fast connection."
+        "description": "Pulling {{model}}. This usually takes a minute or two on a fast connection.",
+        "progressLabel": "Refine model download progress"
       },
       "ready": {
         "title": "Local Refine is ready",
@@ -567,6 +571,11 @@
       "advanced": {
         "show": "Show more model options",
         "hide": "Hide extra model options"
+      },
+      "installed": {
+        "title": "Model ready",
+        "description": "{{modelName}} is already installed. Continue with this model.",
+        "continue": "Continue"
       }
     },
     "firstDictation": {
@@ -636,7 +645,11 @@
       "languageOnly": "{{language}} Only",
       "translation": "Can translate to English",
       "translate": "Translate to English"
-    }
+    },
+    "downloadProgressLabel": "Downloading model {{modelId}}",
+    "downloadProgress": "Model download progress",
+    "switcherAriaLabel": "Current model: {{model}}. Open model switcher.",
+    "waitingForData": "Waiting for data..."
   },
   "settings": {
     "diagnostics": {
@@ -821,7 +834,10 @@
         "trigger": "Spoken trigger",
         "expansion": "Expands to",
         "triggerPlaceholder": "What you say (e.g. my email)",
-        "expansionPlaceholder": "What gets typed (e.g. user@example.com)"
+        "expansionPlaceholder": "What gets typed (e.g. user@example.com)",
+        "deleteConfirm": "Delete phrase key \"{{trigger}}\"?",
+        "disableAriaLabel": "Disable phrase key: {{trigger}}",
+        "enableAriaLabel": "Enable phrase key: {{trigger}}"
       }
     },
     "styles": {
@@ -1186,7 +1202,8 @@
         "apiKey": {
           "title": "API Key",
           "description": "API key for the selected provider.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Stored in system keychain. Enter a new value to replace it."
         },
         "model": {
           "title": "Model",
@@ -1315,7 +1332,13 @@
           "originalLabel": "Normalized transcript",
           "editedLabel": "Text to paste",
           "cancel": "Cancel paste",
-          "apply": "Paste text"
+          "apply": "Paste text",
+          "translationTitle": "Review Translation",
+          "translationDescription": "Confirm the translated text before Vox Jot pastes or routes it.",
+          "translatedLabel": "Translated",
+          "finalOutputLabel": "Final output",
+          "destinationPrefix": "Destination",
+          "resolving": "Applying preview..."
         },
         "disabledMessage": "Turn on Post Process to try previewing polished output."
       },
@@ -1803,7 +1826,8 @@
       "analysis": "Speech Analysis",
       "llm": "Refine (LLM)",
       "tts": "Voices (TTS)",
-      "ocr": "Screen OCR"
+      "ocr": "Screen OCR",
+      "ariaLabel": "Model categories"
     }
   },
   "titleBar": {
@@ -1869,7 +1893,14 @@
     "notAvailable": "Not available",
     "pause": "Pause",
     "play": "Play",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "stop": "Stop",
+    "disable": "Disable",
+    "enable": "Enable",
+    "downloadProgress": "Download progress",
+    "downloadProgressForItem": "Download progress for {{id}}",
+    "percentComplete": "{{percentage}}% complete",
+    "downloadingCount": "{{count}} downloading..."
   },
   "accessibility": {
     "permissionsRequired": "Accessibility Permissions Required",
@@ -2514,6 +2545,11 @@
         "automationAgents": "Automation & Agents",
         "diagnostics": "Diagnostics",
         "about": "About Vox Jot"
+      },
+      "groups": {
+        "settingsBasics": "Basics",
+        "settingsIntelligence": "Intelligence",
+        "settingsSystem": "System"
       }
     },
     "cross": {
@@ -2836,7 +2872,8 @@
       "fileAsr": "File ASR",
       "llm": "LLM",
       "stt": "Live STT",
-      "screenOcr": "Screen OCR"
+      "screenOcr": "Screen OCR",
+      "ariaLabel": "Benchmark suites"
     },
     "notRanked": {
       "title": "Not yet ranked",
@@ -2862,8 +2899,16 @@
     "counts": {
       "tested": "{{count}} tested",
       "pending": "{{count}} pending",
-      "blocked": "{{count}} blocked"
-    }
+      "blocked": "{{count}} blocked",
+      "failed": "{{count}} failed",
+      "downloadRequired": "{{count}} need download",
+      "runtimeReady": "{{count}} runtime ready",
+      "other": "{{count}} other"
+    },
+    "overview": {
+      "updated": "Updated {{date}}"
+    },
+    "reportPath": "Report: {{path}}"
   },
   "translationSettings": {
     "sections": {
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Dictate",
     "refine": "Refine",
-    "listen": "Listen"
+    "listen": "Listen",
+    "switcherLabel": "Primary mode"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Generated story audio",

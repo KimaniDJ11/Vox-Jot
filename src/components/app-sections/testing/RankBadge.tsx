@@ -6,7 +6,7 @@ interface RankBadgeProps {
 
 function rankClassName(rank?: number): string {
   if (rank === 1) {
-    return "border-[color-mix(in_srgb,var(--accent-gold)_58%,var(--border))] bg-[color-mix(in_srgb,var(--accent-gold)_14%,transparent)] text-[var(--accent-gold)]";
+    return "border-[color-mix(in_srgb,var(--accent-gold)_58%,var(--border))] bg-[color-mix(in_srgb,var(--accent-gold)_14%,transparent)] text-[var(--accent-gold-hover)]";
   }
   if (rank === 2) {
     return "border-[color-mix(in_srgb,var(--text)_42%,var(--border))] bg-[color-mix(in_srgb,var(--text)_8%,transparent)] text-[color-mix(in_srgb,var(--text)_60%,var(--bg))]";

@@ -129,7 +129,7 @@ const PostProcessingSettingsApiComponent: React.FC<ProviderSectionProps> = ({
                   state.hasApiKey
                     ? t("settings.postProcessing.api.apiKey.savedPlaceholder", {
                         defaultValue:
-                          "Stored in system keychain. Enter a new value to replace it, or leave blank to clear it.",
+                          "Stored in system keychain. Enter a new value to replace it.",
                       })
                     : t("settings.postProcessing.api.apiKey.placeholder")
                 }

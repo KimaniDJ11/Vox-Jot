@@ -146,7 +146,9 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
     leftContent = (
       <>
         <h1 className="ob-heading">{t("onboarding.refine.title")}</h1>
-        <p className="ob-subtext">{t("onboarding.refine.checking")}</p>
+        <p className="ob-subtext" role="status" aria-live="polite">
+          {t("onboarding.refine.checking")}
+        </p>
       </>
     );
   } else if (phase === "installing") {
@@ -155,7 +157,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         <h1 className="ob-heading">
           {t("onboarding.refine.installing.title")}
         </h1>
-        <p className="ob-subtext">
+        <p className="ob-subtext" role="status" aria-live="polite">
           {installProgress || t("onboarding.refine.installing.description")}
         </p>
       </>
@@ -170,13 +172,24 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
           })}
         </p>
         <div className="mt-4">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--ob-track,rgba(125,125,125,0.25))]">
+          <div
+            className="h-2 w-full overflow-hidden rounded-full bg-[var(--ob-track,rgba(125,125,125,0.25))]"
+            role="progressbar"
+            aria-label={t("onboarding.refine.pulling.progressLabel", {
+              defaultValue: "Refine model download progress",
+            })}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={refinePullPercent}
+          >
             <div
               className="h-full rounded-full bg-[var(--ob-primary)] transition-all"
               style={{ width: `${refinePullPercent}%` }}
             />
           </div>
-          <p className="ob-footnote mt-2">{refinePullPercent}%</p>
+          <p className="ob-footnote mt-2" role="status" aria-live="polite">
+            {refinePullPercent}%
+          </p>
         </div>
       </>
     );
@@ -202,7 +215,10 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
         </ul>
 
         {error && (
-          <p className="mt-4 rounded-xl bg-[var(--danger-soft)] px-4 py-2 text-sm text-[var(--danger)]">
+          <p
+            role="alert"
+            className="mt-4 rounded-xl bg-[var(--danger-soft)] px-4 py-2 text-sm text-[var(--danger)]"
+          >
             {error}
           </p>
         )}
@@ -219,7 +235,7 @@ const RefineStep: React.FC<RefineStepProps> = ({ onComplete, onBack }) => {
           <button
             type="button"
             onClick={handleSkip}
-            className={`mt-3 inline-flex items-center justify-center rounded-md bg-transparent px-2 py-1 text-sm text-[var(--ob-text-muted)] transition-colors hover:text-[var(--ob-text)] ${interactiveFocusRingClass}`}
+            className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-transparent px-2 py-1 text-sm text-[var(--ob-text-muted)] transition-colors hover:text-[var(--ob-text)] ${interactiveFocusRingClass}`}
           >
             {t("onboarding.refine.skipCta")}
           </button>

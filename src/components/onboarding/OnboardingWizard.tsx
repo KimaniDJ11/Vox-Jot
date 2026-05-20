@@ -1,6 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
+import { getLanguageDirection } from "@/lib/utils/rtl";
 import { modal } from "@/motion/springs";
 
 import WelcomeStep from "./WelcomeStep";
@@ -22,9 +24,28 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   onComplete,
   skipToPermissions = false,
 }) => {
+  const { i18n, t } = useTranslation();
+  const direction = getLanguageDirection(i18n.language);
+  const enterOffset = direction === "rtl" ? -20 : 20;
+  const exitOffset = direction === "rtl" ? 20 : -20;
   const [step, setStep] = useState<WizardStep>(
     skipToPermissions ? "permissions" : "welcome",
   );
+  const stepRegionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const region = stepRegionRef.current;
+    if (!region) return;
+
+    const heading = region.querySelector<HTMLElement>(".ob-heading");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+      return;
+    }
+
+    region.focus();
+  }, [step]);
 
   const goToPermissions = useCallback(() => setStep("permissions"), []);
   const goToModel = useCallback(() => setStep("model"), []);
@@ -80,9 +101,17 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={step}
-        initial={{ opacity: 0, x: 20 }}
+        ref={stepRegionRef}
+        tabIndex={-1}
+        role="group"
+        aria-label={t(`onboarding.steps.${step}`, {
+          defaultValue: step,
+        })}
+        aria-live="polite"
+        dir={direction}
+        initial={{ opacity: 0, x: enterOffset }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
+        exit={{ opacity: 0, x: exitOffset }}
         transition={modal}
         className="h-full w-full"
       >

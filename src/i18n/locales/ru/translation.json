@@ -27,7 +27,8 @@
     "about": "О",
     "settingsLabel": "Настройки",
     "settingsButton": "Настройки",
-    "sectionNavigation": "Навигация по разделам"
+    "sectionNavigation": "Навигация по разделам",
+    "generatedAudioActive": "Выполняется работа с созданным аудио"
   },
   "onboarding": {
     "subtitle": "Для начала выберите модель транскрипции",
@@ -193,7 +194,8 @@
       "permissions": "Разрешения",
       "setup": "Модель",
       "refine": "Уточнить",
-      "learn": "Первый диктант"
+      "learn": "Первый диктант",
+      "progress": "Ход первоначальной настройки"
     },
     "refine": {
       "title": "Хотите локальный движок Refine?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Загрузка модели Refine по умолчанию",
-        "description": "Вытягиваем {{model}}. Обычно это занимает минуту или две при быстром соединении."
+        "description": "Вытягиваем {{model}}. Обычно это занимает минуту или две при быстром соединении.",
+        "progressLabel": "Ход загрузки модели Refine"
       },
       "ready": {
         "title": "Локальное уточнение готово",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Показать больше вариантов модели",
         "hide": "Скрыть дополнительные параметры модели"
+      },
+      "installed": {
+        "title": "Модель готова",
+        "description": "{{modelName}} уже установлена. Продолжите с этой моделью.",
+        "continue": "Продолжить"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Отменить загрузку",
     "deleteConfirm": "Удалить {{modelName}}? Файлы будут удалены с диска.",
     "deleteActiveConfirm": "Удалить {{modelName}}? Это активная модель — вам нужно будет выбрать другую, чтобы диктовать.",
-    "confirmDelete": "Удалить"
+    "confirmDelete": "Удалить",
+    "downloadProgressLabel": "Загрузка модели {{modelId}}",
+    "downloadProgress": "Ход загрузки модели",
+    "switcherAriaLabel": "Текущая модель: {{model}}. Открыть переключатель моделей.",
+    "waitingForData": "Ожидание данных..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Не удалось импортировать ключи фраз.",
         "importJsonOnly": "Выберите файл фразовых ключей JSON.",
         "importTooLarge": "Этот файл слишком велик для импорта.",
-        "duplicateTrigger": "Фразовый ключ уже использует этот голосовой триггер."
+        "duplicateTrigger": "Фразовый ключ уже использует этот голосовой триггер.",
+        "deleteConfirm": "Удалить ключ фразы «{{trigger}}»?",
+        "disableAriaLabel": "Отключить ключ фразы: {{trigger}}",
+        "enableAriaLabel": "Включить ключ фразы: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "Ключ API",
           "description": "API ключ для выбранного провайдера.",
-          "placeholder": "ск-..."
+          "placeholder": "ск-...",
+          "savedPlaceholder": "Сохранено в системной связке ключей. Введите новое значение для замены."
         },
         "model": {
           "title": "Модель",
@@ -854,7 +870,13 @@
           "originalLabel": "Нормализованный транскрипт",
           "editedLabel": "Текст для вставки",
           "cancel": "Отменить вставку",
-          "apply": "Вставить текст"
+          "apply": "Вставить текст",
+          "translationTitle": "Проверить перевод",
+          "translationDescription": "Подтвердите переведённый текст, прежде чем Vox Jot вставит или направит его.",
+          "translatedLabel": "Переведено",
+          "finalOutputLabel": "Итоговый вывод",
+          "destinationPrefix": "Назначение",
+          "resolving": "Применение предпросмотра..."
         },
         "disabledMessage": "Включите постобработку, чтобы попробовать просмотреть готовый результат."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Недоступно",
     "pause": "Пауза",
     "play": "Играть",
-    "refresh": "Обновить"
+    "refresh": "Обновить",
+    "stop": "Остановить",
+    "disable": "Отключить",
+    "enable": "Включить",
+    "downloadProgress": "Ход загрузки",
+    "downloadProgressForItem": "Ход загрузки для {{id}}",
+    "percentComplete": "Готово {{percentage}}%",
+    "downloadingCount": "Загружается: {{count}}..."
   },
   "accessibility": {
     "permissionsRequired": "Требуются разрешения на доступность",
@@ -2165,7 +2194,8 @@
       "analysis": "Анализ речи",
       "llm": "Уточнить (LLM)",
       "tts": "Голоса (TTS)",
-      "ocr": "Экран OCR"
+      "ocr": "Экран OCR",
+      "ariaLabel": "Категории моделей"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Сгенерированный звук",
       "generatedAudioDescription": "Воспроизводите, раскрывайте, копируйте, помечайте или удаляйте аудио, обработанное в Studio.",
       "dictionaryTitle": "Словарь",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Преобразователь голоса",
+      "voiceChangerDescription": "Преобразуйте записанный или импортированный WAV-аудио в готовый голосовой профиль, сохранив подачу и тайминг."
     },
     "groups": {
       "dictation": "Диктант",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Клонирование голоса",
         "studio": "Студия",
         "generatedAudio": "Сгенерированный звук",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Преобразователь голоса"
       },
       "settings": {
         "general": "Приложение и диктовка",
@@ -2687,6 +2717,11 @@
         "about": "О Vox Jot",
         "legal": "Юридические условия и условия моделей",
         "automationAgents": "Автоматизация и агенты"
+      },
+      "groups": {
+        "settingsBasics": "Основное",
+        "settingsIntelligence": "Интеллект",
+        "settingsSystem": "Система"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Файл ASR",
       "llm": "LLM",
       "stt": "Прямой эфир STT",
-      "screenOcr": "Экран OCR"
+      "screenOcr": "Экран OCR",
+      "ariaLabel": "Наборы тестов"
     },
     "notRanked": {
       "title": "Еще не в рейтинге",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} протестирован",
       "pending": "{{count}} в ожидании",
-      "blocked": "{{count}} заблокирован"
-    }
+      "blocked": "{{count}} заблокирован",
+      "failed": "{{count}} с ошибкой",
+      "downloadRequired": "{{count}} требуют загрузки",
+      "runtimeReady": "{{count}} сред выполнения готовы",
+      "other": "{{count}} прочие"
+    },
+    "overview": {
+      "updated": "Обновлено {{date}}"
+    },
+    "reportPath": "Отчёт: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Выберите вариант..."
+      "placeholder": "Выберите вариант...",
+      "ariaLabel": "Выберите вариант"
     },
     "pathDisplay": {
       "pathLabel": "Путь к файловой системе"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "Диктовать",
     "refine": "Уточнить",
-    "listen": "Слушай"
+    "listen": "Слушай",
+    "switcherLabel": "Основной режим"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Сгенерированный звук истории",

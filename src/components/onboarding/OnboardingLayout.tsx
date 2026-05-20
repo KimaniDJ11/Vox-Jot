@@ -40,7 +40,12 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   return (
     <div className={`ob-root ob-root-${chromeVariant}`}>
       {/* Progress bar */}
-      <nav className="ob-progress-bar">
+      <nav
+        className="ob-progress-bar"
+        aria-label={t("onboarding.steps.progress", {
+          defaultValue: "Onboarding progress",
+        })}
+      >
         {steps.map((step, i) => (
           <React.Fragment key={step.key}>
             <span
@@ -51,16 +56,21 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                     ? "ob-step-active"
                     : "ob-step-upcoming"
               }`}
+              aria-current={i === currentIndex ? "step" : undefined}
             >
               {step.label}
             </span>
             {i < steps.length - 1 && (
-              <ChevronRight className="ob-progress-chevron" size={14} />
+              <ChevronRight
+                className="ob-progress-chevron"
+                size={14}
+                aria-hidden
+              />
             )}
           </React.Fragment>
         ))}
         {/* Progress line */}
-        <div className="ob-progress-line">
+        <div className="ob-progress-line" aria-hidden>
           <div
             className="ob-progress-fill"
             style={{ width: `${(currentIndex / (steps.length - 1)) * 100}%` }}

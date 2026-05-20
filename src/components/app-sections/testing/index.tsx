@@ -46,6 +46,11 @@ import {
   buildTtsRow,
   orderByRank,
 } from "@/components/app-sections/testing/suiteAdapters";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
+import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { press } from "@/motion/springs";
 
 type TestingTabId =
@@ -136,6 +141,8 @@ export const ModelTestingSection: React.FC = () => {
   const ttsStyle = splitRanked(TTS_STYLE_EVALUATION_RESULTS);
   const ttsVoiceClone = splitRanked(TTS_VOICE_CLONE_EVALUATION_RESULTS);
   const screenOcr = splitRanked(SCREEN_OCR_EVALUATION_RESULTS);
+  const activePanelId = `model-testing-panel-${activeTab}`;
+  const activeTabId = `model-testing-tab-${activeTab}`;
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -148,6 +155,14 @@ export const ModelTestingSection: React.FC = () => {
             <LayoutGroup id="model-testing-tabs">
               <div
                 role="tablist"
+                aria-label={t("testing.tabs.ariaLabel", {
+                  defaultValue: "Benchmark suites",
+                })}
+                onKeyDown={(event) =>
+                  handleHorizontalTabListKeyDown(event, {
+                    direction: document.dir === "rtl" ? "rtl" : "ltr",
+                  })
+                }
                 className="relative inline-flex shrink-0 items-center gap-1 rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] p-0.5"
               >
                 {TABS.map((tab) => {
@@ -158,13 +173,16 @@ export const ModelTestingSection: React.FC = () => {
                       type="button"
                       role="tab"
                       aria-selected={isActive}
+                      aria-controls={`model-testing-panel-${tab.id}`}
+                      id={`model-testing-tab-${tab.id}`}
+                      tabIndex={isActive ? 0 : -1}
                       whileTap={{ scale: 0.97 }}
                       transition={press}
                       onClick={() => setActiveTab(tab.id)}
-                      className="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+                      className={`relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
                       style={{
                         color: isActive
-                          ? "var(--inverse-text)"
+                          ? "var(--accent-foreground)"
                           : "var(--muted)",
                         transition: "color 160ms var(--spring-crisp)",
                       }}
@@ -197,7 +215,12 @@ export const ModelTestingSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="min-w-0 flex-1 pt-3">
+      <div
+        id={activePanelId}
+        role="tabpanel"
+        aria-labelledby={activeTabId}
+        className="min-w-0 flex-1 pt-3"
+      >
         {activeTab === "file-asr" ? (
           <SuiteLeaderboard
             run={FILE_ASR_EVALUATION_RUN}

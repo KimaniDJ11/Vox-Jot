@@ -50,7 +50,7 @@ const StatusPill: React.FC<{ status: string; label: string }> = ({
       ? "bg-[var(--success-soft)] text-[var(--success)]"
       : status === "pending"
         ? "bg-[var(--warning-soft)] text-[var(--warning)]"
-        : status === "blocked"
+        : status === "blocked" || status === "failed"
           ? "bg-[var(--danger-soft)] text-[var(--danger)]"
           : status === "download_required"
             ? "bg-[var(--info-soft)] text-[var(--info)]"

@@ -71,8 +71,7 @@
 .ob-progress-line {
   position: absolute;
   bottom: 0;
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   height: 3px;
   background: var(--ob-border);
 }
@@ -186,7 +185,7 @@
   justify-content: center;
   gap: 8px;
   background: linear-gradient(135deg, var(--ob-primary), var(--accent));
-  color: var(--ob-white);
+  color: var(--accent-foreground);
   border: none;
   border-radius: var(--ob-radius);
   padding: 14px 32px;
@@ -273,6 +272,8 @@
 .ob-perm-allow-btn {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  min-width: 44px;
   gap: 6px;
   background: none;
   border: 1px solid var(--ob-border);
@@ -323,7 +324,7 @@
   color: var(--ob-text-muted);
   font-size: 12px;
   cursor: pointer;
-  margin-left: 8px;
+  margin-inline-start: 8px;
 }
 
 .ob-info-wrap {
@@ -702,8 +703,7 @@
 .ob-root-story .ob-progress-bar {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   z-index: 20;
   border-bottom: 0;
   background: linear-gradient(
@@ -715,7 +715,7 @@
 
 .ob-root-story .ob-progress-step,
 .ob-root-story .ob-progress-chevron {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .ob-root-story .ob-step-active {
@@ -747,7 +747,7 @@
 .ob-story-back-btn {
   position: absolute;
   top: 52px;
-  left: 24px;
+  inset-inline-start: 24px;
   z-index: 35;
   min-width: 36px;
   min-height: 32px;
@@ -815,8 +815,7 @@
 
 .ob-story-nav {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  inset-inline: 24px;
   bottom: 24px;
   z-index: 10;
   display: flex;
@@ -1218,7 +1217,8 @@
 }
 
 .ob-permission-skip-inline {
-  min-height: 34px;
+  min-height: 44px;
+  min-width: 44px;
   border: 0;
   background: transparent;
   color: var(--muted);
@@ -1427,7 +1427,7 @@
 .ob-help-btn {
   position: fixed;
   bottom: 20px;
-  left: 20px;
+  inset-inline-start: 20px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1485,8 +1485,7 @@
   .ob-root-story .ob-progress-bar {
     justify-content: flex-start;
     overflow-x: auto;
-    padding-right: 16px;
-    padding-left: 16px;
+    padding-inline: 16px;
   }
 
   .ob-story-shell {
@@ -1495,7 +1494,7 @@
 
   .ob-story-back-btn {
     top: 56px;
-    left: 16px;
+    inset-inline-start: 16px;
   }
 
   .ob-permission-story {
@@ -1503,8 +1502,7 @@
   }
 
   .ob-story-nav {
-    left: 16px;
-    right: 16px;
+    inset-inline: 16px;
     bottom: 16px;
   }
 
@@ -1585,8 +1583,7 @@
   }
 
   .ob-story-body {
-    padding-right: 18px;
-    padding-left: 18px;
+    padding-inline: 18px;
   }
 
   .ob-story-body .ob-heading {

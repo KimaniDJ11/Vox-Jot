@@ -167,6 +167,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const showGeneratedAudioActivity =
       id === "story-audio-history" &&
       (generatedAudioPulse || renderQueueActive);
+    const activityLabel = showGeneratedAudioActivity
+      ? t("sidebar.generatedAudioActive", {
+          defaultValue: "Generated audio activity in progress",
+        })
+      : null;
+    const accessibleLabel = activityLabel
+      ? `${label}. ${activityLabel}`
+      : label;
 
     return (
       <motion.button
@@ -180,8 +188,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`sidebar__nav-button group relative flex w-full items-center rounded-2xl ${interactiveFocusRingClass} ${minTapTargetHeightClass} ${itemLayoutClass}`}
         style={sidebarIconToneStyles[iconTone]}
         aria-current={isActive ? "page" : undefined}
-        aria-label={collapsed ? label : undefined}
-        title={collapsed ? label : undefined}
+        aria-label={collapsed || activityLabel ? accessibleLabel : undefined}
+        title={collapsed || activityLabel ? accessibleLabel : undefined}
       >
         {/* Active pill — springs between rows whenever active changes. */}
         {isActive && (

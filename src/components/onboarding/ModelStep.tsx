@@ -17,6 +17,7 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
   const { t } = useTranslation();
   const {
     models,
+    currentModel,
     downloadModel,
     selectModel,
     downloadingModels,
@@ -37,6 +38,11 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     .sort(
       (a: ModelInfo, b: ModelInfo) => Number(a.size_mb) - Number(b.size_mb),
     );
+  const downloadedModels = models.filter((m: ModelInfo) => m.is_downloaded);
+  const downloadedRecommendedModel =
+    downloadedModels.find((m: ModelInfo) => m.id === currentModel) ??
+    downloadedModels.find((m: ModelInfo) => m.is_recommended) ??
+    downloadedModels[0];
 
   // Watch for the selected model to finish downloading + extracting
   useEffect(() => {
@@ -72,6 +78,18 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
     if (!success) {
       toast.error(t("onboarding.downloadFailed"));
       setSelectedModelId(null);
+    }
+  };
+
+  const handleUseDownloadedModel = async () => {
+    if (!downloadedRecommendedModel || isDownloading) return;
+    setSelectedModelId(downloadedRecommendedModel.id);
+    const success = await selectModel(downloadedRecommendedModel.id);
+    setSelectedModelId(null);
+    if (success) {
+      onModelSelected();
+    } else {
+      toast.error(t("onboarding.errors.selectModel"));
     }
   };
 
@@ -124,21 +142,48 @@ const ModelStep: React.FC<ModelStepProps> = ({ onModelSelected, onBack }) => {
           <p className="ob-subtext">{t("onboarding.setup.description")}</p>
 
           {/* Recommended models */}
-          <div className="flex flex-col gap-3">
-            {recommendedModels.map((model: ModelInfo) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                variant="featured"
-                status={getModelStatus(model.id)}
+          {recommendedModels.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {recommendedModels.map((model: ModelInfo) => (
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  variant="featured"
+                  status={getModelStatus(model.id)}
+                  disabled={isDownloading}
+                  onSelect={handleDownloadModel}
+                  onDownload={handleDownloadModel}
+                  downloadProgress={getModelDownloadProgress(model.id)}
+                  downloadSpeed={getModelDownloadSpeed(model.id)}
+                />
+              ))}
+            </div>
+          ) : downloadedRecommendedModel ? (
+            <div className="rounded-2xl border border-[var(--ob-border)] bg-[var(--ob-card)] p-4 shadow-sm">
+              <p className="text-sm font-semibold text-[var(--ob-text)]">
+                {t("onboarding.setup.installed.title", {
+                  defaultValue: "Model ready",
+                })}
+              </p>
+              <p className="mt-1 text-sm text-[var(--ob-text-muted)]">
+                {t("onboarding.setup.installed.description", {
+                  defaultValue:
+                    "{{modelName}} is already installed. Continue with this model.",
+                  modelName: downloadedRecommendedModel.name,
+                })}
+              </p>
+              <button
+                type="button"
+                onClick={handleUseDownloadedModel}
                 disabled={isDownloading}
-                onSelect={handleDownloadModel}
-                onDownload={handleDownloadModel}
-                downloadProgress={getModelDownloadProgress(model.id)}
-                downloadSpeed={getModelDownloadSpeed(model.id)}
-              />
-            ))}
-          </div>
+                className={`mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-[var(--ob-primary)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition-colors hover:bg-[var(--ob-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${interactiveFocusRingClass}`}
+              >
+                {t("onboarding.setup.installed.continue", {
+                  defaultValue: "Continue",
+                })}
+              </button>
+            </div>
+          ) : null}
 
           {/* Advanced toggle */}
           {otherModels.length > 0 && (

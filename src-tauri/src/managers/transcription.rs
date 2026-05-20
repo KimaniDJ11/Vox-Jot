@@ -82,6 +82,12 @@ struct PartialProviderSession {
     cancel: Arc<AtomicBool>,
 }
 
+enum PartialTranscriptionOutcome {
+    Success(String),
+    Error(anyhow::Error),
+    Panicked(String),
+}
+
 struct ModelLoadGuard {
     is_loading: Arc<Mutex<bool>>,
     loading_condvar: Arc<Condvar>,
@@ -907,11 +913,12 @@ impl TranscriptionManager {
         engine: &mut LoadedEngine,
         audio: Vec<f32>,
         settings: &AppSettings,
-    ) -> Result<String> {
+    ) -> PartialTranscriptionOutcome {
         match catch_unwind(AssertUnwindSafe(|| {
             self.transcribe_with_loaded_engine(engine, audio, settings)
         })) {
-            Ok(result) => result,
+            Ok(Ok(text)) => PartialTranscriptionOutcome::Success(text),
+            Ok(Err(err)) => PartialTranscriptionOutcome::Error(err),
             Err(panic_payload) => {
                 let panic_msg = if let Some(s) = panic_payload.downcast_ref::<&str>() {
                     s.to_string()
@@ -920,10 +927,7 @@ impl TranscriptionManager {
                 } else {
                     "unknown panic".to_string()
                 };
-                Err(anyhow::anyhow!(
-                    "Partial transcription engine panicked: {}",
-                    panic_msg
-                ))
+                PartialTranscriptionOutcome::Panicked(panic_msg)
             }
         }
     }
@@ -990,19 +994,46 @@ impl TranscriptionManager {
                 let inference_result =
                     self.transcribe_partial_snapshot(&mut engine, partial_audio, &settings);
 
-                // Always return the engine to the shared slot.
-                let mut engine_guard = self.lock_engine();
-                *engine_guard = Some(engine);
-                drop(engine_guard);
-
                 match inference_result {
-                    Ok(text) => text,
-                    Err(err) => {
+                    PartialTranscriptionOutcome::Success(text) => {
+                        let mut engine_guard = self.lock_engine();
+                        *engine_guard = Some(engine);
+                        text
+                    }
+                    PartialTranscriptionOutcome::Error(err) => {
+                        let mut engine_guard = self.lock_engine();
+                        *engine_guard = Some(engine);
                         warn!(
                             "Partial transcription failed for binding {}: {}",
                             binding_id, err
                         );
                         continue;
+                    }
+                    PartialTranscriptionOutcome::Panicked(panic_msg) => {
+                        {
+                            let mut current_model = self
+                                .current_model_id
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner());
+                            *current_model = None;
+                        }
+                        let _ = self.app_handle.emit(
+                            "model-state-changed",
+                            ModelStateEvent {
+                                event_type: "unloaded".to_string(),
+                                model_id: None,
+                                model_name: None,
+                                error: Some(format!(
+                                    "Partial transcription engine panicked: {}",
+                                    panic_msg
+                                )),
+                            },
+                        );
+                        warn!(
+                            "Partial transcription engine panicked for binding {}; model has been unloaded: {}",
+                            binding_id, panic_msg
+                        );
+                        break;
                     }
                 }
             };

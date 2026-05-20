@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 export type LicenseGateKind = "non_commercial" | "custom_review";
 
@@ -46,6 +47,8 @@ const LicenseAcknowledgementDialog: React.FC<
 }) => {
   const { t } = useTranslation();
   const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [usageAck, setUsageAck] = useState(false);
   const [voiceAck, setVoiceAck] = useState(false);
 
@@ -55,11 +58,20 @@ const LicenseAcknowledgementDialog: React.FC<
     setVoiceAck(false);
   }, [modelName, open]);
 
+  useDialogFocusTrap({
+    enabled: open && Boolean(gate),
+    containerRef: dialogRef,
+    initialFocusSelector: "button, input",
+  });
+
   if (!open || !gate) return null;
 
   const requiresVoiceConsent = Boolean(gate.requiresVoiceConsent);
   const canConfirm = usageAck && (!requiresVoiceConsent || voiceAck);
   const isCustomReview = gate.kind === "custom_review";
+  const handleBackdropCancel = () => {
+    if (!busy) onCancel();
+  };
   const confirmAndRecord = () => {
     try {
       window.localStorage.setItem(
@@ -82,7 +94,7 @@ const LicenseAcknowledgementDialog: React.FC<
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
       role="presentation"
-      onClick={onCancel}
+      onClick={handleBackdropCancel}
     >
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -92,8 +104,15 @@ const LicenseAcknowledgementDialog: React.FC<
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-[640px] rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+        aria-describedby={descriptionId}
+        ref={dialogRef}
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) =>
+          handleDialogKeyDown(event, dialogRef.current, onCancel, {
+            escapeDisabled: busy,
+          })
+        }
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -105,7 +124,10 @@ const LicenseAcknowledgementDialog: React.FC<
                 defaultValue: "License acknowledgement required",
               })}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
+            <p
+              id={descriptionId}
+              className="mt-1 text-sm leading-5 text-[var(--muted)]"
+            >
               {t("modelHub.licenseGate.description", {
                 defaultValue:
                   "{{modelName}} is distributed under {{licenseLabel}}. Review the publisher terms before downloading.",

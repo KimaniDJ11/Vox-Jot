@@ -267,6 +267,35 @@ const OcrEnginesSection: React.FC<OcrEnginesSectionProps> = ({
   }, [refreshCatalog]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const activeDownloadIds = await commands.getActiveOcrDownloads();
+        if (cancelled || activeDownloadIds.length === 0) return;
+
+        setDownloadProgress((prev) => {
+          const next = { ...prev };
+          for (const id of activeDownloadIds) {
+            next[id] ??= {
+              stage: "preparing",
+              percentage: 0,
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("Failed to rehydrate active OCR downloads:", err);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     let unlisten: (() => void) | undefined;
     void (async () => {
       unlisten = await listen<OcrDownloadProgressPayload>(

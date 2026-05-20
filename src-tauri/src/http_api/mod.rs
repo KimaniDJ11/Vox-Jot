@@ -610,20 +610,7 @@ pub(crate) fn require_api_token(
         settings.http_api_token.clear();
         write_settings(app, settings);
     }
-    let expected = expected.trim();
-    let provided = headers
-        .get(API_TOKEN_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .map(str::trim)
-        .or_else(|| {
-            headers
-                .get(axum::http::header::AUTHORIZATION)
-                .and_then(|value| value.to_str().ok())
-                .and_then(|value| value.strip_prefix("Bearer "))
-                .map(str::trim)
-        });
-
-    if !expected.is_empty() && provided == Some(expected) {
+    if api_token_authorized(&expected, headers) {
         return Ok(());
     }
 
@@ -636,6 +623,43 @@ pub(crate) fn require_api_token(
         )
             .into_response(),
     ))
+}
+
+fn api_token_authorized(expected: &str, headers: &HeaderMap) -> bool {
+    let expected = expected.trim();
+    if expected.is_empty() {
+        return false;
+    }
+
+    provided_api_tokens(headers).any(|provided| provided == expected)
+}
+
+fn provided_api_tokens(headers: &HeaderMap) -> impl Iterator<Item = &str> {
+    let header_tokens = headers
+        .get_all(API_TOKEN_HEADER)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .map(str::trim);
+
+    let bearer_tokens = headers
+        .get_all(axum::http::header::AUTHORIZATION)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .filter_map(extract_bearer_token);
+
+    header_tokens.chain(bearer_tokens)
+}
+
+fn extract_bearer_token(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    let (scheme, token) = trimmed.split_once(char::is_whitespace)?;
+    if scheme.eq_ignore_ascii_case("Bearer") {
+        let token = token.trim();
+        if !token.is_empty() {
+            return Some(token);
+        }
+    }
+    None
 }
 
 pub(crate) fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
@@ -685,4 +709,63 @@ pub(crate) fn decode_wav_bytes(bytes: &[u8]) -> Result<Vec<f32>, String> {
         spec.sample_rate,
         16_000,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderValue;
+
+    fn headers(values: &[(&'static str, &str)]) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        for (name, value) in values {
+            headers.append(*name, HeaderValue::from_str(value).unwrap());
+        }
+        headers
+    }
+
+    #[test]
+    fn api_token_rejects_empty_expected_token() {
+        let headers = headers(&[(API_TOKEN_HEADER, "secret")]);
+
+        assert!(!api_token_authorized("", &headers));
+        assert!(!api_token_authorized("   ", &headers));
+    }
+
+    #[test]
+    fn api_token_accepts_custom_header_with_trimmed_value() {
+        let headers = headers(&[(API_TOKEN_HEADER, "  secret  ")]);
+
+        assert!(api_token_authorized("secret", &headers));
+    }
+
+    #[test]
+    fn api_token_accepts_authorization_bearer_case_insensitively() {
+        let headers = headers(&[(axum::http::header::AUTHORIZATION.as_str(), "bearer secret")]);
+
+        assert!(api_token_authorized("secret", &headers));
+    }
+
+    #[test]
+    fn api_token_checks_authorization_when_custom_header_is_wrong() {
+        let headers = headers(&[
+            (API_TOKEN_HEADER, "wrong"),
+            (axum::http::header::AUTHORIZATION.as_str(), "Bearer secret"),
+        ]);
+
+        assert!(api_token_authorized("secret", &headers));
+    }
+
+    #[test]
+    fn api_token_rejects_missing_or_wrong_token() {
+        assert!(!api_token_authorized("secret", &HeaderMap::new()));
+        assert!(!api_token_authorized(
+            "secret",
+            &headers(&[(API_TOKEN_HEADER, "wrong")])
+        ));
+        assert!(!api_token_authorized(
+            "secret",
+            &headers(&[(axum::http::header::AUTHORIZATION.as_str(), "Basic secret")])
+        ));
+    }
 }

@@ -31,6 +31,7 @@ import { PhraseKeysEnabledToggle } from "../PhraseKeysEnabledToggle";
 import { pickJsonFileText } from "@/lib/fileIo";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { modal } from "@/motion/springs";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 const TRIGGER_MAX = 60;
 const EXPANSION_MAX = 4000;
@@ -67,6 +68,13 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
   const [importError, setImportError] = useState("");
   const triggerInputRef = useRef<HTMLInputElement>(null);
   const newTriggerRef = useRef<HTMLInputElement>(null);
+  const addDialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocusTrap({
+    enabled: adding,
+    containerRef: addDialogRef,
+    initialFocusSelector: '[data-add-phrase-key-trigger="true"]',
+  });
 
   const duplicateNewTrigger = snippets.some(
     (s) =>
@@ -85,24 +93,6 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
     setNewTrigger("");
     setNewExpansion("");
   }, []);
-
-  useEffect(() => {
-    if (adding && newTriggerRef.current) {
-      newTriggerRef.current.focus();
-    }
-  }, [adding]);
-
-  useEffect(() => {
-    if (!adding) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeAddDialog();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [adding, closeAddDialog]);
 
   useEffect(() => {
     if (editingId && triggerInputRef.current) {
@@ -319,6 +309,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
             aria-hidden="true"
           />
           <motion.div
+            ref={addDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-phrase-key-title"
@@ -328,6 +319,9 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) =>
+              handleDialogKeyDown(event, addDialogRef.current, closeAddDialog)
+            }
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2
@@ -355,6 +349,7 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                 <div className="flex items-center gap-2">
                   <input
                     ref={newTriggerRef}
+                    data-add-phrase-key-trigger="true"
                     type="text"
                     value={newTrigger}
                     onChange={(e) =>
@@ -559,11 +554,15 @@ export const SnippetSettings: React.FC<SnippetSettingsProps> = ({
                           }
                           ariaLabel={
                             snippetEnabled
-                              ? t("common.disable", {
-                                  defaultValue: "Disable",
+                              ? t("settings.snippets.list.disableAriaLabel", {
+                                  trigger: snippet.trigger,
+                                  defaultValue:
+                                    "Disable phrase key: {{trigger}}",
                                 })
-                              : t("common.enable", {
-                                  defaultValue: "Enable",
+                              : t("settings.snippets.list.enableAriaLabel", {
+                                  trigger: snippet.trigger,
+                                  defaultValue:
+                                    "Enable phrase key: {{trigger}}",
                                 })
                           }
                         />

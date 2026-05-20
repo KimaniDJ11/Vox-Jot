@@ -56,12 +56,15 @@ export const Alert: React.FC<AlertProps> = ({
 }) => {
   const styles = variantStyles[variant];
   const Icon = variantIcons[variant];
+  const role = variant === "error" ? "alert" : "status";
 
   return (
     <div
       className={`card-linear flex items-start gap-3 p-4 ${styles.container} ${contained ? "" : "rounded-2xl"} ${className}`}
+      role={role}
+      aria-live={variant === "error" ? "assertive" : "polite"}
     >
-      <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${styles.icon}`} />
+      <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${styles.icon}`} aria-hidden />
       <div className={`text-sm ${styles.text} min-w-0`}>{children}</div>
     </div>
   );

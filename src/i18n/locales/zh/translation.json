@@ -27,7 +27,8 @@
     "about": "关于",
     "settingsLabel": "设置",
     "settingsButton": "设置",
-    "sectionNavigation": "版块导航"
+    "sectionNavigation": "版块导航",
+    "generatedAudioActive": "生成音频活动正在进行"
   },
   "onboarding": {
     "subtitle": "首先，选择转录模型",
@@ -193,7 +194,8 @@
       "permissions": "权限",
       "setup": "型号",
       "refine": "精炼",
-      "learn": "第一次听写"
+      "learn": "第一次听写",
+      "progress": "入门进度"
     },
     "refine": {
       "title": "想要本地Refine引擎吗？",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "下载默认的Refine模型",
-        "description": "拉{{model}}。在快速连接上，这通常需要一两分钟。"
+        "description": "拉{{model}}。在快速连接上，这通常需要一两分钟。",
+        "progressLabel": "Refine 模型下载进度"
       },
       "ready": {
         "title": "本地优化已准备就绪",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "显示更多型号选项",
         "hide": "隐藏额外的模型选项"
+      },
+      "installed": {
+        "title": "模型已就绪",
+        "description": "{{modelName}} 已安装。继续使用此模型。",
+        "continue": "继续"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "取消下载",
     "deleteConfirm": "删除{{modelName}}？文件将从磁盘中删除。",
     "deleteActiveConfirm": "删除{{modelName}}？它是活动模型 - 您需要选择另一个模型来进行指示。",
-    "confirmDelete": "删除"
+    "confirmDelete": "删除",
+    "downloadProgressLabel": "正在下载模型 {{modelId}}",
+    "downloadProgress": "模型下载进度",
+    "switcherAriaLabel": "当前模型：{{model}}。打开模型切换器。",
+    "waitingForData": "正在等待数据..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "导入短语键失败。",
         "importJsonOnly": "选择 JSON 短语键文件。",
         "importTooLarge": "该文件太大而无法导入。",
-        "duplicateTrigger": "短语键已使用该语音触发器。"
+        "duplicateTrigger": "短语键已使用该语音触发器。",
+        "deleteConfirm": "删除短语键“{{trigger}}”？",
+        "disableAriaLabel": "停用短语键：{{trigger}}",
+        "enableAriaLabel": "启用短语键：{{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "API 钥匙",
           "description": "所选提供商的 API 密钥。",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "已存储在系统钥匙串中。输入新值以替换。"
         },
         "model": {
           "title": "型号",
@@ -854,7 +870,13 @@
           "originalLabel": "标准化转录本",
           "editedLabel": "要粘贴的文本",
           "cancel": "取消粘贴",
-          "apply": "粘贴文本"
+          "apply": "粘贴文本",
+          "translationTitle": "检查翻译",
+          "translationDescription": "在 Vox Jot 粘贴或路由之前确认翻译文本。",
+          "translatedLabel": "已翻译",
+          "finalOutputLabel": "最终输出",
+          "destinationPrefix": "目标",
+          "resolving": "正在应用预览..."
         },
         "disabledMessage": "打开后期处理以尝试预览抛光的输出。"
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "不可用",
     "pause": "暂停",
     "play": "玩",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "stop": "停止",
+    "disable": "停用",
+    "enable": "启用",
+    "downloadProgress": "下载进度",
+    "downloadProgressForItem": "{{id}} 的下载进度",
+    "percentComplete": "已完成 {{percentage}}%",
+    "downloadingCount": "{{count}} 个正在下载..."
   },
   "accessibility": {
     "permissionsRequired": "所需的辅助功能权限",
@@ -1561,7 +1590,11 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
+      "starterPrompts": [
+        "总结所选文本",
+        "重写一下更清楚",
+        "拉出行动项目"
+      ]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1575,7 +1608,11 @@
       "noteAppended": "将草稿附加到说明中。",
       "noteAppendFailed": "无法附加到注释。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": ["把这张纸条变成干净的草稿", "找到要点", "建议后续步骤"]
+      "starterPrompts": [
+        "把这张纸条变成干净的草稿",
+        "找到要点",
+        "建议后续步骤"
+      ]
     },
     "settingsCoach": {
       "label": "设置教练",
@@ -2157,7 +2194,8 @@
       "analysis": "语音分析",
       "llm": "精炼 (LLM)",
       "tts": "声音 (TTS)",
-      "ocr": "屏幕OCR"
+      "ocr": "屏幕OCR",
+      "ariaLabel": "模型类别"
     }
   },
   "commandMenu": {
@@ -2340,8 +2378,8 @@
       "generatedAudioTitle": "生成的音频",
       "generatedAudioDescription": "重播、显示、复制、加星标或删除从 Studio 渲染的音频。",
       "dictionaryTitle": "词典",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "变声器",
+      "voiceChangerDescription": "将录制或导入的 WAV 音频转换为可用的语音档案，同时保留表达方式和节奏。"
     },
     "groups": {
       "dictation": "听写",
@@ -2663,7 +2701,7 @@
         "voiceCloning": "语音克隆",
         "studio": "工作室",
         "generatedAudio": "生成的音频",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "变声器"
       },
       "settings": {
         "general": "应用程序和听写",
@@ -2679,6 +2717,11 @@
         "about": "关于 Vox Jot",
         "legal": "法律与模型条款",
         "automationAgents": "自动化和智能体"
+      },
+      "groups": {
+        "settingsBasics": "基础",
+        "settingsIntelligence": "智能",
+        "settingsSystem": "系统"
       }
     },
     "legal": {
@@ -2813,7 +2856,8 @@
       "fileAsr": "文件 ASR",
       "llm": "LLM",
       "stt": "直播STT",
-      "screenOcr": "屏幕OCR"
+      "screenOcr": "屏幕OCR",
+      "ariaLabel": "基准测试套件"
     },
     "notRanked": {
       "title": "尚未排名",
@@ -2839,12 +2883,21 @@
     "counts": {
       "tested": "{{count}} 已测试",
       "pending": "{{count}} 待定",
-      "blocked": "{{count}} 被阻止"
-    }
+      "blocked": "{{count}} 被阻止",
+      "failed": "{{count}} 个失败",
+      "downloadRequired": "{{count}} 个需要下载",
+      "runtimeReady": "{{count}} 个运行时就绪",
+      "other": "{{count}} 个其他"
+    },
+    "overview": {
+      "updated": "已更新 {{date}}"
+    },
+    "reportPath": "报告：{{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "选择一个选项..."
+      "placeholder": "选择一个选项...",
+      "ariaLabel": "选择一个选项"
     },
     "pathDisplay": {
       "pathLabel": "文件系统路径"
@@ -2966,7 +3019,8 @@
   "appModes": {
     "dictate": "口授",
     "refine": "精炼",
-    "listen": "听"
+    "listen": "听",
+    "switcherLabel": "主模式"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "生成的故事音频",

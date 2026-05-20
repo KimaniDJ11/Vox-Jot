@@ -9,7 +9,13 @@
 // to friendly labels ("Codex", "Coding") — this is the biggest single
 // scannability win versus the previous list (Nielsen heuristic #2).
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, WandSparkles } from "lucide-react";
@@ -38,6 +44,7 @@ import {
 import { WriteRuleRow } from "./WriteRuleRow";
 import { modal } from "@/motion/springs";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
 
 const emptyTitle = "No write profiles yet";
 const emptyBody =
@@ -59,6 +66,7 @@ export const WriteRulesSettings: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("individual");
+  const profileDialogRef = useRef<HTMLDivElement>(null);
 
   const tones = getSetting("tone_definitions") ?? [];
   const prompts = getSetting("post_process_prompts") ?? [];
@@ -72,6 +80,12 @@ export const WriteRulesSettings: React.FC = () => {
     ? rules.find((rule) => rule.id === editingId)
     : undefined;
   const isProfileWindowOpen = adding || !!editingRule;
+
+  useDialogFocusTrap({
+    enabled: isProfileWindowOpen,
+    containerRef: profileDialogRef,
+    initialFocusSelector: "input, textarea, button",
+  });
 
   const openAddProfileWindow = useCallback(() => {
     setEditingId(null);
@@ -145,18 +159,6 @@ export const WriteRulesSettings: React.FC = () => {
     return () => window.clearInterval(id);
   }, [adding, editingId, refreshActiveRule, rules.length]);
 
-  useEffect(() => {
-    if (!isProfileWindowOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeProfileWindow();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeProfileWindow, isProfileWindowOpen]);
-
   const saveRule = async (rule: WriteRule) => {
     setSaveError(null);
     const result = await commands.upsertWriteRule({
@@ -220,6 +222,7 @@ export const WriteRulesSettings: React.FC = () => {
             aria-hidden="true"
           />
           <motion.div
+            ref={profileDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="write-profile-dialog-title"
@@ -229,6 +232,13 @@ export const WriteRulesSettings: React.FC = () => {
             exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={modal}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) =>
+              handleDialogKeyDown(
+                event,
+                profileDialogRef.current,
+                closeProfileWindow,
+              )
+            }
           >
             <WriteRuleEditor
               rule={editingRule}

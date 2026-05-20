@@ -9,6 +9,12 @@
 
 import React from "react";
 
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+} from "@/lib/interactiveFocus";
+import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
+
 export interface TabItem<Value extends string> {
   value: Value;
   label: string;
@@ -32,6 +38,7 @@ export function Tabs<Value extends string>({
   return (
     <div
       role="tablist"
+      onKeyDown={(event) => handleHorizontalTabListKeyDown(event)}
       className={[
         "inline-flex rounded-full border border-[var(--border)] bg-[var(--input)] p-0.5",
         className,
@@ -45,9 +52,12 @@ export function Tabs<Value extends string>({
             type="button"
             role="tab"
             aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.value)}
             className={[
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              interactiveFocusRingClass,
+              minTapTargetHeightClass,
               selected
                 ? "bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-sm)]"
                 : "text-[var(--muted)] hover:text-[var(--text)]",
@@ -61,7 +71,7 @@ export function Tabs<Value extends string>({
                 className={[
                   "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
                   selected
-                    ? "bg-[var(--accent)] text-white"
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
                     : "bg-[var(--border)] text-[var(--muted)]",
                 ].join(" ")}
               >

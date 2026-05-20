@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { Check, Info } from "lucide-react";
 
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
@@ -46,6 +46,7 @@ const OverflowInfoButton: React.FC<OverflowInfoButtonProps> = ({
   label,
 }) => {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const tooltipId = useId();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -68,6 +69,7 @@ const OverflowInfoButton: React.FC<OverflowInfoButtonProps> = ({
         type="button"
         className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] ${interactiveFocusRingClass}`}
         aria-label={label}
+        aria-describedby={open ? tooltipId : undefined}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onClick={() => setOpen((current) => !current)}
@@ -76,6 +78,7 @@ const OverflowInfoButton: React.FC<OverflowInfoButtonProps> = ({
       </button>
       {open ? (
         <Tooltip
+          id={tooltipId}
           targetRef={triggerRef as React.RefObject<HTMLElement>}
           position="bottom"
         >
@@ -129,7 +132,9 @@ export const CompactBadgeRow: React.FC<{
               title={tooltip}
             >
               {icon ? <span className="mr-1 shrink-0">{icon}</span> : null}
-              <span className={preserveLabel ? "whitespace-nowrap" : "truncate"}>
+              <span
+                className={preserveLabel ? "whitespace-nowrap" : "truncate"}
+              >
                 {item.label}
               </span>
             </span>

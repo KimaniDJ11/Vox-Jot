@@ -361,17 +361,11 @@ export const useModelStore = create<ModelsStore>()(
         const eventUnlisteners = await Promise.all([
           listen<DownloadProgress>("model-download-progress", (event) => {
             const progress = event.payload;
+            const now = Date.now();
             set(
               produce((state) => {
                 state.downloadingModels[progress.model_id] = true;
                 state.downloadProgress[progress.model_id] = progress;
-              }),
-            );
-
-            // Update download stats for speed calculation
-            const now = Date.now();
-            set(
-              produce((state) => {
                 const current = state.downloadStats[progress.model_id];
 
                 if (!current) {

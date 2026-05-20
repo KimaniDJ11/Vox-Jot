@@ -27,7 +27,8 @@
     "about": "O",
     "settingsLabel": "Nastavení",
     "settingsButton": "Nastavení",
-    "sectionNavigation": "Navigace v sekci"
+    "sectionNavigation": "Navigace v sekci",
+    "generatedAudioActive": "Probíhá aktivita generovaného zvuku"
   },
   "onboarding": {
     "subtitle": "Chcete-li začít, vyberte model přepisu",
@@ -193,7 +194,8 @@
       "permissions": "Oprávnění",
       "setup": "Model",
       "refine": "Upřesnit",
-      "learn": "První diktát"
+      "learn": "První diktát",
+      "progress": "Průběh úvodního nastavení"
     },
     "refine": {
       "title": "Chcete místní Refine engine?",
@@ -216,7 +218,8 @@
       },
       "pulling": {
         "title": "Stahování výchozího modelu Upřesnit",
-        "description": "Tahání {{model}}. U rychlého připojení to obvykle trvá minutu nebo dvě."
+        "description": "Tahání {{model}}. U rychlého připojení to obvykle trvá minutu nebo dvě.",
+        "progressLabel": "Průběh stahování modelu Refine"
       },
       "ready": {
         "title": "Local Refine je připraven",
@@ -267,6 +270,11 @@
       "advanced": {
         "show": "Zobrazit další možnosti modelu",
         "hide": "Skrýt další možnosti modelu"
+      },
+      "installed": {
+        "title": "Model je připraven",
+        "description": "{{modelName}} je již nainstalován. Pokračujte s tímto modelem.",
+        "continue": "Pokračovat"
       }
     },
     "firstDictation": {
@@ -336,7 +344,11 @@
     "cancelDownload": "Zrušit stahování",
     "deleteConfirm": "Smazat {{modelName}}? Soubory budou odstraněny z disku.",
     "deleteActiveConfirm": "Smazat {{modelName}}? Je to aktivní model – budete si muset vybrat jiný, který budete diktovat.",
-    "confirmDelete": "Smazat"
+    "confirmDelete": "Smazat",
+    "downloadProgressLabel": "Stahuje se model {{modelId}}",
+    "downloadProgress": "Průběh stahování modelu",
+    "switcherAriaLabel": "Aktuální model: {{model}}. Otevřít přepínač modelů.",
+    "waitingForData": "Čeká se na data..."
   },
   "settings": {
     "snippets": {
@@ -367,7 +379,10 @@
         "importFailed": "Import frázových klíčů se nezdařil.",
         "importJsonOnly": "Vyberte soubor klíčů frází JSON.",
         "importTooLarge": "Tento soubor je pro import příliš velký.",
-        "duplicateTrigger": "Frázový klíč již tento mluvený spouštěč používá."
+        "duplicateTrigger": "Frázový klíč již tento mluvený spouštěč používá.",
+        "deleteConfirm": "Smazat klíč fráze „{{trigger}}“?",
+        "disableAriaLabel": "Zakázat klíč fráze: {{trigger}}",
+        "enableAriaLabel": "Povolit klíč fráze: {{trigger}}"
       }
     },
     "styles": {
@@ -709,7 +724,8 @@
         "apiKey": {
           "title": "Klíč API",
           "description": "Klíč API pro vybraného poskytovatele.",
-          "placeholder": "sk-..."
+          "placeholder": "sk-...",
+          "savedPlaceholder": "Uloženo v systémové klíčence. Zadejte novou hodnotu pro nahrazení."
         },
         "model": {
           "title": "Model",
@@ -854,7 +870,13 @@
           "originalLabel": "Normalizovaný přepis",
           "editedLabel": "Text k vložení",
           "cancel": "Zrušit vkládání",
-          "apply": "Vložit text"
+          "apply": "Vložit text",
+          "translationTitle": "Zkontrolovat překlad",
+          "translationDescription": "Potvrďte přeložený text, než ho Vox Jot vloží nebo přesměruje.",
+          "translatedLabel": "Přeloženo",
+          "finalOutputLabel": "Konečný výstup",
+          "destinationPrefix": "Cíl",
+          "resolving": "Používá se náhled..."
         },
         "disabledMessage": "Zapněte Post Process a zkuste si zobrazit náhled upraveného výstupu."
       },
@@ -1460,7 +1482,14 @@
     "notAvailable": "Není k dispozici",
     "pause": "Pauza",
     "play": "hrát",
-    "refresh": "Obnovit"
+    "refresh": "Obnovit",
+    "stop": "Zastavit",
+    "disable": "Zakázat",
+    "enable": "Povolit",
+    "downloadProgress": "Průběh stahování",
+    "downloadProgressForItem": "Průběh stahování pro {{id}}",
+    "percentComplete": "{{percentage}} % dokončeno",
+    "downloadingCount": "Stahuje se {{count}}..."
   },
   "accessibility": {
     "permissionsRequired": "Jsou vyžadována oprávnění k usnadnění",
@@ -2165,7 +2194,8 @@
       "analysis": "Analýza řeči",
       "llm": "Upřesnit (LLM)",
       "tts": "Hlasy (TTS)",
-      "ocr": "Obrazovka OCR"
+      "ocr": "Obrazovka OCR",
+      "ariaLabel": "Kategorie modelů"
     }
   },
   "commandMenu": {
@@ -2348,8 +2378,8 @@
       "generatedAudioTitle": "Generovaný zvuk",
       "generatedAudioDescription": "Přehrajte, odhalte, zkopírujte, označte hvězdičkou nebo odstraňte zvuk vykreslený ze Studia.",
       "dictionaryTitle": "Slovník",
-      "voiceChangerTitle": "Voice Changer",
-      "voiceChangerDescription": "Convert recorded or imported WAV audio into a ready voice profile while keeping delivery and timing intact."
+      "voiceChangerTitle": "Měnič hlasu",
+      "voiceChangerDescription": "Převeďte nahraný nebo importovaný WAV zvuk na připravený hlasový profil při zachování projevu a načasování."
     },
     "groups": {
       "dictation": "Diktát",
@@ -2671,7 +2701,7 @@
         "voiceCloning": "Klonování hlasu",
         "studio": "Studio",
         "generatedAudio": "Generovaný zvuk",
-        "voiceChanger": "Voice Changer"
+        "voiceChanger": "Měnič hlasu"
       },
       "settings": {
         "general": "Aplikace a diktát",
@@ -2687,6 +2717,11 @@
         "about": "Über Vox Jot",
         "legal": "Právní podmínky a podmínky modelů",
         "automationAgents": "Automatizace a agenti"
+      },
+      "groups": {
+        "settingsBasics": "Základy",
+        "settingsIntelligence": "Inteligence",
+        "settingsSystem": "Systém"
       }
     },
     "legal": {
@@ -2821,7 +2856,8 @@
       "fileAsr": "Soubor ASR",
       "llm": "LLM",
       "stt": "Živě STT",
-      "screenOcr": "Obrazovka OCR"
+      "screenOcr": "Obrazovka OCR",
+      "ariaLabel": "Sady benchmarků"
     },
     "notRanked": {
       "title": "Dosud nezařazeno",
@@ -2847,12 +2883,21 @@
     "counts": {
       "tested": "Testováno {{count}}",
       "pending": "Čeká se na {{count}}",
-      "blocked": "{{count}} zablokováno"
-    }
+      "blocked": "{{count}} zablokováno",
+      "failed": "{{count}} selhalo",
+      "downloadRequired": "{{count}} vyžaduje stažení",
+      "runtimeReady": "{{count}} runtime připraveno",
+      "other": "{{count}} ostatní"
+    },
+    "overview": {
+      "updated": "Aktualizováno {{date}}"
+    },
+    "reportPath": "Zpráva: {{path}}"
   },
   "ui": {
     "dropdown": {
-      "placeholder": "Vyberte možnost..."
+      "placeholder": "Vyberte možnost...",
+      "ariaLabel": "Vyberte možnost"
     },
     "pathDisplay": {
       "pathLabel": "Cesta k souborovému systému"
@@ -2974,7 +3019,8 @@
   "appModes": {
     "dictate": "diktovat",
     "refine": "Upřesnit",
-    "listen": "Poslouchejte"
+    "listen": "Poslouchejte",
+    "switcherLabel": "Primární režim"
   },
   "storyAudio": {
     "generatedAudioAriaLabel": "Vygenerovaný zvuk příběhu",

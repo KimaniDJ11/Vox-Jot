@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const appPath = process.env.VOX_JOT_APP_PATH ?? "/Applications/Vox Jot.app";
 const waitMs = Number(process.env.VOX_JOT_SMOKE_WAIT_MS ?? 800);
+const clickToolPath =
+  [
+    process.env.CLICLICK_PATH,
+    "/opt/homebrew/bin/cliclick",
+    "/usr/local/bin/cliclick",
+  ].find((path) => path && existsSync(path)) ?? null;
 
 function run(command, args) {
   return execFileSync(command, args, {
@@ -94,11 +101,15 @@ function clickWindowPoint(name, relativeX, relativeY) {
   const frame = windowFrame();
   const x = Math.round(frame.x + relativeX(frame.width));
   const y = Math.round(frame.y + relativeY(frame.height));
-  osa(`
+  if (clickToolPath) {
+    run(clickToolPath, [`c:${x},${y}`]);
+  } else {
+    osa(`
 tell application "System Events"
   click at {${x}, ${y}}
 end tell
 `);
+  }
   sleep(waitMs);
   return `${name}: point(${x},${y})`;
 }

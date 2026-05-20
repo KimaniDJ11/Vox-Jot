@@ -14,7 +14,7 @@ import {
   type ContextCaptureStatus,
   type ResolvedWriteRule,
 } from "@/bindings";
-import i18n, { syncLanguageFromSettings } from "@/i18n";
+import i18n from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 import { bounce } from "@/motion/springs";
 
@@ -56,6 +56,7 @@ function useWaveform(
   barCount: number,
   state: OverlayState,
   recording: boolean,
+  enabled: boolean,
 ) {
   /** Most recent raw level per bar (written in the mic-level event handler). */
   const targetsRef = useRef<Float32Array>(new Float32Array(barCount));
@@ -65,8 +66,10 @@ function useWaveform(
   const bufferRef = useRef<Float32Array>(new Float32Array(barCount));
   const bufferCursorRef = useRef(0);
   const frameRef = useRef<number | null>(null);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const stateRef = useRef<OverlayState>(state);
   const recordingRef = useRef<boolean>(recording);
+  const sizeRef = useRef({ width: 0, height: 0, dpr: 1 });
 
   useEffect(() => {
     stateRef.current = state;
@@ -114,19 +117,46 @@ function useWaveform(
   );
 
   useEffect(() => {
+    if (!enabled) {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    contextRef.current = ctx;
+
+    const syncCanvasSize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width * dpr));
+      const height = Math.max(1, Math.floor(rect.height * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      sizeRef.current = { width, height, dpr };
+    };
+
+    syncCanvasSize();
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncCanvasSize);
+    resizeObserver?.observe(canvas);
+    window.addEventListener("resize", syncCanvasSize);
+
     const draw = () => {
       const canvas = canvasRef.current;
       if (canvas) {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
-        const w = Math.max(1, Math.floor(rect.width * dpr));
-        const h = Math.max(1, Math.floor(rect.height * dpr));
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w;
-          canvas.height = h;
-        }
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
+        const { width: w, height: h, dpr } = sizeRef.current;
+        const ctx = contextRef.current;
+        if (ctx && w > 0 && h > 0) {
           const n = barCount;
           const targets = targetsRef.current;
           const display = displayRef.current;
@@ -176,8 +206,11 @@ function useWaveform(
     frameRef.current = requestAnimationFrame(draw);
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      contextRef.current = null;
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", syncCanvasSize);
     };
-  }, [barCount, canvasRef]);
+  }, [barCount, canvasRef, enabled]);
 
   return { writeLevels };
 }
@@ -238,13 +271,31 @@ const RecordingOverlay: React.FC = () => {
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const waveformEnabled =
+    isVisible && !correction && !isMinimal && state === "recording";
   const { writeLevels } = useWaveform(
     canvasRef,
     barCount,
     state,
     state === "recording",
+    waveformEnabled,
   );
+  const writeLevelsRef = useRef(writeLevels);
+  const screenContextEnabledRef = useRef(screenContextEnabled);
+  const screenContextStatusRef = useRef(screenContextStatus);
   const screenContextPulseTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    writeLevelsRef.current = writeLevels;
+  }, [writeLevels]);
+
+  useEffect(() => {
+    screenContextEnabledRef.current = screenContextEnabled;
+  }, [screenContextEnabled]);
+
+  useEffect(() => {
+    screenContextStatusRef.current = screenContextStatus;
+  }, [screenContextStatus]);
 
   const clearScreenContextPulse = useCallback(() => {
     if (screenContextPulseTimeoutRef.current !== null) {
@@ -267,20 +318,20 @@ const RecordingOverlay: React.FC = () => {
     const setup = async () => {
       const settingsResult = await commands.getAppSettings();
       if (settingsResult.status === "ok") {
-        setScreenContextEnabled(
-          settingsResult.data.screen_context_enabled ?? true,
-        );
+        const nextEnabled = settingsResult.data.screen_context_enabled ?? true;
+        screenContextEnabledRef.current = nextEnabled;
+        setScreenContextEnabled(nextEnabled);
       }
 
       const diagnosticsResult = await commands.getScreenContextDiagnostics();
       if (diagnosticsResult.status === "ok") {
+        screenContextStatusRef.current = diagnosticsResult.data.status;
         setScreenContextStatus(diagnosticsResult.data.status);
       }
 
       const unShow = await listen<ShowOverlayPayload>(
         "show-overlay",
-        async (event) => {
-          await syncLanguageFromSettings();
+        (event) => {
           const payload = event.payload;
           setState(payload.state);
           setStyle(payload.style);
@@ -307,7 +358,7 @@ const RecordingOverlay: React.FC = () => {
       });
 
       const unLevel = await listen<number[]>("mic-level", (event) => {
-        writeLevels(event.payload);
+        writeLevelsRef.current(event.payload);
       });
 
       const unPartial = await listen<string>(
@@ -335,8 +386,10 @@ const RecordingOverlay: React.FC = () => {
             return;
           }
           const nextEnabled = event.payload.value !== false;
+          screenContextEnabledRef.current = nextEnabled;
           setScreenContextEnabled(nextEnabled);
           if (!nextEnabled) {
+            screenContextStatusRef.current = "disabled";
             setScreenContextStatus("disabled");
             clearScreenContextPulse();
           }
@@ -347,6 +400,7 @@ const RecordingOverlay: React.FC = () => {
         "screen-context-status",
         (event) => {
           const nextStatus = event.payload;
+          screenContextStatusRef.current = nextStatus;
           setScreenContextStatus(nextStatus);
           if (nextStatus === "disabled" || nextStatus === "excluded_app") {
             clearScreenContextPulse();
@@ -357,10 +411,11 @@ const RecordingOverlay: React.FC = () => {
       const unScreenContextCapture = await listen<ScreenContextCapturePayload>(
         "screen-context-capture",
         () => {
+          const currentStatus = screenContextStatusRef.current;
           if (
-            !screenContextEnabled ||
-            screenContextStatus === "disabled" ||
-            screenContextStatus === "excluded_app"
+            !screenContextEnabledRef.current ||
+            currentStatus === "disabled" ||
+            currentStatus === "excluded_app"
           ) {
             return;
           }
@@ -387,19 +442,20 @@ const RecordingOverlay: React.FC = () => {
       void teardownPromise.then((teardown) => teardown());
       clearScreenContextPulse();
     };
-  }, [
-    clearScreenContextPulse,
-    pulseScreenContextCapture,
-    screenContextEnabled,
-    screenContextStatus,
-    writeLevels,
-  ]);
+  }, [clearScreenContextPulse, pulseScreenContextCapture]);
 
   const showScreenContextPulse =
     screenContextEnabled &&
     screenContextPulseVisible &&
     screenContextStatus !== "disabled" &&
     screenContextStatus !== "excluded_app";
+  const statusLabel = correction
+    ? t("overlay.correctionPreview", { defaultValue: "Correction preview" })
+    : state === "recording"
+      ? t("overlay.recording")
+      : state === "transcribing"
+        ? t("overlay.transcribing")
+        : t("overlay.processing");
 
   return (
     <AnimatePresence>
@@ -423,6 +479,9 @@ const RecordingOverlay: React.FC = () => {
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={bounce}
         >
+          <span className="sr-only" role="status" aria-live="polite">
+            {statusLabel}
+          </span>
           {correction ? (
             <CorrectionBody payload={correction} />
           ) : isMinimal ? (

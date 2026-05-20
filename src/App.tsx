@@ -53,7 +53,11 @@ import Footer from "./components/footer";
 import { useMacosWindowFullscreen } from "@/hooks/useMacosWindowFullscreen";
 import { useMinWidth769 } from "@/hooks/useMinWidth769";
 import { useApplyAppearanceSettings } from "@/hooks/useApplyAppearanceSettings";
-import { titleBarOverlayButtonFocusClass } from "@/lib/interactiveFocus";
+import {
+  interactiveFocusRingClass,
+  minTapTargetHeightClass,
+  titleBarOverlayButtonFocusClass,
+} from "@/lib/interactiveFocus";
 import { CommandMenu } from "./components/CommandMenu";
 import { OnboardingWizard } from "./components/onboarding";
 import { Sidebar, type SidebarItem } from "./components/Sidebar";
@@ -68,6 +72,8 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { commands } from "@/bindings";
 import { initializeInputServices } from "@/lib/appInitialization";
 import { isProductSectionVisible } from "@/lib/productArchitecture";
+import { handleDialogKeyDown, useDialogFocusTrap } from "@/lib/ui/focusTrap";
+import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { getLanguageDirection, initializeRTL } from "@/lib/utils/rtl";
 import { SectionLoading } from "@/components/app-sections/shared";
 import ScreenContextSettingsSection from "@/components/settings/screen-context/ScreenContextSettingsSection";
@@ -296,6 +302,14 @@ const PrimaryModeSwitcher: React.FC<{
         <div
           className="relative flex items-stretch overflow-hidden rounded-xl border border-[var(--ring-hairline)] bg-[color-mix(in_srgb,var(--panel-bg)_80%,transparent)] shadow-[inset_0_1px_0_var(--edge-highlight),0_1px_2px_rgba(0,0,0,0.12)]"
           role="tablist"
+          aria-label={t("appModes.switcherLabel", {
+            defaultValue: "Primary mode",
+          })}
+          onKeyDown={(event) =>
+            handleHorizontalTabListKeyDown(event, {
+              direction: document.dir === "rtl" ? "rtl" : "ltr",
+            })
+          }
         >
           {items.map((item) => {
             const isActive = activeMode === item.id;
@@ -307,15 +321,11 @@ const PrimaryModeSwitcher: React.FC<{
                 type="button"
                 role="tab"
                 aria-selected={isActive}
+                aria-controls={`primary-mode-panel-${item.id}`}
+                id={`primary-mode-tab-${item.id}`}
+                tabIndex={isActive ? 0 : -1}
                 whileTap={{ scale: 0.97 }}
                 transition={press}
-                onPointerDown={(event) => {
-                  if (event.button !== 0) {
-                    return;
-                  }
-                  event.preventDefault();
-                  activate();
-                }}
                 onClick={() => {
                   activate();
                 }}
@@ -325,9 +335,9 @@ const PrimaryModeSwitcher: React.FC<{
                     activate();
                   }
                 }}
-                className="relative px-3.5 py-1.5 text-[13px] font-semibold outline-none focus-visible:z-10"
+                className={`relative px-3.5 py-1.5 text-[13px] font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
                 style={{
-                  color: isActive ? "var(--inverse-text)" : "var(--muted)",
+                  color: isActive ? "var(--accent-foreground)" : "var(--muted)",
                   transition: "color 160ms var(--spring-crisp)",
                 }}
               >
@@ -374,6 +384,7 @@ function App() {
   const [pendingPreview, setPendingPreview] =
     useState<PostProcessPreviewRequest | null>(null);
   const [previewDraft, setPreviewDraft] = useState("");
+  const [isResolvingPreview, setIsResolvingPreview] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     if (!window.matchMedia("(min-width: 769px)").matches) return false;
@@ -862,6 +873,11 @@ function App() {
             description: event.payload.error,
           },
         );
+        return;
+      }
+
+      if (event.payload.error) {
+        toast.error(event.payload.error);
       }
     });
     return () => {
@@ -873,6 +889,7 @@ function App() {
     const unlisten = listen<PostProcessPreviewRequest>(
       "post-process-preview-request",
       (event) => {
+        setIsResolvingPreview(false);
         setPendingPreview(event.payload);
         setPreviewDraft(event.payload.preview_text);
       },
@@ -883,61 +900,55 @@ function App() {
     };
   }, []);
 
-  const handleModalKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
-      void resolvePreview(false);
-      return;
-    }
-    if (event.key === "Tab" && modalRef.current) {
-      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-        'button, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (pendingPreview && modalRef.current) {
-      const firstFocusable =
-        modalRef.current.querySelector<HTMLElement>("textarea, button");
-      firstFocusable?.focus();
-    }
-  }, [pendingPreview]);
-
-  const resolvePreview = async (accepted: boolean) => {
-    if (!pendingPreview) {
-      return;
-    }
-
-    try {
-      const result = await commands.resolvePostProcessPreview(
-        pendingPreview.request_id,
-        accepted,
-        accepted ? previewDraft : null,
-      );
-      if (result.status !== "ok") {
-        toast.error(result.error);
+  const resolvePreview = useCallback(
+    async (accepted: boolean) => {
+      if (!pendingPreview || isResolvingPreview) {
         return;
       }
-      setPendingPreview(null);
-      setPreviewDraft("");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings.postProcessing.preview.errors.generic"),
+
+      setIsResolvingPreview(true);
+      try {
+        const result = await commands.resolvePostProcessPreview(
+          pendingPreview.request_id,
+          accepted,
+          accepted ? previewDraft : null,
+        );
+        if (result.status !== "ok") {
+          toast.error(result.error);
+          return;
+        }
+        setPendingPreview(null);
+        setPreviewDraft("");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("settings.postProcessing.preview.errors.generic"),
+        );
+      } finally {
+        setIsResolvingPreview(false);
+      }
+    },
+    [isResolvingPreview, pendingPreview, previewDraft, t],
+  );
+
+  const handleModalKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      handleDialogKeyDown(
+        event,
+        modalRef.current,
+        () => void resolvePreview(false),
+        { escapeDisabled: isResolvingPreview },
       );
-    }
-  };
+    },
+    [isResolvingPreview, resolvePreview],
+  );
+
+  useDialogFocusTrap({
+    enabled: Boolean(pendingPreview),
+    containerRef: modalRef,
+    initialFocusSelector: "textarea, button",
+  });
 
   const previewSpeakLocale = useMemo(() => {
     if (!pendingPreview) {
@@ -955,6 +966,9 @@ function App() {
   }, [pendingPreview, selectedLanguage, translationTargetLanguage]);
 
   const handlePreviewSpeak = useCallback(async () => {
+    if (isResolvingPreview) {
+      return;
+    }
     if (!previewDraft.trim()) {
       return;
     }
@@ -969,7 +983,7 @@ function App() {
     if (result.status !== "ok") {
       toast.error(result.error);
     }
-  }, [previewDraft, previewSpeakLocale]);
+  }, [isResolvingPreview, previewDraft, previewSpeakLocale]);
 
   const handlePreviewStop = useCallback(async () => {
     const result = await commands.ttsStop();
@@ -1163,8 +1177,18 @@ function App() {
   if (onboardingStep === null) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg)]">
-        <div className="flex flex-col items-center gap-3 animate-[fadeIn_300ms_ease-out]">
-          <div className="h-8 w-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+        <div
+          className="flex flex-col items-center gap-3 animate-[fadeIn_300ms_ease-out]"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="h-8 w-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin"
+            aria-hidden
+          />
+          <span className="sr-only">
+            {t("common.loading", { defaultValue: "Loading" })}
+          </span>
         </div>
       </div>
     );
@@ -1301,7 +1325,20 @@ function App() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-5 md:p-7">
             {activeSection && (
-              <section id={activeSection.id} className="space-y-4">
+              <section
+                id={
+                  activeRootView === activeMode
+                    ? `primary-mode-panel-${activeMode}`
+                    : activeSection.id
+                }
+                className="space-y-4"
+                role={activeRootView === activeMode ? "tabpanel" : undefined}
+                aria-labelledby={
+                  activeRootView === activeMode
+                    ? `primary-mode-tab-${activeMode}`
+                    : undefined
+                }
+              >
                 <SectionHeader
                   id={activeSection.id}
                   title={activeSection.title}
@@ -1354,14 +1391,18 @@ function App() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg,rgba(4,10,20,0.85))] p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={t("settings.postProcessing.preview.modal.title")}
+          aria-labelledby="post-process-preview-title"
+          aria-describedby="post-process-preview-description"
           onKeyDown={handleModalKeyDown}
           ref={modalRef}
         >
           <div className="flat-card w-full max-w-3xl rounded-2xl">
             <div className="flex items-center justify-between border-b border-[color-mix(in_srgb,var(--text),transparent_86%)] px-5 py-4">
               <div>
-                <h2 className="text-lg font-bold">
+                <h2
+                  id="post-process-preview-title"
+                  className="text-lg font-bold"
+                >
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.translationTitle",
@@ -1371,7 +1412,10 @@ function App() {
                       )
                     : t("settings.postProcessing.preview.modal.title")}
                 </h2>
-                <p className="text-sm text-[var(--muted)]">
+                <p
+                  id="post-process-preview-description"
+                  className="text-sm text-[var(--muted)]"
+                >
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.translationDescription",
@@ -1389,6 +1433,7 @@ function App() {
                   variant="secondary"
                   size="sm"
                   onClick={() => void handlePreviewSpeak()}
+                  disabled={isResolvingPreview}
                   className="inline-flex items-center gap-1"
                 >
                   <Play className="h-3.5 w-3.5" />
@@ -1399,6 +1444,7 @@ function App() {
                   variant="ghost"
                   size="sm"
                   onClick={() => void handlePreviewStop()}
+                  disabled={isResolvingPreview}
                   className="inline-flex items-center gap-1"
                 >
                   <Square className="h-3.5 w-3.5" />
@@ -1409,36 +1455,55 @@ function App() {
 
             <div className="space-y-4 p-5">
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[var(--text)]">
+                <label
+                  id="post-process-preview-original-label"
+                  className="block text-xs font-semibold text-[var(--text)]"
+                >
                   {t("settings.postProcessing.preview.modal.originalLabel")}
-                </div>
-                <Textarea value={pendingPreview.source_text} readOnly />
+                </label>
+                <Textarea
+                  value={pendingPreview.source_text}
+                  readOnly
+                  aria-labelledby="post-process-preview-original-label"
+                />
               </div>
 
               {pendingPreview.translated_text && (
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold text-[var(--text)]">
+                  <label
+                    id="post-process-preview-translated-label"
+                    className="block text-xs font-semibold text-[var(--text)]"
+                  >
                     {t(
                       "settings.postProcessing.preview.modal.translatedLabel",
                       { defaultValue: "Translated" },
                     )}
-                  </div>
-                  <Textarea value={pendingPreview.translated_text} readOnly />
+                  </label>
+                  <Textarea
+                    value={pendingPreview.translated_text}
+                    readOnly
+                    aria-labelledby="post-process-preview-translated-label"
+                  />
                 </div>
               )}
 
               <div className="space-y-1">
-                <div className="text-xs font-semibold text-[var(--text)]">
+                <label
+                  id="post-process-preview-final-label"
+                  className="block text-xs font-semibold text-[var(--text)]"
+                >
                   {pendingPreview.origin?.startsWith("translation")
                     ? t(
                         "settings.postProcessing.preview.modal.finalOutputLabel",
                         { defaultValue: "Final output" },
                       )
                     : t("settings.postProcessing.preview.modal.editedLabel")}
-                </div>
+                </label>
                 <Textarea
                   value={previewDraft}
                   onChange={(event) => setPreviewDraft(event.target.value)}
+                  aria-labelledby="post-process-preview-final-label"
+                  disabled={isResolvingPreview}
                 />
               </div>
 
@@ -1453,13 +1518,28 @@ function App() {
             </div>
 
             <div className="flex flex-col-reverse justify-end gap-2 border-t border-[color-mix(in_srgb,var(--text),transparent_86%)] px-5 py-4 sm:flex-row">
+              <div
+                className="me-auto min-h-6 text-sm font-medium text-[var(--muted)]"
+                role="status"
+                aria-live="polite"
+              >
+                {isResolvingPreview
+                  ? t("settings.postProcessing.preview.modal.resolving", {
+                      defaultValue: "Applying preview…",
+                    })
+                  : null}
+              </div>
               <Button
                 variant="secondary"
                 onClick={() => void resolvePreview(false)}
+                disabled={isResolvingPreview}
               >
                 {t("settings.postProcessing.preview.modal.cancel")}
               </Button>
-              <Button onClick={() => void resolvePreview(true)}>
+              <Button
+                onClick={() => void resolvePreview(true)}
+                disabled={isResolvingPreview}
+              >
                 {t("settings.postProcessing.preview.modal.apply")}
               </Button>
             </div>

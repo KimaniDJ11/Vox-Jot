@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ProgressBar, ProgressData } from "../shared";
 
 interface DownloadProgress {
@@ -26,6 +27,7 @@ const DownloadProgressDisplay: React.FC<DownloadProgressDisplayProps> = ({
   downloadStats,
   className = "",
 }) => {
+  const { t } = useTranslation();
   const progressValues = Object.values(downloadProgress);
   if (progressValues.length === 0) {
     return null;
@@ -37,6 +39,10 @@ const DownloadProgressDisplay: React.FC<DownloadProgressDisplayProps> = ({
       id: progress.model_id,
       percentage: progress.percentage,
       speed: stats?.speed,
+      label: t("modelSelector.downloadProgressLabel", {
+        defaultValue: "Downloading model {{modelId}}",
+        modelId: progress.model_id,
+      }),
     };
   });
 
@@ -46,6 +52,9 @@ const DownloadProgressDisplay: React.FC<DownloadProgressDisplayProps> = ({
       className={className}
       showSpeed={progressValues.length === 1}
       size="medium"
+      ariaLabel={t("modelSelector.downloadProgress", {
+        defaultValue: "Model download progress",
+      })}
     />
   );
 };

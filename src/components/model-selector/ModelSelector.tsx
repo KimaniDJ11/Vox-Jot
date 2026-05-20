@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useId, useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
@@ -43,10 +43,15 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [modelStatus, setModelStatus] = useState<ModelStatus>("unloaded");
   const [modelError, setModelError] = useState<string | null>(null);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [activeDropdownIndex, setActiveDropdownIndex] = useState(0);
   // Track pending model switch for optimistic display
   const [pendingModelId, setPendingModelId] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const modelDropdownId = useId();
+  const modelDropdownButtonId = `${modelDropdownId}-button`;
+  const modelDropdownListboxId = `${modelDropdownId}-listbox`;
 
   const displayModelId = pendingModelId || currentModel;
 
@@ -60,24 +65,37 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             setModelStatus(
               statusResult.data === currentModel ? "ready" : "unloaded",
             );
+            setModelError(null);
+          } else {
+            setModelStatus("error");
+            setModelError(statusResult.error);
+            onError?.(statusResult.error);
           }
         } catch {
           setModelStatus("error");
           setModelError("Failed to check model status");
+          onError?.("Failed to check model status");
         }
       } else {
         setModelStatus("none");
       }
     };
     checkStatus();
-  }, [currentModel]);
+  }, [currentModel, onError]);
 
   useEffect(() => {
     // Listen for model loading lifecycle events
     const modelStateUnlisten = listen<ModelStateEvent>(
       "model-state-changed",
       (event) => {
-        const { event_type, error } = event.payload;
+        const { event_type, error, model_id } = event.payload;
+        if (
+          model_id &&
+          model_id !== displayModelId &&
+          model_id !== pendingModelId
+        ) {
+          return;
+        }
         switch (event_type) {
           case "loading_started":
             setModelStatus("loading");
@@ -94,8 +112,14 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             setPendingModelId(null);
             break;
           case "unloaded":
-            setModelStatus("unloaded");
-            setModelError(null);
+            if (error) {
+              setModelStatus("error");
+              setModelError(error);
+              setPendingModelId(null);
+            } else {
+              setModelStatus("unloaded");
+              setModelError(null);
+            }
             break;
         }
       },
@@ -117,7 +141,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
       modelStateUnlisten.then((fn) => fn());
     };
-  }, [selectModel]);
+  }, [displayModelId, onError, pendingModelId]);
 
   useEffect(() => {
     if (pendingModelId && pendingModelId === currentModel) {
@@ -125,10 +149,70 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [currentModel, pendingModelId]);
 
+  const closeModelDropdown = useCallback(() => {
+    setShowModelDropdown(false);
+  }, []);
+
+  const returnFocusToTrigger = useCallback(() => {
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+
+  const openModelDropdown = useCallback(
+    (direction: "first" | "last" | "current" = "current") => {
+      const downloadedModels = models.filter((model) => model.is_downloaded);
+      if (downloadedModels.length === 0) {
+        setActiveDropdownIndex(0);
+        setShowModelDropdown(true);
+        requestAnimationFrame(() => {
+          document.getElementById(modelDropdownListboxId)?.focus();
+        });
+        return;
+      }
+
+      if (direction === "first") {
+        setActiveDropdownIndex(0);
+      } else if (direction === "last") {
+        setActiveDropdownIndex(downloadedModels.length - 1);
+      } else {
+        const selectedIndex = downloadedModels.findIndex(
+          (model) => model.id === displayModelId,
+        );
+        setActiveDropdownIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      }
+      setShowModelDropdown(true);
+      requestAnimationFrame(() => {
+        document.getElementById(modelDropdownListboxId)?.focus();
+      });
+    },
+    [displayModelId, modelDropdownListboxId, models],
+  );
+
+  const handleTriggerKeyDown: React.KeyboardEventHandler<HTMLButtonElement> = (
+    event,
+  ) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      openModelDropdown("first");
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      openModelDropdown("last");
+      return;
+    }
+
+    if (event.key === "Escape" && showModelDropdown) {
+      event.preventDefault();
+      closeModelDropdown();
+    }
+  };
+
   const handleModelSelect = async (modelId: string) => {
     setPendingModelId(modelId);
     setModelError(null);
-    setShowModelDropdown(false);
+    closeModelDropdown();
+    returnFocusToTrigger();
     const success = await selectModel(modelId);
     if (!success) {
       setPendingModelId(null);
@@ -240,10 +324,24 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       {/* Model Status and Switcher */}
       <div className="relative" ref={dropdownRef}>
         <ModelStatusButton
+          id={modelDropdownButtonId}
+          ref={triggerRef}
           status={statusForButton}
           displayText={getModelDisplayText()}
           isDropdownOpen={showModelDropdown}
-          onClick={() => setShowModelDropdown(!showModelDropdown)}
+          onClick={() => {
+            if (showModelDropdown) {
+              closeModelDropdown();
+            } else {
+              openModelDropdown();
+            }
+          }}
+          onKeyDown={handleTriggerKeyDown}
+          ariaControls={modelDropdownListboxId}
+          ariaLabel={t("modelSelector.switcherAriaLabel", {
+            defaultValue: "Current model: {{model}}. Open model switcher.",
+            model: getModelDisplayText(),
+          })}
           labelClassName={statusButtonLabelClassName}
           density={statusButtonDensity}
         />
@@ -251,9 +349,15 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         {/* Model Dropdown */}
         {showModelDropdown && (
           <ModelDropdown
+            id={modelDropdownListboxId}
+            labelledBy={modelDropdownButtonId}
             models={models}
             currentModelId={displayModelId}
             onModelSelect={handleModelSelect}
+            activeIndex={activeDropdownIndex}
+            onActiveIndexChange={setActiveDropdownIndex}
+            onClose={closeModelDropdown}
+            returnFocusToTrigger={returnFocusToTrigger}
           />
         )}
       </div>

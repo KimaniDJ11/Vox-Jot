@@ -68,15 +68,9 @@ pub fn managed_ocr_runtime_definition() -> Option<ManagedOcrRuntimeDefinition> {
             hf_repo_id: HF_REPO_ID,
         });
     }
-    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    {
-        return Some(ManagedOcrRuntimeDefinition {
-            platform_id: "macos-x64",
-            archive_name: "ocr-runtime-macos-x64-all.tar.gz",
-            checksum_name: "ocr-runtime-macos-x64-all.tar.gz.sha256",
-            hf_repo_id: HF_REPO_ID,
-        });
-    }
+    // Neural OCR's `all` runtime depends on Torch >= 2.4. PyPI no longer
+    // publishes matching x86_64 macOS wheels, so do not advertise a managed
+    // Intel macOS runtime until that dependency path changes.
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         return Some(ManagedOcrRuntimeDefinition {

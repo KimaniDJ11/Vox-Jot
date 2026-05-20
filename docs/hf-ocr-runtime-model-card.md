@@ -25,12 +25,16 @@ catalog.
 - `ocr-runtime-macos-aarch64-all.tar.gz`: macOS Apple Silicon runtime bundle.
 - `ocr-runtime-macos-aarch64-all.tar.gz.sha256`: SHA-256 checksum consumed by
   the app before extraction.
+- `ocr-runtime-linux-x64-all.tar.gz`: Linux x64 runtime bundle.
+- `ocr-runtime-linux-x64-all.tar.gz.sha256`: SHA-256 checksum consumed by the
+  app before extraction.
+- `ocr-runtime-windows-x64-all.tar.gz`: Windows x64 runtime bundle.
+- `ocr-runtime-windows-x64-all.tar.gz.sha256`: SHA-256 checksum consumed by the
+  app before extraction.
 
-Future platform archives should follow the same filename shape:
-
-- `ocr-runtime-macos-x64-all.tar.gz`
-- `ocr-runtime-linux-x64-all.tar.gz`
-- `ocr-runtime-windows-x64-all.tar.gz`
+Intel macOS is intentionally not published for the `all` profile. The neural
+OCR runtime depends on Torch >= 2.4, and compatible x86_64 macOS wheels are not
+available from PyPI for the standalone Python build target Vox Jot uses.
 
 ## App Contract
 

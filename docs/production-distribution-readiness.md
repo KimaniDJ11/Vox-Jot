@@ -52,7 +52,10 @@ feature.
   rows runnable.
 - Added `.github/workflows/ocr-runtime.yml` to build and verify native Linux x64
   and Windows x64 OCR runtime archives on their own runners, then upload the
-  archives and checksums to `IrieDinamik/vox-jot-ocr-runtime`.
+  archives and checksums to `IrieDinamik/vox-jot-ocr-runtime`. macOS Apple
+  Silicon is built from a Mac host; Intel macOS neural OCR is not currently
+  advertised because Torch >= 2.4 wheels are unavailable for the standalone
+  x86_64 macOS Python target.
 - Added `bun run audit:distribution` to catch release-readiness regressions such
   as heavyweight OCR resource globs, missing hardened runtime, missing
   entitlements, missing Windows signing, and disabled updater artifacts.

@@ -836,6 +836,16 @@ fn augment_tts_catalog_with_hf_verified(
 
         let installed = tts_hf_repo_is_installed(app, &repo_id);
         let downloadable = !installed;
+        let readiness_status = if installed { "downloaded" } else { "missing" };
+        let readiness_issues = if installed {
+            vec![format!(
+                "{repo_id} is downloaded, but Vox Jot does not have a runnable local TTS adapter for this generic Hugging Face repo yet."
+            )]
+        } else {
+            vec![format!(
+                "Tap Download to pull {repo_id} into Vox Jot's local TTS store."
+            )]
+        };
 
         tts_catalog.models.push(CatalogModelDescriptor {
             id: model_id,
@@ -847,7 +857,7 @@ fn augment_tts_catalog_with_hf_verified(
             installed,
             selected: false,
             active: false,
-            runnable: installed,
+            runnable: false,
             downloadable,
             source_label: "Hugging Face collection".to_string(),
             source_url: Some(format!("https://huggingface.co/{repo_id}")),
@@ -860,17 +870,11 @@ fn augment_tts_catalog_with_hf_verified(
             license_label: None,
             locale: None,
             supported_languages: Vec::new(),
-            readiness_status: Some(if installed { "ready" } else { "missing" }.to_string()),
-            readiness_issues: if installed {
-                Vec::new()
-            } else {
-                vec![format!(
-                    "Tap Download to pull {repo_id} into Vox Jot's local TTS store."
-                )]
-            },
+            readiness_status: Some(readiness_status.to_string()),
+            readiness_issues,
             capabilities: CapabilityFlags {
                 downloadable,
-                loadable: installed,
+                loadable: false,
                 local_only: true,
                 supports_translation: false,
                 supports_streaming: true,

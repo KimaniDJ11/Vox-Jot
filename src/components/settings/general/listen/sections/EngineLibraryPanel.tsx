@@ -61,10 +61,12 @@ import { speechLibraryCardClassName } from "../styles";
 import {
   formatLanguageCoverage,
   getModelLanguageItems,
+  huggingFaceRepoIdFromSourceUrl,
   sourceKindLabel,
   ttsHubModelCanRemove,
   ttsModelSupportsLanguage,
   ttsStorageSizeLabel,
+  verifiedTtsHuggingFaceRepoId,
 } from "../utils";
 import { modelHasTuningControls } from "../tuningControls";
 
@@ -140,12 +142,6 @@ const ttsModelLicenseGate = (
 ): LicenseAcknowledgementGate | null =>
   TTS_LICENSE_ACKNOWLEDGEMENT_GATES[model.id] ?? null;
 
-const huggingFaceRepoIdFromSourceUrl = (sourceUrl?: string | null) => {
-  const prefix = "https://huggingface.co/";
-  if (!sourceUrl?.startsWith(prefix)) return null;
-  return sourceUrl.slice(prefix.length).replace(/\/$/, "");
-};
-
 interface TtsHfDownloadProgress {
   repo_id: string;
   stage: string;
@@ -213,6 +209,22 @@ const SpeechModelLibraryCard: React.FC<{
             defaultValue:
               "Requires acknowledging publisher license restrictions before download.",
           }),
+        }
+      : null,
+    model.installed && !model.runnable
+      ? {
+          id: "runtime-needed",
+          label: t("listen.engineLibrary.badges.runtimeNeeded", {
+            defaultValue: "Runtime needed",
+          }),
+          variant: "secondary" as const,
+          icon: <AlertTriangle className="h-3 w-3" />,
+          detail:
+            model.readiness_issues[0] ??
+            t("listen.engineLibrary.badges.runtimeNeededDetail", {
+              defaultValue:
+                "Downloaded files are present, but this model is not runnable yet.",
+            }),
         }
       : null,
   ].filter(Boolean) as CompactBadgeItem[];
@@ -324,25 +336,36 @@ const SpeechModelLibraryCard: React.FC<{
     model.source_label,
   ].filter(Boolean) as string[];
 
+  const canAcquire = model.downloadable && !model.installed;
+  const canActivate = model.installed && model.runnable;
   const clickable =
     !active &&
     speech.ttsEnabled &&
     !speech.loadingPlatform &&
     !confirmingRemove &&
     !locallyDownloading &&
-    !downloadProgress;
+    !downloadProgress &&
+    (canAcquire || canActivate);
 
   const downloadOrActivate = useCallback(async () => {
     if (locallyDownloading || downloadProgress) return;
     setLocalDownloadError(null);
+    const hfRepoId = verifiedTtsHuggingFaceRepoId(model);
     if (
-      model.downloadable &&
-      !model.installed &&
+      canAcquire &&
       onGatedDownloadRequest(model)
     ) {
       return;
     }
-    setLocallyDownloading(model.downloadable && !model.installed);
+    setLocallyDownloading(canAcquire);
+    if (canAcquire && hfRepoId) {
+      speech.setStatusMessage(
+        t("modelHub.tts.downloadStarting", {
+          modelName: model.label,
+          defaultValue: "Starting {{modelName}} download...",
+        }),
+      );
+    }
     try {
       await speech.activateModel(model.provider_id, model.id);
     } catch (error) {
@@ -358,12 +381,16 @@ const SpeechModelLibraryCard: React.FC<{
       setLocallyDownloading(false);
     }
   }, [
+    canAcquire,
     downloadProgress,
     locallyDownloading,
     model.downloadable,
     model.id,
     model.installed,
+    model.label,
     model.provider_id,
+    model.runnable,
+    model.source_url,
     onGatedDownloadRequest,
     speech,
     t,
@@ -372,8 +399,7 @@ const SpeechModelLibraryCard: React.FC<{
   let trailing: HubTrailing = null;
   if (
     !active &&
-    model.downloadable &&
-    !model.installed &&
+    canAcquire &&
     !locallyDownloading &&
     !downloadProgress
   ) {

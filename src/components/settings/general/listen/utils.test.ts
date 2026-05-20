@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
-import { TTS_MODEL_SIZE_HINTS, ttsStorageSizeLabel } from "./utils";
+import {
+  TTS_MODEL_SIZE_HINTS,
+  huggingFaceRepoIdFromSourceUrl,
+  ttsStorageSizeLabel,
+  verifiedTtsHuggingFaceRepoId,
+} from "./utils";
 
 const t = ((_key: string, options?: { defaultValue?: string }) =>
   options?.defaultValue ?? "") as Parameters<typeof ttsStorageSizeLabel>[1];
@@ -50,6 +55,67 @@ const model = (
     advanced_controls: [],
   },
   ...patch,
+});
+
+describe("verifiedTtsHuggingFaceRepoId", () => {
+  it("resolves verified collection rows from their source URL when the id is sanitized", () => {
+    expect(
+      verifiedTtsHuggingFaceRepoId(
+        model({
+          id: "hf_tts:parler-tts_parler-tts-mini-v1.1",
+          provider_id: "local_sidecar_api",
+          source_url: "https://huggingface.co/parler-tts/parler-tts-mini-v1.1",
+        }),
+      ),
+    ).toBe("parler-tts/parler-tts-mini-v1.1");
+  });
+
+  it("resolves verified collection rows when the source URL includes a route", () => {
+    expect(
+      verifiedTtsHuggingFaceRepoId(
+        model({
+          id: "microsoft_speecht5_tts",
+          provider_id: "local_sidecar_api",
+          source_url:
+            "https://huggingface.co/microsoft/speecht5_tts/tree/main",
+        }),
+      ),
+    ).toBe("microsoft/speecht5_tts");
+  });
+
+  it("falls back to slash-delimited ids for verified collection rows", () => {
+    expect(
+      verifiedTtsHuggingFaceRepoId(
+        model({
+          id: "rhasspy/piper-voices",
+          provider_id: "local_sidecar_api",
+          source_url: null,
+        }),
+      ),
+    ).toBe("rhasspy/piper-voices");
+  });
+
+  it("does not route non-verified models through the generic HF downloader", () => {
+    expect(
+      verifiedTtsHuggingFaceRepoId(
+        model({
+          id: "mlx-community/Kokoro-82M-bf16",
+          provider_id: "kokoro",
+          source_url: "https://huggingface.co/mlx-community/Kokoro-82M-bf16",
+        }),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("huggingFaceRepoIdFromSourceUrl", () => {
+  it("extracts only the namespace and repo name", () => {
+    expect(
+      huggingFaceRepoIdFromSourceUrl(
+        "https://huggingface.co/rhasspy/piper-voices/tree/main",
+      ),
+    ).toBe("rhasspy/piper-voices");
+  });
 });
 
 describe("ttsStorageSizeLabel", () => {

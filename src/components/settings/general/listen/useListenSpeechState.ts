@@ -40,14 +40,8 @@ import {
   previewPreparationMessage,
   profileSupportsModel,
   providerOptionContext,
+  verifiedTtsHuggingFaceRepoId,
 } from "./utils";
-
-const TTS_HF_VERIFIED_PROVIDER_ID = "local_sidecar_api";
-
-const isHuggingFaceVerifiedTtsModel = (model: CatalogModelDescriptor) =>
-  model.provider_id === TTS_HF_VERIFIED_PROVIDER_ID &&
-  model.id.includes("/") &&
-  model.source_url?.startsWith("https://huggingface.co/");
 
 export function useListenSpeechState() {
   const { t } = useTranslation();
@@ -389,8 +383,9 @@ export function useListenSpeechState() {
   const ensureModelInstalled = useCallback(
     async (model: CatalogModelDescriptor) => {
       if (!model.downloadable || model.installed) return;
-      if (isHuggingFaceVerifiedTtsModel(model)) {
-        const result = await commands.downloadTtsHfModel(model.id);
+      const hfRepoId = verifiedTtsHuggingFaceRepoId(model);
+      if (hfRepoId) {
+        const result = await commands.downloadTtsHfModel(hfRepoId);
         if (result.status === "error") {
           throw new Error(result.error);
         }
@@ -527,11 +522,24 @@ export function useListenSpeechState() {
           (model) => model.provider_id === providerId && model.id === modelId,
         ) ?? null;
       if (!nextModel) return;
+      const hfRepoId = verifiedTtsHuggingFaceRepoId(nextModel);
+      const wasInstalled = nextModel.installed;
       await ensureModelInstalled(nextModel);
+      if (hfRepoId && !wasInstalled) {
+        setStatusMessage(
+          t("listen.engineLibrary.hfDownloadComplete", {
+            modelName: nextModel.label,
+            defaultValue:
+              "{{modelName}} downloaded. Vox Jot will show it in downloaded models after refresh.",
+          }),
+        );
+        await refreshAll();
+        return;
+      }
       await setTtsPlatformSelection(providerId, modelId);
       await refreshAll();
     },
-    [ensureModelInstalled, refreshAll, visibleModels],
+    [ensureModelInstalled, refreshAll, t, visibleModels],
   );
 
   const createPresetFromProfile = useCallback(

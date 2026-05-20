@@ -13,6 +13,28 @@ import type {
 import type { TtsVoiceProfileDescriptor } from "@/lib/ttsVoiceProfiles";
 
 export const HIDDEN_TTS_PROVIDER_IDS = new Set<string>();
+export const TTS_HF_VERIFIED_PROVIDER_ID = "local_sidecar_api";
+
+export const huggingFaceRepoIdFromSourceUrl = (
+  sourceUrl?: string | null,
+): string | null => {
+  const prefix = "https://huggingface.co/";
+  if (!sourceUrl?.startsWith(prefix)) return null;
+  const repoId = sourceUrl.slice(prefix.length).split(/[?#]/)[0] ?? "";
+  const parts = repoId.replace(/\/$/, "").split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  return `${parts[0]}/${parts[1]}`;
+};
+
+export const verifiedTtsHuggingFaceRepoId = (
+  model: CatalogModelDescriptor,
+): string | null => {
+  if (model.provider_id !== TTS_HF_VERIFIED_PROVIDER_ID) return null;
+  return (
+    huggingFaceRepoIdFromSourceUrl(model.source_url) ??
+    (model.id.includes("/") ? model.id : null)
+  );
+};
 
 export const DEFAULT_TTS_PREVIEW_TEXT =
   "The morning light fell softly across the old stone bridge. She paused, took a breath, and said — quite simply — that she'd never felt more alive. Was it the crisp air? The silence? Perhaps both. Either way, something had shifted, quietly and for good.";

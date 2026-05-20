@@ -1,16 +1,14 @@
 use crate::llm_client;
 use crate::ollama;
 use crate::settings::{self, APPLE_INTELLIGENCE_PROVIDER_ID, OLLAMA_PROVIDER_ID};
-use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
-use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::Mutex;
 
@@ -1333,105 +1331,79 @@ async fn ensure_hf_gguf_downloaded(
 
     log::info!("ensure_hf_gguf_downloaded: downloading {file_name} from {url}");
 
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to download {file_name}: {e}"))?;
+    let expected_size = resolve_remote_file_size(&client, &url).await.unwrap_or(0);
+    let partial_path = target_path.with_extension(format!(
+        "{}partial",
+        target_path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| format!("{extension}."))
+            .unwrap_or_default()
+    ));
+    let progress_app = app.clone();
+    let progress_model_id = model_id.to_string();
+    let progress = std::sync::Arc::new(
+        move |progress: crate::artifact_download::ArtifactProgress| {
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress.clone());
+            let _ = progress_app.emit(
+                "refine-download-progress",
+                serde_json::json!({
+                    "model_id": progress_model_id,
+                    "downloaded": progress.downloaded_bytes,
+                    "total": progress.total_bytes,
+                    "percentage": progress.percentage,
+                    "stage": if progress.phase == "complete" { "importing" } else { "downloading" },
+                }),
+            );
+        },
+    );
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download {file_name}: HTTP {}",
-            response.status()
-        ));
-    }
-
-    let expected_size = match response.content_length() {
-        Some(size) => size,
-        None => resolve_remote_file_size(&client, &url).await.unwrap_or(0),
+    let report = match crate::artifact_download::download_file(
+        crate::artifact_download::FileDownloadOptions {
+            domain: "refine".to_string(),
+            artifact_id: model_id.to_string(),
+            url,
+            partial_path,
+            final_path: target_path.to_path_buf(),
+            expected_sha256: None,
+            expected_size: (expected_size > 0).then_some(expected_size),
+            cancel_flag: None,
+            progress: Some(progress),
+        },
+    )
+    .await
+    {
+        Ok(report) => report,
+        Err(err) => {
+            let _ = app.emit(
+                "refine-download-progress",
+                serde_json::json!({
+                    "model_id": model_id,
+                    "downloaded": 0u64,
+                    "total": 0u64,
+                    "percentage": 0.0f64,
+                    "stage": "failed",
+                }),
+            );
+            return Err(err);
+        }
     };
 
     let _ = app.emit(
         "refine-download-progress",
         serde_json::json!({
             "model_id": model_id,
-            "downloaded": 0u64,
-            "total": expected_size,
-            "percentage": 0.0f64,
-            "stage": "downloading",
-        }),
-    );
-
-    let mut output = tokio_fs::File::create(target_path)
-        .await
-        .map_err(|e| format!("Failed to create {}: {e}", target_path.display()))?;
-
-    let mut downloaded: u64 = 0;
-    let mut last_emit = Instant::now();
-    let throttle = Duration::from_millis(150);
-    let mut stream = response.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Download stream failed for {file_name}: {e}"))?;
-        downloaded += chunk.len() as u64;
-        output
-            .write_all(&chunk)
-            .await
-            .map_err(|e| format!("Failed to write {file_name}: {e}"))?;
-
-        if last_emit.elapsed() >= throttle {
-            let pct = if expected_size > 0 {
-                (downloaded as f64 / expected_size as f64) * 100.0
-            } else {
-                0.0
-            };
-            let _ = app.emit(
-                "refine-download-progress",
-                serde_json::json!({
-                    "model_id": model_id,
-                    "downloaded": downloaded,
-                    "total": expected_size,
-                    "percentage": pct,
-                    "stage": "downloading",
-                }),
-            );
-            last_emit = Instant::now();
-        }
-    }
-
-    output
-        .flush()
-        .await
-        .map_err(|e| format!("Failed to flush {file_name}: {e}"))?;
-
-    if expected_size > 0 && downloaded != expected_size {
-        let _ = app.emit(
-            "refine-download-progress",
-            serde_json::json!({
-                "model_id": model_id,
-                "downloaded": 0u64,
-                "total": 0u64,
-                "percentage": 0.0f64,
-                "stage": "failed",
-            }),
-        );
-        let _ = tokio_fs::remove_file(target_path).await;
-        return Err(format!(
-            "Download incomplete for {file_name}: got {downloaded} bytes, expected {expected_size}"
-        ));
-    }
-
-    let _ = app.emit(
-        "refine-download-progress",
-        serde_json::json!({
-            "model_id": model_id,
-            "downloaded": downloaded,
-            "total": downloaded,
+            "downloaded": report.downloaded_bytes,
+            "total": report.total_bytes,
             "percentage": 100.0f64,
             "stage": "importing",
         }),
     );
 
-    log::info!("ensure_hf_gguf_downloaded: {file_name} downloaded ({downloaded} bytes)");
+    log::info!(
+        "ensure_hf_gguf_downloaded: {file_name} downloaded ({} bytes)",
+        report.downloaded_bytes
+    );
     Ok(())
 }
 

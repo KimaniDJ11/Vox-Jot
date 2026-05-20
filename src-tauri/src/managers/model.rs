@@ -1,3 +1,4 @@
+use crate::artifact_download::{emit_artifact_progress, ArtifactProgress, HfRepoDownloadOptions};
 use crate::github_release;
 use crate::settings::{get_settings, write_settings};
 use anyhow::Result;
@@ -71,17 +72,6 @@ pub struct DownloadProgress {
     pub downloaded: u64,
     pub total: u64,
     pub percentage: f64,
-}
-
-#[derive(Debug, Deserialize)]
-struct HfSibling {
-    rfilename: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct HfModelInfo {
-    #[serde(default)]
-    siblings: Vec<HfSibling>,
 }
 
 pub struct ModelManager {
@@ -196,12 +186,22 @@ impl ModelManager {
         }
     }
 
-    fn hf_snapshot_file_is_needed(name: &str) -> bool {
-        !name.starts_with('.')
-            && !name.contains("/.cache/")
-            && !name.starts_with(".cache/")
-            && !name.contains("/.git/")
-            && !name.starts_with(".git/")
+    fn emit_model_download_progress(&self, progress: &DownloadProgress) {
+        crate::artifact_download::emit_artifact_progress(
+            &self.app_handle,
+            crate::artifact_download::progress(
+                "stt",
+                &progress.model_id,
+                "downloading",
+                None,
+                None,
+                None,
+                progress.downloaded,
+                progress.total,
+                None,
+            ),
+        );
+        let _ = self.app_handle.emit("model-download-progress", progress);
     }
 
     fn collect_files_recursive(root: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
@@ -1629,7 +1629,6 @@ impl ModelManager {
         struct SnapshotDownloadGuard<'a> {
             manager: &'a ModelManager,
             model_id: String,
-            staging_path: PathBuf,
             active: bool,
         }
 
@@ -1647,7 +1646,6 @@ impl ModelManager {
 
                 self.manager.set_model_downloading(&self.model_id, false);
                 self.manager.clear_download_cancel_flag(&self.model_id);
-                let _ = fs::remove_dir_all(&self.staging_path);
             }
         }
 
@@ -1685,80 +1683,45 @@ impl ModelManager {
         let mut download_guard = SnapshotDownloadGuard {
             manager: self,
             model_id: model_id.to_string(),
-            staging_path: staging_path.clone(),
             active: true,
         };
 
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(900))
-            .build()?;
-        let api_url = format!("https://huggingface.co/api/models/{repo_id}");
-        let repo_info: HfModelInfo = client
-            .get(&api_url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        let files = repo_info
-            .siblings
-            .into_iter()
-            .map(|sibling| sibling.rfilename)
-            .filter(|name| Self::hf_snapshot_file_is_needed(name))
-            .collect::<Vec<_>>();
+        let bridge_app = self.app_handle.clone();
+        let bridge_model_id = model_id.to_string();
+        let progress = Arc::new(move |progress: ArtifactProgress| {
+            emit_artifact_progress(&bridge_app, progress.clone());
+            let _ = bridge_app.emit(
+                "model-download-progress",
+                &DownloadProgress {
+                    model_id: bridge_model_id.clone(),
+                    downloaded: progress.downloaded_bytes,
+                    total: progress.total_bytes,
+                    percentage: progress.percentage,
+                },
+            );
+        });
 
-        if files.is_empty() {
-            let _ = fs::remove_dir_all(&staging_path);
-            self.set_model_downloading(model_id, false);
-            return Err(anyhow::anyhow!("No downloadable files found in {repo_id}"));
-        }
-
-        let total = files.len() as u64;
-        for (idx, rel_path) in files.iter().enumerate() {
-            if cancel_flag.load(Ordering::Relaxed) {
+        match crate::artifact_download::download_hf_repo(HfRepoDownloadOptions {
+            domain: "stt".to_string(),
+            artifact_id: model_id.to_string(),
+            repo_id: repo_id.to_string(),
+            staging_dir: staging_path.clone(),
+            final_dir: model_path.clone(),
+            token: crate::speech_analysis::hugging_face_token_for_runtime(),
+            gated: false,
+            resume_existing_staging: true,
+            cancel_flag: Some(Arc::clone(&cancel_flag)),
+            progress: Some(progress),
+        })
+        .await
+        {
+            Ok(_) => {}
+            Err(err) if crate::artifact_download::is_cancelled_error(&err) => {
                 info!("Hugging Face snapshot download cancelled for: {}", model_id);
                 return Ok(());
             }
-
-            let encoded_path = rel_path
-                .split('/')
-                .map(|segment| segment.replace(' ', "%20"))
-                .collect::<Vec<_>>()
-                .join("/");
-            let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded_path}");
-            let target = staging_path.join(rel_path);
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent)?;
-            }
-
-            let response = client.get(&url).send().await?.error_for_status()?;
-            let mut output = File::create(&target)?;
-            let mut stream = response.bytes_stream();
-            while let Some(chunk) = stream.next().await {
-                if cancel_flag.load(Ordering::Relaxed) {
-                    drop(output);
-                    let _ = fs::remove_file(&target);
-                    info!("Hugging Face snapshot download cancelled for: {}", model_id);
-                    return Ok(());
-                }
-                output.write_all(&chunk?)?;
-            }
-            output.flush()?;
-
-            let downloaded = (idx + 1) as u64;
-            let progress = DownloadProgress {
-                model_id: model_id.to_string(),
-                downloaded,
-                total,
-                percentage: (downloaded as f64 / total as f64) * 100.0,
-            };
-            let _ = self.app_handle.emit("model-download-progress", &progress);
+            Err(err) => return Err(anyhow::anyhow!(err)),
         }
-
-        if model_path.exists() {
-            fs::remove_dir_all(&model_path)?;
-        }
-        fs::rename(&staging_path, &model_path)?;
 
         {
             let mut models = self
@@ -1970,9 +1933,7 @@ impl ModelManager {
                 false,
             ),
         };
-        let _ = self
-            .app_handle
-            .emit("model-download-progress", &initial_progress);
+        self.emit_model_download_progress(&initial_progress);
 
         // Throttle progress events to max 10/sec (100ms intervals)
         let mut last_emit = Instant::now();
@@ -2038,7 +1999,7 @@ impl ModelManager {
                     total: progress_total_size,
                     percentage,
                 };
-                let _ = self.app_handle.emit("model-download-progress", &progress);
+                self.emit_model_download_progress(&progress);
                 last_emit = Instant::now();
             }
         }
@@ -2055,9 +2016,7 @@ impl ModelManager {
                 true,
             ),
         };
-        let _ = self
-            .app_handle
-            .emit("model-download-progress", &final_progress);
+        self.emit_model_download_progress(&final_progress);
 
         file.flush()?;
         drop(file); // Ensure file is closed before moving

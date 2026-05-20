@@ -10,6 +10,7 @@
 
 mod actions;
 mod apple_intelligence;
+mod artifact_download;
 mod audio_feedback;
 mod audio_playback;
 pub mod audio_toolkit;

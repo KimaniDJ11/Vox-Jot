@@ -25,16 +25,14 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use log::{debug, info, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use tauri::AppHandle;
-use uuid::Uuid;
 
 use crate::ocr_models::OcrBackendKind;
 use crate::screen_context::NativeScreenContextSnippet;
@@ -314,85 +312,60 @@ async fn download_and_extract_runtime_archive(
         .map_err(|err| format!("Failed to create OCR runtime download dir: {err}"))?;
 
     let expected_sha256 = fetch_runtime_sha256(&client, checksum_url).await?;
-    if let Some(catalog_id) = progress_catalog_id {
-        crate::ocr_models::emit_progress(
-            app,
-            catalog_id,
-            "runtime-downloading",
-            0,
-            0,
-            Some(archive_name),
-            None,
-            None,
-            None,
-        );
+    let archive_path = download_dir.join(archive_name);
+    let partial_path = download_dir.join(format!("{archive_name}.partial"));
+    if archive_path.exists() {
+        fs::remove_file(&archive_path)
+            .map_err(|err| format!("Failed to clear previous OCR runtime archive: {err}"))?;
     }
 
-    let mut response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|err| format!("Failed to download OCR runtime: {err}"))?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download OCR runtime: HTTP {} ({url})",
-            response.status()
-        ));
-    }
-
-    let total = response.content_length().unwrap_or(0);
-    let archive_path = download_dir.join(format!("{}-{archive_name}", Uuid::new_v4()));
-    let mut archive_file = File::create(&archive_path)
-        .map_err(|err| format!("Failed to create OCR runtime archive: {err}"))?;
-    let mut hasher = Sha256::new();
-    let mut downloaded = 0u64;
-    let mut last_emit = Instant::now();
-    let throttle = Duration::from_millis(200);
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|err| format!("Failed to read OCR runtime bytes: {err}"))?
-    {
-        hasher.update(&chunk);
-        downloaded += chunk.len() as u64;
-        archive_file
-            .write_all(&chunk)
-            .map_err(|err| format!("Failed to save OCR runtime archive: {err}"))?;
-        if let Some(catalog_id) = progress_catalog_id {
-            if last_emit.elapsed() >= throttle {
+    let progress_app = app.clone();
+    let progress_catalog_id = progress_catalog_id.map(str::to_string);
+    let progress_catalog_id_for_progress = progress_catalog_id.clone();
+    let archive_name_for_progress = archive_name.to_string();
+    let progress = std::sync::Arc::new(
+        move |progress: crate::artifact_download::ArtifactProgress| {
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress.clone());
+            if let Some(catalog_id) = progress_catalog_id_for_progress.as_deref() {
                 crate::ocr_models::emit_progress(
-                    app,
+                    &progress_app,
                     catalog_id,
                     "runtime-downloading",
-                    downloaded,
-                    total,
-                    Some(archive_name),
-                    None,
-                    None,
-                    None,
+                    progress.downloaded_bytes,
+                    progress.total_bytes,
+                    progress
+                        .file
+                        .as_deref()
+                        .or(Some(&archive_name_for_progress)),
+                    progress.file_index,
+                    progress.file_count,
+                    progress.error.as_deref(),
                 );
-                last_emit = Instant::now();
             }
-        }
-    }
-    archive_file
-        .flush()
-        .map_err(|err| format!("Failed to flush OCR runtime archive: {err}"))?;
+        },
+    );
 
-    let actual_sha256 = format!("{:x}", hasher.finalize());
-    if actual_sha256 != expected_sha256 {
-        let _ = fs::remove_file(&archive_path);
-        return Err(format!(
-            "OCR runtime checksum mismatch for {archive_name}: expected {expected_sha256}, got {actual_sha256}."
-        ));
-    }
-    if let Some(catalog_id) = progress_catalog_id {
+    let report =
+        crate::artifact_download::download_file(crate::artifact_download::FileDownloadOptions {
+            domain: "ocr_runtime".to_string(),
+            artifact_id: archive_name.to_string(),
+            url: url.to_string(),
+            partial_path,
+            final_path: archive_path.clone(),
+            expected_sha256: Some(expected_sha256),
+            expected_size: None,
+            cancel_flag: None,
+            progress: Some(progress),
+        })
+        .await?;
+
+    if let Some(catalog_id) = progress_catalog_id.as_deref() {
         crate::ocr_models::emit_progress(
             app,
             catalog_id,
             "runtime-installing",
-            downloaded,
-            total,
+            report.downloaded_bytes,
+            report.total_bytes,
             Some(archive_name),
             None,
             None,
@@ -599,13 +572,13 @@ fn sanitize_archive_path(path: std::borrow::Cow<'_, Path>) -> Result<PathBuf, St
 }
 
 fn is_macos_metadata_path(path: &Path) -> bool {
-    path.components().any(|component| {
-        matches!(component, Component::Normal(part) if part == "__MACOSX")
-    }) || path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(|name| name.starts_with("._"))
-        .unwrap_or(false)
+    path.components()
+        .any(|component| matches!(component, Component::Normal(part) if part == "__MACOSX"))
+        || path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| name.starts_with("._"))
+            .unwrap_or(false)
 }
 
 #[cfg(test)]

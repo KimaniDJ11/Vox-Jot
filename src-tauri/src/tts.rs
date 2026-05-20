@@ -1,4 +1,3 @@
-use crate::github_release;
 use crate::model_platform::{
     CapabilityFlags, CatalogModelDescriptor, CatalogSourceKind, DomainCatalog, ModelDomain,
     ProviderDescriptor, RuntimeRequirement, TtsAdvancedControlDescriptor, TtsAdvancedControlKind,
@@ -30,7 +29,6 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -4468,47 +4466,37 @@ impl TtsManager {
         download_dir: &Path,
         label: &str,
     ) -> Result<PathBuf, String> {
-        let client = reqwest::Client::new();
-        let response = github_release::get_with_optional_github_auth(&client, url, None)
-            .await
-            .map_err(|err| format!("Failed to download {label}: {err}"))?;
-        if !response.status().is_success() {
-            return Err(format!(
-                "Failed to download {label}: HTTP {} ({url})",
-                response.status()
-            ));
-        }
-
         let file_name = url
             .split('/')
             .next_back()
             .filter(|name| !name.is_empty())
             .unwrap_or("tts-asset.tar.gz");
-        let archive_path = download_dir.join(format!("{}-{}", Uuid::new_v4(), file_name));
-        let partial_path = archive_path.with_extension(format!(
-            "{}partial",
-            archive_path
-                .extension()
-                .and_then(|extension| extension.to_str())
-                .map(|extension| format!("{extension}."))
-                .unwrap_or_default()
-        ));
-        let mut output = fs::File::create(&partial_path)
-            .map_err(|err| format!("Failed to create {label} download file: {err}"))?;
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|err| format!("Failed to read {label} bytes: {err}"))?;
-            output
-                .write_all(&chunk)
-                .map_err(|err| format!("Failed to save {label}: {err}"))?;
+        let archive_path = download_dir.join(file_name);
+        let partial_path = download_dir.join(format!("{file_name}.partial"));
+        if archive_path.exists() {
+            fs::remove_file(&archive_path)
+                .map_err(|err| format!("Failed to clear previous {label} archive: {err}"))?;
         }
-        output
-            .sync_all()
-            .map_err(|err| format!("Failed to flush {label}: {err}"))?;
-        drop(output);
-        fs::rename(&partial_path, &archive_path)
-            .map_err(|err| format!("Failed to finalize {label} download: {err}"))?;
-        Ok(archive_path)
+
+        let progress_app = self.app_handle.clone();
+        let artifact_id = label.to_string();
+        let progress = std::sync::Arc::new(move |progress| {
+            crate::artifact_download::emit_artifact_progress(&progress_app, progress);
+        });
+
+        crate::artifact_download::download_file(crate::artifact_download::FileDownloadOptions {
+            domain: "tts".to_string(),
+            artifact_id,
+            url: url.to_string(),
+            partial_path,
+            final_path: archive_path.clone(),
+            expected_sha256: None,
+            expected_size: None,
+            cancel_flag: None,
+            progress: Some(progress),
+        })
+        .await
+        .map(|report| report.final_path)
     }
 
     /// Download all files from a HuggingFace model repository into `install_dir`.

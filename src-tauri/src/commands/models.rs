@@ -1,3 +1,4 @@
+use crate::artifact_download::{emit_artifact_progress, ArtifactProgress, HfRepoDownloadOptions};
 use crate::managers::model::{model_is_available, EngineType, ModelInfo, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::model_platform::{
@@ -890,66 +891,6 @@ fn augment_tts_catalog_with_hf_verified(
 
 // --- HF TTS download path -----------------------------------------------
 
-#[derive(Debug, Deserialize)]
-struct HfRepoSibling {
-    rfilename: String,
-    size: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct HfRepoInfo {
-    #[serde(default)]
-    siblings: Vec<HfRepoSibling>,
-}
-
-fn hf_tts_filter_file(name: &str) -> bool {
-    !name.starts_with('.')
-        && !name.contains("/.cache/")
-        && !name.starts_with(".cache/")
-        && !name.contains("/.git/")
-        && !name.starts_with(".git/")
-}
-
-async fn fetch_hf_repo_files(repo_id: &str) -> Result<Vec<HfRepoSibling>, String> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
-    let url = format!("https://huggingface.co/api/models/{repo_id}");
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|err| format!("Failed to query {repo_id}: {err}"))?;
-    if resp.status().as_u16() == 401 || resp.status().as_u16() == 403 {
-        return Err(format!(
-            "{repo_id} is private on Hugging Face. Publish the mirror before downloading."
-        ));
-    }
-    if resp.status().as_u16() == 404 {
-        return Err(format!("{repo_id} was not found on Hugging Face."));
-    }
-    if !resp.status().is_success() {
-        return Err(format!(
-            "Failed to fetch repo info for {repo_id}: HTTP {}",
-            resp.status()
-        ));
-    }
-    let info: HfRepoInfo = resp
-        .json()
-        .await
-        .map_err(|err| format!("Failed to decode repo info for {repo_id}: {err}"))?;
-    let files: Vec<HfRepoSibling> = info
-        .siblings
-        .into_iter()
-        .filter(|s| hf_tts_filter_file(&s.rfilename))
-        .collect();
-    if files.is_empty() {
-        return Err(format!("No downloadable files in {repo_id}."));
-    }
-    Ok(files)
-}
-
 fn emit_tts_download_progress(
     app: &AppHandle,
     repo_id: &str,
@@ -978,9 +919,6 @@ pub async fn download_hf_tts_repo_impl(
     app: &AppHandle,
     repo_id: &str,
 ) -> Result<std::path::PathBuf, String> {
-    use tokio::fs as tokio_fs;
-    use tokio::io::AsyncWriteExt;
-
     if !repo_id.contains('/') {
         return Err(format!("Invalid HF repo id '{}'", repo_id));
     }
@@ -990,29 +928,39 @@ pub async fn download_hf_tts_repo_impl(
     let staging_dir =
         install_dir.with_file_name(format!(".staging-{}", sanitize_hf_repo_id(repo_id)));
 
-    if staging_dir.exists() {
-        let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-    }
-    tokio_fs::create_dir_all(&staging_dir)
-        .await
-        .map_err(|err| format!("Failed to create staging dir: {err}"))?;
+    let bridge_app = app.clone();
+    let bridge_repo_id = repo_id.to_string();
+    let progress = std::sync::Arc::new(move |progress: ArtifactProgress| {
+        emit_artifact_progress(&bridge_app, progress.clone());
+        emit_tts_download_progress(
+            &bridge_app,
+            &bridge_repo_id,
+            &progress.phase,
+            progress.file.as_deref(),
+            progress.file_index,
+            progress.file_count,
+            Some(progress.downloaded_bytes),
+            Some(progress.total_bytes),
+            progress.error.as_deref(),
+        );
+    });
 
-    emit_tts_download_progress(
-        app,
-        repo_id,
-        "preparing",
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    );
-
-    let files = match fetch_hf_repo_files(repo_id).await {
-        Ok(files) => files,
+    match crate::artifact_download::download_hf_repo(HfRepoDownloadOptions {
+        domain: "tts".to_string(),
+        artifact_id: repo_id.to_string(),
+        repo_id: repo_id.to_string(),
+        staging_dir,
+        final_dir: install_dir.clone(),
+        token: crate::speech_analysis::hugging_face_token_for_runtime(),
+        gated: false,
+        resume_existing_staging: true,
+        cancel_flag: None,
+        progress: Some(progress),
+    })
+    .await
+    {
+        Ok(_) => Ok(install_dir),
         Err(err) => {
-            let _ = tokio_fs::remove_dir_all(&staging_dir).await;
             emit_tts_download_progress(
                 app,
                 repo_id,
@@ -1024,214 +972,9 @@ pub async fn download_hf_tts_repo_impl(
                 None,
                 Some(&err),
             );
-            return Err(err);
+            Err(err)
         }
-    };
-    let file_count = files.len();
-    let total_bytes = files.iter().try_fold(0_u64, |acc, file| {
-        file.size.map(|size| acc.saturating_add(size))
-    });
-    let mut downloaded_bytes = 0_u64;
-    emit_tts_download_progress(
-        app,
-        repo_id,
-        "downloading",
-        None,
-        Some(0),
-        Some(file_count),
-        Some(downloaded_bytes),
-        total_bytes,
-        None,
-    );
-
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(900))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
-
-    for (idx, hf_file) in files.iter().enumerate() {
-        let rel = &hf_file.rfilename;
-        let encoded = rel
-            .split('/')
-            .map(|seg| seg.replace(' ', "%20"))
-            .collect::<Vec<_>>()
-            .join("/");
-        let url = format!("https://huggingface.co/{repo_id}/resolve/main/{encoded}");
-        let target = staging_dir.join(rel);
-        if let Some(parent) = target.parent() {
-            if let Err(err) = tokio_fs::create_dir_all(parent).await {
-                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-                let msg = format!("Failed to create {}: {err}", parent.display());
-                emit_tts_download_progress(
-                    app,
-                    repo_id,
-                    "failed",
-                    Some(rel),
-                    None,
-                    None,
-                    Some(downloaded_bytes),
-                    total_bytes,
-                    Some(&msg),
-                );
-                return Err(msg);
-            }
-        }
-
-        let response = match client.get(&url).send().await {
-            Ok(r) => r,
-            Err(err) => {
-                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-                let msg = format!("Failed to fetch {rel}: {err}");
-                emit_tts_download_progress(
-                    app,
-                    repo_id,
-                    "failed",
-                    Some(rel),
-                    None,
-                    None,
-                    Some(downloaded_bytes),
-                    total_bytes,
-                    Some(&msg),
-                );
-                return Err(msg);
-            }
-        };
-        if !response.status().is_success() {
-            let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-            let msg = format!("Failed to download {rel}: HTTP {}", response.status());
-            emit_tts_download_progress(
-                app,
-                repo_id,
-                "failed",
-                Some(rel),
-                None,
-                None,
-                Some(downloaded_bytes),
-                total_bytes,
-                Some(&msg),
-            );
-            return Err(msg);
-        }
-
-        let mut file = match tokio_fs::File::create(&target).await {
-            Ok(f) => f,
-            Err(err) => {
-                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-                let msg = format!("Failed to open {}: {err}", target.display());
-                emit_tts_download_progress(
-                    app,
-                    repo_id,
-                    "failed",
-                    Some(rel),
-                    None,
-                    None,
-                    Some(downloaded_bytes),
-                    total_bytes,
-                    Some(&msg),
-                );
-                return Err(msg);
-            }
-        };
-
-        use futures_util::StreamExt;
-        let mut last_emit_bytes = downloaded_bytes;
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = match chunk {
-                Ok(c) => c,
-                Err(err) => {
-                    let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-                    let msg = format!("Stream failed for {rel}: {err}");
-                    emit_tts_download_progress(
-                        app,
-                        repo_id,
-                        "failed",
-                        Some(rel),
-                        None,
-                        None,
-                        Some(downloaded_bytes),
-                        total_bytes,
-                        Some(&msg),
-                    );
-                    return Err(msg);
-                }
-            };
-            if let Err(err) = file.write_all(&chunk).await {
-                let _ = tokio_fs::remove_dir_all(&staging_dir).await;
-                let msg = format!("Failed to write {rel}: {err}");
-                emit_tts_download_progress(
-                    app,
-                    repo_id,
-                    "failed",
-                    Some(rel),
-                    None,
-                    None,
-                    Some(downloaded_bytes),
-                    total_bytes,
-                    Some(&msg),
-                );
-                return Err(msg);
-            }
-            downloaded_bytes = downloaded_bytes.saturating_add(chunk.len() as u64);
-            if downloaded_bytes.saturating_sub(last_emit_bytes) >= 1_048_576 {
-                emit_tts_download_progress(
-                    app,
-                    repo_id,
-                    "downloading",
-                    Some(rel),
-                    Some(idx),
-                    Some(file_count),
-                    Some(downloaded_bytes),
-                    total_bytes,
-                    None,
-                );
-                last_emit_bytes = downloaded_bytes;
-            }
-        }
-        let _ = file.flush().await;
-        emit_tts_download_progress(
-            app,
-            repo_id,
-            "downloading",
-            Some(rel),
-            Some(idx + 1),
-            Some(file_count),
-            Some(downloaded_bytes),
-            total_bytes,
-            None,
-        );
     }
-
-    if install_dir.exists() {
-        let _ = tokio_fs::remove_dir_all(&install_dir).await;
-    }
-    if let Some(parent) = install_dir.parent() {
-        let _ = tokio_fs::create_dir_all(parent).await;
-    }
-    tokio_fs::rename(&staging_dir, &install_dir)
-        .await
-        .map_err(|err| {
-            let msg = format!(
-                "Failed to move staging into place ({} -> {}): {err}",
-                staging_dir.display(),
-                install_dir.display()
-            );
-            let _ = std::fs::remove_dir_all(&staging_dir);
-            msg
-        })?;
-
-    emit_tts_download_progress(
-        app,
-        repo_id,
-        "complete",
-        None,
-        Some(file_count),
-        Some(file_count),
-        Some(downloaded_bytes),
-        total_bytes,
-        None,
-    );
-    Ok(install_dir)
 }
 
 #[tauri::command]

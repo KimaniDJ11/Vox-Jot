@@ -949,6 +949,20 @@ pub fn emit_download_progress(
         file_count,
         error: error.map(str::to_string),
     };
+    crate::artifact_download::emit_artifact_progress(
+        app,
+        crate::artifact_download::progress(
+            "speech_analysis",
+            model_id,
+            phase,
+            file,
+            file_index,
+            file_count,
+            downloaded_bytes,
+            total_bytes,
+            error,
+        ),
+    );
     let _ = app.emit("speech-analysis-download-progress", payload);
 }
 

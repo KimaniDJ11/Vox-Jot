@@ -154,6 +154,14 @@ run_notary_submit() {
       return "${status}"
     fi
 
+    if [[ "${output}" == *"HTTPClientError.deadlineExceeded"* ||
+      "${output}" == *"abortedUpload"* ]]; then
+      echo "Notary upload timed out; retrying after a short delay..." >&2
+      /bin/sleep 15
+      attempt=$((attempt + 1))
+      continue
+    fi
+
     if [[ "${output}" != *"No Keychain password item found"* &&
       "${output}" != *"The specified item could not be found"* &&
       "${output}" != *"keychain"* ]]; then
@@ -201,6 +209,7 @@ submit_for_notarization() {
     run_notary_submit "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\"" \
       /usr/bin/xcrun notarytool submit "${artifact_path}" \
       --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\""
     return
     ;;
@@ -210,6 +219,7 @@ submit_for_notarization() {
       --apple-id "${APPLE_ID}" \
       --team-id "${APPLE_TEAM_ID}" \
       --password "${APPLE_NOTARY_PASSWORD}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "Apple ID environment credentials"
     return
     ;;
@@ -219,6 +229,7 @@ submit_for_notarization() {
       --key "${APPLE_API_KEY_PATH}" \
       --key-id "${APPLE_API_KEY}" \
       --issuer "${APPLE_API_ISSUER}" \
+      --no-s3-acceleration \
       --wait || notary_submit_failed "App Store Connect API environment credentials"
     return
     ;;

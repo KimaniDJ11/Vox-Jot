@@ -12,7 +12,7 @@ use crate::translation::TranslationOrigin;
 use super::catalog::{
     mlx_audio_definition_available, mlx_audio_model_supports_inline_tags,
     mlx_audio_tts_model_definition, tts_model_id_for_hf_repo, MANAGED_RUNTIME_MODEL_DEFINITIONS,
-    QWEN3_PACK_DEFINITIONS,
+    PACK_DEFINITIONS, QWEN3_PACK_DEFINITIONS,
 };
 use super::chunking::chunk_text;
 use super::readback::build_auto_speak_plan;
@@ -87,6 +87,34 @@ fn qwen3_catalog_includes_clone_capable_base_pack() {
 
     assert_eq!(base_pack.label, "Qwen3 0.6B Base");
     assert_eq!(base_pack.locale, "mul");
+}
+
+#[test]
+fn sherpa_catalog_includes_curated_piper_packs() {
+    let expected = [
+        ("tts-sherpa-en-us-amy-medium", "en_US-amy-medium.onnx"),
+        ("tts-sherpa-en-gb-alan-medium", "en_GB-alan-medium.onnx"),
+        (
+            "tts-sherpa-de-de-thorsten-medium",
+            "de_DE-thorsten-medium.onnx",
+        ),
+        ("tts-sherpa-es-es-davefx-medium", "es_ES-davefx-medium.onnx"),
+        ("tts-sherpa-fr-fr-siwis-medium", "fr_FR-siwis-medium.onnx"),
+        ("tts-sherpa-it-it-paola-medium", "it_IT-paola-medium.onnx"),
+        ("tts-sherpa-pt-br-faber-medium", "pt_BR-faber-medium.onnx"),
+    ];
+
+    for (pack_id, model_file) in expected {
+        let pack = PACK_DEFINITIONS
+            .iter()
+            .find(|definition| definition.id == pack_id)
+            .unwrap_or_else(|| panic!("{pack_id} should stay in the Sherpa pack catalog"));
+
+        assert_eq!(pack.model_file, model_file);
+        assert_eq!(pack.tokens_file, "tokens.txt");
+        assert_eq!(pack.data_dir, Some("espeak-ng-data"));
+        assert!(pack.source_url.contains("k2-fsa/sherpa-onnx/releases"));
+    }
 }
 
 #[test]

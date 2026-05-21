@@ -1848,13 +1848,6 @@ export const DiagnosticsSettingsSection: React.FC = () => {
       </SettingsGroup>
 
       <SettingsGroup
-        title={t("appSections.diagnostics.localApiTitle")}
-        description={t("appSections.diagnostics.localApiDescription")}
-      >
-        <LocalApiToggle grouped={true} />
-      </SettingsGroup>
-
-      <SettingsGroup
         title={t("settings.diagnostics.featureHealth.groupTitle")}
         description={t("settings.diagnostics.featureHealth.groupDescription")}
       >

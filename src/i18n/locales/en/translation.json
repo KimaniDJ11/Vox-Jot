@@ -1096,7 +1096,7 @@
       },
       "pasteMethod": {
         "title": "Paste Method",
-        "description": "Choose how assistive dictated text is inserted. Direct types into the focused field, clipboard paste uses the system paste path, and None keeps results recoverable without automatic insertion.",
+        "description": "Choose how assistive dictated text is delivered. Direct and clipboard paste need Accessibility for hands-free insertion; Clipboard only works without Accessibility for manual paste.",
         "options": {
           "clipboard": "Clipboard ({{modifier}}+V)",
           "clipboardCtrlShiftV": "Clipboard (Ctrl+Shift+V)",
@@ -1109,7 +1109,7 @@
         "directDescription": "Types the final text into the focused field for hands-free assistive entry.",
         "clipboardDescription": "Copies the text, sends the system paste shortcut, then restores the clipboard.",
         "clipboardOnly": "Clipboard only",
-        "clipboardOnlyDescription": "Copies the text and skips the automatic paste action.",
+        "clipboardOnlyDescription": "Copies the text for manual paste and skips Accessibility-controlled insertion.",
         "platformMethods": "Platform methods"
       },
       "typingTool": {
@@ -2519,7 +2519,7 @@
       "diagnostics": {
         "eyebrow": "Advanced",
         "title": "Labs & Diagnostics",
-        "description": "Try experimental features, expose the local API, and inspect what Vox Jot is doing under the hood."
+        "description": "Try experimental features and inspect what Vox Jot is doing under the hood."
       },
       "about": {
         "eyebrow": "About",
@@ -2838,7 +2838,7 @@
         },
         "accessibility": {
           "label": "Accessibility",
-          "blocked": "Grant Accessibility so Vox Jot can paste into the target app.",
+          "blocked": "Grant Accessibility for automatic paste, or choose Clipboard only to copy transcripts for manual paste.",
           "ready": "Paste automation permission is available."
         },
         "inputMonitoring": {
@@ -2854,7 +2854,7 @@
         },
         "pasteMethod": {
           "label": "Delivery",
-          "disabled": "Paste is disabled; transcripts stay in Vox Jot.",
+          "disabled": "Automatic paste is off; Clipboard only can copy transcripts for manual paste.",
           "direct": "Assistive text will be typed directly into the focused app.",
           "clipboard": "Assistive text will be delivered with the clipboard paste path."
         },

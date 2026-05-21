@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Bot,
   BookOpen,
-  Bug,
   CheckCircle2,
   Cloud,
   Clipboard,
@@ -32,7 +31,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   SpellCheck,
-  Terminal,
   Type,
   Volume2,
   WandSparkles,
@@ -76,14 +74,10 @@ import { GlobalLanguageSync } from "@/components/settings/GlobalLanguageSync";
 import { HistoryLimit } from "@/components/settings/HistoryLimit";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { LocalApiToggle } from "@/components/settings/LocalApiToggle";
-import { LogDirectory } from "@/components/settings/debug/LogDirectory";
-import { LogLevelSelector } from "@/components/settings/debug/LogLevelSelector";
-import { KeyboardImplementationSelector } from "@/components/settings/debug/KeyboardImplementationSelector";
 import { MicrophoneSelector } from "@/components/settings/MicrophoneSelector";
 import { ModelUnloadTimeoutSetting } from "@/components/settings/ModelUnloadTimeout";
 import { MuteWhileRecording } from "@/components/settings/MuteWhileRecording";
 import { OutputDeviceSelector } from "@/components/settings/OutputDeviceSelector";
-import { PasteDelay } from "@/components/settings/debug/PasteDelay";
 import { PasteMethodSetting } from "@/components/settings/PasteMethod";
 import { PhraseKeysEnabledToggle } from "@/components/settings/PhraseKeysEnabledToggle";
 import { PostProcessingSettings } from "@/components/settings/post-processing/PostProcessingSettings";
@@ -100,7 +94,6 @@ import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { TypingToolSetting } from "@/components/settings/TypingTool";
 import { UpdateChecksToggle } from "@/components/settings/UpdateChecksToggle";
 import { VolumeSlider } from "@/components/settings/VolumeSlider";
-import { WordCorrectionThreshold } from "@/components/settings/debug/WordCorrectionThreshold";
 import UpdateChecker from "@/components/update-checker";
 import VoxJotTextLogo from "@/components/icons/VoxJotTextLogo";
 import { subtleCardClassName } from "@/components/app-sections/shared";
@@ -293,7 +286,7 @@ export const GeneralAppSettingsSection: React.FC = () => {
           onClick={() => {
             window.dispatchEvent(
               new CustomEvent("vox-jot:navigate", {
-                detail: { view: "listen", section: "my-voices" },
+                detail: { view: "listen", section: "create-voices" },
               }),
             );
           }}
@@ -750,8 +743,6 @@ const DictationReadinessChecklist: React.FC = () => {
 };
 
 export const OutputPasteSettingsSection: React.FC = () => {
-  const { getSetting } = useSettings();
-  const debugMode = getSetting("debug_mode") ?? false;
   const { t } = useTranslation();
 
   return (
@@ -777,9 +768,6 @@ export const OutputPasteSettingsSection: React.FC = () => {
       <SettingsGroup title={t("appSections.groups.textShaping")}>
         <AutoSubmit descriptionMode="inline" grouped={true} />
         <AppendTrailingSpace descriptionMode="inline" grouped={true} />
-        {debugMode ? (
-          <PasteDelay descriptionMode="inline" grouped={true} />
-        ) : null}
       </SettingsGroup>
     </div>
   );
@@ -1330,7 +1318,6 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
-  const debugMode = getSetting("debug_mode") ?? false;
   const correctionTrackingEnabled =
     getSetting("correction_tracking_enabled") ?? true;
   const screenContextEnabled = getSetting("screen_context_enabled") ?? true;
@@ -1526,7 +1513,6 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
 
       <SettingsGroup title={t("appSections.privacy.filesGroupTitle")}>
         <AppDataDirectory descriptionMode="tooltip" grouped={true} />
-        {debugMode ? <LogDirectory grouped={true} /> : null}
       </SettingsGroup>
 
       {localPrivacyMode && (
@@ -1808,7 +1794,6 @@ export const LegalModelTermsSection: React.FC = () => {
 const DiagnosticsHero: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting } = useSettings();
-  const debugMode = getSetting("debug_mode") ?? false;
   const experimental = getSetting("experimental_enabled") ?? false;
 
   return (
@@ -1822,12 +1807,6 @@ const DiagnosticsHero: React.FC = () => {
         {
           label: t("appSections.diagnostics.statLabs"),
           value: experimental
-            ? t("appSections.diagnostics.statOn")
-            : t("appSections.diagnostics.statOff"),
-        },
-        {
-          label: t("appSections.diagnostics.statDebug"),
-          value: debugMode
             ? t("appSections.diagnostics.statOn")
             : t("appSections.diagnostics.statOff"),
         },
@@ -1847,16 +1826,6 @@ const DiagnosticsHero: React.FC = () => {
               <span className="text-[var(--success)]">{"✓ "}</span>
               {t("appSections.diagnostics.terminalInputReady")}
             </p>
-            <p
-              className={
-                debugMode ? "text-[var(--warning)]" : "text-[var(--muted)]"
-              }
-            >
-              <Bug className="inline h-3 w-3" aria-hidden />{" "}
-              {debugMode
-                ? t("appSections.diagnostics.terminalDebugEnabled")
-                : t("appSections.diagnostics.terminalDebugOff")}
-            </p>
           </div>
         </PreviewSlate>
       }
@@ -1864,136 +1833,8 @@ const DiagnosticsHero: React.FC = () => {
   );
 };
 
-const DebugDiagnosticsPanel: React.FC = () => {
-  const { t } = useTranslation();
-  const [routeInput, setRouteInput] = useState("");
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [routeResult, setRouteResult] = useState<unknown>(null);
-
-  const analyzeRoute = async () => {
-    if (!routeInput.trim()) {
-      setRouteError(t("appSections.routeMonitor.errorEmpty"));
-      setRouteResult(null);
-      return;
-    }
-
-    setRouteLoading(true);
-    setRouteError(null);
-
-    try {
-      const result = await commands.debugAnalyzePostProcessRoute(routeInput);
-      if (result.status === "ok") {
-        setRouteResult(result.data);
-      } else {
-        setRouteError(result.error);
-      }
-    } catch (error) {
-      setRouteError(
-        error instanceof Error
-          ? error.message
-          : t("appSections.routeMonitor.errorAnalysisFailed"),
-      );
-    } finally {
-      setRouteLoading(false);
-    }
-  };
-
-  return (
-    <SettingsGroup title={t("appSections.routeMonitor.groupTitle")}>
-      <div className="space-y-3 px-5 py-4">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-3">
-          <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
-              <Terminal className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-              {t("appSections.routeMonitor.label")}
-            </div>
-            <MiniStatusPill
-              icon={
-                routeError ? (
-                  <XCircle className="h-3.5 w-3.5" aria-hidden />
-                ) : routeResult ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <Info className="h-3.5 w-3.5" aria-hidden />
-                )
-              }
-              label={
-                routeError
-                  ? t("appSections.routeMonitor.error")
-                  : routeResult
-                    ? t("appSections.routeMonitor.analyzed")
-                    : t("appSections.routeMonitor.waiting")
-              }
-              tone={
-                routeError ? "warning" : routeResult ? "success" : "default"
-              }
-            />
-          </div>
-          <div className="space-y-2 font-mono text-xs leading-5 text-[var(--text)]">
-            <p>
-              <span className="text-[var(--muted)]">&gt;</span>{" "}
-              {routeInput.trim()
-                ? t("appSections.routeMonitor.inputStaged")
-                : t("appSections.routeMonitor.waitingForInput")}
-            </p>
-            <p>
-              <span className="text-[var(--muted)]">&gt;</span>{" "}
-              {routeLoading
-                ? t("appSections.routeMonitor.analyzing")
-                : routeResult
-                  ? t("appSections.routeMonitor.complete")
-                  : t("appSections.routeMonitor.ready")}
-            </p>
-          </div>
-        </div>
-        <Textarea
-          value={routeInput}
-          onChange={(event) => setRouteInput(event.target.value)}
-          placeholder={t("settings.debug.routeInputPlaceholder")}
-          aria-label={t("appSections.routeMonitor.label")}
-          className="min-h-[120px]"
-        />
-        <div className="flex gap-2">
-          <Button onClick={() => void analyzeRoute()} disabled={routeLoading}>
-            {routeLoading
-              ? t("appSections.common.analyzing")
-              : t("appSections.common.analyzeRoute")}
-          </Button>
-        </div>
-        {routeError && <Alert variant="error">{routeError}</Alert>}
-        {routeResult != null && (
-          <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-4 text-xs text-[var(--text)]">
-            {JSON.stringify(routeResult, null, 2)}
-          </pre>
-        )}
-      </div>
-    </SettingsGroup>
-  );
-};
-
-const DebugModeToggle: React.FC = () => {
-  const { t } = useTranslation();
-  const { getSetting, updateSetting, isUpdating } = useSettings();
-  const debugMode = getSetting("debug_mode") ?? false;
-
-  return (
-    <ToggleSwitch
-      checked={debugMode}
-      onChange={(enabled) => void updateSetting("debug_mode", enabled)}
-      isUpdating={isUpdating("debug_mode")}
-      label={t("appSections.diagnostics.debugToggleLabel")}
-      description={t("appSections.diagnostics.debugToggleDescription")}
-      descriptionMode="inline"
-      grouped={true}
-    />
-  );
-};
-
 export const DiagnosticsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting } = useSettings();
-  const debugMode = getSetting("debug_mode") ?? false;
 
   return (
     <div className="space-y-6">
@@ -2004,13 +1845,6 @@ export const DiagnosticsSettingsSection: React.FC = () => {
         description={t("appSections.diagnostics.labsDescription")}
       >
         <ExperimentalToggle descriptionMode="tooltip" grouped={true} />
-        <DebugModeToggle />
-        {debugMode ? (
-          <KeyboardImplementationSelector
-            descriptionMode="tooltip"
-            grouped={true}
-          />
-        ) : null}
       </SettingsGroup>
 
       <SettingsGroup
@@ -2026,23 +1860,6 @@ export const DiagnosticsSettingsSection: React.FC = () => {
       >
         <FeatureHealthCheckPanel />
       </SettingsGroup>
-
-      {debugMode ? (
-        <>
-          <SettingsGroup
-            title={t("appSections.diagnostics.developerTitle")}
-            description={t("appSections.diagnostics.developerDescription")}
-          >
-            <LogLevelSelector grouped={true} />
-            <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
-          </SettingsGroup>
-          <DebugDiagnosticsPanel />
-        </>
-      ) : (
-        <Alert variant="info">
-          {t("appSections.diagnostics.debugRevealNotice")}
-        </Alert>
-      )}
     </div>
   );
 };

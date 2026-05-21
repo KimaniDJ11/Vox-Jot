@@ -93,14 +93,6 @@ const titlebarNoDragSelector = [
   "[contenteditable='true']",
 ].join(",");
 
-const editableShortcutTargetSelector = [
-  "input",
-  "select",
-  "textarea",
-  "[contenteditable='true']",
-  "[role='textbox']",
-].join(",");
-
 const shouldStartWindowDrag = (
   event: React.MouseEvent<HTMLElement>,
 ): boolean => {
@@ -114,13 +106,6 @@ const shouldStartWindowDrag = (
   }
 
   return !target.closest(titlebarNoDragSelector);
-};
-
-const isEditableShortcutTarget = (target: EventTarget | null): boolean => {
-  return (
-    target instanceof Element &&
-    target.closest(editableShortcutTargetSelector) !== null
-  );
 };
 
 type PrimaryMode = "dictate" | "refine" | "listen";
@@ -178,11 +163,6 @@ const RefineTranslationSection = lazy(() =>
 const ListenCreateVoicesSection = lazy(() =>
   import("@/components/app-sections/listen").then((module) => ({
     default: module.ListenCreateVoicesSection,
-  })),
-);
-const ListenMyVoicesSection = lazy(() =>
-  import("@/components/app-sections/listen").then((module) => ({
-    default: module.ListenMyVoicesSection,
   })),
 );
 const ListenVoiceCloningSection = lazy(() =>
@@ -408,7 +388,6 @@ function App() {
   const {
     app_theme: appTheme,
     app_font_scale: appFontScale,
-    debug_mode: debugMode,
     experimental_enabled: experimentalEnabled,
     post_process_enabled: postProcessEnabled,
     selected_language: selectedLanguage,
@@ -416,7 +395,6 @@ function App() {
   } = useSettingsSlice([
     "app_theme",
     "app_font_scale",
-    "debug_mode",
     "experimental_enabled",
     "post_process_enabled",
     "selected_language",
@@ -552,13 +530,6 @@ function App() {
           WandSparkles,
           <ListenCreateVoicesSection />,
           "gold",
-        ),
-        makeSection(
-          "my-voices",
-          "appSections.nav.listen.myVoices",
-          Volume2,
-          <ListenMyVoicesSection />,
-          "blue",
         ),
         makeSection(
           "voice-cloning",
@@ -807,32 +778,6 @@ function App() {
     refreshOutputDevices,
     refreshSettings,
   ]);
-
-  // Use a ref to track debug_mode so the listener doesn't tear down on every toggle
-  const debugModeRef = useRef(debugMode ?? false);
-  useEffect(() => {
-    debugModeRef.current = debugMode ?? false;
-  }, [debugMode]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isDebugShortcut =
-        event.shiftKey &&
-        event.key.toLowerCase() === "d" &&
-        (event.ctrlKey || event.metaKey);
-
-      if (isDebugShortcut) {
-        if (isEditableShortcutTarget(event.target)) return;
-        event.preventDefault();
-        void updateSetting("debug_mode", !debugModeRef.current);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [updateSetting]);
 
   useEffect(() => {
     const unlisten = listen<string>("recording-error", (event) => {

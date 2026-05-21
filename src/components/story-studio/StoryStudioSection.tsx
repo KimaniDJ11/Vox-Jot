@@ -479,7 +479,13 @@ export const StoryStudioSection: React.FC = () => {
             <Button
               type="button"
               variant="primary"
-              onClick={() => void commands.showDetailView("my-voices")}
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("vox-jot:navigate", {
+                    detail: { view: "listen", section: "create-voices" },
+                  }),
+                )
+              }
             >
               {t("storyStudio.openMyVoices")}
             </Button>

@@ -29,7 +29,6 @@ import {
   SwitchControl,
 } from "@/components/ui";
 import {
-  useSettings,
   useSettingsSlice,
   useUpdateSetting,
 } from "@/hooks/useSettings";
@@ -121,7 +120,6 @@ const HeroPreview: React.FC<{ enabled: boolean }> = ({ enabled }) => {
 
 const ScreenContextSettingsSection: React.FC = () => {
   const { t } = useTranslation();
-  const { getSetting } = useSettings();
   const updateSetting = useUpdateSetting();
   const isUpdating = useSettingsStore((state) => state.isUpdatingKey);
 
@@ -148,8 +146,6 @@ const ScreenContextSettingsSection: React.FC = () => {
     "screen_context_token_budget",
     "screen_context_stale_threshold_ms",
   ] as const);
-
-  const debugMode = getSetting("debug_mode") ?? false;
 
   const enabled = enabledValue ?? true;
   const excluded = useMemo(
@@ -651,11 +647,6 @@ const ScreenContextSettingsSection: React.FC = () => {
                       <div className="truncate text-[13px] font-medium text-[var(--text)]">
                         {entry.name || entry.bundle_id}
                       </div>
-                      {debugMode ? (
-                        <div className="truncate text-[10.5px] text-[var(--muted)]">
-                          {entry.bundle_id}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                   <Button
@@ -705,48 +696,7 @@ const ScreenContextSettingsSection: React.FC = () => {
               : t("settings.screenContext.screenRecordingMissing")
           }
         />
-        {debugMode ? (
-          <MetricTile
-            label={t("appSections.screenContext.cacheStatLabel")}
-            icon={<ScanSearch className="h-3 w-3" />}
-            value={`${diagnostics?.cache_size ?? 0}`}
-            hint={
-              diagnostics?.latest_context_age_ms != null
-                ? t("settings.screenContext.latestContextAgeValue", {
-                    ms: diagnostics.latest_context_age_ms,
-                  })
-                : t("settings.screenContext.latestContextAgeUnavailable")
-            }
-          />
-        ) : null}
       </section>
-
-      {debugMode ? (
-        <SettingsGroup
-          title={t("appSections.screenContext.debugPreviewHeader")}
-          titleAction={
-            <Button onClick={() => void refreshDiagnostics()} size="sm">
-              {t("settings.refineModels.refresh")}
-            </Button>
-          }
-        >
-          <div className="space-y-3 px-5 py-4 text-sm text-[var(--muted)]">
-            {diagnostics?.last_error ? (
-              <Alert variant="info">{diagnostics.last_error}</Alert>
-            ) : null}
-            <details className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-              <summary className="cursor-pointer text-sm font-medium text-[var(--text)]">
-                {t("settings.screenContext.debugPreviewTitle")}
-              </summary>
-              <div className="mt-2 whitespace-pre-wrap text-xs text-[var(--muted)]">
-                {diagnostics?.latest_preview_text
-                  ? diagnostics.latest_preview_text
-                  : t("settings.screenContext.debugPreviewEmpty")}
-              </div>
-            </details>
-          </div>
-        </SettingsGroup>
-      ) : null}
     </div>
   );
 };

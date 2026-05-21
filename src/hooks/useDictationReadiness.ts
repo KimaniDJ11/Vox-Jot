@@ -94,6 +94,9 @@ export function useDictationReadiness(): DictationReadiness {
   return useMemo(() => {
     const selectedModel = settings?.selected_model ?? "";
     const pasteMethod = settings?.paste_method ?? "ctrl_v";
+    const clipboardHandling = settings?.clipboard_handling ?? "dont_modify";
+    const clipboardOnlyEnabled =
+      pasteMethod === "none" && clipboardHandling === "copy_to_clipboard";
     const postProcessingEnabled = settings?.post_process_enabled ?? false;
     const postProvider = settings?.post_process_provider_id ?? "";
     const postKeyReady = postProvider
@@ -123,7 +126,12 @@ export function useDictationReadiness(): DictationReadiness {
           permissions.accessibility === false
             ? t("appSections.readiness.gates.accessibility.blocked")
             : t("appSections.readiness.gates.accessibility.ready"),
-        state: permissions.accessibility === false ? "blocked" : "ready",
+        state:
+          permissions.accessibility === false
+            ? clipboardOnlyEnabled
+              ? "warning"
+              : "blocked"
+            : "ready",
       },
       {
         id: "input_monitoring",
@@ -162,7 +170,8 @@ export function useDictationReadiness(): DictationReadiness {
             : pasteMethod === "direct"
               ? t("appSections.readiness.gates.pasteMethod.direct")
               : t("appSections.readiness.gates.pasteMethod.clipboard"),
-        state: pasteMethod === "none" ? "warning" : "ready",
+        state:
+          pasteMethod === "none" && !clipboardOnlyEnabled ? "warning" : "ready",
       },
       {
         id: "post_processing",

@@ -791,6 +791,10 @@ fn should_send_auto_submit(auto_submit: bool, paste_method: PasteMethod) -> bool
     auto_submit && paste_method != PasteMethod::None
 }
 
+fn paste_method_requires_keyboard_automation(paste_method: PasteMethod) -> bool {
+    paste_method != PasteMethod::None
+}
+
 fn clipboard_copy_changed(
     selected_text: &str,
     sentinel: &str,
@@ -896,6 +900,18 @@ pub fn paste_with_settings_and_submit_override(
         paste_method, requested_paste_method, paste_delay_ms
     );
 
+    if !paste_method_requires_keyboard_automation(paste_method) {
+        info!("PasteMethod::None selected - skipping keyboard automation");
+        if should_copy_after_output {
+            let clipboard = app_handle.clipboard();
+            clipboard
+                .write_text(&text)
+                .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+        }
+
+        return Ok(());
+    }
+
     // Get the managed Enigo instance
     input::ensure_enigo_initialized(&app_handle)?;
     let enigo_state = app_handle
@@ -908,9 +924,7 @@ pub fn paste_with_settings_and_submit_override(
 
     // Perform the paste operation
     match paste_method {
-        PasteMethod::None => {
-            info!("PasteMethod::None selected - skipping paste action");
-        }
+        PasteMethod::None => unreachable!("PasteMethod::None returns before keyboard automation"),
         PasteMethod::Direct => {
             paste_direct(
                 &mut enigo,
@@ -990,6 +1004,19 @@ mod tests {
         assert!(should_send_auto_submit(true, PasteMethod::Direct));
         assert!(should_send_auto_submit(true, PasteMethod::CtrlShiftV));
         assert!(should_send_auto_submit(true, PasteMethod::ShiftInsert));
+    }
+
+    #[test]
+    fn clipboard_only_does_not_require_keyboard_automation() {
+        assert!(!paste_method_requires_keyboard_automation(
+            PasteMethod::None
+        ));
+        assert!(paste_method_requires_keyboard_automation(
+            PasteMethod::CtrlV
+        ));
+        assert!(paste_method_requires_keyboard_automation(
+            PasteMethod::Direct
+        ));
     }
 
     #[test]

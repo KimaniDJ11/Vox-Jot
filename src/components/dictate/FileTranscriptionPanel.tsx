@@ -61,6 +61,153 @@ function stripExtension(p: string): string {
   return dot > 0 ? base.slice(0, dot) : base;
 }
 
+function useSelectedSpeechAnalysisAsrModel() {
+  const {
+    file_transcription_asr_model_id: fileTranscriptionAsrModelIdValue,
+  } = useSettingsSlice(["file_transcription_asr_model_id"] as const);
+  const [selectedAsrModel, setSelectedAsrModel] =
+    useState<SpeechAnalysisModelDescriptor | null>(null);
+  const fileTranscriptionAsrModelId = fileTranscriptionAsrModelIdValue ?? "";
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    void commands
+      .getSpeechAnalysisCatalog()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result.status !== "ok") {
+          setSelectedAsrModel(null);
+          return;
+        }
+        const selectedModel =
+          result.data.models.find(
+            (model) => model.id === result.data.selection.asr_model_id,
+          ) ?? null;
+        setSelectedAsrModel(selectedModel);
+      })
+      .catch(() => {
+        if (isCurrent) setSelectedAsrModel(null);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fileTranscriptionAsrModelId]);
+
+  return selectedAsrModel;
+}
+
+const SelectedAsrModelInline: React.FC<{
+  model: SpeechAnalysisModelDescriptor | null;
+}> = ({ model }) => {
+  const { t } = useTranslation();
+  if (!model) return null;
+
+  const label = t("dictate.fileTranscription.selectedModelTitle", {
+    model: model.label,
+    defaultValue: "Selected model: {{model}}",
+  });
+
+  return (
+    <div
+      className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
+      aria-label={label}
+      title={label}
+    >
+      <span
+        className="h-5 w-5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+        style={{
+          background: voiceAvatarGradient(`file-transcription::${model.id}`),
+        }}
+        aria-hidden="true"
+      />
+      <span className="truncate">{model.label}</span>
+    </div>
+  );
+};
+
+const FileTranscriptionStatusHeader: React.FC<{
+  error: string;
+  isRunning: boolean;
+  selectedPath: string;
+  transcription: string;
+  selectedAsrModel: SpeechAnalysisModelDescriptor | null;
+}> = ({ error, isRunning, selectedPath, transcription, selectedAsrModel }) => {
+  const { t } = useTranslation();
+  const fileName = selectedPath ? basename(selectedPath) : "";
+  const hasTranscript = transcription.trim().length > 0;
+  const status = (() => {
+    if (isRunning) {
+      return {
+        label: t("dictate.fileTranscription.status.transcribing", {
+          count: 1,
+          defaultValue: "Transcribing {{count}} file",
+        }),
+        detail: t("dictate.fileTranscription.status.remaining", {
+          count: 0,
+          defaultValue: "{{count}} remaining",
+        }),
+      };
+    }
+    if (error) {
+      return {
+        label: t("dictate.fileTranscription.status.needsAttention", {
+          defaultValue: "Needs attention",
+        }),
+        detail: t("dictate.fileTranscription.status.failedDetail", {
+          count: 1,
+          defaultValue: "{{count}} file stopped",
+        }),
+      };
+    }
+    if (hasTranscript) {
+      return {
+        label: t("dictate.fileTranscription.status.transcriptReady", {
+          defaultValue: "Transcript ready",
+        }),
+        detail: t("dictate.fileTranscription.status.completeDetail", {
+          count: 1,
+          defaultValue: "{{count}} file complete",
+        }),
+      };
+    }
+    return {
+      label: t("dictate.fileTranscription.status.ready", {
+        defaultValue: "Ready",
+      }),
+      detail: t("dictate.fileTranscription.status.idleDetail", {
+        defaultValue: "No files transcribing",
+      }),
+    };
+  })();
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+      <div
+        className="min-w-0 truncate text-sm text-[var(--muted)]"
+        role="status"
+        aria-live="polite"
+        title={fileName || undefined}
+      >
+        <span className="font-semibold text-[var(--text)]">
+          {status.label}
+        </span>
+        <span> - {status.detail}</span>
+        {isRunning && fileName ? (
+          <span className="sr-only">
+            {t("dictate.fileTranscription.status.currentFile", {
+              fileName,
+              defaultValue: "Current file: {{fileName}}",
+            })}
+          </span>
+        ) : null}
+      </div>
+      <SelectedAsrModelInline model={selectedAsrModel} />
+    </div>
+  );
+};
+
 export const FileTranscriptionPanel: React.FC = () => {
   const { t } = useTranslation();
   const [selectedPath, setSelectedPath] = useState<string>("");
@@ -70,6 +217,7 @@ export const FileTranscriptionPanel: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [view, setView] = useState<FileTranscriptionView>("file");
+  const selectedAsrModel = useSelectedSpeechAnalysisAsrModel();
   const isRunningRef = useRef(false);
 
   const runTranscription = useCallback(
@@ -228,92 +376,93 @@ export const FileTranscriptionPanel: React.FC = () => {
           <div
             className={[
               subtleCardClassName,
-              "flex flex-col items-center justify-center gap-3 border-dashed text-center transition-[border-color,background-color,box-shadow] duration-150",
-              isDragOver
-                ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
-                : "",
+              "space-y-4 transition-[border-color,background-color,box-shadow] duration-150",
             ].join(" ")}
-            style={{ minHeight: 180 }}
           >
-            <div
-              className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
-              aria-hidden="true"
-            >
-              {isDragOver ? <Upload size={22} /> : <FileAudio size={22} />}
-            </div>
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-[var(--text)]">
-                {t("dictate.fileTranscription.dropHint", {
-                  defaultValue: "Drag & drop an audio or video file here",
-                })}
-              </div>
-              <div className="text-xs text-[var(--muted)]">
-                {t("dictate.fileTranscription.orLabel", { defaultValue: "or" })}
-              </div>
-            </div>
-            <Button variant="secondary" onClick={pickFile} disabled={isRunning}>
-              {isRunning
-                ? t("dictate.fileTranscription.transcribing", {
-                    defaultValue: "Transcribing…",
-                  })
-                : t("dictate.fileTranscription.pickFile", {
-                    defaultValue: "Pick File",
-                  })}
-            </Button>
-          </div>
-
-          {selectedPath && (
-            <div
-              className="truncate text-xs text-[var(--muted)]"
-              title={selectedPath}
-              aria-label={selectedPath}
-            >
-              {t("dictate.fileTranscription.selectedLabel", {
-                defaultValue: "Selected:",
-              })}{" "}
-              <span className="text-[var(--text)]">
-                {basename(selectedPath)}
-              </span>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label
-              className="text-xs font-medium text-[var(--muted)]"
-              htmlFor="file-transcription-output"
-            >
-              {t("dictate.fileTranscription.outputLabel", {
-                defaultValue: "Transcript",
-              })}
-            </label>
-            <Textarea
-              id="file-transcription-output"
-              value={transcription}
-              readOnly
-              placeholder={t("dictate.fileTranscription.placeholder", {
-                defaultValue: "Transcript appears here after processing.",
-              })}
-              aria-live="polite"
-              className="min-h-[140px]"
+            <FileTranscriptionStatusHeader
+              error={error}
+              isRunning={isRunning}
+              selectedPath={selectedPath}
+              transcription={transcription}
+              selectedAsrModel={selectedAsrModel}
             />
-            <div className="flex items-center justify-between gap-2">
-              {isRunning ? (
-                <span
-                  className="inline-flex items-center gap-2 text-xs text-[var(--muted)]"
-                  role="status"
-                >
-                  <span
-                    className="inline-block size-3 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]"
-                    aria-hidden="true"
-                  />
-                  {t("dictate.fileTranscription.transcribing", {
-                    defaultValue: "Transcribing…",
+
+            <div
+              className={[
+                "flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-5 py-4 text-center transition-[border-color,background-color,box-shadow] duration-150",
+                isDragOver
+                  ? "border-[var(--accent)] bg-[var(--accent-soft,var(--panel-bg))] shadow-[var(--shadow-md,var(--shadow-sm))]"
+                  : "",
+              ].join(" ")}
+            >
+              <div
+                className="flex size-12 items-center justify-center rounded-full bg-[var(--input)] text-[var(--muted)]"
+                aria-hidden="true"
+              >
+                {isDragOver ? <Upload size={22} /> : <FileAudio size={22} />}
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-[var(--text)]">
+                  {t("dictate.fileTranscription.dropHint", {
+                    defaultValue: "Drag & drop an audio or video file here",
                   })}
+                </div>
+                <div className="text-xs text-[var(--muted)]">
+                  {t("dictate.fileTranscription.orLabel", {
+                    defaultValue: "or",
+                  })}
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={pickFile}
+                disabled={isRunning}
+              >
+                {isRunning
+                  ? t("dictate.fileTranscription.transcribing", {
+                      defaultValue: "Transcribing…",
+                    })
+                  : t("dictate.fileTranscription.pickFile", {
+                      defaultValue: "Pick File",
+                    })}
+              </Button>
+            </div>
+
+            {selectedPath && (
+              <div
+                className="truncate text-xs text-[var(--muted)]"
+                title={selectedPath}
+                aria-label={selectedPath}
+              >
+                {t("dictate.fileTranscription.selectedLabel", {
+                  defaultValue: "Selected:",
+                })}{" "}
+                <span className="text-[var(--text)]">
+                  {basename(selectedPath)}
                 </span>
-              ) : (
-                <span />
-              )}
-              <div className="flex items-center gap-2">
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label
+                className="text-xs font-medium text-[var(--muted)]"
+                htmlFor="file-transcription-output"
+              >
+                {t("dictate.fileTranscription.outputLabel", {
+                  defaultValue: "Transcript",
+                })}
+              </label>
+              <Textarea
+                id="file-transcription-output"
+                value={transcription}
+                readOnly
+                placeholder={t("dictate.fileTranscription.placeholder", {
+                  defaultValue: "Transcript appears here after processing.",
+                })}
+                aria-live="polite"
+                className="min-h-[140px]"
+              />
+              <div className="flex items-center justify-end gap-2">
                 <Button
                   variant="secondary"
                   onClick={() => exportSubtitles("srt")}
@@ -497,38 +646,6 @@ const WatchedFoldersToolbar: React.FC<{
 }> = ({ view, onViewChange }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
-  const {
-    file_transcription_asr_model_id: fileTranscriptionAsrModelIdValue,
-  } = useSettingsSlice(["file_transcription_asr_model_id"] as const);
-  const [selectedAsrModel, setSelectedAsrModel] =
-    useState<SpeechAnalysisModelDescriptor | null>(null);
-  const fileTranscriptionAsrModelId = fileTranscriptionAsrModelIdValue ?? "";
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    void commands
-      .getSpeechAnalysisCatalog()
-      .then((result) => {
-        if (!isCurrent) return;
-        if (result.status !== "ok") {
-          setSelectedAsrModel(null);
-          return;
-        }
-        const selectedModel =
-          result.data.models.find(
-            (model) => model.id === result.data.selection.asr_model_id,
-          ) ?? null;
-        setSelectedAsrModel(selectedModel);
-      })
-      .catch(() => {
-        if (isCurrent) setSelectedAsrModel(null);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [fileTranscriptionAsrModelId]);
 
   const handleAddFolder = useCallback(async () => {
     setBusy(true);
@@ -574,31 +691,7 @@ const WatchedFoldersToolbar: React.FC<{
           },
         ]}
       />
-      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-        {selectedAsrModel ? (
-          <span
-            className="inline-flex min-w-0 max-w-[min(100%,24rem)] items-center gap-2 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]"
-            title={t("dictate.fileTranscription.selectedModelTitle", {
-              model: selectedAsrModel.label,
-              defaultValue: "Selected model: {{model}}",
-            })}
-            aria-label={t("dictate.fileTranscription.selectedModelTitle", {
-              model: selectedAsrModel.label,
-              defaultValue: "Selected model: {{model}}",
-            })}
-          >
-            <span
-              className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
-              style={{
-                background: voiceAvatarGradient(
-                  `file-transcription::${selectedAsrModel.id}`,
-                ),
-              }}
-              aria-hidden="true"
-            />
-            <span className="truncate">{selectedAsrModel.label}</span>
-          </span>
-        ) : null}
+      <div className="ml-auto">
         <Button
           type="button"
           variant="secondary"

@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Plus,
   Search,
-  TestTube2,
   Trash2,
   Undo2,
   X,
@@ -349,7 +348,6 @@ export const CorrectionDictionaryView: React.FC<
   const [viewMode, setViewMode] = useState<CorrectionViewMode>("dictionary");
   const [importError, setImportError] = useState("");
   const [importMessage, setImportMessage] = useState("");
-  const [testOverlayMessage, setTestOverlayMessage] = useState("");
   const addInputRef = useRef<HTMLInputElement>(null);
   const manualOriginalRef = useRef<HTMLInputElement>(null);
   const manualDialogRef = useRef<HTMLDivElement>(null);
@@ -516,31 +514,6 @@ export const CorrectionDictionaryView: React.FC<
       }
     } catch (error) {
       console.error("Failed to toggle correction:", error);
-    }
-  };
-
-  const handleTestOverlay = async () => {
-    setTestOverlayMessage("");
-    try {
-      const result = await commands.testCorrectionOverlay();
-      if (result.status === "ok") {
-        setTestOverlayMessage(
-          t("settings.corrections.dictionary.testOverlayShown", {
-            defaultValue: "Test overlay shown. No correction was saved.",
-          }),
-        );
-      } else {
-        setTestOverlayMessage(result.error);
-      }
-    } catch (error) {
-      console.error("Failed to show correction overlay:", error);
-      setTestOverlayMessage(
-        error instanceof Error
-          ? error.message
-          : t("settings.corrections.dictionary.testOverlayFailed", {
-              defaultValue: "Failed to show test overlay.",
-            }),
-      );
     }
   };
 
@@ -739,20 +712,6 @@ export const CorrectionDictionaryView: React.FC<
           <Plus className="h-3.5 w-3.5" aria-hidden />
           {t("settings.postProcessing.dictionary.add", {
             defaultValue: "Add entry",
-          })}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => void handleTestOverlay()}
-          title={t("settings.corrections.dictionary.testOverlayTitle", {
-            defaultValue: "Show a sample correction overlay without saving it",
-          })}
-        >
-          <TestTube2 className="h-3.5 w-3.5" aria-hidden />
-          {t("settings.corrections.dictionary.testOverlay", {
-            defaultValue: "Test overlay",
           })}
         </Button>
         <SegmentedControl<CorrectionViewMode>
@@ -1184,15 +1143,6 @@ export const CorrectionDictionaryView: React.FC<
           {importError}
         </div>
       ) : null}
-      {testOverlayMessage ? (
-        <div
-          className="px-1 text-xs font-medium text-[var(--muted)]"
-          role="status"
-        >
-          {testOverlayMessage}
-        </div>
-      ) : null}
-
       <div className="flat-card overflow-visible">{renderContent()}</div>
     </section>
   );

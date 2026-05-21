@@ -97,15 +97,6 @@ pub fn add_transcript_word_correction(
         .map_err(|e| e.to_string())
 }
 
-/// Show the correction overlay with a deterministic sample payload. This is a
-/// UI-only diagnostic and intentionally does not write to the corrections DB.
-#[tauri::command]
-#[specta::specta]
-pub fn test_correction_overlay(app: AppHandle) -> Result<(), String> {
-    crate::overlay::show_correction_overlay(&app, "Voxtrot", "Vox Jot", 0.94, 0);
-    Ok(())
-}
-
 /// Import corrections from a JSON string.
 #[tauri::command]
 #[specta::specta]

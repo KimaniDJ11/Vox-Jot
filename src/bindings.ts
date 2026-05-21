@@ -2127,18 +2127,6 @@ async addTranscriptWordCorrection(original: string, corrected: string) : Promise
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Show the correction overlay with a deterministic sample payload. This is a
- * UI-only diagnostic and intentionally does not write to the corrections DB.
- */
-async testCorrectionOverlay() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("test_correction_overlay") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async getDictationStats() : Promise<Result<DictationStats, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_dictation_stats") };

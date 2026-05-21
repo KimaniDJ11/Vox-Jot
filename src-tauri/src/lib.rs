@@ -948,7 +948,6 @@ pub fn run(cli_args: CliArgs) {
         commands::corrections::import_corrections,
         commands::corrections::add_manual_correction,
         commands::corrections::add_transcript_word_correction,
-        commands::corrections::test_correction_overlay,
         commands::stats::get_dictation_stats,
         commands::story_studio::render_story_audio,
         commands::story_studio::generate_create_speech_audio,

@@ -14,6 +14,7 @@ import {
   Upload,
 } from "lucide-react";
 import type {
+  SpeechAnalysisModelDescriptor,
   TimedSegment,
   WatchFolderConfig,
   WatchFolderOutputFormat,
@@ -26,6 +27,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { subtleCardClassName } from "@/components/ui/subtleCard";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
+import { voiceAvatarGradient } from "@/components/settings/general/listen/createVoiceVoiceHub";
+import { useSettingsSlice } from "@/hooks/useSettings";
 
 type FileTranscriptionView = "file" | "folders";
 
@@ -494,6 +497,38 @@ const WatchedFoldersToolbar: React.FC<{
 }> = ({ view, onViewChange }) => {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  const {
+    file_transcription_asr_model_id: fileTranscriptionAsrModelIdValue,
+  } = useSettingsSlice(["file_transcription_asr_model_id"] as const);
+  const [selectedAsrModel, setSelectedAsrModel] =
+    useState<SpeechAnalysisModelDescriptor | null>(null);
+  const fileTranscriptionAsrModelId = fileTranscriptionAsrModelIdValue ?? "";
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    void commands
+      .getSpeechAnalysisCatalog()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result.status !== "ok") {
+          setSelectedAsrModel(null);
+          return;
+        }
+        const selectedModel =
+          result.data.models.find(
+            (model) => model.id === result.data.selection.asr_model_id,
+          ) ?? null;
+        setSelectedAsrModel(selectedModel);
+      })
+      .catch(() => {
+        if (isCurrent) setSelectedAsrModel(null);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fileTranscriptionAsrModelId]);
 
   const handleAddFolder = useCallback(async () => {
     setBusy(true);
@@ -539,7 +574,31 @@ const WatchedFoldersToolbar: React.FC<{
           },
         ]}
       />
-      <div className="ml-auto">
+      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+        {selectedAsrModel ? (
+          <span
+            className="inline-flex min-w-0 max-w-[min(100%,24rem)] items-center gap-2 rounded-full border border-[var(--ring-hairline)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]"
+            title={t("dictate.fileTranscription.selectedModelTitle", {
+              model: selectedAsrModel.label,
+              defaultValue: "Selected model: {{model}}",
+            })}
+            aria-label={t("dictate.fileTranscription.selectedModelTitle", {
+              model: selectedAsrModel.label,
+              defaultValue: "Selected model: {{model}}",
+            })}
+          >
+            <span
+              className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.42)]"
+              style={{
+                background: voiceAvatarGradient(
+                  `file-transcription::${selectedAsrModel.id}`,
+                ),
+              }}
+              aria-hidden="true"
+            />
+            <span className="truncate">{selectedAsrModel.label}</span>
+          </span>
+        ) : null}
         <Button
           type="button"
           variant="secondary"

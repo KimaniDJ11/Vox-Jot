@@ -4,6 +4,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VoiceInfo } from "@/bindings";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
 
@@ -72,10 +73,38 @@ const voice = (patch: Partial<VoiceInfo> = {}): VoiceInfo => ({
   ...patch,
 });
 
+const preset = (patch: Partial<TtsVoicePreset> = {}): TtsVoicePreset => ({
+  id: "preset-1",
+  label: "Warm narrator",
+  provider_id: "mlx_kokoro",
+  model_id: "kokoro-82m-v1.0",
+  voice_id: "af_heart",
+  voice_profile_id: null,
+  voice_label_snapshot: "Heart",
+  locale_snapshot: "en-US",
+  tuning: {
+    tempo_rate: 1,
+    expressiveness: 0,
+    exaggeration: 0,
+    randomness: 0,
+    guidance: 0,
+    stability: 0,
+    repetition_penalty: 1,
+    style_instructions: null,
+    advanced_overrides: {},
+  },
+  ...patch,
+});
+
 const speech = {
   ttsEnabled: true,
   statusMessage: null,
-} as ListenSpeechState;
+  presets: [],
+  previewingPresetId: null,
+  previewPreset: vi.fn(),
+  previewPresetDraft: vi.fn(),
+  setStatusMessage: vi.fn(),
+} as unknown as ListenSpeechState;
 
 const flushPickerEffects = async () => {
   await act(async () => {
@@ -92,6 +121,7 @@ const render = async (
   let root: Root | null = null;
   const sourceModel = model();
   const onSelectVoice = vi.fn();
+  const onSelectPreset = vi.fn();
   const onClose = vi.fn();
 
   await act(async () => {
@@ -143,6 +173,8 @@ const render = async (
         orderedModels={[sourceModel]}
         filteredModelCount={1}
         onSelectVoice={onSelectVoice}
+        selectedVoiceProfileId={null}
+        onSelectPreset={onSelectPreset}
         onClose={onClose}
         {...props}
       />,
@@ -153,6 +185,7 @@ const render = async (
     container,
     sourceModel,
     onSelectVoice,
+    onSelectPreset,
     async cleanup() {
       await act(async () => {
         root?.unmount();
@@ -224,6 +257,39 @@ describe("CreateVoiceModelHubPicker", () => {
 
     expect(document.body.textContent).not.toContain("Heart");
     expect(document.body.textContent).toContain("Adam");
+
+    await view.cleanup();
+  });
+
+  it("reuses a saved voice from My Voices without selecting a raw voice row", async () => {
+    const savedPreset = preset();
+    const view = await render({
+      speech: {
+        ...speech,
+        presets: [savedPreset],
+      } as unknown as ListenSpeechState,
+    });
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "My Voices",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Warm narrator");
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find((button) =>
+          button.textContent?.includes("Warm narrator"),
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(view.onSelectPreset).toHaveBeenCalledWith(savedPreset);
+    expect(view.onSelectVoice).not.toHaveBeenCalled();
 
     await view.cleanup();
   });

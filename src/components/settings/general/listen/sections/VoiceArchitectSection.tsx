@@ -12,6 +12,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
 import {
   createTtsVoicePreset,
+  type TtsVoicePreset,
   type TtsVoicePresetInput,
 } from "@/lib/ttsVoicePresets";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
@@ -697,6 +698,23 @@ export const VoiceArchitectSection: React.FC<{
     }
   };
 
+  const handleSelectSavedPreset = (preset: TtsVoicePreset) => {
+    lastDraftSelectionKeyRef.current = `${preset.provider_id}::${preset.model_id}`;
+    setDraftVoiceErrorMessage(null);
+    setDraftProviderId(preset.provider_id);
+    setDraftModelId(preset.model_id);
+    setDraftVoiceId(preset.voice_id ?? "__auto__");
+    setDraftVoiceProfileId(preset.voice_profile_id ?? "__none__");
+    setDraftTuning({
+      ...preset.tuning,
+      advanced_overrides: {
+        ...(preset.tuning.advanced_overrides ?? {}),
+      },
+    });
+    setModelWindowOpen(false);
+    speech.setStatusMessage(null);
+  };
+
   const handleCreateVoiceToolChange = (value: "audio" | "tuning") => {
     setCreateVoiceTool(value);
   };
@@ -1004,6 +1022,10 @@ export const VoiceArchitectSection: React.FC<{
         orderedModels={orderedDraftModels}
         filteredModelCount={filteredDraftModels.length}
         onSelectVoice={handleSelectDraftVoice}
+        selectedVoiceProfileId={
+          draftVoiceProfileId === "__none__" ? null : draftVoiceProfileId
+        }
+        onSelectPreset={handleSelectSavedPreset}
         onClose={() => setModelWindowOpen(false)}
       />
       <div

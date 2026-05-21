@@ -32,6 +32,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
@@ -97,6 +98,7 @@ const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
 const HIDDEN_RUNTIME_MODEL_IDS: &[&str] = &[];
 const APP_PATH_BLOCKED_TTS_MODEL_ISSUES: &[(&str, &str)] = &[];
+const TTS_RENDER_STACK_BYTES: usize = 64 * 1024 * 1024;
 const LFM_AUDIO_GGUF_HF_REPO_ID: &str = "IrieDinamik/LiquidAI-LFM2.5-Audio-1.5B-GGUF";
 const LFM_AUDIO_GGUF_HF_FILES: &[(&str, &str)] = &[
     ("LFM2.5-Audio-1.5B-Q4_0.gguf", "LFM2.5-Audio-1.5B-Q4_0.gguf"),
@@ -3662,115 +3664,133 @@ impl TtsManager {
             trigger
         );
 
-        let join_result = tokio::task::spawn_blocking(move || {
-            for chunk in chunks {
-                if stop_flag.load(Ordering::Relaxed) {
-                    break;
-                }
+        let (speak_tx, speak_rx) = tokio::sync::oneshot::channel();
+        let spawn_result = thread::Builder::new()
+            .name("tts-speak-chunks".to_string())
+            .stack_size(TTS_RENDER_STACK_BYTES)
+            .spawn(move || {
+                let result = (|| {
+                    for chunk in chunks {
+                        if stop_flag.load(Ordering::Relaxed) {
+                            break;
+                        }
 
-                match engine {
-                    TtsEngineKind::System => {
-                        speak_system_chunk(
-                            &app_handle,
-                            &chunk,
-                            locale.as_deref(),
-                            voice.as_ref(),
-                            tuning.tempo_rate,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
+                        match engine {
+                            TtsEngineKind::System => {
+                                speak_system_chunk(
+                                    &app_handle,
+                                    &chunk,
+                                    locale.as_deref(),
+                                    voice.as_ref(),
+                                    tuning.tempo_rate,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::SherpaOnnx => {
+                                let sherpa_context = sherpa_context.as_ref().ok_or_else(|| {
+                                    "No Sherpa-ONNX TTS pack is available.".to_string()
+                                })?;
+                                speak_sherpa_chunk(
+                                    &chunk,
+                                    sherpa_context,
+                                    tuning.tempo_rate,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::Qwen3Native => {
+                                let qwen3_context = qwen3_context.as_ref().ok_or_else(|| {
+                                    "No Qwen3 Native models are available.".to_string()
+                                })?;
+                                speak_qwen3_chunk(
+                                    &chunk,
+                                    qwen3_context,
+                                    &tuning,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::MlxNative => {
+                                let mlx_audio_context =
+                                    mlx_audio_context.as_ref().ok_or_else(|| {
+                                        "No MLX speech models are available.".to_string()
+                                    })?;
+                                speak_mlx_audio_chunk(
+                                    &chunk,
+                                    mlx_audio_context,
+                                    preferred_voice_id.as_deref(),
+                                    voice.as_ref(),
+                                    &tuning,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::Sidecar => {
+                                speak_sidecar_chunk(
+                                    &chunk,
+                                    &selected_provider_id,
+                                    selected_model_id.as_deref(),
+                                    selected_profile_id.as_deref(),
+                                    locale.as_deref(),
+                                    preferred_voice_id.as_deref(),
+                                    voice.as_ref(),
+                                    &tuning,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::LfmAudioGguf => {
+                                let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
+                                    "LFM Audio GGUF context is not initialized.".to_string()
+                                })?;
+                                speak_lfm_audio_gguf_chunk(
+                                    &chunk,
+                                    context,
+                                    preferred_voice_id.as_deref(),
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                            TtsEngineKind::VibeVoice => {
+                                let context = vibevoice_context.as_ref().ok_or_else(|| {
+                                    "VibeVoice context is not initialized.".to_string()
+                                })?;
+                                speak_vibevoice_chunk(
+                                    &chunk,
+                                    context,
+                                    preferred_voice_id.as_deref(),
+                                    &tuning,
+                                    tts_volume,
+                                    output_device.clone(),
+                                    &stop_flag,
+                                )?;
+                            }
+                        }
                     }
-                    TtsEngineKind::SherpaOnnx => {
-                        let sherpa_context = sherpa_context
-                            .as_ref()
-                            .ok_or_else(|| "No Sherpa-ONNX TTS pack is available.".to_string())?;
-                        speak_sherpa_chunk(
-                            &chunk,
-                            sherpa_context,
-                            tuning.tempo_rate,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                    TtsEngineKind::Qwen3Native => {
-                        let qwen3_context = qwen3_context
-                            .as_ref()
-                            .ok_or_else(|| "No Qwen3 Native models are available.".to_string())?;
-                        speak_qwen3_chunk(
-                            &chunk,
-                            qwen3_context,
-                            &tuning,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                    TtsEngineKind::MlxNative => {
-                        let mlx_audio_context = mlx_audio_context
-                            .as_ref()
-                            .ok_or_else(|| "No MLX speech models are available.".to_string())?;
-                        speak_mlx_audio_chunk(
-                            &chunk,
-                            mlx_audio_context,
-                            preferred_voice_id.as_deref(),
-                            voice.as_ref(),
-                            &tuning,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                    TtsEngineKind::Sidecar => {
-                        speak_sidecar_chunk(
-                            &chunk,
-                            &selected_provider_id,
-                            selected_model_id.as_deref(),
-                            selected_profile_id.as_deref(),
-                            locale.as_deref(),
-                            preferred_voice_id.as_deref(),
-                            voice.as_ref(),
-                            &tuning,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                    TtsEngineKind::LfmAudioGguf => {
-                        let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
-                            "LFM Audio GGUF context is not initialized.".to_string()
-                        })?;
-                        speak_lfm_audio_gguf_chunk(
-                            &chunk,
-                            context,
-                            preferred_voice_id.as_deref(),
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                    TtsEngineKind::VibeVoice => {
-                        let context = vibevoice_context
-                            .as_ref()
-                            .ok_or_else(|| "VibeVoice context is not initialized.".to_string())?;
-                        speak_vibevoice_chunk(
-                            &chunk,
-                            context,
-                            preferred_voice_id.as_deref(),
-                            &tuning,
-                            tts_volume,
-                            output_device.clone(),
-                            &stop_flag,
-                        )?;
-                    }
-                }
-            }
 
-            Ok::<(), String>(())
-        })
-        .await
-        .map_err(|err| format!("TTS task failed: {err}"))?;
+                    Ok::<(), String>(())
+                })();
+                let _ = speak_tx.send(result);
+            });
+        if let Err(err) = spawn_result {
+            self.current_stop_flag
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+            return Err(format!("Failed to start TTS playback thread: {err}"));
+        }
+
+        let join_result = match speak_rx.await {
+            Ok(result) => result,
+            Err(_) => Err("TTS playback thread stopped before returning a result.".to_string()),
+        };
         self.current_stop_flag
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -3922,93 +3942,109 @@ impl TtsManager {
             selected_preset.as_ref().map(|preset| preset.id.as_str())
         );
 
-        tokio::task::spawn_blocking(move || {
-            let mut files = Vec::new();
-            for chunk in chunks {
-                if stop_flag.load(Ordering::Relaxed) {
-                    break;
-                }
+        let (render_tx, render_rx) = tokio::sync::oneshot::channel();
+        thread::Builder::new()
+            .name("tts-render-chunks".to_string())
+            .stack_size(TTS_RENDER_STACK_BYTES)
+            .spawn(move || {
+                let result = (|| {
+                    let runtime = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|err| format!("Failed to start TTS render runtime: {err}"))?;
+                    let _runtime_guard = runtime.enter();
+                    let mut files = Vec::new();
+                    for chunk in chunks {
+                        if stop_flag.load(Ordering::Relaxed) {
+                            break;
+                        }
 
-                let file = match engine {
-                    TtsEngineKind::System => synthesize_system_chunk(
-                        &app_handle,
-                        &chunk,
-                        locale.as_deref(),
-                        voice.as_ref(),
-                        tuning.tempo_rate,
-                        &stop_flag,
-                    )?,
-                    TtsEngineKind::SherpaOnnx => {
-                        let sherpa_context = sherpa_context
-                            .as_ref()
-                            .ok_or_else(|| "No Sherpa-ONNX TTS pack is available.".to_string())?;
-                        synthesize_sherpa_chunk(
-                            &chunk,
-                            sherpa_context,
-                            tuning.tempo_rate,
-                            &stop_flag,
-                        )?
+                        let file = match engine {
+                            TtsEngineKind::System => synthesize_system_chunk(
+                                &app_handle,
+                                &chunk,
+                                locale.as_deref(),
+                                voice.as_ref(),
+                                tuning.tempo_rate,
+                                &stop_flag,
+                            )?,
+                            TtsEngineKind::SherpaOnnx => {
+                                let sherpa_context = sherpa_context.as_ref().ok_or_else(|| {
+                                    "No Sherpa-ONNX TTS pack is available.".to_string()
+                                })?;
+                                synthesize_sherpa_chunk(
+                                    &chunk,
+                                    sherpa_context,
+                                    tuning.tempo_rate,
+                                    &stop_flag,
+                                )?
+                            }
+                            TtsEngineKind::Qwen3Native => {
+                                let qwen3_context = qwen3_context.as_ref().ok_or_else(|| {
+                                    "No Qwen3 Native models are available.".to_string()
+                                })?;
+                                synthesize_qwen3_chunk(&chunk, qwen3_context, &tuning, &stop_flag)?
+                            }
+                            TtsEngineKind::MlxNative => {
+                                let mlx_audio_context =
+                                    mlx_audio_context.as_ref().ok_or_else(|| {
+                                        "No MLX speech models are available.".to_string()
+                                    })?;
+                                synthesize_mlx_audio_chunk(
+                                    &chunk,
+                                    mlx_audio_context,
+                                    preferred_voice_id.as_deref(),
+                                    voice.as_ref(),
+                                    &tuning,
+                                    &stop_flag,
+                                )?
+                            }
+                            TtsEngineKind::Sidecar => synthesize_sidecar_chunk(
+                                &chunk,
+                                &selected_provider_id,
+                                selected_model_id.as_deref(),
+                                selected_profile_id.as_deref(),
+                                locale.as_deref(),
+                                preferred_voice_id.as_deref(),
+                                voice.as_ref(),
+                                &tuning,
+                                &stop_flag,
+                            )?,
+                            TtsEngineKind::LfmAudioGguf => {
+                                let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
+                                    "LFM Audio GGUF context is not initialized.".to_string()
+                                })?;
+                                synthesize_lfm_audio_gguf_chunk(
+                                    &chunk,
+                                    context,
+                                    preferred_voice_id.as_deref(),
+                                    &stop_flag,
+                                )?
+                            }
+                            TtsEngineKind::VibeVoice => {
+                                let context = vibevoice_context.as_ref().ok_or_else(|| {
+                                    "VibeVoice context is not initialized.".to_string()
+                                })?;
+                                synthesize_vibevoice_chunk(
+                                    &chunk,
+                                    context,
+                                    preferred_voice_id.as_deref(),
+                                    &tuning,
+                                    &stop_flag,
+                                )?
+                            }
+                        };
+                        files.push(file);
                     }
-                    TtsEngineKind::Qwen3Native => {
-                        let qwen3_context = qwen3_context
-                            .as_ref()
-                            .ok_or_else(|| "No Qwen3 Native models are available.".to_string())?;
-                        synthesize_qwen3_chunk(&chunk, qwen3_context, &tuning, &stop_flag)?
-                    }
-                    TtsEngineKind::MlxNative => {
-                        let mlx_audio_context = mlx_audio_context
-                            .as_ref()
-                            .ok_or_else(|| "No MLX speech models are available.".to_string())?;
-                        synthesize_mlx_audio_chunk(
-                            &chunk,
-                            mlx_audio_context,
-                            preferred_voice_id.as_deref(),
-                            voice.as_ref(),
-                            &tuning,
-                            &stop_flag,
-                        )?
-                    }
-                    TtsEngineKind::Sidecar => synthesize_sidecar_chunk(
-                        &chunk,
-                        &selected_provider_id,
-                        selected_model_id.as_deref(),
-                        selected_profile_id.as_deref(),
-                        locale.as_deref(),
-                        preferred_voice_id.as_deref(),
-                        voice.as_ref(),
-                        &tuning,
-                        &stop_flag,
-                    )?,
-                    TtsEngineKind::LfmAudioGguf => {
-                        let context = lfm_audio_gguf_context.as_ref().ok_or_else(|| {
-                            "LFM Audio GGUF context is not initialized.".to_string()
-                        })?;
-                        synthesize_lfm_audio_gguf_chunk(
-                            &chunk,
-                            context,
-                            preferred_voice_id.as_deref(),
-                            &stop_flag,
-                        )?
-                    }
-                    TtsEngineKind::VibeVoice => {
-                        let context = vibevoice_context
-                            .as_ref()
-                            .ok_or_else(|| "VibeVoice context is not initialized.".to_string())?;
-                        synthesize_vibevoice_chunk(
-                            &chunk,
-                            context,
-                            preferred_voice_id.as_deref(),
-                            &tuning,
-                            &stop_flag,
-                        )?
-                    }
-                };
-                files.push(file);
-            }
-            Ok::<Vec<PathBuf>, String>(files)
-        })
-        .await
-        .map_err(|err| format!("TTS render task failed: {err}"))?
+                    Ok::<Vec<PathBuf>, String>(files)
+                })();
+                let _ = render_tx.send(result);
+            })
+            .map_err(|err| format!("Failed to start TTS render thread: {err}"))?;
+
+        render_rx
+            .await
+            .map_err(|err| format!("TTS render thread stopped before returning: {err}"))?
     }
 
     pub fn sidecar_base_url(&self) -> String {

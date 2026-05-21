@@ -41,8 +41,13 @@ fn health_client() -> &'static reqwest::blocking::Client {
 const MLX_AUDIO_VENV_DIR: &str = "mlx-audio-venv";
 const MLX_AUDIO_VERSION_MARKER: &str = "mlx-audio.version";
 const MLX_AUDIO_RUNTIME_MARKER: &str =
-    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|patches=voxtral_eos_v1,parakeet_stt_remap_v1";
-const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &["mlx-audio==0.4.3", "torch==2.11.0", "g2p_en==2.1.0"];
+    "mlx-audio==0.4.3|torch==2.11.0|g2p_en==2.1.0|misaki[zh]|patches=voxtral_eos_v1,parakeet_stt_remap_v1";
+const MLX_AUDIO_RUNTIME_PACKAGES: &[&str] = &[
+    "mlx-audio==0.4.3",
+    "torch==2.11.0",
+    "g2p_en==2.1.0",
+    "misaki[zh]",
+];
 const SPEECH_ANALYSIS_VENV_DIR: &str = "speech-analysis-venv";
 const SPEECH_ANALYSIS_VERSION_MARKER: &str = "speech-analysis.version";
 const SPEECH_ANALYSIS_RUNTIME_MARKER: &str = "speech-analysis-runtime-2026-05-12-py311-v1";

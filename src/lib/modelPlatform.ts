@@ -125,8 +125,22 @@ export interface ModelPlatformOverview {
   selection: ModelPlatformSelectionState;
 }
 
+function parseInvokeJson<T>(command: string, json: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Invalid JSON returned.";
+    throw new Error(`${command} returned malformed data: ${message}`);
+  }
+}
+
 export async function getModelPlatformOverview(): Promise<ModelPlatformOverview> {
-  return invoke<ModelPlatformOverview>("get_model_platform_overview");
+  const json = await invoke<string>("get_model_platform_overview_json");
+  return parseInvokeJson<ModelPlatformOverview>(
+    "get_model_platform_overview_json",
+    json,
+  );
 }
 
 export async function setTtsPlatformSelection(

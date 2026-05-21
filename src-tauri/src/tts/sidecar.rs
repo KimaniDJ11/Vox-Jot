@@ -3,7 +3,9 @@ use crate::settings::{
     sanitize_tts_voice_tuning_for_target, TtsVoiceTuningSettings, TTS_PROVIDER_LOCAL_SIDECAR_API_ID,
 };
 use std::fs;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use uuid::Uuid;
@@ -13,6 +15,7 @@ use super::VoiceInfo;
 
 pub const DEFAULT_SIDECAR_URL: &str = "http://127.0.0.1:8008/v1/audio/speech";
 pub const RUNTIME_TTS_REQUEST_TIMEOUT_SECS: u64 = 180;
+const SIDECAR_CANCEL_POLL_MS: u64 = 100;
 
 pub fn synthesize_sidecar_chunk(
     text: &str,
@@ -29,7 +32,6 @@ pub fn synthesize_sidecar_chunk(
         return Err("Story rendering was cancelled.".to_string());
     }
 
-    let runtime = tokio::runtime::Handle::current();
     let sidecar_url = std::env::var("VOX_JOT_TTS_SIDECAR_URL")
         .unwrap_or_else(|_| DEFAULT_SIDECAR_URL.to_string());
     let runtime_target = sidecar_runtime_target(provider_id, model_id);
@@ -47,49 +49,13 @@ pub fn synthesize_sidecar_chunk(
 
     let http_timeout_secs = RUNTIME_TTS_REQUEST_TIMEOUT_SECS;
 
-    let (bytes, content_type) = runtime.block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(http_timeout_secs))
-            .build()
-            .map_err(|err| format!("Failed to create TTS sidecar client: {err}"))?;
-        let response = client
-            .post(&sidecar_url)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|err| {
-                if err.is_timeout() {
-                    format!(
-                        "{runtime_target} timed out after {}s while waiting for the local speech runtime to return audio.",
-                        http_timeout_secs
-                    )
-                } else {
-                    format!(
-                        "Failed to call the local speech runtime for {runtime_target}: {err}"
-                    )
-                }
-            })?;
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            let detail = sidecar_error_detail(&body);
-            return Err(if detail.is_empty() {
-                format!("{runtime_target} returned HTTP {status}")
-            } else {
-                format!("{runtime_target} failed: {detail}")
-            });
-        }
-        let content_type = response
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .map(|value| value.to_string());
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|err| format!("Failed to read audio from {runtime_target}: {err}"))?;
-        Ok((bytes, content_type))
-    })?;
+    let (bytes, content_type) = run_sidecar_request_blocking(
+        sidecar_url,
+        runtime_target,
+        payload,
+        http_timeout_secs,
+        stop_flag,
+    )?;
 
     let extension = sidecar_audio_extension(content_type.as_deref(), &bytes);
     let temp_file =
@@ -100,6 +66,124 @@ pub fn synthesize_sidecar_chunk(
         return Err("Story rendering was cancelled.".to_string());
     }
     Ok(temp_file)
+}
+
+fn run_sidecar_request_blocking(
+    sidecar_url: String,
+    runtime_target: String,
+    payload: serde_json::Value,
+    http_timeout_secs: u64,
+    stop_flag: &AtomicBool,
+) -> Result<(Vec<u8>, Option<String>), String> {
+    let future = fetch_sidecar_audio(
+        sidecar_url,
+        runtime_target,
+        payload,
+        http_timeout_secs,
+        stop_flag,
+    );
+
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|err| format!("Failed to start TTS sidecar runtime: {err}"))?
+        .block_on(future)
+}
+
+async fn fetch_sidecar_audio(
+    sidecar_url: String,
+    runtime_target: String,
+    payload: serde_json::Value,
+    http_timeout_secs: u64,
+    stop_flag: &AtomicBool,
+) -> Result<(Vec<u8>, Option<String>), String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(http_timeout_secs))
+        .build()
+        .map_err(|err| format!("Failed to create TTS sidecar client: {err}"))?;
+    let response = await_sidecar_cancelable(
+        async {
+            client
+                .post(&sidecar_url)
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|err| {
+                    if err.is_timeout() {
+                        format!(
+                            "{runtime_target} timed out after {}s while waiting for the local speech runtime to return audio.",
+                            http_timeout_secs
+                        )
+                    } else {
+                        format!("Failed to call the local speech runtime for {runtime_target}: {err}")
+                    }
+                })
+        },
+        stop_flag,
+    )
+    .await?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        let detail = sidecar_error_detail(&body);
+        return Err(if detail.is_empty() {
+            format!("{runtime_target} returned HTTP {status}")
+        } else {
+            format!("{runtime_target} failed: {detail}")
+        });
+    }
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(|value| value.to_string());
+    let bytes = await_sidecar_cancelable(
+        async {
+            response
+                .bytes()
+                .await
+                .map(|bytes| bytes.to_vec())
+                .map_err(|err| format!("Failed to read audio from {runtime_target}: {err}"))
+        },
+        stop_flag,
+    )
+    .await?;
+    Ok((bytes, content_type))
+}
+
+async fn await_sidecar_cancelable<T, F>(future: F, stop_flag: &AtomicBool) -> Result<T, String>
+where
+    F: Future<Output = Result<T, String>>,
+{
+    let mut future = Box::pin(future);
+    loop {
+        if stop_flag.load(Ordering::Relaxed) {
+            return Err("Story rendering was cancelled.".to_string());
+        }
+        match poll_sidecar_cancelable(&mut future, stop_flag).await {
+            Some(result) => return result,
+            None => continue,
+        }
+    }
+}
+
+async fn poll_sidecar_cancelable<T, F>(
+    future: &mut Pin<Box<F>>,
+    stop_flag: &AtomicBool,
+) -> Option<Result<T, String>>
+where
+    F: Future<Output = Result<T, String>>,
+{
+    tokio::select! {
+        result = future.as_mut() => Some(result),
+        _ = tokio::time::sleep(Duration::from_millis(SIDECAR_CANCEL_POLL_MS)) => {
+            if stop_flag.load(Ordering::Relaxed) {
+                Some(Err("Story rendering was cancelled.".to_string()))
+            } else {
+                None
+            }
+        }
+    }
 }
 
 pub fn speak_sidecar_chunk(

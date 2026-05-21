@@ -7,6 +7,9 @@ import Vision
 import ScreenCaptureKit
 #endif
 
+private let screenContextMaxCaptureDimension = 2200
+private let screenContextCaptureLock = NSLock()
+
 private typealias ScreenContextPointer = UnsafeMutablePointer<ScreenContextCaptureResponse>
 
 private func duplicateScreenCString(_ text: String) -> UnsafeMutablePointer<CChar>? {
@@ -120,6 +123,22 @@ private func screenSize(for displayId: UInt32) -> CGSize? {
     return nil
 }
 
+private func constrainedCaptureSize(for displayId: UInt32) -> (width: Int, height: Int)? {
+    guard let size = screenSize(for: displayId) else { return nil }
+    let width = max(1, Int(size.width.rounded()))
+    let height = max(1, Int(size.height.rounded()))
+    let longestSide = max(width, height)
+    guard longestSide > screenContextMaxCaptureDimension else {
+        return (width, height)
+    }
+
+    let scale = Double(screenContextMaxCaptureDimension) / Double(longestSide)
+    return (
+        max(1, Int((Double(width) * scale).rounded())),
+        max(1, Int((Double(height) * scale).rounded()))
+    )
+}
+
 #if canImport(ScreenCaptureKit)
 @available(macOS 14.0, *)
 private func captureDisplayImage(displayId: UInt32) async throws -> CGImage {
@@ -134,9 +153,9 @@ private func captureDisplayImage(displayId: UInt32) async throws -> CGImage {
 
     let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
     let configuration = SCStreamConfiguration()
-    if let size = screenSize(for: displayId) {
-        configuration.width = Int(size.width)
-        configuration.height = Int(size.height)
+    if let size = constrainedCaptureSize(for: displayId) {
+        configuration.width = size.width
+        configuration.height = size.height
     }
     configuration.showsCursor = false
 
@@ -224,6 +243,13 @@ public func captureScreenContextApple(
         return responsePtr
     }
 
+    guard screenContextCaptureLock.try() else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "A screen context capture is already in progress."
+        )
+        return responsePtr
+    }
+
     let swiftQualityMode = String(cString: qualityMode)
     let clippedMaxWords = max(0, Int(maxWords))
     let semaphore = DispatchSemaphore(value: 0)
@@ -235,7 +261,10 @@ public func captureScreenContextApple(
     let box = ResultBox()
 
     Task.detached(priority: .userInitiated) {
-        defer { semaphore.signal() }
+        defer {
+            screenContextCaptureLock.unlock()
+            semaphore.signal()
+        }
 
         do {
             #if canImport(ScreenCaptureKit)
@@ -369,6 +398,13 @@ public func captureScreenContextBitmapApple(
         return responsePtr
     }
 
+    guard screenContextCaptureLock.try() else {
+        responsePtr.pointee.error_message = duplicateScreenCString(
+            "A screen context capture is already in progress."
+        )
+        return responsePtr
+    }
+
     let semaphore = DispatchSemaphore(value: 0)
 
     final class ResultBox: @unchecked Sendable {
@@ -378,7 +414,10 @@ public func captureScreenContextBitmapApple(
     let box = ResultBox()
 
     Task.detached(priority: .userInitiated) {
-        defer { semaphore.signal() }
+        defer {
+            screenContextCaptureLock.unlock()
+            semaphore.signal()
+        }
         do {
             #if canImport(ScreenCaptureKit)
             box.image = try await captureDisplayImage(displayId: displayId)

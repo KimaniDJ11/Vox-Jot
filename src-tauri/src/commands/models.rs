@@ -17,6 +17,7 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -31,6 +32,7 @@ const HF_COLLECTION_CACHE_TTL: Duration = Duration::from_secs(300);
 const HF_COLLECTION_FETCH_TIMEOUT: Duration = Duration::from_secs(4);
 const HF_COLLECTION_MAX_ITEMS: usize = 48;
 const TTS_HF_VOICE_WAREHOUSE_REPOS: &[&str] = &["rhasspy/piper-voices"];
+const MODEL_PLATFORM_RESPONSE_STACK_BYTES: usize = 64 * 1024 * 1024;
 
 static HF_COLLECTION_CACHE: Lazy<std::sync::Mutex<HashMap<String, (Instant, Vec<String>)>>> =
     Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
@@ -1221,6 +1223,31 @@ pub async fn get_model_info(
 #[tauri::command]
 #[specta::specta]
 pub async fn get_model_platform_overview(
+    app_handle: AppHandle,
+) -> Result<ModelPlatformOverview, String> {
+    build_model_platform_overview(app_handle).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_model_platform_overview_json(app_handle: AppHandle) -> Result<String, String> {
+    let overview = build_model_platform_overview(app_handle).await?;
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name("model-platform-json".to_string())
+        .stack_size(MODEL_PLATFORM_RESPONSE_STACK_BYTES)
+        .spawn(move || {
+            let result = serde_json::to_string(&overview)
+                .map_err(|err| format!("Failed to serialize model platform overview: {err}"));
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start model platform serializer: {err}"))?;
+
+    rx.await
+        .map_err(|_| "Model platform serializer stopped before returning data.".to_string())?
+}
+
+async fn build_model_platform_overview(
     app_handle: AppHandle,
 ) -> Result<ModelPlatformOverview, String> {
     let settings = get_settings(&app_handle);

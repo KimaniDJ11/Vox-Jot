@@ -13,6 +13,8 @@ use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -82,63 +84,73 @@ pub(crate) async fn handle_mcp(
     headers: HeaderMap,
     Json(request): Json<JsonRpcRequest>,
 ) -> axum::response::Response {
-    if let Err(response) = validate_origin(&headers) {
-        return response.into_response();
-    }
-    if let Err(response) = require_api_token(&state.app, &headers) {
-        return *response;
-    }
+    handle_mcp_inner(state, headers, request).await
+}
 
-    if request.jsonrpc.as_deref().unwrap_or("2.0") != "2.0" {
-        return Json(rpc_error(
-            request.id,
-            -32600,
-            "JSON-RPC version must be 2.0",
-        ))
-        .into_response();
-    }
-
-    let response = match request.method.as_str() {
-        "initialize" => rpc_ok(
-            request.id,
-            json!({
-                "protocolVersion": MCP_PROTOCOL_VERSION,
-                "capabilities": { "tools": {} },
-                "serverInfo": {
-                    "name": "vox-jot",
-                    "version": env!("CARGO_PKG_VERSION")
-                }
-            }),
-        ),
-        "notifications/initialized" => {
-            return StatusCode::ACCEPTED.into_response();
+fn handle_mcp_inner(
+    state: ApiState,
+    headers: HeaderMap,
+    request: JsonRpcRequest,
+) -> Pin<Box<dyn Future<Output = axum::response::Response> + Send>> {
+    Box::pin(async move {
+        if let Err(response) = validate_origin(&headers) {
+            return response.into_response();
         }
-        "tools/list" => rpc_ok(request.id, json!({ "tools": mcp_tools() })),
-        "tools/call" => match serde_json::from_value::<ToolCallParams>(request.params) {
-            Ok(params) => match call_tool(&state, params).await {
-                Ok(result) => rpc_ok(request.id, result),
-                Err(message) => rpc_ok(
+        if let Err(response) = require_api_token(&state.app, &headers) {
+            return *response;
+        }
+
+        if request.jsonrpc.as_deref().unwrap_or("2.0") != "2.0" {
+            return Json(rpc_error(
+                request.id,
+                -32600,
+                "JSON-RPC version must be 2.0",
+            ))
+            .into_response();
+        }
+
+        let response = match request.method.as_str() {
+            "initialize" => rpc_ok(
+                request.id,
+                json!({
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "capabilities": { "tools": {} },
+                    "serverInfo": {
+                        "name": "vox-jot",
+                        "version": env!("CARGO_PKG_VERSION")
+                    }
+                }),
+            ),
+            "notifications/initialized" => {
+                return StatusCode::ACCEPTED.into_response();
+            }
+            "tools/list" => rpc_ok(request.id, json!({ "tools": mcp_tools() })),
+            "tools/call" => match serde_json::from_value::<ToolCallParams>(request.params) {
+                Ok(params) => match call_tool(&state, params).await {
+                    Ok(result) => rpc_ok(request.id, result),
+                    Err(message) => rpc_ok(
+                        request.id,
+                        json!({
+                            "content": [{ "type": "text", "text": message }],
+                            "isError": true
+                        }),
+                    ),
+                },
+                Err(err) => rpc_error(
                     request.id,
-                    json!({
-                        "content": [{ "type": "text", "text": message }],
-                        "isError": true
-                    }),
+                    -32602,
+                    format!("Invalid tool call params: {err}"),
                 ),
             },
-            Err(err) => rpc_error(
+            _ => rpc_error(
                 request.id,
-                -32602,
-                format!("Invalid tool call params: {err}"),
+                -32601,
+                format!("Unsupported MCP method '{}'.", request.method),
             ),
-        },
-        _ => rpc_error(
-            request.id,
-            -32601,
-            format!("Unsupported MCP method '{}'.", request.method),
-        ),
-    };
+        };
 
-    Json(response).into_response()
+        Json(response).into_response()
+    })
 }
 
 fn validate_origin(headers: &HeaderMap) -> Result<(), (StatusCode, Json<Value>)> {

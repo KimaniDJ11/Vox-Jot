@@ -12,6 +12,7 @@
     "test:rust": "cd src-tauri && cargo test --no-default-features --features ci-mock-transcription",
     "test:all": "bun run test:unit && bun run test:rust",
     "test:native-ui": "node scripts/smoke-native-ui.mjs",
+    "test:installed-app": "node scripts/full-installed-app-test.mjs",
     "audit:frontend": "bun audit",
     "audit:backend": "cd src-tauri && cargo audit && cargo deny check advisories",
     "audit": "bun run audit:frontend && bun run audit:backend",

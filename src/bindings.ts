@@ -1184,6 +1184,14 @@ async getModelPlatformOverview() : Promise<Result<ModelPlatformOverview, string>
     else return { status: "error", error: e  as any };
 }
 },
+async getModelPlatformOverviewJson() : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_model_platform_overview_json") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async downloadModel(modelId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("download_model", { modelId }) };
@@ -2147,7 +2155,7 @@ async renderStoryAudio(request: StoryRenderRequest) : Promise<Result<StoryRender
     else return { status: "error", error: e  as any };
 }
 },
-async generateCreateSpeechAudio(request: CreateSpeechAudioRequest) : Promise<Result<StoryRenderResult, string>> {
+async generateCreateSpeechAudio(request: CreateSpeechAudioRequest) : Promise<Result<StoryRenderEnqueueResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("generate_create_speech_audio", { request }) };
 } catch (e) {
@@ -2771,7 +2779,6 @@ export type StoryLineInstructionOverride = { line_number: number; style_instruct
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
 export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
 export type StoryRenderRequest = { render_id: string; project_id?: string | null; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[]; audio_effect?: StoryAudioEffectPreset }
-export type StoryRenderResult = { render_id: string; output_path: string; duration_ms: number; line_count: number }
 /**
  * One transcribed segment with millisecond-resolution timing.
  *

@@ -2,6 +2,7 @@ use crate::commands::tts::preset_from_input;
 use crate::settings::{get_settings, AppSettings, TtsVoicePreset, TtsVoicePresetInput};
 use crate::tts::{SpeakRequest, TtsManager};
 use hound::{WavSpec, WavWriter};
+use log::warn;
 use once_cell::sync::Lazy;
 use rodio::Source;
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
@@ -241,6 +243,7 @@ struct StoryRenderQueueState {
 static STORY_RENDER_QUEUE: Lazy<Mutex<StoryRenderQueueState>> =
     Lazy::new(|| Mutex::new(StoryRenderQueueState::default()));
 static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
+const STORY_GENERATION_STACK_BYTES: usize = 64 * 1024 * 1024;
 
 pub(crate) fn active_story_render_references_tts_model(
     settings: &AppSettings,
@@ -304,7 +307,7 @@ pub async fn render_story_audio(
 
     emit_story_render_queue_updated(&app);
     if should_start_worker {
-        tauri::async_runtime::spawn(story_render_worker(app.clone()));
+        spawn_story_render_worker_thread(app.clone());
     }
 
     Ok(StoryRenderEnqueueResult {
@@ -337,10 +340,9 @@ fn cancel_story_render_locked(queue: &mut StoryRenderQueueState, render_id: &str
         return false;
     };
     job.stop_flag.store(true, Ordering::Relaxed);
-    if job.status == StoryRenderJobStatus::Queued {
-        job.status = StoryRenderJobStatus::Cancelled;
-        job.error = None;
-    }
+    job.status = StoryRenderJobStatus::Cancelled;
+    job.speaker = None;
+    job.error = None;
     true
 }
 
@@ -355,12 +357,63 @@ pub fn list_story_render_jobs() -> Result<Vec<StoryRenderJobSummary>, String> {
 pub async fn generate_create_speech_audio(
     app: AppHandle,
     request: CreateSpeechAudioRequest,
-) -> Result<StoryRenderResult, String> {
+) -> Result<StoryRenderEnqueueResult, String> {
     let text = request.text.trim().to_string();
     if text.is_empty() {
         return Err("Enter speech text before generating audio.".to_string());
     }
 
+    let render_id = request.render_id.clone();
+    let _ = preset_from_input(request.preset.clone(), None)?;
+    spawn_story_generation_thread(app.clone(), request)?;
+
+    Ok(StoryRenderEnqueueResult {
+        render_id,
+        queue_position: 1,
+    })
+}
+
+fn spawn_story_generation_thread(
+    app: AppHandle,
+    request: CreateSpeechAudioRequest,
+) -> Result<(), String> {
+    let thread_app = app.clone();
+    thread::Builder::new()
+        .name("create-speech-generate".to_string())
+        .stack_size(STORY_GENERATION_STACK_BYTES)
+        .spawn(move || {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    warn!("Failed to start Create Speech runtime: {error}");
+                    emit_story_audio_updated(&thread_app);
+                    return;
+                }
+            };
+            if let Err(error) = runtime.block_on(generate_create_speech_audio_inner(
+                thread_app.clone(),
+                request,
+            )) {
+                warn!("Create Speech generation failed: {error}");
+                emit_story_audio_updated(&thread_app);
+            }
+        })
+        .map(|_| ())
+        .map_err(|error| {
+            warn!("Failed to start Create Speech generation thread: {error}");
+            emit_story_audio_updated(&app);
+            format!("Failed to start Create Speech generation thread: {error}")
+        })
+}
+
+async fn generate_create_speech_audio_inner(
+    app: AppHandle,
+    request: CreateSpeechAudioRequest,
+) -> Result<StoryRenderResult, String> {
+    let text = request.text.trim().to_string();
     let render_started_at = Instant::now();
     let mut inline_preset = preset_from_input(request.preset, None)?;
     if inline_preset.label.trim().is_empty() {
@@ -430,6 +483,47 @@ pub async fn generate_create_speech_audio(
     Ok(result)
 }
 
+fn spawn_story_render_worker_thread(app: AppHandle) {
+    let thread_app = app.clone();
+    match thread::Builder::new()
+        .name("story-studio-render".to_string())
+        .stack_size(STORY_GENERATION_STACK_BYTES)
+        .spawn(move || {
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    warn!("Failed to start Story Studio runtime: {error}");
+                    reset_story_render_worker(&thread_app, "Story Studio runtime failed to start.");
+                    return;
+                }
+            };
+            runtime.block_on(story_render_worker(thread_app));
+        }) {
+        Ok(_) => {}
+        Err(error) => {
+            warn!("Failed to start Story Studio render thread: {error}");
+            reset_story_render_worker(&app, "Story Studio render thread failed to start.");
+        }
+    }
+}
+
+fn reset_story_render_worker(app: &AppHandle, error: &str) {
+    {
+        let mut queue = STORY_RENDER_QUEUE
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        queue.worker_running = false;
+        for job in queue.jobs.iter_mut().filter(|job| job.status.is_active()) {
+            job.status = StoryRenderJobStatus::Failed;
+            job.error = Some(error.to_string());
+        }
+    }
+    emit_story_render_queue_updated(app);
+}
+
 async fn story_render_worker(app: AppHandle) {
     loop {
         let Some((request, stop_flag)) = take_next_story_render_job(&app) else {
@@ -439,9 +533,13 @@ async fn story_render_worker(app: AppHandle) {
         let result = render_story_audio_inner(app.clone(), request, Arc::clone(&stop_flag)).await;
         match result {
             Ok(_) => {
-                mark_story_render_job_completed(&app, &render_id);
-                emit_story_audio_updated(&app);
-                remove_story_render_job(&app, &render_id);
+                if stop_flag.load(Ordering::Relaxed) {
+                    mark_story_render_job_cancelled(&app, &render_id);
+                } else {
+                    mark_story_render_job_completed(&app, &render_id);
+                    emit_story_audio_updated(&app);
+                    remove_story_render_job(&app, &render_id);
+                }
             }
             Err(error) => {
                 if stop_flag.load(Ordering::Relaxed)
@@ -483,11 +581,21 @@ fn update_story_render_job_progress(progress: &StoryRenderProgress) {
     let mut queue = STORY_RENDER_QUEUE
         .lock()
         .unwrap_or_else(|err| err.into_inner());
+    update_story_render_job_progress_locked(&mut queue, progress);
+}
+
+fn update_story_render_job_progress_locked(
+    queue: &mut StoryRenderQueueState,
+    progress: &StoryRenderProgress,
+) {
     if let Some(job) = queue
         .jobs
         .iter_mut()
         .find(|job| job.request.render_id == progress.render_id)
     {
+        if !job.status.is_active() {
+            return;
+        }
         job.current_line = progress.current_line;
         job.total_lines = progress.total_lines;
         job.speaker = progress.speaker.clone();
@@ -2006,8 +2114,30 @@ mod tests {
             .push_back(test_job("active", StoryRenderJobStatus::Rendering));
 
         assert!(cancel_story_render_locked(&mut queue, "active"));
-        assert_eq!(queue.jobs[0].status, StoryRenderJobStatus::Rendering);
+        assert_eq!(queue.jobs[0].status, StoryRenderJobStatus::Cancelled);
         assert!(queue.jobs[0].stop_flag.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn cancelled_render_ignores_late_progress() {
+        let mut queue = StoryRenderQueueState::default();
+        queue
+            .jobs
+            .push_back(test_job("active", StoryRenderJobStatus::Rendering));
+        assert!(cancel_story_render_locked(&mut queue, "active"));
+
+        let progress = StoryRenderProgress {
+            render_id: "active".to_string(),
+            current_line: 1,
+            total_lines: 1,
+            speaker: Some("Narrator".to_string()),
+            status: "rendering".to_string(),
+        };
+        update_story_render_job_progress_locked(&mut queue, &progress);
+
+        assert_eq!(queue.jobs[0].status, StoryRenderJobStatus::Cancelled);
+        assert_eq!(queue.jobs[0].current_line, 0);
+        assert_eq!(queue.jobs[0].speaker, None);
     }
 
     #[test]

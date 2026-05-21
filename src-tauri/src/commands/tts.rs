@@ -15,8 +15,11 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
+
+const TTS_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
@@ -122,9 +125,10 @@ pub async fn tts_speak(
     trigger: Option<String>,
     remember_last_output: Option<bool>,
 ) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager
-        .speak(SpeakRequest {
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_command_thread(
+        manager,
+        SpeakRequest {
             text,
             locale,
             preferred_voice_id,
@@ -132,8 +136,10 @@ pub async fn tts_speak(
             inline_preset: None,
             trigger,
             remember_last_output: remember_last_output.unwrap_or(false),
-        })
-        .await
+        },
+        "tts-command-speak",
+    )
+    .await
 }
 
 #[tauri::command]
@@ -187,13 +193,13 @@ pub async fn preview_tts_voice(
     voice_id: Option<String>,
     preview_text: Option<String>,
 ) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager
-        .speak(default_preview_request(
-            voice_id,
-            normalize_optional_string(preview_text),
-        ))
-        .await
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    speak_on_command_thread(
+        manager,
+        default_preview_request(voice_id, normalize_optional_string(preview_text)),
+        "tts-command-preview-voice",
+    )
+    .await
 }
 
 #[tauri::command]
@@ -203,11 +209,11 @@ pub async fn preview_tts_voice_preset(
     preset_id: String,
     preview_text: Option<String>,
 ) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset".to_string());
     request.preset_id = Some(preset_id);
-    manager.speak(request).await
+    speak_on_command_thread(manager, request, "tts-command-preview-preset").await
 }
 
 #[tauri::command]
@@ -217,11 +223,11 @@ pub async fn preview_tts_voice_preset_draft(
     input: TtsVoicePresetInput,
     preview_text: Option<String>,
 ) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
     let mut request = default_preview_request(None, normalize_optional_string(preview_text));
     request.trigger = Some("preview_tts_voice_preset_draft".to_string());
     request.inline_preset = Some(preset_from_input(input, None)?);
-    manager.speak(request).await
+    speak_on_command_thread(manager, request, "tts-command-preview-draft").await
 }
 
 #[tauri::command]
@@ -229,6 +235,31 @@ pub async fn preview_tts_voice_preset_draft(
 pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Result<(), String> {
     let manager = app.state::<Arc<TtsManager>>();
     manager.prepare_sidecar_provider(&provider_id, None).await
+}
+
+async fn speak_on_command_thread(
+    manager: Arc<TtsManager>,
+    request: SpeakRequest,
+    thread_name: &'static str,
+) -> Result<(), String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(TTS_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start TTS command runtime: {err}"))?;
+                runtime.block_on(manager.speak(request))
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
 }
 
 #[tauri::command]

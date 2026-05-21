@@ -21,6 +21,8 @@ import sys
 import tempfile
 import time
 import unicodedata
+import urllib.error
+import urllib.request
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -92,6 +94,76 @@ SHERPA_PACKS: dict[str, dict[str, Any]] = {
         "label": "English (US) - Lessac",
         "locale": "en-US",
         "model_file": "en_US-lessac-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-en-us-amy-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-medium.tar.bz2",
+        "label": "English (US) - Amy",
+        "locale": "en-US",
+        "model_file": "en_US-amy-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-en-gb-alan-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_GB-alan-medium.tar.bz2",
+        "label": "English (UK) - Alan",
+        "locale": "en-GB",
+        "model_file": "en_GB-alan-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-de-de-thorsten-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
+        "label": "German - Thorsten",
+        "locale": "de-DE",
+        "model_file": "de_DE-thorsten-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-es-es-davefx-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+        "label": "Spanish (Spain) - DaveFX",
+        "locale": "es-ES",
+        "model_file": "es_ES-davefx-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-fr-fr-siwis-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
+        "label": "French - Siwis",
+        "locale": "fr-FR",
+        "model_file": "fr_FR-siwis-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-it-it-paola-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-it_IT-paola-medium.tar.bz2",
+        "label": "Italian - Paola",
+        "locale": "it-IT",
+        "model_file": "it_IT-paola-medium.onnx",
+        "tokens_file": "tokens.txt",
+        "data_dir": "espeak-ng-data",
+        "lexicon_file": None,
+        "rule_fsts": [],
+    },
+    "tts-sherpa-pt-br-faber-medium": {
+        "source_url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-pt_BR-faber-medium.tar.bz2",
+        "label": "Portuguese (Brazil) - Faber",
+        "locale": "pt-BR",
+        "model_file": "pt_BR-faber-medium.onnx",
         "tokens_file": "tokens.txt",
         "data_dir": "espeak-ng-data",
         "lexicon_file": None,
@@ -313,7 +385,15 @@ class ModelSpec:
     notes: str = ""
 
 
+@dataclass(frozen=True)
+class AppApiConfig:
+    base_url: str
+    token: str
+    timeout: int
+
+
 MODELS: tuple[ModelSpec, ...] = (
+    ModelSpec("system-default", "Apple System Voice", "system", "system_builtin"),
     ModelSpec("openvoice", "OpenVoice", "managed", "openvoice", ("OpenVoice", "openvoice"), voice="default", supports_voice_cloning=True),
     ModelSpec("chatterbox", "Chatterbox", "managed", "chatterbox", ("chatterbox", "Chatterbox"), hf_repo="ResembleAI/chatterbox"),
     ModelSpec(
@@ -338,6 +418,13 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("xtts-v2", "XTTS v2", "managed", "xtts", ("Coqui/XTTS", "coqui-tts", "XTTS"), hf_repo="coqui/XTTS-v2", supports_voice_cloning=True),
     ModelSpec("supertonic-3", "Supertonic 3", "managed", "supertonic", ("supertonic-3", "Supertone/supertonic-3"), hf_repo="Supertone/supertonic-3", voice="M1"),
     ModelSpec("tts-sherpa-en-us-lessac-medium", "Sherpa Lessac Medium", "sherpa", "sherpa", ("tts-sherpa-en-us-lessac-medium",)),
+    ModelSpec("tts-sherpa-en-us-amy-medium", "Sherpa Amy Medium", "sherpa", "sherpa", ("tts-sherpa-en-us-amy-medium",)),
+    ModelSpec("tts-sherpa-en-gb-alan-medium", "Sherpa Alan Medium", "sherpa", "sherpa", ("tts-sherpa-en-gb-alan-medium",)),
+    ModelSpec("tts-sherpa-de-de-thorsten-medium", "Sherpa Thorsten Medium", "sherpa", "sherpa", ("tts-sherpa-de-de-thorsten-medium",)),
+    ModelSpec("tts-sherpa-es-es-davefx-medium", "Sherpa DaveFX Medium", "sherpa", "sherpa", ("tts-sherpa-es-es-davefx-medium",)),
+    ModelSpec("tts-sherpa-fr-fr-siwis-medium", "Sherpa Siwis Medium", "sherpa", "sherpa", ("tts-sherpa-fr-fr-siwis-medium",)),
+    ModelSpec("tts-sherpa-it-it-paola-medium", "Sherpa Paola Medium", "sherpa", "sherpa", ("tts-sherpa-it-it-paola-medium",)),
+    ModelSpec("tts-sherpa-pt-br-faber-medium", "Sherpa Faber Medium", "sherpa", "sherpa", ("tts-sherpa-pt-br-faber-medium",)),
     ModelSpec("tts-sherpa-zh-cn-melo", "Sherpa Melo Chinese/English", "sherpa", "sherpa", ("tts-sherpa-zh-cn-melo",)),
     ModelSpec("qwen3-0.6b-base", "Qwen3 Native 0.6B Base", "qwen3", "qwen3_native", ("qwen3/qwen3-0.6b-base", "qwen3-0.6b-base"), hf_repo="Qwen/Qwen3-TTS-12Hz-0.6B-Base", supports_voice_cloning=True),
     ModelSpec("lfm2-5-audio-1-5b-q4-0", "LFM2.5 Audio 1.5B GGUF Q4_0", "lfm_gguf", "lfm_audio_gguf", ("lfm-audio-gguf",)),
@@ -359,7 +446,7 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("voxcpm2-4bit", "MLX VoxCPM2 4-bit", "mlx", "mlx_voxcpm2", ("MLX/VoxCPM2-4bit", "MLX/mlx-community/VoxCPM2-4bit"), "mlx-community/VoxCPM2-4bit", supports_instruction_prompt=True, supports_voice_cloning=True),
     ModelSpec("pocket-tts-4bit", "MLX Pocket TTS 4-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-4bit", "MLX/mlx-community/pocket-tts-4bit"), "mlx-community/pocket-tts-4bit", supports_voice_cloning=True),
     ModelSpec("pocket-tts-8bit", "MLX Pocket TTS 8-bit", "mlx", "mlx_pocket", ("MLX/pocket-tts-8bit", "MLX/mlx-community/pocket-tts-8bit"), "mlx-community/pocket-tts-8bit", supports_voice_cloning=True),
-    ModelSpec("voxtral-tts-4b", "MLX Voxtral TTS 4B", "mlx", "mlx_voxtral", ("MLX/Voxtral-TTS-4B-MLX-6bit", "MLX/Voxtral-4B-TTS-2603-mlx-bf16", "Voxtral-TTS-4B-MLX-6bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16"),
+    ModelSpec("voxtral-tts-4b", "MLX Voxtral TTS 4B", "mlx", "mlx_voxtral", ("MLX/Voxtral-4B-TTS-2603-mlx-bf16", "MLX/Voxtral-TTS-4B-MLX-6bit", "Voxtral-TTS-4B-MLX-6bit"), "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16"),
     ModelSpec("longcat-audiodit-1b-4bit", "MLX LongCat AudioDiT 1B 4-bit", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-1B-4bit", "MLX/mlx-community/LongCat-AudioDiT-1B-4bit"), "mlx-community/LongCat-AudioDiT-1B-4bit", supports_voice_cloning=True),
     ModelSpec("longcat-audiodit-1b-bf16", "MLX LongCat AudioDiT 1B bf16", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-1B-bf16", "MLX/mlx-community/LongCat-AudioDiT-1B-bf16"), "mlx-community/LongCat-AudioDiT-1B-bf16", supports_voice_cloning=True),
     ModelSpec("longcat-audiodit-3-5b-4bit", "MLX LongCat AudioDiT 3.5B 4-bit", "mlx", "mlx_longcat_audiodit", ("MLX/LongCat-AudioDiT-3.5B-4bit", "MLX/mlx-community/LongCat-AudioDiT-3.5B-4bit"), "mlx-community/LongCat-AudioDiT-3.5B-4bit", supports_voice_cloning=True),
@@ -399,6 +486,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--download-missing", action="store_true", help="Download missing Hugging Face snapshots where known")
     parser.add_argument("--include-disabled", action="store_true", help="Attempt catalog-disabled models")
     parser.add_argument("--no-asr-roundtrip", action="store_true", help="Skip ASR round-trip WER scoring")
+    parser.add_argument(
+        "--use-app-api",
+        action="store_true",
+        help="Synthesize through the running Vox Jot local API /v1/tts/synthesize endpoint",
+    )
+    parser.add_argument(
+        "--app-api-url",
+        default=os.environ.get("VOX_JOT_API_URL", "http://127.0.0.1:8978"),
+        help="Base URL for the running Vox Jot local API",
+    )
+    parser.add_argument(
+        "--app-api-token",
+        default=os.environ.get("VOX_JOT_API_TOKEN", ""),
+        help="Local API token, or set VOX_JOT_API_TOKEN",
+    )
     parser.add_argument(
         "--asr-model",
         default=DEFAULT_ASR_JUDGE_MODEL,
@@ -1422,6 +1524,107 @@ def locale_to_lang(locale: str) -> str:
     return locale.split("-")[0].lower() if locale else "en"
 
 
+def app_provider_id(model: ModelSpec) -> str:
+    return {
+        "sherpa": "sherpa_pack",
+        "mlx_fish": "mlx_fish_audio",
+        "mlx_lfm": "mlx_lfm_audio",
+        "mlx_ming": "mlx_ming_omni",
+        "mlx_pocket": "mlx_pocket_tts",
+        "mlx_voxcpm2": "mlx_voxcpm",
+        "mlx_voxtral": "mlx_voxtral_tts",
+        "lfm_gguf": "lfm_audio_gguf",
+    }.get(model.provider, model.provider)
+
+
+def app_model_id(model: ModelSpec) -> str:
+    if model.id == "chatterbox-mlx":
+        return "chatterbox"
+    return model.id
+
+
+def default_tuning(case: dict[str, Any], model: ModelSpec) -> dict[str, Any]:
+    controls = case.get("controls", {})
+    return {
+        "tempo_rate": float(controls.get("speed", 1.0)),
+        "expressiveness": 0.5,
+        "exaggeration": float(controls.get("exaggeration", 0.5)),
+        "randomness": float(controls.get("temperature", 0.7)),
+        "guidance": float(controls.get("cfg_weight", 0.5)),
+        "stability": 0.5,
+        "repetition_penalty": float(controls.get("repetition_penalty", 1.2)),
+        "style_instructions": case.get("instruction_prompt") if model.supports_instruction_prompt else None,
+        "advanced_overrides": {
+            key: {"kind": "number", "value": float(value)}
+            for key, value in controls.items()
+            if isinstance(value, (int, float))
+            and key
+            not in {
+                "speed",
+                "exaggeration",
+                "temperature",
+                "cfg_weight",
+                "repetition_penalty",
+            }
+        },
+    }
+
+
+def synthesize_app_api(
+    model: ModelSpec,
+    case: dict[str, Any],
+    app_api: AppApiConfig,
+) -> tuple[Path | None, str | None, float]:
+    payload = {
+        "text": case["text"],
+        "locale": case["locale"],
+        "preferred_voice_id": model.voice,
+        "inline_preset": {
+            "label": model.label,
+            "provider_id": app_provider_id(model),
+            "model_id": app_model_id(model),
+            "voice_id": model.voice,
+            "voice_profile_id": None,
+            "voice_label_snapshot": model.voice or model.label,
+            "locale_snapshot": case["locale"],
+            "tuning": default_tuning(case, model),
+        },
+    }
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        app_api.base_url.rstrip("/") + "/v1/tts/synthesize",
+        data=data,
+        headers={
+            "content-type": "application/json",
+            "x-vox-jot-api-token": app_api.token,
+        },
+        method="POST",
+    )
+    started = time.perf_counter()
+    try:
+        with urllib.request.urlopen(request, timeout=app_api.timeout) as response:
+            body = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        elapsed = time.perf_counter() - started
+        detail = exc.read().decode("utf-8", errors="replace")
+        return None, f"app API HTTP {exc.code}: {detail}", elapsed
+    except Exception as exc:
+        elapsed = time.perf_counter() - started
+        return None, f"app API request failed: {exc}", elapsed
+    elapsed = time.perf_counter() - started
+    try:
+        decoded = json.loads(body)
+    except json.JSONDecodeError as exc:
+        return None, f"app API returned invalid JSON: {exc}", elapsed
+    paths = decoded.get("output_paths") or []
+    if not paths:
+        return None, "app API completed without output_paths", elapsed
+    first = Path(paths[0])
+    if not first.exists():
+        return None, f"app API output does not exist: {first}", elapsed
+    return first, None, elapsed
+
+
 def find_first(root: Path, name: str) -> Path | None:
     for candidate in root.rglob(name):
         return candidate
@@ -1438,6 +1641,7 @@ def run_model(
     reuse_audio: bool,
     baseline_cases: BaselineCases,
     suite: str,
+    app_api: AppApiConfig | None,
 ) -> dict[str, Any]:
     if model.unavailable_reason:
         return {
@@ -1449,12 +1653,12 @@ def run_model(
             "cases": [],
         }
 
-    model_root = resolve_model_root(model)
+    model_root = None if model.family == "system" else resolve_model_root(model)
     download_error = None
     if not model_root and download_missing:
         download_error = maybe_download(model)
         model_root = resolve_model_root(model)
-    if not model_root:
+    if not model_root and not app_api:
         return {
             "model_id": model.id,
             "label": model.label,
@@ -1463,6 +1667,7 @@ def run_model(
             "notes": download_error or "model assets are not installed in the app TTS store",
             "cases": [],
         }
+    model_root_label = str(model_root) if model_root else f"app://{app_provider_id(model)}/{app_model_id(model)}"
 
     model_dir = output_dir / "audio" / model.id
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -1482,7 +1687,10 @@ def run_model(
             preserved["asr_roundtrip"] = None
             case_results.append(preserved)
             continue
+        elif app_api:
+            wav_path, error, elapsed = synthesize_app_api(model, case, app_api)
         else:
+            assert model_root is not None
             wav_path, error, elapsed = synthesize(model, model_root, case, output_path, timeout)
         if error or not wav_path or not wav_path.exists():
             case_results.append(
@@ -1567,7 +1775,10 @@ def run_model(
         "provider": model.provider,
         "status": status,
         "score": score,
-        "model_root": str(model_root),
+        "model_root": model_root_label,
+        "app_provider_id": app_provider_id(model),
+        "app_model_id": app_model_id(model),
+        "synthesis_path": "app_local_api" if app_api else "runner_runtime",
         "style_capability": capability,
         "style_capability_weight": style_capability_weight(capability),
         "clone_capability_weight": clone_weight,
@@ -1760,6 +1971,15 @@ def main() -> int:
     if not args.no_asr_roundtrip:
         print(f"Loading ASR round-trip judge: {args.asr_model}", flush=True)
         asr_judge = AsrRoundTripJudge(args.asr_model)
+    app_api = None
+    if args.use_app_api:
+        if not args.app_api_token.strip():
+            raise SystemExit("--use-app-api requires --app-api-token or VOX_JOT_API_TOKEN")
+        app_api = AppApiConfig(
+            base_url=args.app_api_url,
+            token=args.app_api_token.strip(),
+            timeout=max(args.timeout, 30),
+        )
 
     results = []
     for model in models:
@@ -1775,6 +1995,7 @@ def main() -> int:
                 args.reuse_audio,
                 baseline_cases,
                 args.suite,
+                app_api,
             )
         )
 
@@ -1798,6 +2019,8 @@ def main() -> int:
                 "judge": args.asr_model,
                 "metric": "WER against normalized source prompt",
             },
+            "synthesis_path": "app_local_api" if app_api else "runner_runtime",
+            "app_api_url": args.app_api_url if app_api else None,
             "style_rubric": STYLE_RUBRIC if args.suite == "style" else None,
             "voice_clone_rubric": VOICE_CLONE_RUBRIC if args.suite == "voice_clone" else None,
             "score_formula": score_formula,

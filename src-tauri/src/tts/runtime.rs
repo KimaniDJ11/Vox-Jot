@@ -919,6 +919,13 @@ pub fn synthesize_mlx_audio_chunk(
     let output_path =
         std::env::temp_dir().join(format!("vox-jot-mlx-audio-{}.wav", Uuid::new_v4()));
 
+    let stdout_log_path = temp_cwd.join("stdout.log");
+    let stderr_log_path = temp_cwd.join("stderr.log");
+    let stdout_log = File::create(&stdout_log_path)
+        .map_err(|err| format!("Failed to create MLX audio stdout log: {err}"))?;
+    let stderr_log = File::create(&stderr_log_path)
+        .map_err(|err| format!("Failed to create MLX audio stderr log: {err}"))?;
+
     let mut command = Command::new(&context.python_path);
     command
         .arg("-W")
@@ -940,8 +947,8 @@ pub fn synthesize_mlx_audio_chunk(
         .arg(tuning.repetition_penalty.max(1.0).to_string())
         .current_dir(&temp_cwd)
         .env("PYTHONUNBUFFERED", "1")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stdout(Stdio::from(stdout_log))
+        .stderr(Stdio::from(stderr_log));
 
     if let Some(top_p) = tuning_number_override(tuning, "top_p") {
         command
@@ -1004,14 +1011,66 @@ pub fn synthesize_mlx_audio_chunk(
         }
     }
 
-    let output = command
-        .output()
+    let mut child = command
+        .spawn()
         .map_err(|err| format!("Failed to run MLX speech generation: {err}"))?;
+    let started_at = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(300);
 
-    if !output.status.success() {
+    let status = loop {
+        if stop_flag.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = std::fs::remove_dir_all(&temp_cwd);
+            let _ = std::fs::remove_file(&output_path);
+            return Err("Story rendering was cancelled.".to_string());
+        }
+
+        if started_at.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            let stderr = fs::read_to_string(&stderr_log_path)
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let stdout = fs::read_to_string(&stdout_log_path)
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            let _ = std::fs::remove_dir_all(&temp_cwd);
+            let _ = std::fs::remove_file(&output_path);
+            return Err(if !stderr.is_empty() {
+                format!("{mlx_target} timed out after 300 seconds: {stderr}")
+            } else if !stdout.is_empty() {
+                format!("{mlx_target} timed out after 300 seconds: {stdout}")
+            } else {
+                format!("{mlx_target} timed out after 300 seconds.")
+            });
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(100)),
+            Err(err) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = std::fs::remove_dir_all(&temp_cwd);
+                let _ = std::fs::remove_file(&output_path);
+                return Err(format!("Failed to monitor MLX speech generation: {err}"));
+            }
+        }
+    };
+
+    if !status.success() {
+        let stderr = fs::read_to_string(&stderr_log_path)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let stdout = fs::read_to_string(&stdout_log_path)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
         let _ = std::fs::remove_dir_all(&temp_cwd);
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         return Err(if !stderr.is_empty() {
             format!("{mlx_target} failed: {stderr}")
         } else if !stdout.is_empty() {

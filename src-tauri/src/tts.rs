@@ -96,6 +96,7 @@ const PACK_MANIFEST_NAME: &str = "vox_jot_tts_manifest.json";
 const DEFAULT_TTS_ASSET_BASE_URL: &str =
     "https://github.com/KimaniDJ11/Vox-Jot/releases/download/v0.3.0-tts-models";
 const HIDDEN_RUNTIME_MODEL_IDS: &[&str] = &[];
+const APP_PATH_BLOCKED_TTS_MODEL_ISSUES: &[(&str, &str)] = &[];
 const LFM_AUDIO_GGUF_HF_REPO_ID: &str = "IrieDinamik/LiquidAI-LFM2.5-Audio-1.5B-GGUF";
 const LFM_AUDIO_GGUF_HF_FILES: &[(&str, &str)] = &[
     ("LFM2.5-Audio-1.5B-Q4_0.gguf", "LFM2.5-Audio-1.5B-Q4_0.gguf"),
@@ -122,6 +123,19 @@ const VIBEVOICE_HF_FILES: &[(&str, &str)] = &[
     ("model.safetensors", "model.safetensors"),
     ("preprocessor_config.json", "preprocessor_config.json"),
 ];
+const KUGEL_AUDIO_TOKENIZER_HF_REPO_ID: &str = "Qwen/Qwen2.5-7B";
+const KUGEL_AUDIO_TOKENIZER_HF_FILES: &[(&str, &str)] = &[
+    ("merges.txt", "merges.txt"),
+    ("tokenizer.json", "tokenizer.json"),
+    ("tokenizer_config.json", "tokenizer_config.json"),
+    ("vocab.json", "vocab.json"),
+];
+
+fn app_path_blocked_tts_model_issue(model_id: &str) -> Option<&'static str> {
+    APP_PATH_BLOCKED_TTS_MODEL_ISSUES
+        .iter()
+        .find_map(|(blocked_id, issue)| (*blocked_id == model_id).then_some(*issue))
+}
 
 fn hf_get(client: &reqwest::Client, url: &str) -> reqwest::RequestBuilder {
     let request = client.get(url);
@@ -1170,9 +1184,23 @@ impl TtsManager {
             definition.hf_model_id,
             &install_dir,
             &label,
-            cancel_flag,
+            cancel_flag.clone(),
         )
-        .await
+        .await?;
+
+        if definition.model_id == "kugel-audio-7b" {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            self.download_hf_files_into_existing_dir(
+                KUGEL_AUDIO_TOKENIZER_HF_REPO_ID,
+                KUGEL_AUDIO_TOKENIZER_HF_FILES,
+                &install_dir,
+                "KugelAudio tokenizer assets",
+                cancel_flag,
+            )
+            .await?;
+        }
+
+        Ok(())
     }
 
     async fn download_hf_file_set_into_dir(
@@ -2067,6 +2095,7 @@ impl TtsManager {
             .filter(|definition| mlx_audio_definition_available(definition))
             .map(|definition| {
                 let installed = self.mlx_audio_model_installed(definition);
+                let blocked_issue = app_path_blocked_tts_model_issue(definition.model_id);
                 RuntimeListenModelCatalogEntry {
                     id: definition.model_id.to_string(),
                     provider_id: definition.provider_id.to_string(),
@@ -2083,13 +2112,17 @@ impl TtsManager {
                         supports_streaming: false,
                     },
                     readiness: RuntimeListenReadiness {
-                        status: if installed {
+                        status: if installed && blocked_issue.is_some() {
+                            "blocked".to_string()
+                        } else if installed {
                             "ready".to_string()
                         } else {
                             "missing".to_string()
                         },
                         runtime_label: "mlx-audio runtime".to_string(),
-                        issues: if installed {
+                        issues: if let Some(issue) = blocked_issue {
+                            vec![issue.to_string()]
+                        } else if installed {
                             Vec::new()
                         } else {
                             vec![format!(
@@ -2186,6 +2219,8 @@ impl TtsManager {
             .iter()
             .map(|definition| {
                 let installed = self.managed_runtime_model_installed(definition);
+                let blocked_issue = app_path_blocked_tts_model_issue(definition.model_id);
+                let runnable = installed && blocked_issue.is_none();
                 let selected = selected_provider_id == definition.provider_id
                     && selected_model_id == Some(definition.model_id);
                 CatalogModelDescriptor {
@@ -2197,8 +2232,8 @@ impl TtsManager {
                     description: definition.description.to_string(),
                     installed,
                     selected,
-                    active: selected && installed,
-                    runnable: installed,
+                    active: selected && runnable,
+                    runnable,
                     downloadable: true,
                     source_label: "Vox Jot model assets".to_string(),
                     source_url: definition
@@ -2217,8 +2252,19 @@ impl TtsManager {
                         .iter()
                         .map(|value| value.to_string())
                         .collect(),
-                    readiness_status: Some(if installed { "ready" } else { "missing" }.to_string()),
-                    readiness_issues: if installed {
+                    readiness_status: Some(
+                        if installed && blocked_issue.is_some() {
+                            "blocked"
+                        } else if installed {
+                            "ready"
+                        } else {
+                            "missing"
+                        }
+                        .to_string(),
+                    ),
+                    readiness_issues: if let Some(issue) = blocked_issue {
+                        vec![issue.to_string()]
+                    } else if installed {
                         Vec::new()
                     } else {
                         vec![format!(
@@ -4884,6 +4930,88 @@ impl TtsManager {
             Some(file_count),
             Some(downloaded_bytes),
             total_bytes,
+            None,
+        );
+        Ok(())
+    }
+
+    async fn download_hf_files_into_existing_dir(
+        &self,
+        repo_id: &str,
+        files: &[(&str, &str)],
+        install_dir: &Path,
+        label: &str,
+        cancel_flag: Option<Arc<AtomicBool>>,
+    ) -> Result<(), String> {
+        use tokio::fs as tokio_fs;
+        use tokio::io::AsyncWriteExt;
+
+        fs::create_dir_all(install_dir)
+            .map_err(|err| format!("Failed to create install dir for {label}: {err}"))?;
+
+        let client = reqwest::Client::new();
+        for (idx, (source, destination)) in files.iter().enumerate() {
+            crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+            let file_url = format!("https://huggingface.co/{repo_id}/resolve/main/{source}");
+            let target = install_dir.join(destination);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).map_err(|err| {
+                    format!("Failed to create directory for {}: {err}", target.display())
+                })?;
+            }
+
+            self.emit_tts_hf_download_progress(
+                repo_id,
+                "downloading",
+                Some(source),
+                Some(idx),
+                Some(files.len()),
+                None,
+                None,
+                None,
+            );
+
+            let response = hf_get(&client, &file_url)
+                .send()
+                .await
+                .map_err(|err| format!("Failed to fetch {source} for {label}: {err}"))?;
+            if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+                return Err(hf_access_error(repo_id));
+            }
+            if !response.status().is_success() {
+                return Err(format!(
+                    "Failed to download {source} for {label}: HTTP {}",
+                    response.status()
+                ));
+            }
+
+            let mut output = tokio_fs::File::create(&target)
+                .await
+                .map_err(|err| format!("Failed to create {}: {err}", target.display()))?;
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                crate::artifact_download::ensure_download_not_cancelled(cancel_flag.as_ref())?;
+                let chunk =
+                    chunk.map_err(|err| format!("Download stream failed for {source}: {err}"))?;
+                output
+                    .write_all(&chunk)
+                    .await
+                    .map_err(|err| format!("Failed to write {source}: {err}"))?;
+            }
+            output
+                .flush()
+                .await
+                .map_err(|err| format!("Failed to flush {source}: {err}"))?;
+        }
+
+        self.emit_tts_hf_download_progress(
+            repo_id,
+            "complete",
+            None,
+            Some(files.len()),
+            Some(files.len()),
+            None,
+            None,
             None,
         );
         Ok(())

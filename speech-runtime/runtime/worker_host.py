@@ -98,9 +98,13 @@ class WorkerHost:
 
     def _provider_env_ready(self, spec: EngineSpec, env_python: Path) -> bool:
         if spec.provider_id == "kokoro":
-            return self._env_has_module(env_python, "kokoro") and self._env_has_module(
-                env_python,
-                "en_core_web_sm",
+            return (
+                self._env_has_module(env_python, "kokoro.model")
+                and self._env_has_module(env_python, "kokoro.pipeline")
+                and self._env_has_module(
+                    env_python,
+                    "en_core_web_sm",
+                )
             )
         if spec.provider_id == "openvoice":
             return self._env_has_module(env_python, "openvoice") and self._env_has_module(
@@ -110,7 +114,7 @@ class WorkerHost:
         if spec.provider_id == "chatterbox":
             return self._env_has_module(env_python, "chatterbox")
         if spec.provider_id == "xtts":
-            return self._env_has_module(env_python, "TTS")
+            return self._env_has_module(env_python, "TTS.tts.models.xtts")
         if spec.provider_id == "supertonic":
             return self._env_has_module(env_python, "supertonic")
         return True
@@ -179,7 +183,7 @@ except Exception:
             return
 
         if spec.provider_id == "xtts":
-            self._pip_install(env_python, "-e", str(model_dir))
+            self._pip_install(env_python, "--force-reinstall", "TTS==0.22.0")
             self._pip_install(env_python, *XTTS_RUNTIME_DEPENDENCIES)
             return
 

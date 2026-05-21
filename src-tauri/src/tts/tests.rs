@@ -231,6 +231,25 @@ fn managed_catalog_has_public_hf_fallbacks_for_private_release_models() {
 }
 
 #[test]
+fn repaired_app_path_tts_models_are_not_catalog_blocked() {
+    for model_id in [
+        "kokoro-82m-v1.0",
+        "xtts-v2",
+        "kugel-audio-7b",
+        "voxtral-tts-4b",
+        "omnivoice",
+    ] {
+        assert!(
+            super::app_path_blocked_tts_model_issue(model_id).is_none(),
+            "{model_id} should be available after the installed-app runtime repairs"
+        );
+    }
+
+    assert!(super::app_path_blocked_tts_model_issue("supertonic-3").is_none());
+    assert!(super::app_path_blocked_tts_model_issue("kokoro-82m").is_none());
+}
+
+#[test]
 fn hf_access_error_points_to_model_terms_page() {
     let message = super::hf_access_error("coqui/XTTS-v2");
 

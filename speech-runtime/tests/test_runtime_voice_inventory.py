@@ -211,6 +211,52 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
 
         self.assertEqual(host._chatterbox_package_source(turbo_dir), source_dir)
 
+    def test_managed_runtime_readiness_checks_imported_synthesis_modules(self):
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-runtime-ready-"))
+        config = RuntimeConfig(
+            listen_host="127.0.0.1",
+            listen_port=0,
+            model_store=temp_root / "store",
+            state_dir=temp_root / "state",
+            profiles_dir=None,
+        )
+        host = WorkerHost(config)
+        kokoro = next(spec for spec in ENGINE_SPECS if spec.model_id == "kokoro-82m-v1.0")
+        xtts = next(spec for spec in ENGINE_SPECS if spec.model_id == "xtts-v2")
+
+        with mock.patch.object(host, "_env_has_module") as has_module:
+            has_module.side_effect = lambda _python, module: module in {
+                "kokoro",
+                "en_core_web_sm",
+            }
+            self.assertFalse(host._provider_env_ready(kokoro, Path("python")))
+            self.assertIn(mock.call(Path("python"), "kokoro.model"), has_module.mock_calls)
+
+        with mock.patch.object(host, "_env_has_module") as has_module:
+            has_module.side_effect = lambda _python, module: module == "TTS"
+            self.assertFalse(host._provider_env_ready(xtts, Path("python")))
+            has_module.assert_called_with(Path("python"), "TTS.tts.models.xtts")
+
+    def test_xtts_runtime_installs_coqui_package_not_weights_folder(self):
+        temp_root = Path(tempfile.mkdtemp(prefix="vox-jot-runtime-xtts-install-"))
+        config = RuntimeConfig(
+            listen_host="127.0.0.1",
+            listen_port=0,
+            model_store=temp_root / "store",
+            state_dir=temp_root / "state",
+            profiles_dir=None,
+        )
+        host = WorkerHost(config)
+        spec = next(spec for spec in ENGINE_SPECS if spec.model_id == "xtts-v2")
+        calls = []
+
+        with mock.patch.object(host, "_pip_install", side_effect=lambda _python, *args: calls.append(args)):
+            host._install_provider_runtime(spec, Path("python"), temp_root / "Coqui" / "XTTS")
+
+        self.assertEqual(calls[0], ("--force-reinstall", "TTS==0.22.0"))
+        self.assertNotIn("-e", calls[0])
+        self.assertIn(("transformers==4.46.3", "torchcodec"), calls)
+
     def test_chatterbox_turbo_synthesis_only_passes_supported_controls(self):
         worker = self.make_worker("chatterbox", "chatterbox-turbo")
 

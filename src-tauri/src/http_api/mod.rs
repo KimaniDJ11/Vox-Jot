@@ -28,8 +28,10 @@
 //! through the same `TranscriptionManager.transcribe_with_segments`
 //! method the GUI uses, which already serializes via `transcribe_lock`.
 
+use crate::commands::tts::preset_from_input;
 use crate::helpers::subtitles::TimedSegment;
 use crate::managers::transcription::TranscriptionManager;
+use crate::settings::TtsVoicePresetInput;
 use crate::settings::{get_settings, get_settings_without_secrets, write_settings};
 use crate::tts::{SpeakRequest, TtsManager, VoiceInfo};
 use crate::tts_profiles::{list_voice_profiles, TtsVoiceProfileDescriptor};
@@ -43,6 +45,7 @@ use axum::{
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
@@ -97,9 +100,24 @@ struct SpeakApiRequest {
     remember_last_output: Option<bool>,
 }
 
+#[derive(Deserialize)]
+struct TtsSynthesizeApiRequest {
+    text: String,
+    locale: Option<String>,
+    preferred_voice_id: Option<String>,
+    preset_id: Option<String>,
+    inline_preset: Option<TtsVoicePresetInput>,
+}
+
 #[derive(Serialize)]
 struct SpeakApiResponse {
     status: &'static str,
+}
+
+#[derive(Serialize)]
+struct TtsSynthesizeApiResponse {
+    status: &'static str,
+    output_paths: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -151,6 +169,7 @@ impl HttpApiManager {
             .route("/v1/models", get(handle_models))
             .route("/v1/voices", get(handle_voices))
             .route("/v1/speak", post(handle_speak))
+            .route("/v1/tts/synthesize", post(handle_tts_synthesize))
             .route("/v1/tts/profiles", get(handle_tts_profiles))
             .route("/v1/transcribe", post(handle_transcribe))
             .route("/mcp", post(crate::mcp::handle_mcp))
@@ -474,6 +493,82 @@ async fn handle_speak(
         .await
     {
         Ok(()) => Json(SpeakApiResponse { status: "ok" }).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn handle_tts_synthesize(
+    AxumState(state): AxumState<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<TtsSynthesizeApiRequest>,
+) -> axum::response::Response {
+    if let Err(response) = require_api_token(&state.app, &headers) {
+        return *response;
+    }
+    let text = request.text.trim();
+    if text.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Text is required.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+    if text.chars().count() > 20_000 {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(ErrorResponse {
+                error: "Text is too large for /v1/tts/synthesize.".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    let Some(manager) = state.app.try_state::<Arc<TtsManager>>() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse {
+                error: "TTS manager is unavailable.".to_string(),
+            }),
+        )
+            .into_response();
+    };
+
+    let inline_preset = match request.inline_preset {
+        Some(input) => match preset_from_input(input, None) {
+            Ok(preset) => Some(preset),
+            Err(error) => {
+                return (StatusCode::BAD_REQUEST, Json(ErrorResponse { error })).into_response();
+            }
+        },
+        None => None,
+    };
+
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let render_request = SpeakRequest {
+        text: text.to_string(),
+        locale: request.locale,
+        preferred_voice_id: request.preferred_voice_id,
+        preset_id: request.preset_id,
+        inline_preset,
+        trigger: Some("local_api_tts_synthesize".to_string()),
+        remember_last_output: false,
+    };
+
+    match Box::pin(manager.synthesize_to_temp_files(render_request, stop_flag)).await {
+        Ok(paths) => Json(TtsSynthesizeApiResponse {
+            status: "ok",
+            output_paths: paths
+                .into_iter()
+                .map(|path| path.display().to_string())
+                .collect(),
+        })
+        .into_response(),
         Err(error) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse { error }),

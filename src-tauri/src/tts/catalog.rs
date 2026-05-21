@@ -783,7 +783,7 @@ pub const MLX_AUDIO_TTS_MODEL_DEFINITIONS: &[MlxAudioTtsModelDefinition] = &[
         provider_description: "Voxtral multilingual TTS exposed through mlx-audio.",
         model_id: "voxtral-tts-4b",
         hf_model_id: "mlx-community/Voxtral-4B-TTS-2603-mlx-bf16",
-        local_dir_names: &["Voxtral-TTS-4B-MLX-6bit", "Voxtral-4B-TTS-2603-mlx-bf16"],
+        local_dir_names: &["Voxtral-4B-TTS-2603-mlx-bf16", "Voxtral-TTS-4B-MLX-6bit"],
         label: "Voxtral TTS 4B",
         description: "Multilingual Mistral TTS with preset voices across nine languages.",
         engine_family: "mlx_audio",

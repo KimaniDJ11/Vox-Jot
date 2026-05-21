@@ -492,7 +492,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByRole("heading", {
-        name: /Set up private voice dictation that actually fits your workflow/i,
+        name: /Set up private assistive voice dictation/i,
       }),
     ).toBeVisible();
     await expect(
@@ -558,7 +558,7 @@ test.describe("Vox Jot app", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: /Set up private voice dictation that actually fits your workflow/i,
+        name: /Set up private assistive voice dictation/i,
       }),
     ).toHaveCount(0);
   });
@@ -615,7 +615,7 @@ test.describe("Vox Jot app", () => {
     await expect(titleBarNotice).toBeVisible();
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility to type text, Input Monitoring/i,
+        /Vox Jot needs Accessibility for assistive voice text entry and correction learning, Input Monitoring/i,
       ),
     ).toHaveCount(0);
 
@@ -623,7 +623,7 @@ test.describe("Vox Jot app", () => {
 
     await expect(
       page.getByText(
-        /Vox Jot needs Accessibility to type text, Input Monitoring/i,
+        /Vox Jot needs Accessibility for assistive voice text entry and correction learning, Input Monitoring/i,
       ),
     ).toBeVisible();
     await expect(page.getByText(/Input Monitoring/i).first()).toBeVisible();

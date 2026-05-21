@@ -344,6 +344,13 @@ const ScreenContextSettingsSection: React.FC = () => {
         permissionGranted={permissionGranted}
       />
 
+      <Alert variant="info">
+        {t("settings.screenContext.assistiveConsentNotice", {
+          defaultValue:
+            "Screen Context is optional assistive OCR. When enabled, Vox Jot uses Screen Recording permission to read visible text locally so dictated names, jargon, and phrase keys need fewer manual corrections. You can pause it, exclude apps, or turn it off here.",
+        })}
+      </Alert>
+
       {diagnostics && !diagnostics.has_screen_permission && enabled ? (
         <div className="rounded-2xl border border-[color-mix(in_srgb,var(--warning)_45%,var(--border))] bg-[var(--warning-soft)] px-5 py-4 shadow-[var(--shadow-sm)]">
           <div className="flex items-start gap-3">

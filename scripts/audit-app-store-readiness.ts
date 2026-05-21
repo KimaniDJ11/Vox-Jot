@@ -34,6 +34,15 @@ const infoPath = join(root, "src-tauri", "Info.plist");
 const libPath = join(root, "src-tauri", "src", "lib.rs");
 const shortcutPath = join(root, "src-tauri", "src", "shortcut", "mod.rs");
 const distributionPath = join(root, "src", "lib", "distribution.ts");
+const englishLocalePath = join(
+  root,
+  "src",
+  "i18n",
+  "locales",
+  "en",
+  "translation.json",
+);
+const macAppStoreRunbookPath = join(root, "docs", "mac-app-store-runbook.md");
 
 const findings: Finding[] = [];
 
@@ -112,6 +121,12 @@ if (!existsSync(infoPath)) {
   if (!info.includes("NSMicrophoneUsageDescription")) {
     add("fail", "Info.plist must describe microphone use.");
   }
+  if (!info.toLowerCase().includes("assistive")) {
+    add(
+      "fail",
+      "Info.plist permission usage strings must frame protected access as assistive dictation.",
+    );
+  }
 }
 
 const lib = existsSync(libPath) ? read(libPath) : "";
@@ -146,6 +161,57 @@ if (!existsSync(distributionPath)) {
     "fail",
     "Frontend distribution helper must read VITE_VOX_JOT_DISTRIBUTION.",
   );
+}
+
+const appStoreCopySources = [
+  existsSync(englishLocalePath) ? read(englishLocalePath) : "",
+  existsSync(macAppStoreRunbookPath) ? read(macAppStoreRunbookPath) : "",
+].join("\n");
+
+if (!appStoreCopySources.includes("Assistive Voice Dictation")) {
+  add(
+    "fail",
+    "App Store metadata guidance must keep the subtitle as Assistive Voice Dictation.",
+  );
+}
+
+for (const forbiddenTrademarkPhrase of [
+  "Local Mac dictation",
+  "Whisper for Mac",
+]) {
+  if (appStoreCopySources.includes(forbiddenTrademarkPhrase)) {
+    add(
+      "fail",
+      `App Store-facing copy still contains forbidden Apple trademark phrasing: ${forbiddenTrademarkPhrase}.`,
+    );
+  }
+}
+
+for (const falsePrivacyClaim of [
+  "does not read document contents",
+  "does not read, scrape, or control unrelated app content",
+  "does not use Accessibility access to inspect, scrape, or control unrelated app content",
+]) {
+  if (appStoreCopySources.includes(falsePrivacyClaim)) {
+    add(
+      "fail",
+      `App Store-facing copy contains an inaccurate privacy claim while correction monitoring and Screen Context remain available: ${falsePrivacyClaim}.`,
+    );
+  }
+}
+
+for (const requiredAssistiveDisclosure of [
+  "assistive voice text entry",
+  "correction learning",
+  "Screen Context",
+  "Assistive access & privacy",
+]) {
+  if (!appStoreCopySources.includes(requiredAssistiveDisclosure)) {
+    add(
+      "fail",
+      `App Store-facing copy must disclose full-capability assistive behavior: ${requiredAssistiveDisclosure}.`,
+    );
+  }
 }
 
 const profilePath = join(

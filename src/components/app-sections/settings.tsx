@@ -23,6 +23,7 @@ import {
   Languages,
   Layers,
   Mic,
+  Monitor,
   Palette,
   Settings as SettingsIcon,
   Scale,
@@ -873,6 +874,12 @@ export const CorrectionsSettingsSection: React.FC = () => {
     <div className="space-y-6">
       <CorrectionsHero />
       <CorrectionsExplainer />
+      <Alert variant="info">
+        {t("appSections.corrections.assistiveConsentNotice", {
+          defaultValue:
+            "Correction learning is an assistive feature: after Vox Jot inserts dictated text, it can monitor that inserted text briefly to learn edits you make, so repeated names, jargon, and phrases do not have to be corrected by hand again. Turn it off below anytime.",
+        })}
+      </Alert>
       <CorrectionSettings />
 
       <CrossLinkCard
@@ -1324,10 +1331,164 @@ export const PrivacyStorageSettingsSection: React.FC = () => {
   const { getSetting, updateSetting, isUpdating } = useSettings();
   const localPrivacyMode = getSetting("local_privacy_mode") ?? false;
   const debugMode = getSetting("debug_mode") ?? false;
+  const correctionTrackingEnabled =
+    getSetting("correction_tracking_enabled") ?? true;
+  const screenContextEnabled = getSetting("screen_context_enabled") ?? true;
+  const autoSubmitEnabled = getSetting("auto_submit") ?? false;
+  const pasteMethod = getSetting("paste_method") ?? "ctrl_v";
+
+  const navigateToSettingsSection = (section: string) => {
+    window.dispatchEvent(
+      new CustomEvent("vox-jot:navigate", {
+        detail: { view: "settings", section },
+      }),
+    );
+  };
+
+  const accessRows = [
+    {
+      icon: <Keyboard className="h-4 w-4" aria-hidden />,
+      label: t("appSections.privacy.assistiveAccess.accessibilityLabel", {
+        defaultValue: "Accessibility",
+      }),
+      detail: t("appSections.privacy.assistiveAccess.accessibilityDetail", {
+        defaultValue:
+          "Used for user-started assistive insertion so dictated text can land in the focused field.",
+      }),
+      status:
+        pasteMethod === "none"
+          ? t("appSections.privacy.assistiveAccess.clipboardOnlyStatus", {
+              defaultValue: "Clipboard only",
+            })
+          : t("appSections.privacy.assistiveAccess.enabledStatus", {
+              defaultValue: "Enabled for insertion",
+            }),
+      active: pasteMethod !== "none",
+      destination: "output-paste",
+    },
+    {
+      icon: <SpellCheck className="h-4 w-4" aria-hidden />,
+      label: t("appSections.privacy.assistiveAccess.correctionsLabel", {
+        defaultValue: "Correction learning",
+      }),
+      detail: t("appSections.privacy.assistiveAccess.correctionsDetail", {
+        defaultValue:
+          "Monitors the inserted text after paste to learn user edits and reduce repeated manual fixes.",
+      }),
+      status: correctionTrackingEnabled
+        ? t("appSections.privacy.assistiveAccess.onStatus", {
+            defaultValue: "On",
+          })
+        : t("appSections.privacy.assistiveAccess.offStatus", {
+            defaultValue: "Off",
+          }),
+      active: correctionTrackingEnabled,
+      destination: "corrections-settings",
+    },
+    {
+      icon: <Monitor className="h-4 w-4" aria-hidden />,
+      label: t("appSections.privacy.assistiveAccess.screenContextLabel", {
+        defaultValue: "Screen Context",
+      }),
+      detail: t("appSections.privacy.assistiveAccess.screenContextDetail", {
+        defaultValue:
+          "Uses optional Screen Recording permission for local OCR context that helps with visible names, jargon, and phrase keys.",
+      }),
+      status: screenContextEnabled
+        ? t("appSections.privacy.assistiveAccess.onStatus", {
+            defaultValue: "On",
+          })
+        : t("appSections.privacy.assistiveAccess.offStatus", {
+            defaultValue: "Off",
+          }),
+      active: screenContextEnabled,
+      destination: "screen-context",
+    },
+    {
+      icon: <ArrowRight className="h-4 w-4" aria-hidden />,
+      label: t("appSections.privacy.assistiveAccess.autoSubmitLabel", {
+        defaultValue: "Hands-free submit",
+      }),
+      detail: t("appSections.privacy.assistiveAccess.autoSubmitDetail", {
+        defaultValue:
+          "Optional Return/Command-Return output for users who cannot comfortably press the submit key.",
+      }),
+      status: autoSubmitEnabled
+        ? t("appSections.privacy.assistiveAccess.onStatus", {
+            defaultValue: "On",
+          })
+        : t("appSections.privacy.assistiveAccess.offStatus", {
+            defaultValue: "Off",
+          }),
+      active: autoSubmitEnabled,
+      destination: "output-paste",
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <PrivacyHero localPrivacyMode={localPrivacyMode} />
+
+      <SettingsGroup
+        title={t("appSections.privacy.assistiveAccess.title", {
+          defaultValue: "Assistive access & privacy",
+        })}
+      >
+        <div className="space-y-3 px-5 py-4">
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            {t("appSections.privacy.assistiveAccess.description", {
+              defaultValue:
+                "Vox Jot is designed for people who cannot comfortably type because of disability, motor limitations, repetitive strain, temporary injury, fatigue, or pain. These controls show which assistive features can insert text, observe corrections, record screen context, or submit text on your behalf.",
+            })}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {accessRows.map((row) => (
+              <div
+                key={row.label}
+                className="rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-3"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--accent-soft)] text-[var(--accent)]">
+                    {row.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-[var(--text)]">
+                        {row.label}
+                      </p>
+                      <MiniStatusPill
+                        icon={
+                          row.active ? (
+                            <CheckCircle2 className="h-3 w-3" aria-hidden />
+                          ) : (
+                            <XCircle className="h-3 w-3" aria-hidden />
+                          )
+                        }
+                        label={row.status}
+                        tone={row.active ? "info" : "default"}
+                      />
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                      {row.detail}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => navigateToSettingsSection(row.destination)}
+                    >
+                      {t("appSections.privacy.assistiveAccess.manageButton", {
+                        defaultValue: "Manage",
+                      })}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SettingsGroup>
 
       <SettingsGroup title={t("appSections.groups.privacyControls")}>
         <ToggleSwitch

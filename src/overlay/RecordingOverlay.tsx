@@ -580,11 +580,27 @@ const CompactBody: React.FC<{
 };
 
 const ScreenContextPulse: React.FC<{ visible: boolean }> = ({ visible }) => {
+  const { t } = useTranslation();
+
   if (!visible) {
     return null;
   }
 
-  return <span className="screen-context-pulse" aria-hidden />;
+  return (
+    <span
+      className="screen-context-pulse"
+      role="status"
+      title={t("overlay.screenContextActive", {
+        defaultValue: "Screen Context OCR active",
+      })}
+    >
+      <span className="sr-only">
+        {t("overlay.screenContextActive", {
+          defaultValue: "Screen Context OCR active",
+        })}
+      </span>
+    </span>
+  );
 };
 
 const CorrectionBody: React.FC<{ payload: CorrectionOverlayPayload }> = ({

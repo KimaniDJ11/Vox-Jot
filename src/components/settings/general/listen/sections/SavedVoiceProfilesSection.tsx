@@ -1,31 +1,47 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Play, Square, Trash2 } from "lucide-react";
+import { Loader2, Play, Trash2 } from "lucide-react";
 import { commands } from "@/bindings";
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { ActiveBadgeIcon } from "@/components/ui/CompactOverflow";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
-import {
-  ProviderIcon,
-  resolveModelProviderId,
-} from "@/components/ui/ProviderIcon";
+import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import type { ListenSpeechState } from "../useListenSpeechState";
-import { DEFAULT_TTS_PREVIEW_TEXT } from "../utils";
+import { ttsPreviewSampleForLocale } from "../utils";
+
+const PREVIEW_RUNNING_DELAY_MS = 1500;
 
 export const SavedVoiceProfilesSection: React.FC<{
   speech: ListenSpeechState;
   showTitle?: boolean;
 }> = ({ speech, showTitle = true }) => {
   const { t } = useTranslation();
+  const [previewRunning, setPreviewRunning] = useState(false);
+
+  useEffect(() => {
+    setPreviewRunning(false);
+    if (!speech.previewingPresetId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setPreviewRunning(true);
+    }, PREVIEW_RUNNING_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [speech.previewingPresetId]);
 
   if (!speech.settings || !speech.activePreset) return null;
 
   const previewLabel = t("listen.myVoices.preview");
   const stopLabel = t("listen.myVoices.stop");
   const activeLabel = t("listen.myVoices.active");
-  const useThisVoiceLabel = t("listen.myVoices.useThisVoice");
   const cloneLabel = t("listen.myVoices.clone");
+  const preparingPreviewLabel = t("listen.createVoices.preparingPreview", {
+    defaultValue: "Preparing preview",
+  });
+  const runningPreviewLabel = t("listen.createVoices.previewRunning", {
+    defaultValue: "Preview running",
+  });
   const automaticVoiceLabel = t("listen.createVoices.automaticVoice", {
     defaultValue: "Automatic voice",
   });
@@ -52,6 +68,18 @@ export const SavedVoiceProfilesSection: React.FC<{
             automaticVoiceLabel;
           const isClone = Boolean(preset.voice_profile_id);
           const isPreviewing = speech.previewingPresetId === preset.id;
+          const previewStatusLabel = isPreviewing
+            ? previewRunning
+              ? runningPreviewLabel
+              : preparingPreviewLabel
+            : null;
+          const avatarGradient = voiceAvatarGradient(
+            [
+              preset.provider_id,
+              preset.model_id,
+              preset.voice_id ?? preset.voice_profile_id ?? preset.id,
+            ].join("::"),
+          );
           const canActivate = !isActive && speech.ttsEnabled;
           const activate = () => void speech.setActivePreset(preset.id);
           const togglePreview = async () => {
@@ -60,9 +88,14 @@ export const SavedVoiceProfilesSection: React.FC<{
               if (result.status === "error") {
                 speech.setStatusMessage(result.error);
               }
+              setPreviewRunning(false);
               return;
             }
-            await speech.previewPreset(preset.id, DEFAULT_TTS_PREVIEW_TEXT);
+            setPreviewRunning(false);
+            await speech.previewPreset(
+              preset.id,
+              ttsPreviewSampleForLocale(preset.locale_snapshot),
+            );
           };
           const description = [
             preset.model_id,
@@ -83,12 +116,11 @@ export const SavedVoiceProfilesSection: React.FC<{
               ].join(" ")}
             >
               <span className="relative h-12 w-12 shrink-0">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--panel-bg)] shadow-inner">
-                  <ProviderIcon
-                    providerId={resolveModelProviderId(preset.model_id, null)}
-                    size="lg"
-                  />
-                </span>
+                <span
+                  className="block h-12 w-12 rounded-full shadow-inner"
+                  style={{ background: avatarGradient }}
+                  aria-hidden
+                />
                 <button
                   type="button"
                   onClick={(event) => {
@@ -105,7 +137,10 @@ export const SavedVoiceProfilesSection: React.FC<{
                   ].join(" ")}
                 >
                   {isPreviewing ? (
-                    <Square className="h-5 w-5 fill-current" aria-hidden />
+                    <Loader2
+                      className="h-5 w-5 animate-[spin_1s_linear_infinite]"
+                      aria-hidden
+                    />
                   ) : (
                     <Play className="h-5 w-5 fill-current" aria-hidden />
                   )}
@@ -131,6 +166,19 @@ export const SavedVoiceProfilesSection: React.FC<{
                       {activeLabel}
                     </Badge>
                   ) : null}
+                  {previewStatusLabel ? (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] shadow-[var(--shadow-sm)]"
+                      aria-live="polite"
+                      role="status"
+                    >
+                      <Loader2
+                        className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]"
+                        aria-hidden
+                      />
+                      <span>{previewStatusLabel}</span>
+                    </span>
+                  ) : null}
                 </div>
                 <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
                   {description}
@@ -142,30 +190,6 @@ export const SavedVoiceProfilesSection: React.FC<{
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <Button
-                  type="button"
-                  variant={isPreviewing ? "secondary" : "ghost"}
-                  size="icon-sm"
-                  onClick={() => void togglePreview()}
-                  disabled={!speech.ttsEnabled}
-                  title={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
-                  aria-label={`${isPreviewing ? stopLabel : previewLabel} ${preset.label}`}
-                >
-                  {isPreviewing ? <Square aria-hidden /> : <Play aria-hidden />}
-                </Button>
-                {!isActive ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon-sm"
-                    onClick={activate}
-                    disabled={!speech.ttsEnabled}
-                    title={useThisVoiceLabel}
-                    aria-label={`${useThisVoiceLabel} ${preset.label}`}
-                  >
-                    <Check aria-hidden />
-                  </Button>
-                ) : null}
                 <Button
                   type="button"
                   variant="danger-ghost"

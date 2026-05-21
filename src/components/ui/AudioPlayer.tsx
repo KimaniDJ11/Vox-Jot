@@ -9,6 +9,10 @@ interface AudioPlayerProps {
   src?: string;
   /** Called when play is clicked and no src is loaded yet. Should return the audio URL. */
   onLoadRequest?: () => Promise<string | null>;
+  /** Optional native playback handler for local files that should not use WebView audio routing. */
+  onPlayRequest?: () => Promise<void>;
+  /** Optional native stop handler paired with onPlayRequest. */
+  onStopRequest?: () => Promise<void>;
   className?: string;
   autoPlay?: boolean;
   /** Optional title shown above the scrubber. */
@@ -53,6 +57,8 @@ const TICK_HEIGHTS: number[] = Array.from({ length: TICK_COUNT }, (_, i) => {
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src: initialSrc,
   onLoadRequest,
+  onPlayRequest,
+  onStopRequest,
   className = "",
   autoPlay = false,
   title,
@@ -77,6 +83,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const isPlayingRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const prevLoadedSrc = useRef<string | null>(null);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -84,6 +91,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
+
+  useEffect(() => {
+    setLoadedSrc((current) => {
+      const next = initialSrc ?? null;
+      if (current === next) return current;
+      return next;
+    });
+    setCurrentTime(0);
+    setDuration(initialDuration || 0);
+    setIsPlaying(false);
+    prevLoadedSrc.current = null;
+  }, [initialDuration, initialSrc]);
 
   const tick = useCallback(() => {
     if (audioRef.current && !isDraggingRef.current) {
@@ -136,7 +155,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, []);
 
-  const prevLoadedSrc = useRef<string | null>(null);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -186,10 +204,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     if (!audio || isLoading) return;
     try {
       if (isPlaying) {
+        if (onPlayRequest) {
+          await onStopRequest?.();
+          setIsPlaying(false);
+          return;
+        }
         audio.pause();
         return;
       }
-      if (!loadedSrc && onLoadRequest) {
+      if (onPlayRequest) {
+        try {
+          setIsLoading(true);
+          setIsPlaying(true);
+          setCurrentTime(0);
+          await onPlayRequest();
+        } finally {
+          setIsLoading(false);
+          setIsPlaying(false);
+        }
+      } else if (!loadedSrc && onLoadRequest) {
         setIsLoading(true);
         const newSrc = await onLoadRequest();
         setIsLoading(false);

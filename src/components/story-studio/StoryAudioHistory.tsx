@@ -475,14 +475,25 @@ export const StoryAudioSidebar: React.FC = () => {
   }, []);
 
   const handleCancelJob = useCallback(async (job: StoryRenderJobSummary) => {
+    setJobs((current) =>
+      sortStoryRenderJobs(
+        current.map((currentJob) =>
+          currentJob.render_id === job.render_id
+            ? markStoryRenderJobCancelled(currentJob)
+            : currentJob,
+        ),
+      ),
+    );
+    setNowMs(Date.now());
     try {
       await invoke("cancel_story_render", { renderId: job.render_id });
       toast.message("Story render cancelled.");
     } catch (error) {
       console.error("Failed to cancel story render:", error);
       toast.error("Could not cancel story render.");
+      void loadJobs();
     }
-  }, []);
+  }, [loadJobs]);
 
   const handleCreateProcessed = useCallback(
     async (
@@ -994,11 +1005,11 @@ const StoryAudioPlayerView: React.FC<{
 
   return (
     <article
-      className="flex min-h-[calc(100dvh-14rem)] flex-col gap-4 pb-[10rem]"
+      className="flex min-h-[calc(100dvh-14rem)] flex-col gap-4"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="min-h-[16rem] flex-1 overflow-y-auto px-1 py-1">
+      <div className="story-audio-player-scroll min-h-[16rem] flex-1 overflow-y-auto px-1 py-1">
         <StoryClipTimeline
           item={item}
           currentTime={currentTime}
@@ -2160,6 +2171,18 @@ function sortStoryRenderJobs(
     }
     return left.created_at_ms - right.created_at_ms;
   });
+}
+
+function markStoryRenderJobCancelled(
+  job: StoryRenderJobSummary,
+): StoryRenderJobSummary {
+  return {
+    ...job,
+    status: "cancelled",
+    speaker: null,
+    error: null,
+    queue_position: null,
+  };
 }
 
 function isLiveStoryRenderJob(job: StoryRenderJobSummary): boolean {

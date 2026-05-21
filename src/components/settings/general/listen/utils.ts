@@ -37,7 +37,28 @@ export const verifiedTtsHuggingFaceRepoId = (
 };
 
 export const DEFAULT_TTS_PREVIEW_TEXT =
-  "The morning light fell softly across the old stone bridge. She paused, took a breath, and said — quite simply — that she'd never felt more alive. Was it the crisp air? The silence? Perhaps both. Either way, something had shifted, quietly and for good.";
+  "After the rain, Mina laughed softly, then whispered, 'Wait - did you hear that?' The room grew quiet, warm, and full of wonder.";
+
+const TTS_PREVIEW_TEXT_BY_LANGUAGE: Record<string, string> = {
+  de: "Nach dem Regen lachte Mina leise und flüsterte: „Warte, hast du das gehört?“ Der Raum wurde still, warm und voller Staunen.",
+  en: DEFAULT_TTS_PREVIEW_TEXT,
+  es: "Después de la lluvia, Mina rió suavemente y susurró: «Espera, ¿oíste eso?» La habitación quedó tranquila, cálida y llena de asombro.",
+  fr: "Après la pluie, Mina rit doucement, puis murmura : « Attends, tu as entendu ? » La pièce devint calme, chaleureuse et pleine de merveille.",
+  it: "Dopo la pioggia, Mina rise piano, poi sussurrò: «Aspetta, l'hai sentito?» La stanza diventò silenziosa, calda e piena di meraviglia.",
+  ja: "雨上がりにミナはそっと笑い、それから「待って、今の聞こえた？」とささやきました。部屋は静かで、温かく、不思議な空気に満ちていました。",
+  ko: "비가 그친 뒤, 미나는 부드럽게 웃고는 '잠깐, 방금 들었어?' 하고 속삭였습니다. 방 안은 조용하고 따뜻한 놀라움으로 가득했습니다.",
+  nl: "Na de regen lachte Mina zacht en fluisterde: 'Wacht, hoorde je dat?' De kamer werd stil, warm en vol verwondering.",
+  pt: "Depois da chuva, Mina riu baixinho e sussurrou: 'Espera, você ouviu isso?' A sala ficou calma, quente e cheia de encanto.",
+  zh: "雨后，米娜轻轻笑了笑，然后低声说：“等等，你听见了吗？”房间安静下来，温暖而充满惊奇。",
+};
+
+export function ttsPreviewSampleForLocale(locale?: string | null) {
+  const language = locale?.trim().split(/[-_]/)[0]?.toLowerCase();
+  if (!language || language === "mul") {
+    return DEFAULT_TTS_PREVIEW_TEXT;
+  }
+  return TTS_PREVIEW_TEXT_BY_LANGUAGE[language] ?? DEFAULT_TTS_PREVIEW_TEXT;
+}
 
 export const TTS_MODEL_SIZE_HINTS: Record<string, string> = {
   openvoice: "~1.6 GB",

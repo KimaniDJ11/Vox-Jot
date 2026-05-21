@@ -74,6 +74,7 @@ const voice = (patch: Partial<VoiceInfo> = {}): VoiceInfo => ({
 
 const speech = {
   ttsEnabled: true,
+  statusMessage: null,
 } as ListenSpeechState;
 
 const flushPickerEffects = async () => {
@@ -261,6 +262,80 @@ describe("CreateVoiceModelHubPicker", () => {
     await view.cleanup();
   });
 
+  it("pins the selected draft voice to the top of the voice list", async () => {
+    const firstModel = model();
+    const secondModel = model({
+      id: "chatterbox",
+      provider_id: "mlx_chatterbox",
+      label: "Chatterbox",
+    });
+    getTtsVoicesForSelection.mockImplementation((providerId: string) =>
+      Promise.resolve([
+        providerId === "mlx_chatterbox"
+          ? voice({ id: "bf_bella", label: "Bella" })
+          : voice({ id: "af_heart", label: "Heart" }),
+      ]),
+    );
+    const view = await render({
+      models: [firstModel, secondModel],
+      orderedModels: [firstModel, secondModel],
+      selectedProviderId: "mlx_chatterbox",
+      selectedModelId: "chatterbox",
+      selectedVoiceId: "bf_bella",
+      filteredModelCount: 2,
+    });
+
+    await flushPickerEffects();
+
+    const text = document.body.textContent ?? "";
+    expect(text.indexOf("Bella")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("Heart")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("Bella")).toBeLessThan(text.indexOf("Heart"));
+    expect(text).toContain("Selected voice");
+
+    await view.cleanup();
+  });
+
+  it("shows ramp-up status while a voice preview starts", async () => {
+    const previewPresetDraft = vi.fn(
+      () => new Promise<void>((resolve) => window.setTimeout(resolve, 7000)),
+    );
+    const view = await render({
+      speech: {
+        ...speech,
+        previewPresetDraft,
+      } as ListenSpeechState,
+    });
+
+    await flushPickerEffects();
+    vi.useFakeTimers();
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find((button) =>
+          button.className.includes("absolute inset-0"),
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Preparing preview");
+    expect(document.body.textContent).not.toContain("Preview running");
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(document.body.textContent).toContain("Preview running");
+
+    await act(async () => {
+      vi.advanceTimersByTime(5500);
+      await Promise.resolve();
+    });
+
+    await view.cleanup();
+    vi.useRealTimers();
+  });
+
   it("uses model card selection as a toggleable voice filter, not a draft selection", async () => {
     const firstModel = model();
     const secondModel = model({
@@ -312,6 +387,7 @@ describe("CreateVoiceModelHubPicker", () => {
 
     expect(document.body.textContent).not.toContain("Heart");
     expect(document.body.textContent).toContain("Bella");
+    expect(view.onSelectVoice).not.toHaveBeenCalled();
 
     await act(async () => {
       (
@@ -337,6 +413,21 @@ describe("CreateVoiceModelHubPicker", () => {
 
     expect(document.body.textContent).toContain("Heart");
     expect(document.body.textContent).toContain("Bella");
+
+    await view.cleanup();
+  });
+
+  it("keeps preview status visible inside the hub", async () => {
+    const view = await render({
+      speech: {
+        ...speech,
+        statusMessage: "Preparing Chatterbox preview...",
+      } as ListenSpeechState,
+    });
+
+    expect(document.body.textContent).toContain(
+      "Preparing Chatterbox preview...",
+    );
 
     await view.cleanup();
   });

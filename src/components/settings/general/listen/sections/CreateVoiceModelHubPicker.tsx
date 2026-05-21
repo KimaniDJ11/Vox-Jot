@@ -3,11 +3,13 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
+  Check,
+  Loader2,
   Mars,
   Play,
   Plus,
   Search,
-  Square,
+  Sparkles,
   UserRound,
   Venus,
   X,
@@ -31,10 +33,17 @@ import {
 } from "../createVoiceVoiceHub";
 import type { ListenSpeechState } from "../useListenSpeechState";
 import { speechLibraryCardClassName } from "../styles";
-import { defaultVoiceTuning, getTtsVoicesForSelection } from "../utils";
+import {
+  defaultVoiceTuning,
+  getTtsVoicesForSelection,
+  ttsPreviewSampleForLocale,
+} from "../utils";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
 
 type PickerView = "models" | "voices";
+
+const VOICE_INVENTORY_LOAD_CONCURRENCY = 2;
+const PREVIEW_RUNNING_DELAY_MS = 1500;
 
 interface FilterOption {
   value: string;
@@ -122,9 +131,12 @@ const VoiceFilterSelect: React.FC<{
 const VoiceRow: React.FC<{
   row: CreateVoiceHubVoiceRow;
   selected: boolean;
-  previewing: boolean;
+  previewStatus: "idle" | "preparing" | "running";
   femaleVoiceLabel: string;
   maleVoiceLabel: string;
+  selectedVoiceLabel: string;
+  preparingPreviewLabel: string;
+  runningPreviewLabel: string;
   previewLabel: string;
   stopPreviewLabel: string;
   onSelect: () => void;
@@ -132,81 +144,120 @@ const VoiceRow: React.FC<{
 }> = ({
   row,
   selected,
-  previewing,
+  previewStatus,
   femaleVoiceLabel,
   maleVoiceLabel,
+  selectedVoiceLabel,
+  preparingPreviewLabel,
+  runningPreviewLabel,
   previewLabel,
   stopPreviewLabel,
   onSelect,
   onTogglePreview,
 }) => (
-  <div
-    className={[
-      "group/voice-row flex w-full min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-start transition-colors",
-      selected
-        ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-        : "border-transparent bg-[var(--card)] hover:border-[var(--border)] hover:bg-[var(--panel-bg)]",
-    ].join(" ")}
-  >
-    <span className="relative h-12 w-12 shrink-0">
-      <span
-        className="block h-12 w-12 rounded-full shadow-inner"
-        style={{ background: row.avatarGradient }}
-        aria-hidden
-      />
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onTogglePreview();
-        }}
-        aria-label={previewing ? stopPreviewLabel : previewLabel}
-        title={previewing ? stopPreviewLabel : previewLabel}
+  (() => {
+    const previewing = previewStatus !== "idle";
+    const previewStatusLabel =
+      previewStatus === "running"
+        ? runningPreviewLabel
+        : previewStatus === "preparing"
+          ? preparingPreviewLabel
+          : null;
+
+    return (
+      <div
         className={[
-          "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
-          previewing
-            ? "opacity-100"
-            : "opacity-0 group-hover/voice-row:opacity-100 group-focus-within/voice-row:opacity-100",
+          "group/voice-row flex w-full min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-start transition-colors",
+          selected
+            ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+            : "border-transparent bg-[var(--card)] hover:border-[var(--border)] hover:bg-[var(--panel-bg)]",
         ].join(" ")}
       >
-        {previewing ? (
-          <Square className="h-5 w-5 fill-current" aria-hidden />
-        ) : (
-          <Play className="h-5 w-5 fill-current" aria-hidden />
-        )}
-      </button>
-    </span>
-    <button
-      type="button"
-      onClick={onSelect}
-      className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-semibold text-[var(--text)]">
-            {row.voiceLabel}
+        <span className="relative h-12 w-12 shrink-0">
+          <span
+            className="block h-12 w-12 rounded-full shadow-inner"
+            style={{ background: row.avatarGradient }}
+            aria-hidden
+          />
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onTogglePreview();
+            }}
+            aria-label={previewing ? stopPreviewLabel : previewLabel}
+            title={previewing ? stopPreviewLabel : previewLabel}
+            className={[
+              "absolute inset-0 inline-flex items-center justify-center rounded-full bg-[rgba(22,43,32,0.78)] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.22)] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]",
+              previewing
+                ? "opacity-100"
+                : "opacity-0 group-hover/voice-row:opacity-100 group-focus-within/voice-row:opacity-100",
+            ].join(" ")}
+          >
+            {previewing ? (
+              <Loader2
+                className="h-5 w-5 animate-[spin_1s_linear_infinite]"
+                aria-hidden
+              />
+            ) : (
+              <Play className="h-5 w-5 fill-current" aria-hidden />
+            )}
+          </button>
+        </span>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-semibold text-[var(--text)]">
+                {row.voiceLabel}
+              </span>
+              {row.gender === "female" ? (
+                <Venus
+                  className="h-4 w-4 shrink-0 text-[var(--voice)]"
+                  aria-label={femaleVoiceLabel}
+                />
+              ) : row.gender === "male" ? (
+                <Mars
+                  className="h-4 w-4 shrink-0 text-[var(--accent)]"
+                  aria-label={maleVoiceLabel}
+                />
+              ) : null}
+            </span>
+            <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
+              {row.description}
+            </span>
           </span>
-          {row.gender === "female" ? (
-            <Venus
-              className="h-4 w-4 shrink-0 text-[var(--voice)]"
-              aria-label={femaleVoiceLabel}
-            />
-          ) : row.gender === "male" ? (
-            <Mars
-              className="h-4 w-4 shrink-0 text-[var(--accent)]"
-              aria-label={maleVoiceLabel}
-            />
-          ) : null}
-        </span>
-        <span className="mt-1 block truncate text-sm leading-5 text-[var(--muted)]">
-          {row.description}
-        </span>
-      </span>
-      <span className="flex shrink-0 items-center gap-2 text-2xl" aria-hidden>
-        {row.countryFlag ?? null}
-      </span>
-    </button>
-  </div>
+          <span className="flex shrink-0 items-center gap-2">
+            {previewStatusLabel ? (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] shadow-[var(--shadow-sm)]"
+                aria-live="polite"
+                role="status"
+              >
+                <Loader2
+                  className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]"
+                  aria-hidden
+                />
+                <span>{previewStatusLabel}</span>
+              </span>
+            ) : null}
+            {selected ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white shadow-[var(--shadow-sm)]">
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                <span>{selectedVoiceLabel}</span>
+              </span>
+            ) : null}
+            <span className="text-2xl" aria-hidden>
+              {row.countryFlag ?? null}
+            </span>
+          </span>
+        </button>
+      </div>
+    );
+  })()
 );
 
 export const CreateVoiceModelHubPicker: React.FC<
@@ -248,6 +299,7 @@ export const CreateVoiceModelHubPicker: React.FC<
   const [previewingVoiceRowId, setPreviewingVoiceRowId] = useState<
     string | null
   >(null);
+  const [previewRunning, setPreviewRunning] = useState(false);
   const [voicesByModelKey, setVoicesByModelKey] = useState<
     Map<string, VoiceInfo[]>
   >(() => new Map());
@@ -263,10 +315,22 @@ export const CreateVoiceModelHubPicker: React.FC<
       setVoiceGenderFilter("all");
       setVoiceAccentFilter("all");
       setPreviewingVoiceRowId(null);
+      setPreviewRunning(false);
       loadingVoiceKeysRef.current.clear();
       setLoadingVoiceKeys(new Set());
     }
   }, [open]);
+
+  useEffect(() => {
+    setPreviewRunning(false);
+    if (!previewingVoiceRowId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setPreviewRunning(true);
+    }, PREVIEW_RUNNING_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [previewingVoiceRowId]);
 
   useEffect(() => {
     if (
@@ -283,38 +347,80 @@ export const CreateVoiceModelHubPicker: React.FC<
   useEffect(() => {
     if (!open || view !== "voices") return;
 
-    for (const model of models) {
+    const pendingModels = models.filter((model) => {
       const key = `${model.provider_id}::${model.id}`;
-      if (voicesByModelKey.has(key) || loadingVoiceKeysRef.current.has(key)) {
-        continue;
-      }
+      return !voicesByModelKey.has(key) && !loadingVoiceKeysRef.current.has(key);
+    });
 
+    if (pendingModels.length === 0) return;
+
+    let cancelled = false;
+    const scheduledKeys = pendingModels.map(
+      (model) => `${model.provider_id}::${model.id}`,
+    );
+    for (const model of pendingModels) {
+      const key = `${model.provider_id}::${model.id}`;
       loadingVoiceKeysRef.current.add(key);
       setLoadingVoiceKeys((current) => new Set(current).add(key));
-      void getTtsVoicesForSelection(model.provider_id, model.id)
-        .then((voices) => {
-          setVoicesByModelKey((current) => {
-            const next = new Map(current);
-            next.set(key, voices);
-            return next;
-          });
-        })
-        .catch(() => {
-          setVoicesByModelKey((current) => {
-            const next = new Map(current);
-            next.set(key, []);
-            return next;
-          });
-        })
-        .finally(() => {
-          loadingVoiceKeysRef.current.delete(key);
-          setLoadingVoiceKeys((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-        });
     }
+
+    const loadModelVoices = async (model: CatalogModelDescriptor) => {
+      const key = `${model.provider_id}::${model.id}`;
+      try {
+        const voices = await getTtsVoicesForSelection(
+          model.provider_id,
+          model.id,
+        );
+        if (cancelled) return;
+        setVoicesByModelKey((current) => {
+          const next = new Map(current);
+          next.set(key, voices);
+          return next;
+        });
+      } catch {
+        if (cancelled) return;
+        setVoicesByModelKey((current) => {
+          const next = new Map(current);
+          next.set(key, []);
+          return next;
+        });
+      } finally {
+        loadingVoiceKeysRef.current.delete(key);
+        setLoadingVoiceKeys((current) => {
+          const next = new Set(current);
+          next.delete(key);
+          return next;
+        });
+      }
+    };
+
+    void (async () => {
+      for (
+        let index = 0;
+        index < pendingModels.length && !cancelled;
+        index += VOICE_INVENTORY_LOAD_CONCURRENCY
+      ) {
+        await Promise.all(
+          pendingModels
+            .slice(index, index + VOICE_INVENTORY_LOAD_CONCURRENCY)
+            .map(loadModelVoices),
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      for (const key of scheduledKeys) {
+        loadingVoiceKeysRef.current.delete(key);
+      }
+      setLoadingVoiceKeys((current) => {
+        const next = new Set(current);
+        for (const key of scheduledKeys) {
+          next.delete(key);
+        }
+        return next;
+      });
+    };
   }, [models, open, view, voicesByModelKey]);
 
   const handleToggleVoicePreview = async (
@@ -327,10 +433,12 @@ export const CreateVoiceModelHubPicker: React.FC<
         speech.setStatusMessage(result.error);
       }
       setPreviewingVoiceRowId(null);
+      setPreviewRunning(false);
       return;
     }
 
     setPreviewingVoiceRowId(row.id);
+    setPreviewRunning(false);
     try {
       await speech.previewPresetDraft(
         {
@@ -344,12 +452,13 @@ export const CreateVoiceModelHubPicker: React.FC<
           locale_snapshot: row.locale,
           tuning: defaultVoiceTuning(),
         },
-        null,
+        ttsPreviewSampleForLocale(row.locale),
       );
     } finally {
       setPreviewingVoiceRowId((current) =>
         current === row.id ? null : current,
       );
+      setPreviewRunning(false);
     }
   };
 
@@ -438,6 +547,10 @@ export const CreateVoiceModelHubPicker: React.FC<
     t("listen.createVoices.voiceAccent", {
       defaultValue: "Accent",
     });
+  const isSelectedVoiceRow = (row: CreateVoiceHubVoiceRow) =>
+    row.providerId === selectedProviderId &&
+    row.modelId === selectedModelId &&
+    (row.voiceId ?? "__auto__") === selectedVoiceId;
   const filteredVoiceRows = orderCreateVoiceHubRows(
     voiceRows.filter((row) => {
       if (
@@ -460,6 +573,9 @@ export const CreateVoiceModelHubPicker: React.FC<
       }
       return !normalizedQuery || row.searchText.includes(normalizedQuery);
     }),
+  ).sort(
+    (left, right) =>
+      Number(isSelectedVoiceRow(right)) - Number(isSelectedVoiceRow(left)),
   );
   const modelByKey = useMemo(
     () =>
@@ -763,13 +879,37 @@ export const CreateVoiceModelHubPicker: React.FC<
                           row.modelId === selectedModelId &&
                           (row.voiceId ?? "__auto__") === selectedVoiceId
                         }
-                        previewing={previewingVoiceRowId === row.id}
+                        previewStatus={
+                          previewingVoiceRowId === row.id
+                            ? previewRunning
+                              ? "running"
+                              : "preparing"
+                            : "idle"
+                        }
                         femaleVoiceLabel={t("listen.createVoices.femaleVoice", {
                           defaultValue: "Female voice",
                         })}
                         maleVoiceLabel={t("listen.createVoices.maleVoice", {
                           defaultValue: "Male voice",
                         })}
+                        selectedVoiceLabel={t(
+                          "listen.createVoices.selectedVoiceBadge",
+                          {
+                            defaultValue: "Selected voice",
+                          },
+                        )}
+                        preparingPreviewLabel={t(
+                          "listen.createVoices.preparingPreview",
+                          {
+                            defaultValue: "Preparing preview",
+                          },
+                        )}
+                        runningPreviewLabel={t(
+                          "listen.createVoices.previewRunning",
+                          {
+                            defaultValue: "Preview running",
+                          },
+                        )}
                         previewLabel={t("listen.createVoices.previewVoice", {
                           voice: row.voiceLabel,
                           defaultValue: "Preview {{voice}}",
@@ -814,6 +954,17 @@ export const CreateVoiceModelHubPicker: React.FC<
                 </div>
               )}
             </div>
+            {speech.statusMessage ? (
+              <div className="border-t border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                <div className="flex items-start gap-2 text-sm leading-5 text-[var(--muted)]">
+                  <Sparkles
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]"
+                    aria-hidden
+                  />
+                  <p>{speech.statusMessage}</p>
+                </div>
+              </div>
+            ) : null}
           </motion.div>
         </motion.div>
       ) : null}

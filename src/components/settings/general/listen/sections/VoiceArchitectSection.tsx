@@ -52,7 +52,6 @@ import {
   InlineCueHint,
   SelectField,
   VoiceTuningCard,
-  WorkflowStatusStrip,
   WorkflowField,
 } from "../sharedComponents";
 import type { TtsVoicePresetPatch } from "../types";
@@ -304,19 +303,17 @@ export const VoiceArchitectSection: React.FC<{
 
   const saveProfileName = saveProfileNameDraft.trim();
   const statusMessage = draftVoiceErrorMessage ?? speech.statusMessage;
-  const draftSelectedModelForControls = resolveVoiceModelSelection(
-    availableDraftModels,
-    draftProviderId,
-    draftModelId,
-  );
+  const draftSelectedModelForControls =
+    availableDraftModels.find(
+      (model) =>
+        model.provider_id === draftProviderId && model.id === draftModelId,
+    ) ?? null;
   const draftProviderIdForControls =
-    draftSelectedModelForControls?.provider_id ??
-    availableDraftModels[0]?.provider_id ??
-    "";
+    draftSelectedModelForControls?.provider_id ?? draftProviderId ?? "";
   const supportsDraftManualVoiceId =
     draftProviderIdForControls === "local_sidecar_api";
   const draftModelIdForControls =
-    draftSelectedModelForControls?.id ?? availableDraftModels[0]?.id ?? "";
+    draftSelectedModelForControls?.id ?? draftModelId ?? "";
   const draftSelectedModel =
     availableDraftModels.find(
       (model) =>
@@ -370,13 +367,14 @@ export const VoiceArchitectSection: React.FC<{
   const draftVoiceSelection =
     draftVoiceInventory.find((voice) => voice.id === draftVoiceSelectionId) ??
     null;
+  const draftModelDefaultVoiceLabel =
+    draftSelectedModel?.label ?? draftModelIdForControls;
   const draftPreviewVoiceName =
     draftSelectedProfile?.label ??
     draftVoiceSelection?.label ??
-    (draftVoiceFixedToModel
-      ? (draftSelectedModel?.label ?? draftModelIdForControls)
-      : null) ??
-    speech.activePreset?.voice_label_snapshot ??
+    (!draftMatchesActiveModel || draftVoiceFixedToModel
+      ? draftModelDefaultVoiceLabel
+      : (speech.activePreset?.voice_label_snapshot ?? null)) ??
     t("listen.createVoices.automaticVoice", {
       defaultValue: "Automatic voice",
     });
@@ -568,9 +566,12 @@ export const VoiceArchitectSection: React.FC<{
         ? draftModelIdForControls
         : (draftVoiceSelectionId ?? null),
       voice_profile_id: draftProfileSelectionId,
-      voice_label_snapshot: draftVoiceFixedToModel
-        ? (draftSelectedModel?.label ?? draftModelIdForControls)
-        : (draftSelectedProfile?.label ?? draftVoiceSelection?.label ?? null),
+      voice_label_snapshot:
+        draftSelectedProfile?.label ??
+        draftVoiceSelection?.label ??
+        (providerOrModelChanged || draftVoiceFixedToModel
+          ? draftModelDefaultVoiceLabel
+          : null),
       locale_snapshot: draftVoiceSelection
         ? (draftVoiceSelection.locale ?? null)
         : providerOrModelChanged
@@ -615,10 +616,10 @@ export const VoiceArchitectSection: React.FC<{
         throw new Error(result.error);
       }
       speech.setStatusMessage(null);
-      toast.success(
-        t("listen.createVoices.generateSuccess", {
+      toast.message(
+        t("listen.createVoices.generateQueued", {
           defaultValue:
-            "Speech audio generated. Open Generated Audio to play it.",
+            "Speech audio queued. Open Generated Audio to track it.",
         }),
       );
     } catch (error) {
@@ -679,7 +680,7 @@ export const VoiceArchitectSection: React.FC<{
     const matchesActiveModel =
       model.provider_id === (speech.activePreset?.provider_id ?? "") &&
       model.id === (speech.activePreset?.model_id ?? "");
-    lastDraftSelectionKeyRef.current = null;
+    lastDraftSelectionKeyRef.current = `${model.provider_id}::${model.id}`;
     setDraftVoiceErrorMessage(null);
     setDraftProviderId(model.provider_id);
     setDraftModelId(model.id);
@@ -700,48 +701,22 @@ export const VoiceArchitectSection: React.FC<{
     setCreateVoiceTool(value);
   };
 
-  const createSpeechWorkflowSteps = [
-    {
-      id: "voice",
-      label: t("listen.createVoices.workflow.voiceReady", {
-        defaultValue: "Voice selected",
-      }),
-      detail: draftPreviewVoiceName,
-      tone:
-        draftProviderIdForControls && draftModelIdForControls
-          ? ("ready" as const)
-          : ("warning" as const),
-    },
-    {
-      id: "text",
-      label: t("listen.createVoices.workflow.scriptReady", {
+  const trimmedPreviewText = previewTextDraft.trim();
+  const previewTextStatusLabel = trimmedPreviewText
+    ? t("listen.createVoices.workflow.scriptReady", {
         defaultValue: "Text ready",
-      }),
-      detail: previewTextDraft.trim()
-        ? t("listen.createVoices.workflow.characterCount", {
-            defaultValue: "{{count}} characters",
-            count: previewTextDraft.trim().length,
-          })
-        : t("listen.createVoices.workflow.needsText", {
-            defaultValue: "Add text before generating",
-          }),
-      tone: previewTextDraft.trim() ? ("ready" as const) : ("pending" as const),
-    },
-    {
-      id: "output",
-      label: t("listen.createVoices.workflow.generatedAudio", {
-        defaultValue: "Generated audio",
-      }),
-      detail: generatingSpeech
-        ? t("listen.createVoices.workflow.generating", {
-            defaultValue: "Rendering now",
-          })
-        : t("listen.createVoices.workflow.generatedAudioDetail", {
-            defaultValue: "Saved to Generated Audio",
-          }),
-      tone: generatingSpeech ? ("active" as const) : ("pending" as const),
-    },
-  ];
+      })
+    : t("listen.createVoices.workflow.needsTextShort", {
+        defaultValue: "Add text",
+      });
+  const previewTextStatusDetail = trimmedPreviewText
+    ? t("listen.createVoices.workflow.characterCount", {
+        defaultValue: "{{count}} characters",
+        count: trimmedPreviewText.length,
+      })
+    : t("listen.createVoices.workflow.needsText", {
+        defaultValue: "Add text before generating",
+      });
 
   const handleDraftVoiceProfileChange = (value: string) => {
     setDraftVoiceProfileId(value);
@@ -837,11 +812,12 @@ export const VoiceArchitectSection: React.FC<{
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-[var(--text)]">
-              {t("listen.createVoices.textToSpeech", {
-                defaultValue: "Text to Speech",
-              })}
-            </span>
+            <div className="min-w-0 truncate text-sm text-[var(--muted)]">
+              <span className="font-semibold text-[var(--text)]">
+                {previewTextStatusLabel}
+              </span>
+              <span> - {previewTextStatusDetail}</span>
+            </div>
             <div
               className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
               aria-label={t("listen.createVoices.selectedPreviewVoice", {
@@ -1111,13 +1087,6 @@ export const VoiceArchitectSection: React.FC<{
             </Button>
           </div>
         </div>
-
-        <WorkflowStatusStrip
-          steps={createSpeechWorkflowSteps}
-          ariaLabel={t("listen.createVoices.workflow.statusAriaLabel", {
-            defaultValue: "Create Speech workflow status",
-          })}
-        />
 
         {createVoiceTool === "audio" ? audioView : tuningView}
       </div>

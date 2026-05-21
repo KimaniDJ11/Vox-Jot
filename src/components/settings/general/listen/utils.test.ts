@@ -4,8 +4,10 @@ import { resolve } from "node:path";
 
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import {
+  DEFAULT_TTS_PREVIEW_TEXT,
   TTS_MODEL_SIZE_HINTS,
   huggingFaceRepoIdFromSourceUrl,
+  ttsPreviewSampleForLocale,
   ttsStorageSizeLabel,
   verifiedTtsHuggingFaceRepoId,
 } from "./utils";
@@ -167,5 +169,22 @@ describe("ttsStorageSizeLabel", () => {
     );
 
     expect(missing).toEqual([]);
+  });
+});
+
+describe("ttsPreviewSampleForLocale", () => {
+  it("uses the shared English preview sample by default", () => {
+    expect(ttsPreviewSampleForLocale(null)).toBe(DEFAULT_TTS_PREVIEW_TEXT);
+    expect(ttsPreviewSampleForLocale("en-US")).toBe(DEFAULT_TTS_PREVIEW_TEXT);
+  });
+
+  it("uses a translated sample for supported voice languages", () => {
+    expect(ttsPreviewSampleForLocale("fr-FR")).toContain("Après la pluie");
+    expect(ttsPreviewSampleForLocale("zh-CN")).toContain("雨后");
+  });
+
+  it("falls back to English for multilingual or unknown locales", () => {
+    expect(ttsPreviewSampleForLocale("mul")).toBe(DEFAULT_TTS_PREVIEW_TEXT);
+    expect(ttsPreviewSampleForLocale("zz-ZZ")).toBe(DEFAULT_TTS_PREVIEW_TEXT);
   });
 });

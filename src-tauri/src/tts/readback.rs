@@ -7,7 +7,7 @@ use crate::translation::TranslationOrigin;
 use super::chunking::normalize_locale;
 use super::{SpeakRequest, TtsAutoSpeakPlan};
 
-pub const PREVIEW_SAMPLE_TEXT: &str = "Vox Jot is ready.";
+pub const PREVIEW_SAMPLE_TEXT: &str = r#"After the rain, Mina laughed softly, then whispered, 'Wait - did you hear that?' The room grew quiet, warm, and full of wonder."#;
 
 #[derive(Debug, Clone)]
 pub struct LastOutput {

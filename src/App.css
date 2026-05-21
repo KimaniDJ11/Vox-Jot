@@ -1511,6 +1511,11 @@ input[type="range"]:disabled::-moz-range-thumb {
     right: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
   }
 
+  .story-audio-player-scroll {
+    padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
+  }
+
   .story-audio-top-scrubber-shell {
     position: relative;
     height: 0.75rem;

@@ -670,6 +670,19 @@ export const VoiceChangerSection: React.FC<{
           {outputUrl ? (
             <AudioPlayer
               src={outputUrl}
+              onPlayRequest={async () => {
+                if (!outputPath) return;
+                const result = await commands.playStoryAudio(outputPath);
+                if (result.status === "error") {
+                  throw new Error(result.error);
+                }
+              }}
+              onStopRequest={async () => {
+                const result = await commands.stopStoryAudio();
+                if (result.status === "error") {
+                  throw new Error(result.error);
+                }
+              }}
               title={t("listen.voiceChanger.outputTitle", {
                 defaultValue: "Voice Changer output",
               })}

@@ -11,9 +11,7 @@ export function isDownloadFailed(
   progress?: HubDownloadProgressLike | null,
   localError?: string | null,
 ): boolean {
-  return Boolean(
-    progress?.error || localError || progress?.stage === "failed",
-  );
+  return Boolean(progress?.error || localError || progress?.stage === "failed");
 }
 
 export function isDownloadActive(
@@ -64,7 +62,11 @@ export function buildHubDownloadState(args: {
     cancelLabel:
       args.cancelLabel ??
       args.t("modelHub.download.cancel", { defaultValue: "Cancel download" }),
-    retryLabel: args.t("modelHub.download.retry", { defaultValue: "Try again" }),
-    dismissLabel: args.t("modelHub.download.dismiss", { defaultValue: "Dismiss" }),
+    retryLabel: args.t("modelHub.download.retry", {
+      defaultValue: "Try again",
+    }),
+    dismissLabel: args.t("modelHub.download.dismiss", {
+      defaultValue: "Dismiss",
+    }),
   };
 }

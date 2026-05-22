@@ -28,10 +28,7 @@ import {
   Slider,
   SwitchControl,
 } from "@/components/ui";
-import {
-  useSettingsSlice,
-  useUpdateSetting,
-} from "@/hooks/useSettings";
+import { useSettingsSlice, useUpdateSetting } from "@/hooks/useSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { confirmDestructiveAction } from "@/lib/confirmDestructiveAction";
 import {

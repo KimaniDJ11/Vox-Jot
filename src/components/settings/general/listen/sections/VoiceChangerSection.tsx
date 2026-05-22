@@ -994,7 +994,6 @@ export const VoiceChangerSection: React.FC<{
                 </span>
               </div>
             </label>
-
           </div>
 
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">

@@ -284,18 +284,13 @@ export const HistorySettings: React.FC = () => {
     setView("transcript");
   }, []);
 
-  const handleTranscriptChange = useCallback(
-    (id: number, nextText: string) => {
-      setHistoryEntries((current) =>
-        current.map((entry) =>
-          entry.id === id
-            ? { ...entry, transcription_text: nextText }
-            : entry,
-        ),
-      );
-    },
-    [],
-  );
+  const handleTranscriptChange = useCallback((id: number, nextText: string) => {
+    setHistoryEntries((current) =>
+      current.map((entry) =>
+        entry.id === id ? { ...entry, transcription_text: nextText } : entry,
+      ),
+    );
+  }, []);
 
   const renderEntries = (entries: HistoryEntry[], emptyMessage: string) => {
     if (entries.length === 0) {

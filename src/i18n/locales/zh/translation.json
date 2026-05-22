@@ -1590,11 +1590,7 @@
       "copyLastReply": "复制上次回复",
       "refreshFailed": "目前无法捕获选择内容或剪贴板片段。",
       "copiedReply": "复制了上次的回复。",
-      "starterPrompts": [
-        "总结所选文本",
-        "重写一下更清楚",
-        "拉出行动项目"
-      ]
+      "starterPrompts": ["总结所选文本", "重写一下更清楚", "拉出行动项目"]
     },
     "jotpad": {
       "label": "Jot Pad",
@@ -1608,11 +1604,7 @@
       "noteAppended": "将草稿附加到说明中。",
       "noteAppendFailed": "无法附加到注释。",
       "draftCopied": "抄了草稿。",
-      "starterPrompts": [
-        "把这张纸条变成干净的草稿",
-        "找到要点",
-        "建议后续步骤"
-      ]
+      "starterPrompts": ["把这张纸条变成干净的草稿", "找到要点", "建议后续步骤"]
     },
     "settingsCoach": {
       "label": "设置教练",

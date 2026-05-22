@@ -116,7 +116,9 @@ describe("HubModelCard", () => {
       />,
     );
 
-    expect(view.container.textContent).toContain("Stream failed for model.safetensors");
+    expect(view.container.textContent).toContain(
+      "Stream failed for model.safetensors",
+    );
     const retry = view.container.querySelector(
       'button[aria-label="Try again"]',
     ) as HTMLButtonElement | null;

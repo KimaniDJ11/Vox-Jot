@@ -310,7 +310,10 @@ function enableLocalApiFromUi() {
     clickAny(["Enable local API"], "Enable local API");
     sleep(500);
     try {
-      clickAny(["OK", "Enable", "Enable local HTTP API"], "Local API confirmation");
+      clickAny(
+        ["OK", "Enable", "Enable local HTTP API"],
+        "Local API confirmation",
+      );
     } catch {
       // No confirmation appears after the first acknowledged run.
     }
@@ -323,7 +326,8 @@ function enableLocalApiFromUi() {
 }
 
 function readApiToken() {
-  if (process.env.VOX_JOT_API_TOKEN) return process.env.VOX_JOT_API_TOKEN.trim();
+  if (process.env.VOX_JOT_API_TOKEN)
+    return process.env.VOX_JOT_API_TOKEN.trim();
   if (process.env.VOX_JOT_ACCEPTANCE_COPY_TOKEN_UI === "1") {
     const uiToken = copyApiTokenFromUi();
     if (uiToken) return uiToken;
@@ -477,7 +481,11 @@ async function exerciseApi() {
       return;
     }
   }
-  record("Local API health", "pass", `version ${health.body?.version ?? "unknown"}`);
+  record(
+    "Local API health",
+    "pass",
+    `version ${health.body?.version ?? "unknown"}`,
+  );
 
   const token = readApiToken();
   if (!token) {
@@ -493,7 +501,9 @@ async function exerciseApi() {
   const unauthorized = await fetchJson("/v1/readiness");
   record(
     "Local API auth guard",
-    unauthorized.status === 401 || unauthorized.status === 403 ? "pass" : "fail",
+    unauthorized.status === 401 || unauthorized.status === 403
+      ? "pass"
+      : "fail",
     `unauthenticated readiness returned HTTP ${unauthorized.status}`,
   );
 
@@ -556,22 +566,25 @@ async function exerciseApi() {
     headers: { ...headers, "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
   });
-  const toolNames = mcpTools.body?.result?.tools?.map((tool) => tool.name) ?? [];
+  const toolNames =
+    mcpTools.body?.result?.tools?.map((tool) => tool.name) ?? [];
   const expectedTools = [
     "vox_jot.speak",
     "vox_jot.list_voices",
     "vox_jot.list_voice_profiles",
     "vox_jot.transcribe_wav",
   ];
-  const missingTools = expectedTools.filter((tool) => !toolNames.includes(tool));
+  const missingTools = expectedTools.filter(
+    (tool) => !toolNames.includes(tool),
+  );
   record(
     "MCP tools",
     mcpTools.ok && missingTools.length === 0 ? "pass" : "fail",
     mcpTools.networkError
       ? (mcpTools.body?.error ?? "network error")
       : missingTools.length === 0
-      ? `${toolNames.length} tools listed`
-      : `missing ${missingTools.join(", ")}`,
+        ? `${toolNames.length} tools listed`
+        : `missing ${missingTools.join(", ")}`,
   );
 
   const wavPath = writeTinyWav();
@@ -603,7 +616,9 @@ async function exerciseApi() {
     );
     record(
       "Local API transcribe fixture",
-      transcribe.ok && typeof transcribe.body?.text === "string" ? "pass" : "fail",
+      transcribe.ok && typeof transcribe.body?.text === "string"
+        ? "pass"
+        : "fail",
       transcribe.ok
         ? "fixture accepted"
         : (transcribe.body?.error ?? `HTTP ${transcribe.status}`),
@@ -660,7 +675,9 @@ async function main() {
   const failures = results.filter((result) => result.status === "fail");
   console.log(`Report: ${reportPath}`);
   if (failures.length > 0) {
-    console.error(`${failures.length} installed-app acceptance check(s) failed.`);
+    console.error(
+      `${failures.length} installed-app acceptance check(s) failed.`,
+    );
     process.exit(1);
   }
   console.log("Installed-app acceptance checks passed.");

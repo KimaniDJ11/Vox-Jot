@@ -78,8 +78,7 @@ describe("verifiedTtsHuggingFaceRepoId", () => {
         model({
           id: "microsoft_speecht5_tts",
           provider_id: "local_sidecar_api",
-          source_url:
-            "https://huggingface.co/microsoft/speecht5_tts/tree/main",
+          source_url: "https://huggingface.co/microsoft/speecht5_tts/tree/main",
         }),
       ),
     ).toBe("microsoft/speecht5_tts");

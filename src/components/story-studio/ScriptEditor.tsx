@@ -597,9 +597,7 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
             </p>
           </div>
           {headerAction ? (
-            <div className="ml-auto shrink-0">
-              {headerAction}
-            </div>
+            <div className="ml-auto shrink-0">{headerAction}</div>
           ) : null}
         </div>
         <div

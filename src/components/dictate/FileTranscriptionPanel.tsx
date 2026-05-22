@@ -62,9 +62,8 @@ function stripExtension(p: string): string {
 }
 
 function useSelectedSpeechAnalysisAsrModel() {
-  const {
-    file_transcription_asr_model_id: fileTranscriptionAsrModelIdValue,
-  } = useSettingsSlice(["file_transcription_asr_model_id"] as const);
+  const { file_transcription_asr_model_id: fileTranscriptionAsrModelIdValue } =
+    useSettingsSlice(["file_transcription_asr_model_id"] as const);
   const [selectedAsrModel, setSelectedAsrModel] =
     useState<SpeechAnalysisModelDescriptor | null>(null);
   const fileTranscriptionAsrModelId = fileTranscriptionAsrModelIdValue ?? "";
@@ -190,9 +189,7 @@ const FileTranscriptionStatusHeader: React.FC<{
         aria-live="polite"
         title={fileName || undefined}
       >
-        <span className="font-semibold text-[var(--text)]">
-          {status.label}
-        </span>
+        <span className="font-semibold text-[var(--text)]">{status.label}</span>
         <span> - {status.detail}</span>
         {isRunning && fileName ? (
           <span className="sr-only">

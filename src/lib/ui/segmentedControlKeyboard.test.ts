@@ -58,7 +58,9 @@ describe("handleHorizontalSegmentedControlKeyDown", () => {
     );
     segments[0]?.focus();
 
-    handleHorizontalSegmentedControlKeyDown(keyboardEvent(control, "ArrowLeft"));
+    handleHorizontalSegmentedControlKeyDown(
+      keyboardEvent(control, "ArrowLeft"),
+    );
 
     expect(document.activeElement).toBe(segments[2]);
     expect(segments[2]?.getAttribute("aria-pressed")).toBe("true");
@@ -73,9 +75,12 @@ describe("handleHorizontalSegmentedControlKeyDown", () => {
     );
     segments[0]?.focus();
 
-    handleHorizontalSegmentedControlKeyDown(keyboardEvent(control, "ArrowRight"), {
-      direction: "rtl",
-    });
+    handleHorizontalSegmentedControlKeyDown(
+      keyboardEvent(control, "ArrowRight"),
+      {
+        direction: "rtl",
+      },
+    );
 
     expect(document.activeElement).toBe(segments[2]);
 

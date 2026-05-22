@@ -333,9 +333,7 @@ export function defaultVoiceTuning(): TtsVoiceTuningSettings {
   };
 }
 
-export function normalizeVoiceTuningForCompare(
-  tuning: TtsVoiceTuningSettings,
-) {
+export function normalizeVoiceTuningForCompare(tuning: TtsVoiceTuningSettings) {
   return {
     tempo_rate: tuning.tempo_rate,
     expressiveness: tuning.expressiveness,

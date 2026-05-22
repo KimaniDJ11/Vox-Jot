@@ -6,12 +6,7 @@ export interface ModelHubControlValues {
   sortMode: ModelSortMode;
 }
 
-export type ModelHubControlScope =
-  | "stt"
-  | "llm"
-  | "tts"
-  | "ocr"
-  | "analysis";
+export type ModelHubControlScope = "stt" | "llm" | "tts" | "ocr" | "analysis";
 
 export interface ModelHubControlState extends ModelHubControlValues {
   setProviderFilter: (value: string) => void;

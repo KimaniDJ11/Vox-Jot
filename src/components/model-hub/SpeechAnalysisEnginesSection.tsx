@@ -1161,7 +1161,9 @@ const EngineGroup: React.FC<EngineGroupProps> = ({
                               modelName: model.label,
                             },
                           ),
-                          onRetry: isFailed ? () => onDownload(model) : undefined,
+                          onRetry: isFailed
+                            ? () => onDownload(model)
+                            : undefined,
                           onDismiss: isFailed
                             ? () => onDismissDownload(model.id)
                             : undefined,

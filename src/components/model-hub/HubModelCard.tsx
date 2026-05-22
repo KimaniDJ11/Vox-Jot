@@ -1,7 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Download, ExternalLink, Loader2, Trash2, X, AlertTriangle, RotateCcw } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  Loader2,
+  Trash2,
+  X,
+  AlertTriangle,
+  RotateCcw,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -498,7 +506,10 @@ function renderDownloadState(state: HubDownloadState): React.ReactNode {
         {state.cancelling ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : failed ? (
-          <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" aria-hidden />
+          <AlertTriangle
+            className="h-3.5 w-3.5 text-[var(--danger)]"
+            aria-hidden
+          />
         ) : (
           <Download className="h-3.5 w-3.5" aria-hidden />
         )}

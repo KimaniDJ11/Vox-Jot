@@ -361,10 +361,7 @@ const SpeechModelLibraryCard: React.FC<{
     if (downloadActive) return;
     setLocalDownloadError(null);
     onClearDownloadProgress(model);
-    if (
-      canAcquire &&
-      onGatedDownloadRequest(model)
-    ) {
+    if (canAcquire && onGatedDownloadRequest(model)) {
       return;
     }
     setLocallyDownloading(canAcquire);
@@ -418,12 +415,7 @@ const SpeechModelLibraryCard: React.FC<{
   }, [model, onCancelDownload]);
 
   let trailing: HubTrailing = null;
-  if (
-    !active &&
-    canAcquire &&
-    !downloadActive &&
-    !downloadFailed
-  ) {
+  if (!active && canAcquire && !downloadActive && !downloadFailed) {
     trailing = {
       kind: "acquire",
       onClick: () => void downloadOrActivate(),
@@ -490,9 +482,7 @@ const SpeechModelLibraryCard: React.FC<{
     }),
     progressPct: byteProgress ?? fileProgress,
     indeterminate:
-      !localDownloadError &&
-      byteProgress === null &&
-      fileProgress === null,
+      !localDownloadError && byteProgress === null && fileProgress === null,
     cancelling: cancellingDownload,
     onCancel: downloadActive ? () => void cancelDownload() : undefined,
     onRetry: downloadFailed ? () => void downloadOrActivate() : undefined,

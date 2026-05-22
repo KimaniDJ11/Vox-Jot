@@ -774,9 +774,7 @@ export const StoryStudioSection: React.FC = () => {
                   <span className="text-sm font-medium text-[var(--text)]">
                     {t("storyStudio.storyTitle")}
                   </span>
-                  <div className="shrink-0">
-                    {renderReadinessPill}
-                  </div>
+                  <div className="shrink-0">{renderReadinessPill}</div>
                 </div>
                 <Input
                   value={title}

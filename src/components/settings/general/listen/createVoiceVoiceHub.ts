@@ -74,9 +74,8 @@ function stableHash(value: string) {
 }
 
 export function voiceAvatarGradient(seed: string) {
-  const colors = VOICE_AVATAR_GRADIENTS[
-    stableHash(seed) % VOICE_AVATAR_GRADIENTS.length
-  ];
+  const colors =
+    VOICE_AVATAR_GRADIENTS[stableHash(seed) % VOICE_AVATAR_GRADIENTS.length];
   const angle = 125 + (stableHash(`${seed}:angle`) % 90);
   return `linear-gradient(${angle}deg, ${colors[0]}, ${colors[1]} 52%, ${colors[2]})`;
 }
@@ -179,7 +178,7 @@ export function buildCreateVoiceHubRows(
         : [{ voice: null, fallback: true }];
 
     return sourceVoices.map(({ voice, fallback }) => {
-      const voiceId = fallback ? null : voice?.id ?? null;
+      const voiceId = fallback ? null : (voice?.id ?? null);
       const voiceLabel = fallback ? model.label : (voice?.label ?? model.label);
       const locale = normalizeVoiceLocale(voice, model);
       const language = voiceLanguageFromLocale(locale);

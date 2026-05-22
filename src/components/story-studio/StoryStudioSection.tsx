@@ -1,10 +1,12 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -99,6 +101,13 @@ interface ExpressionContext {
   label: string;
 }
 
+interface ExpressionPopoverPosition {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+}
+
 const defaultStudioDraft: StoryStudioDraft = {
   projectId: "",
   title: "",
@@ -136,6 +145,8 @@ export const StoryStudioSection: React.FC = () => {
   );
   const [expressionQuery, setExpressionQuery] = useState("");
   const [expressionPopoverOpen, setExpressionPopoverOpen] = useState(false);
+  const [expressionPopoverPosition, setExpressionPopoverPosition] =
+    useState<ExpressionPopoverPosition | null>(null);
   const [scriptSelection, setScriptSelection] = useState<ScriptTextSelection>({
     start: scriptText.length,
     end: scriptText.length,
@@ -150,6 +161,7 @@ export const StoryStudioSection: React.FC = () => {
     () => new Set(),
   );
   const loadingVoiceKeysRef = useRef(new Set<string>());
+  const expressionAnchorRef = useRef<HTMLDivElement | null>(null);
   const scriptEditorRef = useRef<ScriptEditorHandle | null>(null);
   const [isQueueingRender, setIsQueueingRender] = useState(false);
   const [showQueuedAck, setShowQueuedAck] = useState(false);
@@ -170,6 +182,49 @@ export const StoryStudioSection: React.FC = () => {
       setIsLoadingPresets(false);
     }
   }, []);
+
+  const updateExpressionPopoverPosition = useCallback(() => {
+    const anchor = expressionAnchorRef.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth =
+      document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight =
+      document.documentElement.clientHeight || window.innerHeight;
+    const margin = viewportWidth < 640 ? 12 : 24;
+    const width = Math.min(448, viewportWidth - margin * 2);
+    const left = Math.max(margin, viewportWidth - width - margin);
+    const preferredTop = rect.bottom + 10;
+    const minimumHeight = Math.min(280, viewportHeight - margin * 2);
+    const availableBelow = viewportHeight - preferredTop - margin;
+    const top =
+      availableBelow >= minimumHeight
+        ? preferredTop
+        : Math.max(
+            margin,
+            Math.min(rect.top, viewportHeight - minimumHeight - margin),
+          );
+    const maxHeight = Math.max(180, viewportHeight - top - margin);
+
+    setExpressionPopoverPosition({
+      top,
+      left,
+      width,
+      maxHeight,
+    });
+  }, []);
+
+  const openExpressionPopover = useCallback(() => {
+    updateExpressionPopoverPosition();
+    setExpressionPopoverOpen(true);
+  }, [updateExpressionPopoverPosition]);
+
+  useEffect(() => {
+    if (activeTool !== "script") {
+      setExpressionPopoverOpen(false);
+    }
+  }, [activeTool]);
 
   useEffect(() => {
     void refreshPresets();
@@ -306,6 +361,27 @@ export const StoryStudioSection: React.FC = () => {
   const currentInstruction = currentInstructionKey
     ? (lineInstructions[currentInstructionKey] ?? "")
     : "";
+
+  useLayoutEffect(() => {
+    if (!expressionPopoverOpen || !expressionEnabled) return;
+
+    updateExpressionPopoverPosition();
+    window.addEventListener("resize", updateExpressionPopoverPosition);
+    window.addEventListener("scroll", updateExpressionPopoverPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateExpressionPopoverPosition);
+      window.removeEventListener(
+        "scroll",
+        updateExpressionPopoverPosition,
+        true,
+      );
+    };
+  }, [
+    expressionEnabled,
+    expressionPopoverOpen,
+    updateExpressionPopoverPosition,
+  ]);
 
   const addCharacter = useCallback(() => {
     setCast((currentCast) => [
@@ -463,6 +539,86 @@ export const StoryStudioSection: React.FC = () => {
       <span className="truncate">{readySummary}</span>
     </div>
   );
+  const expressionTagControl = (
+    <div ref={expressionAnchorRef} className="relative w-[20rem] max-w-full">
+      <label
+        className="relative flex h-10 w-full items-center"
+        aria-label={t("storyStudio.expressionTags")}
+      >
+        <Sparkles
+          className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
+          aria-hidden
+        />
+        <Input
+          type="search"
+          value={expressionQuery}
+          onChange={(event) => {
+            setExpressionQuery(event.target.value);
+            openExpressionPopover();
+          }}
+          onFocus={() => {
+            if (expressionEnabled) {
+              openExpressionPopover();
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setExpressionPopoverOpen(false);
+              setExpressionQuery("");
+              event.preventDefault();
+            }
+          }}
+          placeholder={
+            expressionEnabled
+              ? t("storyStudio.expressionTags")
+              : expressionCapability.emptyLabel
+          }
+          disabled={!expressionEnabled}
+          aria-haspopup="listbox"
+          aria-expanded={expressionPopoverOpen}
+          className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
+        />
+        {expressionQuery ? (
+          <button
+            type="button"
+            className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            onClick={() => setExpressionQuery("")}
+            aria-label={t("storyStudio.clearExpressionSearch")}
+          >
+            <X className="h-3 w-3" aria-hidden />
+          </button>
+        ) : null}
+      </label>
+      {expressionPopoverOpen &&
+      expressionEnabled &&
+      expressionPopoverPosition ? (
+        <ExpressionPopover
+          capability={expressionCapability}
+          contextLabel={expressionContext.label}
+          filter={expressionQuery}
+          instruction={currentInstruction}
+          position={expressionPopoverPosition}
+          onClose={() => setExpressionPopoverOpen(false)}
+          onInsertTag={(tag) => {
+            scriptEditorRef.current?.insertText(tag);
+            setExpressionPopoverOpen(true);
+          }}
+          onInstructionChange={(value) => {
+            if (!currentInstructionKey) return;
+            setLineInstructions((current) => {
+              const next = { ...current };
+              if (value.trim()) {
+                next[currentInstructionKey] = value;
+              } else {
+                delete next[currentInstructionKey];
+              }
+              return next;
+            });
+          }}
+        />
+      ) : null}
+    </div>
+  );
 
   if (!isLoadingPresets && !isLoadingVoiceChoices && !hasVoiceChoices) {
     return (
@@ -535,120 +691,48 @@ export const StoryStudioSection: React.FC = () => {
                 { value: "cast", label: t("storyStudio.tools.cast") },
               ]}
             />
-
-            <SegmentedControl<StoryAudioEffectPreset>
-              value={audioEffect}
-              onChange={setAudioEffect}
-              layoutId="story-studio-audio-effect"
-              ariaLabel={t("storyStudio.audioEffectAriaLabel", {
-                defaultValue: "Story audio effect",
-              })}
-              items={[
-                {
-                  value: "clean",
-                  label: t("storyStudio.audioEffects.clean", {
-                    defaultValue: "Clean",
-                  }),
-                },
-                {
-                  value: "voice_polish",
-                  label: t("storyStudio.audioEffects.voicePolish", {
-                    defaultValue: "Voice Polish",
-                  }),
-                },
-                {
-                  value: "radio",
-                  label: t("storyStudio.audioEffects.radio", {
-                    defaultValue: "Radio",
-                  }),
-                },
-                {
-                  value: "warm_room",
-                  label: t("storyStudio.audioEffects.warmRoom", {
-                    defaultValue: "Warm Room",
-                  }),
-                },
-              ]}
-            />
           </div>
 
           {activeTool === "script" ? (
-            <div className="story-studio-toolbar__trailing ms-auto flex min-w-[min(100%,20rem)] flex-wrap items-center justify-end gap-2">
-              {renderReadinessPill}
-              <div className="relative">
-                <label
-                  className="relative flex h-10 w-[min(20rem,100%)] min-w-[12rem] items-center"
-                  aria-label={t("storyStudio.expressionTags")}
-                >
-                  <Sparkles
-                    className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--muted)]"
-                    aria-hidden
-                  />
-                  <Input
-                    type="search"
-                    value={expressionQuery}
-                    onChange={(event) => {
-                      setExpressionQuery(event.target.value);
-                      setExpressionPopoverOpen(true);
-                    }}
-                    onFocus={() => {
-                      if (expressionEnabled) {
-                        setExpressionPopoverOpen(true);
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setExpressionPopoverOpen(false);
-                        setExpressionQuery("");
-                        event.preventDefault();
-                      }
-                    }}
-                    placeholder={
-                      expressionEnabled
-                        ? t("storyStudio.expressionTags")
-                        : expressionCapability.emptyLabel
-                    }
-                    disabled={!expressionEnabled}
-                    aria-haspopup="listbox"
-                    aria-expanded={expressionPopoverOpen}
-                    className="h-10 w-full pl-9 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-                  />
-                  {expressionQuery ? (
-                    <button
-                      type="button"
-                      className="absolute right-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                      onClick={() => setExpressionQuery("")}
-                      aria-label={t("storyStudio.clearExpressionSearch")}
-                    >
-                      <X className="h-3 w-3" aria-hidden />
-                    </button>
-                  ) : null}
-                </label>
-                {expressionPopoverOpen && expressionEnabled ? (
-                  <ExpressionPopover
-                    capability={expressionCapability}
-                    contextLabel={expressionContext.label}
-                    filter={expressionQuery}
-                    instruction={currentInstruction}
-                    onClose={() => setExpressionPopoverOpen(false)}
-                    onInsertTag={(tag) => {
-                      scriptEditorRef.current?.insertText(tag);
-                      setExpressionPopoverOpen(true);
-                    }}
-                    onInstructionChange={(value) => {
-                      if (!currentInstructionKey) return;
-                      setLineInstructions((current) => {
-                        const next = { ...current };
-                        if (value.trim()) {
-                          next[currentInstructionKey] = value;
-                        } else {
-                          delete next[currentInstructionKey];
-                        }
-                        return next;
-                      });
-                    }}
-                  />
-                ) : null}
+            <div className="story-studio-toolbar__trailing ms-auto flex flex-wrap items-center justify-end gap-2">
+              <div
+                className="shrink-0"
+                title="Apply an audio effect to the rendered story. Clean keeps the original voice. Voice Polish smooths artifacts. Radio adds vintage broadcast warmth. Warm Room adds natural reverb."
+              >
+                <SegmentedControl<StoryAudioEffectPreset>
+                  value={audioEffect}
+                  onChange={setAudioEffect}
+                  layoutId="story-studio-audio-effect"
+                  ariaLabel={t("storyStudio.audioEffectAriaLabel", {
+                    defaultValue: "Story audio effect",
+                  })}
+                  items={[
+                    {
+                      value: "clean",
+                      label: t("storyStudio.audioEffects.clean", {
+                        defaultValue: "Clean",
+                      }),
+                    },
+                    {
+                      value: "voice_polish",
+                      label: t("storyStudio.audioEffects.voicePolish", {
+                        defaultValue: "Voice Polish",
+                      }),
+                    },
+                    {
+                      value: "radio",
+                      label: t("storyStudio.audioEffects.radio", {
+                        defaultValue: "Radio",
+                      }),
+                    },
+                    {
+                      value: "warm_room",
+                      label: t("storyStudio.audioEffects.warmRoom", {
+                        defaultValue: "Warm Room",
+                      }),
+                    },
+                  ]}
+                />
               </div>
             </div>
           ) : (
@@ -685,17 +769,26 @@ export const StoryStudioSection: React.FC = () => {
 
           {activeTool === "script" ? (
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
-              <label className="mb-4 block text-sm font-medium text-[var(--text)]">
-                {t("storyStudio.storyTitle")}
+              <div className="mb-4 space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-[var(--text)]">
+                    {t("storyStudio.storyTitle")}
+                  </span>
+                  <div className="shrink-0">
+                    {renderReadinessPill}
+                  </div>
+                </div>
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
+                  aria-label={t("storyStudio.storyTitle")}
+                  className="h-10 w-full rounded-lg border-[var(--border)] bg-[var(--input)] text-[var(--text)]"
                 />
-              </label>
+              </div>
               <ScriptEditor
                 ref={scriptEditorRef}
                 value={scriptText}
+                headerAction={expressionTagControl}
                 onChange={setScriptText}
                 onCursorChange={setScriptSelection}
               />
@@ -782,6 +875,7 @@ const ExpressionPopover: React.FC<{
   contextLabel: string;
   filter: string;
   instruction: string;
+  position: ExpressionPopoverPosition;
   onClose: () => void;
   onInsertTag: (tag: string) => void;
   onInstructionChange: (value: string) => void;
@@ -790,6 +884,7 @@ const ExpressionPopover: React.FC<{
   contextLabel,
   filter,
   instruction,
+  position,
   onClose,
   onInsertTag,
   onInstructionChange,
@@ -812,13 +907,19 @@ const ExpressionPopover: React.FC<{
   const showInstructions =
     capability.kind === "instruction_prompt" || capability.kind === "both";
 
-  return (
+  return createPortal(
     <div
-      className="absolute right-0 z-30 mt-2 w-[min(26rem,calc(100vw-3rem))] rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm text-[var(--text)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+      style={{
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        maxHeight: position.maxHeight,
+      }}
       role="dialog"
       aria-label={t("storyStudio.expressionControlsTitle")}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-[var(--text)]">
             {t("storyStudio.expressionControlsTitle")}
@@ -837,89 +938,92 @@ const ExpressionPopover: React.FC<{
         </button>
       </div>
 
-      {showTags ? (
-        <div className="space-y-3">
-          {groupedTags.length > 0 ? (
-            groupedTags.map(([group, tags]) => (
-              <div key={group} className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase text-[var(--muted)]">
-                  {group}
-                </p>
-                <div className="flex flex-wrap gap-1.5" role="listbox">
-                  {tags.map((tag) => (
-                    <button
-                      key={tag.value}
-                      type="button"
-                      className="min-h-9 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                      onClick={() => onInsertTag(tag.value)}
-                    >
-                      {tag.value}
-                    </button>
-                  ))}
+      <div className="min-h-0 overflow-y-auto pr-1">
+        {showTags ? (
+          <div className="space-y-3">
+            {groupedTags.length > 0 ? (
+              groupedTags.map(([group, tags]) => (
+                <div key={group} className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase text-[var(--muted)]">
+                    {group}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5" role="listbox">
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.value}
+                        type="button"
+                        className="min-h-9 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-semibold text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                        onClick={() => onInsertTag(tag.value)}
+                      >
+                        {tag.value}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted)]">
+                {t("storyStudio.noExpressionTagMatches")}
+              </p>
+            )}
+
+            {capability.allowCustomTags ? (
+              <div className="flex gap-2 border-t border-[var(--border)] pt-3">
+                <Input
+                  value={customTag}
+                  onChange={(event) => setCustomTag(event.target.value)}
+                  placeholder={t("storyStudio.customTagPlaceholder")}
+                  className="h-10 min-w-0 flex-1 rounded-lg text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!customTag.trim()}
+                  onClick={() => {
+                    const value = customTag.trim();
+                    if (!value) return;
+                    onInsertTag(value.startsWith("[") ? value : `[${value}]`);
+                    setCustomTag("");
+                  }}
+                >
+                  {t("common.add")}
+                </Button>
               </div>
-            ))
-          ) : (
-            <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted)]">
-              {t("storyStudio.noExpressionTagMatches")}
-            </p>
-          )}
-
-          {capability.allowCustomTags ? (
-            <div className="flex gap-2 border-t border-[var(--border)] pt-3">
-              <Input
-                value={customTag}
-                onChange={(event) => setCustomTag(event.target.value)}
-                placeholder={t("storyStudio.customTagPlaceholder")}
-                className="h-10 min-w-0 flex-1 rounded-lg text-sm"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!customTag.trim()}
-                onClick={() => {
-                  const value = customTag.trim();
-                  if (!value) return;
-                  onInsertTag(value.startsWith("[") ? value : `[${value}]`);
-                  setCustomTag("");
-                }}
-              >
-                {t("common.add")}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showInstructions ? (
-        <div
-          className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}
-        >
-          <p className="text-xs font-semibold uppercase text-[var(--muted)]">
-            {t("storyStudio.lineInstruction")}
-          </p>
-          <Textarea
-            value={instruction}
-            onChange={(event) => onInstructionChange(event.target.value)}
-            placeholder={t("storyStudio.lineInstructionPlaceholder")}
-            className="min-h-[84px] !rounded-xl text-sm"
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {INSTRUCTION_PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 text-xs font-medium text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                onClick={() => onInstructionChange(preset)}
-              >
-                {preset}
-              </button>
-            ))}
+            ) : null}
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+
+        {showInstructions ? (
+          <div
+            className={`${showTags ? "mt-4 border-t border-[var(--border)] pt-3" : ""} space-y-2`}
+          >
+            <p className="text-xs font-semibold uppercase text-[var(--muted)]">
+              {t("storyStudio.lineInstruction")}
+            </p>
+            <Textarea
+              value={instruction}
+              onChange={(event) => onInstructionChange(event.target.value)}
+              placeholder={t("storyStudio.lineInstructionPlaceholder")}
+              className="min-h-[84px] !rounded-xl text-sm"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {INSTRUCTION_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className="min-h-8 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 text-xs font-medium text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  onClick={() => onInstructionChange(preset)}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>,
+    document.body,
   );
 };
 

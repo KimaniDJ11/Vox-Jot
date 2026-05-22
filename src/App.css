@@ -1512,8 +1512,94 @@ input[type="range"]:disabled::-moz-range-thumb {
   }
 
   .story-audio-player-scroll {
-    padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
-    scroll-padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(11.5rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(11.5rem + env(safe-area-inset-bottom));
+  }
+
+  .story-audio-waveform-hud {
+    transition:
+      border-color 160ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .story-audio-waveform-hud:hover,
+  .story-audio-waveform-hud:focus-within,
+  .story-audio-waveform-hud[data-expanded="true"] {
+    border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+    box-shadow: 0 24px 70px -20px rgba(0, 0, 0, 0.38);
+  }
+
+  .story-audio-waveform-hud__details {
+    max-height: 0;
+    overflow: hidden;
+    border-top: 1px solid transparent;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.35rem);
+    transition:
+      max-height 180ms ease,
+      padding-top 180ms ease,
+      padding-bottom 180ms ease,
+      border-color 180ms ease,
+      opacity 140ms ease,
+      transform 180ms ease;
+  }
+
+  .story-audio-waveform-hud:hover .story-audio-waveform-hud__details,
+  .story-audio-waveform-hud:focus-within .story-audio-waveform-hud__details,
+  .story-audio-waveform-hud[data-expanded="true"]
+    .story-audio-waveform-hud__details {
+    max-height: 8rem;
+    border-top-color: color-mix(in srgb, var(--border) 78%, transparent);
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .story-audio-waveform-hud__floating-title {
+    position: absolute;
+    left: 1rem;
+    bottom: calc(100% + 0.6rem);
+    z-index: 2;
+    width: clamp(8rem, 24vw, 18rem);
+    max-width: calc(100% - 1rem);
+  }
+
+  .story-audio-waveform-hud__floating-controls {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.6rem);
+    z-index: 2;
+    display: flex;
+    max-width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 1100px) {
+    .story-audio-player-scroll {
+      padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
+      scroll-padding-bottom: calc(13.5rem + env(safe-area-inset-bottom));
+    }
+
+    .story-audio-waveform-hud__floating-title {
+      bottom: calc(100% + 3.75rem);
+      width: min(20rem, 100%);
+      max-width: 100%;
+    }
+
+    .story-audio-waveform-hud__floating-controls {
+      left: 0;
+      right: 0;
+      gap: 0.5rem;
+    }
   }
 
   .story-audio-top-scrubber-shell {

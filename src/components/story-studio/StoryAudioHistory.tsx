@@ -11,6 +11,7 @@ import { listen } from "@tauri-apps/api/event";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
   AlertCircle,
+  ChevronDown,
   Check,
   Copy,
   FolderOpen,
@@ -133,6 +134,8 @@ const historyDangerActionButtonClassName =
   "inline-flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
 const historyConfirmDeleteButtonClassName =
   "inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger-soft)_70%,var(--danger)_30%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]";
+const compactAudioSelectClassName =
+  "h-9 max-w-full appearance-none rounded-full border border-[var(--border)] bg-[var(--bg)] py-1.5 pe-8 ps-3 text-[12px] font-semibold text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50";
 
 const storyChipClassName =
   "inline-flex max-w-full min-w-0 items-center rounded-full border border-mid-gray/20 px-2.5 py-1 text-xs font-semibold leading-4 text-[var(--muted)]";
@@ -1158,7 +1161,9 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(item.title || fallbackTitle);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isHudInteracting, setIsHudInteracting] = useState(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const isHudExpanded = isHudInteracting;
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -1193,7 +1198,23 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   };
 
   return (
-    <div className="story-audio-docked-player z-20 mt-auto overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[0_22px_60px_-18px_rgba(0,0,0,0.32)]">
+    <div
+      className="story-audio-docked-player story-audio-waveform-hud z-20 mt-auto overflow-visible rounded-[1.75rem] border border-[var(--border)] bg-[var(--panel-bg)] shadow-[0_22px_60px_-18px_rgba(0,0,0,0.32)]"
+      data-expanded={isHudExpanded ? "true" : "false"}
+      onMouseEnter={() => setIsHudInteracting(true)}
+      onMouseLeave={() => setIsHudInteracting(false)}
+      onFocusCapture={() => setIsHudInteracting(true)}
+      onBlurCapture={(event) => {
+        const nextFocusedElement =
+          event.relatedTarget instanceof Node ? event.relatedTarget : null;
+        if (
+          !nextFocusedElement ||
+          !event.currentTarget.contains(nextFocusedElement)
+        ) {
+          setIsHudInteracting(false);
+        }
+      }}
+    >
       <audio
         ref={audioRef}
         src={audioSrc ?? undefined}
@@ -1204,75 +1225,155 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
         onEnded={onAudioEnded}
       />
 
-      {/* Cassette row */}
-      <div className="flex items-center gap-4 px-4 pt-4">
+      <div className="story-audio-waveform-hud__floating-title">
+        {isEditingTitle ? (
+          <input
+            ref={titleInputRef}
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onBlur={() => void commitTitle()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              } else if (event.key === "Escape") {
+                setDraftTitle(item.title || fallbackTitle);
+                setIsEditingTitle(false);
+              }
+            }}
+            disabled={isRenaming}
+            className="h-9 w-full min-w-0 rounded-full border border-[var(--accent)] bg-[var(--input)] px-3 text-sm font-semibold leading-6 text-[var(--text)] shadow-[var(--shadow-sm)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)] disabled:opacity-70 sm:text-base"
+            aria-label={t("storyAudio.titleAriaLabel")}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsEditingTitle(true)}
+            className="inline-flex h-9 max-w-full items-center truncate rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-start text-sm font-semibold leading-6 text-[var(--text)] shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] sm:text-base"
+            title={t("storyAudio.actions.rename")}
+            aria-label={t("storyAudio.actions.renameWithTitle", {
+              title: item.title || fallbackTitle,
+            })}
+          >
+            <span className="truncate">{item.title || fallbackTitle}</span>
+          </button>
+        )}
+      </div>
+
+      <div className="story-audio-waveform-hud__floating-controls">
+        <PlaybackRatePopover
+          value={playbackRate}
+          options={playbackRateOptions}
+          onChange={onChangePlaybackRate}
+        />
+        <StoryAudioEffectPopover
+          value={audioEffect}
+          onChange={onChangeAudioEffect}
+        />
+        <SampleRatePopover
+          value={sampleRateHz}
+          options={sampleRateOptions}
+          onChange={onChangeSampleRate}
+        />
+        <button
+          type="button"
+          onClick={onSaveProcessed}
+          disabled={isSaving}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
+          title={t("storyAudio.controls.saveProcessedCopy")}
+          aria-label={t("storyAudio.controls.saveProcessedCopy")}
+        >
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {t("storyAudio.controls.saveCopy")}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3 px-3 py-3 sm:px-4">
         <button
           type="button"
           onClick={onTogglePlay}
           disabled={isLoadingAudio}
           aria-label={isPlaying ? t("common.pause") : t("common.play")}
           title={isPlaying ? t("common.pause") : t("common.play")}
-          className={`relative inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--inverse-text)] transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50 disabled:hover:scale-100 ${
+          className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--inverse-text)] transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50 disabled:hover:scale-100 sm:h-14 sm:w-14 ${
             isPlaying
               ? "shadow-[0_14px_36px_-12px_color-mix(in_srgb,var(--accent),transparent_25%)]"
               : "shadow-[0_8px_22px_-10px_color-mix(in_srgb,var(--accent),transparent_45%)]"
           }`}
         >
           {isLoadingAudio ? (
-            <Loader2 className="h-7 w-7 animate-spin" />
+            <Loader2 className="h-6 w-6 animate-spin" />
           ) : isPlaying ? (
-            <Pause className="h-7 w-7" fill="currentColor" />
+            <Pause className="h-6 w-6" fill="currentColor" />
           ) : (
-            <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
+            <Play className="h-6 w-6 translate-x-[1px]" fill="currentColor" />
           )}
         </button>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          {isEditingTitle ? (
-            <input
-              ref={titleInputRef}
-              value={draftTitle}
-              onChange={(event) => setDraftTitle(event.target.value)}
-              onBlur={() => void commitTitle()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.currentTarget.blur();
-                } else if (event.key === "Escape") {
-                  setDraftTitle(item.title || fallbackTitle);
-                  setIsEditingTitle(false);
-                }
-              }}
-              disabled={isRenaming}
-              className="h-7 min-w-0 rounded-md border border-[var(--accent)] bg-[var(--input)] px-2 text-base font-semibold leading-6 text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-glow)] disabled:opacity-70"
-              aria-label={t("storyAudio.titleAriaLabel")}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditingTitle(true)}
-              className="min-w-0 truncate rounded-md text-start text-base font-semibold leading-6 text-[var(--text)] transition-colors hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)]"
-              title={t("storyAudio.actions.rename")}
-              aria-label={t("storyAudio.actions.renameWithTitle", {
-                title: item.title || fallbackTitle,
-              })}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="group/scrub relative flex h-7 cursor-pointer items-center">
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center gap-[2px]"
             >
-              {item.title || fallbackTitle}
-            </button>
-          )}
-          <div className="flex min-w-0 items-center gap-1.5 truncate text-[12px] leading-5 text-[var(--muted)]">
-            <span className="tabular-nums text-[var(--text)]">
-              {formatAudioClock(currentTime)}
-            </span>
-            <span aria-hidden className={storyMetaSeparatorClassName}>
-              /
-            </span>
-            <span className="tabular-nums">
-              {formatAudioClock(duration || item.duration_ms / 1000)}
-            </span>
-            <span aria-hidden className={storyMetaSeparatorClassName}>
-              ·
-            </span>
+              {DOCKED_TICK_HEIGHTS.map((heightPercent, index) => {
+                const tickProgress = ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
+                const isFilled = hasAudio && tickProgress <= progressPercent;
+                return (
+                  <span
+                    key={index}
+                    className="flex-1 rounded-full transition-colors duration-100"
+                    style={{
+                      height: `${heightPercent}%`,
+                      background: isFilled
+                        ? "var(--accent)"
+                        : audioSrc
+                          ? "color-mix(in srgb, var(--muted), transparent 55%)"
+                          : "color-mix(in srgb, var(--muted), transparent 75%)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {hasAudio ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 h-7 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] opacity-0 shadow-[0_2px_8px_color-mix(in_srgb,var(--accent),transparent_55%)] transition-opacity duration-150 group-hover/scrub:opacity-100"
+                style={{ left: `${progressPercent}%` }}
+              />
+            ) : null}
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.01}
+              value={currentTime}
+              onChange={onScrub}
+              disabled={!hasAudio}
+              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
+              aria-label={t("storyAudio.timelineAriaLabel")}
+            />
+          </div>
+        </div>
+
+        <span className="shrink-0 text-[13px] font-semibold tabular-nums leading-5 text-[var(--muted)]">
+          <span className="text-[var(--text)]">
+            {formatAudioClock(currentTime)}
+          </span>
+          <span aria-hidden className="px-1 text-[var(--muted)]">
+            /
+          </span>
+          {formatAudioClock(duration || item.duration_ms / 1000)}
+        </span>
+      </div>
+
+      <div className="story-audio-waveform-hud__details">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
             <span>{formatSampleRate(item.sample_rate_hz || 24_000)}</span>
             {item.audio_effect && item.audio_effect !== "clean" ? (
               <>
@@ -1293,134 +1394,44 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
               </>
             ) : null}
           </div>
-        </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() =>
-              previousItem ? onSelectAudio(previousItem, true) : undefined
-            }
-            disabled={!previousItem}
-            className={historyActionButtonClassName}
-            title={t("storyAudio.actions.previous")}
-            aria-label={t("storyAudio.actions.previous")}
-          >
-            <SkipBack width={16} height={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              nextItem ? onSelectAudio(nextItem, true) : undefined
-            }
-            disabled={!nextItem}
-            className={historyActionButtonClassName}
-            title={t("storyAudio.actions.next")}
-            aria-label={t("storyAudio.actions.next")}
-          >
-            <SkipForward width={16} height={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onReveal(item)}
-            className={historyActionButtonClassName}
-            title={t("storyAudio.actions.showInFolder")}
-            aria-label={t("storyAudio.actions.showInFolder")}
-          >
-            <FolderOpen width={15} height={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* Waveform scrubber */}
-      <div className="px-4 pt-3">
-        <div className="group/scrub relative flex h-7 cursor-pointer items-center">
-          <div
-            aria-hidden
-            className="absolute inset-0 flex items-center gap-[2px]"
-          >
-            {DOCKED_TICK_HEIGHTS.map((heightPercent, index) => {
-              const tickProgress = ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
-              const isFilled = hasAudio && tickProgress <= progressPercent;
-              return (
-                <span
-                  key={index}
-                  className="flex-1 rounded-full transition-colors duration-100"
-                  style={{
-                    height: `${heightPercent}%`,
-                    background: isFilled
-                      ? "var(--accent)"
-                      : audioSrc
-                        ? "color-mix(in srgb, var(--muted), transparent 55%)"
-                        : "color-mix(in srgb, var(--muted), transparent 75%)",
-                  }}
-                />
-              );
-            })}
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() =>
+                previousItem ? onSelectAudio(previousItem, true) : undefined
+              }
+              disabled={!previousItem}
+              className={historyActionButtonClassName}
+              title={t("storyAudio.actions.previous")}
+              aria-label={t("storyAudio.actions.previous")}
+            >
+              <SkipBack width={16} height={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                nextItem ? onSelectAudio(nextItem, true) : undefined
+              }
+              disabled={!nextItem}
+              className={historyActionButtonClassName}
+              title={t("storyAudio.actions.next")}
+              aria-label={t("storyAudio.actions.next")}
+            >
+              <SkipForward width={16} height={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onReveal(item)}
+              className={historyActionButtonClassName}
+              title={t("storyAudio.actions.showInFolder")}
+              aria-label={t("storyAudio.actions.showInFolder")}
+            >
+              <FolderOpen width={15} height={15} />
+            </button>
           </div>
-          {hasAudio ? (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 h-7 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] opacity-0 shadow-[0_2px_8px_color-mix(in_srgb,var(--accent),transparent_55%)] transition-opacity duration-150 group-hover/scrub:opacity-100"
-              style={{ left: `${progressPercent}%` }}
-            />
-          ) : null}
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.01}
-            value={currentTime}
-            onChange={onScrub}
-            disabled={!hasAudio}
-            className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
-            aria-label={t("storyAudio.timelineAriaLabel")}
-          />
         </div>
-      </div>
 
-      {/* Bottom control row: speed, sample rate, effect, save */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-          <span>{t("storyAudio.controls.speed")}</span>
-          <PlaybackRatePopover
-            value={playbackRate}
-            options={playbackRateOptions}
-            onChange={onChangePlaybackRate}
-          />
-        </div>
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-          <span>
-            {t("storyAudio.controls.effect", { defaultValue: "Effect" })}
-          </span>
-          <StoryAudioEffectPopover
-            value={audioEffect}
-            onChange={onChangeAudioEffect}
-          />
-        </div>
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-          <span>{t("storyAudio.controls.saveAs")}</span>
-          <SampleRatePopover
-            value={sampleRateHz}
-            options={sampleRateOptions}
-            onChange={onChangeSampleRate}
-          />
-          <button
-            type="button"
-            onClick={onSaveProcessed}
-            disabled={isSaving}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
-            title={t("storyAudio.controls.saveProcessedCopy")}
-            aria-label={t("storyAudio.controls.saveProcessedCopy")}
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Save className="h-3.5 w-3.5" aria-hidden />
-            )}
-            {t("storyAudio.controls.saveCopy")}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -1431,28 +1442,19 @@ const PlaybackRatePopover: React.FC<{
   options: number[];
   onChange: (value: number) => void;
 }> = ({ value, options, onChange }) => {
+  const { t } = useTranslation();
+
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--bg)] p-0.5">
-      {options.map((option) => {
-        const isActive = option === value;
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-            aria-pressed={isActive}
-            className={`min-w-[2.6rem] rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums normal-case tracking-normal transition-colors ${
-              isActive
-                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-            }`}
-            title={`${formatPlaybackRate(option)} playback speed`}
-          >
-            {formatPlaybackRate(option)}
-          </button>
-        );
-      })}
-    </div>
+    <CompactAudioSelect
+      ariaLabel={t("storyAudio.controls.speed", { defaultValue: "Speed" })}
+      value={String(value)}
+      options={options.map((option) => ({
+        value: String(option),
+        label: formatPlaybackRate(option),
+      }))}
+      onChange={(nextValue) => onChange(Number.parseFloat(nextValue))}
+      className="w-[5.5rem]"
+    />
   );
 };
 
@@ -1461,28 +1463,19 @@ const SampleRatePopover: React.FC<{
   options: number[];
   onChange: (value: number) => void;
 }> = ({ value, options, onChange }) => {
+  const { t } = useTranslation();
+
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--bg)] p-0.5">
-      {options.map((option) => {
-        const isActive = option === value;
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-            aria-pressed={isActive}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums normal-case tracking-normal transition-colors ${
-              isActive
-                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-            }`}
-            title={`Save at ${formatSampleRate(option)}`}
-          >
-            {formatSampleRate(option)}
-          </button>
-        );
-      })}
-    </div>
+    <CompactAudioSelect
+      ariaLabel={t("storyAudio.controls.saveAs", { defaultValue: "Save as" })}
+      value={String(value)}
+      options={options.map((option) => ({
+        value: String(option),
+        label: formatSampleRate(option),
+      }))}
+      onChange={(nextValue) => onChange(Number.parseInt(nextValue, 10))}
+      className="w-[6.75rem]"
+    />
   );
 };
 
@@ -1490,28 +1483,50 @@ const StoryAudioEffectPopover: React.FC<{
   value: StoryAudioEffectPreset;
   onChange: (value: StoryAudioEffectPreset) => void;
 }> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+
   return (
-    <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--bg)] p-0.5">
-      {storyAudioEffectOptions.map((option) => {
-        const isActive = option === value;
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-            aria-pressed={isActive}
-            className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold normal-case tracking-normal transition-colors ${
-              isActive
-                ? "bg-[var(--accent)] text-[var(--inverse-text)] shadow-sm"
-                : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
-            }`}
-            title={`Save with ${formatStoryAudioEffect(option)}`}
-          >
-            {formatStoryAudioEffect(option)}
-          </button>
-        );
-      })}
-    </div>
+    <CompactAudioSelect
+      ariaLabel={t("storyAudio.controls.effect", { defaultValue: "Effect" })}
+      value={value}
+      options={storyAudioEffectOptions.map((option) => ({
+        value: option,
+        label: formatStoryAudioEffect(option),
+      }))}
+      onChange={(nextValue) => onChange(nextValue as StoryAudioEffectPreset)}
+      className="w-[8.75rem]"
+    />
+  );
+};
+
+const CompactAudioSelect: React.FC<{
+  ariaLabel: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  className?: string;
+}> = ({ ariaLabel, value, options, onChange, className = "" }) => {
+  return (
+    <label className={`relative inline-flex max-w-full ${className}`}>
+      <span className="sr-only">{ariaLabel}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`${compactAudioSelectClassName} w-full`}
+        aria-label={ariaLabel}
+        title={ariaLabel}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden
+        className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]"
+      />
+    </label>
   );
 };
 

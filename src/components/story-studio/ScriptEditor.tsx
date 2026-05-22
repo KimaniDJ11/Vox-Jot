@@ -25,6 +25,7 @@ export interface ScriptEditorHandle {
 interface ScriptEditorProps {
   value: string;
   disabled?: boolean;
+  headerAction?: React.ReactNode;
   onChange: (value: string) => void;
   onCursorChange?: (selection: ScriptTextSelection) => void;
 }
@@ -38,7 +39,10 @@ const HISTORY_LIMIT = 150;
 const HISTORY_DEBOUNCE_MS = 400;
 
 export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
-  ({ value, disabled = false, onChange, onCursorChange }, ref) => {
+  (
+    { value, disabled = false, headerAction, onChange, onCursorChange },
+    ref,
+  ) => {
     const { t } = useTranslation();
     const editorRef = useRef<HTMLDivElement | null>(null);
     const latestValueRef = useRef(value);
@@ -582,14 +586,21 @@ export const ScriptEditor = forwardRef<ScriptEditorHandle, ScriptEditorProps>(
     };
 
     return (
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--text)]">
-            {scriptTitle}
-          </h3>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {scriptDescription}
-          </p>
+      <section className="w-full space-y-3">
+        <div className="flex w-full items-start gap-2">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[var(--text)]">
+              {scriptTitle}
+            </h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              {scriptDescription}
+            </p>
+          </div>
+          {headerAction ? (
+            <div className="ml-auto shrink-0">
+              {headerAction}
+            </div>
+          ) : null}
         </div>
         <div
           ref={editorRef}

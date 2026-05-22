@@ -641,7 +641,17 @@
       "license": "Apache-2.0 / voice-pack upstream licenses",
       "commercial_status": "allowed_with_notice",
       "required_notices": ["license_text", "model_attribution", "source_link"],
-      "catalog_ids": ["tts-sherpa-en-us-lessac-medium", "tts-sherpa-zh-cn-melo"]
+      "catalog_ids": [
+        "tts-sherpa-en-us-lessac-medium",
+        "tts-sherpa-zh-cn-melo",
+        "tts-sherpa-de-de-thorsten-medium",
+        "tts-sherpa-en-gb-alan-medium",
+        "tts-sherpa-en-us-amy-medium",
+        "tts-sherpa-es-es-davefx-medium",
+        "tts-sherpa-fr-fr-siwis-medium",
+        "tts-sherpa-it-it-paola-medium",
+        "tts-sherpa-pt-br-faber-medium"
+      ]
     },
     {
       "id": "pp-ocrv5",

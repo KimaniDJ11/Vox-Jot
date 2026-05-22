@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    Vox Jot — Recording Overlay
-   Detailed: 234 × 44 px  |  Compact: 140 × 38 px
+   Detailed: 234 × 44 px  |  Compact: 80 × 28 px
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -14,6 +14,27 @@
   --ov-cancel-hover: var(--danger-soft, rgba(226, 130, 130, 0.2));
   --ov-cancel: var(--danger, #e28282);
   --ov-radius: 14px;
+}
+
+/* ---------- accessibility & helper utilities ----------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
 }
 
 /* ---------- overlay container -------------------------------- */

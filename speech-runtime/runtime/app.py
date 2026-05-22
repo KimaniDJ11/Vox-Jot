@@ -77,6 +77,10 @@ def engine_for_model(model_id: str) -> EngineSpec | None:
 
 
 def engine_for_request(provider_id: str | None = None, model_id: str | None = None) -> EngineSpec | None:
+    if provider_id and model_id:
+        for spec in ENGINE_SPECS:
+            if spec.provider_id == provider_id and spec.model_id == model_id:
+                return spec
     if model_id:
         spec = engine_for_model(model_id)
         if spec is not None:
@@ -84,6 +88,15 @@ def engine_for_request(provider_id: str | None = None, model_id: str | None = No
     if provider_id:
         return engine_for_provider(provider_id)
     return None
+
+
+def engine_supports_voice_conversion(spec: EngineSpec) -> bool:
+    return (spec.provider_id, spec.model_id) in {
+        ("openvoice", "openvoice"),
+        ("chatterbox", "chatterbox"),
+        ("chatterbox", "chatterbox-turbo"),
+        ("chatterbox", "chatterbox-multilingual"),
+    }
 
 
 def load_profile(profile_id: str | None) -> tuple[str | None, str | None]:
@@ -335,7 +348,7 @@ async def audio_voice_conversion(body: VoiceConversionRequest) -> Response:
     spec = engine_for_request(body.provider_id, body.model)
     if spec is None:
         raise HTTPException(status_code=400, detail="No voice changer model is selected.")
-    if spec.provider_id != "openvoice":
+    if not engine_supports_voice_conversion(spec):
         raise HTTPException(status_code=400, detail=f"{spec.label} does not support voice changing.")
 
     model_dir = discover_model(spec)

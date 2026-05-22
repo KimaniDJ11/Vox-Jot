@@ -12,11 +12,15 @@ export async function convertVoiceSample(
   sourcePath: string,
   profileId: string,
   tau: number,
+  providerId: string,
+  modelId: string,
 ): Promise<VoiceChangerResult> {
   return invoke("convert_voice_sample", {
     sourcePath,
     profileId,
     tau,
+    providerId,
+    modelId,
   });
 }
 
@@ -24,10 +28,14 @@ export async function convertVoiceRecording(
   wavBytes: number[],
   profileId: string,
   tau: number,
+  providerId: string,
+  modelId: string,
 ): Promise<VoiceChangerResult> {
   return invoke("convert_voice_recording", {
     wavBytes,
     profileId,
     tau,
+    providerId,
+    modelId,
   });
 }

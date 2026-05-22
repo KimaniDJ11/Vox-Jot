@@ -156,6 +156,7 @@ class EngineWorker:
         self.profiles_dir = profiles_dir
         self.device = None
         self.engine = None
+        self.voice_converter = None
 
     def warm(self) -> None:
         self._ensure_engine()
@@ -178,10 +179,12 @@ class EngineWorker:
         return output_path
 
     def convert_voice(self, payload: dict[str, Any]) -> Path:
-        self._ensure_engine()
         output_path = Path(tempfile.gettempdir()) / f"vox-jot-voice-converter-{self.provider_id}-{os.getpid()}-{next(tempfile._get_candidate_names())}.wav"
         if self.provider_id == "openvoice":
+            self._ensure_engine()
             self._convert_openvoice(payload, output_path)
+        elif self.provider_id == "chatterbox":
+            self._convert_chatterbox(payload, output_path)
         else:
             raise RuntimeError(f"Voice changing is not supported by provider '{self.provider_id}'.")
         return output_path
@@ -397,6 +400,34 @@ class EngineWorker:
             if self._is_chatterbox_turbo_root(candidate) or self._is_chatterbox_base_root(candidate):
                 return candidate
         raise RuntimeError("Chatterbox checkpoints are missing.")
+
+    def _chatterbox_voice_converter_root(self) -> Path:
+        candidates = (
+            self._chatterbox_checkpoint_root(),
+            self.model_dir / "checkpoints" / "base",
+            self.model_dir / "checkpoints" / "turbo",
+            self.model_dir / "checkpoints" / "multilingual",
+            self.model_dir / "chatterbox",
+            self.model_dir / "chatterbox-turbo",
+            self.model_dir / "chatterbox-multilingual",
+            self.model_dir,
+        )
+        for candidate in candidates:
+            if (candidate / "s3gen.safetensors").exists() and (candidate / "conds.pt").exists():
+                return candidate
+        raise RuntimeError("Chatterbox voice conversion checkpoints are missing.")
+
+    def _ensure_chatterbox_voice_converter(self):
+        if self.voice_converter is not None:
+            return
+        if self.device is None:
+            self.device = detect_device()
+        from chatterbox.vc import ChatterboxVC
+
+        self.voice_converter = ChatterboxVC.from_local(
+            self._chatterbox_voice_converter_root(),
+            self.device,
+        )
 
     def _chatterbox_language_id(self, locale: str | None) -> str:
         language = (locale or "en").strip().lower().replace("_", "-")
@@ -792,6 +823,30 @@ class EngineWorker:
                         if key in convert_signature.parameters
                     }
                 )
+
+    def _convert_chatterbox(self, payload: dict[str, Any], output_path: Path) -> None:
+        import numpy as np
+
+        source_audio = payload.get("source_audio_path")
+        target_audio = payload.get("target_audio_path")
+        if not source_audio:
+            raise RuntimeError("Voice changer source audio is missing.")
+        if not target_audio:
+            raise RuntimeError("Voice changer target profile audio is missing.")
+        if not Path(source_audio).exists():
+            raise RuntimeError(f"Voice changer source audio was not found: {source_audio}")
+        if not Path(target_audio).exists():
+            raise RuntimeError(f"Voice changer target audio was not found: {target_audio}")
+
+        self._ensure_chatterbox_voice_converter()
+        converter = self.voice_converter
+        wav = converter.generate(
+            audio=source_audio,
+            target_voice_path=target_audio,
+        )
+        if hasattr(wav, "detach"):
+            wav = wav.detach().cpu().numpy()
+        write_wav(output_path, np.asarray(wav).reshape(-1), converter.sr)
 
 
 def parse_args() -> argparse.Namespace:

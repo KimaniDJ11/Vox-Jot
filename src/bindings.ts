@@ -1119,17 +1119,17 @@ async getVoiceProfileProgress(profileId: string) : Promise<Result<TtsVoiceProfil
     else return { status: "error", error: e  as any };
 }
 },
-async convertVoiceSample(sourcePath: string, profileId: string, tau: number | null) : Promise<Result<VoiceChangerResult, string>> {
+async convertVoiceSample(sourcePath: string, profileId: string, tau: number | null, providerId: string | null, modelId: string | null) : Promise<Result<VoiceChangerResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("convert_voice_sample", { sourcePath, profileId, tau }) };
+    return { status: "ok", data: await TAURI_INVOKE("convert_voice_sample", { sourcePath, profileId, tau, providerId, modelId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async convertVoiceRecording(wavBytes: number[], profileId: string, tau: number | null) : Promise<Result<VoiceChangerResult, string>> {
+async convertVoiceRecording(wavBytes: number[], profileId: string, tau: number | null, providerId: string | null, modelId: string | null) : Promise<Result<VoiceChangerResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("convert_voice_recording", { wavBytes, profileId, tau }) };
+    return { status: "ok", data: await TAURI_INVOKE("convert_voice_recording", { wavBytes, profileId, tau, providerId, modelId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

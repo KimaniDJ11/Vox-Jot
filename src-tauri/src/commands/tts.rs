@@ -508,9 +508,11 @@ pub async fn convert_voice_sample(
     source_path: String,
     profile_id: String,
     tau: Option<f32>,
+    provider_id: Option<String>,
+    model_id: Option<String>,
 ) -> Result<VoiceChangerResult, String> {
     let source = PathBuf::from(source_path.trim());
-    convert_voice_source(app, source, profile_id, tau).await
+    convert_voice_source(app, source, profile_id, tau, provider_id, model_id).await
 }
 
 #[tauri::command]
@@ -520,6 +522,8 @@ pub async fn convert_voice_recording(
     wav_bytes: Vec<u8>,
     profile_id: String,
     tau: Option<f32>,
+    provider_id: Option<String>,
+    model_id: Option<String>,
 ) -> Result<VoiceChangerResult, String> {
     if wav_bytes.is_empty() {
         return Err("No microphone audio was captured.".to_string());
@@ -538,7 +542,47 @@ pub async fn convert_voice_recording(
     std::fs::write(&source, wav_bytes)
         .map_err(|err| format!("Failed to save microphone recording: {err}"))?;
 
-    convert_voice_source(app, source, profile_id, tau).await
+    convert_voice_source(app, source, profile_id, tau, provider_id, model_id).await
+}
+
+fn resolve_voice_changer_model(
+    provider_id: Option<String>,
+    model_id: Option<String>,
+) -> Result<(String, String), String> {
+    let requested_model_id = model_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let provider_id = provider_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or({
+            if matches!(
+                requested_model_id,
+                Some("chatterbox" | "chatterbox-turbo" | "chatterbox-multilingual")
+            ) {
+                "chatterbox"
+            } else {
+                "openvoice"
+            }
+        });
+    let model_id = requested_model_id.unwrap_or(provider_id);
+
+    let supported = matches!(
+        (provider_id, model_id),
+        ("openvoice", "openvoice")
+            | ("chatterbox", "chatterbox")
+            | ("chatterbox", "chatterbox-turbo")
+            | ("chatterbox", "chatterbox-multilingual")
+    );
+    if !supported {
+        return Err(format!(
+            "{provider_id}/{model_id} does not support Voice Changer audio conversion."
+        ));
+    }
+
+    Ok((provider_id.to_string(), model_id.to_string()))
 }
 
 async fn convert_voice_source(
@@ -546,6 +590,8 @@ async fn convert_voice_source(
     source: PathBuf,
     profile_id: String,
     tau: Option<f32>,
+    provider_id: Option<String>,
+    model_id: Option<String>,
 ) -> Result<VoiceChangerResult, String> {
     if !source.exists() {
         return Err(format!("Source audio file not found: {}", source.display()));
@@ -560,10 +606,11 @@ async fn convert_voice_source(
         return Err("Voice Changer currently accepts WAV source audio.".to_string());
     }
 
+    let (provider_id, model_id) = resolve_voice_changer_model(provider_id, model_id)?;
     let profile = resolve_voice_profile(&app, &profile_id)?;
     let _model_use_guard = app
         .try_state::<Arc<TtsManager>>()
-        .map(|manager| manager.track_model_use(Some("openvoice")));
+        .map(|manager| manager.track_model_use(Some(model_id.as_str())));
     let sidecar = app
         .try_state::<Arc<crate::sidecar::SidecarManager>>()
         .ok_or_else(|| "Speech runtime manager is not available.".to_string())?;
@@ -579,8 +626,8 @@ async fn convert_voice_source(
         .map_err(|err| format!("Failed to create voice changer client: {err}"))?;
     let request_payload = serde_json::json!({
         "source_audio_path": source.to_string_lossy(),
-        "provider_id": "openvoice",
-        "model": "openvoice",
+        "provider_id": provider_id.clone(),
+        "model": model_id.clone(),
         "profile_id": profile_id,
         "tau": tau.unwrap_or(0.3).clamp(0.0, 1.0),
     });
@@ -638,7 +685,7 @@ async fn convert_voice_source(
         source_path: source.to_string_lossy().to_string(),
         output_path: output_path.to_string_lossy().to_string(),
         target_profile_label: profile.label,
-        provider_id: "openvoice".to_string(),
-        model_id: "openvoice".to_string(),
+        provider_id,
+        model_id,
     })
 }

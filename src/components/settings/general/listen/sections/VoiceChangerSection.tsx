@@ -5,25 +5,42 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
   FileAudio,
   Keyboard,
+  Layers,
   Loader2,
   Mic,
   Square,
   WandSparkles,
+  X,
 } from "lucide-react";
 
-import { commands } from "@/bindings";
+import { commands, type TtsPackInfo } from "@/bindings";
 import { convertVoiceRecording, convertVoiceSample } from "@/lib/voiceChanger";
 import { Button } from "@/components/ui/Button";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SettingsGroup } from "@/components/ui/SettingsGroup";
+import {
+  ProviderIcon,
+  resolveModelProviderId,
+} from "@/components/ui/ProviderIcon";
+import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
+import { modal } from "@/motion/springs";
 import type { ListenSpeechState } from "../useListenSpeechState";
-import { WorkflowStatusStrip } from "../sharedComponents";
+import { DraftVoiceModelLibraryCard } from "../sharedComponents";
+import {
+  DEFAULT_VOICE_CHANGER_MODEL,
+  findVoiceChangerModel,
+  isVoiceChangerCapableModel,
+  type VoiceChangerModelSelection,
+  voiceChangerModelKey,
+} from "../voiceChangerModels";
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/);
@@ -45,6 +62,51 @@ function errorToMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function modelInstalled(
+  model: CatalogModelDescriptor | null,
+  packs: TtsPackInfo[],
+) {
+  if (!model) return false;
+  return Boolean(
+    model.installed ||
+    model.runnable ||
+    packs.find((pack) => pack.id === model.id)?.installed,
+  );
+}
+
+function readVoiceChangerDraft(): VoiceChangerModelSelection {
+  if (typeof window === "undefined") return DEFAULT_VOICE_CHANGER_MODEL;
+  try {
+    const raw = window.localStorage.getItem("vox-jot-voice-changer-draft-v1");
+    if (!raw) return DEFAULT_VOICE_CHANGER_MODEL;
+    const draft = JSON.parse(raw) as Partial<VoiceChangerModelSelection>;
+    if (
+      typeof draft.providerId === "string" &&
+      typeof draft.modelId === "string"
+    ) {
+      return {
+        providerId: draft.providerId,
+        modelId: draft.modelId,
+      };
+    }
+  } catch (error) {
+    console.warn("Failed to read Voice Changer draft:", error);
+  }
+  return DEFAULT_VOICE_CHANGER_MODEL;
+}
+
+function writeVoiceChangerDraft(selection: VoiceChangerModelSelection) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      "vox-jot-voice-changer-draft-v1",
+      JSON.stringify(selection),
+    );
+  } catch (error) {
+    console.warn("Failed to store Voice Changer draft:", error);
+  }
+}
+
 type WaitPhase = "download" | "prepare" | "finalize" | "convert" | "loadOutput";
 
 export const VoiceChangerSection: React.FC<{
@@ -56,20 +118,39 @@ export const VoiceChangerSection: React.FC<{
     () => speech.profiles.filter((profile) => profile.ready),
     [speech.profiles],
   );
-  const openVoicePack = speech.packs.find((pack) => pack.id === "openvoice");
-  const openVoiceModel = speech.allModels.find(
-    (model) => model.provider_id === "openvoice" && model.id === "openvoice",
+  const initialVoiceChangerDraft = useMemo(readVoiceChangerDraft, []);
+  const voiceChangerModels = useMemo(
+    () => speech.visibleModels.filter(isVoiceChangerCapableModel),
+    [speech.visibleModels],
   );
-  const openVoiceInstalled = Boolean(
-    openVoicePack?.installed ||
-    openVoiceModel?.installed ||
-    openVoiceModel?.runnable,
+  const [draftProviderId, setDraftProviderId] = useState(
+    initialVoiceChangerDraft.providerId,
   );
+  const [draftModelId, setDraftModelId] = useState(
+    initialVoiceChangerDraft.modelId,
+  );
+  const selectedVoiceChangerModel = useMemo(
+    () =>
+      findVoiceChangerModel(voiceChangerModels, {
+        providerId: draftProviderId,
+        modelId: draftModelId,
+      }),
+    [draftModelId, draftProviderId, voiceChangerModels],
+  );
+  const selectedVoiceChangerInstalled = modelInstalled(
+    selectedVoiceChangerModel,
+    speech.packs,
+  );
+  const selectedVoiceChangerProvider =
+    speech.visibleProviders.find(
+      (provider) => provider.id === selectedVoiceChangerModel?.provider_id,
+    ) ?? null;
   const [sourcePath, setSourcePath] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [tau, setTau] = useState(0.3);
   const [isConverting, setIsConverting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [waitPhase, setWaitPhase] = useState<WaitPhase | null>(null);
   const [waitStartedAt, setWaitStartedAt] = useState<number | null>(null);
@@ -87,6 +168,24 @@ export const VoiceChangerSection: React.FC<{
     }
     setSelectedProfileId(readyProfiles[0]?.id ?? "");
   }, [readyProfiles, selectedProfileId]);
+
+  useEffect(() => {
+    if (voiceChangerModels.length === 0) return;
+    if (selectedVoiceChangerModel) return;
+    const fallback =
+      findVoiceChangerModel(voiceChangerModels, DEFAULT_VOICE_CHANGER_MODEL) ??
+      voiceChangerModels[0];
+    if (!fallback) return;
+    setDraftProviderId(fallback.provider_id);
+    setDraftModelId(fallback.id);
+  }, [selectedVoiceChangerModel, voiceChangerModels]);
+
+  useEffect(() => {
+    writeVoiceChangerDraft({
+      providerId: draftProviderId,
+      modelId: draftModelId,
+    });
+  }, [draftModelId, draftProviderId]);
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
@@ -174,29 +273,60 @@ export const VoiceChangerSection: React.FC<{
     setStatus(null);
   }, [clearOutput, isRecording]);
 
-  const ensureOpenVoice = useCallback(async () => {
-    if (openVoiceInstalled) return;
+  const ensureVoiceChangerModel = useCallback(async () => {
+    const model = selectedVoiceChangerModel;
+    if (!model) {
+      throw new Error(
+        t("listen.voiceChanger.noVoiceChangerModel", {
+          defaultValue: "No voice changer model is available.",
+        }),
+      );
+    }
+    if (selectedVoiceChangerInstalled) return;
+    if (!model.downloadable) {
+      throw new Error(
+        t("listen.voiceChanger.modelNotReady", {
+          defaultValue: "{{modelLabel}} is not ready for voice changing.",
+          modelLabel: model.label,
+        }),
+      );
+    }
     beginWait(
       "download",
-      t("listen.voiceChanger.downloadingOpenVoice", {
-        defaultValue: "Preparing OpenVoice for offline voice changing.",
+      t("listen.voiceChanger.downloadingModel", {
+        defaultValue: "Preparing {{modelLabel}} for offline voice changing.",
+        modelLabel: model.label,
       }),
     );
-    const result = await commands.downloadTtsPack("openvoice");
+    const result = await commands.downloadTtsPack(model.id);
     if (result.status === "error") {
       throw new Error(result.error);
     }
     await speech.refreshAll();
     throw new Error(
-      t("listen.voiceChanger.openVoiceDownloadStarted", {
+      t("listen.voiceChanger.modelDownloadStarted", {
         defaultValue:
-          "OpenVoice download started. Try the conversion again after it finishes.",
+          "{{modelLabel}} download started. Try the conversion again after it finishes.",
+        modelLabel: model.label,
       }),
     );
-  }, [beginWait, openVoiceInstalled, speech, t]);
+  }, [
+    beginWait,
+    selectedVoiceChangerInstalled,
+    selectedVoiceChangerModel,
+    speech,
+    t,
+  ]);
 
   const runConversion = useCallback(async () => {
-    if (!sourcePath || !selectedProfileId || isConverting || isRecording)
+    const model = selectedVoiceChangerModel;
+    if (
+      !sourcePath ||
+      !selectedProfileId ||
+      !model ||
+      isConverting ||
+      isRecording
+    )
       return;
     setIsConverting(true);
     beginWait(
@@ -206,7 +336,7 @@ export const VoiceChangerSection: React.FC<{
       }),
     );
     try {
-      await ensureOpenVoice();
+      await ensureVoiceChangerModel();
       beginWait(
         "convert",
         t("listen.voiceChanger.converting", {
@@ -217,6 +347,8 @@ export const VoiceChangerSection: React.FC<{
         sourcePath,
         selectedProfileId,
         tau,
+        model.provider_id,
+        model.id,
       );
       beginWait(
         "loadOutput",
@@ -241,18 +373,25 @@ export const VoiceChangerSection: React.FC<{
   }, [
     applyConversionResult,
     beginWait,
-    ensureOpenVoice,
+    ensureVoiceChangerModel,
     finishWait,
     isConverting,
     isRecording,
     selectedProfileId,
+    selectedVoiceChangerModel,
     sourcePath,
     t,
     tau,
   ]);
 
   const startMicCapture = useCallback(async () => {
-    if (!selectedProfileId || isConverting || isRecording) return;
+    if (
+      !selectedProfileId ||
+      !selectedVoiceChangerModel ||
+      isConverting ||
+      isRecording
+    )
+      return;
     try {
       clearOutput();
       setSourcePath("");
@@ -276,10 +415,18 @@ export const VoiceChangerSection: React.FC<{
         ),
       );
     }
-  }, [clearOutput, isConverting, isRecording, selectedProfileId, t]);
+  }, [
+    clearOutput,
+    isConverting,
+    isRecording,
+    selectedProfileId,
+    selectedVoiceChangerModel,
+    t,
+  ]);
 
   const stopMicCaptureAndConvert = useCallback(async () => {
     if (!isRecording || isConverting) return;
+    const model = selectedVoiceChangerModel;
     setIsRecording(false);
     setIsConverting(true);
     beginWait(
@@ -300,7 +447,14 @@ export const VoiceChangerSection: React.FC<{
           }),
         );
       }
-      await ensureOpenVoice();
+      if (!model) {
+        throw new Error(
+          t("listen.voiceChanger.noVoiceChangerModel", {
+            defaultValue: "No voice changer model is available.",
+          }),
+        );
+      }
+      await ensureVoiceChangerModel();
       beginWait(
         "convert",
         t("listen.voiceChanger.converting", {
@@ -311,6 +465,8 @@ export const VoiceChangerSection: React.FC<{
         captureResult.data,
         selectedProfileId,
         tau,
+        model.provider_id,
+        model.id,
       );
       beginWait(
         "loadOutput",
@@ -335,11 +491,12 @@ export const VoiceChangerSection: React.FC<{
   }, [
     applyConversionResult,
     beginWait,
-    ensureOpenVoice,
+    ensureVoiceChangerModel,
     finishWait,
     isConverting,
     isRecording,
     selectedProfileId,
+    selectedVoiceChangerModel,
     t,
     tau,
   ]);
@@ -377,10 +534,60 @@ export const VoiceChangerSection: React.FC<{
     [toggleMicCapture],
   );
 
+  const selectedVoiceChangerLabel =
+    selectedVoiceChangerModel?.label ??
+    t("listen.voiceChanger.noModelSelected", {
+      defaultValue: "No model selected",
+    });
+  const selectedVoiceChangerMeta = [
+    selectedVoiceChangerProvider?.label,
+    selectedVoiceChangerModel?.runtime.label,
+    selectedVoiceChangerModel
+      ? selectedVoiceChangerInstalled
+        ? t("listen.voiceChanger.modelReady", {
+            defaultValue: "Ready",
+          })
+        : t("listen.voiceChanger.modelInstallsOnConvert", {
+            defaultValue: "Installs on convert",
+          })
+      : t("listen.voiceChanger.chooseModel", {
+          defaultValue: "Choose a model",
+        }),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+  const sourceStatusLabel = sourcePath
+    ? t("listen.voiceChanger.sourceReadyShort", {
+        defaultValue: "Source ready",
+      })
+    : t("listen.voiceChanger.needsSourceShort", {
+        defaultValue: "Add source",
+      });
+  const sourceStatusDetail = sourcePath
+    ? basename(sourcePath)
+    : t("listen.voiceChanger.noAudioSelected", {
+        defaultValue: "No audio selected",
+      });
+  const selectedVoiceChangerIconId = selectedVoiceChangerModel
+    ? resolveModelProviderId(
+        `${selectedVoiceChangerModel.label} ${selectedVoiceChangerModel.id}`,
+        selectedVoiceChangerModel.provider_id,
+      )
+    : null;
+  const toneBlendPercent = Math.min(100, Math.max(0, tau * 100));
+  const toneBlendSliderStyle = {
+    "--slider-bg": `linear-gradient(to right, color-mix(in srgb, var(--accent), var(--card) 52%) ${toneBlendPercent}%, var(--card) ${toneBlendPercent}%)`,
+  } as React.CSSProperties;
   const canConvert = Boolean(
-    sourcePath && selectedProfileId && !isConverting && !isRecording,
+    sourcePath &&
+    selectedProfileId &&
+    selectedVoiceChangerModel &&
+    !isConverting &&
+    !isRecording,
   );
-  const canRecord = Boolean(selectedProfileId && !isConverting);
+  const canRecord = Boolean(
+    selectedProfileId && selectedVoiceChangerModel && !isConverting,
+  );
   const waitDetail = useMemo(() => {
     if (!waitPhase) return null;
     if (waitPhase === "download") {
@@ -391,7 +598,8 @@ export const VoiceChangerSection: React.FC<{
           })
         : t("listen.voiceChanger.wait.downloadStillWorking", {
             defaultValue:
-              "Still preparing OpenVoice. First setup can take a while.",
+              "Still preparing {{modelLabel}}. First setup can take a while.",
+            modelLabel: selectedVoiceChangerLabel,
           });
     }
     if (waitPhase === "prepare") {
@@ -412,7 +620,8 @@ export const VoiceChangerSection: React.FC<{
     }
     if (elapsedSeconds < 4) {
       return t("listen.voiceChanger.wait.convertWarmup", {
-        defaultValue: "Loading OpenVoice and warming up the converter.",
+        defaultValue: "Loading {{modelLabel}} and warming up the converter.",
+        modelLabel: selectedVoiceChangerLabel,
       });
     }
     if (elapsedSeconds < 10) {
@@ -430,116 +639,233 @@ export const VoiceChangerSection: React.FC<{
       defaultValue:
         "Still working. Longer clips and first runs can take extra time.",
     });
-  }, [elapsedSeconds, t, waitPhase]);
-  const voiceChangerWorkflowSteps = [
-    {
-      id: "runtime",
-      label: t("listen.voiceChanger.workflow.runtime", {
-        defaultValue: "Runtime",
-      }),
-      detail: waitPhase
-        ? (status ?? null)
-        : openVoiceInstalled
-          ? t("listen.voiceChanger.workflow.runtimeReady", {
-              defaultValue: "OpenVoice ready",
-            })
-          : t("listen.voiceChanger.workflow.runtimeWillInstall", {
-              defaultValue: "Installs on first convert",
-            }),
-      tone: waitPhase
-        ? ("active" as const)
-        : openVoiceInstalled
-          ? ("ready" as const)
-          : ("pending" as const),
+  }, [elapsedSeconds, selectedVoiceChangerLabel, t, waitPhase]);
+  const selectedVoiceChangerKey = selectedVoiceChangerModel
+    ? voiceChangerModelKey(
+        selectedVoiceChangerModel.provider_id,
+        selectedVoiceChangerModel.id,
+      )
+    : "";
+  const handleSelectVoiceChangerModel = useCallback(
+    (model: CatalogModelDescriptor) => {
+      setDraftProviderId(model.provider_id);
+      setDraftModelId(model.id);
+      setModelPickerOpen(false);
+      clearOutput();
+      setStatus(null);
     },
-    {
-      id: "source",
-      label: t("listen.voiceChanger.workflow.source", {
-        defaultValue: "Source",
-      }),
-      detail: sourcePath
-        ? basename(sourcePath)
-        : isRecording
-          ? t("listen.voiceChanger.workflow.recording", {
-              defaultValue: "Recording microphone",
-            })
-          : t("listen.voiceChanger.workflow.needsSource", {
-              defaultValue: "Record mic or choose WAV",
-            }),
-      tone:
-        sourcePath || isRecording ? ("ready" as const) : ("pending" as const),
-    },
-    {
-      id: "target",
-      label: t("listen.voiceChanger.workflow.target", {
-        defaultValue: "Target profile",
-      }),
-      detail:
-        readyProfiles.find((profile) => profile.id === selectedProfileId)
-          ?.label ??
-        t("listen.voiceChanger.noReadyProfiles", {
-          defaultValue: "No ready profiles",
-        }),
-      tone: selectedProfileId ? ("ready" as const) : ("warning" as const),
-    },
-  ];
+    [clearOutput],
+  );
+
+  const modelHubWindow = createPortal(
+    <AnimatePresence>
+      {modelPickerOpen ? (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          onClick={() => setModelPickerOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setModelPickerOpen(false);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="voice-changer-model-hub-title"
+            className="relative flex max-h-[min(88vh,920px)] w-full max-w-[980px] flex-col overflow-hidden rounded-2xl border border-[var(--ring-hairline)] bg-[var(--panel-bg)] shadow-[0_24px_64px_rgba(0,0,0,0.38)]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
+            transition={modal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0">
+                <h3
+                  id="voice-changer-model-hub-title"
+                  className="truncate text-sm font-semibold text-[var(--text)]"
+                >
+                  {t("listen.voiceChanger.modelHubTitle", {
+                    defaultValue: "Voice Changer Model Hub",
+                  })}
+                </h3>
+                <p className="truncate text-xs text-[var(--muted)]">
+                  {t("listen.voiceChanger.modelPickerDetail", {
+                    defaultValue:
+                      "Only audio-to-audio voice conversion models are shown. This draft selection does not change the active app voice.",
+                  })}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setModelPickerOpen(false)}
+                aria-label={t("common.close", { defaultValue: "Close" })}
+                title={t("common.close", { defaultValue: "Close" })}
+              >
+                <X aria-hidden />
+              </Button>
+            </div>
+
+            <div className="overflow-y-auto p-4">
+              {voiceChangerModels.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {voiceChangerModels.map((model) => {
+                    const modelKey = voiceChangerModelKey(
+                      model.provider_id,
+                      model.id,
+                    );
+                    return (
+                      <DraftVoiceModelLibraryCard
+                        key={modelKey}
+                        model={model}
+                        provider={
+                          speech.visibleProviders.find(
+                            (provider) => provider.id === model.provider_id,
+                          ) ?? null
+                        }
+                        selected={modelKey === selectedVoiceChangerKey}
+                        selectedBadgeLabel={t(
+                          "listen.voiceChanger.selectedModel",
+                          {
+                            defaultValue: "Selected",
+                          },
+                        )}
+                        selectedBadgeDetail={t(
+                          "listen.voiceChanger.selectedModelDetail",
+                          {
+                            defaultValue:
+                              "Selected for Voice Changer only. The active app voice is unchanged.",
+                          },
+                        )}
+                        disabled={isConverting || isRecording}
+                        onSelect={() => handleSelectVoiceChangerModel(model)}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-6 text-sm text-[var(--muted)]">
+                  {t("listen.voiceChanger.noVoiceChangerModels", {
+                    defaultValue:
+                      "No voice-changing models are available in the local catalog.",
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  );
 
   const content = (
-    <div
-      className={`space-y-4 ${showTitle ? "px-4 py-3" : ""} outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]`}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      aria-label={t("listen.voiceChanger.panelAriaLabel", {
-        defaultValue: "Voice Changer controls",
-      })}
-    >
-      {status ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              <div className="flex items-center gap-2 font-medium text-[var(--text)]">
-                {waitPhase ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
-                <span>{status}</span>
+    <>
+      {modelHubWindow}
+      <div
+        className={`space-y-4 ${showTitle ? "px-4 py-3" : ""} outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]`}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        aria-label={t("listen.voiceChanger.panelAriaLabel", {
+          defaultValue: "Voice Changer controls",
+        })}
+      >
+        {status ? (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--muted)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 font-medium text-[var(--text)]">
+                  {waitPhase ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  <span>{status}</span>
+                </div>
+                {waitDetail ? <p>{waitDetail}</p> : null}
               </div>
-              {waitDetail ? <p>{waitDetail}</p> : null}
+              {waitPhase ? (
+                <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs text-[var(--muted)]">
+                  {t("listen.voiceChanger.wait.elapsed", {
+                    defaultValue: "{{seconds}}s",
+                    seconds: elapsedSeconds,
+                  })}
+                </span>
+              ) : null}
             </div>
-            {waitPhase ? (
-              <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2 py-0.5 text-xs text-[var(--muted)]">
-                {t("listen.voiceChanger.wait.elapsed", {
-                  defaultValue: "{{seconds}}s",
-                  seconds: elapsedSeconds,
-                })}
-              </span>
-            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setModelPickerOpen(true)}
+              disabled={voiceChangerModels.length === 0 || isRecording}
+              aria-haspopup="dialog"
+              aria-expanded={modelPickerOpen}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              {t("listen.createVoices.models", { defaultValue: "Models" })}
+            </Button>
           </div>
         </div>
-      ) : null}
 
-      <WorkflowStatusStrip
-        steps={voiceChangerWorkflowSteps}
-        ariaLabel={t("listen.voiceChanger.workflow.statusAriaLabel", {
-          defaultValue: "Voice Changer workflow status",
-        })}
-      />
-
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,0.7fr)]">
-        <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--text)]">
-                {t("listen.voiceChanger.source", { defaultValue: "Source" })}
-              </p>
-              <p className="truncate text-xs text-[var(--muted)]">
-                {sourcePath
-                  ? basename(sourcePath)
-                  : t("listen.voiceChanger.noAudioSelected", {
-                      defaultValue: "No audio selected",
-                    })}
-              </p>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,0.7fr)]">
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 truncate text-sm text-[var(--muted)]">
+                <span className="font-semibold text-[var(--text)]">
+                  {sourceStatusLabel}
+                </span>
+                <span> - {sourceStatusDetail}</span>
+              </div>
+              <span
+                className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold text-[var(--text)]"
+                title={t("listen.voiceChanger.selectedModelTitle", {
+                  model: selectedVoiceChangerLabel,
+                  detail: selectedVoiceChangerMeta,
+                  defaultValue: selectedVoiceChangerMeta
+                    ? "Selected model: {{model}} - {{detail}}"
+                    : "Selected model: {{model}}",
+                })}
+                aria-label={t("listen.voiceChanger.selectedModelActionLabel", {
+                  defaultValue: "Selected Voice Changer model: {{modelLabel}}",
+                  modelLabel: selectedVoiceChangerLabel,
+                })}
+              >
+                {selectedVoiceChangerIconId ? (
+                  <ProviderIcon
+                    providerId={selectedVoiceChangerIconId}
+                    size="sm"
+                    className="rounded-full"
+                  />
+                ) : (
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"
+                    aria-hidden
+                  />
+                )}
+                <span className="min-w-0 truncate">
+                  {selectedVoiceChangerLabel}
+                </span>
+              </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button
                 type="button"
                 variant={isRecording ? "danger" : "primary-soft"}
@@ -575,130 +901,148 @@ export const VoiceChangerSection: React.FC<{
                 })}
               </Button>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs text-[var(--muted)]">
-            <Keyboard className="h-3.5 w-3.5 shrink-0" />
-            <span>
-              {t("listen.voiceChanger.recordShortcutHint", {
-                defaultValue:
-                  "Focus this panel and press R to start or stop mic capture.",
-              })}
-            </span>
-          </div>
-
-          <label className="block space-y-1.5">
-            <span className="text-sm font-semibold text-[var(--text)]">
-              {t("listen.voiceChanger.targetProfile", {
-                defaultValue: "Target profile",
-              })}
-            </span>
-            <select
-              value={selectedProfileId}
-              onChange={(event) => setSelectedProfileId(event.target.value)}
-              className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              disabled={
-                readyProfiles.length === 0 || isConverting || isRecording
-              }
-            >
-              {readyProfiles.length > 0 ? (
-                readyProfiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.label}
-                  </option>
-                ))
-              ) : (
-                <option value="">
-                  {t("listen.voiceChanger.noReadyProfiles", {
-                    defaultValue: "No ready profiles",
-                  })}
-                </option>
-              )}
-            </select>
-          </label>
-
-          <label className="block space-y-1.5">
-            <span className="text-sm font-semibold text-[var(--text)]">
-              {t("listen.voiceChanger.toneBlend", {
-                defaultValue: "Tone blend",
-              })}
-            </span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={tau}
-              onChange={(event) => setTau(Number(event.target.value))}
-              disabled={isConverting || isRecording}
-              className="w-full accent-[var(--accent)]"
-            />
-            <span className="block text-xs text-[var(--muted)]">
-              {tau.toFixed(2)}
-            </span>
-          </label>
-
-          <Button
-            type="button"
-            variant="primary-soft"
-            onClick={() => void runConversion()}
-            disabled={!canConvert}
-            className="inline-flex items-center gap-1.5"
-          >
-            {isConverting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <WandSparkles className="h-4 w-4" />
-            )}
-            {t("listen.voiceChanger.convert", { defaultValue: "Convert" })}
-          </Button>
-        </div>
-
-        <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-          <div>
-            <p className="text-sm font-semibold text-[var(--text)]">
-              {t("listen.voiceChanger.output", { defaultValue: "Output" })}
-            </p>
-            <p className="truncate text-xs text-[var(--muted)]">
-              {outputPath
-                ? basename(outputPath)
-                : t("listen.voiceChanger.noConvertedAudio", {
-                    defaultValue: "No converted audio yet",
-                  })}
-            </p>
-          </div>
-          {outputUrl ? (
-            <AudioPlayer
-              src={outputUrl}
-              onPlayRequest={async () => {
-                if (!outputPath) return;
-                const result = await commands.playStoryAudio(outputPath);
-                if (result.status === "error") {
-                  throw new Error(result.error);
-                }
-              }}
-              onStopRequest={async () => {
-                const result = await commands.stopStoryAudio();
-                if (result.status === "error") {
-                  throw new Error(result.error);
-                }
-              }}
-              title={t("listen.voiceChanger.outputTitle", {
-                defaultValue: "Voice Changer output",
-              })}
-              meta={outputPath ?? undefined}
-              autoPlay
-            />
-          ) : (
-            <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--bg)] px-4 text-center text-sm text-[var(--muted)]">
-              {t("listen.voiceChanger.outputPlaceholder", {
-                defaultValue: "Converted audio appears here.",
-              })}
+            <div className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs text-[var(--muted)]">
+              <Keyboard className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                {t("listen.voiceChanger.recordShortcutHint", {
+                  defaultValue:
+                    "Focus this panel and press R to start or stop mic capture.",
+                })}
+              </span>
             </div>
-          )}
+
+            <label className="block space-y-1.5">
+              <span className="text-sm font-semibold text-[var(--text)]">
+                {t("listen.voiceChanger.targetProfile", {
+                  defaultValue: "Target profile",
+                })}
+              </span>
+              <select
+                value={selectedProfileId}
+                onChange={(event) => setSelectedProfileId(event.target.value)}
+                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                disabled={
+                  readyProfiles.length === 0 || isConverting || isRecording
+                }
+              >
+                {readyProfiles.length > 0 ? (
+                  readyProfiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.label}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">
+                    {t("listen.voiceChanger.noReadyProfiles", {
+                      defaultValue: "No ready profiles",
+                    })}
+                  </option>
+                )}
+              </select>
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-sm font-semibold text-[var(--text)]">
+                {t("listen.voiceChanger.toneBlend", {
+                  defaultValue: "Tone blend",
+                })}
+              </span>
+              <div className="relative">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={tau}
+                  onChange={(event) => setTau(Number(event.target.value))}
+                  disabled={isConverting || isRecording}
+                  aria-label={t("listen.voiceChanger.toneBlend", {
+                    defaultValue: "Tone blend",
+                  })}
+                  className="relative z-0 block h-11 w-full cursor-pointer appearance-none bg-transparent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  style={toneBlendSliderStyle}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 z-20 -translate-y-1/2 text-sm font-semibold tabular-nums text-[var(--text)]">
+                  {tau.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-medium text-[var(--muted)]">
+                <span>
+                  {t("listen.voiceChanger.toneBlendSource", {
+                    defaultValue: "Source",
+                  })}
+                </span>
+                <span>
+                  {t("listen.voiceChanger.toneBlendTarget", {
+                    defaultValue: "Target",
+                  })}
+                </span>
+              </div>
+            </label>
+
+            <Button
+              type="button"
+              variant="primary-soft"
+              onClick={() => void runConversion()}
+              disabled={!canConvert}
+              className="inline-flex items-center gap-1.5"
+            >
+              {isConverting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <WandSparkles className="h-4 w-4" />
+              )}
+              {t("listen.voiceChanger.convert", { defaultValue: "Convert" })}
+            </Button>
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">
+                {t("listen.voiceChanger.output", { defaultValue: "Output" })}
+              </p>
+              <p className="truncate text-xs text-[var(--muted)]">
+                {outputPath
+                  ? basename(outputPath)
+                  : t("listen.voiceChanger.noConvertedAudio", {
+                      defaultValue: "No converted audio yet",
+                    })}
+              </p>
+            </div>
+            {outputUrl ? (
+              <AudioPlayer
+                src={outputUrl}
+                onPlayRequest={async () => {
+                  if (!outputPath) return;
+                  const result = await commands.playStoryAudio(outputPath);
+                  if (result.status === "error") {
+                    throw new Error(result.error);
+                  }
+                }}
+                onStopRequest={async () => {
+                  const result = await commands.stopStoryAudio();
+                  if (result.status === "error") {
+                    throw new Error(result.error);
+                  }
+                }}
+                title={t("listen.voiceChanger.outputTitle", {
+                  defaultValue: "Voice Changer output",
+                })}
+                meta={outputPath ?? undefined}
+                autoPlay
+              />
+            ) : (
+              <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--bg)] px-4 text-center text-sm text-[var(--muted)]">
+                {t("listen.voiceChanger.outputPlaceholder", {
+                  defaultValue: "Converted audio appears here.",
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 
   if (!showTitle) {

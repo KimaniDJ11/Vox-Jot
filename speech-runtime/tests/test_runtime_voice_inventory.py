@@ -114,6 +114,43 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         self.assertEqual(converter.convert_kwargs["tgt_se"], "se:target")
         self.assertEqual(converter.convert_kwargs["tau"], 0.45)
 
+    def test_chatterbox_voice_conversion_uses_source_and_target_audio(self):
+        worker = self.make_worker("chatterbox", "chatterbox")
+        worker._ensure_chatterbox_voice_converter = lambda: None
+        source = worker.model_dir / "source.wav"
+        target = worker.model_dir / "target.wav"
+        source.write_bytes(b"source")
+        target.write_bytes(b"target")
+
+        class DummyConverter:
+            sr = 24000
+
+            def __init__(self):
+                self.kwargs = None
+
+            def generate(self, **kwargs):
+                self.kwargs = kwargs
+                return [0.0, 0.0, 0.0]
+
+        converter = DummyConverter()
+        worker.voice_converter = converter
+
+        output = worker.convert_voice(
+            {
+                "source_audio_path": str(source),
+                "target_audio_path": str(target),
+            }
+        )
+
+        self.assertTrue(output.exists())
+        self.assertEqual(
+            converter.kwargs,
+            {
+                "audio": str(source),
+                "target_voice_path": str(target),
+            },
+        )
+
     def test_openvoice_accepts_nested_download_layout(self):
         worker = self.make_worker("openvoice", "openvoice")
         nested = worker.model_dir / "OpenVoice"
@@ -164,6 +201,14 @@ class RuntimeVoiceInventoryTest(unittest.TestCase):
         (worker.model_dir / "s3gen_meanflow.safetensors").write_text("", encoding="utf-8")
 
         self.assertEqual(worker._chatterbox_checkpoint_root(), worker.model_dir)
+
+    def test_chatterbox_voice_converter_accepts_official_hf_snapshot_layout(self):
+        worker = self.make_worker("chatterbox", "chatterbox")
+        (worker.model_dir / "t3_cfg.safetensors").write_text("", encoding="utf-8")
+        (worker.model_dir / "s3gen.safetensors").write_text("", encoding="utf-8")
+        (worker.model_dir / "conds.pt").write_text("", encoding="utf-8")
+
+        self.assertEqual(worker._chatterbox_voice_converter_root(), worker.model_dir)
 
     def test_chatterbox_base_accepts_legacy_checkpoint_layout(self):
         worker = self.make_worker("chatterbox", "chatterbox")

@@ -811,6 +811,21 @@ export const VoiceChangerSection: React.FC<{
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Button
               type="button"
+              variant="primary-soft"
+              size="sm"
+              onClick={() => void runConversion()}
+              disabled={!canConvert}
+              className="inline-flex items-center gap-1.5"
+            >
+              {isConverting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <WandSparkles className="h-3.5 w-3.5" />
+              )}
+              {t("listen.voiceChanger.convert", { defaultValue: "Convert" })}
+            </Button>
+            <Button
+              type="button"
               variant={isRecording ? "danger" : "primary-soft"}
               size="sm"
               onClick={() => void toggleMicCapture()}
@@ -980,20 +995,6 @@ export const VoiceChangerSection: React.FC<{
               </div>
             </label>
 
-            <Button
-              type="button"
-              variant="primary-soft"
-              onClick={() => void runConversion()}
-              disabled={!canConvert}
-              className="inline-flex items-center gap-1.5"
-            >
-              {isConverting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <WandSparkles className="h-4 w-4" />
-              )}
-              {t("listen.voiceChanger.convert", { defaultValue: "Convert" })}
-            </Button>
           </div>
 
           <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">

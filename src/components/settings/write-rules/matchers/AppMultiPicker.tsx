@@ -103,40 +103,6 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
         ) : null}
       </div>
 
-      {shouldShowChips ? (
-        <div className="flex min-h-[26px] flex-wrap items-center gap-2">
-          {bundleIds.length === 0 ? (
-            <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-              {matchAnyChip}
-            </span>
-          ) : (
-            bundleIds.map((bundleId) => {
-              const app = appsByBundleId.get(bundleId);
-              return (
-                <span
-                  key={bundleId}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
-                  title={bundleId}
-                >
-                  <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
-                  {app?.name ?? bundleId}
-                  <button
-                    type="button"
-                    className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
-                    onClick={() =>
-                      onChange(bundleIds.filter((id) => id !== bundleId))
-                    }
-                    aria-label={removeAppLabel}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              );
-            })
-          )}
-        </div>
-      ) : null}
-
       <div className="relative">
         <Input
           value={query}
@@ -185,6 +151,40 @@ export const AppMultiPicker: React.FC<AppMultiPickerProps> = ({
           </ul>
         ) : null}
       </div>
+
+      {shouldShowChips ? (
+        <div className="flex min-h-[26px] flex-wrap items-center gap-2">
+          {bundleIds.length === 0 ? (
+            <span className="rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
+              {matchAnyChip}
+            </span>
+          ) : (
+            bundleIds.map((bundleId) => {
+              const app = appsByBundleId.get(bundleId);
+              return (
+                <span
+                  key={bundleId}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--panel-bg)] py-0.5 pl-1 pr-2 text-xs font-medium text-[var(--text)]"
+                  title={bundleId}
+                >
+                  <AppMonogram bundleId={bundleId} name={app?.name} size="xs" />
+                  {app?.name ?? bundleId}
+                  <button
+                    type="button"
+                    className="ml-0.5 text-[var(--muted)] hover:text-[var(--danger)]"
+                    onClick={() =>
+                      onChange(bundleIds.filter((id) => id !== bundleId))
+                    }
+                    aria-label={removeAppLabel}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };

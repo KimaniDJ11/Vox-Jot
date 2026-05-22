@@ -136,7 +136,7 @@ const OverrideRow: React.FC<{
   const specLabel = t(overrideLabelKey(spec));
   const specDescription = t(overrideDescriptionKey(spec));
   return (
-    <li className="grid items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(120px,160px)_minmax(0,1fr)_auto]">
+    <li className="grid items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-[var(--text)]">
           {specLabel}
@@ -146,22 +146,28 @@ const OverrideRow: React.FC<{
           {spec.description ? ` · ${specDescription}` : ""}
         </p>
       </div>
-      <Dropdown
-        options={options}
-        selectedValue={spec.readValue(overrides)}
-        onSelect={(value) => onChange(spec.applyValue(overrides, value))}
-      />
-      <button
-        type="button"
-        onClick={() => onChange(spec.reset(overrides))}
-        className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--danger)]"
-        aria-label={t("refine.writeRules.overridesEditor.removeOverrideAria", {
-          label: specLabel,
-        })}
-        title={t("refine.writeRules.overridesEditor.removeOverride")}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      <div className="flex items-center gap-2 justify-self-start sm:justify-self-end">
+        <Dropdown
+          options={options}
+          selectedValue={spec.readValue(overrides)}
+          onSelect={(value) => onChange(spec.applyValue(overrides, value))}
+          className="[&>button]:min-w-[160px] [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-sm [&>button]:shadow-none"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(spec.reset(overrides))}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--danger)]"
+          aria-label={t(
+            "refine.writeRules.overridesEditor.removeOverrideAria",
+            {
+              label: specLabel,
+            },
+          )}
+          title={t("refine.writeRules.overridesEditor.removeOverride")}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </li>
   );
 };

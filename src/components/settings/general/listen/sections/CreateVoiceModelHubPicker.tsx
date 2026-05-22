@@ -38,6 +38,7 @@ import { speechLibraryCardClassName } from "../styles";
 import {
   defaultVoiceTuning,
   getTtsVoicesForSelection,
+  isTunedVoicePreset,
   ttsPreviewSampleForLocale,
 } from "../utils";
 import { DraftVoiceModelLibraryCard } from "../sharedComponents";
@@ -304,8 +305,7 @@ const MyVoiceRow: React.FC<{
   const voiceLabel =
     preset.voice_label_snapshot ?? preset.voice_id ?? preset.model_id;
   const isClone = Boolean(preset.voice_profile_id);
-  const isTuned =
-    JSON.stringify(preset.tuning) !== JSON.stringify(defaultVoiceTuning());
+  const isTuned = isTunedVoicePreset(preset);
   const description = [
     preset.model_id,
     voiceLabel,
@@ -775,6 +775,7 @@ export const CreateVoiceModelHubPicker: React.FC<
     (preset.voice_id ?? "__auto__") === selectedVoiceId &&
     (preset.voice_profile_id ?? null) === selectedVoiceProfileId;
   const filteredSavedPresets = speech.presets.filter((preset) => {
+    if (!isTunedVoicePreset(preset)) return false;
     if (!normalizedQuery) return true;
     return [
       preset.label,
@@ -855,7 +856,7 @@ export const CreateVoiceModelHubPicker: React.FC<
                     : view === "my-voices"
                       ? t("listen.createVoices.draftMyVoicesPickerDetail", {
                           defaultValue:
-                            "Reuse a saved or tuned voice profile for this draft.",
+                            "Reuse a saved tuned voice for this draft.",
                         })
                       : t("listen.createVoices.draftModelPickerDetail", {
                           defaultValue:
@@ -1122,7 +1123,7 @@ export const CreateVoiceModelHubPicker: React.FC<
                         {searchQuery
                           ? t("listen.createVoices.noMyVoiceSearchResults", {
                               defaultValue:
-                                "No saved voices match that search.",
+                                "No tuned voices match that search.",
                             })
                           : t("listen.createVoices.noMyVoices", {
                               defaultValue:

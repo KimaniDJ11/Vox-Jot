@@ -29,7 +29,6 @@ export type VoiceArchitectUiDraftState = {
 export type VoiceCloningDraftState = {
   selectedCloneModelValue: string;
   selectedProfileId: string;
-  voiceCloneTool: "audio" | "profile";
   modelSearchQuery: string;
   referenceAudioPathDraft: string;
   referenceTranscriptDraft: string;

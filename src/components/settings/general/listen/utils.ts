@@ -333,6 +333,39 @@ export function defaultVoiceTuning(): TtsVoiceTuningSettings {
   };
 }
 
+export function normalizeVoiceTuningForCompare(
+  tuning: TtsVoiceTuningSettings,
+) {
+  return {
+    tempo_rate: tuning.tempo_rate,
+    expressiveness: tuning.expressiveness,
+    exaggeration: tuning.exaggeration,
+    randomness: tuning.randomness,
+    guidance: tuning.guidance,
+    stability: tuning.stability,
+    repetition_penalty: tuning.repetition_penalty,
+    style_instructions: tuning.style_instructions?.trim() || null,
+    advanced_overrides: Object.fromEntries(
+      Object.entries(tuning.advanced_overrides ?? {})
+        .filter(([, value]) => value !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ),
+  };
+}
+
+export function voiceTuningMatchesDefault(tuning: TtsVoiceTuningSettings) {
+  return (
+    JSON.stringify(normalizeVoiceTuningForCompare(tuning)) ===
+    JSON.stringify(normalizeVoiceTuningForCompare(defaultVoiceTuning()))
+  );
+}
+
+export function isTunedVoicePreset(
+  preset: Pick<TtsVoicePreset | TtsVoicePresetInput, "tuning">,
+) {
+  return !voiceTuningMatchesDefault(preset.tuning);
+}
+
 export function profileSupportsModel(
   profile: TtsVoiceProfileDescriptor,
   model: CatalogModelDescriptor | null | undefined,

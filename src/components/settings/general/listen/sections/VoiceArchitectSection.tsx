@@ -40,6 +40,7 @@ import {
   profileSupportsModel,
   resolveVoiceModelSelection,
   ttsModelSupportsLanguage,
+  voiceTuningMatchesDefault,
 } from "../utils";
 import { resolvedTuningControlsForModel } from "../tuningControls";
 import {
@@ -58,31 +59,6 @@ import {
 import type { TtsVoicePresetPatch } from "../types";
 import { voiceAvatarGradient } from "../createVoiceVoiceHub";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
-
-function normalizeTuningForCompare(tuning: TtsVoicePresetInput["tuning"]) {
-  return {
-    tempo_rate: tuning.tempo_rate,
-    expressiveness: tuning.expressiveness,
-    exaggeration: tuning.exaggeration,
-    randomness: tuning.randomness,
-    guidance: tuning.guidance,
-    stability: tuning.stability,
-    repetition_penalty: tuning.repetition_penalty,
-    style_instructions: tuning.style_instructions?.trim() || null,
-    advanced_overrides: Object.fromEntries(
-      Object.entries(tuning.advanced_overrides ?? {})
-        .filter(([, value]) => value !== undefined)
-        .sort(([left], [right]) => left.localeCompare(right)),
-    ),
-  };
-}
-
-function tuningMatchesDefault(tuning: TtsVoicePresetInput["tuning"]) {
-  return (
-    JSON.stringify(normalizeTuningForCompare(tuning)) ===
-    JSON.stringify(normalizeTuningForCompare(defaultVoiceTuning()))
-  );
-}
 
 export const VoiceArchitectSection: React.FC<{
   speech: ListenSpeechState;
@@ -132,7 +108,7 @@ export const VoiceArchitectSection: React.FC<{
   );
   const lastDraftSelectionKeyRef = useRef<string | null>(null);
   const hasTunedVoiceChanges = useMemo(
-    () => !tuningMatchesDefault(draftTuning),
+    () => !voiceTuningMatchesDefault(draftTuning),
     [draftTuning],
   );
   const availableDraftModels = useMemo(

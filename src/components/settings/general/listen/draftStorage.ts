@@ -21,7 +21,6 @@ const defaultVoiceArchitectUiDraft: VoiceArchitectUiDraftState = {
 const defaultVoiceCloningDraft: VoiceCloningDraftState = {
   selectedCloneModelValue: "__none__",
   selectedProfileId: "__none__",
-  voiceCloneTool: "audio",
   modelSearchQuery: "",
   referenceAudioPathDraft: "",
   referenceTranscriptDraft: "",
@@ -155,10 +154,6 @@ function normalizeVoiceCloningDraft(
       typeof draft.selectedProfileId === "string"
         ? draft.selectedProfileId
         : defaultVoiceCloningDraft.selectedProfileId,
-    voiceCloneTool:
-      draft.voiceCloneTool === "profile"
-        ? "profile"
-        : defaultVoiceCloningDraft.voiceCloneTool,
     modelSearchQuery:
       typeof draft.modelSearchQuery === "string"
         ? draft.modelSearchQuery

@@ -6,6 +6,7 @@ import type { VoiceInfo } from "@/bindings";
 import type { CatalogModelDescriptor } from "@/lib/modelPlatform";
 import type { TtsVoicePreset } from "@/lib/ttsVoicePresets";
 import type { ListenSpeechState } from "../useListenSpeechState";
+import { defaultVoiceTuning } from "../utils";
 import CreateVoiceModelHubPicker from "./CreateVoiceModelHubPicker";
 
 const getTtsVoicesForSelection = vi.fn();
@@ -290,6 +291,37 @@ describe("CreateVoiceModelHubPicker", () => {
 
     expect(view.onSelectPreset).toHaveBeenCalledWith(savedPreset);
     expect(view.onSelectVoice).not.toHaveBeenCalled();
+
+    await view.cleanup();
+  });
+
+  it("only shows tuned saved voices in My Voices", async () => {
+    const tunedPreset = preset({
+      id: "preset-tuned",
+      label: "Warm narrator",
+    });
+    const plainPreset = preset({
+      id: "preset-plain",
+      label: "System Voices - Nora",
+      tuning: defaultVoiceTuning(),
+    });
+    const view = await render({
+      speech: {
+        ...speech,
+        presets: [plainPreset, tunedPreset],
+      } as unknown as ListenSpeechState,
+    });
+
+    await act(async () => {
+      (
+        Array.from(document.body.querySelectorAll("button")).find(
+          (button) => button.textContent === "My Voices",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(document.body.textContent).toContain("Warm narrator");
+    expect(document.body.textContent).not.toContain("System Voices - Nora");
 
     await view.cleanup();
   });

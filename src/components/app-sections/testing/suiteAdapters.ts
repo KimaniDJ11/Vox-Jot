@@ -32,7 +32,7 @@ import type {
   TtsVoiceCloneEvaluationResult,
   TtsVoiceCloneEvaluationStatus,
 } from "@/lib/ttsVoiceCloneEvaluationResults";
-import type { LeaderboardRowProps } from "@/components/app-sections/testing/LeaderboardRow";
+import type { LeaderboardRowProps } from "@/components/app-sections/testing/types";
 
 type EvaluationStatus =
   | FileAsrEvaluationStatus
@@ -119,6 +119,7 @@ export function buildFileAsrRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.modelId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -157,6 +158,8 @@ export function buildLlmRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.modelIds[0],
+    providerId: "ollama",
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -210,6 +213,7 @@ export function buildSttRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.modelId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -249,6 +253,7 @@ export function buildSpeakerIsolationRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.modelId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -307,6 +312,7 @@ export function buildScreenOcrRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.engineId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -361,6 +367,8 @@ export function buildTtsRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.appModelId ?? result.modelId,
+    providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -428,6 +436,8 @@ export function buildTtsStyleRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.appModelId ?? result.modelId,
+    providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,
@@ -479,6 +489,8 @@ export function buildTtsVoiceCloneRow(
   return {
     rank: result.rank,
     label: result.label,
+    modelId: result.appModelId ?? result.modelId,
+    providerId: result.providerId,
     status: result.status,
     statusLabel: statusLabel(result.status, t),
     notes: result.notes,

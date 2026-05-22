@@ -2,6 +2,7 @@ import React from "react";
 
 interface RankBadgeProps {
   rank?: number;
+  className?: string;
 }
 
 function rankClassName(rank?: number): string {
@@ -17,11 +18,14 @@ function rankClassName(rank?: number): string {
   return "border-[var(--border)] bg-[var(--panel-bg)] text-[var(--muted)]";
 }
 
-export const RankBadge: React.FC<RankBadgeProps> = ({ rank }) => (
+export const RankBadge: React.FC<RankBadgeProps> = ({
+  rank,
+  className = "",
+}) => (
   <div
-    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border text-2xl font-bold shadow-[var(--shadow-sm)] ${rankClassName(
+    className={`inline-flex h-8 min-w-12 shrink-0 items-center justify-center rounded-full border px-2 text-sm font-bold shadow-[var(--shadow-sm)] ${rankClassName(
       rank,
-    )}`}
+    )} ${className}`}
     aria-label={rank ? `Rank ${rank}` : "Unranked"}
   >
     {rank ? `#${rank}` : "—"}

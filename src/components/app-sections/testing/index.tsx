@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LayoutGroup, motion } from "framer-motion";
 
@@ -52,6 +52,7 @@ import {
 } from "@/lib/interactiveFocus";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { press } from "@/motion/springs";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 type TestingTabId =
   | "file-asr"
@@ -63,50 +64,65 @@ type TestingTabId =
   | "stt"
   | "screen-ocr";
 
+interface TestingRunSummary {
+  suite: string;
+  corpus: string;
+  limitations?: string;
+}
+
 const TABS: Array<{
   id: TestingTabId;
   labelKey: string;
   defaultLabel: string;
+  run: TestingRunSummary;
 }> = [
+  {
+    id: "stt",
+    labelKey: "testing.tabs.stt",
+    defaultLabel: "Live STT",
+    run: STT_EVALUATION_RUN,
+  },
   {
     id: "file-asr",
     labelKey: "testing.tabs.fileAsr",
     defaultLabel: "File ASR",
+    run: FILE_ASR_EVALUATION_RUN,
   },
   {
     id: "speaker-isolation",
     labelKey: "testing.tabs.speakerIsolation",
     defaultLabel: "Speaker Isolation",
-  },
-  {
-    id: "tts",
-    labelKey: "testing.tabs.tts",
-    defaultLabel: "TTS",
-  },
-  {
-    id: "tts-style",
-    labelKey: "testing.tabs.ttsStyle",
-    defaultLabel: "TTS Style",
-  },
-  {
-    id: "tts-voice-clone",
-    labelKey: "testing.tabs.ttsVoiceClone",
-    defaultLabel: "Voice Cloning",
-  },
-  {
-    id: "llm",
-    labelKey: "testing.tabs.llm",
-    defaultLabel: "LLM",
-  },
-  {
-    id: "stt",
-    labelKey: "testing.tabs.stt",
-    defaultLabel: "Live STT",
+    run: SPEAKER_ISOLATION_EVALUATION_RUN,
   },
   {
     id: "screen-ocr",
     labelKey: "testing.tabs.screenOcr",
     defaultLabel: "Screen OCR",
+    run: SCREEN_OCR_EVALUATION_RUN,
+  },
+  {
+    id: "llm",
+    labelKey: "testing.tabs.llm",
+    defaultLabel: "LLM",
+    run: LLM_EVALUATION_RUN,
+  },
+  {
+    id: "tts",
+    labelKey: "testing.tabs.tts",
+    defaultLabel: "TTS",
+    run: TTS_EVALUATION_RUN,
+  },
+  {
+    id: "tts-style",
+    labelKey: "testing.tabs.ttsStyle",
+    defaultLabel: "TTS Style",
+    run: TTS_STYLE_EVALUATION_RUN,
+  },
+  {
+    id: "tts-voice-clone",
+    labelKey: "testing.tabs.ttsVoiceClone",
+    defaultLabel: "Voice Cloning",
+    run: TTS_VOICE_CLONE_EVALUATION_RUN,
   },
 ];
 
@@ -125,9 +141,89 @@ function splitRanked<
   };
 }
 
+interface TestingTabButtonProps {
+  active: boolean;
+  label: string;
+  onSelect: () => void;
+  tab: (typeof TABS)[number];
+}
+
+const TestingTabButton: React.FC<TestingTabButtonProps> = ({
+  active,
+  label,
+  onSelect,
+  tab,
+}) => {
+  const [showHelp, setShowHelp] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const tooltipId = `model-testing-tab-help-${tab.id}`;
+  const helpTitle = `${tab.run.suite}: ${tab.run.corpus}`;
+  const title = tab.run.limitations
+    ? `${helpTitle} ${tab.run.limitations}`
+    : helpTitle;
+
+  return (
+    <>
+      <motion.button
+        ref={buttonRef}
+        type="button"
+        role="tab"
+        aria-selected={active}
+        aria-controls={`model-testing-panel-${tab.id}`}
+        aria-describedby={showHelp ? tooltipId : undefined}
+        id={`model-testing-tab-${tab.id}`}
+        tabIndex={active ? 0 : -1}
+        title={title}
+        whileTap={{ scale: 0.97 }}
+        transition={press}
+        onClick={onSelect}
+        onFocus={() => setShowHelp(true)}
+        onBlur={() => setShowHelp(false)}
+        onMouseEnter={() => setShowHelp(true)}
+        onMouseLeave={() => setShowHelp(false)}
+        className={`relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
+        style={{
+          color: active ? "var(--accent-foreground)" : "var(--muted)",
+          transition: "color 160ms var(--spring-crisp)",
+        }}
+      >
+        {active && (
+          <motion.span
+            layoutId="model-testing-tab-indicator"
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 32,
+              mass: 0.9,
+            }}
+            className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
+            aria-hidden
+          />
+        )}
+        <span className="relative z-10">{label}</span>
+      </motion.button>
+      {showHelp ? (
+        <Tooltip targetRef={buttonRef} id={tooltipId} position="bottom">
+          <span className="block text-xs font-semibold leading-5">
+            {tab.run.suite}
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+            {tab.run.corpus}
+          </span>
+          {tab.run.limitations ? (
+            <span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">
+              {tab.run.limitations}
+            </span>
+          ) : null}
+        </Tooltip>
+      ) : null}
+    </>
+  );
+};
+
 export const ModelTestingSection: React.FC = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TestingTabId>("file-asr");
+  const [activeTab, setActiveTab] = useState<TestingTabId>("stt");
 
   const fileAsr = splitRanked(FILE_ASR_EVALUATION_RESULTS);
   const speakerIsolation = splitRanked(
@@ -150,7 +246,7 @@ export const ModelTestingSection: React.FC = () => {
         data-model-testing-sticky-header=""
         className="sticky top-0 z-20 -mx-5 border-b border-[var(--border)] bg-[var(--bg)] px-5 pb-3 pt-0"
       >
-        <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
             <LayoutGroup id="model-testing-tabs">
               <div
@@ -167,51 +263,22 @@ export const ModelTestingSection: React.FC = () => {
               >
                 {TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
+                  const label = t(tab.labelKey, {
+                    defaultValue: tab.defaultLabel,
+                  });
                   return (
-                    <motion.button
+                    <TestingTabButton
                       key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      aria-controls={`model-testing-panel-${tab.id}`}
-                      id={`model-testing-tab-${tab.id}`}
-                      tabIndex={isActive ? 0 : -1}
-                      whileTap={{ scale: 0.97 }}
-                      transition={press}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-xs font-semibold focus-visible:z-10 ${interactiveFocusRingClass} ${minTapTargetHeightClass}`}
-                      style={{
-                        color: isActive
-                          ? "var(--accent-foreground)"
-                          : "var(--muted)",
-                        transition: "color 160ms var(--spring-crisp)",
-                      }}
-                    >
-                      {isActive && (
-                        <motion.span
-                          layoutId="model-testing-tab-indicator"
-                          transition={{
-                            type: "spring",
-                            stiffness: 400,
-                            damping: 32,
-                            mass: 0.9,
-                          }}
-                          className="absolute inset-0 rounded-[10px] bg-[var(--accent)]"
-                          aria-hidden
-                        />
-                      )}
-                      <span className="relative z-10">
-                        {t(tab.labelKey, {
-                          defaultValue: tab.defaultLabel,
-                        })}
-                      </span>
-                    </motion.button>
+                      active={isActive}
+                      label={label}
+                      onSelect={() => setActiveTab(tab.id)}
+                      tab={tab}
+                    />
                   );
                 })}
               </div>
             </LayoutGroup>
           </div>
-          <div className="app-no-drag flex shrink-0 items-center justify-end gap-2" />
         </div>
       </div>
 

@@ -1,8 +1,7 @@
-import React from "react";
 import type { TFunction } from "i18next";
 
-import { LeaderboardRow } from "@/components/app-sections/testing/LeaderboardRow";
-import type { LeaderboardRowProps } from "@/components/app-sections/testing/LeaderboardRow";
+import { TestingTable } from "@/components/app-sections/testing/TestingTable";
+import type { LeaderboardRowProps } from "@/components/app-sections/testing/types";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 interface EvaluationRun {
@@ -27,46 +26,6 @@ interface SuiteLeaderboardProps<T extends EvaluationResult> {
   t: TFunction;
 }
 
-function countByStatus(results: EvaluationResult[]) {
-  return results.reduce(
-    (counts, result) => {
-      switch (result.status) {
-        case "tested":
-          counts.tested += 1;
-          break;
-        case "pending":
-          counts.pending += 1;
-          break;
-        case "blocked":
-          counts.blocked += 1;
-          break;
-        case "failed":
-          counts.failed += 1;
-          break;
-        case "download_required":
-          counts.downloadRequired += 1;
-          break;
-        case "runtime_ready":
-          counts.runtimeReady += 1;
-          break;
-        default:
-          counts.other += 1;
-          break;
-      }
-      return counts;
-    },
-    {
-      tested: 0,
-      pending: 0,
-      blocked: 0,
-      failed: 0,
-      downloadRequired: 0,
-      runtimeReady: 0,
-      other: 0,
-    },
-  );
-}
-
 export function SuiteLeaderboard<T extends EvaluationResult>({
   run,
   ranked,
@@ -74,111 +33,16 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
   renderRow,
   t,
 }: SuiteLeaderboardProps<T>) {
-  const counts = countByStatus([...ranked, ...unranked]);
+  const rankedRows = ranked.map((result) => renderRow(result, t));
+  const unrankedRows = unranked.map((result) => ({
+    ...renderRow(result, t),
+    rank: undefined,
+  }));
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-[var(--text)]">
-            {run.suite}
-          </h3>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            {run.corpus}
-          </p>
-          {run.limitations ? (
-            <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--muted)]">
-              {run.limitations}
-            </p>
-          ) : null}
-          {run.metricGuide && run.metricGuide.length > 0 ? (
-            <div className="mt-3 flex max-w-3xl flex-wrap gap-2">
-              {run.metricGuide.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 py-1 text-[11px] font-medium leading-5 text-[var(--text)]"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
-            {[
-              t("testing.counts.tested", {
-                defaultValue: "{{count}} tested",
-                count: counts.tested,
-              }),
-              counts.pending > 0
-                ? t("testing.counts.pending", {
-                    defaultValue: "{{count}} pending",
-                    count: counts.pending,
-                  })
-                : null,
-              counts.blocked > 0
-                ? t("testing.counts.blocked", {
-                    defaultValue: "{{count}} blocked",
-                    count: counts.blocked,
-                  })
-                : null,
-              counts.failed > 0
-                ? t("testing.counts.failed", {
-                    defaultValue: "{{count}} failed",
-                    count: counts.failed,
-                  })
-                : null,
-              counts.downloadRequired > 0
-                ? t("testing.counts.downloadRequired", {
-                    defaultValue: "{{count}} need download",
-                    count: counts.downloadRequired,
-                  })
-                : null,
-              counts.runtimeReady > 0
-                ? t("testing.counts.runtimeReady", {
-                    defaultValue: "{{count}} runtime ready",
-                    count: counts.runtimeReady,
-                  })
-                : null,
-              counts.other > 0
-                ? t("testing.counts.other", {
-                    defaultValue: "{{count}} other",
-                    count: counts.other,
-                  })
-                : null,
-            ]
-              .filter(Boolean)
-              .map((label, index) => (
-                <React.Fragment key={label}>
-                  {index > 0 ? <span aria-hidden>·</span> : null}
-                  <span>{label}</span>
-                </React.Fragment>
-              ))}
-          </div>
-        </div>
-
-        <div className="flex max-w-xs flex-col items-start gap-1 text-xs text-[var(--muted)] sm:items-end">
-          <span className="font-medium">
-            {t("testing.overview.updated", {
-              defaultValue: "Updated {{date}}",
-              date: run.generatedAt,
-            })}
-          </span>
-          <p className="max-w-full truncate rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1 font-medium">
-            {t("testing.reportPath", {
-              defaultValue: "Report: {{path}}",
-              path: run.reportPath,
-            })}
-          </p>
-        </div>
-      </div>
-
       {ranked.length > 0 ? (
-        <div className="space-y-2.5">
-          {ranked.map((result) => {
-            const row = renderRow(result, t);
-            return <LeaderboardRow key={result.label} {...row} />;
-          })}
-        </div>
+        <TestingTable rows={rankedRows} metricGuide={run.metricGuide} t={t} />
       ) : (
         <EmptyState
           title={t("testing.empty.title", {
@@ -205,14 +69,12 @@ export function SuiteLeaderboard<T extends EvaluationResult>({
               })}
             </p>
           </div>
-          <div className="space-y-2">
-            {unranked.map((result) => {
-              const row = renderRow(result, t);
-              return (
-                <LeaderboardRow key={result.label} {...row} rank={undefined} />
-              );
-            })}
-          </div>
+          <TestingTable
+            rows={unrankedRows}
+            metricGuide={run.metricGuide}
+            t={t}
+            compact
+          />
         </div>
       ) : null}
     </section>

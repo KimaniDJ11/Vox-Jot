@@ -1824,9 +1824,6 @@ async deleteOllamaModel(modelName: string) : Promise<Result<null, string>> {
 async getRecommendedOllamaModels() : Promise<OllamaModelInfo[]> {
     return await TAURI_INVOKE("get_recommended_ollama_models");
 },
-/**
- * Start the Ollama serve process if it's installed but not running
- */
 async startOllamaServe() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("start_ollama_serve") };

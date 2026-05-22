@@ -5,7 +5,9 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashSet;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
@@ -13,6 +15,39 @@ use tokio::process::Command;
 use tokio::sync::Mutex;
 
 static ACTIVE_INSTALLS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+// Refine catalog/download commands can run under WebKit's URL-scheme callback.
+// Keep large Ollama/Hugging Face work off that stack on macOS.
+const REFINE_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+
+async fn run_refine_command_on_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(REFINE_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start refine command runtime: {err}"))?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start refine command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "Refine command thread stopped before returning data.".to_string())?
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -986,7 +1021,7 @@ pub async fn get_refine_model_catalog_impl(app: &AppHandle) -> Result<RefineMode
     });
 
     let mut models = build_local_ollama_models(&settings, &ollama_status);
-    let registry_models = ollama::get_recommended_ollama_models().await;
+    let registry_models = ollama::get_recommended_ollama_models_impl().await;
     for model in registry_models {
         let installed = ollama_model_matches(&ollama_status.models, &model.id);
         if models.iter().any(|existing| {
@@ -1597,7 +1632,10 @@ pub async fn install_refine_model_impl(
 #[tauri::command]
 #[specta::specta]
 pub async fn get_refine_model_catalog(app: AppHandle) -> Result<RefineModelCatalog, String> {
-    get_refine_model_catalog_impl(&app).await
+    run_refine_command_on_stack("get-refine-model-catalog", move || async move {
+        get_refine_model_catalog_impl(&app).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1607,7 +1645,10 @@ pub async fn set_refine_model_selection(
     provider_id: String,
     model_id: String,
 ) -> Result<(), String> {
-    set_refine_model_selection_impl(&app, provider_id, model_id).await
+    run_refine_command_on_stack("set-refine-model-selection", move || async move {
+        set_refine_model_selection_impl(&app, provider_id, model_id).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1625,13 +1666,16 @@ pub async fn install_refine_model(
     source_repo_id: Option<String>,
     source_file_name: Option<String>,
 ) -> Result<(), String> {
-    install_refine_model_impl(
-        &app,
-        provider_id,
-        model_id,
-        source_repo_id,
-        source_file_name,
-    )
+    run_refine_command_on_stack("install-refine-model", move || async move {
+        install_refine_model_impl(
+            &app,
+            provider_id,
+            model_id,
+            source_repo_id,
+            source_file_name,
+        )
+        .await
+    })
     .await
 }
 
@@ -1642,5 +1686,8 @@ pub async fn delete_refine_model(
     provider_id: String,
     model_id: String,
 ) -> Result<(), String> {
-    delete_refine_model_impl(&app, provider_id, model_id).await
+    run_refine_command_on_stack("delete-refine-model", move || async move {
+        delete_refine_model_impl(&app, provider_id, model_id).await
+    })
+    .await
 }

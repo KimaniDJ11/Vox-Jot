@@ -2,6 +2,8 @@ use log::{debug, info};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::future::Future;
+use std::thread;
 use tauri::AppHandle;
 
 pub const OLLAMA_BASE_URL: &str = "http://127.0.0.1:11434";
@@ -94,6 +96,38 @@ const SOFT_MAX_PARAMS_B: f64 = 11.0;
 const SOFT_MAX_SIZE_BYTES: u64 = 11_000_000_000;
 const HARD_MAX_PARAMS_B: f64 = 11.0;
 const HARD_MAX_SIZE_BYTES: u64 = 11_000_000_000;
+// Ollama management commands are launched from WebKit IPC callbacks in the
+// model hub. Run them on a larger stack to avoid aborting the app.
+const OLLAMA_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+
+async fn run_ollama_command_on_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(OLLAMA_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start Ollama command runtime: {err}"))?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start Ollama command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "Ollama command thread stopped before returning data.".to_string())?
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Type)]
 pub struct OllamaStatus {
@@ -507,30 +541,61 @@ fn delete_ollama_model_payload(model_name: &str) -> serde_json::Value {
 #[tauri::command]
 #[specta::specta]
 pub async fn check_ollama_status() -> OllamaStatus {
-    get_ollama_status().await
+    run_ollama_command_on_stack("check-ollama-status", || async {
+        Ok(get_ollama_status().await)
+    })
+    .await
+    .unwrap_or_else(|err| {
+        log::warn!("Failed to check Ollama status on command thread: {err}");
+        OllamaStatus {
+            installed: false,
+            running: false,
+            models: vec![],
+        }
+    })
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn install_ollama(app: AppHandle) -> Result<(), String> {
-    install_ollama_impl(&app).await
+    run_ollama_command_on_stack("install-ollama", move || async move {
+        install_ollama_impl(&app).await
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn pull_ollama_model(app: AppHandle, model_name: String) -> Result<(), String> {
-    pull_ollama_model_impl(&app, model_name).await
+    run_ollama_command_on_stack("pull-ollama-model", move || async move {
+        pull_ollama_model_impl(&app, model_name).await
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_ollama_model(model_name: String) -> Result<(), String> {
-    delete_ollama_model_impl(model_name).await
+    run_ollama_command_on_stack("delete-ollama-model", move || async move {
+        delete_ollama_model_impl(model_name).await
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
+    run_ollama_command_on_stack("get-recommended-ollama-models", || async {
+        Ok(get_recommended_ollama_models_impl().await)
+    })
+    .await
+    .unwrap_or_else(|err| {
+        log::warn!("Failed to load recommended Ollama models on command thread: {err}");
+        fallback_tiny_models()
+    })
+}
+
+pub async fn get_recommended_ollama_models_impl() -> Vec<OllamaModelInfo> {
     let mut dynamic = fetch_registry_tiny_models().await;
 
     let fallback = fallback_tiny_models();
@@ -545,9 +610,7 @@ pub async fn get_recommended_ollama_models() -> Vec<OllamaModelInfo> {
 }
 
 /// Start the Ollama serve process if it's installed but not running
-#[tauri::command]
-#[specta::specta]
-pub async fn start_ollama_serve() -> Result<(), String> {
+pub async fn start_ollama_serve_impl() -> Result<(), String> {
     let binary = find_ollama_binary().ok_or_else(|| "Ollama is not installed".to_string())?;
     info!("Starting Ollama serve via: {}", binary);
     tokio::process::Command::new(&binary)
@@ -556,6 +619,15 @@ pub async fn start_ollama_serve() -> Result<(), String> {
         .map_err(|e| format!("Failed to start Ollama ({}): {}", binary, e))?;
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn start_ollama_serve() -> Result<(), String> {
+    run_ollama_command_on_stack("start-ollama-serve", || async {
+        start_ollama_serve_impl().await
+    })
+    .await
 }
 
 #[cfg(test)]

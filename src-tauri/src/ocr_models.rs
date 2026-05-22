@@ -22,8 +22,10 @@
 
 use std::collections::HashSet;
 use std::fs;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex as StdMutex;
+use std::thread;
 use std::time::Duration;
 
 use log::{info, warn};
@@ -40,6 +42,38 @@ use crate::storage_paths;
 static ACTIVE_DOWNLOADS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 static NEURAL_ROUTE_CACHE: Lazy<StdMutex<NeuralRouteCache>> =
     Lazy::new(|| StdMutex::new(NeuralRouteCache::default()));
+// OCR catalog/import/download commands are model-hub UI work. Keep them off
+// WebKit's URL-scheme callback stack.
+const OCR_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
+
+async fn run_ocr_command_on_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(OCR_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start OCR command runtime: {err}"))?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start OCR command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "OCR command thread stopped before returning data.".to_string())?
+}
 
 #[derive(Debug, Default)]
 struct NeuralRouteCache {
@@ -932,8 +966,11 @@ pub async fn get_active_ocr_downloads_impl() -> Vec<String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_ocr_model_catalog(app: AppHandle) -> Result<OcrModelCatalog, String> {
-    get_ocr_model_catalog_impl(&app)
+pub async fn get_ocr_model_catalog(app: AppHandle) -> Result<OcrModelCatalog, String> {
+    run_ocr_command_on_stack("get-ocr-model-catalog", move || async move {
+        get_ocr_model_catalog_impl(&app)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -943,22 +980,34 @@ pub async fn import_ocr_model_from_disk(
     catalog_id: String,
     source_dir: String,
 ) -> Result<OcrModelDescriptor, String> {
-    import_ocr_model_from_disk_impl(&app, catalog_id, source_dir).await
+    run_ocr_command_on_stack("import-ocr-model-from-disk", move || async move {
+        import_ocr_model_from_disk_impl(&app, catalog_id, source_dir).await
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn delete_ocr_model(app: AppHandle, catalog_id: String) -> Result<OcrModelDescriptor, String> {
-    delete_ocr_model_impl(&app, catalog_id)
+pub async fn delete_ocr_model(
+    app: AppHandle,
+    catalog_id: String,
+) -> Result<OcrModelDescriptor, String> {
+    run_ocr_command_on_stack("delete-ocr-model", move || async move {
+        delete_ocr_model_impl(&app, catalog_id)
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn set_ocr_model_selection(
+pub async fn set_ocr_model_selection(
     app: AppHandle,
     neural_model_id: Option<String>,
 ) -> Result<(), String> {
-    set_ocr_model_selection_impl(&app, neural_model_id)
+    run_ocr_command_on_stack("set-ocr-model-selection", move || async move {
+        set_ocr_model_selection_impl(&app, neural_model_id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -967,7 +1016,10 @@ pub async fn download_ocr_model(
     app: AppHandle,
     catalog_id: String,
 ) -> Result<OcrModelDescriptor, String> {
-    download_ocr_model_impl(&app, catalog_id).await
+    run_ocr_command_on_stack("download-ocr-model", move || async move {
+        download_ocr_model_impl(&app, catalog_id).await
+    })
+    .await
 }
 
 #[tauri::command]

@@ -13,6 +13,7 @@ use crate::tts_profiles::{
 use log::warn;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
@@ -154,9 +155,10 @@ pub fn tts_stop(app: AppHandle) -> Result<(), String> {
 #[specta::specta]
 pub async fn get_available_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    tokio::task::spawn_blocking(move || manager.get_available_voices())
-        .await
-        .map_err(|err| format!("Failed to load TTS voices: {err}"))?
+    run_tts_command_on_stack("tts-command-list-voices", move || {
+        manager.get_available_voices()
+    })
+    .await
 }
 
 #[tauri::command]
@@ -167,23 +169,21 @@ pub async fn get_tts_voices_for_selection(
     model_id: Option<String>,
 ) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    tokio::task::spawn_blocking(move || {
+    run_tts_command_on_stack("tts-command-selection-voices", move || {
         manager.get_available_voices_for_selection(&provider_id, model_id.as_deref())
     })
     .await
-    .map_err(|err| format!("Failed to load TTS voices for selection: {err}"))?
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn refresh_tts_voices(app: AppHandle) -> Result<Vec<VoiceInfo>, String> {
     let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
-    tokio::task::spawn_blocking(move || {
+    run_tts_command_on_stack("tts-command-refresh-voices", move || {
         manager.invalidate_voice_cache();
         manager.get_available_voices()
     })
     .await
-    .map_err(|err| format!("Failed to refresh TTS voices: {err}"))?
 }
 
 #[tauri::command]
@@ -233,15 +233,41 @@ pub async fn preview_tts_voice_preset_draft(
 #[tauri::command]
 #[specta::specta]
 pub async fn prepare_sidecar_engine(app: AppHandle, provider_id: String) -> Result<(), String> {
-    let manager = app.state::<Arc<TtsManager>>();
-    manager.prepare_sidecar_provider(&provider_id, None).await
+    let manager = Arc::clone(&*app.state::<Arc<TtsManager>>());
+    run_tts_async_command_on_stack("tts-command-prepare-sidecar", move || async move {
+        manager.prepare_sidecar_provider(&provider_id, None).await
+    })
+    .await
 }
 
-async fn speak_on_command_thread(
-    manager: Arc<TtsManager>,
-    request: SpeakRequest,
+async fn run_tts_command_on_stack<T, F>(thread_name: &'static str, task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(TTS_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = task();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start TTS command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
+}
+
+async fn run_tts_async_command_on_stack<T, F, Fut>(
     thread_name: &'static str,
-) -> Result<(), String> {
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
     let (tx, rx) = tokio::sync::oneshot::channel();
     thread::Builder::new()
         .name(thread_name.to_string())
@@ -252,7 +278,7 @@ async fn speak_on_command_thread(
                     .enable_all()
                     .build()
                     .map_err(|err| format!("Failed to start TTS command runtime: {err}"))?;
-                runtime.block_on(manager.speak(request))
+                runtime.block_on(task())
             })();
             let _ = tx.send(result);
         })
@@ -260,6 +286,18 @@ async fn speak_on_command_thread(
 
     rx.await
         .map_err(|_| "TTS command thread stopped before returning a result.".to_string())?
+}
+
+async fn speak_on_command_thread(
+    manager: Arc<TtsManager>,
+    request: SpeakRequest,
+    thread_name: &'static str,
+) -> Result<(), String> {
+    run_tts_async_command_on_stack(
+        thread_name,
+        move || async move { manager.speak(request).await },
+    )
+    .await
 }
 
 #[tauri::command]

@@ -16,6 +16,7 @@ use crate::tts::{tts_model_id_for_hf_repo, TtsManager};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -32,10 +33,41 @@ const HF_COLLECTION_CACHE_TTL: Duration = Duration::from_secs(300);
 const HF_COLLECTION_FETCH_TIMEOUT: Duration = Duration::from_secs(4);
 const HF_COLLECTION_MAX_ITEMS: usize = 48;
 const TTS_HF_VOICE_WAREHOUSE_REPOS: &[&str] = &["rhasspy/piper-voices"];
-const MODEL_PLATFORM_RESPONSE_STACK_BYTES: usize = 64 * 1024 * 1024;
+// Model catalog commands can construct and serialize large nested TTS catalogs.
+// Keep them off WebKit's URL-scheme callback stack on macOS.
+const MODEL_PLATFORM_COMMAND_STACK_BYTES: usize = 64 * 1024 * 1024;
 
 static HF_COLLECTION_CACHE: Lazy<std::sync::Mutex<HashMap<String, (Instant, Vec<String>)>>> =
     Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
+
+async fn run_model_platform_command_on_stack<T, F, Fut>(
+    thread_name: &'static str,
+    task: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = Result<T, String>> + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    thread::Builder::new()
+        .name(thread_name.to_string())
+        .stack_size(MODEL_PLATFORM_COMMAND_STACK_BYTES)
+        .spawn(move || {
+            let result = (|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|err| format!("Failed to start model platform runtime: {err}"))?;
+                runtime.block_on(task())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| format!("Failed to start model platform command thread: {err}"))?;
+
+    rx.await
+        .map_err(|_| "Model platform command thread stopped before returning data.".to_string())?
+}
 
 #[derive(Debug, Deserialize)]
 struct HfCollectionItem {
@@ -1050,8 +1082,11 @@ pub fn cancel_artifact_download(domain: String, artifact_id: String) -> Result<(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_tts_hf_model(app_handle: AppHandle, repo_id: String) -> Result<(), String> {
-    let manager = app_handle.state::<Arc<TtsManager>>();
-    manager.remove_pack(&repo_id)
+    let manager = app_handle.state::<Arc<TtsManager>>().inner().clone();
+    run_model_platform_command_on_stack("delete-tts-hf-model", move || async move {
+        manager.remove_pack(&repo_id)
+    })
+    .await
 }
 
 fn build_llm_catalog(settings: &AppSettings) -> DomainCatalog {
@@ -1208,7 +1243,11 @@ fn tts_model_supports_voice_profile(model: &CatalogModelDescriptor) -> bool {
 pub async fn get_available_models(
     model_manager: State<'_, Arc<ModelManager>>,
 ) -> Result<Vec<ModelInfo>, String> {
-    Ok(model_manager.get_available_models())
+    let model_manager = model_manager.inner().clone();
+    run_model_platform_command_on_stack("get-available-models", move || async move {
+        Ok(model_manager.get_available_models())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1217,7 +1256,11 @@ pub async fn get_model_info(
     model_manager: State<'_, Arc<ModelManager>>,
     model_id: String,
 ) -> Result<Option<ModelInfo>, String> {
-    Ok(model_manager.get_model_info(&model_id))
+    let model_manager = model_manager.inner().clone();
+    run_model_platform_command_on_stack("get-model-info", move || async move {
+        Ok(model_manager.get_model_info(&model_id))
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1225,26 +1268,21 @@ pub async fn get_model_info(
 pub async fn get_model_platform_overview(
     app_handle: AppHandle,
 ) -> Result<ModelPlatformOverview, String> {
-    build_model_platform_overview(app_handle).await
+    run_model_platform_command_on_stack("model-platform-overview", move || async move {
+        build_model_platform_overview(app_handle).await
+    })
+    .await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn get_model_platform_overview_json(app_handle: AppHandle) -> Result<String, String> {
-    let overview = build_model_platform_overview(app_handle).await?;
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    thread::Builder::new()
-        .name("model-platform-json".to_string())
-        .stack_size(MODEL_PLATFORM_RESPONSE_STACK_BYTES)
-        .spawn(move || {
-            let result = serde_json::to_string(&overview)
-                .map_err(|err| format!("Failed to serialize model platform overview: {err}"));
-            let _ = tx.send(result);
-        })
-        .map_err(|err| format!("Failed to start model platform serializer: {err}"))?;
-
-    rx.await
-        .map_err(|_| "Model platform serializer stopped before returning data.".to_string())?
+    run_model_platform_command_on_stack("model-platform-json", move || async move {
+        let overview = build_model_platform_overview(app_handle).await?;
+        serde_json::to_string(&overview)
+            .map_err(|err| format!("Failed to serialize model platform overview: {err}"))
+    })
+    .await
 }
 
 async fn build_model_platform_overview(
@@ -1309,10 +1347,14 @@ pub async fn download_model(
     model_manager: State<'_, Arc<ModelManager>>,
     model_id: String,
 ) -> Result<(), String> {
-    model_manager
-        .download_model(&model_id)
-        .await
-        .map_err(|e| e.to_string())
+    let model_manager = model_manager.inner().clone();
+    run_model_platform_command_on_stack("download-model", move || async move {
+        model_manager
+            .download_model(&model_id)
+            .await
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1323,71 +1365,76 @@ pub async fn delete_model(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
     model_id: String,
 ) -> Result<(), String> {
-    let settings = get_settings(&app_handle);
-    let deleting_active_model =
-        settings.selected_model == model_id || settings.selected_stt_model_id == model_id;
-    if deleting_active_model {
-        transcription_manager
-            .unload_model()
-            .map_err(|e| format!("Failed to unload model: {}", e))?;
-    }
-
-    model_manager
-        .delete_model(&model_id)
-        .map_err(|e| e.to_string())?;
-
-    if deleting_active_model {
-        let fallback = stt_fallback_after_delete(&model_manager, &model_id);
-        let mut settings = get_settings(&app_handle);
-
-        if let Some(fallback_model) = fallback {
-            let load_model_id = fallback_model.id.clone();
-            let transcription_manager = transcription_manager.inner().clone();
-            match tokio::task::spawn_blocking(move || {
-                transcription_manager.load_model(&load_model_id)
-            })
-            .await
-            {
-                Ok(Ok(())) => {
-                    sync_stt_selection_fields(&mut settings, &fallback_model);
-                    write_settings(&app_handle, settings.clone());
-                    let _ = app_handle.emit("settings-changed", settings);
-                    let _ = app_handle.emit("active-model-changed", fallback_model.id);
-                }
-                Ok(Err(err)) => {
-                    settings.selected_model.clear();
-                    settings.selected_stt_model_id.clear();
-                    settings.selected_stt_provider_id.clear();
-                    write_settings(&app_handle, settings.clone());
-                    let _ = app_handle.emit("settings-changed", settings);
-                    return Err(format!(
-                        "Deleted model '{}', but failed to load fallback STT model '{}': {err}",
-                        model_id, fallback_model.id
-                    ));
-                }
-                Err(err) => {
-                    settings.selected_model.clear();
-                    settings.selected_stt_model_id.clear();
-                    settings.selected_stt_provider_id.clear();
-                    write_settings(&app_handle, settings.clone());
-                    let _ = app_handle.emit("settings-changed", settings);
-                    return Err(format!(
-                        "Deleted model '{}', but failed to join fallback STT load task: {err}",
-                        model_id
-                    ));
-                }
-            }
-        } else {
-            settings.selected_model.clear();
-            settings.selected_stt_model_id.clear();
-            settings.selected_stt_provider_id.clear();
-            write_settings(&app_handle, settings.clone());
-            let _ = app_handle.emit("settings-changed", settings);
-            let _ = app_handle.emit("active-model-changed", String::new());
+    let model_manager = model_manager.inner().clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    run_model_platform_command_on_stack("delete-model", move || async move {
+        let settings = get_settings(&app_handle);
+        let deleting_active_model =
+            settings.selected_model == model_id || settings.selected_stt_model_id == model_id;
+        if deleting_active_model {
+            transcription_manager
+                .unload_model()
+                .map_err(|e| format!("Failed to unload model: {}", e))?;
         }
-    }
 
-    Ok(())
+        model_manager
+            .delete_model(&model_id)
+            .map_err(|e| e.to_string())?;
+
+        if deleting_active_model {
+            let fallback = stt_fallback_after_delete(&model_manager, &model_id);
+            let mut settings = get_settings(&app_handle);
+
+            if let Some(fallback_model) = fallback {
+                let load_model_id = fallback_model.id.clone();
+                let transcription_manager = transcription_manager.clone();
+                match tokio::task::spawn_blocking(move || {
+                    transcription_manager.load_model(&load_model_id)
+                })
+                .await
+                {
+                    Ok(Ok(())) => {
+                        sync_stt_selection_fields(&mut settings, &fallback_model);
+                        write_settings(&app_handle, settings.clone());
+                        let _ = app_handle.emit("settings-changed", settings);
+                        let _ = app_handle.emit("active-model-changed", fallback_model.id);
+                    }
+                    Ok(Err(err)) => {
+                        settings.selected_model.clear();
+                        settings.selected_stt_model_id.clear();
+                        settings.selected_stt_provider_id.clear();
+                        write_settings(&app_handle, settings.clone());
+                        let _ = app_handle.emit("settings-changed", settings);
+                        return Err(format!(
+                            "Deleted model '{}', but failed to load fallback STT model '{}': {err}",
+                            model_id, fallback_model.id
+                        ));
+                    }
+                    Err(err) => {
+                        settings.selected_model.clear();
+                        settings.selected_stt_model_id.clear();
+                        settings.selected_stt_provider_id.clear();
+                        write_settings(&app_handle, settings.clone());
+                        let _ = app_handle.emit("settings-changed", settings);
+                        return Err(format!(
+                            "Deleted model '{}', but failed to join fallback STT load task: {err}",
+                            model_id
+                        ));
+                    }
+                }
+            } else {
+                settings.selected_model.clear();
+                settings.selected_stt_model_id.clear();
+                settings.selected_stt_provider_id.clear();
+                write_settings(&app_handle, settings.clone());
+                let _ = app_handle.emit("settings-changed", settings);
+                let _ = app_handle.emit("active-model-changed", String::new());
+            }
+        }
+
+        Ok(())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1396,6 +1443,28 @@ pub async fn set_stt_platform_selection(
     app_handle: AppHandle,
     model_manager: State<'_, Arc<ModelManager>>,
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    let model_manager = model_manager.inner().clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    run_model_platform_command_on_stack("set-stt-platform-selection", move || async move {
+        set_stt_platform_selection_impl(
+            app_handle,
+            model_manager,
+            transcription_manager,
+            provider_id,
+            model_id,
+        )
+        .await
+    })
+    .await
+}
+
+async fn set_stt_platform_selection_impl(
+    app_handle: AppHandle,
+    model_manager: Arc<ModelManager>,
+    transcription_manager: Arc<TranscriptionManager>,
     provider_id: String,
     model_id: String,
 ) -> Result<(), String> {
@@ -1438,7 +1507,6 @@ pub async fn set_stt_platform_selection(
     }
 
     let load_model_id = resolved_model_id.clone();
-    let transcription_manager = transcription_manager.inner().clone();
     tokio::task::spawn_blocking(move || transcription_manager.load_model(&load_model_id))
         .await
         .map_err(|err| format!("Failed to join STT model load task: {err}"))?
@@ -1462,6 +1530,20 @@ pub async fn set_active_model(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
     model_id: String,
 ) -> Result<(), String> {
+    let model_manager = model_manager.inner().clone();
+    let transcription_manager = transcription_manager.inner().clone();
+    run_model_platform_command_on_stack("set-active-model", move || async move {
+        set_active_model_impl(app_handle, model_manager, transcription_manager, model_id).await
+    })
+    .await
+}
+
+async fn set_active_model_impl(
+    app_handle: AppHandle,
+    model_manager: Arc<ModelManager>,
+    transcription_manager: Arc<TranscriptionManager>,
+    model_id: String,
+) -> Result<(), String> {
     let model_info = model_manager
         .get_model_info(&model_id)
         .ok_or_else(|| format!("Model not found: {}", model_id))?;
@@ -1471,7 +1553,6 @@ pub async fn set_active_model(
     }
 
     let load_model_id = model_id.clone();
-    let transcription_manager = transcription_manager.inner().clone();
     tokio::task::spawn_blocking(move || transcription_manager.load_model(&load_model_id))
         .await
         .map_err(|err| format!("Failed to join STT model load task: {err}"))?
@@ -1490,6 +1571,17 @@ pub async fn set_active_model(
 #[tauri::command]
 #[specta::specta]
 pub async fn set_tts_platform_selection(
+    app_handle: AppHandle,
+    provider_id: String,
+    model_id: Option<String>,
+) -> Result<(), String> {
+    run_model_platform_command_on_stack("set-tts-platform-selection", move || async move {
+        set_tts_platform_selection_impl(app_handle, provider_id, model_id).await
+    })
+    .await
+}
+
+async fn set_tts_platform_selection_impl(
     app_handle: AppHandle,
     provider_id: String,
     model_id: Option<String>,

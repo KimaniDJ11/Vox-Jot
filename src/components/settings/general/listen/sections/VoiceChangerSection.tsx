@@ -807,8 +807,44 @@ export const VoiceChangerSection: React.FC<{
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={isRecording ? "danger" : "primary-soft"}
+              size="sm"
+              onClick={() => void toggleMicCapture()}
+              disabled={!canRecord && !isRecording}
+              className="inline-flex items-center gap-1.5"
+            >
+              {isRecording ? (
+                <Square className="h-3.5 w-3.5" />
+              ) : (
+                <Mic className="h-3.5 w-3.5" />
+              )}
+              {isRecording
+                ? t("listen.voiceChanger.stopAndConvert", {
+                    defaultValue: "Stop & Convert",
+                  })
+                : t("listen.voiceChanger.recordMic", {
+                    defaultValue: "Record Mic",
+                  })}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void pickSourceAudio()}
+              disabled={isRecording || isConverting}
+              className="inline-flex items-center gap-1.5"
+            >
+              <FileAudio className="h-3.5 w-3.5" />
+              {t("listen.voiceChanger.chooseWav", {
+                defaultValue: "Choose WAV",
+              })}
+            </Button>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="secondary"
@@ -863,43 +899,6 @@ export const VoiceChangerSection: React.FC<{
                   {selectedVoiceChangerLabel}
                 </span>
               </span>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant={isRecording ? "danger" : "primary-soft"}
-                size="sm"
-                onClick={() => void toggleMicCapture()}
-                disabled={!canRecord && !isRecording}
-                className="inline-flex items-center gap-1.5"
-              >
-                {isRecording ? (
-                  <Square className="h-3.5 w-3.5" />
-                ) : (
-                  <Mic className="h-3.5 w-3.5" />
-                )}
-                {isRecording
-                  ? t("listen.voiceChanger.stopAndConvert", {
-                      defaultValue: "Stop & Convert",
-                    })
-                  : t("listen.voiceChanger.recordMic", {
-                      defaultValue: "Record Mic",
-                    })}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void pickSourceAudio()}
-                disabled={isRecording || isConverting}
-                className="inline-flex items-center gap-1.5"
-              >
-                <FileAudio className="h-3.5 w-3.5" />
-                {t("listen.voiceChanger.chooseWav", {
-                  defaultValue: "Choose WAV",
-                })}
-              </Button>
             </div>
 
             <div className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-2 text-xs text-[var(--muted)]">

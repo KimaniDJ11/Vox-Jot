@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
+import i18n from "@/i18n";
 import {
   AppWindow,
   BookOpen,
@@ -124,6 +125,55 @@ type ViewSection = SidebarItem & {
   title: string;
   content: React.ReactNode;
 };
+
+class SectionErrorBoundary extends React.Component<
+  { sectionId: string; title: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(
+      `Section "${this.props.sectionId}" failed to render:`,
+      error,
+      info,
+    );
+  }
+
+  componentDidUpdate(prevProps: { sectionId: string }) {
+    if (prevProps.sectionId !== this.props.sectionId && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return (
+      <div
+        role="alert"
+        className="rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] px-5 py-4 text-sm text-[var(--text)] shadow-[var(--shadow-sm)]"
+      >
+        <p className="font-semibold">
+          {i18n.t("appSections.common.sectionLoadFailedTitle", {
+            title: this.props.title,
+            defaultValue: "{{title}} could not load.",
+          })}
+        </p>
+        <p className="mt-1 text-[var(--muted)]">
+          {i18n.t("appSections.common.sectionLoadFailedDescription", {
+            defaultValue:
+              "Switch sections and come back, or reload the dev app. The error has been logged to the dev console.",
+          })}
+        </p>
+      </div>
+    );
+  }
+}
 
 const DictateHistorySection = lazy(() =>
   import("@/components/app-sections/dictate").then((module) => ({
@@ -1288,9 +1338,15 @@ function App() {
                   id={activeSection.id}
                   title={activeSection.title}
                 />
-                <Suspense fallback={<SectionLoading />}>
-                  {activeSection.content}
-                </Suspense>
+                <SectionErrorBoundary
+                  key={activeSection.id}
+                  sectionId={activeSection.id}
+                  title={activeSection.title}
+                >
+                  <Suspense fallback={<SectionLoading />}>
+                    {activeSection.content}
+                  </Suspense>
+                </SectionErrorBoundary>
               </section>
             )}
           </div>

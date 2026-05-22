@@ -19,6 +19,7 @@ type Scenario = {
   platform: "macos" | "windows" | "linux";
   settings: Record<string, unknown>;
   models: Array<Record<string, unknown>>;
+  corrections?: Array<Record<string, unknown>>;
 };
 
 const baseProviders = [
@@ -203,6 +204,22 @@ const baseScenario: Scenario = {
   },
   platform: "macos",
   settings: baseSettings,
+};
+
+const dictionaryCorrection = {
+  id: 1,
+  original: "FoxJot",
+  corrected: "Vox Jot",
+  frequency: 2,
+  confidence: 1,
+  exact_only: false,
+  source_app: null,
+  source_kind: "manual",
+  first_seen: 1_700_000_000,
+  last_seen: 1_700_000_100,
+  is_active: true,
+  user_approved: true,
+  auto_apply: "always",
 };
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -417,6 +434,8 @@ const bootApp = async (page: Page, overrides: Partial<Scenario> = {}) => {
             };
           case "get_history_entries":
             return activeScenario.historyEntries;
+          case "get_corrections":
+            return activeScenario.corrections ?? [];
           case "list_write_rules":
             return state.settings.write_rules ?? [];
           case "list_installed_apps":
@@ -645,7 +664,7 @@ test.describe("Vox Jot app", () => {
     await page.getByRole("button", { name: "Models & AI" }).click();
 
     await expect(
-      page.getByRole("heading", { name: /^Models & AI$/i }),
+      page.getByRole("heading", { name: /^Models & AI$/i }).first(),
     ).toBeVisible();
     await expect(
       page.getByText(
@@ -757,6 +776,87 @@ test.describe("Vox Jot app", () => {
 
     await expect(page.getByText("Prompting")).toBeVisible();
     await expect(page.getByText("Apple Cleanup")).toHaveCount(0);
+  });
+
+  test("renders the testing comparison matrix", async ({ page }) => {
+    await bootApp(page);
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Testing", exact: true }).click();
+
+    await expect(page.getByRole("tab", { name: "Live STT" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByText("Mini LibriSpeech real speech")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Live STT" }).hover();
+    await expect(page.getByText("Mini LibriSpeech real speech")).toBeVisible();
+
+    await expect(page.getByText("Match: higher is better.")).toHaveCount(0);
+    await page.getByRole("button", { name: /Match/i }).first().hover();
+    await expect(page.getByText("Match: higher is better.")).toBeVisible();
+
+    await page.getByRole("tab", { name: "Screen OCR" }).click();
+    await expect
+      .poll(async () =>
+        page
+          .locator("[data-testing-table-viewport]")
+          .first()
+          .evaluate((node) => node.scrollWidth <= node.clientWidth + 1),
+      )
+      .toBeTruthy();
+
+    await expect(page.getByRole("tab", { name: "File ASR" })).toBeVisible();
+    await page.getByRole("tab", { name: "File ASR" }).click();
+
+    await expect(page.getByRole("button", { name: "Cards" })).toHaveCount(0);
+    await expect(page.locator("table")).toHaveCount(2);
+    await expect(
+      page.locator("[data-testing-model-icon]").first(),
+    ).toBeVisible();
+    await expect
+      .poll(async () =>
+        page
+          .locator("[data-testing-table-viewport]")
+          .first()
+          .evaluate((node) => node.scrollWidth <= node.clientWidth + 1),
+      )
+      .toBeTruthy();
+    await expect(
+      page.getByRole("button", { name: /WER/i }).first(),
+    ).toBeVisible();
+    await expect(page.getByText("Real-time+").first()).toBeVisible();
+
+    await page
+      .getByRole("button", { name: /FireRedASR2 AED \(MLX\)/i })
+      .click();
+    await expect(
+      page.getByText(/Best full five-format local File ASR suite result/i),
+    ).toBeVisible();
+  });
+
+  test("keeps the learned corrections manager out of settings", async ({
+    page,
+  }) => {
+    await bootApp(page, {
+      corrections: [dictionaryCorrection],
+    });
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("button", { name: "Corrections" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: /^Learned Corrections$/i }),
+    ).toHaveCount(0);
+    await expect(page.getByPlaceholder("Search dictionary")).toHaveCount(0);
+    await expect(
+      page.getByText("Apply dictionary & learned corrections"),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: /Open dictionary/i }).click();
+
+    await expect(page.getByPlaceholder("Search dictionary")).toBeVisible();
+    await expect(page.getByText("Vox Jot")).toBeVisible();
   });
 
   test("shows unified history preferring post-processed text", async ({

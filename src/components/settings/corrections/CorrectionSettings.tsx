@@ -2,7 +2,6 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { BooleanSetting } from "../../ui/BooleanSetting";
 import { SettingsGroup } from "../../ui/SettingsGroup";
-import { CorrectionDictionaryView } from "./CorrectionDictionaryView";
 import { CustomWords } from "../CustomWords";
 import { CorrectionTrackingToggle } from "../CorrectionTrackingToggle";
 
@@ -66,10 +65,6 @@ export const CorrectionSettings: React.FC = () => {
           }
         />
       </SettingsGroup>
-
-      <CorrectionDictionaryView
-        sectionTitle={t("settings.corrections.dictionary.title")}
-      />
     </div>
   );
 };

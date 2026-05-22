@@ -1833,8 +1833,68 @@ const DiagnosticsHero: React.FC = () => {
   );
 };
 
+const DiagnosticsRouteDebugger: React.FC = () => {
+  const { t } = useTranslation();
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const analyzeRoute = async () => {
+    const trimmed = text.trim();
+    if (!trimmed || running) return;
+
+    setRunning(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await commands.debugAnalyzePostProcessRoute(trimmed);
+      if (response.status === "ok") {
+        setResult(JSON.stringify(response.data, null, 2));
+      } else {
+        setError(response.error || "Unable to analyze route.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to analyze route.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 px-5 py-4">
+      <Textarea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder={t("settings.debug.routeInputPlaceholder")}
+        className="min-h-24"
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          onClick={() => void analyzeRoute()}
+          disabled={running || text.trim().length === 0}
+        >
+          {running ? "Analyzing..." : "Analyze Route"}
+        </Button>
+        {error ? (
+          <p className="text-sm font-medium text-[var(--danger)]">{error}</p>
+        ) : null}
+      </div>
+      {result ? (
+        <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--ring-hairline)] bg-[var(--card)] p-4 font-mono text-xs leading-5 text-[var(--text)]">
+          {result}
+        </pre>
+      ) : null}
+    </div>
+  );
+};
+
 export const DiagnosticsSettingsSection: React.FC = () => {
   const { t } = useTranslation();
+  const { getSetting } = useSettings();
+  const debugMode = getSetting("debug_mode") ?? false;
 
   return (
     <div className="space-y-6">
@@ -1853,6 +1913,15 @@ export const DiagnosticsSettingsSection: React.FC = () => {
       >
         <FeatureHealthCheckPanel />
       </SettingsGroup>
+
+      {debugMode ? (
+        <SettingsGroup
+          title={t("appSections.diagnostics.developerTitle")}
+          description={t("appSections.diagnostics.developerDescription")}
+        >
+          <DiagnosticsRouteDebugger />
+        </SettingsGroup>
+      ) : null}
     </div>
   );
 };

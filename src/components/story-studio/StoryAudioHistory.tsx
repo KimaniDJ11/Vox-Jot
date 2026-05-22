@@ -18,8 +18,6 @@ import {
   Forward,
   Loader2,
   Music2,
-  Pause,
-  Play,
   Rewind,
   Save,
   SkipBack,
@@ -29,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DockedAudioHud } from "@/components/ui/DockedAudioHud";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useRefreshOnWindowFocus } from "@/hooks/useRefreshOnWindowFocus";
@@ -52,11 +51,7 @@ export interface StoryAudioItem {
   starred: boolean;
 }
 
-type StoryAudioEffectPreset =
-  | "clean"
-  | "voice_polish"
-  | "radio"
-  | "warm_room";
+type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room";
 
 interface StoryClipMetadata {
   id: string;
@@ -477,26 +472,29 @@ export const StoryAudioSidebar: React.FC = () => {
     }
   }, []);
 
-  const handleCancelJob = useCallback(async (job: StoryRenderJobSummary) => {
-    setJobs((current) =>
-      sortStoryRenderJobs(
-        current.map((currentJob) =>
-          currentJob.render_id === job.render_id
-            ? markStoryRenderJobCancelled(currentJob)
-            : currentJob,
+  const handleCancelJob = useCallback(
+    async (job: StoryRenderJobSummary) => {
+      setJobs((current) =>
+        sortStoryRenderJobs(
+          current.map((currentJob) =>
+            currentJob.render_id === job.render_id
+              ? markStoryRenderJobCancelled(currentJob)
+              : currentJob,
+          ),
         ),
-      ),
-    );
-    setNowMs(Date.now());
-    try {
-      await invoke("cancel_story_render", { renderId: job.render_id });
-      toast.message("Story render cancelled.");
-    } catch (error) {
-      console.error("Failed to cancel story render:", error);
-      toast.error("Could not cancel story render.");
-      void loadJobs();
-    }
-  }, [loadJobs]);
+      );
+      setNowMs(Date.now());
+      try {
+        await invoke("cancel_story_render", { renderId: job.render_id });
+        toast.message("Story render cancelled.");
+      } catch (error) {
+        console.error("Failed to cancel story render:", error);
+        toast.error("Could not cancel story render.");
+        void loadJobs();
+      }
+    },
+    [loadJobs],
+  );
 
   const handleCreateProcessed = useCallback(
     async (
@@ -1108,23 +1106,6 @@ interface DockedStoryAudioPlayerProps {
   onAudioEnded: () => void;
 }
 
-const DOCKED_TICK_COUNT = 64;
-const DOCKED_TICK_HEIGHTS = Array.from(
-  { length: DOCKED_TICK_COUNT },
-  (_, i) => {
-    const phase = i / (DOCKED_TICK_COUNT - 1);
-    const wave =
-      0.4 +
-      0.6 *
-        Math.abs(
-          Math.sin(i * 0.5 + 0.4) *
-            Math.cos(i * 0.27 + 1.3) *
-            (1 - 0.2 * Math.abs(phase - 0.5)),
-        );
-    return Math.max(20, Math.min(100, Math.round(wave * 100)));
-  },
-);
-
 const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   item,
   audioRef,
@@ -1161,9 +1142,7 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(item.title || fallbackTitle);
   const [isRenaming, setIsRenaming] = useState(false);
-  const [isHudInteracting, setIsHudInteracting] = useState(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
-  const isHudExpanded = isHudInteracting;
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -1198,35 +1177,29 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
   };
 
   return (
-    <div
-      className="story-audio-docked-player story-audio-waveform-hud z-20 mt-auto overflow-visible rounded-[1.75rem] border border-[var(--border)] bg-[var(--panel-bg)] shadow-[0_22px_60px_-18px_rgba(0,0,0,0.32)]"
-      data-expanded={isHudExpanded ? "true" : "false"}
-      onMouseEnter={() => setIsHudInteracting(true)}
-      onMouseLeave={() => setIsHudInteracting(false)}
-      onFocusCapture={() => setIsHudInteracting(true)}
-      onBlurCapture={(event) => {
-        const nextFocusedElement =
-          event.relatedTarget instanceof Node ? event.relatedTarget : null;
-        if (
-          !nextFocusedElement ||
-          !event.currentTarget.contains(nextFocusedElement)
-        ) {
-          setIsHudInteracting(false);
-        }
-      }}
-    >
-      <audio
-        ref={audioRef}
-        src={audioSrc ?? undefined}
-        preload="metadata"
-        onLoadedMetadata={onAudioLoadedMetadata}
-        onPlay={onAudioPlay}
-        onPause={onAudioPause}
-        onEnded={onAudioEnded}
-      />
-
-      <div className="story-audio-waveform-hud__floating-title">
-        {isEditingTitle ? (
+    <DockedAudioHud
+      audioRef={audioRef}
+      audioSrc={audioSrc}
+      isPlaying={isPlaying}
+      isLoadingAudio={isLoadingAudio}
+      hasAudio={hasAudio}
+      currentTime={currentTime}
+      duration={duration}
+      progressPercent={progressPercent}
+      currentTimeLabel={formatAudioClock(currentTime)}
+      durationLabel={formatAudioClock(duration || item.duration_ms / 1000)}
+      playLabel={t("common.play")}
+      pauseLabel={t("common.pause")}
+      timelineLabel={t("storyAudio.timelineAriaLabel")}
+      className="story-audio-docked-player"
+      onTogglePlay={onTogglePlay}
+      onScrub={onScrub}
+      onAudioLoadedMetadata={onAudioLoadedMetadata}
+      onAudioPlay={onAudioPlay}
+      onAudioPause={onAudioPause}
+      onAudioEnded={onAudioEnded}
+      floatingTitle={
+        isEditingTitle ? (
           <input
             ref={titleInputRef}
             value={draftTitle}
@@ -1257,122 +1230,43 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
           >
             <span className="truncate">{item.title || fallbackTitle}</span>
           </button>
-        )}
-      </div>
-
-      <div className="story-audio-waveform-hud__floating-controls">
-        <PlaybackRatePopover
-          value={playbackRate}
-          options={playbackRateOptions}
-          onChange={onChangePlaybackRate}
-        />
-        <StoryAudioEffectPopover
-          value={audioEffect}
-          onChange={onChangeAudioEffect}
-        />
-        <SampleRatePopover
-          value={sampleRateHz}
-          options={sampleRateOptions}
-          onChange={onChangeSampleRate}
-        />
-        <button
-          type="button"
-          onClick={onSaveProcessed}
-          disabled={isSaving}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
-          title={t("storyAudio.controls.saveProcessedCopy")}
-          aria-label={t("storyAudio.controls.saveProcessedCopy")}
-        >
-          {isSaving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Save className="h-3.5 w-3.5" aria-hidden />
-          )}
-          {t("storyAudio.controls.saveCopy")}
-        </button>
-      </div>
-
-      <div className="flex items-center gap-3 px-3 py-3 sm:px-4">
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          disabled={isLoadingAudio}
-          aria-label={isPlaying ? t("common.pause") : t("common.play")}
-          title={isPlaying ? t("common.pause") : t("common.play")}
-          className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--inverse-text)] transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50 disabled:hover:scale-100 sm:h-14 sm:w-14 ${
-            isPlaying
-              ? "shadow-[0_14px_36px_-12px_color-mix(in_srgb,var(--accent),transparent_25%)]"
-              : "shadow-[0_8px_22px_-10px_color-mix(in_srgb,var(--accent),transparent_45%)]"
-          }`}
-        >
-          {isLoadingAudio ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : isPlaying ? (
-            <Pause className="h-6 w-6" fill="currentColor" />
-          ) : (
-            <Play className="h-6 w-6 translate-x-[1px]" fill="currentColor" />
-          )}
-        </button>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="group/scrub relative flex h-7 cursor-pointer items-center">
-            <div
-              aria-hidden
-              className="absolute inset-0 flex items-center gap-[2px]"
-            >
-              {DOCKED_TICK_HEIGHTS.map((heightPercent, index) => {
-                const tickProgress = ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
-                const isFilled = hasAudio && tickProgress <= progressPercent;
-                return (
-                  <span
-                    key={index}
-                    className="flex-1 rounded-full transition-colors duration-100"
-                    style={{
-                      height: `${heightPercent}%`,
-                      background: isFilled
-                        ? "var(--accent)"
-                        : audioSrc
-                          ? "color-mix(in srgb, var(--muted), transparent 55%)"
-                          : "color-mix(in srgb, var(--muted), transparent 75%)",
-                    }}
-                  />
-                );
-              })}
-            </div>
-            {hasAudio ? (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 h-7 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] opacity-0 shadow-[0_2px_8px_color-mix(in_srgb,var(--accent),transparent_55%)] transition-opacity duration-150 group-hover/scrub:opacity-100"
-                style={{ left: `${progressPercent}%` }}
-              />
-            ) : null}
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.01}
-              value={currentTime}
-              onChange={onScrub}
-              disabled={!hasAudio}
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
-              aria-label={t("storyAudio.timelineAriaLabel")}
-            />
-          </div>
-        </div>
-
-        <span className="shrink-0 text-[13px] font-semibold tabular-nums leading-5 text-[var(--muted)]">
-          <span className="text-[var(--text)]">
-            {formatAudioClock(currentTime)}
-          </span>
-          <span aria-hidden className="px-1 text-[var(--muted)]">
-            /
-          </span>
-          {formatAudioClock(duration || item.duration_ms / 1000)}
-        </span>
-      </div>
-
-      <div className="story-audio-waveform-hud__details">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4">
+        )
+      }
+      floatingControls={
+        <>
+          <PlaybackRatePopover
+            value={playbackRate}
+            options={playbackRateOptions}
+            onChange={onChangePlaybackRate}
+          />
+          <StoryAudioEffectPopover
+            value={audioEffect}
+            onChange={onChangeAudioEffect}
+          />
+          <SampleRatePopover
+            value={sampleRateHz}
+            options={sampleRateOptions}
+            onChange={onChangeSampleRate}
+          />
+          <button
+            type="button"
+            onClick={onSaveProcessed}
+            disabled={isSaving}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 text-[12px] font-semibold normal-case tracking-normal text-[var(--accent)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent-soft),var(--accent)_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50"
+            title={t("storyAudio.controls.saveProcessedCopy")}
+            aria-label={t("storyAudio.controls.saveProcessedCopy")}
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Save className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {t("storyAudio.controls.saveCopy")}
+          </button>
+        </>
+      }
+      details={
+        <>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
             <span>{formatSampleRate(item.sample_rate_hz || 24_000)}</span>
             {item.audio_effect && item.audio_effect !== "clean" ? (
@@ -1430,10 +1324,9 @@ const DockedStoryAudioPlayer: React.FC<DockedStoryAudioPlayerProps> = ({
               <FolderOpen width={15} height={15} />
             </button>
           </div>
-        </div>
-
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 };
 
@@ -1575,7 +1468,8 @@ const StoryClipTimeline: React.FC<{
         if (cancelled) return;
         const clips = [...(parsed.clips ?? [])].sort(
           (left, right) =>
-            left.offset_ms - right.offset_ms || left.line_number - right.line_number,
+            left.offset_ms - right.offset_ms ||
+            left.line_number - right.line_number,
         );
         setMetadata({ ...parsed, clips });
         setSelectedClipId(clips[0]?.id ?? null);
@@ -1841,8 +1735,7 @@ const StoryClipTimeline: React.FC<{
                     : "border-[var(--border)] bg-[color-mix(in_srgb,var(--panel-bg),var(--accent-soft)_20%)] hover:border-[color-mix(in_srgb,var(--accent),transparent_45%)]"
                 }`}
                 aria-label={t("storyAudio.clipAriaLabel", {
-                  defaultValue:
-                    "Clip {{line}} {{speaker}}, starts at {{time}}",
+                  defaultValue: "Clip {{line}} {{speaker}}, starts at {{time}}",
                   line: clip.line_number,
                   speaker: clip.speaker,
                   time: formatDuration(adjustedOffset),

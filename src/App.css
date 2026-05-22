@@ -1499,14 +1499,16 @@ input[type="range"]:disabled::-moz-range-thumb {
     background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
   }
 
-  .story-audio-docked-player {
+  .story-audio-docked-player,
+  .history-transcript-docked-player {
     position: fixed;
     bottom: max(1rem, env(safe-area-inset-bottom));
     left: calc(240px + max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem));
     right: max(0.75rem, ((100vw - 240px - 64rem) / 2) + 0.75rem);
   }
 
-  .shell.shell--sidebar-collapsed .story-audio-docked-player {
+  .shell.shell--sidebar-collapsed .story-audio-docked-player,
+  .shell.shell--sidebar-collapsed .history-transcript-docked-player {
     left: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
     right: max(0.75rem, ((100vw - 64rem) / 2) + 0.75rem);
   }
@@ -1694,7 +1696,9 @@ input[type="range"]:disabled::-moz-range-thumb {
     }
 
     .story-audio-docked-player,
-    .shell.shell--sidebar-collapsed .story-audio-docked-player {
+    .history-transcript-docked-player,
+    .shell.shell--sidebar-collapsed .story-audio-docked-player,
+    .shell.shell--sidebar-collapsed .history-transcript-docked-player {
       left: 0.75rem;
       right: 0.75rem;
     }

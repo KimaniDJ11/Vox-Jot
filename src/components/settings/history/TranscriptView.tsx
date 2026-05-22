@@ -7,16 +7,10 @@ import React, {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  FolderOpen,
-  Loader2,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-} from "lucide-react";
+import { FolderOpen, SkipBack, SkipForward } from "lucide-react";
 
 import { commands, type HistoryEntry } from "@/bindings";
+import { DockedAudioHud } from "@/components/ui/DockedAudioHud";
 import { interactiveFocusRingClass } from "@/lib/interactiveFocus";
 
 interface TranscriptViewProps {
@@ -55,22 +49,6 @@ const formatClock = (seconds: number): string => {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
-
-const DOCKED_TICK_COUNT = 64;
-// Deterministic pseudo-waveform, matching the look of the generated-audio
-// player's docked scrubber.
-const DOCKED_TICK_HEIGHTS = Array.from({ length: DOCKED_TICK_COUNT }, (_, i) => {
-  const phase = i / (DOCKED_TICK_COUNT - 1);
-  const wave =
-    0.4 +
-    0.6 *
-      Math.abs(
-        Math.sin(i * 0.5 + 0.4) *
-          Math.cos(i * 0.27 + 1.3) *
-          (1 - 0.2 * Math.abs(phase - 0.5)),
-      );
-  return Math.max(20, Math.min(100, Math.round(wave * 100)));
-});
 
 const dockedActionButtonClassName = `inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)] ${interactiveFocusRingClass}`;
 
@@ -223,14 +201,10 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
         entry.file_name,
       );
       if (result.status !== "ok") {
-        toast.error(
-          t("settings.history.revealError", { error: result.error }),
-        );
+        toast.error(t("settings.history.revealError", { error: result.error }));
       }
     } catch (error) {
-      toast.error(
-        t("settings.history.revealError", { error: String(error) }),
-      );
+      toast.error(t("settings.history.revealError", { error: String(error) }));
     }
   }, [entry, t]);
 
@@ -323,7 +297,7 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
   const hasTranscript = segments.length > 0;
 
   return (
-    <article className="flex flex-col gap-4 px-1 py-4">
+    <article className="flex flex-col gap-4 px-1 py-4 pb-[calc(11.5rem_+_env(safe-area-inset-bottom))]">
       <div className="max-h-[52vh] min-h-[14rem] flex-1 overflow-y-auto rounded-2xl border border-mid-gray/20 bg-[var(--panel-bg)] px-4 py-4">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
           {t("settings.history.transcript.hint")}
@@ -385,62 +359,42 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
         )}
       </div>
 
-      {/* Docked player — mirrors the generated-audio player's docked controls. */}
-      <div className="z-20 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[0_22px_60px_-18px_rgba(0,0,0,0.32)]">
-        <audio
-          ref={audioRef}
-          src={audioSrc ?? undefined}
-          preload="metadata"
-          onLoadedMetadata={(event) => {
-            setDuration(event.currentTarget.duration || 0);
-          }}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => {
-            setIsPlaying(false);
-            setCurrentTime(duration || 0);
-          }}
-        />
-
-        <div className="flex items-center gap-4 px-4 pt-4">
-          <button
-            type="button"
-            onClick={() => void togglePlayback()}
-            disabled={isLoadingAudio}
-            aria-label={isPlaying ? t("common.pause") : t("common.play")}
-            title={isPlaying ? t("common.pause") : t("common.play")}
-            className={`relative inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-[var(--inverse-text)] transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-glow)] disabled:opacity-50 disabled:hover:scale-100 ${
-              isPlaying
-                ? "shadow-[0_14px_36px_-12px_color-mix(in_srgb,var(--accent),transparent_25%)]"
-                : "shadow-[0_8px_22px_-10px_color-mix(in_srgb,var(--accent),transparent_45%)]"
-            }`}
+      <DockedAudioHud
+        audioRef={audioRef}
+        audioSrc={audioSrc}
+        isPlaying={isPlaying}
+        isLoadingAudio={isLoadingAudio}
+        hasAudio={hasAudio}
+        currentTime={currentTime}
+        duration={duration}
+        progressPercent={progressPercent}
+        currentTimeLabel={formatClock(currentTime)}
+        durationLabel={formatClock(duration)}
+        playLabel={t("common.play")}
+        pauseLabel={t("common.pause")}
+        timelineLabel={t("storyAudio.timelineAriaLabel")}
+        className="history-transcript-docked-player"
+        onTogglePlay={() => void togglePlayback()}
+        onScrub={handleScrub}
+        onAudioLoadedMetadata={(event) => {
+          setDuration(event.currentTarget.duration || 0);
+        }}
+        onAudioPlay={() => setIsPlaying(true)}
+        onAudioPause={() => setIsPlaying(false)}
+        onAudioEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(duration || 0);
+        }}
+        floatingTitle={
+          <div
+            className="inline-flex h-9 max-w-full items-center truncate rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-3 text-start text-sm font-semibold leading-6 text-[var(--text)] shadow-[var(--shadow-sm)] sm:text-base"
+            title={entry.title}
           >
-            {isLoadingAudio ? (
-              <Loader2 className="h-7 w-7 animate-spin" />
-            ) : isPlaying ? (
-              <Pause className="h-7 w-7" fill="currentColor" />
-            ) : (
-              <Play className="h-7 w-7 translate-x-[1px]" fill="currentColor" />
-            )}
-          </button>
-
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p
-              className="min-w-0 truncate text-base font-semibold leading-6 text-[var(--text)]"
-              title={entry.title}
-            >
-              {entry.title}
-            </p>
-            <div className="flex min-w-0 items-center gap-1.5 truncate text-[12px] leading-5 text-[var(--muted)]">
-              <span className="tabular-nums text-[var(--text)]">
-                {formatClock(currentTime)}
-              </span>
-              <span aria-hidden>/</span>
-              <span className="tabular-nums">{formatClock(duration)}</span>
-            </div>
+            <span className="truncate">{entry.title}</span>
           </div>
-
-          <div className="flex shrink-0 items-center gap-1">
+        }
+        floatingControls={
+          <>
             <button
               type="button"
               onClick={() =>
@@ -474,56 +428,9 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
             >
               <FolderOpen width={15} height={15} />
             </button>
-          </div>
-        </div>
-
-        <div className="px-4 pb-4 pt-3">
-          <div className="group/scrub relative flex h-7 cursor-pointer items-center">
-            <div
-              aria-hidden
-              className="absolute inset-0 flex items-center gap-[2px]"
-            >
-              {DOCKED_TICK_HEIGHTS.map((heightPercent, index) => {
-                const tickProgress =
-                  ((index + 0.5) / DOCKED_TICK_COUNT) * 100;
-                const isFilled = hasAudio && tickProgress <= progressPercent;
-                return (
-                  <span
-                    key={index}
-                    className="flex-1 rounded-full transition-colors duration-100"
-                    style={{
-                      height: `${heightPercent}%`,
-                      background: isFilled
-                        ? "var(--accent)"
-                        : audioSrc
-                          ? "color-mix(in srgb, var(--muted), transparent 55%)"
-                          : "color-mix(in srgb, var(--muted), transparent 75%)",
-                    }}
-                  />
-                );
-              })}
-            </div>
-            {hasAudio ? (
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 h-7 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] opacity-0 shadow-[0_2px_8px_color-mix(in_srgb,var(--accent),transparent_55%)] transition-opacity duration-150 group-hover/scrub:opacity-100"
-                style={{ left: `${progressPercent}%` }}
-              />
-            ) : null}
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.01}
-              value={currentTime}
-              onChange={handleScrub}
-              disabled={!hasAudio}
-              className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-default"
-              aria-label={t("storyAudio.timelineAriaLabel")}
-            />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </article>
   );
 };

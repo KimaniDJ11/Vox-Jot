@@ -57,11 +57,7 @@ const SelectControl: React.FC<SelectControlProps> = ({
     : [{ value, label: selectedLabel || value }, ...options];
 
   return (
-    <div
-      className={`relative inline-flex h-10 shrink-0 ${
-        active ? "w-[8.75rem] max-w-full" : "w-10"
-      }`}
-    >
+    <div className="relative inline-flex h-10 w-10 shrink-0">
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -84,17 +80,10 @@ const SelectControl: React.FC<SelectControlProps> = ({
         ))}
       </select>
       <div
-        className={`pointer-events-none absolute inset-0 flex items-center justify-center ${
-          active ? "gap-1.5 px-3" : ""
-        }`}
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
         aria-hidden
       >
         {children}
-        {active ? (
-          <span className="min-w-0 truncate text-xs font-semibold text-[var(--text)]">
-            {selectedLabel}
-          </span>
-        ) : null}
       </div>
     </div>
   );

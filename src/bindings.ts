@@ -2148,6 +2148,78 @@ async generateCreateSpeechAudio(request: CreateSpeechAudioRequest) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
+async getStableAudio3Status() : Promise<Result<StableAudio3Status, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_stable_audio3_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async prepareStableAudio3(request: PrepareStableAudio3Request) : Promise<Result<StableAudio3Status, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("prepare_stable_audio3", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getCreativeAudioModelCatalog() : Promise<Result<CreativeAudioModelCatalog, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_creative_audio_model_catalog") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async downloadCreativeAudioModel(modelId: string) : Promise<Result<CreativeAudioModelDescriptor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_creative_audio_model", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cancelCreativeAudioModelDownload(modelId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_creative_audio_model_download", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteCreativeAudioModel(modelId: string) : Promise<Result<CreativeAudioModelDescriptor, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_creative_audio_model", { modelId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getActiveCreativeAudioDownloads() : Promise<Result<string[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_active_creative_audio_downloads") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async generateStorySound(request: GenerateStorySoundRequest) : Promise<Result<StoryAudioItem, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("generate_story_sound", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cancelStorySoundGeneration(renderId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_story_sound_generation", { renderId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async cancelStoryRender(renderId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("cancel_story_render", { renderId }) };
@@ -2571,6 +2643,9 @@ export type CorrectionAutoApply = { status: CorrectionAutoApplyStatus; eligible:
 export type CorrectionAutoApplyStatus = "candidate" | "manual" | "active" | "low_confidence" | "blocked" | "disabled"
 export type CorrectionSourceKind = "manual" | "observed_edit" | "imported" | "auto_learned"
 export type CreateSpeechAudioRequest = { render_id: string; title: string; text: string; preset: TtsVoicePresetInput }
+export type CreativeAudioModelCatalog = { install_root: string; models: CreativeAudioModelDescriptor[] }
+export type CreativeAudioModelDescriptor = { id: string; label: string; provider: string; description: string; source_kind: CreativeAudioModelSourceKind; source_url: string; license_label: string; runtime_label: string; size_hint_label: string; installed: boolean; runnable: boolean; downloadable: boolean; recommended: boolean; modes: StorySoundMode[] }
+export type CreativeAudioModelSourceKind = "official_source"
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
  * Aggregated dictation statistics computed from history entries.
@@ -2600,6 +2675,7 @@ export type DictionaryEntry = { spoken: string; written: string; priority?: numb
 export type DomainCatalog = { providers: ProviderDescriptor[]; models: CatalogModelDescriptor[] }
 export type EngineType = "Whisper" | "Parakeet" | "Moonshine" | "MoonshineStreaming" | "SenseVoice" | "GigaAM" | "MlxAudioStt" | "AppleSpeech" | "AppleSpeechStreaming"
 export type FieldSnapshotStatus = "not_requested" | "pending" | "captured" | "skipped" | "failed"
+export type GenerateStorySoundRequest = { render_id: string; title: string; prompt: string; model_id: string; mode: StorySoundMode; duration_seconds: number; seed: number | null }
 export type HistoryEntriesPage = { entries: HistoryEntry[]; total: number; has_more: boolean }
 export type HistoryEntry = { id: number; file_name: string; timestamp: number; saved: boolean; title: string; transcription_text: string; post_processed_text: string | null; post_process_prompt: string | null; dictionary_hits: string[]; pasted_text: string | null; field_snapshot_text: string | null; field_snapshot_at: number | null; field_snapshot_status: FieldSnapshotStatus; field_snapshot_error: string | null; source_language_detected: string | null; translation_target_language: string | null; translated_text: string | null; translation_route: string | null; translation_provider_id: string | null; translation_model_id: string | null; translation_origin: string | null; translation_destination: string | null; tts_requested: boolean | null; tts_engine: string | null; tts_voice_id: string | null; tts_locale: string | null; tts_trigger: string | null; tts_status: string | null; screen_context_metadata: ScreenContextHistoryMetadata | null; duration_ms: number | null }
 export type HttpApiStatus = { enabled: boolean; port: number; token: string; token_available: boolean }
@@ -2691,6 +2767,7 @@ export type PostProcessMode = "literal" | "intent"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type PostProcessResult = { raw_text: string; normalized_text: string; final_text: string; dictionary_hits: string[]; context_impact?: ContextImpactMetadata | null; edits: PostProcessEdits; mode: PostProcessMode; active_app_context: ActiveAppContext | null; applied_tone_id: string | null }
 export type PostProcessRouteDebug = { route: string; word_count: number; has_correction_cue: boolean; has_list_cue: boolean; has_paragraph_cue: boolean; has_transform_cue: boolean; has_technical_tokens: boolean; looks_incomplete: boolean; score: number }
+export type PrepareStableAudio3Request = { mode: StorySoundMode }
 export type ProcessStoryAudioRequest = { id: string; playback_rate: number; sample_rate_hz: number; audio_effect?: StoryAudioEffectPreset }
 export type ProviderDescriptor = { id: string; domain: ModelDomain; source_kind: CatalogSourceKind; label: string; description: string; source_label: string; source_url: string | null; runtime: RuntimeRequirement; available: boolean; local_only: boolean; coming_soon: boolean; license_label: string | null; capabilities: CapabilityFlags }
 export type RecordingOverlayStyle =
@@ -2753,6 +2830,7 @@ export type SpeechAnalysisRuntime = "in_process" | "python_sidecar" | "onnx_core
 export type SpeechAnalysisSelection = { asr_model_id: string; diarization_model_id: string }
 export type SpeechAnalysisSourceKind = "built_in" | "hugging_face" | "git_hub" | "local_onnx_bundle" | "runtime_managed"
 export type SpeechAnalysisTask = "asr" | "diarization" | "asr_diarization"
+export type StableAudio3Status = { installed: boolean; sfx_ready: boolean; ambience_ready: boolean; music_ready: boolean; runtime_path: string; message: string }
 /**
  * A stored correction entry, as returned to the frontend.
  */
@@ -2764,6 +2842,7 @@ export type StoryLineInstructionOverride = { line_number: number; style_instruct
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
 export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
 export type StoryRenderRequest = { render_id: string; project_id?: string | null; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[]; audio_effect?: StoryAudioEffectPreset }
+export type StorySoundMode = "sfx" | "ambience" | "music"
 /**
  * One transcribed segment with millisecond-resolution timing.
  *

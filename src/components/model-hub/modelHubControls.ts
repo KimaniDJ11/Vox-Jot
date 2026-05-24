@@ -6,7 +6,13 @@ export interface ModelHubControlValues {
   sortMode: ModelSortMode;
 }
 
-export type ModelHubControlScope = "stt" | "llm" | "tts" | "ocr" | "analysis";
+export type ModelHubControlScope =
+  | "stt"
+  | "llm"
+  | "tts"
+  | "creative_audio"
+  | "ocr"
+  | "analysis";
 
 export interface ModelHubControlState extends ModelHubControlValues {
   setProviderFilter: (value: string) => void;
@@ -30,6 +36,7 @@ export const DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES: ScopedModelHubControlValue
     stt: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
     llm: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
     tts: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
+    creative_audio: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
     ocr: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
     analysis: { ...DEFAULT_MODEL_HUB_CONTROL_VALUES },
   };

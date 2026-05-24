@@ -13,6 +13,7 @@ import { RefineModelsSection } from "@/components/app-sections/refine";
 import { EngineLibrarySection } from "@/components/settings/general/ListenSections";
 import OcrEnginesSection from "@/components/model-hub/OcrEnginesSection";
 import SpeechAnalysisEnginesSection from "@/components/model-hub/SpeechAnalysisEnginesSection";
+import CreativeAudioEnginesSection from "@/components/model-hub/CreativeAudioEnginesSection";
 import { handleHorizontalTabListKeyDown } from "@/lib/ui/tabKeyboard";
 import { press } from "@/motion/springs";
 import {
@@ -86,6 +87,9 @@ const ModelHubSection: React.FC = () => {
       stt: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.stt },
       llm: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.llm },
       tts: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.tts },
+      creative_audio: {
+        ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.creative_audio,
+      },
       ocr: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.ocr },
       analysis: { ...DEFAULT_SCOPED_MODEL_HUB_CONTROL_VALUES.analysis },
     }));
@@ -229,6 +233,8 @@ const ModelHubSection: React.FC = () => {
           showActiveModelBanner={false}
         />
       );
+    } else if (tabId === "creative_audio") {
+      content = <CreativeAudioEnginesSection {...commonSectionProps} />;
     } else if (tabId === "ocr") {
       content = <OcrEnginesSection {...commonSectionProps} />;
     }

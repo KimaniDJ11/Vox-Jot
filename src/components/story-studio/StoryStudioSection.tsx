@@ -56,6 +56,7 @@ import {
   type ScriptEditorHandle,
   type ScriptTextSelection,
 } from "./ScriptEditor";
+import { SoundDesignPanel } from "./SoundDesignPanel";
 import { validateStoryDraft, type StoryCastMemberDraft } from "./storyScript";
 
 interface StoryRenderEnqueueResult {
@@ -76,7 +77,7 @@ interface StoryRenderRequest {
 
 const storyStudioDraftStorageKey = "vox-jot-story-studio-draft-v1";
 
-type StudioTool = "script" | "cast";
+type StudioTool = "script" | "cast" | "sound";
 type StoryAudioEffectPreset = "clean" | "voice_polish" | "radio" | "warm_room";
 
 interface StoryStudioDraft {
@@ -620,66 +621,29 @@ export const StoryStudioSection: React.FC = () => {
     </div>
   );
 
-  if (!isLoadingPresets && !isLoadingVoiceChoices && !hasVoiceChoices) {
-    return (
-      <div className="flex h-full items-center justify-center px-6 py-10">
-        <div className="max-w-md text-center">
-          <Volume2 className="mx-auto mb-4 h-8 w-8 text-[var(--accent)]" />
-          <h3 className="text-lg font-semibold text-[var(--text)]">
-            {t("storyStudio.emptyVoicesTitle")}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            {t("storyStudio.emptyVoicesDescription")}
-          </p>
-          <div className="mt-4 flex justify-center gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent("vox-jot:navigate", {
-                    detail: { view: "listen", section: "create-voices" },
-                  }),
-                )
-              }
-            >
-              {t("storyStudio.openMyVoices")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void refreshPresets()}
-            >
-              <RefreshCw className="h-4 w-4" />
-              {t("common.refresh")}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="px-6 pb-5">
       <div className="flex w-full flex-col gap-4 pb-4">
         <div className="story-studio-toolbar flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="primary-soft"
-              size="sm"
-              onClick={() => void handleRender()}
-              disabled={!canRender}
-            >
-              {isQueueingRender || showQueuedAck ? (
-                <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
-              ) : (
-                <WandSparkles className="h-3.5 w-3.5" />
-              )}
-              {isQueueingRender || showQueuedAck
-                ? t("storyStudio.queued")
-                : t("storyStudio.generate")}
-            </Button>
+            {activeTool !== "sound" ? (
+              <Button
+                type="button"
+                variant="primary-soft"
+                size="sm"
+                onClick={() => void handleRender()}
+                disabled={!canRender}
+              >
+                {isQueueingRender || showQueuedAck ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-[spin_1s_linear_infinite]" />
+                ) : (
+                  <WandSparkles className="h-3.5 w-3.5" />
+                )}
+                {isQueueingRender || showQueuedAck
+                  ? t("storyStudio.queued")
+                  : t("storyStudio.generate")}
+              </Button>
+            ) : null}
 
             <SegmentedControl<StudioTool>
               value={activeTool}
@@ -689,6 +653,12 @@ export const StoryStudioSection: React.FC = () => {
               items={[
                 { value: "script", label: t("storyStudio.tools.script") },
                 { value: "cast", label: t("storyStudio.tools.cast") },
+                {
+                  value: "sound",
+                  label: t("storyStudio.tools.sound", {
+                    defaultValue: "Sound",
+                  }),
+                },
               ]}
             />
           </div>
@@ -735,15 +705,17 @@ export const StoryStudioSection: React.FC = () => {
                 />
               </div>
             </div>
-          ) : (
+          ) : activeTool === "cast" ? (
             <div className="ms-auto flex max-w-full justify-end">
               {renderReadinessPill}
             </div>
+          ) : (
+            <div className="ms-auto" />
           )}
         </div>
 
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-          {validation.errors.length > 0 ? (
+          {activeTool !== "sound" && validation.errors.length > 0 ? (
             <div
               className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--text)]"
               role="alert"
@@ -767,7 +739,21 @@ export const StoryStudioSection: React.FC = () => {
             </div>
           ) : null}
 
-          {activeTool === "script" ? (
+          {!isLoadingPresets &&
+          !isLoadingVoiceChoices &&
+          !hasVoiceChoices &&
+          activeTool !== "sound" ? (
+            <EmptyStoryVoices
+              onOpenMyVoices={() =>
+                window.dispatchEvent(
+                  new CustomEvent("vox-jot:navigate", {
+                    detail: { view: "listen", section: "create-voices" },
+                  }),
+                )
+              }
+              onRefresh={() => void refreshPresets()}
+            />
+          ) : activeTool === "script" ? (
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
               <div className="mb-4 space-y-1">
                 <div className="flex items-center justify-between gap-3">
@@ -791,7 +777,7 @@ export const StoryStudioSection: React.FC = () => {
                 onCursorChange={setScriptSelection}
               />
             </div>
-          ) : (
+          ) : activeTool === "cast" ? (
             <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-sm)]">
               <CastBuilder
                 cast={cast}
@@ -828,7 +814,38 @@ export const StoryStudioSection: React.FC = () => {
                 />
               </label>
             </div>
+          ) : (
+            <SoundDesignPanel />
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const EmptyStoryVoices: React.FC<{
+  onOpenMyVoices: () => void;
+  onRefresh: () => void;
+}> = ({ onOpenMyVoices, onRefresh }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex min-h-[28rem] items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] px-6 py-10 shadow-[var(--shadow-sm)]">
+      <div className="max-w-md text-center">
+        <Volume2 className="mx-auto mb-4 h-8 w-8 text-[var(--accent)]" />
+        <h3 className="text-lg font-semibold text-[var(--text)]">
+          {t("storyStudio.emptyVoicesTitle")}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          {t("storyStudio.emptyVoicesDescription")}
+        </p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button type="button" variant="primary" onClick={onOpenMyVoices}>
+            {t("storyStudio.openMyVoices")}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onRefresh}>
+            <RefreshCw className="h-4 w-4" />
+            {t("common.refresh")}
+          </Button>
         </div>
       </div>
     </div>
@@ -1187,7 +1204,10 @@ function normalizeStoredStudioDraft(
       typeof draft.pauseMs === "number" && Number.isFinite(draft.pauseMs)
         ? Math.min(Math.max(Math.round(draft.pauseMs), 0), 10_000)
         : defaultStudioDraft.pauseMs,
-    activeTool: draft.activeTool === "cast" ? "cast" : "script",
+    activeTool:
+      draft.activeTool === "cast" || draft.activeTool === "sound"
+        ? draft.activeTool
+        : "script",
     lineInstructions: normalizeStoredLineInstructions(draft.lineInstructions),
     audioEffect: normalizeStoredAudioEffect(draft.audioEffect),
   };

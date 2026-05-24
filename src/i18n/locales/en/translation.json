@@ -1822,6 +1822,35 @@
       "remove": "Remove {{modelName}}",
       "confirmRemove": "Remove {{modelName}}? Downloaded voice files will be deleted from this Mac."
     },
+    "creativeAudio": {
+      "title": "Creative Audio",
+      "description": "Download local music, ambience, and sound-effect engines for Story Studio sound design.",
+      "loading": "Loading creative audio models...",
+      "ready": "Ready",
+      "readyDetail": "Installed and available in Story Studio Sound Design.",
+      "recommendedDetail": "Recommended starter model for this creative audio mode.",
+      "modeDetail": "Story Studio sound type supported by this model.",
+      "runtimeDetail": "Runtime used to generate audio locally.",
+      "installed": "installed",
+      "weightsNeeded": "weights not downloaded",
+      "downloadModel": "Download {{modelName}}",
+      "deleteModel": "Delete {{modelName}}",
+      "deleteConfirmTitle": "Delete downloaded weights?",
+      "deleteConfirmDetail": "{{modelName}} will be removed from Vox Jot's local creative audio model store. You can download it again later.",
+      "confirmDelete": "Delete",
+      "cancelDownload": "Cancel {{modelName}} download",
+      "progress": {
+        "preparing": "Preparing download...",
+        "installingRuntime": "Installing MLX runtime...",
+        "downloadingWeights": "Downloading model weights...",
+        "ready": "Ready to use",
+        "cancelled": "Download cancelled"
+      },
+      "empty": {
+        "title": "No creative audio models match the search.",
+        "description": "Clear the search field or mode filter to show all available creative audio models."
+      }
+    },
     "actionConfirmation": "Model action confirmation",
     "search": {
       "globalPlaceholder": "Search models by name, language, or provider...",
@@ -1832,6 +1861,7 @@
       "analysis": "Speech Analysis",
       "llm": "Refine (LLM)",
       "tts": "Voices (TTS)",
+      "creativeAudio": "Creative Audio",
       "ocr": "Screen OCR",
       "ariaLabel": "Model categories"
     }
@@ -2313,7 +2343,33 @@
     "toolAriaLabel": "Studio tools",
     "tools": {
       "script": "Script",
-      "cast": "Cast"
+      "cast": "Cast",
+      "sound": "Sound"
+    },
+    "sound": {
+      "title": "Sound Design",
+      "description": "Generate local sound effects, ambience, and music beds for scripts and stories.",
+      "modeAriaLabel": "Sound type",
+      "modes": {
+        "sfx": "SFX",
+        "ambience": "Ambience",
+        "music": "Music"
+      },
+      "ready": "Ready",
+      "needsSetup": "Model needed",
+      "loadingModels": "Loading models",
+      "model": "Model",
+      "noCompatibleModels": "No compatible models",
+      "modelNeededTitle": "Download a creative audio model",
+      "modelNeededDescription": "Creative audio models are managed in Model Hub so large downloads have a central progress and cleanup flow.",
+      "openModelHub": "Open Creative Audio Models",
+      "soundTitle": "Sound title",
+      "duration": "Seconds",
+      "prompt": "Prompt",
+      "noModelSelected": "No model selected",
+      "openGenerated": "Open Generated Audio",
+      "generate": "Generate Sound",
+      "generating": "Generating"
     },
     "expressionTags": "Expression tags",
     "clearExpressionSearch": "Clear expression tag search",

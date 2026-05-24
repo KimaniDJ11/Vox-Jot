@@ -10,17 +10,25 @@ use sha2::{Digest, Sha256};
 use specta::Type;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
-use std::path::{Path, PathBuf};
+use std::io::Cursor;
+use std::path::{Component, Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
 const STORY_SAMPLE_RATE: u32 = 24_000;
 const STORY_PEAK_TARGET: f32 = 0.95;
 const STORY_WAVEFORM_PEAKS: usize = 96;
+const STABLE_AUDIO3_REPO_TARBALL: &str =
+    "https://github.com/Stability-AI/stable-audio-3/archive/refs/heads/main.tar.gz";
+const STABLE_AUDIO3_ARCHIVE_MLX_PREFIX: &str = "stable-audio-3-main/optimized/mlx/";
+const STABLE_AUDIO3_SOURCE_URL: &str = "https://github.com/Stability-AI/stable-audio-3";
+const STABLE_AUDIO3_MODEL_SFX_ID: &str = "stable-audio-3-small-sfx";
+const STABLE_AUDIO3_MODEL_MUSIC_ID: &str = "stable-audio-3-small-music";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryCastMember {
@@ -55,6 +63,107 @@ pub struct CreateSpeechAudioRequest {
     pub title: String,
     pub text: String,
     pub preset: TtsVoicePresetInput,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum StorySoundMode {
+    #[default]
+    Sfx,
+    Ambience,
+    Music,
+}
+
+impl StorySoundMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Sfx => "SFX",
+            Self::Ambience => "Ambience",
+            Self::Music => "Music",
+        }
+    }
+
+    fn dit(self) -> &'static str {
+        match self {
+            Self::Sfx | Self::Ambience => "sm-sfx",
+            Self::Music => "sm-music",
+        }
+    }
+
+    fn decoder(self) -> &'static str {
+        "same-s"
+    }
+
+    fn max_seconds(self) -> u32 {
+        match self {
+            Self::Sfx => 15,
+            Self::Ambience | Self::Music => 60,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreativeAudioModelSourceKind {
+    OfficialSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CreativeAudioModelDescriptor {
+    pub id: String,
+    pub label: String,
+    pub provider: String,
+    pub description: String,
+    pub source_kind: CreativeAudioModelSourceKind,
+    pub source_url: String,
+    pub license_label: String,
+    pub runtime_label: String,
+    pub size_hint_label: String,
+    pub installed: bool,
+    pub runnable: bool,
+    pub downloadable: bool,
+    pub recommended: bool,
+    pub modes: Vec<StorySoundMode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CreativeAudioModelCatalog {
+    pub install_root: String,
+    pub models: Vec<CreativeAudioModelDescriptor>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct CreativeAudioDownloadProgress {
+    pub model_id: String,
+    pub phase: String,
+    pub percentage: Option<f64>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct StableAudio3Status {
+    pub installed: bool,
+    pub sfx_ready: bool,
+    pub ambience_ready: bool,
+    pub music_ready: bool,
+    pub runtime_path: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct PrepareStableAudio3Request {
+    pub mode: StorySoundMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct GenerateStorySoundRequest {
+    pub render_id: String,
+    pub title: String,
+    pub prompt: String,
+    pub model_id: String,
+    pub mode: StorySoundMode,
+    pub duration_seconds: u32,
+    pub seed: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -243,6 +352,10 @@ struct StoryRenderQueueState {
 static STORY_RENDER_QUEUE: Lazy<Mutex<StoryRenderQueueState>> =
     Lazy::new(|| Mutex::new(StoryRenderQueueState::default()));
 static ACTIVE_STORY_PLAYBACK: Lazy<Mutex<Option<Arc<AtomicBool>>>> = Lazy::new(|| Mutex::new(None));
+static ACTIVE_STORY_SOUND_GENERATIONS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+static ACTIVE_CREATIVE_AUDIO_DOWNLOADS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 const STORY_GENERATION_STACK_BYTES: usize = 64 * 1024 * 1024;
 
 pub(crate) fn active_story_render_references_tts_model(
@@ -409,6 +522,182 @@ fn spawn_story_generation_thread(
         })
 }
 
+#[tauri::command]
+#[specta::specta]
+pub fn get_stable_audio3_status(app: AppHandle) -> Result<StableAudio3Status, String> {
+    stable_audio3_status(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_creative_audio_model_catalog(
+    app: AppHandle,
+) -> Result<CreativeAudioModelCatalog, String> {
+    creative_audio_model_catalog(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn download_creative_audio_model(
+    app: AppHandle,
+    model_id: String,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    let model = creative_audio_model_by_id(&app, &model_id)?;
+    if model.installed {
+        return Ok(model);
+    }
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    {
+        let mut downloads = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        if downloads.contains_key(&model_id) {
+            return Err(format!("{} is already downloading.", model.label));
+        }
+        downloads.insert(model_id.clone(), Arc::clone(&stop_flag));
+    }
+
+    emit_creative_audio_download_progress(&app, &model_id, "preparing", Some(0.0), None);
+    let app_for_task = app.clone();
+    let model_id_for_task = model_id.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        download_creative_audio_model_inner(&app_for_task, &model_id_for_task, stop_flag)
+    })
+    .await
+    .map_err(|err| format!("Creative audio download task failed: {err}"))?;
+
+    ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .remove(&model_id);
+
+    match result {
+        Ok(_) => {
+            emit_creative_audio_download_progress(&app, &model_id, "complete", Some(100.0), None);
+            creative_audio_model_by_id(&app, &model_id)
+        }
+        Err(error) => {
+            let phase = if error.to_lowercase().contains("cancelled") {
+                "cancelled"
+            } else {
+                "failed"
+            };
+            emit_creative_audio_download_progress(&app, &model_id, phase, None, Some(&error));
+            Err(error)
+        }
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cancel_creative_audio_model_download(model_id: String) -> Result<(), String> {
+    let Some(stop_flag) = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .get(&model_id)
+        .cloned()
+    else {
+        return Ok(());
+    };
+    stop_flag.store(true, Ordering::Relaxed);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_active_creative_audio_downloads() -> Result<Vec<String>, String> {
+    Ok(ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .keys()
+        .cloned()
+        .collect())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn delete_creative_audio_model(
+    app: AppHandle,
+    model_id: String,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    let model = creative_audio_model_by_id(&app, &model_id)?;
+    if ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .contains_key(&model_id)
+    {
+        return Err(format!("{} is currently downloading.", model.label));
+    }
+
+    let runtime_dir = stable_audio3_runtime_dir(&app)?;
+    for rel_path in stable_audio3_model_specific_weights(mode_for_creative_audio_model(&model_id)?)
+    {
+        let path = runtime_dir.join(rel_path);
+        if path.exists() {
+            fs::remove_file(&path).map_err(|err| {
+                format!(
+                    "Failed to remove creative audio model file '{}': {err}",
+                    path.display()
+                )
+            })?;
+        }
+    }
+    creative_audio_model_by_id(&app, &model_id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_stable_audio3(
+    app: AppHandle,
+    request: PrepareStableAudio3Request,
+) -> Result<StableAudio3Status, String> {
+    tokio::task::spawn_blocking(move || {
+        ensure_stable_audio3_runtime_source(&app)?;
+        run_stable_audio3_install(&app, request.mode, None)?;
+        stable_audio3_status(&app)
+    })
+    .await
+    .map_err(|err| format!("Stable Audio 3 preparation task failed: {err}"))?
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn generate_story_sound(
+    app: AppHandle,
+    request: GenerateStorySoundRequest,
+) -> Result<StoryAudioItem, String> {
+    let render_id = request.render_id.clone();
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    {
+        ACTIVE_STORY_SOUND_GENERATIONS
+            .lock()
+            .unwrap_or_else(|err| err.into_inner())
+            .insert(render_id.clone(), Arc::clone(&stop_flag));
+    }
+    let result =
+        tokio::task::spawn_blocking(move || generate_story_sound_inner(app, request, stop_flag))
+            .await
+            .map_err(|err| format!("Story sound generation task failed: {err}"))?;
+    ACTIVE_STORY_SOUND_GENERATIONS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .remove(&render_id);
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cancel_story_sound_generation(render_id: String) -> Result<(), String> {
+    if let Some(stop_flag) = ACTIVE_STORY_SOUND_GENERATIONS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .get(&render_id)
+    {
+        stop_flag.store(true, Ordering::Relaxed);
+    }
+    Ok(())
+}
+
 async fn generate_create_speech_audio_inner(
     app: AppHandle,
     request: CreateSpeechAudioRequest,
@@ -482,6 +771,548 @@ async fn generate_create_speech_audio_inner(
 
     Ok(result)
 }
+
+fn stable_audio3_runtime_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    crate::storage_paths::stable_audio3_mlx_dir(app)
+        .map_err(|err| format!("Failed to resolve Stable Audio 3 runtime dir: {err}"))
+}
+
+fn stable_audio3_status(app: &AppHandle) -> Result<StableAudio3Status, String> {
+    let runtime_dir = stable_audio3_runtime_dir(app)?;
+    let installed = stable_audio3_python_path(&runtime_dir).exists()
+        && runtime_dir.join("scripts").join("sa3_mlx.py").exists();
+    let sfx_ready = installed && stable_audio3_mode_ready(&runtime_dir, StorySoundMode::Sfx);
+    let music_ready = installed && stable_audio3_mode_ready(&runtime_dir, StorySoundMode::Music);
+    let ambience_ready = sfx_ready;
+    let message = if !installed {
+        "Stable Audio 3 MLX runtime is not installed. Prepare it from Sound Design before generating sounds.".to_string()
+    } else if sfx_ready && music_ready {
+        "Stable Audio 3 is ready for SFX, ambience, and music generation.".to_string()
+    } else {
+        "Stable Audio 3 runtime is installed. Prepare the selected sound mode to download its weights.".to_string()
+    };
+
+    Ok(StableAudio3Status {
+        installed,
+        sfx_ready,
+        ambience_ready,
+        music_ready,
+        runtime_path: runtime_dir.to_string_lossy().to_string(),
+        message,
+    })
+}
+
+fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCatalog, String> {
+    let runtime_dir = stable_audio3_runtime_dir(app)?;
+    let active_downloads = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
+        .lock()
+        .unwrap_or_else(|err| err.into_inner())
+        .keys()
+        .cloned()
+        .collect::<HashSet<_>>();
+
+    Ok(CreativeAudioModelCatalog {
+        install_root: runtime_dir.to_string_lossy().to_string(),
+        models: vec![
+            stable_audio3_catalog_model(
+                app,
+                STABLE_AUDIO3_MODEL_SFX_ID,
+                "Stable Audio 3 Small SFX",
+                "Fast local sound-effect and ambience generation for story beats, foley, UI sounds, room tone, and short environmental audio.",
+                "3.1 GB",
+                vec![StorySoundMode::Sfx, StorySoundMode::Ambience],
+                active_downloads.contains(STABLE_AUDIO3_MODEL_SFX_ID),
+                true,
+            )?,
+            stable_audio3_catalog_model(
+                app,
+                STABLE_AUDIO3_MODEL_MUSIC_ID,
+                "Stable Audio 3 Small Music",
+                "Fast local music-bed generation for underscore, loops, transitions, stingers, and mood sketches.",
+                "3.1 GB",
+                vec![StorySoundMode::Music],
+                active_downloads.contains(STABLE_AUDIO3_MODEL_MUSIC_ID),
+                true,
+            )?,
+        ],
+    })
+}
+
+fn stable_audio3_catalog_model(
+    app: &AppHandle,
+    id: &str,
+    label: &str,
+    description: &str,
+    size_hint_label: &str,
+    modes: Vec<StorySoundMode>,
+    downloading: bool,
+    recommended: bool,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    let runtime_dir = stable_audio3_runtime_dir(app)?;
+    let installed = modes
+        .first()
+        .is_some_and(|mode| stable_audio3_mode_ready(&runtime_dir, *mode));
+    Ok(CreativeAudioModelDescriptor {
+        id: id.to_string(),
+        label: label.to_string(),
+        provider: "Stability AI".to_string(),
+        description: description.to_string(),
+        source_kind: CreativeAudioModelSourceKind::OfficialSource,
+        source_url: STABLE_AUDIO3_SOURCE_URL.to_string(),
+        license_label: "Stability AI Community License".to_string(),
+        runtime_label: "Apple Silicon MLX".to_string(),
+        size_hint_label: size_hint_label.to_string(),
+        installed,
+        runnable: installed && !downloading,
+        downloadable: true,
+        recommended,
+        modes,
+    })
+}
+
+fn creative_audio_model_by_id(
+    app: &AppHandle,
+    model_id: &str,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    creative_audio_model_catalog(app)?
+        .models
+        .into_iter()
+        .find(|model| model.id == model_id)
+        .ok_or_else(|| format!("Unknown creative audio model: {model_id}"))
+}
+
+fn mode_for_creative_audio_model(model_id: &str) -> Result<StorySoundMode, String> {
+    match model_id {
+        STABLE_AUDIO3_MODEL_SFX_ID => Ok(StorySoundMode::Sfx),
+        STABLE_AUDIO3_MODEL_MUSIC_ID => Ok(StorySoundMode::Music),
+        _ => Err(format!("Unknown creative audio model: {model_id}")),
+    }
+}
+
+fn model_supports_story_sound_mode(model_id: &str, mode: StorySoundMode) -> bool {
+    match model_id {
+        STABLE_AUDIO3_MODEL_SFX_ID => {
+            matches!(mode, StorySoundMode::Sfx | StorySoundMode::Ambience)
+        }
+        STABLE_AUDIO3_MODEL_MUSIC_ID => matches!(mode, StorySoundMode::Music),
+        _ => false,
+    }
+}
+
+fn download_creative_audio_model_inner(
+    app: &AppHandle,
+    model_id: &str,
+    stop_flag: Arc<AtomicBool>,
+) -> Result<CreativeAudioModelDescriptor, String> {
+    let mode = mode_for_creative_audio_model(model_id)?;
+    ensure_download_not_cancelled(&stop_flag)?;
+    emit_creative_audio_download_progress(app, model_id, "installing-runtime", Some(10.0), None);
+    ensure_stable_audio3_runtime_source(app)?;
+    ensure_download_not_cancelled(&stop_flag)?;
+    emit_creative_audio_download_progress(app, model_id, "downloading-weights", None, None);
+    run_stable_audio3_install(app, mode, Some(&stop_flag))?;
+    ensure_download_not_cancelled(&stop_flag)?;
+    creative_audio_model_by_id(app, model_id)
+}
+
+fn ensure_download_not_cancelled(stop_flag: &AtomicBool) -> Result<(), String> {
+    if stop_flag.load(Ordering::Relaxed) {
+        Err("Download cancelled.".to_string())
+    } else {
+        Ok(())
+    }
+}
+
+fn emit_creative_audio_download_progress(
+    app: &AppHandle,
+    model_id: &str,
+    phase: &str,
+    percentage: Option<f64>,
+    error: Option<&str>,
+) {
+    let _ = app.emit(
+        "creative-audio-download-progress",
+        CreativeAudioDownloadProgress {
+            model_id: model_id.to_string(),
+            phase: phase.to_string(),
+            percentage,
+            error: error.map(str::to_string),
+        },
+    );
+}
+
+fn stable_audio3_python_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join(".venv").join("bin").join("python")
+}
+
+fn stable_audio3_mode_ready(runtime_dir: &Path, mode: StorySoundMode) -> bool {
+    stable_audio3_required_weights(mode)
+        .iter()
+        .all(|rel_path| runtime_dir.join(rel_path).exists())
+}
+
+fn stable_audio3_required_weights(mode: StorySoundMode) -> &'static [&'static str] {
+    match mode {
+        StorySoundMode::Sfx | StorySoundMode::Ambience => &[
+            "models/mlx/t5gemma_f16.npz",
+            "models/mlx/dit_sm-sfx_f16.npz",
+            "models/mlx/same_s_decoder_f32.npz",
+            "models/mlx/same_s_encoder_f32.npz",
+        ],
+        StorySoundMode::Music => &[
+            "models/mlx/t5gemma_f16.npz",
+            "models/mlx/dit_sm-music_f16.npz",
+            "models/mlx/same_s_decoder_f32.npz",
+            "models/mlx/same_s_encoder_f32.npz",
+        ],
+    }
+}
+
+fn stable_audio3_model_specific_weights(mode: StorySoundMode) -> &'static [&'static str] {
+    match mode {
+        StorySoundMode::Sfx | StorySoundMode::Ambience => &["models/mlx/dit_sm-sfx_f16.npz"],
+        StorySoundMode::Music => &["models/mlx/dit_sm-music_f16.npz"],
+    }
+}
+
+fn ensure_stable_audio3_runtime_source(app: &AppHandle) -> Result<(), String> {
+    let runtime_dir = stable_audio3_runtime_dir(app)?;
+    if runtime_dir.join("scripts").join("sa3_mlx.py").exists()
+        && runtime_dir.join("install.sh").exists()
+    {
+        return Ok(());
+    }
+
+    if runtime_dir.exists() {
+        fs::remove_dir_all(&runtime_dir).map_err(|err| {
+            format!(
+                "Failed to clear incomplete Stable Audio 3 runtime at '{}': {err}",
+                runtime_dir.display()
+            )
+        })?;
+    }
+    fs::create_dir_all(&runtime_dir).map_err(|err| {
+        format!(
+            "Failed to create Stable Audio 3 runtime dir '{}': {err}",
+            runtime_dir.display()
+        )
+    })?;
+
+    let response = reqwest::blocking::get(STABLE_AUDIO3_REPO_TARBALL)
+        .map_err(|err| format!("Failed to download Stable Audio 3 runtime source: {err}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to download Stable Audio 3 runtime source: HTTP {}",
+            response.status()
+        ));
+    }
+    let bytes = response
+        .bytes()
+        .map_err(|err| format!("Failed to read Stable Audio 3 source archive: {err}"))?;
+    let gz = flate2::read::GzDecoder::new(Cursor::new(bytes));
+    let mut archive = tar::Archive::new(gz);
+    for entry in archive
+        .entries()
+        .map_err(|err| format!("Failed to read Stable Audio 3 source archive: {err}"))?
+    {
+        let mut entry =
+            entry.map_err(|err| format!("Failed to read source archive entry: {err}"))?;
+        let path = entry
+            .path()
+            .map_err(|err| format!("Failed to read source archive path: {err}"))?
+            .to_string_lossy()
+            .to_string();
+        let Some(relative) = path.strip_prefix(STABLE_AUDIO3_ARCHIVE_MLX_PREFIX) else {
+            continue;
+        };
+        if relative.is_empty() {
+            continue;
+        }
+        let destination = stable_audio3_archive_destination(&runtime_dir, relative)?;
+        entry.unpack(destination).map_err(|err| {
+            format!(
+                "Failed to extract Stable Audio 3 runtime file '{}': {err}",
+                relative
+            )
+        })?;
+    }
+
+    let install = runtime_dir.join("install.sh");
+    if !install.exists() {
+        return Err("Stable Audio 3 runtime archive did not contain install.sh.".to_string());
+    }
+    ensure_executable(&install);
+    ensure_executable(&runtime_dir.join("sa3"));
+    Ok(())
+}
+
+fn stable_audio3_archive_destination(
+    runtime_dir: &Path,
+    relative: &str,
+) -> Result<PathBuf, String> {
+    let mut destination = runtime_dir.to_path_buf();
+    for component in Path::new(relative).components() {
+        match component {
+            Component::Normal(part) => destination.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(format!(
+                    "Stable Audio 3 runtime archive contains an unsafe path: {relative}"
+                ));
+            }
+        }
+    }
+    Ok(destination)
+}
+
+fn run_stable_audio3_install(
+    app: &AppHandle,
+    mode: StorySoundMode,
+    stop_flag: Option<&AtomicBool>,
+) -> Result<(), String> {
+    let runtime_dir = stable_audio3_runtime_dir(app)?;
+    let mut child = Command::new(runtime_dir.join("install.sh"))
+        .current_dir(&runtime_dir)
+        .arg("-y")
+        .arg("--download")
+        .arg(mode.dit())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("Failed to start Stable Audio 3 installer: {err}"))?;
+
+    loop {
+        if stop_flag.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Download cancelled.".to_string());
+        }
+        match child
+            .try_wait()
+            .map_err(|err| format!("Failed to monitor Stable Audio 3 installer: {err}"))?
+        {
+            Some(_) => break,
+            None => thread::sleep(Duration::from_millis(250)),
+        }
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("Failed to read Stable Audio 3 installer output: {err}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Stable Audio 3 installer failed: {}",
+            command_output_preview(&output)
+        ));
+    }
+    Ok(())
+}
+
+fn generate_story_sound_inner(
+    app: AppHandle,
+    request: GenerateStorySoundRequest,
+    stop_flag: Arc<AtomicBool>,
+) -> Result<StoryAudioItem, String> {
+    let prompt = request.prompt.trim();
+    if prompt.is_empty() {
+        return Err("Describe the sound before generating.".to_string());
+    }
+    let model = creative_audio_model_by_id(&app, &request.model_id)?;
+    if !model_supports_story_sound_mode(&request.model_id, request.mode) {
+        return Err(format!(
+            "{} does not support {} generation.",
+            model.label,
+            request.mode.label()
+        ));
+    }
+    if !model.runnable {
+        return Err(format!(
+            "{} is not installed yet. Download it from Creative Audio Models first.",
+            model.label
+        ));
+    }
+    let runtime_dir = stable_audio3_runtime_dir(&app)?;
+    if !stable_audio3_python_path(&runtime_dir).exists()
+        || !runtime_dir.join("scripts").join("sa3_mlx.py").exists()
+    {
+        return Err(
+            "Stable Audio 3 is not installed yet. Download a Creative Audio model first."
+                .to_string(),
+        );
+    }
+    if !stable_audio3_mode_ready(&runtime_dir, request.mode) {
+        return Err(format!(
+            "{} weights are not ready. Download this Creative Audio model before generating.",
+            request.mode.label()
+        ));
+    }
+
+    let started = Instant::now();
+    let duration_seconds = request
+        .duration_seconds
+        .clamp(1, request.mode.max_seconds());
+    let seed = request.seed.unwrap_or_else(random_story_sound_seed);
+    let title = story_sound_title(request.mode, &request.title, prompt);
+    let output_path = output_path_for_story(&app, &title)?;
+
+    run_stable_audio3_generate(
+        &runtime_dir,
+        &request,
+        prompt,
+        duration_seconds,
+        seed,
+        &output_path,
+        &stop_flag,
+    )?;
+
+    if stop_flag.load(Ordering::Relaxed) {
+        let _ = fs::remove_file(&output_path);
+        return Err("Sound generation was cancelled.".to_string());
+    }
+    if !output_path.exists() {
+        return Err("Stable Audio 3 finished without creating an output WAV.".to_string());
+    }
+    let duration_ms = wav_duration_ms(&output_path).unwrap_or(duration_seconds * 1000);
+    let sample_rate_hz = wav_sample_rate_hz(&output_path).unwrap_or(44_100);
+    let output_path_string = output_path.to_string_lossy().to_string();
+    let item = StoryAudioItem {
+        id: request.render_id,
+        project_id: None,
+        title,
+        script_text: format!("{} prompt (seed {seed}): {prompt}", request.mode.label()),
+        line_instructions: Vec::new(),
+        output_path: output_path_string,
+        clips_path: None,
+        created_at_ms: now_ms(),
+        duration_ms,
+        line_count: 0,
+        cast_count: 0,
+        generation_time_ms: elapsed_ms_u32(started),
+        sample_rate_hz,
+        expression_tags_used: false,
+        inline_prompt_used: true,
+        audio_effect: StoryAudioEffectPreset::Clean,
+        starred: false,
+    };
+    upsert_story_audio_item(&app, item.clone())?;
+    emit_story_audio_updated(&app);
+    Ok(item)
+}
+
+fn run_stable_audio3_generate(
+    runtime_dir: &Path,
+    request: &GenerateStorySoundRequest,
+    prompt: &str,
+    duration_seconds: u32,
+    seed: u32,
+    output_path: &Path,
+    stop_flag: &AtomicBool,
+) -> Result<(), String> {
+    let mut child = Command::new(stable_audio3_python_path(runtime_dir))
+        .current_dir(runtime_dir)
+        .env("PYTHONUNBUFFERED", "1")
+        .env("HF_HUB_OFFLINE", "1")
+        .arg("scripts/sa3_mlx.py")
+        .arg("--prompt")
+        .arg(prompt)
+        .arg("--dit")
+        .arg(request.mode.dit())
+        .arg("--decoder")
+        .arg(request.mode.decoder())
+        .arg("--seconds")
+        .arg(duration_seconds.to_string())
+        .arg("--steps")
+        .arg("8")
+        .arg("--cfg")
+        .arg("1.0")
+        .arg("--seed")
+        .arg(seed.to_string())
+        .arg("--out")
+        .arg(output_path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("Failed to start Stable Audio 3: {err}"))?;
+
+    loop {
+        if stop_flag.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("Sound generation was cancelled.".to_string());
+        }
+        match child
+            .try_wait()
+            .map_err(|err| format!("Failed to monitor Stable Audio 3: {err}"))?
+        {
+            Some(_) => break,
+            None => thread::sleep(Duration::from_millis(150)),
+        }
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("Failed to read Stable Audio 3 output: {err}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Stable Audio 3 failed: {}",
+            command_output_preview(&output)
+        ));
+    }
+    Ok(())
+}
+
+fn story_sound_title(mode: StorySoundMode, title: &str, prompt: &str) -> String {
+    let trimmed_title = title.trim();
+    if !trimmed_title.is_empty() {
+        return format!("{} - {}", mode.label(), story_title_label(trimmed_title));
+    }
+    let prompt_title = prompt
+        .split_whitespace()
+        .take(8)
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!("{} - {}", mode.label(), story_title_label(&prompt_title))
+}
+
+fn random_story_sound_seed() -> u32 {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    (millis & u128::from(u32::MAX)) as u32
+}
+
+fn command_output_preview(output: &std::process::Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let combined = format!("{stderr}\n{stdout}");
+    let preview = combined
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .take(8)
+        .collect::<Vec<_>>()
+        .join(" ");
+    if preview.is_empty() {
+        format!("process exited with {}", output.status)
+    } else {
+        preview
+    }
+}
+
+#[cfg(unix)]
+fn ensure_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(metadata) = fs::metadata(path) {
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(permissions.mode() | 0o755);
+        let _ = fs::set_permissions(path, permissions);
+    }
+}
+
+#[cfg(not(unix))]
+fn ensure_executable(_path: &Path) {}
 
 fn spawn_story_render_worker_thread(app: AppHandle) {
     let thread_app = app.clone();

@@ -1,7 +1,13 @@
 import { commands } from "@/bindings";
 
 /** Shared Model Hub tab ids + i18n keys (sidebar launchers + hub tab bar). */
-export type ModelHubTabId = "stt" | "analysis" | "llm" | "tts" | "ocr";
+export type ModelHubTabId =
+  | "stt"
+  | "analysis"
+  | "llm"
+  | "tts"
+  | "creative_audio"
+  | "ocr";
 export type ModelHubScope = "all" | "analysis";
 
 export const MODEL_HUB_TAB_STORAGE_KEY = "vox-jot-model-hub-tab";
@@ -25,6 +31,11 @@ export const MODEL_HUB_TAB_DEFS: Array<{
     defaultLabel: "Refine (LLM)",
   },
   { id: "tts", labelKey: "modelHub.tabs.tts", defaultLabel: "Voices (TTS)" },
+  {
+    id: "creative_audio",
+    labelKey: "modelHub.tabs.creativeAudio",
+    defaultLabel: "Creative Audio",
+  },
   { id: "ocr", labelKey: "modelHub.tabs.ocr", defaultLabel: "Screen OCR" },
 ];
 

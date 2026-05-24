@@ -22,6 +22,8 @@ const LFM2_TOOL_DIR: &str = "lfm2-tool";
 const OCR_MODELS_DIR: &str = "ocr";
 const OCR_RUNTIME_DIR: &str = "ocr-runtime";
 const SPEECH_ANALYSIS_MODELS_DIR: &str = "speech-analysis";
+const CREATIVE_AUDIO_MODELS_DIR: &str = "creative-audio";
+const STABLE_AUDIO3_MLX_DIR: &str = "stable-audio-3-mlx";
 
 // LFM2.5-Audio GGUF assets (Q4_0 quant by default — smaller and ~5x faster than F16
 // while remaining production-quality for dictation readback).
@@ -150,6 +152,17 @@ pub fn ocr_runtime_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
 /// Each catalog entry installs to `<this>/<model_id>/`.
 pub fn speech_analysis_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
     Ok(model_root_dir(app)?.join(SPEECH_ANALYSIS_MODELS_DIR))
+}
+
+/// Root for creative-audio generation assets managed by the app.
+/// These runtimes must stay off the dictation hot path.
+pub fn creative_audio_models_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(model_root_dir(app)?.join(CREATIVE_AUDIO_MODELS_DIR))
+}
+
+/// Official Stable Audio 3 MLX runtime checkout.
+pub fn stable_audio3_mlx_dir(app: &AppHandle) -> Result<PathBuf, tauri::Error> {
+    Ok(creative_audio_models_dir(app)?.join(STABLE_AUDIO3_MLX_DIR))
 }
 
 /// Per-repo install root for TTS models pulled in from the verified HF
@@ -376,6 +389,10 @@ pub fn ensure_model_storage_layout(app: &AppHandle) -> Result<(), String> {
     ensure_dir(
         &speech_analysis_models_dir(app)
             .map_err(|err| format!("Failed to resolve speech analysis dir: {err}"))?,
+    )?;
+    ensure_dir(
+        &creative_audio_models_dir(app)
+            .map_err(|err| format!("Failed to resolve creative audio dir: {err}"))?,
     )?;
 
     migrate_legacy_stt_layout(app)?;

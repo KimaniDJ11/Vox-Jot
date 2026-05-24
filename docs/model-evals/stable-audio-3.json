@@ -1,0 +1,91 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-05-24",
+  "evaluator": "Codex",
+
+  "source": {
+    "url": "https://huggingface.co/collections/stabilityai/stable-audio-3",
+    "repo_url": "https://github.com/Stability-AI/stable-audio-3",
+    "paper_url": "https://arxiv.org/abs/2605.17991",
+    "license": "Stability AI Community License; includes Gemma Terms of Use for T5Gemma text conditioning",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": null
+  },
+
+  "identity": {
+    "model_id": "stable-audio-3",
+    "label": "Stable Audio 3",
+    "description": "Family of latent diffusion models for text-to-audio music and sound-effect generation, audio-to-audio editing, inpainting, and continuation.",
+    "domain": "creative_audio",
+    "parameter_count": "433M small music/SFX checkpoints; 1.4B medium checkpoint in the official repo table",
+    "model_format": "safetensors; MLX .npz optimized weights; ONNX/CoreML optimized variants also published",
+    "dtype": "mixed: DiT fp16 in MLX, decoder fp32, T5Gemma fp16"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": true,
+    "mlx_community_repo": "https://github.com/Stability-AI/stable-audio-3/tree/main/optimized/mlx",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": true,
+    "coreml_conversion_tested": true,
+    "mps_backend_works": null,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "mlx",
+    "can_run_as_local_process": true,
+    "api_surface": ["python", "cli", "gradio", "mlx"],
+    "output_format": "wav",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": 5,
+    "vram_estimate_gb": 5.2,
+    "disk_size_mb": 8400
+  },
+
+  "capabilities": {
+    "downloadable": true,
+    "loadable": true,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": false,
+    "coming_soon": false
+  },
+
+  "languages": ["en"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot",
+    "estimated_download_mb": 1800,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "Not benchmarked in Vox Jot; upstream MLX README includes an M4 Pro / 48 GB sample run",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "Promising for a Vox Jot Studio creative-audio lane: music beds, atmospheres, transitions, Foley, and sound effects for scripts/stories. It does not produce spoken readback or transcription output."
+  },
+
+  "verdict": {
+    "score": 41,
+    "decision": "ship_experimental",
+    "blockers": [
+      "Requires a new Vox Jot Studio creative-audio product surface; it should not be inserted into STT or TTS rankings",
+      "Gated/community license with an enterprise-license threshold for organizations above Stability AI's revenue limit",
+      "Needs an app-managed MLX sidecar/runtime and large resumable model downloads before normal users can rely on it",
+      "No Vox Jot benchmark suite exists yet for prompt adherence, loop quality, SFX usefulness, generation latency, cancellation, or output export behavior"
+    ],
+    "notes": "Recommended path: prototype behind Labs/Studio using the official optimized/mlx implementation, start with sm-sfx and sm-music, keep medium optional, and build an app-managed download/runtime flow. Existing dictation, transcription, and readback hot paths should not load or initialize this runtime."
+  }
+}

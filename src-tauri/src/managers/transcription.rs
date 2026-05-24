@@ -257,6 +257,10 @@ fn mlx_audio_base_url() -> String {
     "http://127.0.0.1:8018".to_string()
 }
 
+fn mlx_audio_stt_model_dir_is_runnable(path: &std::path::Path) -> bool {
+    path.join("config.json").is_file()
+}
+
 fn partial_provider_config_for_model(model_id: &str) -> PartialProviderConfig {
     let lower = model_id.to_ascii_lowercase();
 
@@ -313,6 +317,10 @@ fn trim_partial_audio(mut samples: Vec<f32>, max_samples: Option<usize>) -> Vec<
     let start = samples.len().saturating_sub(max_samples);
     samples.drain(..start);
     samples
+}
+
+fn supports_live_partial_provider(model_info: &ModelInfo) -> bool {
+    !matches!(model_info.engine_type, EngineType::MlxAudioStt)
 }
 
 fn whisper_gpu_available() -> bool {
@@ -694,13 +702,15 @@ impl TranscriptionManager {
                 let model_source = self
                     .model_manager
                     .get_model_path(model_id)
+                    .ok()
+                    .filter(|path| mlx_audio_stt_model_dir_is_runnable(path))
                     .map(|path| path.to_string_lossy().to_string())
-                    .or_else(|_| {
-                        mlx_audio_stt_model_ref(model_id)
-                            .map(str::to_string)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("No mlx-audio model mapping found for {}", model_id)
-                            })
+                    .or_else(|| mlx_audio_stt_model_ref(model_id).map(str::to_string))
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "No runnable mlx-audio model mapping found for {}",
+                            model_id
+                        )
                     })?;
                 LoadedEngine::MlxAudioStt(MlxAudioSttEngine {
                     base_url: mlx_audio_base_url(),
@@ -1070,27 +1080,17 @@ impl TranscriptionManager {
             return;
         }
 
-        // Partials now reuse the main loaded engine. If no engine is loaded,
-        // skip the provider — starting a second engine here (as we used to)
-        // added hundreds of ms per recording and wasted memory.
-        if !self.is_model_loaded() {
-            debug!(
-                "Skipping partial transcription for binding {}: no model loaded",
-                binding_id
-            );
-            return;
-        }
-        let current_model = self.get_current_model();
-        if current_model.as_deref() != Some(model_id.as_str()) {
-            debug!(
-                "Skipping partial transcription for binding {} because loaded model {:?} does not match selected model {}",
-                binding_id, current_model, model_id
-            );
-            return;
-        }
-        if self.model_manager.get_model_info(&model_id).is_none() {
+        let Some(model_info) = self.model_manager.get_model_info(&model_id) else {
             debug!(
                 "Skipping partial transcription for binding {} because model {} is unknown",
+                binding_id, model_id
+            );
+            return;
+        };
+
+        if !supports_live_partial_provider(&model_info) {
+            debug!(
+                "Skipping partial transcription for binding {} because model {} uses a sidecar runtime",
                 binding_id, model_id
             );
             return;
@@ -1110,7 +1110,52 @@ impl TranscriptionManager {
         let config = partial_provider_config_for_model(&model_id);
         let manager = self.clone();
         let binding_id = binding_id.to_string();
+        let model_id = model_id.clone();
         thread::spawn(move || {
+            if cancel.load(Ordering::Relaxed) {
+                return;
+            }
+
+            // If the model is loading, wait for it to complete.
+            {
+                let mut is_loading = manager.is_loading.lock().unwrap_or_else(|e| e.into_inner());
+                if *is_loading {
+                    debug!(
+                        "Partial transcription waiting for model {} to finish loading...",
+                        model_id
+                    );
+                    let (guard, wait_result) = manager
+                        .loading_condvar
+                        .wait_timeout_while(is_loading, Duration::from_secs(120), |loading| {
+                            *loading
+                        })
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    is_loading = guard;
+                    if *is_loading && wait_result.timed_out() {
+                        warn!("Timed out waiting for the transcription model to finish loading inside partial provider.");
+                        return;
+                    }
+                }
+            }
+
+            // Now check if the model is loaded and matches the requested model.
+            if !manager.is_model_loaded() {
+                debug!(
+                    "Skipping partial transcription for binding {}: model {} is not loaded after waiting",
+                    binding_id, model_id
+                );
+                return;
+            }
+
+            let current_model = manager.get_current_model();
+            if current_model.as_deref() != Some(model_id.as_str()) {
+                debug!(
+                    "Skipping partial transcription for binding {} because loaded model {:?} does not match selected model {}",
+                    binding_id, current_model, model_id
+                );
+                return;
+            }
+
             if cancel.load(Ordering::Relaxed) {
                 return;
             }

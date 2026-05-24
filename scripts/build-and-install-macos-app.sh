@@ -24,6 +24,7 @@ Notarization credential preflight failed for ${credential_description}.
 Fix one of these credential paths before building the macOS app:
   1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
      xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
+     or run: bun run mac:setup-notary
   2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
      APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
   3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH
@@ -122,6 +123,7 @@ Notarization submission failed using ${credential_description}.
 Fix one of these credential paths, then rerun this script:
   1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
      xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
+     or run: bun run mac:setup-notary
   2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
      APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
   3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH

@@ -19,6 +19,7 @@
     "lint:rust": "cd src-tauri && cargo clippy -- -D warnings",
     "tauri": "node scripts/tauri-wrapper.mjs",
     "mac:release": "bash scripts/build-notarized-macos-release.sh",
+    "mac:setup-notary": "bash scripts/setup-macos-notary-credentials.sh",
     "mac:app-store:audit": "bun scripts/audit-app-store-readiness.ts",
     "mac:app-store:build": "bash scripts/build-macos-app-store.sh",
     "mac:app-store:upload": "UPLOAD_APP_STORE_PKG=true bash scripts/build-macos-app-store.sh",

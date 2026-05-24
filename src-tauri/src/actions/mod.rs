@@ -994,7 +994,19 @@ impl ShortcutAction for TranscribeAction {
                     .and_then(|rule| rule.overrides.force_post_process)
                     .unwrap_or(post_process);
 
-                match tm.transcribe_with_settings(samples, effective_settings.clone()) {
+                let transcription_result = {
+                    let tm_for_transcription = Arc::clone(&tm);
+                    let transcribe_settings = effective_settings.clone();
+                    tokio::task::spawn_blocking(move || {
+                        tm_for_transcription.transcribe_with_settings(samples, transcribe_settings)
+                    })
+                    .await
+                    .unwrap_or_else(|err| {
+                        Err(anyhow::anyhow!("Transcription worker failed: {}", err))
+                    })
+                };
+
+                match transcription_result {
                     Ok(transcription) => {
                         let transcription_elapsed = transcription_time.elapsed();
                         crate::product_architecture::record_dictation_latency(

@@ -1026,10 +1026,6 @@ impl SidecarManager {
     }
 
     fn patch_mlx_audio_voxtral_model(contents: &str) -> Option<String> {
-        if contents.contains("_vox_jot_eos_token_ids") {
-            return None;
-        }
-
         let old_block = r#"        model._processor.tokenizer.eos_token_ids = getattr(
             model._processor.tokenizer, "eos_token_ids", [2, 4, 32000]
         )
@@ -1047,6 +1043,10 @@ impl SidecarManager {
 "#;
 
         let mut patched = contents.replace(old_block, new_block);
+        patched = patched.replace(
+            "        _ensure_eos_token_ids_list(model._processor.tokenizer)\n",
+            "        model._processor._vox_jot_eos_token_ids = _ensure_eos_token_ids_list(model._processor.tokenizer)\n",
+        );
         patched = patched.replace(
             "self._processor.tokenizer.eos_token_ids",
             "self._processor._vox_jot_eos_token_ids",
@@ -1167,6 +1167,26 @@ mod tests {
             &patched
         ));
         assert!(SidecarManager::patch_mlx_audio_stt_utils(&patched).is_none());
+    }
+
+    #[test]
+    fn mlx_audio_voxtral_patch_adds_processor_eos_assignment() {
+        let original = r#"    @classmethod
+    def post_load_hook(cls, model, model_path):
+        model._processor = processor
+        _ensure_eos_token_ids_list(model._processor.tokenizer)
+
+    def generate(self):
+        return self._processor._vox_jot_eos_token_ids
+"#;
+
+        let patched =
+            SidecarManager::patch_mlx_audio_voxtral_model(original).expect("patch should apply");
+
+        assert!(patched.contains(
+            "model._processor._vox_jot_eos_token_ids = _ensure_eos_token_ids_list(model._processor.tokenizer)"
+        ));
+        assert!(SidecarManager::patch_mlx_audio_voxtral_model(&patched).is_none());
     }
 
     #[test]

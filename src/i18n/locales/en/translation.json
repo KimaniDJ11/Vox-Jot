@@ -402,11 +402,11 @@
     },
     "permissions": {
       "title": "Permissions Required",
-      "description": "Grant the permissions that power assistive dictation. Screen Recording is optional for local visual context.",
+      "description": "Set up the permissions that power assistive dictation. Screen Recording is optional for local visual context.",
       "microphone": {
         "title": "Microphone Access",
         "description": "Required to hear your voice for assistive transcription.",
-        "cardTitle": "Allow Vox Jot to use your microphone",
+        "cardTitle": "Microphone access for dictation",
         "cardDescription": "Vox Jot only needs the microphone while you are dictating.",
         "eyebrow": "Voice capture",
         "storyTitle": "Microphone Access",
@@ -417,12 +417,12 @@
           "Use your selected microphone during dictation."
         ],
         "privacy": "Only listens while you are actively dictating.",
-        "cta": "Enable Microphone"
+        "cta": "Continue"
       },
       "accessibility": {
         "title": "Accessibility Access",
         "description": "Required for assistive voice text entry when typing is difficult, painful, or not possible.",
-        "cardTitle": "Allow assistive voice text entry",
+        "cardTitle": "Assistive voice text entry",
         "cardDescription": "This lets Vox Jot place your spoken words into the field you are actively using, so you do not have to type them by hand.",
         "eyebrow": "Assistive text entry",
         "storyTitle": "Accessibility",
@@ -433,14 +433,14 @@
           "Support optional correction learning after insertion so repeated fixes do not have to be typed again."
         ],
         "privacy": "Used for user-started assistive insertion and optional correction learning after dictation.",
-        "cta": "Enable Accessibility"
+        "cta": "Continue"
       },
       "inputMonitoring": {
         "title": "Input Monitoring",
         "description": "Required so Vox Jot can support hands-free shortcuts and better tell the difference between sending a message and manually clearing text.",
-        "cardTitle": "Allow Vox Jot to watch keyboard activity locally",
+        "cardTitle": "Keyboard state for shortcuts",
         "cardDescription": "This helps Vox Jot notice shortcut state, quick edits, Enter-to-send actions, and delete-driven clears. It does not store your keystrokes.",
-        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it and enable /Applications/Vox Jot.app.",
+        "manualCleanupHint": "If macOS shows an older Vox Jot entry here, remove it, then select /Applications/Vox Jot.app.",
         "eyebrow": "Keyboard state",
         "storyTitle": "Input Monitoring",
         "storyDescription": "Helps Vox Jot understand shortcut and key state locally so assistive dictation behaves correctly across apps.",
@@ -450,12 +450,12 @@
           "Keep correction tracking local to this device."
         ],
         "privacy": "Used for shortcut and send-versus-delete signals; it does not store your keystrokes.",
-        "cta": "Enable Input Monitoring"
+        "cta": "Continue"
       },
       "screenRecording": {
         "title": "Screen Recording",
         "description": "Optional. When enabled, Vox Jot builds a rolling OCR cache from the active display and uses it as dictation context.",
-        "cardTitle": "Allow Vox Jot to read active-screen context locally",
+        "cardTitle": "Screen context for dictation",
         "cardDescription": "This lets Vox Jot periodically OCR the active display so names, jargon, and phrase keys are more accurate when you start dictating.",
         "eyebrow": "Visual context",
         "storyTitle": "Screen Recording",
@@ -466,9 +466,9 @@
           "Improve phrase keys and app-aware writing."
         ],
         "privacy": "Optional and controlled separately; local OCR context can be disabled from Screen Context settings.",
-        "cta": "Enable Screen Recording"
+        "cta": "Continue"
       },
-      "grant": "Grant Permission",
+      "grant": "Continue",
       "granted": "Granted",
       "waiting": "Waiting...",
       "allGranted": "All set!",
@@ -476,7 +476,7 @@
         "checkFailed": "Failed to check permissions. Please try again.",
         "requestFailed": "Failed to request permission. Please try again."
       },
-      "heading": "Enable your dictation toolkit",
+      "heading": "Set up your dictation toolkit",
       "privacyBadge": "Vox Jot is assistive voice text entry for people who cannot comfortably type. Local routes stay on device; cloud cleanup only runs when you configure it.",
       "continue": "Continue setup",
       "moreInfo": "More info",
@@ -488,7 +488,7 @@
       "completeTitle": "Permissions are ready",
       "completeDescription": "Vox Jot has the access it needs for assistive dictation.",
       "visualPath": "System Settings -> Privacy & Security",
-      "visualDescription": "Grant microphone, Accessibility, and Input Monitoring so Vox Jot can capture your voice, enter dictated text for assistive typing, learn corrections after insertion, and support hands-free control. Optional Screen Recording adds OCR context from the active display."
+      "visualDescription": "Microphone, Accessibility, and Input Monitoring support voice capture, assistive text entry, correction learning after insertion, and hands-free control. Optional Screen Recording adds OCR context from the active display."
     },
     "steps": {
       "welcome": "Overview",
@@ -540,7 +540,7 @@
       "cardDescription": "Get assistive dictation working first, then tailor the output once you know how you want Vox Jot to behave.",
       "features": [
         "Download a local speech model that matches your speed and accuracy needs.",
-        "Grant the permissions Vox Jot needs to listen and enter dictated text for you.",
+        "Set up the permissions Vox Jot uses to listen and enter dictated text for you.",
         "Learn the regular dictation shortcut now and configure polished dictation later if you want it."
       ],
       "highlights": {

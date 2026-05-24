@@ -45,39 +45,104 @@ require_env() {
   fi
 }
 
+notary_preflight_failed() {
+  local credential_description="$1"
+  local detail="${2:-}"
+
+  cat >&2 <<EOF
+Notarization credential preflight failed for ${credential_description}.
+
+Fix one of these credential paths before building the macOS app:
+  1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
+     xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
+     or run: bun run mac:setup-notary
+  2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
+     APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
+  3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH
+
+APPLE_PASSWORD should be an app-specific password when using the APPLE_ID flow.
+EOF
+
+  if [[ -n "${detail}" ]]; then
+    echo "${detail}" >&2
+  fi
+
+  exit 1
+}
+
+verify_keychain_notary_profile() {
+  local history_output latest_submission_id info_output
+
+  if ! history_output="$(
+    /usr/bin/xcrun notarytool history \
+      --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" 2>&1
+  )"; then
+    notary_preflight_failed \
+      "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\"" \
+      "${history_output}"
+  fi
+
+  latest_submission_id="$(
+    /usr/bin/awk '/^[[:space:]]*id: / { print $2; exit }' <<<"${history_output}"
+  )"
+
+  if [[ -n "${latest_submission_id}" ]]; then
+    if ! info_output="$(
+      /usr/bin/xcrun notarytool info "${latest_submission_id}" \
+        --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" 2>&1
+    )"; then
+      notary_preflight_failed \
+        "stored notarytool profile \"${NOTARY_KEYCHAIN_PROFILE}\"" \
+        "${info_output}"
+    fi
+  fi
+}
+
+verify_notary_credentials() {
+  case "${NOTARY_CREDENTIAL_MODE}" in
+  keychain_profile)
+    verify_keychain_notary_profile
+    ;;
+  apple_id)
+    if ! /usr/bin/xcrun notarytool history \
+      --apple-id "${APPLE_ID}" \
+      --team-id "${APPLE_TEAM_ID}" \
+      --password "${APPLE_NOTARY_PASSWORD}" >/dev/null 2>&1; then
+      notary_preflight_failed "Apple ID environment credentials"
+    fi
+    ;;
+  api_key)
+    if ! /usr/bin/xcrun notarytool history \
+      --key "${APPLE_API_KEY_PATH}" \
+      --key-id "${APPLE_API_KEY}" \
+      --issuer "${APPLE_API_ISSUER}" >/dev/null 2>&1; then
+      notary_preflight_failed "App Store Connect API environment credentials"
+    fi
+    ;;
+  *)
+    notary_preflight_failed "unknown notarization credential mode"
+    ;;
+  esac
+}
+
 ensure_notary_credentials() {
   if [[ -n "${APPLE_ID:-}" && -n "${APPLE_NOTARY_PASSWORD}" && -n "${APPLE_TEAM_ID:-}" ]]; then
     NOTARY_CREDENTIAL_MODE="apple_id"
     echo "Using Apple ID notarization credentials from environment."
+    verify_notary_credentials
     return
   fi
 
   if [[ -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_ISSUER:-}" && -n "${APPLE_API_KEY_PATH:-}" ]]; then
     NOTARY_CREDENTIAL_MODE="api_key"
     echo "Using App Store Connect API notarization credentials from environment."
+    verify_notary_credentials
     return
   fi
 
   NOTARY_CREDENTIAL_MODE="keychain_profile"
-  if /usr/bin/xcrun notarytool history \
-    --keychain-profile "${NOTARY_KEYCHAIN_PROFILE}" >/dev/null 2>&1; then
-    echo "Using stored notarytool profile: ${NOTARY_KEYCHAIN_PROFILE}"
-    return
-  fi
-
-  cat >&2 <<EOF
-Stored notarytool profile "${NOTARY_KEYCHAIN_PROFILE}" could not be verified during preflight.
-The build will still submit with that profile so notarytool can report the real failure, if any.
-
-Provide one of these credential sets:
-  1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
-     xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
-  2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
-     APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
-  3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH
-
-APPLE_PASSWORD should be a fresh app-specific password when using the APPLE_ID flow.
-EOF
+  verify_notary_credentials
+  echo "Using stored notarytool profile: ${NOTARY_KEYCHAIN_PROFILE}"
 }
 
 notary_submit_failed() {
@@ -89,6 +154,7 @@ Notarization submission failed using ${credential_description}.
 Fix one of these credential paths, then rerun this script:
   1. Stored notarytool profile named "${NOTARY_KEYCHAIN_PROFILE}"
      xcrun notarytool store-credentials "${NOTARY_KEYCHAIN_PROFILE}" --apple-id ... --team-id ... --password ...
+     or run: bun run mac:setup-notary
   2. APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID
      APPLE_ID_PASSWORD is also accepted as an APPLE_PASSWORD alias.
   3. APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_PATH

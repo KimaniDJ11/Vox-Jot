@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   Loader2,
+  FileMusic,
   Music2,
   RefreshCw,
   Sparkles,
@@ -23,14 +24,16 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
 import { openModelHub } from "@/components/model-hub/modelHubTabs";
 
-type StorySoundMode = "sfx" | "ambience" | "music";
+type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 
 interface CreativeAudioModelDescriptor {
   id: string;
   label: string;
   provider: string;
+  status_label: string;
   installed: boolean;
   runnable: boolean;
+  downloadable: boolean;
   modes: StorySoundMode[];
 }
 
@@ -67,6 +70,18 @@ const modeDefaults: Record<
       "low cinematic tension bed, minimal synth pulse, no vocals, suspenseful story underscore",
     duration: 30,
   },
+  song: {
+    title: "Opening theme",
+    prompt:
+      "full cinematic pop song for an audio story intro, clear verse and chorus structure, uplifting but restrained, vocals optional",
+    duration: 90,
+  },
+  composition: {
+    title: "Piano motif",
+    prompt:
+      "expressive piano sketch in A minor, sparse left hand, clear four-bar motif with room for narration",
+    duration: 45,
+  },
 };
 
 export const SoundDesignPanel: React.FC = () => {
@@ -101,7 +116,12 @@ export const SoundDesignPanel: React.FC = () => {
   const modeReady = Boolean(selectedModel?.runnable);
 
   const durationBounds =
-    mode === "sfx" ? { min: 1, max: 15 } : { min: 5, max: 60 };
+    mode === "sfx"
+      ? { min: 1, max: 15 }
+      : mode === "song" || mode === "composition"
+        ? { min: 10, max: 600 }
+        : { min: 5, max: 60 };
+  const setupActionAvailable = Boolean(selectedModel?.downloadable);
 
   const refreshCatalog = useCallback(async () => {
     setIsLoadingCatalog(true);
@@ -263,6 +283,18 @@ export const SoundDesignPanel: React.FC = () => {
                 defaultValue: "Music",
               }),
             },
+            {
+              value: "song",
+              label: t("storyStudio.sound.modes.song", {
+                defaultValue: "Song",
+              }),
+            },
+            {
+              value: "composition",
+              label: t("storyStudio.sound.modes.composition", {
+                defaultValue: "Composition",
+              }),
+            },
           ]}
         />
         <span
@@ -278,9 +310,10 @@ export const SoundDesignPanel: React.FC = () => {
               })
             : modeReady
               ? t("storyStudio.sound.ready", { defaultValue: "Ready" })
-              : t("storyStudio.sound.needsSetup", {
+              : (selectedModel?.status_label ??
+                t("storyStudio.sound.needsSetup", {
                   defaultValue: "Model needed",
-                })}
+                }))}
         </span>
       </div>
 
@@ -297,7 +330,7 @@ export const SoundDesignPanel: React.FC = () => {
               compatibleModels.map((model) => (
                 <option key={model.id} value={model.id}>
                   {model.label}
-                  {model.runnable ? "" : " (download required)"}
+                  {model.runnable ? "" : ` (${model.status_label})`}
                 </option>
               ))
             ) : (
@@ -318,15 +351,24 @@ export const SoundDesignPanel: React.FC = () => {
       {!modeReady ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] px-4 py-3">
           <p className="text-sm font-semibold text-[var(--text)]">
-            {t("storyStudio.sound.modelNeededTitle", {
-              defaultValue: "Download a creative audio model",
-            })}
+            {setupActionAvailable
+              ? t("storyStudio.sound.modelNeededTitle", {
+                  defaultValue: "Download a creative audio model",
+                })
+              : t("storyStudio.sound.runtimePendingTitle", {
+                  defaultValue: "Runtime pending",
+                })}
           </p>
           <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-            {t("storyStudio.sound.modelNeededDescription", {
-              defaultValue:
-                "Creative audio models are managed in Model Hub so large downloads have a central progress and cleanup flow.",
-            })}
+            {setupActionAvailable
+              ? t("storyStudio.sound.modelNeededDescription", {
+                  defaultValue:
+                    "Creative audio models are managed in Model Hub so large downloads have a central progress and cleanup flow.",
+                })
+              : t("storyStudio.sound.runtimePendingDescription", {
+                  defaultValue:
+                    "This engine is tracked for Studio, but its app-managed runtime is not available in Vox Jot yet.",
+                })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
@@ -336,7 +378,11 @@ export const SoundDesignPanel: React.FC = () => {
               onClick={() => void openCreativeAudioModels()}
               disabled={isGenerating}
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              {setupActionAvailable ? (
+                <Sparkles className="h-3.5 w-3.5" />
+              ) : (
+                <FileMusic className="h-3.5 w-3.5" />
+              )}
               {t("storyStudio.sound.openModelHub", {
                 defaultValue: "Open Creative Audio Models",
               })}
@@ -377,7 +423,15 @@ export const SoundDesignPanel: React.FC = () => {
       </div>
 
       <label className="block text-sm font-medium text-[var(--text)]">
-        {t("storyStudio.sound.prompt", { defaultValue: "Prompt" })}
+        {mode === "song"
+          ? t("storyStudio.sound.songPrompt", {
+              defaultValue: "Prompt / lyrics",
+            })
+          : mode === "composition"
+            ? t("storyStudio.sound.compositionPrompt", {
+                defaultValue: "Prompt / structure",
+              })
+            : t("storyStudio.sound.prompt", { defaultValue: "Prompt" })}
         <Textarea
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
@@ -389,7 +443,7 @@ export const SoundDesignPanel: React.FC = () => {
         <div className="text-xs leading-5 text-[var(--muted)]">
           <span aria-live="polite">
             {selectedModel
-              ? `${selectedModel.provider} - ${selectedModel.label}`
+              ? `${selectedModel.provider} - ${selectedModel.label} - ${selectedModel.status_label}`
               : t("storyStudio.sound.noModelSelected", {
                   defaultValue: "No model selected",
                 })}

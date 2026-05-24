@@ -1,0 +1,108 @@
+{
+  "$schema": "model-porting-rubric",
+  "evaluated_at": "2026-05-24",
+  "evaluator": "Codex",
+
+  "source": {
+    "url": "https://github.com/ace-step/ACE-Step-1.5",
+    "repo_url": "https://github.com/ace-step/ACE-Step-1.5",
+    "hugging_face_url": "https://huggingface.co/ACE-Step/Ace-Step1.5",
+    "paper_url": "https://arxiv.org/abs/2602.00744",
+    "license": "MIT",
+    "license_allows_commercial": true,
+    "license_allows_redistribution": true
+  },
+
+  "identity": {
+    "model_id": "ace-step-1.5",
+    "label": "ACE-Step 1.5",
+    "publisher": "ACE Studio / StepFun",
+    "description": "Open text-to-music and full-song creative-audio foundation model with lyrics, reference audio, editing, cover generation, vocal-to-BGM, metadata control, and LoRA training.",
+    "domain": "creative_audio",
+    "parameter_count": "2B DiT turbo/SFT/base variants; 4B XL DiT variants; 0.6B, 1.7B, and 4B LM sidecars",
+    "model_format": "Hugging Face snapshots; official Python/uv runtime; MLX backend on Apple Silicon",
+    "dtype": "upstream-managed"
+  },
+
+  "mac_readiness": {
+    "mlx_version_exists": true,
+    "mlx_community_repo": "https://github.com/ace-step/ACE-Step-1.5",
+    "gguf_or_metal_support": false,
+    "onnx_export_available": false,
+    "coreml_conversion_tested": false,
+    "mps_backend_works": true,
+    "cuda_only": false,
+    "tensorrt_required": false,
+    "known_mac_forks": [],
+    "community_discussion_links": []
+  },
+
+  "runtime_fit": {
+    "lane": "creative_audio_runtime",
+    "can_run_as_local_process": true,
+    "api_surface": ["python", "cli", "gradio", "rest_api", "mlx"],
+    "output_format": "audio",
+    "supports_streaming": false,
+    "cold_start_estimate_sec": null,
+    "vram_estimate_gb": 6,
+    "disk_size_mb": 10000
+  },
+
+  "capabilities": {
+    "upstream_downloadable": true,
+    "app_downloadable": false,
+    "loadable": null,
+    "local_only": true,
+    "supports_translation": false,
+    "supports_streaming": false,
+    "supports_voice_cloning": false,
+    "supports_instruction_prompt": true,
+    "supports_inline_tags": false,
+    "supports_lyrics": true,
+    "supports_reference_audio": true,
+    "supports_audio_editing": true,
+    "supports_cover_generation": true,
+    "supports_vocal_to_bgm": true,
+    "supports_lora_training": true,
+    "coming_soon": true
+  },
+
+  "languages": ["50+ lyric languages per upstream README"],
+
+  "packaging": {
+    "can_use_archive_plus_runtime": true,
+    "archive_format": "hf_snapshot_plus_uv_runtime",
+    "estimated_download_mb": 10000,
+    "requires_python_sidecar": true,
+    "requires_custom_runtime": true,
+    "candidate_repos": [
+      "ACE-Step/acestep-v15-base",
+      "ACE-Step/acestep-v15-sft",
+      "ACE-Step/Ace-Step1.5",
+      "ACE-Step/acestep-5Hz-lm-0.6B",
+      "ACE-Step/acestep-5Hz-lm-1.7B",
+      "ACE-Step/acestep-5Hz-lm-4B"
+    ]
+  },
+
+  "benchmark": {
+    "tested_on_hardware": "Not benchmarked in Vox Jot",
+    "cold_start_sec": null,
+    "warm_start_sec": null,
+    "peak_memory_gb": null,
+    "sample_rtf": null,
+    "output_quality_notes": "Strongest next candidate for Vox Jot Studio's Music/Song lane based on upstream feature fit and permissive license. It should not be ranked until Vox Jot has a creative-audio benchmark suite for prompt adherence, song structure, loop quality, music-bed usefulness, generation latency, cancellation, export behavior, and app-path validation."
+  },
+
+  "verdict": {
+    "score": 39,
+    "decision": "prototype_next",
+    "blockers": [
+      "Needs a separate app-managed ACE-Step runtime; it must not reuse the Stable Audio 3 MLX runtime or MLX-Audio TTS bridge",
+      "No Vox Jot Creative Audio benchmark suite exists yet",
+      "Mac latency, memory pressure, output format, cancellation, and export behavior are unmeasured",
+      "Visible generation must stay disabled until model/runtime downloads are resumable, cancellable, and stored in app-managed model locations"
+    ],
+    "notes": "Recommended path: expose as a non-runnable future/experimental Studio catalog entry, add Song/full-track UI mode, then prototype ACE-Step through a dedicated creative-audio runtime with the 2B turbo path first. Existing dictation, transcription, readback, overlay, and paste hot paths should not load or initialize this runtime."
+  }
+}

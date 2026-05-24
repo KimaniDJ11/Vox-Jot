@@ -29,6 +29,8 @@ const STABLE_AUDIO3_ARCHIVE_MLX_PREFIX: &str = "stable-audio-3-main/optimized/ml
 const STABLE_AUDIO3_SOURCE_URL: &str = "https://github.com/Stability-AI/stable-audio-3";
 const STABLE_AUDIO3_MODEL_SFX_ID: &str = "stable-audio-3-small-sfx";
 const STABLE_AUDIO3_MODEL_MUSIC_ID: &str = "stable-audio-3-small-music";
+const ACE_STEP_15_MUSIC_ID: &str = "ace-step-1-5-music";
+const ACE_STEP_15_SOURCE_URL: &str = "https://github.com/ace-step/ACE-Step-1.5";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StoryCastMember {
@@ -72,6 +74,8 @@ pub enum StorySoundMode {
     Sfx,
     Ambience,
     Music,
+    Song,
+    Composition,
 }
 
 impl StorySoundMode {
@@ -80,24 +84,35 @@ impl StorySoundMode {
             Self::Sfx => "SFX",
             Self::Ambience => "Ambience",
             Self::Music => "Music",
+            Self::Song => "Song",
+            Self::Composition => "Composition",
         }
     }
 
-    fn dit(self) -> &'static str {
+    fn stable_audio3_dit(self) -> Result<&'static str, String> {
         match self {
-            Self::Sfx | Self::Ambience => "sm-sfx",
-            Self::Music => "sm-music",
+            Self::Sfx | Self::Ambience => Ok("sm-sfx"),
+            Self::Music => Ok("sm-music"),
+            Self::Song | Self::Composition => {
+                Err("Stable Audio 3 does not support this Studio mode.".to_string())
+            }
         }
     }
 
-    fn decoder(self) -> &'static str {
-        "same-s"
+    fn stable_audio3_decoder(self) -> Result<&'static str, String> {
+        match self {
+            Self::Sfx | Self::Ambience | Self::Music => Ok("same-s"),
+            Self::Song | Self::Composition => {
+                Err("Stable Audio 3 does not support this Studio mode.".to_string())
+            }
+        }
     }
 
     fn max_seconds(self) -> u32 {
         match self {
             Self::Sfx => 15,
             Self::Ambience | Self::Music => 60,
+            Self::Song | Self::Composition => 600,
         }
     }
 }
@@ -108,11 +123,21 @@ pub enum CreativeAudioModelSourceKind {
     OfficialSource,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CreativeAudioAvailability {
+    Ready,
+    Downloadable,
+    Future,
+    Blocked,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CreativeAudioModelDescriptor {
     pub id: String,
     pub label: String,
     pub provider: String,
+    pub provider_id: String,
     pub description: String,
     pub source_kind: CreativeAudioModelSourceKind,
     pub source_url: String,
@@ -123,6 +148,10 @@ pub struct CreativeAudioModelDescriptor {
     pub runnable: bool,
     pub downloadable: bool,
     pub recommended: bool,
+    pub status_label: String,
+    pub availability: CreativeAudioAvailability,
+    pub experimental: bool,
+    pub unavailable_reason: Option<String>,
     pub modes: Vec<StorySoundMode>,
 }
 
@@ -546,6 +575,12 @@ pub async fn download_creative_audio_model(
     if model.installed {
         return Ok(model);
     }
+    if !model.downloadable {
+        return Err(format!(
+            "{} is tracked in Studio, but its app-managed runtime is not available yet.",
+            model.label
+        ));
+    }
     let stop_flag = Arc::new(AtomicBool::new(false));
     {
         let mut downloads = ACTIVE_CREATIVE_AUDIO_DOWNLOADS
@@ -628,6 +663,9 @@ pub fn delete_creative_audio_model(
     {
         return Err(format!("{} is currently downloading.", model.label));
     }
+    if !model.installed {
+        return Ok(model);
+    }
 
     let runtime_dir = stable_audio3_runtime_dir(&app)?;
     for rel_path in stable_audio3_model_specific_weights(mode_for_creative_audio_model(&model_id)?)
@@ -652,6 +690,7 @@ pub async fn prepare_stable_audio3(
     request: PrepareStableAudio3Request,
 ) -> Result<StableAudio3Status, String> {
     tokio::task::spawn_blocking(move || {
+        request.mode.stable_audio3_dit()?;
         ensure_stable_audio3_runtime_source(&app)?;
         run_stable_audio3_install(&app, request.mode, None)?;
         stable_audio3_status(&app)
@@ -834,6 +873,135 @@ fn creative_audio_model_catalog(app: &AppHandle) -> Result<CreativeAudioModelCat
                 active_downloads.contains(STABLE_AUDIO3_MODEL_MUSIC_ID),
                 true,
             )?,
+            ace_step_catalog_model(),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "yue-full-song",
+                label: "YuE",
+                provider: "HKUST / M-A-P",
+                description: "Open full-song generation model for lyrics-to-song workflows with vocals and accompaniment. It needs a dedicated long-running Python runtime before Vox Jot can download or generate with it safely.",
+                source_url: "https://github.com/multimodal-art-projection/YuE",
+                license_label: "Apache-2.0",
+                runtime_label: "Python runtime planned",
+                size_hint_label: "large GPU-class weights",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "YuE needs a separate app-managed full-song runtime, cancellation path, and benchmark pass before downloads are enabled.",
+                modes: vec![StorySoundMode::Song],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "diffrhythm-full-song",
+                label: "DiffRhythm",
+                provider: "ASLP Lab",
+                description: "Diffusion-based full-song generator for vocals and accompaniment. It fits Studio Song generation, but needs a dedicated runtime and app-path validation.",
+                source_url: "https://github.com/ASLP-lab/DiffRhythm",
+                license_label: "Apache-2.0",
+                runtime_label: "Python runtime planned",
+                size_hint_label: "8 GB+ VRAM class",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "DiffRhythm is tracked for the Song lane, but Vox Jot does not yet have its runtime, downloader, or benchmark suite.",
+                modes: vec![StorySoundMode::Song],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "audiocraft-musicgen",
+                label: "AudioCraft / MusicGen",
+                provider: "Meta",
+                description: "Established research stack for text-to-music and text-to-audio experiments. The code is MIT, but commonly used MusicGen weights are non-commercial, so Vox Jot keeps it blocked for general app downloads.",
+                source_url: "https://github.com/facebookresearch/audiocraft",
+                license_label: "MIT code / non-commercial weights",
+                runtime_label: "Research runtime blocked",
+                size_hint_label: "varies by checkpoint",
+                status_label: "License blocked",
+                availability: CreativeAudioAvailability::Blocked,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "AudioCraft is not exposed as an app download because the practical MusicGen weight licenses are not suitable for unrestricted commercial product use.",
+                modes: vec![StorySoundMode::Music, StorySoundMode::Ambience],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "levo-2-songgeneration",
+                label: "SongGeneration / LeVo 2",
+                provider: "Tencent AI Lab",
+                description: "High-quality song-generation research model. Its published license is limited to academic, research, and education use, so it is blocked from production Studio downloads.",
+                source_url: "https://github.com/tencent-ailab/SongGeneration",
+                license_label: "Research / education only",
+                runtime_label: "Production use blocked",
+                size_hint_label: "large GPU-class weights",
+                status_label: "License blocked",
+                availability: CreativeAudioAvailability::Blocked,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "LeVo 2 prohibits commercial or production use under its published license, so Vox Jot cannot expose it as a normal app-managed download.",
+                modes: vec![StorySoundMode::Song],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "music-transformer-piano",
+                label: "Music Transformer / Piano Transformer",
+                provider: "Magenta",
+                description: "Archived symbolic performance generator for note-level composition sketches. It belongs in a future MIDI/Composition lane, not rendered Sound Design audio.",
+                source_url: "https://github.com/magenta/listen-to-transformer",
+                license_label: "Apache-2.0",
+                runtime_label: "Symbolic runtime planned",
+                size_hint_label: "MIDI model",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "Music Transformer needs a symbolic MIDI runtime and preview renderer before it can be used from Studio.",
+                modes: vec![StorySoundMode::Composition],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "figaro-symbolic",
+                label: "FIGARO",
+                provider: "Dimitri von Rutte",
+                description: "Symbolic music generator with fine-grained artistic control and pretrained models. It is the strongest future candidate for MIDI composition sketches.",
+                source_url: "https://github.com/dvruette/figaro",
+                license_label: "MIT",
+                runtime_label: "Symbolic runtime planned",
+                size_hint_label: "MIDI model",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "FIGARO needs a MIDI output path, preview renderer, and benchmark coverage before Studio can enable generation.",
+                modes: vec![StorySoundMode::Composition],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "symbolic-music-diffusion",
+                label: "Symbolic Music Diffusion",
+                provider: "Magenta",
+                description: "Archived diffusion-based symbolic music project. Useful as a reference for a future Composition lane, but not a direct rendered-audio engine.",
+                source_url: "https://github.com/magenta/symbolic-music-diffusion",
+                license_label: "Apache-2.0",
+                runtime_label: "Symbolic runtime planned",
+                size_hint_label: "MIDI model",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "Symbolic Music Diffusion needs a maintained symbolic runtime and preview/export workflow before downloads are enabled.",
+                modes: vec![StorySoundMode::Composition],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "rule-guided-music",
+                label: "Rule-Guided Music",
+                provider: "yjhuangcd",
+                description: "Rule-guided symbolic diffusion generator for controllable MIDI-like composition. It fits advanced Composition controls, not quick rendered SFX.",
+                source_url: "https://github.com/yjhuangcd/rule-guided-music",
+                license_label: "Research code",
+                runtime_label: "Symbolic runtime planned",
+                size_hint_label: "MIDI model",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "Rule-Guided Music needs a supported symbolic generation runtime and rule editor before Studio can use it.",
+                modes: vec![StorySoundMode::Composition],
+            }),
         ],
     })
 }
@@ -856,6 +1024,7 @@ fn stable_audio3_catalog_model(
         id: id.to_string(),
         label: label.to_string(),
         provider: "Stability AI".to_string(),
+        provider_id: "generic".to_string(),
         description: description.to_string(),
         source_kind: CreativeAudioModelSourceKind::OfficialSource,
         source_url: STABLE_AUDIO3_SOURCE_URL.to_string(),
@@ -866,8 +1035,82 @@ fn stable_audio3_catalog_model(
         runnable: installed && !downloading,
         downloadable: true,
         recommended,
+        status_label: if installed && !downloading {
+            "Ready".to_string()
+        } else {
+            "Download required".to_string()
+        },
+        availability: if installed && !downloading {
+            CreativeAudioAvailability::Ready
+        } else {
+            CreativeAudioAvailability::Downloadable
+        },
+        experimental: false,
+        unavailable_reason: None,
         modes,
     })
+}
+
+fn ace_step_catalog_model() -> CreativeAudioModelDescriptor {
+    planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+        id: ACE_STEP_15_MUSIC_ID,
+        label: "ACE-Step 1.5",
+        provider: "ACE Studio / StepFun",
+        description: "Planned Studio engine for local prompt-to-music and full-song generation with lyrics, reference audio, long durations, and Apple Silicon MLX support. Runtime integration is not wired yet, so it is listed for fit and roadmap visibility only.",
+        source_url: ACE_STEP_15_SOURCE_URL,
+        license_label: "MIT",
+        runtime_label: "Apple Silicon MLX planned",
+        size_hint_label: "4.7 GB+ weights",
+        status_label: "Runtime pending",
+        availability: CreativeAudioAvailability::Future,
+        experimental: true,
+        recommended: true,
+        unavailable_reason: "ACE-Step needs a separate app-managed runtime and benchmark pass before generation is enabled.",
+        modes: vec![StorySoundMode::Music, StorySoundMode::Song],
+    })
+}
+
+struct PlannedCreativeAudioModel {
+    id: &'static str,
+    label: &'static str,
+    provider: &'static str,
+    description: &'static str,
+    source_url: &'static str,
+    license_label: &'static str,
+    runtime_label: &'static str,
+    size_hint_label: &'static str,
+    status_label: &'static str,
+    availability: CreativeAudioAvailability,
+    experimental: bool,
+    recommended: bool,
+    unavailable_reason: &'static str,
+    modes: Vec<StorySoundMode>,
+}
+
+fn planned_creative_audio_catalog_model(
+    model: PlannedCreativeAudioModel,
+) -> CreativeAudioModelDescriptor {
+    CreativeAudioModelDescriptor {
+        id: model.id.to_string(),
+        label: model.label.to_string(),
+        provider: model.provider.to_string(),
+        provider_id: "generic".to_string(),
+        description: model.description.to_string(),
+        source_kind: CreativeAudioModelSourceKind::OfficialSource,
+        source_url: model.source_url.to_string(),
+        license_label: model.license_label.to_string(),
+        runtime_label: model.runtime_label.to_string(),
+        size_hint_label: model.size_hint_label.to_string(),
+        installed: false,
+        runnable: false,
+        downloadable: false,
+        recommended: model.recommended,
+        status_label: model.status_label.to_string(),
+        availability: model.availability,
+        experimental: model.experimental,
+        unavailable_reason: Some(model.unavailable_reason.to_string()),
+        modes: model.modes,
+    }
 }
 
 fn creative_audio_model_by_id(
@@ -885,6 +1128,9 @@ fn mode_for_creative_audio_model(model_id: &str) -> Result<StorySoundMode, Strin
     match model_id {
         STABLE_AUDIO3_MODEL_SFX_ID => Ok(StorySoundMode::Sfx),
         STABLE_AUDIO3_MODEL_MUSIC_ID => Ok(StorySoundMode::Music),
+        ACE_STEP_15_MUSIC_ID => {
+            Err("ACE-Step 1.5 runtime downloads are not implemented in Vox Jot yet.".to_string())
+        }
         _ => Err(format!("Unknown creative audio model: {model_id}")),
     }
 }
@@ -895,6 +1141,7 @@ fn model_supports_story_sound_mode(model_id: &str, mode: StorySoundMode) -> bool
             matches!(mode, StorySoundMode::Sfx | StorySoundMode::Ambience)
         }
         STABLE_AUDIO3_MODEL_MUSIC_ID => matches!(mode, StorySoundMode::Music),
+        ACE_STEP_15_MUSIC_ID => false,
         _ => false,
     }
 }
@@ -965,6 +1212,9 @@ fn stable_audio3_required_weights(mode: StorySoundMode) -> &'static [&'static st
             "models/mlx/same_s_decoder_f32.npz",
             "models/mlx/same_s_encoder_f32.npz",
         ],
+        StorySoundMode::Song | StorySoundMode::Composition => {
+            &["__stable_audio3_studio_mode_is_unsupported__"]
+        }
     }
 }
 
@@ -972,6 +1222,7 @@ fn stable_audio3_model_specific_weights(mode: StorySoundMode) -> &'static [&'sta
     match mode {
         StorySoundMode::Sfx | StorySoundMode::Ambience => &["models/mlx/dit_sm-sfx_f16.npz"],
         StorySoundMode::Music => &["models/mlx/dit_sm-music_f16.npz"],
+        StorySoundMode::Song | StorySoundMode::Composition => &[],
     }
 }
 
@@ -1071,11 +1322,12 @@ fn run_stable_audio3_install(
     stop_flag: Option<&AtomicBool>,
 ) -> Result<(), String> {
     let runtime_dir = stable_audio3_runtime_dir(app)?;
+    let dit = mode.stable_audio3_dit()?;
     let mut child = Command::new(runtime_dir.join("install.sh"))
         .current_dir(&runtime_dir)
         .arg("-y")
         .arg("--download")
-        .arg(mode.dit())
+        .arg(dit)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1119,6 +1371,17 @@ fn generate_story_sound_inner(
         return Err("Describe the sound before generating.".to_string());
     }
     let model = creative_audio_model_by_id(&app, &request.model_id)?;
+    if matches!(
+        model.availability,
+        CreativeAudioAvailability::Future | CreativeAudioAvailability::Blocked
+    ) {
+        return Err(model.unavailable_reason.unwrap_or_else(|| {
+            format!(
+                "{} is tracked in Studio, but its runtime is not available yet.",
+                model.label
+            )
+        }));
+    }
     if !model_supports_story_sound_mode(&request.model_id, request.mode) {
         return Err(format!(
             "{} does not support {} generation.",
@@ -1209,6 +1472,8 @@ fn run_stable_audio3_generate(
     output_path: &Path,
     stop_flag: &AtomicBool,
 ) -> Result<(), String> {
+    let dit = request.mode.stable_audio3_dit()?;
+    let decoder = request.mode.stable_audio3_decoder()?;
     let mut child = Command::new(stable_audio3_python_path(runtime_dir))
         .current_dir(runtime_dir)
         .env("PYTHONUNBUFFERED", "1")
@@ -1217,9 +1482,9 @@ fn run_stable_audio3_generate(
         .arg("--prompt")
         .arg(prompt)
         .arg("--dit")
-        .arg(request.mode.dit())
+        .arg(dit)
         .arg("--decoder")
-        .arg(request.mode.decoder())
+        .arg(decoder)
         .arg("--seconds")
         .arg(duration_seconds.to_string())
         .arg("--steps")
@@ -2837,6 +3102,77 @@ mod tests {
     fn rejects_malformed_script_line() {
         let error = parse_script("Narrator says hello").unwrap_err();
         assert!(error.contains("Line 1"));
+    }
+
+    #[test]
+    fn keeps_song_mode_out_of_stable_audio3_runtime() {
+        assert_eq!(StorySoundMode::Song.label(), "Song");
+        assert_eq!(StorySoundMode::Song.max_seconds(), 600);
+        assert!(StorySoundMode::Song.stable_audio3_dit().is_err());
+        assert!(StorySoundMode::Song.stable_audio3_decoder().is_err());
+        assert!(!model_supports_story_sound_mode(
+            STABLE_AUDIO3_MODEL_MUSIC_ID,
+            StorySoundMode::Song
+        ));
+    }
+
+    #[test]
+    fn exposes_ace_step_as_future_catalog_entry() {
+        let model = ace_step_catalog_model();
+        assert_eq!(model.id, ACE_STEP_15_MUSIC_ID);
+        assert_eq!(model.availability, CreativeAudioAvailability::Future);
+        assert!(model.experimental);
+        assert!(!model.downloadable);
+        assert!(!model.runnable);
+        assert!(model.modes.contains(&StorySoundMode::Song));
+    }
+
+    #[test]
+    fn exposes_researched_models_without_fake_downloads() {
+        let models = vec![
+            ace_step_catalog_model(),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "figaro-symbolic",
+                label: "FIGARO",
+                provider: "Dimitri von Rutte",
+                description: "Symbolic music generator with fine-grained artistic control.",
+                source_url: "https://github.com/dvruette/figaro",
+                license_label: "MIT",
+                runtime_label: "Symbolic runtime planned",
+                size_hint_label: "MIDI model",
+                status_label: "Runtime pending",
+                availability: CreativeAudioAvailability::Future,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "Needs a MIDI runtime.",
+                modes: vec![StorySoundMode::Composition],
+            }),
+            planned_creative_audio_catalog_model(PlannedCreativeAudioModel {
+                id: "levo-2-songgeneration",
+                label: "SongGeneration / LeVo 2",
+                provider: "Tencent AI Lab",
+                description: "Research-only song generation model.",
+                source_url: "https://github.com/tencent-ailab/SongGeneration",
+                license_label: "Research / education only",
+                runtime_label: "Production use blocked",
+                size_hint_label: "large GPU-class weights",
+                status_label: "License blocked",
+                availability: CreativeAudioAvailability::Blocked,
+                experimental: true,
+                recommended: false,
+                unavailable_reason: "Research license.",
+                modes: vec![StorySoundMode::Song],
+            }),
+        ];
+
+        assert!(models.iter().all(|model| !model.downloadable));
+        assert!(models.iter().all(|model| !model.runnable));
+        assert!(models
+            .iter()
+            .any(|model| model.modes.contains(&StorySoundMode::Composition)));
+        assert!(models
+            .iter()
+            .any(|model| model.availability == CreativeAudioAvailability::Blocked));
     }
 
     #[test]

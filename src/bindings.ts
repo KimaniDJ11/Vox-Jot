@@ -2644,7 +2644,8 @@ export type CorrectionAutoApplyStatus = "candidate" | "manual" | "active" | "low
 export type CorrectionSourceKind = "manual" | "observed_edit" | "imported" | "auto_learned"
 export type CreateSpeechAudioRequest = { render_id: string; title: string; text: string; preset: TtsVoicePresetInput }
 export type CreativeAudioModelCatalog = { install_root: string; models: CreativeAudioModelDescriptor[] }
-export type CreativeAudioModelDescriptor = { id: string; label: string; provider: string; description: string; source_kind: CreativeAudioModelSourceKind; source_url: string; license_label: string; runtime_label: string; size_hint_label: string; installed: boolean; runnable: boolean; downloadable: boolean; recommended: boolean; modes: StorySoundMode[] }
+export type CreativeAudioAvailability = "ready" | "downloadable" | "future" | "blocked"
+export type CreativeAudioModelDescriptor = { id: string; label: string; provider: string; provider_id: string; description: string; source_kind: CreativeAudioModelSourceKind; source_url: string; license_label: string; runtime_label: string; size_hint_label: string; installed: boolean; runnable: boolean; downloadable: boolean; recommended: boolean; status_label: string; availability: CreativeAudioAvailability; experimental: boolean; unavailable_reason: string | null; modes: StorySoundMode[] }
 export type CreativeAudioModelSourceKind = "official_source"
 export type CustomSounds = { start: boolean; stop: boolean }
 /**
@@ -2842,7 +2843,7 @@ export type StoryLineInstructionOverride = { line_number: number; style_instruct
 export type StoryRenderEnqueueResult = { render_id: string; queue_position: number }
 export type StoryRenderJobSummary = { render_id: string; title: string; status: string; created_at_ms: number; queued_at_ms: number; started_at_ms: number | null; current_line: number; total_lines: number; speaker: string | null; error: string | null; queue_position: number | null }
 export type StoryRenderRequest = { render_id: string; project_id?: string | null; title: string; cast: StoryCastMember[]; script_text: string; pause_ms_between_lines: number; line_instructions?: StoryLineInstructionOverride[]; audio_effect?: StoryAudioEffectPreset }
-export type StorySoundMode = "sfx" | "ambience" | "music"
+export type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition"
 /**
  * One transcribed segment with millisecond-resolution timing.
  *

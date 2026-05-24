@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Cpu,
   Download,
+  FileMusic,
   HardDrive,
   Loader2,
   Music2,
@@ -32,14 +33,20 @@ import {
 } from "@/lib/modelListOrdering";
 import { usePortalTarget } from "@/hooks/usePortalTarget";
 
-type StorySoundMode = "sfx" | "ambience" | "music";
+type StorySoundMode = "sfx" | "ambience" | "music" | "song" | "composition";
 type CreativeAudioSourceKind = "official_source";
+type CreativeAudioAvailability =
+  | "ready"
+  | "downloadable"
+  | "future"
+  | "blocked";
 type CreativeAudioModeFilter = "all" | StorySoundMode;
 
 interface CreativeAudioModelDescriptor {
   id: string;
   label: string;
   provider: string;
+  provider_id: string;
   description: string;
   source_kind: CreativeAudioSourceKind;
   source_url: string;
@@ -50,6 +57,10 @@ interface CreativeAudioModelDescriptor {
   runnable: boolean;
   downloadable: boolean;
   recommended: boolean;
+  status_label: string;
+  availability: CreativeAudioAvailability;
+  experimental: boolean;
+  unavailable_reason?: string | null;
   modes: StorySoundMode[];
 }
 
@@ -73,12 +84,17 @@ interface CreativeAudioEnginesSectionProps {
 }
 
 const modeIcon = (mode: StorySoundMode) => {
+  if (mode === "composition")
+    return <FileMusic className="h-3 w-3" aria-hidden />;
+  if (mode === "song") return <FileMusic className="h-3 w-3" aria-hidden />;
   if (mode === "music") return <Music2 className="h-3 w-3" aria-hidden />;
   if (mode === "ambience") return <Volume2 className="h-3 w-3" aria-hidden />;
   return <Sparkles className="h-3 w-3" aria-hidden />;
 };
 
 const modeLabel = (mode: StorySoundMode): string => {
+  if (mode === "composition") return "Composition";
+  if (mode === "song") return "Song";
   if (mode === "music") return "Music";
   if (mode === "ambience") return "Ambience";
   return "SFX";
@@ -245,7 +261,9 @@ const CreativeAudioEnginesSection: React.FC<
 
   const startDownload = useCallback(
     async (model: CreativeAudioModelDescriptor) => {
-      if (busyModelId || activeDownloads.has(model.id)) return;
+      if (busyModelId || activeDownloads.has(model.id) || !model.downloadable) {
+        return;
+      }
       setError(null);
       setBusyModelId(model.id);
       setDeleteConfirmModelId(null);
@@ -340,6 +358,8 @@ const CreativeAudioEnginesSection: React.FC<
       { value: "sfx", label: "SFX" },
       { value: "ambience", label: "Ambience" },
       { value: "music", label: "Music" },
+      { value: "song", label: "Song" },
+      { value: "composition", label: "Composition" },
     ],
     [hubFilterLabels],
   );
@@ -389,11 +409,29 @@ const CreativeAudioEnginesSection: React.FC<
       ),
     [accessors, activeDownloads, filteredModels, sortMode],
   );
+  const futureModels = useMemo(
+    () =>
+      orderModelList(
+        filteredModels.filter(
+          (model) =>
+            model.availability === "future" ||
+            model.availability === "blocked" ||
+            (!model.downloadable && !model.installed),
+        ),
+        "available",
+        sortMode,
+        accessors,
+      ),
+    [accessors, filteredModels, sortMode],
+  );
   const availableModels = useMemo(
     () =>
       orderModelList(
         filteredModels.filter(
-          (model) => !model.installed && !activeDownloads.has(model.id),
+          (model) =>
+            !model.installed &&
+            model.downloadable &&
+            !activeDownloads.has(model.id),
         ),
         "available",
         sortMode,
@@ -444,6 +482,13 @@ const CreativeAudioEnginesSection: React.FC<
         defaultValue: "Available to Download",
       }),
       models: availableModels,
+      showHeader: true,
+    },
+    {
+      title: t("modelHub.sections.futureExperimental", {
+        defaultValue: "Future / Experimental",
+      }),
+      models: futureModels,
       showHeader: true,
     },
   ].filter((section) => section.models.length > 0);
@@ -557,6 +602,25 @@ const CreativeAudioEnginesSection: React.FC<
                           ),
                         }
                       : null,
+                    model.experimental || model.availability === "future"
+                      ? {
+                          id: "experimental",
+                          label: t("modelHub.creativeAudio.experimental", {
+                            defaultValue: "Experimental",
+                          }),
+                          variant: "secondary",
+                          icon: (
+                            <FileMusic className="h-3.5 w-3.5" aria-hidden />
+                          ),
+                          detail: t(
+                            "modelHub.creativeAudio.experimentalDetail",
+                            {
+                              defaultValue:
+                                "Tracked for Studio, but not runnable in this build.",
+                            },
+                          ),
+                        }
+                      : null,
                   ].filter(Boolean) as CompactBadgeItem[];
                   const capabilityChips: CompactBadgeItem[] = [
                     ...model.modes.map((mode) => ({
@@ -596,12 +660,16 @@ const CreativeAudioEnginesSection: React.FC<
                       ? t("modelHub.creativeAudio.installed", {
                           defaultValue: "installed",
                         })
-                      : t("modelHub.creativeAudio.weightsNeeded", {
+                      : model.status_label ||
+                        t("modelHub.creativeAudio.weightsNeeded", {
                           defaultValue: "weights not downloaded",
                         }),
                   ];
                   const actionDisabled =
-                    Boolean(busyModelId) || isDownloading || isCancelling;
+                    Boolean(busyModelId) ||
+                    isDownloading ||
+                    isCancelling ||
+                    (!model.installed && !model.downloadable);
                   const trailing: HubTrailing = {
                     kind: "custom",
                     node: (
@@ -610,7 +678,7 @@ const CreativeAudioEnginesSection: React.FC<
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        {!model.installed ? (
+                        {!model.installed && model.downloadable ? (
                           <Button
                             size="icon"
                             variant="ghost"
@@ -638,6 +706,18 @@ const CreativeAudioEnginesSection: React.FC<
                               <Download className="h-3.5 w-3.5" aria-hidden />
                             )}
                           </Button>
+                        ) : !model.installed ? (
+                          <span
+                            className="inline-flex min-h-8 items-center rounded-full border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-[11px] font-semibold text-[var(--muted)]"
+                            title={
+                              model.unavailable_reason ?? model.status_label
+                            }
+                          >
+                            {model.status_label ||
+                              t("modelHub.creativeAudio.notRunnable", {
+                                defaultValue: "Not runnable",
+                              })}
+                          </span>
                         ) : (
                           <Button
                             size="icon"
@@ -729,7 +809,7 @@ const CreativeAudioEnginesSection: React.FC<
                     <HubModelCard
                       key={model.id}
                       title={model.label}
-                      providerId="stabilityai"
+                      providerId={model.provider_id || "generic"}
                       subline={model.provider}
                       headerBadges={headerBadges}
                       description={model.description}
@@ -752,7 +832,7 @@ const CreativeAudioEnginesSection: React.FC<
                       footerExtra={footerExtra}
                       onClick={() => {
                         if (deleteConfirmOpen || actionDisabled) return;
-                        if (!model.installed) {
+                        if (!model.installed && model.downloadable) {
                           void startDownload(model);
                         }
                       }}

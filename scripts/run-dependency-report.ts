@@ -65,7 +65,10 @@ function commandText(command: string[]): string {
   return command.join(" ");
 }
 
-async function runCommand(label: string, command: string[]): Promise<CommandResult> {
+async function runCommand(
+  label: string,
+  command: string[],
+): Promise<CommandResult> {
   const start = performance.now();
 
   try {
@@ -109,7 +112,10 @@ function parseBunOutdated(output: string): FrontendUpdate[] {
 
   for (const line of output.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed.startsWith("|") || /^[-|]+$/.test(trimmed.replace(/\s/g, ""))) {
+    if (
+      !trimmed.startsWith("|") ||
+      /^[-|]+$/.test(trimmed.replace(/\s/g, ""))
+    ) {
       continue;
     }
 
@@ -254,7 +260,10 @@ function renderReport(results: CommandResult[]): string {
 
   const summaryRows = [
     ["Compatible frontend updates", String(compatibleFrontend.length)],
-    ["Major/range-constrained frontend updates", String(rangeConstrainedFrontend.length)],
+    [
+      "Major/range-constrained frontend updates",
+      String(rangeConstrainedFrontend.length),
+    ],
     ["Cargo-compatible lockfile updates", String(cargoUpdates.length)],
     ["Cargo packages blocked by constraints", String(cargoBlocked.length)],
     ["Audit commands with findings or failures", String(auditFindings.length)],
@@ -367,23 +376,24 @@ ${results
 
 async function main() {
   const results = await Promise.all(
-    Object.values(commands).map(({ label, command }) => runCommand(label, command)),
+    Object.values(commands).map(({ label, command }) =>
+      runCommand(label, command),
+    ),
   );
   const report = renderReport(results);
   const { isoDate } = currentReportDate();
 
   await mkdir(ARCHIVE_DIR, { recursive: true });
   await writeFile(REPORT_PATH, report);
-  await writeFile(
-    join(ARCHIVE_DIR, `dependency-report-${isoDate}.md`),
-    report,
-  );
+  await writeFile(join(ARCHIVE_DIR, `dependency-report-${isoDate}.md`), report);
 
   const bunUpdates = parseBunOutdated(results[0].stdout);
   const cargoOutput = [results[1].stdout, results[1].stderr].join("\n");
-  const auditFindings = results.filter((result) =>
-    ["Frontend audit", "Backend audit"].includes(result.label),
-  ).filter((result) => result.exitCode !== 0);
+  const auditFindings = results
+    .filter((result) =>
+      ["Frontend audit", "Backend audit"].includes(result.label),
+    )
+    .filter((result) => result.exitCode !== 0);
   const missingTools = results.filter((result) => result.missingTool);
 
   console.log(`Wrote ${REPORT_PATH}`);
@@ -395,7 +405,9 @@ async function main() {
   console.log(
     `Cargo packages blocked by constraints: ${parseCargoBlockedUpdates(cargoOutput).length}`,
   );
-  console.log(`Audit commands with findings or failures: ${auditFindings.length}`);
+  console.log(
+    `Audit commands with findings or failures: ${auditFindings.length}`,
+  );
   console.log(`Missing required tools: ${missingTools.length}`);
 }
 

@@ -70,6 +70,8 @@ On macOS, the standard validation workflow is to rebuild and update the installe
 bun run mac:update-installed-app
 ```
 
+This is the only correct path for syncing the installed/running macOS app to the latest build. It builds, Developer ID signs, submits to Apple notarization, staples, Gatekeeper-validates, replaces `/Applications/Vox Jot.app`, and opens the installed app.
+
 The installed-app workflow requires a Developer ID signing identity and Apple notarization credentials. Set up the notarytool Keychain profile once with:
 
 ```bash
@@ -78,7 +80,15 @@ bun run mac:setup-notary
 
 This stores the `voxjot-notary` profile in the macOS Keychain and verifies it before future builds. If the profile is missing, `bun run mac:update-installed-app` fails during preflight before starting the frontend or Rust build.
 
-Use `bun run tauri dev` only for quick iteration when you do not need to validate through the installed app bundle.
+When checking the profile manually, use:
+
+```bash
+xcrun notarytool history --keychain-profile voxjot-notary
+```
+
+Do not use `security find-generic-password -s voxjot-notary` as the credential check; it can report a false negative for a valid notarytool profile.
+
+Use `bun run tauri dev` only for explicitly requested quick iteration when you do not need to validate through the installed app bundle. It is not an installed-app sync path.
 
 ### 4. Start Dev Server
 

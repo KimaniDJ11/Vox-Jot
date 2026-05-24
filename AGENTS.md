@@ -83,11 +83,13 @@ Adjust tokens in **`src/App.css`** if a theme’s **`--muted`** / **`--text-subt
 On macOS, the standard validation path for any solid app change is to update the already-installed `/Applications/Vox Jot.app` in place instead of relying on a fresh `tauri dev` app instance.
 
 - App Store review branch note: if a new work branch changes App Store metadata, bundle IDs, signing, entitlements, version numbers, or release workflow files, keep those changes deliberate so they do not accidentally affect the reviewed `1.0` path.
-- Use `bun run mac:update-installed-app` (aliases: `bun run mac:build-install`, `bun run mac:dev-installed-app`) whenever a macOS change is ready for real app testing.
+- Use `bun run mac:update-installed-app` (aliases: `bun run mac:build-install`, `bun run mac:dev-installed-app`) whenever a macOS change is ready for real app testing. This is the only correct path for syncing the running installed macOS app to the latest build.
 - The installed-app workflow must be Developer ID signed, submitted to Apple notarization, stapled, and Gatekeeper-validated every time. It should fail instead of silently falling back to Apple Development signing, ad-hoc signing, or skipped notarization.
+- Do not use direct Keychain probing such as `security find-generic-password -s voxjot-notary` to decide whether notarization credentials exist. The required preflight is `xcrun notarytool history --keychain-profile voxjot-notary`, or simply running `bun run mac:update-installed-app`, which performs the same notarytool credential validation.
+- If the first installed-app attempt reports missing notarization credentials, verify with `xcrun notarytool history --keychain-profile voxjot-notary` before declaring the workflow blocked. A direct `security` lookup can report a false negative for a valid notarytool profile.
 - Use `bun run mac:open-installed-app` (alias: `bun run mac:open-dev-app`) to launch the already-installed dev app without rebuilding. This preserves the same `/Applications/Vox Jot.app` path, bundle identity, and macOS permissions.
 - This rebuilds the signed app bundle and replaces the contents of `/Applications/Vox Jot.app`, which preserves the existing system approval path so Accessibility and related permissions do not need to be re-granted for each solid change.
-- Use `bun run tauri dev` only for quick iteration when you explicitly do not need notarization or validation through the installed app bundle. Tauri dev launches a transient debug app and is not the notarized dev-app path.
+- Do not use `bun run tauri dev`, `bun run tauri build`, `open`, or a manually copied `.app` as the final answer for "sync the mac app", "run latest build", "installed app", or real macOS validation. `bun run tauri dev` is only for explicitly requested quick iteration when notarization and installed-app permissions are irrelevant.
 - Keep this workflow as the default in future sessions and for any other agent working in this repo.
 
 ## Development Commands

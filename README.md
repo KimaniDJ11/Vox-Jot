@@ -61,6 +61,8 @@ bun run mac:open-installed-app
 
 This rebuilds, Developer ID signs, notarizes, staples, Gatekeeper-validates, and replaces `/Applications/Vox Jot.app`, which lets you keep using the already-approved app bundle instead of repeatedly re-authorizing Accessibility for fresh development app instances. `bun run tauri dev` is still available for quick iteration, but it is not notarized and is not the default path for solid macOS testing.
 
+For agents and automation, `bun run mac:update-installed-app` is the only correct path for syncing the installed/running macOS app to the latest build. If notarization credentials need to be checked manually, verify them with `xcrun notarytool history --keychain-profile voxjot-notary`; direct `security find-generic-password` checks are not authoritative for notarytool profiles.
+
 ## Architecture
 
 Vox Jot is built as a Tauri application combining:
